@@ -1,0 +1,1540 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Manage Clients - Adarsh ID Cards</title>
+  {% include 'partials/common/head.html' %}
+  <link rel="stylesheet" href="{% static 'css/manage-client.css' %}?v=47">
+  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=2">
+</head>
+<body>
+
+  {% include 'partials/sidebar.html' %}
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- Top Navbar -->
+    <header class="topbar">
+      <div class="nav-left">
+        <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+        <div class="breadcrumb">
+            {% if is_super_admin %}
+            <a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+            {% elif is_admin_staff %}
+            <a href="{% url 'admin_staff_dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+            {% endif %}
+            <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+            <span class="breadcrumb-item active">Manage Clients</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Add/Edit Client Drawer (Side Modal) -->
+    <div id="client-drawer" class="drawer-modal">
+      <div class="drawer-content">
+        <div class="drawer-header">
+          <h3 id="drawerTitle"><i class="fa-solid fa-user-plus" id="drawerIcon"></i> <span id="drawerTitleText">Add New Client</span></h3>
+          <button class="drawer-close" id="closeClientDrawer" aria-label="Close client drawer"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form id="clientForm">
+          <input type="hidden" id="clientId" name="clientId" value="">
+          <div class="drawer-body">
+            
+            <!-- Profile Picture Section -->
+            <div class="profile-upload-section">
+              <div class="profile-preview" id="profilePreview">
+                <i class="fa-solid fa-user"></i>
+              </div>
+              <div class="profile-upload-controls">
+                <label class="upload-btn" for="clientProfilePic">
+                  <input type="file" id="clientProfilePic" name="profilePic" accept="image/*" style="display: none;">
+                  <i class="fa-solid fa-camera"></i> Upload Photo
+                </label>
+                <p class="upload-hint">JPG, PNG (Max 2MB)</p>
+                <div class="profile-path-display no-path" id="clientProfilePath">No image</div>
+              </div>
+            </div>
+
+            <!-- Client Info Section -->
+            <div class="form-section">
+              <div class="section-title"><i class="fa-solid fa-user"></i> Client Information</div>
+              
+              <div class="form-group">
+                <label for="clientName">Name <span class="required">*</span></label>
+                <input type="text" id="clientName" name="clientName" placeholder="Enter client name" required>
+              </div>
+              
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="clientEmail">Email <span class="required">*</span></label>
+                  <input type="email" id="clientEmail" name="clientEmail" placeholder="Enter email address" required>
+                  <span class="field-error" id="clientEmailError" style="display: none; color: #ef4444; font-size: 12px; margin-top: 4px;"></span>
+                </div>
+                <div class="form-group">
+                  <label for="clientPhone">Phone <span class="required">*</span></label>
+                  <input type="text" id="clientPhone" name="clientPhone" placeholder="Enter phone number" required>
+                  <small class="field-hint" style="color: #6b7280; font-size: 11px;">This will be used as password</small>
+                </div>
+              </div>
+              
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="clientAddress">Address</label>
+                  <textarea id="clientAddress" name="clientAddress" placeholder="Enter address (optional)" rows="2"></textarea>
+                </div>
+                <div class="form-group">
+                  <label for="clientStatus">Status</label>
+                  <select id="clientStatus" name="is_active">
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {% if is_super_admin %}
+            <!-- User Permission Section -->
+            <div class="form-section">
+              <div class="permission-header"><i class="fa-solid fa-shield-halved"></i> User Permission</div>
+              
+              <!-- ID Card Client List Permission -->
+              <div class="permission-category">
+                <div class="category-title"><i class="fa-solid fa-users"></i> Client Permissions</div>
+                <div class="permissions-grid">
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_client_list" name="perm_idcard_client_list" checked>
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Id Card Client List</span>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- ID Card Setting Permissions Category -->
+              <div class="permission-category">
+                <div class="category-title"><i class="fa-solid fa-cog"></i> ID Card Setting Permissions</div>
+                <div class="permissions-grid">
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_setting_list" name="perm_idcard_setting_list" checked>
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Id Card Setting List</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_setting_add" name="perm_idcard_setting_add" checked>
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Id Card Setting Add</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_setting_edit" name="perm_idcard_setting_edit" checked>
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Id Card Setting Edit</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_setting_delete" name="perm_idcard_setting_delete" checked>
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Id Card Setting Delete</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_setting_status" name="perm_idcard_setting_status" checked>
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Id Card Setting Status</span>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- ID Card List Permissions Category -->
+              <div class="permission-category">
+                <div class="category-title"><i class="fa-solid fa-list"></i> ID Card List Permissions</div>
+                <div class="permissions-grid">
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_pending_list" name="perm_idcard_pending_list" checked>
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Id Card Pending List</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_verified_list" name="perm_idcard_verified_list" checked>
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Id Card Verified List</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_pool_list" name="perm_idcard_pool_list" checked>
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Id Card Pool List</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_approved_list" name="perm_idcard_approved_list" checked>
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Id Card Approved List</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_download_list" name="perm_idcard_download_list" checked>
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Id Card Download List</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_reprint_list" name="perm_idcard_reprint_list" checked>
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Id Card Reprint List</span>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- ID Card Action Permissions Category -->
+              <div class="permission-category">
+                <div class="category-title"><i class="fa-solid fa-id-card"></i> ID Card Action Permissions</div>
+                <div class="permissions-grid">
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_add" name="perm_idcard_add" checked>
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Id Card Add</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_edit" name="perm_idcard_edit" checked>
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Id Card Edit</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_delete" name="perm_idcard_delete" checked>
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Id Card Delete</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_info" name="perm_idcard_info" checked>
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Id Card Info</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_approve" name="perm_idcard_approve" checked>
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Id Card Approve</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_verify" name="perm_idcard_verify" checked>
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Id Card Verify</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_bulk_upload" name="perm_idcard_bulk_upload" checked>
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Id Card Bulk Upload</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_bulk_download" name="perm_idcard_bulk_download" checked>
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Id Card Bulk Download</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_created_at" name="perm_idcard_created_at" checked>
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Id Card Created At</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_updated_at" name="perm_idcard_updated_at" checked>
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Id Card Updated At</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_delete_from_pool" name="perm_idcard_delete_from_pool" checked>
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Id Card Delete From Pool</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_delete_all_idcard" name="perm_delete_all_idcard" checked>
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Delete All Id Card</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_reupload_idcard_image" name="perm_reupload_idcard_image" checked>
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Reupload Id Card Image</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_retrieve" name="perm_idcard_retrieve" checked>
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Id Card Retrieve</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% endif %}
+
+          </div>
+          <div class="drawer-footer">
+            <button type="button" class="btn btn-cancel" id="cancelClientDrawer">Cancel</button>
+            <button type="submit" class="btn btn-save" id="submitClientBtn">
+              <i class="fa-solid fa-plus"></i> Add Client
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- View Client Modal (Side Modal) -->
+    <div id="view-modal" class="drawer-modal">
+      <div class="drawer-content">
+        <div class="drawer-header">
+          <h3><i class="fa-solid fa-user"></i> Client Details</h3>
+          <button class="drawer-close" id="closeViewModal" aria-label="Close view modal"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="drawer-body">
+          <div class="view-profile">
+            <div class="view-avatar" id="viewClientAvatar">
+              <i class="fa-solid fa-user"></i>
+            </div>
+            <div class="view-info">
+              <h2 id="viewClientName">-</h2>
+              <span class="status-badge active" id="viewClientStatus">Active</span>
+            </div>
+          </div>
+          <div class="view-details">
+            <div class="detail-item">
+              <div class="detail-icon"><i class="fa-solid fa-envelope"></i></div>
+              <div class="detail-content">
+                <label>Email</label>
+                <span id="viewClientEmail">-</span>
+              </div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-icon"><i class="fa-solid fa-phone"></i></div>
+              <div class="detail-content">
+                <label>Phone</label>
+                <span id="viewClientPhone">-</span>
+              </div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-icon"><i class="fa-solid fa-location-dot"></i></div>
+              <div class="detail-content">
+                <label>Address</label>
+                <span id="viewClientAddress">-</span>
+              </div>
+            </div>
+            
+            <div class="view-section-title"><i class="fa-solid fa-calendar"></i> Timestamps</div>
+            <div class="detail-item">
+              <div class="detail-icon"><i class="fa-solid fa-calendar-plus"></i></div>
+              <div class="detail-content">
+                <label>Created At</label>
+                <span id="viewClientCreated">-</span>
+              </div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-icon"><i class="fa-solid fa-calendar-check"></i></div>
+              <div class="detail-content">
+                <label>Updated At</label>
+                <span id="viewClientUpdated">-</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="drawer-footer">
+          <button type="button" class="btn btn-cancel" id="closeViewModalBtn">Close</button>
+          <button type="button" class="btn btn-save" id="editFromViewBtn">
+            <i class="fa-solid fa-pen"></i> Edit Client
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete Confirmation Modal (Center Modal) -->
+    <div id="delete-modal" class="center-modal-overlay">
+      <div class="center-modal delete-modal">
+        <div class="modal-header">
+          <h3><i class="fa-solid fa-triangle-exclamation"></i> Confirm Delete</h3>
+          <button class="modal-close" id="closeDeleteModal" type="button" aria-label="Close delete modal">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="delete-warning">
+            <div class="delete-icon">
+              <i class="fa-solid fa-trash-can"></i>
+            </div>
+            <p>Are you sure you want to delete <strong id="deleteClientName">this client</strong>?</p>
+            <p class="delete-note"><i class="fa-solid fa-exclamation-circle"></i>This action cannot be undone.</p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" id="cancelDeleteBtn" type="button">
+            <i class="fa-solid fa-xmark"></i> Cancel
+          </button>
+          <button class="btn btn-danger" id="confirmDeleteBtn" type="button">
+            <i class="fa-solid fa-trash-can"></i> Delete
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Container -->
+    {% include 'partials/components/toast.html' %}
+
+    <!-- View Staff Drawer -->
+    <div id="staff-drawer" class="drawer-modal">
+      <div class="drawer-content drawer-wide">
+        <div class="drawer-header">
+          <h3><i class="fa-solid fa-users"></i> <span id="staffDrawerClientName">Client</span>'s Staff</h3>
+          <button class="drawer-close" id="closeStaffDrawer" aria-label="Close staff drawer"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="drawer-body">
+          <!-- Staff Summary -->
+          <div class="staff-summary">
+            <div class="summary-card">
+              <div class="summary-icon">
+                <i class="fa-solid fa-users"></i>
+              </div>
+              <div class="summary-info">
+                <span class="summary-count" id="totalStaffCount">0</span>
+                <span class="summary-label">Total Staff</span>
+              </div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-icon active">
+                <i class="fa-solid fa-user-check"></i>
+              </div>
+              <div class="summary-info">
+                <span class="summary-count" id="activeStaffCount">0</span>
+                <span class="summary-label">Active</span>
+              </div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-icon inactive">
+                <i class="fa-solid fa-user-xmark"></i>
+              </div>
+              <div class="summary-info">
+                <span class="summary-count" id="inactiveStaffCount">0</span>
+                <span class="summary-label">Inactive</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Staff Section -->
+          <div class="staff-section">
+            <div class="staff-list" id="staffList">
+              <!-- Staff cards will be inserted here -->
+            </div>
+            <div class="no-staff" id="noStaffMessage" style="display: none;">
+              <i class="fa-solid fa-users-slash"></i>
+              <p>No Staff Members</p>
+              <span class="no-staff-hint">This client hasn't added any staff yet.</span>
+            </div>
+          </div>
+        </div>
+        <div class="drawer-footer">
+          <button type="button" class="btn btn-cancel" id="closeStaffDrawerBtn">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="main-content">
+
+    <!-- Action Bar -->
+    <div class="action-bar">
+        
+        <!-- Left Section - Filter and Search -->
+        <div class="action-left">
+            <div class="filter-group">
+                <div class="custom-dropdown" id="filterDropdown">
+                    <button class="dropdown-toggle" id="dropdownToggle">
+                        <span id="selectedText">All</span>
+                        <i class="fa-solid fa-chevron-down"></i>
+                    </button>
+                    <div class="dropdown-options" id="dropdownOptions">
+                        <div class="dropdown-option selected" data-value="all">All</div>
+                        <div class="dropdown-option" data-value="name">Name</div>
+                        <div class="dropdown-option" data-value="email">Email</div>
+                        <div class="dropdown-option" data-value="mobile">Mobile</div>
+                    </div>
+                </div>
+            </div>
+            <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                <input type="text" id="searchInput" placeholder="Search All..." class="search-input" autocomplete="off">
+                <button class="search-clear-btn" id="searchClearBtn" type="button" title="Clear search">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Right Section - Action Buttons -->
+        <div class="action-right">
+            <div class="actions">
+                <div class="btn-group">
+                    {% if is_super_admin %}
+                    <button class="btn btn-add" id="addClientBtn"><i class="fa-solid fa-plus"></i> Add</button>
+                    {% endif %}
+                    <button class="btn btn-edit" id="editClientBtn" disabled><i class="fa-solid fa-pen"></i> Edit</button>
+                    <button class="btn btn-view" id="viewClientBtn" disabled><i class="fa-solid fa-eye"></i> View</button>
+                    <button class="btn btn-view-staff" id="viewStaffBtn" disabled><i class="fa-solid fa-users"></i> Staff</button>
+                </div>
+                {% if is_super_admin %}
+                <div class="btn-separator"></div>
+                <div class="btn-group">
+                    <button class="btn btn-delete" id="deleteClientBtn" disabled><i class="fa-solid fa-trash"></i> Delete</button>
+                    <button class="btn btn-active" id="activeClientBtn" disabled><i class="fa-solid fa-check"></i> Active</button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-container">
+        <table id="clientsTable">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Mobile</th>
+                    <th>Status</th>
+                    <th>Created At</th>
+                    <th>Updated At</th>
+                </tr>
+            </thead>
+
+            <tbody id="client-table-body">
+                {% for client in clients %}
+                <tr data-client-id="{{ client.id }}" data-client-status="{{ client.status }}">
+                    <td>{{ client.name }}</td>
+                    <td>{{ client.user.email }}</td>
+                    <td>{{ client.user.phone|default:"-" }}</td>
+                    <td><span class="status-badge {% if client.status == 'active' %}active{% else %}inactive{% endif %}">{{ client.get_status_display }}</span></td>
+                    <td>{{ client.created_at|date:"d-m-Y h:i a" }}</td>
+                    <td>{{ client.updated_at|date:"d-m-Y h:i a" }}</td>
+                </tr>
+                {% empty %}
+                <tr class="no-data-row">
+                    <td colspan="6" class="no-data">
+                        <i class="fa-solid fa-building-slash"></i>
+                        <span>No clients found</span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination Bar -->
+    <div class="pagination-bar">
+        <div class="pagination-left">
+            <span class="pagination-info">Showing <strong>1-{{ clients|length }}</strong> of <strong>{{ clients|length }}</strong> results</span>
+        </div>
+        <div class="pagination-center">
+            <button class="pagination-btn" id="firstPage" aria-label="First page"><i class="fa-solid fa-angles-left"></i></button>
+            <button class="pagination-btn" id="prevPage" aria-label="Previous page"><i class="fa-solid fa-chevron-left"></i></button>
+            <span class="page-numbers">
+                <button class="page-num active">1</button>
+            </span>
+            <button class="pagination-btn" id="nextPage" aria-label="Next page"><i class="fa-solid fa-chevron-right"></i></button>
+            <button class="pagination-btn" id="lastPage" aria-label="Last page"><i class="fa-solid fa-angles-right"></i></button>
+        </div>
+        <div class="pagination-right">
+            <label>Rows per page:</label>
+            <div class="custom-dropdown rows-dropdown" id="rowsDropdown">
+                <button class="dropdown-toggle" id="rowsToggle" type="button">
+                    <span id="rowsSelectedText">10</span>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <div class="dropdown-options" id="rowsOptions">
+                    <div class="dropdown-option" data-value="5">5</div>
+                    <div class="dropdown-option selected" data-value="10">10</div>
+                    <div class="dropdown-option" data-value="25">25</div>
+                    <div class="dropdown-option" data-value="50">50</div>
+                    <div class="dropdown-option" data-value="100">100</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    </div>
+
+  </main>
+
+  <!-- Common Modules (Load Order Matters) -->
+  <script src="{% static 'js/common/ajax.js' %}?v=2"></script>
+  <script src="{% static 'js/common/toast.js' %}?v=2"></script>
+  <script src="{% static 'js/common/modal.js' %}?v=2"></script>
+  <script src="{% static 'js/common/sidebar.js' %}?v=2"></script>
+  <script src="{% static 'js/common/validation.js' %}?v=2"></script>
+  <script src="{% static 'js/common/utils.js' %}?v=2"></script>
+  <script src="{% static 'js/init.js' %}?v=2"></script>
+  
+  <!-- Legacy compatibility -->
+  <script src="{% static 'js/utils.js' %}?v=3"></script>
+  <script src="{% static 'js/script.js' %}?v=3"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // ==================== ELEMENTS ====================
+      const clientDrawer = document.getElementById('client-drawer');
+      const clientForm = document.getElementById('clientForm');
+      const clientIdInput = document.getElementById('clientId');
+      const drawerTitle = document.getElementById('drawerTitleText');
+      const drawerIcon = document.getElementById('drawerIcon');
+      const submitBtn = document.getElementById('submitClientBtn');
+      
+      const viewModal = document.getElementById('view-modal');
+      const deleteModal = document.getElementById('delete-modal');
+      const toast = document.getElementById('toast');
+      const toastMessage = document.getElementById('toastMessage');
+      
+      const addClientBtn = document.getElementById('addClientBtn');
+      const editClientBtn = document.getElementById('editClientBtn');
+      const viewClientBtn = document.getElementById('viewClientBtn');
+      const viewStaffBtn = document.getElementById('viewStaffBtn');
+      const deleteClientBtn = document.getElementById('deleteClientBtn');
+      const activeClientBtn = document.getElementById('activeClientBtn');
+      
+      const closeClientDrawer = document.getElementById('closeClientDrawer');
+      const cancelClientDrawer = document.getElementById('cancelClientDrawer');
+      const closeViewModal = document.getElementById('closeViewModal');
+      const closeViewModalBtn = document.getElementById('closeViewModalBtn');
+      const editFromViewBtn = document.getElementById('editFromViewBtn');
+      const closeDeleteModal = document.getElementById('closeDeleteModal');
+      const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+      const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+      
+      const table = document.getElementById('clientsTable');
+      const tbody = table.querySelector('tbody');
+      
+      // Profile elements
+      const profilePicInput = document.getElementById('clientProfilePic');
+      const profilePreview = document.getElementById('profilePreview');
+      const profilePathDisplay = document.getElementById('clientProfilePath');
+      
+      let selectedClientId = null;
+      let selectedRow = null;
+      let selectedProfileFile = null; // Store the selected file for upload
+
+      // ==================== PROFILE PICTURE UPLOAD PREVIEW ====================
+      if (profilePicInput && profilePreview) {
+        profilePicInput.addEventListener('change', function(e) {
+          const file = e.target.files[0];
+          if (file) {
+            // Validate file size (max 2MB)
+            if (file.size > 2 * 1024 * 1024) {
+              showToast('Image size must be less than 2MB', 'error');
+              profilePicInput.value = '';
+              return;
+            }
+            
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+              showToast('Please select a valid image file', 'error');
+              profilePicInput.value = '';
+              return;
+            }
+            
+            selectedProfileFile = file;
+            const reader = new FileReader();
+            reader.onload = function(event) {
+              profilePreview.innerHTML = `<img src="${event.target.result}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">`;
+              profilePreview.classList.add('has-image');
+              // Update path display
+              if (profilePathDisplay) {
+                profilePathDisplay.textContent = file.name;
+                profilePathDisplay.classList.remove('no-path', 'not-found');
+                profilePathDisplay.classList.add('has-path');
+              }
+            };
+            reader.onerror = function(error) {
+              console.error('FileReader error:', error);
+              showToast('Failed to read image file', 'error');
+            };
+            reader.readAsDataURL(file);
+          }
+        });
+      }
+
+      // ==================== TOAST FUNCTIONS ====================
+      // Using shared showToast from utils.js
+
+      // ==================== SELECT ROW FUNCTION ====================
+      function selectRow(row) {
+        if (row && row.dataset.clientId) {
+          tbody.querySelectorAll('tr').forEach(r => r.classList.remove('selected'));
+          row.classList.add('selected');
+          selectedClientId = row.dataset.clientId;
+          selectedRow = row;
+          
+          editClientBtn.disabled = false;
+          viewClientBtn.disabled = false;
+          viewStaffBtn.disabled = false;
+          deleteClientBtn.disabled = false;
+          activeClientBtn.disabled = false;
+          
+          const status = row.dataset.clientStatus;
+          if (status === 'active') {
+            activeClientBtn.innerHTML = '<i class="fa-solid fa-ban"></i> Inactive';
+            activeClientBtn.classList.remove('btn-active');
+            activeClientBtn.classList.add('btn-inactive');
+          } else {
+            activeClientBtn.innerHTML = '<i class="fa-solid fa-check"></i> Active';
+            activeClientBtn.classList.remove('btn-inactive');
+            activeClientBtn.classList.add('btn-active');
+          }
+        }
+      }
+
+      // ==================== HIGHLIGHT FROM SEARCH ====================
+      function highlightSearchResult() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const highlightId = urlParams.get('highlight');
+        
+        if (highlightId) {
+          // Find the row with this client ID
+          const targetRow = document.querySelector(`tr[data-client-id="${highlightId}"]`);
+          
+          if (targetRow) {
+            // Select the row (this uses the existing selection mechanism)
+            selectRow(targetRow);
+            
+            // Scroll to the row with a small delay to ensure page is loaded
+            setTimeout(() => {
+              targetRow.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'center' 
+              });
+            }, 100);
+            
+            // Clean URL without highlight param after a short delay
+            setTimeout(() => {
+              const newUrl = new URL(window.location);
+              newUrl.searchParams.delete('highlight');
+              window.history.replaceState({}, '', newUrl);
+            }, 1000);
+          }
+        }
+      }
+      
+      // Call highlight function on page load
+      highlightSearchResult();
+
+      // ==================== ROW SELECTION ====================
+      tbody.addEventListener('click', function(e) {
+        const row = e.target.closest('tr');
+        selectRow(row);
+      });
+
+        // ==================== ROW DOUBLE-CLICK NAVIGATION ====================
+        tbody.addEventListener('dblclick', function(e) {
+          const row = e.target.closest('tr');
+          if (row && row.dataset.clientId) {
+            window.location.href = `/panel/client/${row.dataset.clientId}/settings/`;
+          }
+        });
+
+      // ==================== PERMISSIONS LIST ====================
+      const permissionFields = [
+        'perm_idcard_client_list',
+        'perm_idcard_setting_list', 'perm_idcard_setting_add', 'perm_idcard_setting_edit', 'perm_idcard_setting_delete', 'perm_idcard_setting_status',
+        'perm_idcard_pending_list', 'perm_idcard_verified_list', 'perm_idcard_pool_list', 'perm_idcard_approved_list', 'perm_idcard_download_list', 'perm_idcard_reprint_list',
+        'perm_idcard_add', 'perm_idcard_edit', 'perm_idcard_delete', 'perm_idcard_info', 'perm_idcard_approve', 'perm_idcard_verify',
+        'perm_idcard_bulk_upload', 'perm_idcard_bulk_download', 'perm_idcard_created_at', 'perm_idcard_updated_at',
+        'perm_idcard_delete_from_pool', 'perm_delete_all_idcard', 'perm_reupload_idcard_image', 'perm_idcard_retrieve'
+      ];
+
+      // ==================== DRAWER FUNCTIONS ====================
+      function openDrawer(mode = 'add', clientData = null) {
+        clientForm.reset();
+        clientIdInput.value = '';
+        
+        // Reset profile preview and file
+        selectedProfileFile = null;
+        profilePreview.innerHTML = '<i class="fa-solid fa-user"></i>';
+        profilePreview.classList.remove('has-image');
+        if (profilePicInput) profilePicInput.value = '';
+        
+        // Reset path display
+        if (profilePathDisplay) {
+          profilePathDisplay.textContent = 'No image';
+          profilePathDisplay.classList.remove('has-path', 'not-found');
+          profilePathDisplay.classList.add('no-path');
+        }
+        
+        // Reset all permission toggles to unchecked (OFF by default for new clients)
+        permissionFields.forEach(field => {
+          const el = document.getElementById(field);
+          if (el) el.checked = false;
+        });
+        
+        if (mode === 'add') {
+          drawerTitle.textContent = 'Add New Client';
+          drawerIcon.className = 'fa-solid fa-user-plus';
+          submitBtn.innerHTML = '<i class="fa-solid fa-plus"></i> Add Client';
+        } else {
+          drawerTitle.textContent = 'Edit Client';
+          drawerIcon.className = 'fa-solid fa-user-pen';
+          submitBtn.innerHTML = '<i class="fa-solid fa-save"></i> Update Client';
+          
+          if (clientData) {
+            clientIdInput.value = clientData.id;
+            document.getElementById('clientName').value = clientData.name || '';
+            document.getElementById('clientEmail').value = clientData.email || '';
+            document.getElementById('clientPhone').value = clientData.phone || '';
+            document.getElementById('clientAddress').value = clientData.address || '';
+            document.getElementById('clientStatus').value = clientData.is_active !== false ? 'true' : 'false';
+            
+            // Load existing photo if available
+            if (clientData.photo_url) {
+              profilePreview.innerHTML = `<img src="${clientData.photo_url}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">`;
+              profilePreview.classList.add('has-image');
+              // Update path display
+              if (profilePathDisplay) {
+                profilePathDisplay.textContent = clientData.photo_url;
+                profilePathDisplay.classList.remove('no-path', 'not-found');
+                profilePathDisplay.classList.add('has-path');
+              }
+            }
+            
+            // Set permissions from client data
+            permissionFields.forEach(field => {
+              const el = document.getElementById(field);
+              if (el) el.checked = clientData[field] === true;
+            });
+          }
+        }
+        
+        clientDrawer.classList.add('open');
+        document.body.style.overflow = 'hidden';
+      }
+      
+      function closeDrawerFn() {
+        clientDrawer.classList.remove('open');
+        document.body.style.overflow = '';
+      }
+
+      // ==================== MODAL FUNCTIONS ====================
+      function openViewModal(clientData) {
+        document.getElementById('viewClientName').textContent = clientData.name || '-';
+        document.getElementById('viewClientEmail').textContent = clientData.email || '-';
+        document.getElementById('viewClientPhone').textContent = clientData.phone || '-';
+        document.getElementById('viewClientAddress').textContent = clientData.address || '-';
+        document.getElementById('viewClientCreated').textContent = clientData.created_at || '-';
+        document.getElementById('viewClientUpdated').textContent = clientData.updated_at || '-';
+        
+        // Update avatar with photo if available
+        const avatarEl = document.getElementById('viewClientAvatar');
+        if (clientData.photo_url) {
+          avatarEl.innerHTML = `<img src="${clientData.photo_url}" alt="${clientData.name}" style="width: 100%; height: 100%; object-fit: cover;">`;
+        } else {
+          avatarEl.innerHTML = '<i class="fa-solid fa-user"></i>';
+        }
+        
+        const statusEl = document.getElementById('viewClientStatus');
+        statusEl.textContent = clientData.status === 'active' ? 'Active' : 'Inactive';
+        statusEl.className = 'status-badge ' + (clientData.status === 'active' ? 'active' : 'inactive');
+        
+        viewModal.classList.add('open');
+        document.body.style.overflow = 'hidden';
+      }
+      
+      function closeViewModalFn() {
+        viewModal.classList.remove('open');
+        document.body.style.overflow = '';
+      }
+      
+      function openDeleteModalFn(clientName) {
+        document.getElementById('deleteClientName').textContent = clientName;
+        deleteModal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+      }
+      
+      function closeDeleteModalFn() {
+        deleteModal.classList.remove('show');
+        document.body.style.overflow = '';
+      }
+
+      // ==================== API CALLS ====================
+      async function fetchClientDetails(clientId) {
+        try {
+          const response = await fetch(`/panel/api/client/${clientId}/`);
+          const data = await response.json();
+          if (data.success) {
+            return data.client;
+          } else {
+            showToast(data.message || 'Failed to fetch client details', 'error');
+            return null;
+          }
+        } catch (error) {
+          showToast('Network error. Please try again.', 'error');
+          return null;
+        }
+      }
+      
+      async function createClient(formData, file = null) {
+        try {
+          // Use FormData if there's a file to upload
+          if (file) {
+            const data = new FormData();
+            data.append('photo', file);
+            // Add all other form fields
+            Object.keys(formData).forEach(key => {
+              data.append(key, typeof formData[key] === 'boolean' ? (formData[key] ? 'true' : 'false') : formData[key]);
+            });
+            const response = await fetch('/panel/api/client/create/', {
+              method: 'POST',
+              body: data
+            });
+            return await response.json();
+          } else {
+            const response = await fetch('/panel/api/client/create/', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(formData)
+            });
+            return await response.json();
+          }
+        } catch (error) {
+          return { success: false, message: 'Network error. Please try again.' };
+        }
+      }
+      
+      async function updateClient(clientId, formData, file = null) {
+        try {
+          // Use FormData if there's a file to upload
+          if (file) {
+            const data = new FormData();
+            data.append('photo', file);
+            // Add all other form fields
+            Object.keys(formData).forEach(key => {
+              data.append(key, typeof formData[key] === 'boolean' ? (formData[key] ? 'true' : 'false') : formData[key]);
+            });
+            const response = await fetch(`/panel/api/client/${clientId}/update/`, {
+              method: 'POST',
+              body: data
+            });
+            return await response.json();
+          } else {
+            const response = await fetch(`/panel/api/client/${clientId}/update/`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(formData)
+            });
+            return await response.json();
+          }
+        } catch (error) {
+          return { success: false, message: 'Network error. Please try again.' };
+        }
+      }
+      
+      async function deleteClientApi(clientId) {
+        try {
+          const response = await fetch(`/panel/api/client/${clientId}/delete/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          return await response.json();
+        } catch (error) {
+          return { success: false, message: 'Network error. Please try again.' };
+        }
+      }
+      
+      async function toggleClientStatus(clientId) {
+        try {
+          const response = await fetch(`/panel/api/client/${clientId}/toggle-status/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          return await response.json();
+        } catch (error) {
+          return { success: false, message: 'Network error. Please try again.' };
+        }
+      }
+
+      // ==================== EVENT HANDLERS ====================
+      addClientBtn.addEventListener('click', () => openDrawer('add'));
+      
+      editClientBtn.addEventListener('click', async () => {
+        if (!selectedClientId) return;
+        const clientData = await fetchClientDetails(selectedClientId);
+        if (clientData) openDrawer('edit', clientData);
+      });
+      
+      viewClientBtn.addEventListener('click', async () => {
+        if (!selectedClientId) return;
+        const clientData = await fetchClientDetails(selectedClientId);
+        if (clientData) openViewModal(clientData);
+      });
+      
+      deleteClientBtn.addEventListener('click', () => {
+        if (!selectedClientId || !selectedRow) return;
+        const clientName = selectedRow.querySelector('td:first-child').textContent;
+        openDeleteModalFn(clientName);
+      });
+      
+      activeClientBtn.addEventListener('click', async () => {
+        if (!selectedClientId) return;
+        const result = await toggleClientStatus(selectedClientId);
+        if (result.success) {
+          showToast(result.message, 'success');
+          selectedRow.dataset.clientStatus = result.status;
+          const statusBadge = selectedRow.querySelector('.status-badge');
+          statusBadge.textContent = result.status_display;
+          statusBadge.className = 'status-badge ' + (result.status === 'active' ? 'active' : 'inactive');
+          
+          if (result.status === 'active') {
+            activeClientBtn.innerHTML = '<i class="fa-solid fa-ban"></i> Inactive';
+            activeClientBtn.classList.remove('btn-active');
+            activeClientBtn.classList.add('btn-inactive');
+          } else {
+            activeClientBtn.innerHTML = '<i class="fa-solid fa-check"></i> Active';
+            activeClientBtn.classList.remove('btn-inactive');
+            activeClientBtn.classList.add('btn-active');
+          }
+        } else {
+          showToast(result.message || 'Failed to update status', 'error');
+        }
+      });
+      
+      clientForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        // Prevent double submission
+        const submitBtn = clientForm.querySelector('button[type="submit"]');
+        if (submitBtn.disabled) return;
+        submitBtn.disabled = true;
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+        
+        const formData = {
+          name: document.getElementById('clientName').value,
+          email: document.getElementById('clientEmail').value,
+          phone: document.getElementById('clientPhone').value,
+          address: document.getElementById('clientAddress').value,
+          is_active: document.getElementById('clientStatus').value === 'true',
+        };
+        
+        // Add all permissions
+        permissionFields.forEach(field => {
+          const el = document.getElementById(field);
+          if (el) formData[field] = el.checked;
+        });
+        
+        const clientId = clientIdInput.value;
+        let result;
+        
+        try {
+          if (clientId) {
+            result = await updateClient(clientId, formData, selectedProfileFile);
+          } else {
+            result = await createClient(formData, selectedProfileFile);
+          }
+          
+          // Clear any previous email error
+          const emailError = document.getElementById('clientEmailError');
+          const emailInput = document.getElementById('clientEmail');
+          if (emailError) emailError.style.display = 'none';
+          if (emailInput) emailInput.style.borderColor = '';
+          
+          if (result.success) {
+            showToast(result.message, 'success');
+            selectedProfileFile = null; // Reset after successful upload
+            closeDrawerFn();
+            setTimeout(() => location.reload(), 500);
+          } else {
+            // Check if it's an email duplicate error
+            if (result.message && result.message.toLowerCase().includes('email already exists')) {
+              if (emailError) {
+                emailError.textContent = result.message;
+                emailError.style.display = 'block';
+              }
+              if (emailInput) {
+                emailInput.style.borderColor = '#ef4444';
+                emailInput.focus();
+              }
+            }
+            showToast(result.message || 'Operation failed', 'error');
+            // Re-enable button on error
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+          }
+        } catch (error) {
+          console.error('Form submission error:', error); // Debug log
+          showToast('An error occurred', 'error');
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalText;
+        }
+      });
+      
+      confirmDeleteBtn.addEventListener('click', async () => {
+        if (!selectedClientId) return;
+        
+        const result = await deleteClientApi(selectedClientId);
+        if (result.success) {
+          showToast(result.message, 'success');
+          closeDeleteModalFn();
+          selectedRow.remove();
+          selectedClientId = null;
+          selectedRow = null;
+          editClientBtn.disabled = true;
+          viewClientBtn.disabled = true;
+          viewStaffBtn.disabled = true;
+          deleteClientBtn.disabled = true;
+          activeClientBtn.disabled = true;
+        } else {
+          showToast(result.message || 'Failed to delete client', 'error');
+        }
+      });
+      
+      editFromViewBtn.addEventListener('click', async () => {
+        closeViewModalFn();
+        if (selectedClientId) {
+          const clientData = await fetchClientDetails(selectedClientId);
+          if (clientData) openDrawer('edit', clientData);
+        }
+      });
+      
+      closeClientDrawer.addEventListener('click', closeDrawerFn);
+      cancelClientDrawer.addEventListener('click', closeDrawerFn);
+      closeViewModal.addEventListener('click', closeViewModalFn);
+      closeViewModalBtn.addEventListener('click', closeViewModalFn);
+      closeDeleteModal.addEventListener('click', closeDeleteModalFn);
+      cancelDeleteBtn.addEventListener('click', closeDeleteModalFn);
+      
+      // Close modals on overlay click
+      viewModal.addEventListener('click', (e) => { if (e.target === viewModal) closeViewModalFn(); });
+      clientDrawer.addEventListener('click', (e) => { if (e.target === clientDrawer) closeDrawerFn(); });
+      deleteModal.addEventListener('click', (e) => { if (e.target === deleteModal) closeDeleteModalFn(); });
+
+      // ==================== SEARCH & FILTER ====================
+      const searchInput = document.getElementById('searchInput');
+      const filterDropdown = document.getElementById('filterDropdown');
+      const dropdownToggle = document.getElementById('dropdownToggle');
+      const dropdownOptions = document.getElementById('dropdownOptions');
+      const selectedText = document.getElementById('selectedText');
+      
+      let currentFilter = 'all';
+      
+      // Column index mapping: 0=Name, 1=Email, 2=Mobile
+      const filterColumnMap = {
+        'all': null,
+        'name': 0,
+        'email': 1,
+        'mobile': 2
+      };
+      
+      function performSearch() {
+        const searchTerm = searchInput.value.toLowerCase().trim();
+        const rows = tbody.querySelectorAll('tr:not(.no-data-row)');
+        
+        rows.forEach(row => {
+          const cells = row.querySelectorAll('td');
+          let match = false;
+          
+          if (currentFilter === 'all' || !searchTerm) {
+            // Search all columns
+            const text = row.textContent.toLowerCase();
+            match = text.includes(searchTerm);
+          } else {
+            // Search specific column
+            const columnIndex = filterColumnMap[currentFilter];
+            if (columnIndex !== null && cells[columnIndex]) {
+              const cellText = cells[columnIndex].textContent.toLowerCase();
+              match = cellText.includes(searchTerm);
+            }
+          }
+          
+          row.style.display = match ? '' : 'none';
+        });
+      }
+      
+      searchInput.addEventListener('input', performSearch);
+
+      dropdownToggle.addEventListener('click', function(e) {
+        e.stopPropagation();
+        filterDropdown.classList.toggle('open');
+      });
+
+      dropdownOptions.querySelectorAll('.dropdown-option').forEach(option => {
+        option.addEventListener('click', function() {
+          dropdownOptions.querySelectorAll('.dropdown-option').forEach(o => o.classList.remove('selected'));
+          this.classList.add('selected');
+          selectedText.textContent = this.textContent;
+          currentFilter = this.dataset.value;
+          filterDropdown.classList.remove('open');
+          searchInput.placeholder = 'Search ' + this.textContent + '...';
+          performSearch();
+        });
+      });
+
+      // ==================== PAGINATION ====================
+      const paginationInfo = document.querySelector('.pagination-info');
+      const pageNumbers = document.querySelector('.page-numbers');
+      const firstPageBtn = document.getElementById('firstPage');
+      const prevPageBtn = document.getElementById('prevPage');
+      const nextPageBtn = document.getElementById('nextPage');
+      const lastPageBtn = document.getElementById('lastPage');
+      const rowsDropdown = document.getElementById('rowsDropdown');
+      const rowsToggle = document.getElementById('rowsToggle');
+      const rowsOptions = document.getElementById('rowsOptions');
+      const rowsSelectedText = document.getElementById('rowsSelectedText');
+
+      document.addEventListener('click', function(e) {
+        if (!filterDropdown.contains(e.target)) {
+          filterDropdown.classList.remove('open');
+        }
+        if (rowsDropdown && !rowsDropdown.contains(e.target)) {
+          rowsDropdown.classList.remove('open');
+        }
+      });
+      
+      let currentPage = 1;
+      let rowsPerPage = 10;
+      let allRows = Array.from(tbody.querySelectorAll('tr:not(.no-data-row)'));
+      
+      // Initialize all rows as filtered=true
+      allRows.forEach(row => row.dataset.filtered = 'true');
+      
+      function updatePagination() {
+        // Get filtered rows (rows that match search criteria)
+        const filteredRows = allRows.filter(row => row.dataset.filtered === 'true');
+        const totalRows = filteredRows.length;
+        const totalPages = Math.max(1, Math.ceil(totalRows / rowsPerPage));
+        
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+        
+        const startIndex = (currentPage - 1) * rowsPerPage;
+        const endIndex = Math.min(startIndex + rowsPerPage, totalRows);
+        
+        // Hide all rows first
+        allRows.forEach(row => row.style.display = 'none');
+        
+        // Show only current page rows from filtered results
+        filteredRows.slice(startIndex, endIndex).forEach(row => row.style.display = '');
+        
+        // Update pagination info
+        if (paginationInfo) {
+          if (totalRows === 0) {
+            paginationInfo.innerHTML = 'Showing <strong>0</strong> results';
+          } else {
+            paginationInfo.innerHTML = `Showing <strong>${startIndex + 1}-${endIndex}</strong> of <strong>${totalRows}</strong> results`;
+          }
+        }
+        
+        // Update page numbers
+        if (pageNumbers) {
+          pageNumbers.innerHTML = '';
+          const maxVisiblePages = 5;
+          let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+          let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+          
+          if (endPage - startPage < maxVisiblePages - 1) {
+            startPage = Math.max(1, endPage - maxVisiblePages + 1);
+          }
+          
+          for (let i = startPage; i <= endPage; i++) {
+            const pageBtn = document.createElement('button');
+            pageBtn.className = 'page-num' + (i === currentPage ? ' active' : '');
+            pageBtn.textContent = i;
+            pageBtn.addEventListener('click', () => goToPage(i));
+            pageNumbers.appendChild(pageBtn);
+          }
+        }
+        
+        // Update button states
+        if (firstPageBtn) firstPageBtn.disabled = currentPage === 1;
+        if (prevPageBtn) prevPageBtn.disabled = currentPage === 1;
+        if (nextPageBtn) nextPageBtn.disabled = currentPage === totalPages;
+        if (lastPageBtn) lastPageBtn.disabled = currentPage === totalPages;
+      }
+      
+      function goToPage(page) {
+        currentPage = page;
+        // Clear selection when changing pages
+        if (selectedRow) {
+          selectedRow.classList.remove('selected');
+          selectedRow = null;
+          selectedClientId = null;
+          editClientBtn.disabled = true;
+          viewClientBtn.disabled = true;
+          viewStaffBtn.disabled = true;
+          deleteClientBtn.disabled = true;
+          activeClientBtn.disabled = true;
+        }
+        updatePagination();
+      }
+      
+      // Pagination button events
+      if (firstPageBtn) firstPageBtn.addEventListener('click', () => goToPage(1));
+      if (prevPageBtn) prevPageBtn.addEventListener('click', () => goToPage(currentPage - 1));
+      if (nextPageBtn) nextPageBtn.addEventListener('click', () => goToPage(currentPage + 1));
+      if (lastPageBtn) {
+        lastPageBtn.addEventListener('click', () => {
+          const filteredRows = allRows.filter(row => row.dataset.filtered === 'true');
+          const totalPages = Math.max(1, Math.ceil(filteredRows.length / rowsPerPage));
+          goToPage(totalPages);
+        });
+      }
+      
+      // Rows per page dropdown
+      if (rowsDropdown && rowsToggle && rowsOptions) {
+        rowsToggle.addEventListener('click', function(e) {
+          e.stopPropagation();
+          rowsDropdown.classList.toggle('open');
+        });
+        
+        rowsOptions.querySelectorAll('.dropdown-option').forEach(option => {
+          option.addEventListener('click', function() {
+            rowsOptions.querySelectorAll('.dropdown-option').forEach(o => o.classList.remove('selected'));
+            this.classList.add('selected');
+            rowsPerPage = parseInt(this.dataset.value);
+            if (rowsSelectedText) rowsSelectedText.textContent = rowsPerPage;
+            currentPage = 1;
+            rowsDropdown.classList.remove('open');
+            updatePagination();
+          });
+        });
+      }
+      
+      // Override performSearch to work with pagination
+      const originalPerformSearch = performSearch;
+      performSearch = function() {
+        const searchTerm = searchInput.value.toLowerCase().trim();
+        
+        allRows.forEach(row => {
+          const cells = row.querySelectorAll('td');
+          let match = false;
+          
+          if (currentFilter === 'all' || !searchTerm) {
+            const text = row.textContent.toLowerCase();
+            match = !searchTerm || text.includes(searchTerm);
+          } else {
+            const columnIndex = filterColumnMap[currentFilter];
+            if (columnIndex !== null && cells[columnIndex]) {
+              const cellText = cells[columnIndex].textContent.toLowerCase();
+              match = cellText.includes(searchTerm);
+            }
+          }
+          
+          row.dataset.filtered = match ? 'true' : 'false';
+        });
+        
+        currentPage = 1;
+        updatePagination();
+      };
+      
+      // Initialize pagination
+      updatePagination();
+
+      // Auto-open drawer if ?add=1 is in URL
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('add') === '1') {
+        openDrawer();
+        // Remove the query parameter from URL without reloading
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+
+      // ==================== STAFF DRAWER ====================
+      const staffDrawer = document.getElementById('staff-drawer');
+      const closeStaffDrawer = document.getElementById('closeStaffDrawer');
+      const closeStaffDrawerBtn = document.getElementById('closeStaffDrawerBtn');
+      const staffDrawerClientName = document.getElementById('staffDrawerClientName');
+      const staffList = document.getElementById('staffList');
+      const noStaffMessage = document.getElementById('noStaffMessage');
+      const totalStaffCount = document.getElementById('totalStaffCount');
+      const activeStaffCount = document.getElementById('activeStaffCount');
+      const inactiveStaffCount = document.getElementById('inactiveStaffCount');
+
+      // Permission label mapping
+      const permissionLabels = {
+        'perm_idcard_client_list': 'Id Card Client List',
+        'perm_idcard_setting_list': 'ID Card Setting List',
+        'perm_idcard_setting_add': 'ID Card Setting Add',
+        'perm_idcard_setting_edit': 'ID Card Setting Edit',
+        'perm_idcard_setting_delete': 'ID Card Setting Delete',
+        'perm_idcard_setting_status': 'ID Card Setting Status'
+      };
+
+      async function fetchClientStaff(clientId) {
+        try {
+          const response = await fetch(`/panel/api/client/${clientId}/staff/`);
+          const data = await response.json();
+          if (data.success) {
+            return data;
+          } else {
+            showToast(data.message || 'Failed to fetch staff', 'error');
+            return null;
+          }
+        } catch (error) {
+          showToast('Network error. Please try again.', 'error');
+          return null;
+        }
+      }
+
+      function formatPermissions(staff) {
+        const permissions = [];
+        Object.keys(permissionLabels).forEach(key => {
+          if (staff[key]) {
+            permissions.push(permissionLabels[key]);
+          }
+        });
+        return permissions;
+      }
+
+      async function openStaffDrawer() {
+        if (!selectedClientId || !selectedRow) return;
+        
+        const clientName = selectedRow.querySelector('td:first-child').textContent;
+        staffDrawerClientName.textContent = clientName;
+        
+        // Show loading state
+        staffList.innerHTML = '<div class="loading-staff"><i class="fa-solid fa-spinner fa-spin"></i> Loading staff...</div>';
+        staffList.style.display = 'flex';
+        noStaffMessage.style.display = 'none';
+        
+        staffDrawer.classList.add('open');
+        document.body.style.overflow = 'hidden';
+        
+        const data = await fetchClientStaff(selectedClientId);
+        
+        if (data && data.staff) {
+          const staffData = data.staff;
+          
+          // Update summary counts
+          totalStaffCount.textContent = data.total || 0;
+          activeStaffCount.textContent = data.active || 0;
+          inactiveStaffCount.textContent = data.inactive || 0;
+          
+          if (staffData.length === 0) {
+            staffList.style.display = 'none';
+            noStaffMessage.style.display = 'flex';
+          } else {
+            staffList.style.display = 'flex';
+            noStaffMessage.style.display = 'none';
+            
+            staffList.innerHTML = staffData.map(staff => {
+              const permissions = formatPermissions(staff);
+              const statusClass = staff.is_active ? 'active' : 'inactive';
+              const statusText = staff.is_active ? 'Active' : 'Inactive';
+              
+              return `
+                <div class="staff-card">
+                  <div class="staff-card-header">
+                    <div class="staff-avatar ${statusClass}">
+                      <i class="fa-solid fa-user"></i>
+                    </div>
+                    <div class="staff-main-info">
+                      <div class="staff-name">${staff.name || 'N/A'}</div>
+                      <div class="staff-role">${staff.designation || 'Staff'}</div>
+                    </div>
+                    <span class="staff-status-badge ${statusClass}">${statusText}</span>
+                  </div>
+                  <div class="staff-card-body">
+                    <div class="staff-detail-row">
+                      <div class="staff-detail">
+                        <i class="fa-solid fa-envelope"></i>
+                        <span>${staff.email || '-'}</span>
+                      </div>
+                      <div class="staff-detail">
+                        <i class="fa-solid fa-phone"></i>
+                        <span>${staff.phone || '-'}</span>
+                      </div>
+                    </div>
+                    <div class="staff-detail-row">
+                      <div class="staff-detail">
+                        <i class="fa-solid fa-building"></i>
+                        <span>${staff.department || '-'}</span>
+                      </div>
+                      <div class="staff-detail">
+                        <i class="fa-solid fa-calendar-plus"></i>
+                        <span>Created: ${staff.created_at || '-'}</span>
+                      </div>
+                    </div>
+                    ${staff.address ? `
+                    <div class="staff-detail-row">
+                      <div class="staff-detail" style="grid-column: span 2;">
+                        <i class="fa-solid fa-location-dot"></i>
+                        <span>${staff.address}</span>
+                      </div>
+                    </div>
+                    ` : ''}
+                    <div class="staff-permissions">
+                      <div class="permissions-label"><i class="fa-solid fa-shield-halved"></i> Permissions:</div>
+                      <div class="permissions-tags">
+                        ${permissions.length > 0 
+                          ? permissions.map(p => `<span class="permission-tag">${p}</span>`).join('') 
+                          : '<span class="no-permissions">No permissions assigned</span>'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join('');
+          }
+        } else {
+          staffList.style.display = 'none';
+          noStaffMessage.style.display = 'flex';
+          totalStaffCount.textContent = '0';
+          activeStaffCount.textContent = '0';
+          inactiveStaffCount.textContent = '0';
+        }
+      }
+
+      function closeStaffDrawerFn() {
+        staffDrawer.classList.remove('open');
+        document.body.style.overflow = '';
+      }
+
+      viewStaffBtn.addEventListener('click', openStaffDrawer);
+      closeStaffDrawer.addEventListener('click', closeStaffDrawerFn);
+      closeStaffDrawerBtn.addEventListener('click', closeStaffDrawerFn);
+      staffDrawer.addEventListener('click', (e) => { if (e.target === staffDrawer) closeStaffDrawerFn(); });
+    });
+  </script>
+  <script src="{% static 'js/global-search.js' %}?v=2"></script>
+</body>
+</html>

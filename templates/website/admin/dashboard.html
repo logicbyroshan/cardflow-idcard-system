@@ -1,0 +1,222 @@
+{% extends "website/admin/base.html" %}
+{% load static %}
+
+{% block title %}Website Dashboard{% endblock %}
+
+{% block content %}
+<!-- Dashboard Container -->
+<div class="wa-dashboard">
+
+    <!-- Website Status Banner -->
+    <div class="wa-status-banner {% if website_status == 'live' %}live{% else %}draft{% endif %}" id="statusBanner">
+        <span class="wa-status-label">
+            <i class="fa-solid {% if website_status == 'live' %}fa-globe{% else %}fa-eye-slash{% endif %}"></i>
+            Website is <strong id="statusText">{{ website_status|title }}</strong>
+        </span>
+        {% if is_super_admin or perm_website_publish %}
+        <button class="btn btn-sm {% if website_status == 'live' %}btn-warning{% else %}btn-success{% endif %}" id="toggleStatusBtn">
+            <i class="fa-solid {% if website_status == 'live' %}fa-pause{% else %}fa-play{% endif %}"></i>
+            {% if website_status == 'live' %}Set Draft{% else %}Go Live{% endif %}
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- Overview Section -->
+    <div class="wa-dashboard-section">
+        <div class="wa-dashboard-section-header">
+            <h3 class="wa-dashboard-section-title"><i class="fa-solid fa-chart-pie"></i> Overview</h3>
+        </div>
+        <div class="wa-stats-grid">
+            <div class="wa-stat-card">
+                <div class="wa-stat-icon" style="background: var(--green-bg); color: var(--green);">
+                    <i class="fa-solid fa-star"></i>
+                </div>
+                <div class="wa-stat-info">
+                    <div class="wa-stat-value">{{ total_reviews|default:0 }}</div>
+                    <div class="wa-stat-label">Reviews</div>
+                    <div class="wa-stat-meta">{{ active_reviews|default:0 }} approved</div>
+                </div>
+            </div>
+
+            <div class="wa-stat-card">
+                <div class="wa-stat-icon" style="background: var(--purple-bg); color: var(--purple);">
+                    <i class="fa-solid fa-handshake"></i>
+                </div>
+                <div class="wa-stat-info">
+                    <div class="wa-stat-value">{{ total_clients|default:0 }}</div>
+                    <div class="wa-stat-label">Client Logos</div>
+                    <div class="wa-stat-meta">{{ active_clients|default:0 }} visible</div>
+                </div>
+            </div>
+
+            <div class="wa-stat-card">
+                <div class="wa-stat-icon" style="background: var(--yellow-bg); color: var(--yellow);">
+                    <i class="fa-solid fa-images"></i>
+                </div>
+                <div class="wa-stat-info">
+                    <div class="wa-stat-value">{{ total_portfolio|default:0 }}</div>
+                    <div class="wa-stat-label">Portfolio Items</div>
+                    <div class="wa-stat-meta">{{ active_portfolio|default:0 }} active</div>
+                </div>
+            </div>
+
+            <div class="wa-stat-card">
+                <div class="wa-stat-icon" style="background: var(--teal-bg); color: var(--teal);">
+                    <i class="fa-solid fa-bolt"></i>
+                </div>
+                <div class="wa-stat-info">
+                    <div class="wa-stat-value">{{ total_features|default:0 }}</div>
+                    <div class="wa-stat-label">Features</div>
+                </div>
+            </div>
+
+            <div class="wa-stat-card">
+                <div class="wa-stat-icon" style="background: var(--blue-bg, #e8f0fe); color: var(--blue, #4285f4);">
+                    <i class="fa-solid fa-panorama"></i>
+                </div>
+                <div class="wa-stat-info">
+                    <div class="wa-stat-value">{{ total_hero_images|default:0 }}</div>
+                    <div class="wa-stat-label">Hero Images</div>
+                    <div class="wa-stat-meta">{{ active_hero_images|default:0 }} active</div>
+                </div>
+            </div>
+
+            <div class="wa-stat-card">
+                <div class="wa-stat-icon" style="background: var(--orange-bg, #fff3e0); color: var(--orange, #ff9800);">
+                    <i class="fa-solid fa-tags"></i>
+                </div>
+                <div class="wa-stat-info">
+                    <div class="wa-stat-value">{{ total_categories|default:0 }}</div>
+                    <div class="wa-stat-label">Categories</div>
+                    <div class="wa-stat-meta">{{ bento_categories_count|default:0 }} in bento grid</div>
+                </div>
+            </div>
+
+            <div class="wa-stat-card">
+                <div class="wa-stat-icon" style="background: var(--red-bg); color: var(--red);">
+                    <i class="fa-solid fa-envelope"></i>
+                </div>
+                <div class="wa-stat-info">
+                    <div class="wa-stat-value">{{ total_contacts|default:0 }}</div>
+                    <div class="wa-stat-label">Contact Leads</div>
+                    <div class="wa-stat-meta">{{ new_contacts|default:0 }} new</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions + Recent Activity -->
+    <div class="wa-dashboard-row">
+        <!-- Quick Actions Section -->
+        <div class="wa-dashboard-section">
+            <div class="wa-dashboard-section-header">
+                <h3 class="wa-dashboard-section-title"><i class="fa-solid fa-bolt"></i> Quick Actions</h3>
+            </div>
+            <div class="wa-quick-links">
+                <a href="{% url 'website_admin:business' %}" class="wa-quick-link">
+                    <i class="fa-solid fa-building"></i>
+                    <span>Edit Business Info</span>
+                </a>
+                <a href="{% url 'website_admin:business' %}#heroImagesGrid" class="wa-quick-link">
+                    <i class="fa-solid fa-panorama"></i>
+                    <span>Manage Hero Images</span>
+                </a>
+                <a href="{% url 'website_admin:reviews' %}" class="wa-quick-link">
+                    <i class="fa-solid fa-star"></i>
+                    <span>Moderate Reviews</span>
+                </a>
+                <a href="{% url 'website_admin:portfolio' %}" class="wa-quick-link">
+                    <i class="fa-solid fa-images"></i>
+                    <span>Update Portfolio</span>
+                </a>
+                <a href="{% url 'website_admin:clients' %}" class="wa-quick-link">
+                    <i class="fa-solid fa-handshake"></i>
+                    <span>Client Logos</span>
+                </a>
+                <a href="/" target="_blank" class="wa-quick-link">
+                    <i class="fa-solid fa-external-link-alt"></i>
+                    <span>View Live Site</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Recent Activity Section -->
+        <div class="wa-dashboard-section">
+            <div class="wa-dashboard-section-header">
+                <h3 class="wa-dashboard-section-title"><i class="fa-solid fa-clock-rotate-left"></i> Recent Activity</h3>
+            </div>
+            <div class="wa-activity-list">
+                {% if total_contacts > 0 %}
+                <div class="wa-activity-item">
+                    <div class="wa-activity-icon" style="background: var(--red-bg); color: var(--red);">
+                        <i class="fa-solid fa-envelope"></i>
+                    </div>
+                    <div class="wa-activity-content">
+                        <div class="wa-activity-text"><strong>{{ new_contacts|default:0 }}</strong> new contact leads waiting</div>
+                        <div class="wa-activity-meta">Needs attention</div>
+                    </div>
+                </div>
+                {% endif %}
+                {% if total_reviews > 0 %}
+                <div class="wa-activity-item">
+                    <div class="wa-activity-icon" style="background: var(--green-bg); color: var(--green);">
+                        <i class="fa-solid fa-star"></i>
+                    </div>
+                    <div class="wa-activity-content">
+                        <div class="wa-activity-text"><strong>{{ active_reviews|default:0 }}</strong> of {{ total_reviews }} reviews approved</div>
+                        <div class="wa-activity-meta">Reviews</div>
+                    </div>
+                </div>
+                {% endif %}
+                {% if total_portfolio > 0 %}
+                <div class="wa-activity-item">
+                    <div class="wa-activity-icon" style="background: var(--yellow-bg); color: var(--yellow);">
+                        <i class="fa-solid fa-images"></i>
+                    </div>
+                    <div class="wa-activity-content">
+                        <div class="wa-activity-text"><strong>{{ active_portfolio|default:0 }}</strong> of {{ total_portfolio }} portfolio items visible</div>
+                        <div class="wa-activity-meta">Portfolio</div>
+                    </div>
+                </div>
+                {% endif %}
+                {% if total_contacts == 0 and total_reviews == 0 and total_portfolio == 0 %}
+                <div class="wa-activity-empty">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    <p>No activity yet</p>
+                    <span>Start adding content to see updates here</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    const toggleBtn = document.getElementById('toggleStatusBtn');
+    if (!toggleBtn) return;
+
+    toggleBtn.addEventListener('click', async function() {
+        if (!confirm('Are you sure you want to change the website status?')) return;
+        try {
+            const res = await fetch('{% url "website_admin:api_status_toggle" %}', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCSRFToken(), 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const data = await res.json();
+            if (data.success) {
+                location.reload();
+            } else {
+                showToast(data.message || 'Error', 'error');
+            }
+        } catch(e) {
+            showToast('Network error', 'error');
+        }
+    });
+
+})();
+</script>
+{% endblock %}

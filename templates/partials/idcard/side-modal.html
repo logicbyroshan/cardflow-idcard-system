@@ -1,0 +1,186 @@
+{% load static %}
+{% load custom_filters %}
+<!-- Side Modal for Add/Edit/View -->
+<div class="side-modal-overlay" id="sideModalOverlay">
+  <div class="side-modal" id="sideModal">
+    <div class="side-modal-header">
+      <h3 id="sideModalTitle">
+        <i class="fa-solid fa-plus"></i>
+        <span>Add New Card</span>
+      </h3>
+      <button class="side-modal-close" id="closeSideModal" title="Close">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    
+    <div class="side-modal-body">
+      <form id="cardForm">
+        <!-- ========== ALL IMAGE FIELDS AT TOP ========== -->
+        <div class="modal-images-section">
+          <!-- All Image Fields in Grid (including PHOTO) - 2 per row -->
+          <div class="images-grid">
+            {% for field in table.fields %}
+              {% check_image_field field.type field.name as is_img %}
+              {% if is_img %}
+              <div class="image-field-wrapper" data-field-name="{{ field.name }}">
+                <!-- Title OUTSIDE the card -->
+                <div class="image-field-title">{{ field.name|expand_field_name }}</div>
+                <!-- Card with image + controls -->
+                <div class="image-field-card {{ field.name|get_image_class }}">
+                  <!-- Top row: Image Preview + Buttons -->
+                  <div class="image-field-top">
+                    <!-- Image Preview on Left -->
+                    <div class="image-preview-box {{ field.name|get_image_class }}" id="preview_{{ field.name|slugify }}">
+                      <i class="fa-solid fa-{{ field.name|get_image_icon_name }}"></i>
+                    </div>
+                    <!-- Buttons on Right -->
+                    <div class="image-field-buttons">
+                      <label class="image-upload-btn">
+                        <input type="file" 
+                               id="field_img_{{ field.name|slugify }}" 
+                               name="{{ field.name }}" 
+                               class="form-control image-input"
+                               data-field-name="{{ field.name }}"
+                               data-field-type="image"
+                               data-preview-id="preview_{{ field.name|slugify }}"
+                               accept="image/*" hidden>
+                        <span class="btn btn-upload-field">
+                          <i class="fa-solid fa-upload"></i> Upload
+                        </span>
+                      </label>
+                      <button type="button" class="btn btn-remove-field" id="remove_{{ field.name|slugify }}" style="display: none;" data-field-name="{{ field.name }}">
+                        <i class="fa-solid fa-trash"></i> Remove
+                      </button>
+                      <span class="upload-hint-text">JPG, PNG (Max 2MB)</span>
+                    </div>
+                  </div>
+                  <!-- Bottom row: Full-width path input -->
+                  <div class="image-field-path">
+                    <input type="text" 
+                           class="image-path-input" 
+                           id="path_{{ field.name|slugify }}" 
+                           data-field-name="{{ field.name }}"
+                           placeholder="Enter image filename..."
+                           autocomplete="off">
+                  </div>
+                </div>
+              </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+        
+        <!-- ========== TEXT FIELDS BELOW ========== -->
+        <div class="form-fields-grid" id="formFieldsContainer">
+          {% for field in table.fields %}
+            {% check_image_field field.type field.name as is_img %}
+            {% if is_img %}
+              <!-- Skip image fields - handled above -->
+            {% elif field.type == 'textarea' %}
+            <div class="form-group full-width">
+              <label for="field_{{ forloop.counter }}">{{ field.name }}</label>
+              <textarea id="field_{{ forloop.counter }}" 
+                        name="{{ field.name }}" 
+                        class="form-control"
+                        data-field-name="{{ field.name }}"
+                        data-field-type="{{ field.type }}"
+                        rows="3"
+                        placeholder="Enter {{ field.name|lower }}..."></textarea>
+            </div>
+            {% elif field.type == 'date' %}
+            <div class="form-group">
+              <label for="field_{{ forloop.counter }}">{{ field.name }}</label>
+              <input type="date" 
+                     id="field_{{ forloop.counter }}" 
+                     name="{{ field.name }}" 
+                     class="form-control"
+                     data-field-name="{{ field.name }}"
+                     data-field-type="{{ field.type }}">
+            </div>
+            {% elif field.type == 'number' %}
+            <div class="form-group">
+              <label for="field_{{ forloop.counter }}">{{ field.name }}</label>
+              <input type="text" 
+                     id="field_{{ forloop.counter }}" 
+                     name="{{ field.name }}" 
+                     class="form-control"
+                     data-field-name="{{ field.name }}"
+                     data-field-type="{{ field.type }}"
+                     placeholder="Enter {{ field.name|lower }}...">
+            </div>
+            {% elif field.type == 'email' %}
+            <div class="form-group">
+              <label for="field_{{ forloop.counter }}">{{ field.name }}</label>
+              <input type="email" 
+                     id="field_{{ forloop.counter }}" 
+                     name="{{ field.name }}" 
+                     class="form-control"
+                     data-field-name="{{ field.name }}"
+                     data-field-type="{{ field.type }}"
+                     placeholder="Enter {{ field.name|lower }}...">
+            </div>
+            {% else %}
+            <div class="form-group">
+              <label for="field_{{ forloop.counter }}">{{ field.name }}</label>
+              {% if field.type == 'class' %}
+              <select id="field_{{ forloop.counter }}"
+                      name="{{ field.name }}"
+                      class="form-control"
+                      data-field-name="{{ field.name }}"
+                      data-field-type="{{ field.type }}">
+                <option value="">Select Class...</option>
+                <option value="NURSERY">Nursery</option>
+                <option value="LKG">LKG</option>
+                <option value="UKG">UKG</option>
+                <option value="KG">KG</option>
+                <option value="I">I</option>
+                <option value="II">II</option>
+                <option value="III">III</option>
+                <option value="IV">IV</option>
+                <option value="V">V</option>
+                <option value="VI">VI</option>
+                <option value="VII">VII</option>
+                <option value="VIII">VIII</option>
+                <option value="IX">IX</option>
+                <option value="X">X</option>
+                <option value="XI">XI</option>
+                <option value="XII">XII</option>
+              </select>
+              {% elif field.type == 'section' %}
+              <select id="field_{{ forloop.counter }}"
+                      name="{{ field.name }}"
+                      class="form-control"
+                      data-field-name="{{ field.name }}"
+                      data-field-type="{{ field.type }}">
+                <option value="">Select Section...</option>
+                {% for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" %}
+                <option value="{{ letter }}">{{ letter }}</option>
+                {% endfor %}
+              </select>
+              {% else %}
+              <input type="text" 
+                     id="field_{{ forloop.counter }}" 
+                     name="{{ field.name }}" 
+                     class="form-control"
+                     data-field-name="{{ field.name }}"
+                     data-field-type="{{ field.type }}"
+                     placeholder="Enter {{ field.name|lower }}...">
+              {% endif %}
+            </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </form>
+    </div>
+    
+    <div class="side-modal-footer">
+      <button class="btn btn-secondary" id="cancelSideModal">
+        <i class="fa-solid fa-xmark"></i> Cancel
+      </button>
+      <button class="btn btn-primary" id="saveSideModal">
+        <i class="fa-solid fa-check"></i>
+        <span>Save</span>
+      </button>
+    </div>
+  </div>
+</div>

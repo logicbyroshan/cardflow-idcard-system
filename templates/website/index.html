@@ -1,0 +1,346 @@
+{% extends 'website/base.html' %}
+{% load static %}
+
+{% block content %}
+    <!-- Hero Section -->
+    <section class="hero" id="home">
+        <div class="hero-inner">
+            <div class="hero-content">
+                <div class="hero-badge">
+                    <i class="fas fa-award"></i>
+                    <span>20+ Years of Trust</span>
+                </div>
+                <h1>
+                    {% if business.hero_title %}
+                        {{ business.hero_title|safe }}
+                    {% else %}
+                        Professional <span class="gradient-text">ID Cards</span> <br>for Your Institution
+                    {% endif %}
+                </h1>
+                <p class="hero-subtitle">
+                    {{ business.hero_description|default:"Create stunning, secure ID cards that represent your school or organization with excellence" }}
+                </p>
+                <div class="hero-buttons">
+                    <a href="#contact" class="btn btn-primary">Enquire Now</a>
+                    <a href="{% url 'website:why_choose_us' %}" class="btn btn-secondary">Know More</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="hero-card-wrapper">
+            <div class="card-slider">
+                <div class="card slide-card active">
+                    <div class="card-image">
+                        {% if hero_images %}
+                            {% with first_hero=hero_images.0 %}
+                            <img id="slider-img" src="{{ first_hero.image.url }}" alt="{{ first_hero.title|default:'Hero Slide' }}">
+                            {% endwith %}
+                        {% else %}
+                            <img id="slider-img" src="{% static 'website/images/Hero/Hero1.jpg' %}" alt="Default Hero">
+                        {% endif %}
+                    </div>
+                    <div class="card-info">
+                        {% if hero_images %}
+                            {% with first_hero=hero_images.0 %}
+                            <h3 id="slider-title">{{ first_hero.title|default:"Premium Quality" }}</h3>
+                            <p id="slider-subtitle">{{ first_hero.subtitle|default:"Trusted by 500+ Schools" }}</p>
+                            {% endwith %}
+                        {% else %}
+                            <h3 id="slider-title">Premium Quality</h3>
+                            <p id="slider-subtitle">Trusted by 500+ Schools</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <!-- Slider Dots (dynamic from HeroImage model) -->
+            <div class="slider-dots">
+                {% for hero in hero_images %}
+                <span class="dot{% if forloop.first %} active{% endif %}" data-index="{{ forloop.counter }}" data-url="{{ hero.image.url }}" data-title="{{ hero.title|default:'' }}" data-subtitle="{{ hero.subtitle|default:'' }}"></span>
+                {% empty %}
+                <span class="dot active" data-index="1" data-url="{% static 'website/images/Hero/Hero1.jpg' %}" data-title="Premium Quality" data-subtitle="Trusted by 500+ Schools"></span>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <!-- Spacer to push content below floating card -->
+    <div style="height: 180px;" class="hero-spacer"></div>
+
+    <!-- Trusted Clients Section (Seamless Loop) -->
+    <section class="trusted-schools" id="trusted">
+        <h2 class="section-title">Trusted Clients</h2>
+        <div class="logos-carousel">
+            <div class="logos-track">
+                {% for client in trusted_clients %}
+                    <div class="logo-item">
+                        <img src="{{ client.logo.url }}" alt="{{ client.name }}">
+                    </div>
+                {% empty %}
+                    <div class="logo-item"><span style="color: #94a3b8; font-size: 0.9rem;">Clients coming soon</span></div>
+                {% endfor %}
+                <!-- Duplicates for seamless loop animation -->
+                {% for client in trusted_clients|slice:":6" %}
+                    <div class="logo-item">
+                        <img src="{{ client.logo.url }}" alt="{{ client.name }}">
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <!-- Why Choose Us Section -->
+    <section class="why-choose-us" id="why">
+        <div class="container">
+            <h2 class="section-title">Why Choose Us</h2>
+            <div class="features-grid">
+                {% for feature in features %}
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="{{ feature.icon }}"></i>
+                        </div>
+                        <h3>{{ feature.title }}</h3>
+                        <p>{{ feature.description }}</p>
+                    </div>
+                {% empty %}
+                    <div class="feature-card">
+                        <div class="feature-icon"><i class="fas fa-id-card"></i></div>
+                        <h3>Premium ID Cards</h3>
+                        <p>High-quality printing with modern designs for schools and institutions.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon"><i class="fas fa-truck"></i></div>
+                        <h3>Fast Delivery</h3>
+                        <p>On-time delivery guaranteed, every single order.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon"><i class="fas fa-headset"></i></div>
+                        <h3>Dedicated Support</h3>
+                        <p>Responsive customer service from order to delivery.</p>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <!-- Our Works Section -->
+    <section class="our-works" id="works">
+        <div class="container">
+            <h2 class="section-title">Our Works</h2>
+            <p class="section-subtitle">Showcase of our latest projects</p>
+            
+            <!-- Row 1: Featured Items (Scroll Left to Right) -->
+            <div class="works-carousel">
+                <div class="works-track scroll-left-right">
+                    {% for item in featured_portfolio %}
+                        <div class="work-item">
+                            {% if item.image %}<img src="{{ item.image.url }}" alt="{{ item.title }}">{% endif %}
+                            <div class="work-overlay">
+                                <h3>{{ item.title }}</h3>
+                                <p>{{ item.category.name|default:"Portfolio" }}</p>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="work-item">
+                            <img src="{% static 'website/images/Products/Product1.png' %}" alt="ID Card Sample">
+                            <div class="work-overlay"><h3>ID Card Design</h3><p>ID Cards</p></div>
+                        </div>
+                        <div class="work-item">
+                            <img src="{% static 'website/images/Products/Product2.png' %}" alt="ID Card Sample">
+                            <div class="work-overlay"><h3>Premium Card</h3><p>ID Cards</p></div>
+                        </div>
+                        <div class="work-item">
+                            <img src="{% static 'website/images/Products/Product3.png' %}" alt="Lanyard Sample">
+                            <div class="work-overlay"><h3>Custom Lanyard</h3><p>Lanyards</p></div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Row 2: Recent Items (Scroll Right to Left) -->
+            <div class="works-carousel">
+                <div class="works-track scroll-right-left">
+                    {% for item in recent_portfolio %}
+                        <div class="work-item">
+                            {% if item.image %}<img src="{{ item.image.url }}" alt="{{ item.title }}">{% endif %}
+                            <div class="work-overlay">
+                                <h3>{{ item.title }}</h3>
+                                <p>{{ item.category.name|default:"Portfolio" }}</p>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="work-item">
+                            <img src="{% static 'website/images/Products/Product4.png' %}" alt="Certificate Sample">
+                            <div class="work-overlay"><h3>Certificate</h3><p>Certificates</p></div>
+                        </div>
+                        <div class="work-item">
+                            <img src="{% static 'website/images/Products/Product5.png' %}" alt="Marksheet Sample">
+                            <div class="work-overlay"><h3>Marksheet</h3><p>Marksheets</p></div>
+                        </div>
+                        <div class="work-item">
+                            <img src="{% static 'website/images/Products/Product6.png' %}" alt="Fee Card Sample">
+                            <div class="work-overlay"><h3>Fee Card</h3><p>Fee Cards</p></div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials Section -->
+    <section class="testimonials" id="testimonials">
+        <div class="container">
+            <h2 class="section-title">Customer Reviews</h2>
+            <div class="testimonials-grid">
+                {% for testimonial in testimonials %}
+                    <div class="testimonial-card">
+                        <div class="stars">
+                            {% for i in "12345"|make_list %}
+                                {% if forloop.counter <= testimonial.rating %}
+                                    <i class="fas fa-star"></i>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                        <p>"{{ testimonial.text|truncatechars:150 }}"</p>
+                        <div class="testimonial-author">
+                            {% if testimonial.reviewer_avatar %}
+                                <img src="{{ testimonial.reviewer_avatar.url }}" alt="{{ testimonial.reviewer_name }}">
+                            {% else %}
+                                <div class="avatar-placeholder"><i class="fas fa-user"></i></div>
+                            {% endif %}
+                            <div>
+                                <h4>{{ testimonial.reviewer_name }}</h4>
+                                <p>{{ testimonial.reviewer_title }} - {{ testimonial.reviewer_school }}</p>
+                            </div>
+                        </div>
+                    </div>
+                {% empty %}
+                    <div class="testimonial-card">
+                        <div class="stars">
+                            <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                        </div>
+                        <p>"Excellent quality ID cards and outstanding customer service. Highly recommended!"</p>
+                        <div class="testimonial-author">
+                            <div class="avatar-placeholder"><i class="fas fa-user"></i></div>
+                            <div>
+                                <h4>Happy Client</h4>
+                                <p>Principal - Partner School</p>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section class="contact-section" id="contact">
+        <div class="container">
+            <h2 class="section-title">Get In Touch</h2>
+            <div class="contact-wrapper">
+                <!-- Contact Form -->
+                <div class="contact-form-side">
+                    <form class="contact-form" id="contactForm">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <input type="text" name="name" placeholder="Your Name" required class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <input type="email" name="email" placeholder="Your Email" required class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <input type="tel" name="phone" placeholder="Phone Number" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <input type="text" name="subject" placeholder="Requirement (e.g. 500 ID Cards)" required class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <textarea name="message" placeholder="Your Message" rows="4" required class="form-input textarea"></textarea>
+                        </div>
+                        <div id="formMessage" class="form-message" style="display: none; margin-bottom: 10px; padding: 10px; border-radius: 5px;"></div>
+                        <button type="submit" class="btn btn-primary form-btn" id="submitBtn">Send Message</button>
+                    </form>
+                </div>
+
+                <!-- Contact Info Side -->
+                <div class="contact-info-side">
+                    <div class="info-box">
+                        <div class="info-icon"><i class="fas fa-phone-alt"></i></div>
+                        <div class="info-content">
+                            <h3>Phone</h3>
+                            <p>{{ business.phone|default:'Contact us for details' }}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="info-box">
+                        <div class="info-icon"><i class="fas fa-envelope"></i></div>
+                        <div class="info-content">
+                            <h3>Email</h3>
+                            <p>{{ business.email|default:'info@adarshidcards.com' }}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="info-box">
+                        <div class="info-icon"><i class="fas fa-map-marker-alt"></i></div>
+                        <div class="info-content">
+                            <h3>Address</h3>
+                            <p>{{ business.address|default:'Bhopal, Madhya Pradesh' }}</p>
+                        </div>
+                    </div>
+
+                    <div class="info-box">
+                        <div class="info-icon"><i class="fas fa-clock"></i></div>
+                        <div class="info-content">
+                            <h3>Working Hours</h3>
+                            <p>{{ business.working_hours|default:'Mon-Sat: 9AM - 6PM' }}</p>
+                        </div>
+                    </div>
+
+                    <div class="contact-image">
+                        <!-- Displaying an image of a real ID Card or your workshop -->
+                        <img src="https://images.unsplash.com/photo-1598520422277-d9a56e9799d1?w=500&auto=format" alt="Quality ID Cards">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // AJAX Contact Form Handling
+    document.getElementById('contactForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const btn = document.getElementById('submitBtn');
+        const msg = document.getElementById('formMessage');
+        const formData = new FormData(this);
+
+        btn.disabled = true;
+        btn.innerText = 'Sending...';
+
+        fetch("{% url 'website:submit_contact' %}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            msg.style.display = 'block';
+            msg.innerText = data.message;
+            if (data.success) {
+                msg.style.backgroundColor = '#d4edda';
+                msg.style.color = '#155724';
+                this.reset();
+            } else {
+                msg.style.backgroundColor = '#f8d7da';
+                msg.style.color = '#721c24';
+            }
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerText = 'Send Message';
+        });
+    });
+</script>
+{% endblock %}

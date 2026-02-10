@@ -1,0 +1,360 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard - Adarsh ID Cards</title>
+  <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/variables.css' %}?v=3">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=38">
+  <link rel="stylesheet" href="{% static 'css/common.css' %}?v=49">
+  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=38">
+  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=2">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+
+  {% include 'partials/sidebar.html' %}
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- Top Navbar -->
+    <header class="topbar">
+      <div class="nav-left">
+        <button class="sidebar-toggle" id="sidebarToggle">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+        <div class="breadcrumb">
+          <span class="breadcrumb-item active"><i class="fa-solid fa-house"></i> Dashboard</span>
+        </div>
+      </div>
+      <div class="nav-right">
+        <button class="global-search-btn" id="globalSearchBtn">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <span>Search ID cards...</span>
+          <kbd>Ctrl+K</kbd>
+        </button>
+      </div>
+    </header>
+
+    <!-- Dashboard Content -->
+    <div class="dashboard-content">
+
+      <!-- Welcome Banner -->
+      <div class="welcome-banner">
+        <div class="welcome-text">
+          <h2>Welcome back, {{ user.get_full_name|default:user.username|default:"Admin Staff" }}! 👋</h2>
+          <p>Here's what's happening with your ID card tasks today.</p>
+        </div>
+        <div class="welcome-date">
+          <div class="date" id="welcomeDate">Sunday, Feb 01, 2026</div>
+          <div class="time" id="welcomeTime">00:00:00</div>
+        </div>
+      </div>
+
+      <!-- Stats Cards -->
+      <div class="stats-cards">
+        <div class="stat-card">
+          <div class="stat-icon pending">
+            <i class="fa-solid fa-clock"></i>
+          </div>
+          <div class="stat-info">
+            <div class="stat-value" id="pendingCards">{{ pending_cards|default:0 }}</div>
+            <div class="stat-label">Pending Cards</div>
+            <span class="stat-change negative"><i class="fa-solid fa-arrow-down"></i> In process</span>
+          </div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-icon verified">
+            <i class="fa-solid fa-check-circle"></i>
+          </div>
+          <div class="stat-info">
+            <div class="stat-value" id="verifiedCards">{{ verified_cards|default:0 }}</div>
+            <div class="stat-label">Verified Cards</div>
+            <span class="stat-change positive"><i class="fa-solid fa-arrow-up"></i> Ready for approval</span>
+          </div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-icon approved">
+            <i class="fa-solid fa-thumbs-up"></i>
+          </div>
+          <div class="stat-info">
+            <div class="stat-value" id="approvedCards">{{ approved_cards|default:0 }}</div>
+            <div class="stat-label">Approved Cards</div>
+            <span class="stat-change positive"><i class="fa-solid fa-arrow-up"></i> Ready to download</span>
+          </div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-icon downloaded">
+            <i class="fa-solid fa-download"></i>
+          </div>
+          <div class="stat-info">
+            <div class="stat-value" id="downloadedCards">{{ downloaded_cards|default:0 }}</div>
+            <div class="stat-label">Downloaded Cards</div>
+            <span class="stat-change positive"><i class="fa-solid fa-arrow-up"></i> Completed</span>
+          </div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-icon" style="background:rgba(99,102,241,.12); color:var(--accent-primary,#6366f1);">
+            <i class="fa-solid fa-layer-group"></i>
+          </div>
+          <div class="stat-info">
+            <div class="stat-value" id="totalCards">{{ total_id_cards|default:0 }}</div>
+            <div class="stat-label">Total ID Cards</div>
+            <span class="stat-change positive"><i class="fa-solid fa-arrow-up"></i> All cards</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Grid - Recent Client Updates & Recent Activity -->
+      <div class="dashboard-grid">
+        
+        <!-- Recent Client Updates - Admin Staff view -->
+        <div class="dashboard-card">
+          <div class="dashboard-card-header">
+            <h3><i class="fa-solid fa-users"></i> Recent Client Updates</h3>
+            {% if perm_idcard_setting_list %}
+            <a href="{% url 'active_clients' %}" class="view-all">View All <i class="fa-solid fa-arrow-right"></i></a>
+            {% endif %}
+          </div>
+          <div class="dashboard-card-body tall-body" style="padding: 0;">
+            <table class="recent-table">
+              <thead>
+                <tr>
+                  <th>Client</th>
+                  <th class="text-center">Pending</th>
+                  <th class="text-center">Verified</th>
+                  <th class="text-center">Approved</th>
+                  <th class="text-center">Downloaded</th>
+                </tr>
+              </thead>
+              <tbody id="recentClientUpdatesBody">
+                <!-- Will be populated dynamically -->
+                <tr>
+                  <td colspan="5" class="text-center" style="padding: 40px; color: #888;">
+                    <i class="fa-solid fa-spinner fa-spin"></i> Loading...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="dashboard-card">
+          <div class="dashboard-card-header">
+            <h3><i class="fa-solid fa-history"></i> Recent Activity</h3>
+          </div>
+          <div class="dashboard-card-body tall-body">
+            <div class="activity-list">
+              <div class="activity-item">
+                <div class="activity-icon add">
+                  <i class="fa-solid fa-plus"></i>
+                </div>
+                <div class="activity-content">
+                  <div class="activity-text"><strong>{{ user.username }}</strong> added 5 new ID cards</div>
+                  <div class="activity-time">2 hours ago</div>
+                </div>
+              </div>
+              <div class="activity-item">
+                <div class="activity-icon verify">
+                  <i class="fa-solid fa-check"></i>
+                </div>
+                <div class="activity-content">
+                  <div class="activity-text"><strong>Admin</strong> verified 12 cards</div>
+                  <div class="activity-time">4 hours ago</div>
+                </div>
+              </div>
+              <div class="activity-item">
+                <div class="activity-icon approve">
+                  <i class="fa-solid fa-thumbs-up"></i>
+                </div>
+                <div class="activity-content">
+                  <div class="activity-text"><strong>Admin</strong> approved 8 cards for download</div>
+                  <div class="activity-time">5 hours ago</div>
+                </div>
+              </div>
+              <div class="activity-item">
+                <div class="activity-icon edit">
+                  <i class="fa-solid fa-pen"></i>
+                </div>
+                <div class="activity-content">
+                  <div class="activity-text"><strong>Staff</strong> updated client details</div>
+                  <div class="activity-time">Yesterday</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Second Row Grid - Quick Actions & Team Overview -->
+      <div class="dashboard-grid">
+        
+        <!-- Quick Actions - Permission controlled -->
+        <div class="dashboard-card">
+          <div class="dashboard-card-header">
+            <h3><i class="fa-solid fa-bolt"></i> Quick Actions</h3>
+          </div>
+          <div class="dashboard-card-body">
+            <div class="quick-actions">
+              {% if perm_idcard_setting_list %}
+              <a href="{% url 'active_clients' %}" class="quick-action-btn">
+                <i class="fa-solid fa-id-card"></i>
+                <span>View ID Cards</span>
+              </a>
+              <a href="{% url 'active_clients' %}" class="quick-action-btn">
+                <i class="fa-solid fa-user-check"></i>
+                <span>Active Clients</span>
+              </a>
+              {% endif %}
+              {% if perm_idcard_bulk_download %}
+              <a href="#" class="quick-action-btn">
+                <i class="fa-solid fa-download"></i>
+                <span>Bulk Download</span>
+              </a>
+              {% endif %}
+              {% if perm_idcard_bulk_upload %}
+              <a href="#" class="quick-action-btn">
+                <i class="fa-solid fa-upload"></i>
+                <span>Bulk Upload</span>
+              </a>
+              {% endif %}
+
+              <a href="#" class="quick-action-btn">
+                <i class="fa-solid fa-chart-bar"></i>
+                <span>View Reports</span>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Team Overview - Admin Staff sees limited info -->
+        <div class="dashboard-card">
+          <div class="dashboard-card-header">
+            <h3><i class="fa-solid fa-users"></i> Overview</h3>
+          </div>
+          <div class="dashboard-card-body">
+            <div class="cards-overview">
+              <div class="card-overview-item">
+                <div class="card-overview-left">
+                  <div class="card-overview-icon active-clients">
+                    <i class="fa-solid fa-user-check"></i>
+                  </div>
+                  <span class="card-overview-label">Active Clients</span>
+                </div>
+                <span class="card-overview-value">{{ active_clients|default:0 }}</span>
+              </div>
+              <div class="card-overview-item">
+                <div class="card-overview-left">
+                  <div class="card-overview-icon clients">
+                    <i class="fa-solid fa-id-card"></i>
+                  </div>
+                  <span class="card-overview-label">Cards Processed</span>
+                </div>
+                <span class="card-overview-value">{{ total_id_cards|default:0 }}</span>
+              </div>
+              <div class="card-overview-item">
+                <div class="card-overview-left">
+                  <div class="card-overview-icon staff">
+                    <i class="fa-solid fa-clock"></i>
+                  </div>
+                  <span class="card-overview-label">Pending Tasks</span>
+                </div>
+                <span class="card-overview-value">{{ pending_cards|default:0 }}</span>
+              </div>
+              <div class="card-overview-item">
+                <div class="card-overview-left">
+                  <div class="card-overview-icon active-staff">
+                    <i class="fa-solid fa-check-circle"></i>
+                  </div>
+                  <span class="card-overview-label">Completed Today</span>
+                </div>
+                <span class="card-overview-value">{{ verified_cards|default:0 }}</span>
+              </div>
+              <div class="card-overview-item">
+                <div class="card-overview-left">
+                  <div class="card-overview-icon staff">
+                    <i class="fa-solid fa-user-gear"></i>
+                  </div>
+                  <span class="card-overview-label">Client Staff</span>
+                </div>
+                <span class="card-overview-value">{{ client_staff_count|default:0 }}</span>
+              </div>
+              <div class="card-overview-item">
+                <div class="card-overview-left">
+                  <div class="card-overview-icon active-clients">
+                    <i class="fa-solid fa-user-check"></i>
+                  </div>
+                  <span class="card-overview-label">Active Client Staff</span>
+                </div>
+                <span class="card-overview-value">{{ active_client_staff_count|default:0 }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Global Search Modal -->
+  <div class="global-search-overlay" id="globalSearchOverlay">
+    <div class="global-search-modal">
+      <div class="global-search-header">
+        <div class="search-input-group">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="globalSearchInput" placeholder="Search ID cards by name, address, mobile..." autocomplete="off">
+          <button class="clear-global-search" id="clearGlobalSearch" style="display: none;">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="search-filter-group">
+          <label>Filter:</label>
+          <select id="globalSearchFilter">
+            <option value="all">All Fields</option>
+            <option value="name">Name</option>
+            <option value="address">Address</option>
+            <option value="mobile">Mobile</option>
+          </select>
+        </div>
+        <button class="close-global-search" id="closeGlobalSearch">
+          <i class="fa-solid fa-xmark"></i>
+          <span>ESC</span>
+        </button>
+      </div>
+      <div class="global-search-body" id="globalSearchResults">
+        <div class="search-placeholder">
+          <i class="fa-solid fa-search"></i>
+          <p>Search across all ID cards</p>
+          <span>Enter at least 2 characters to search</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Common Modules (Load Order Matters) -->
+  <script src="{% static 'js/common/ajax.js' %}?v=2"></script>
+  <script src="{% static 'js/common/toast.js' %}?v=2"></script>
+  <script src="{% static 'js/common/modal.js' %}?v=2"></script>
+  <script src="{% static 'js/common/sidebar.js' %}?v=2"></script>
+  <script src="{% static 'js/common/validation.js' %}?v=2"></script>
+  <script src="{% static 'js/common/utils.js' %}?v=2"></script>
+  <script src="{% static 'js/init.js' %}?v=2"></script>
+  
+  <!-- Legacy compatibility -->
+  <script src="{% static 'js/utils.js' %}?v=3"></script>
+  <script src="{% static 'js/script.js' %}?v=3"></script>
+  <script src="{% static 'js/dashboard.js' %}?v=3"></script>
+  <script src="{% static 'js/global-search.js' %}?v=2"></script>
+</body>
+</html>

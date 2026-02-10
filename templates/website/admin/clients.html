@@ -1,0 +1,114 @@
+{% extends "website/admin/base.html" %}
+{% load static %}
+
+{% block title %}Trusted Clients{% endblock %}
+
+{% block breadcrumb_extra %}
+<i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+<span class="breadcrumb-item active">Clients</span>
+{% endblock %}
+
+{% block content %}
+<div class="wa-page-container">
+    <div class="wa-dashboard-section">
+        <div class="wa-action-bar" style="margin-bottom: var(--space-lg);">
+            <div class="wa-action-left">
+                <h3 class="wa-dashboard-section-title"><i class="fa-solid fa-handshake"></i> Client Logos / Partners</h3>
+                <span class="wa-count-badge">{{ clients_list|length }} clients</span>
+            </div>
+            <div class="wa-action-right">
+                {% if is_super_admin or perm_website_add %}
+                <button class="btn btn-primary" onclick="openClientModal()">
+                    <i class="fa-solid fa-plus"></i> Add Client
+                </button>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="wa-table-wrap">
+    <table class="wa-table" id="clientsTable">
+        <thead>
+            <tr>
+                <th>Logo</th>
+                <th>Name</th>
+                <th>Order</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="clientsBody">
+            {% for c in clients_list %}
+            <tr data-id="{{ c.id }}">
+                <td>
+                    {% if c.logo %}
+                    <img src="{{ c.logo.url }}" class="wa-thumb" alt="{{ c.name }}">
+                    {% else %}
+                    <span class="wa-no-img"><i class="fa-solid fa-image"></i></span>
+                    {% endif %}
+                </td>
+                <td><strong>{{ c.name }}</strong></td>
+                <td>{{ c.order }}</td>
+                <td>
+                    <span class="wa-status-badge {% if c.is_active %}active{% else %}inactive{% endif %}"
+                          onclick="toggleClient({{ c.id }}, this)">
+                        {{ c.is_active|yesno:"Active,Inactive" }}
+                    </span>
+                </td>
+                <td class="wa-actions">
+                    {% if is_super_admin or perm_website_edit %}
+                    <button class="btn-icon" title="Edit" onclick="editClient({{ c.id }})"><i class="fa-solid fa-pen"></i></button>
+                    {% endif %}
+                    {% if is_super_admin or perm_website_delete %}
+                    <button class="btn-icon danger" title="Delete" onclick="deleteClient({{ c.id }})"><i class="fa-solid fa-trash"></i></button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="wa-empty">No clients added yet.</td></tr>
+            {% endfor %}
+        </tbody>
+        </table>
+        </div>
+    </div>
+</div>
+
+<!-- Client Modal -->
+<div class="wa-modal-overlay" id="clientModal">
+    <div class="wa-modal wa-modal-sm">
+        <div class="wa-modal-header">
+            <h3 id="clientModalTitle">Add Client</h3>
+            <button class="wa-modal-close" onclick="closeClientModal()">&times;</button>
+        </div>
+        <form id="clientForm" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" id="clientId" value="">
+            <div class="wa-form-group">
+                <label for="cl_name">Name *</label>
+                <input type="text" id="cl_name" name="name" required>
+            </div>
+            <div class="wa-form-group">
+                <label for="cl_logo">Logo</label>
+                <input type="file" id="cl_logo" name="logo" accept="image/*">
+            </div>
+            <div class="wa-form-group">
+                <label for="cl_order">Display Order</label>
+                <input type="number" id="cl_order" name="order" value="0">
+            </div>
+            <div class="wa-form-group">
+                <label class="wa-toggle-label">
+                    <input type="checkbox" id="cl_active" name="is_active" checked>
+                    <span>Active</span>
+                </label>
+            </div>
+            <div class="wa-modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeClientModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/website-admin/clients.js' %}?v=2"></script>
+{% endblock %}

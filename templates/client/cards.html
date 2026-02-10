@@ -1,0 +1,704 @@
+{% extends 'client/base.html' %}
+{% load static %}
+
+{% block title %}Cards - Client Portal{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/idcard-actions.css' %}?v=3">
+<style>
+  .page-content {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 80px);
+  }
+  
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  
+  .page-header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary, #f8fafc);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .back-btn {
+    padding: 8px 16px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border-color, rgba(255,255,255,0.1));
+    border-radius: 8px;
+    color: var(--text-secondary, #a0aec0);
+    text-decoration: none;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+  }
+  
+  .back-btn:hover {
+    background: rgba(255,255,255,0.1);
+    color: var(--text-primary, #f8fafc);
+  }
+  
+  .filters-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  
+  .filter-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .filter-group label {
+    font-size: 13px;
+    color: var(--text-secondary, #a0aec0);
+  }
+  
+  .filter-group select,
+  .filter-group input {
+    padding: 8px 12px;
+    background: var(--card-bg, #1e2030);
+    border: 1px solid var(--border-color, rgba(255,255,255,0.1));
+    border-radius: 6px;
+    color: var(--text-primary, #f8fafc);
+    font-size: 13px;
+    min-width: 140px;
+    min-height: 36px;
+  }
+  
+  .filter-group select:focus,
+  .filter-group input:focus {
+    outline: none;
+    border-color: #48bb78;
+    box-shadow: 0 0 0 2px rgba(72, 187, 120, 0.15);
+  }
+  
+  .search-box {
+    flex: 1;
+    min-width: 200px;
+    max-width: 300px;
+    position: relative;
+  }
+  
+  .search-box input {
+    width: 100%;
+    padding: 8px 12px 8px 36px;
+    background: var(--card-bg, #1e2030);
+    border: 1px solid var(--border-color, rgba(255,255,255,0.1));
+    border-radius: 8px;
+    color: var(--text-primary, #f8fafc);
+    font-size: 13px;
+  }
+  
+  .search-box i {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary, #a0aec0);
+    font-size: 14px;
+  }
+  
+  .cards-table-container {
+    flex: 1;
+    background: var(--card-bg, #1e2030);
+    border-radius: 12px;
+    border: 1px solid var(--border-color, rgba(255,255,255,0.1));
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .cards-table-wrapper {
+    flex: 1;
+    overflow: auto;
+  }
+  
+  .cards-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 800px;
+  }
+  
+  .cards-table th,
+  .cards-table td {
+    padding: 14px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.05));
+  }
+  
+  .cards-table th {
+    background: rgba(255,255,255,0.02);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary, #a0aec0);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  
+  .cards-table tr:hover {
+    background: rgba(255,255,255,0.02);
+  }
+  
+  .cards-table td {
+    font-size: 13px;
+    color: var(--text-primary, #f8fafc);
+  }
+  
+  .card-photo {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    object-fit: cover;
+    background: rgba(255,255,255,0.05);
+  }
+  
+  .card-photo.placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary, #a0aec0);
+    font-size: 18px;
+  }
+  
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  
+  .status-badge.pending { background: rgba(246, 173, 85, 0.15); color: #f6ad55; }
+  .status-badge.verified { background: rgba(99, 179, 237, 0.15); color: #63b3ed; }
+  .status-badge.pool { background: rgba(160, 174, 192, 0.15); color: #a0aec0; }
+  .status-badge.approved { background: rgba(72, 187, 120, 0.15); color: #48bb78; }
+  .status-badge.download { background: rgba(128, 90, 213, 0.15); color: #805ad5; }
+  .status-badge.reprint { background: rgba(237, 100, 166, 0.15); color: #ed64a6; }
+  
+  .action-btn {
+    padding: 6px 10px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border-color, rgba(255,255,255,0.1));
+    border-radius: 6px;
+    color: var(--text-secondary, #a0aec0);
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+    margin-right: 6px;
+  }
+  
+  .action-btn:hover {
+    background: rgba(255,255,255,0.1);
+    color: var(--text-primary, #f8fafc);
+  }
+  
+  .action-btn.primary {
+    background: rgba(72, 187, 120, 0.1);
+    border-color: rgba(72, 187, 120, 0.2);
+    color: #48bb78;
+  }
+  
+  .action-btn.primary:hover {
+    background: rgba(72, 187, 120, 0.2);
+  }
+  
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-top: 1px solid var(--border-color, rgba(255,255,255,0.05));
+    background: rgba(255,255,255,0.02);
+  }
+  
+  .pagination-info {
+    font-size: 13px;
+    color: var(--text-secondary, #a0aec0);
+  }
+  
+  .pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .pagination-btn {
+    padding: 8px 12px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border-color, rgba(255,255,255,0.1));
+    border-radius: 6px;
+    color: var(--text-secondary, #a0aec0);
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+  }
+  
+  .pagination-btn:hover:not(:disabled) {
+    background: rgba(255,255,255,0.1);
+    color: var(--text-primary, #f8fafc);
+  }
+  
+  .pagination-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  /* .empty-state styles now in common.css (single source of truth) */
+  
+  /* View Modal */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.7);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+  }
+  
+  .modal-overlay.show {
+    display: flex;
+  }
+  
+  .modal-content {
+    background: var(--card-bg, #1e2030);
+    border-radius: 16px;
+    border: 1px solid var(--border-color, rgba(255,255,255,0.1));
+    max-width: 600px;
+    width: 100%;
+    max-height: 90vh;
+    overflow: auto;
+  }
+  
+  .modal-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.05));
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .modal-header h2 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary, #f8fafc);
+  }
+  
+  .modal-close {
+    width: 32px;
+    height: 32px;
+    background: rgba(255,255,255,0.05);
+    border: none;
+    border-radius: 8px;
+    color: var(--text-secondary, #a0aec0);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+  
+  .modal-close:hover {
+    background: rgba(255,255,255,0.1);
+    color: var(--text-primary, #f8fafc);
+  }
+  
+  .modal-body {
+    padding: 20px;
+  }
+  
+  .card-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+  
+  .card-detail-item {
+    background: rgba(255,255,255,0.02);
+    padding: 12px;
+    border-radius: 8px;
+  }
+  
+  .card-detail-item.full-width {
+    grid-column: 1 / -1;
+  }
+  
+  .card-detail-item label {
+    font-size: 11px;
+    color: var(--text-secondary, #a0aec0);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+    display: block;
+  }
+  
+  .card-detail-item .value {
+    font-size: 14px;
+    color: var(--text-primary, #f8fafc);
+    font-weight: 500;
+  }
+  
+  .card-photo-preview {
+    width: 100px;
+    height: 120px;
+    border-radius: 8px;
+    object-fit: cover;
+    background: rgba(255,255,255,0.05);
+  }
+</style>
+{% endblock %}
+
+{% block breadcrumb %}
+<span class="breadcrumb-item"><a href="{% url 'client:dashboard' %}"><i class="fa-solid fa-house"></i> Dashboard</a></span>
+<span class="breadcrumb-separator"><i class="fa-solid fa-chevron-right"></i></span>
+<span class="breadcrumb-item"><a href="{% url 'client:groups' %}"><i class="fa-solid fa-layer-group"></i> Groups</a></span>
+<span class="breadcrumb-separator"><i class="fa-solid fa-chevron-right"></i></span>
+<span class="breadcrumb-item active"><i class="fa-solid fa-id-card"></i> <span id="tableName">Cards</span></span>
+{% endblock %}
+
+{% block content %}
+<div class="page-content">
+  <div class="page-header">
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <a href="{% url 'client:groups' %}" class="back-btn">
+        <i class="fa-solid fa-arrow-left"></i> Back to Groups
+      </a>
+      <h1><i class="fa-solid fa-id-card" style="color: #48bb78;"></i> <span id="pageTitle">Cards</span></h1>
+    </div>
+  </div>
+  
+  <div class="filters-bar">
+    <div class="filter-group">
+      <label>Status:</label>
+      <select id="statusFilter" onchange="loadCards()">
+        <option value="">All Status</option>
+        <option value="pending">Pending</option>
+        <option value="verified">Verified</option>
+        <option value="pool">Pool</option>
+        <option value="approved">Approved</option>
+        <option value="download">Download</option>
+        <option value="reprint">Reprint</option>
+      </select>
+    </div>
+    <div class="search-box">
+      <i class="fa-solid fa-search"></i>
+      <input type="text" id="searchInput" placeholder="Search by name..." onkeyup="debounceSearch()">
+    </div>
+  </div>
+  
+  <div class="cards-table-container">
+    <div class="cards-table-wrapper">
+      <table class="cards-table">
+        <thead>
+          <tr>
+            <th>Photo</th>
+            <th>Name</th>
+            <th>ID Number</th>
+            <th>Class/Designation</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="cardsTableBody">
+          <tr>
+            <td colspan="6" class="empty-state">
+              <i class="fa-solid fa-spinner fa-spin"></i>
+              <h3>Loading cards...</h3>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    
+    <div class="pagination">
+      <div class="pagination-info" id="paginationInfo">
+        Showing 0 of 0 cards
+      </div>
+      <div class="pagination-controls">
+        <button class="pagination-btn" id="prevBtn" onclick="goToPage(currentPage - 1)" disabled>
+          <i class="fa-solid fa-chevron-left"></i> Previous
+        </button>
+        <span id="pageIndicator" style="font-size: 13px; color: var(--text-secondary, #a0aec0);">Page 1</span>
+        <button class="pagination-btn" id="nextBtn" onclick="goToPage(currentPage + 1)" disabled>
+          Next <i class="fa-solid fa-chevron-right"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- View Card Modal -->
+<div class="modal-overlay" id="viewModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2><i class="fa-solid fa-id-card" style="margin-right: 10px; color: #48bb78;"></i>Card Details</h2>
+      <button class="modal-close" onclick="closeModal()">
+        <i class="fa-solid fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body" id="modalBody">
+      <!-- Content loaded dynamically -->
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const tableId = {{ table.id }};
+let currentPage = 1;
+let totalPages = 1;
+let searchTimeout = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('pageTitle').textContent = '{{ table.name|escapejs }}';
+  document.getElementById('tableName').textContent = '{{ table.name|escapejs }}';
+  loadCards();
+});
+
+function debounceSearch() {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    currentPage = 1;
+    loadCards();
+  }, 300);
+}
+
+async function loadCards() {
+  const status = document.getElementById('statusFilter').value;
+  const search = document.getElementById('searchInput').value;
+  
+  const params = new URLSearchParams({
+    page: currentPage,
+    per_page: 20
+  });
+  
+  if (status) params.append('status', status);
+  if (search) params.append('search', search);
+  
+  try {
+    const response = await fetch(`{% url 'client:api_cards' table.id %}?${params}`);
+    const data = await response.json();
+    
+    if (data.success) {
+      renderCards(data.data.cards || []);
+      updatePagination(data.data.pagination || {});
+    } else {
+      showError(data.error || 'Failed to load cards');
+    }
+  } catch (error) {
+    console.error('Error loading cards:', error);
+    showError('Network error. Please try again.');
+  }
+}
+
+function renderCards(cards) {
+  const tbody = document.getElementById('cardsTableBody');
+  
+  if (cards.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6">
+          <div class="empty-state">
+            <i class="fa-solid fa-id-card"></i>
+            <h3>No Cards Found</h3>
+            <p>No cards match the current filters.</p>
+          </div>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+  
+  tbody.innerHTML = cards.map(card => `
+    <tr data-card-id="${card.id}">
+      <td>
+        ${card.photo_url 
+          ? `<img src="${card.photo_url}" class="card-photo" alt="Photo">`
+          : `<div class="card-photo placeholder"><i class="fa-solid fa-user"></i></div>`
+        }
+      </td>
+      <td>${escapeHtml(card.name || '-')}</td>
+      <td>${escapeHtml(card.id_number || '-')}</td>
+      <td>${escapeHtml(card.class_designation || '-')}</td>
+      <td><span class="status-badge ${card.status}">${formatStatus(card.status)}</span></td>
+      <td>
+        <button class="action-btn primary" onclick="viewCard(${card.id})">
+          <i class="fa-solid fa-eye"></i>
+        </button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function updatePagination(pagination) {
+  currentPage = pagination.page || 1;
+  totalPages = pagination.total_pages || 1;
+  const total = pagination.total || 0;
+  const perPage = pagination.per_page || 20;
+  
+  const start = total === 0 ? 0 : (currentPage - 1) * perPage + 1;
+  const end = Math.min(currentPage * perPage, total);
+  
+  document.getElementById('paginationInfo').textContent = `Showing ${start}-${end} of ${total} cards`;
+  document.getElementById('pageIndicator').textContent = `Page ${currentPage} of ${totalPages}`;
+  
+  document.getElementById('prevBtn').disabled = currentPage <= 1;
+  document.getElementById('nextBtn').disabled = currentPage >= totalPages;
+}
+
+function goToPage(page) {
+  if (page < 1 || page > totalPages) return;
+  currentPage = page;
+  loadCards();
+}
+
+async function viewCard(cardId) {
+  try {
+    const response = await fetch(`/panel/client/api/cards/${cardId}/`);
+    const data = await response.json();
+    
+    if (data.success) {
+      showCardModal(data.data);
+    } else {
+      alert(data.error || 'Failed to load card details');
+    }
+  } catch (error) {
+    console.error('Error loading card:', error);
+    alert('Network error. Please try again.');
+  }
+}
+
+function showCardModal(card) {
+  const modalBody = document.getElementById('modalBody');
+  
+  modalBody.innerHTML = `
+    <div class="card-detail-grid">
+      <div class="card-detail-item full-width" style="text-align: center;">
+        ${card.photo_url 
+          ? `<img src="${card.photo_url}" class="card-photo-preview" alt="Photo">`
+          : `<div class="card-photo-preview placeholder" style="display: inline-flex; align-items: center; justify-content: center; color: #a0aec0;"><i class="fa-solid fa-user" style="font-size: 32px;"></i></div>`
+        }
+      </div>
+      <div class="card-detail-item">
+        <label>Name</label>
+        <div class="value">${escapeHtml(card.name || '-')}</div>
+      </div>
+      <div class="card-detail-item">
+        <label>ID Number</label>
+        <div class="value">${escapeHtml(card.id_number || '-')}</div>
+      </div>
+      <div class="card-detail-item">
+        <label>Class/Designation</label>
+        <div class="value">${escapeHtml(card.class_designation || '-')}</div>
+      </div>
+      <div class="card-detail-item">
+        <label>Status</label>
+        <div class="value"><span class="status-badge ${card.status}">${formatStatus(card.status)}</span></div>
+      </div>
+      <div class="card-detail-item">
+        <label>Father's Name</label>
+        <div class="value">${escapeHtml(card.father_name || '-')}</div>
+      </div>
+      <div class="card-detail-item">
+        <label>Mother's Name</label>
+        <div class="value">${escapeHtml(card.mother_name || '-')}</div>
+      </div>
+      <div class="card-detail-item">
+        <label>Date of Birth</label>
+        <div class="value">${card.dob || '-'}</div>
+      </div>
+      <div class="card-detail-item">
+        <label>Blood Group</label>
+        <div class="value">${escapeHtml(card.blood_group || '-')}</div>
+      </div>
+      <div class="card-detail-item full-width">
+        <label>Address</label>
+        <div class="value">${escapeHtml(card.address || '-')}</div>
+      </div>
+      <div class="card-detail-item">
+        <label>Contact</label>
+        <div class="value">${escapeHtml(card.contact || '-')}</div>
+      </div>
+      <div class="card-detail-item">
+        <label>Session/Validity</label>
+        <div class="value">${escapeHtml(card.session || '-')}</div>
+      </div>
+    </div>
+  `;
+  
+  document.getElementById('viewModal').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('viewModal').classList.remove('show');
+}
+
+function showError(message) {
+  document.getElementById('cardsTableBody').innerHTML = `
+    <tr>
+      <td colspan="6">
+        <div class="empty-state">
+          <i class="fa-solid fa-exclamation-triangle"></i>
+          <h3>Error</h3>
+          <p>${escapeHtml(message)}</p>
+        </div>
+      </td>
+    </tr>
+  `;
+}
+
+function formatStatus(status) {
+  const statusMap = {
+    'pending': 'Pending',
+    'verified': 'Verified',
+    'pool': 'In Pool',
+    'approved': 'Approved',
+    'download': 'Download',
+    'reprint': 'Reprint'
+  };
+  return statusMap[status] || status;
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text || '';
+  return div.innerHTML;
+}
+
+// Close modal on overlay click
+document.getElementById('viewModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// Close modal on escape key
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeModal();
+});
+</script>
+{% endblock %}

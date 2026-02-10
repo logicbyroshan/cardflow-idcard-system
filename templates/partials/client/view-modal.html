@@ -1,0 +1,93 @@
+{% comment %}
+View Client Modal Partial
+Contains: Modal for viewing client details
+{% endcomment %}
+
+<!-- View Client Modal Start -->
+<div class="modal-overlay" id="view-client-modal">
+    <div class="modal view-modal">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-user"></i> Client Details</h3>
+            <button class="modal-close" onclick="closeViewModal()" aria-label="Close view modal">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="view-content">
+                <!-- Profile Section -->
+                <div class="view-profile-section">
+                    <div class="view-profile-image" id="view-profile-image">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                    <div class="view-profile-info">
+                        <h2 id="view-client-name">Client Name</h2>
+                        <span class="status-badge" id="view-client-status">Active</span>
+                    </div>
+                </div>
+                
+                <!-- Details Grid -->
+                <div class="view-details-grid">
+                    <div class="view-detail-item">
+                        <i class="fa-solid fa-envelope"></i>
+                        <div class="detail-content">
+                            <span class="detail-label">Email</span>
+                            <span class="detail-value" id="view-client-email">-</span>
+                        </div>
+                    </div>
+                    <div class="view-detail-item">
+                        <i class="fa-solid fa-phone"></i>
+                        <div class="detail-content">
+                            <span class="detail-label">Phone</span>
+                            <span class="detail-value" id="view-client-phone">-</span>
+                        </div>
+                    </div>
+                    <div class="view-detail-item">
+                        <i class="fa-solid fa-location-dot"></i>
+                        <div class="detail-content">
+                            <span class="detail-label">Address</span>
+                            <span class="detail-value" id="view-client-address">-</span>
+                        </div>
+                    </div>
+                    <div class="view-detail-item">
+                        <i class="fa-solid fa-users"></i>
+                        <div class="detail-content">
+                            <span class="detail-label">Staff Count</span>
+                            <span class="detail-value" id="view-client-staff">0</span>
+                        </div>
+                    </div>
+                    <div class="view-detail-item">
+                        <i class="fa-solid fa-calendar-plus"></i>
+                        <div class="detail-content">
+                            <span class="detail-label">Created At</span>
+                            <span class="detail-value" id="view-client-created">-</span>
+                        </div>
+                    </div>
+                    <div class="view-detail-item">
+                        <i class="fa-solid fa-calendar-check"></i>
+                        <div class="detail-content">
+                            <span class="detail-label">Last Updated</span>
+                            <span class="detail-value" id="view-client-updated">-</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Permissions Section -->
+                <div class="view-permissions-section">
+                    <h4><i class="fa-solid fa-shield-halved"></i> Permissions</h4>
+                    <div class="permissions-display" id="view-client-permissions">
+                        <!-- Permissions will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeViewModal()">
+                <i class="fa-solid fa-xmark"></i> Close
+            </button>
+            <button class="btn btn-primary" onclick="editFromView()">
+                <i class="fa-solid fa-pen-to-square"></i> Edit Client
+            </button>
+        </div>
+    </div>
+</div>
+<!-- View Client Modal End -->

@@ -1,0 +1,342 @@
+{% extends 'client/base.html' %}
+{% load static %}
+
+{% block title %}Dashboard - Adarsh ID Cards{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=43">
+<style>
+  /* ── Notification bell & dropdown ── */
+  .notif-wrapper{ position: relative; }
+  .notif-btn{
+    background: none; border: none; cursor: pointer;
+    width: 38px; height: 38px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-secondary, #94a3b8); font-size: 17px;
+    transition: background .15s, color .15s;
+    position: relative;
+  }
+  .notif-btn:hover{ background: var(--bg-tertiary, #1e293b); color: var(--text-primary, #e2e8f0); }
+  .notif-badge{
+    position: absolute; top: 4px; right: 4px;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #ef4444; border: 2px solid var(--bg-primary, #0f172a);
+    display: none;
+  }
+  .notif-badge.has-updates{ display: block; }
+  .notif-dropdown{
+    display: none; position: absolute; right: 0; top: calc(100% + 8px);
+    width: 360px; max-height: 440px; overflow-y: auto;
+    background: var(--bg-secondary, #1e293b);
+    border: 1px solid var(--border-color, #334155);
+    border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,.35);
+    z-index: 1000;
+  }
+  .notif-dropdown.open{ display: block; }
+  .notif-dropdown-header{
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; border-bottom: 1px solid var(--border-color, #334155);
+  }
+  .notif-dropdown-header h4{
+    font-size: 14px; font-weight: 600; color: var(--text-primary, #e2e8f0); margin: 0;
+  }
+  .notif-dropdown-header span{
+    font-size: 11px; color: var(--text-muted, #64748b);
+  }
+  .notif-list{ padding: 6px 0; }
+  .notif-item{
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 12px 16px; transition: background .12s; cursor: default;
+  }
+  .notif-item:hover{ background: var(--bg-tertiary, #334155); }
+  .notif-item .notif-icon{
+    width: 32px; height: 32px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(99,102,241,.12); color: var(--accent-primary, #6366f1);
+    font-size: 13px; flex-shrink: 0;
+  }
+  .notif-item .notif-body{ flex: 1; min-width: 0; }
+  .notif-item .notif-title{
+    font-size: 12.5px; font-weight: 600; color: var(--text-primary, #e2e8f0);
+    margin-bottom: 2px;
+  }
+  .notif-item .notif-text{
+    font-size: 11.5px; color: var(--text-secondary, #94a3b8); line-height: 1.45;
+  }
+  .notif-item .notif-time{
+    font-size: 10.5px; color: var(--text-muted, #64748b); margin-top: 3px;
+  }
+  .notif-empty{
+    text-align: center; padding: 36px 20px;
+    color: var(--text-secondary, #94a3b8); font-size: 12.5px;
+  }
+  .notif-empty i{
+    font-size: 24px; display: block; margin-bottom: 8px;
+    color: var(--text-muted, #64748b);
+  }
+</style>
+{% endblock %}
+
+{% block breadcrumb %}
+<span class="breadcrumb-item active"><i class="fa-solid fa-house"></i> Dashboard</span>
+{% endblock %}
+
+{% block topbar_right %}
+<div class="nav-right" style="display:flex; align-items:center; gap:8px;">
+  <button class="global-search-btn" id="globalSearchBtn">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span>Search ID cards...</span>
+    <kbd>Ctrl+K</kbd>
+  </button>
+  <!-- Notification Bell -->
+  <div class="notif-wrapper" id="notifWrapper">
+    <button class="notif-btn" id="notifBtn" title="Updates" aria-label="Notifications">
+      <i class="fa-solid fa-bell"></i>
+      <span class="notif-badge" id="notifBadge"></span>
+    </button>
+    <div class="notif-dropdown" id="notifDropdown">
+      <div class="notif-dropdown-header">
+        <h4><i class="fa-solid fa-bullhorn"></i> Updates</h4>
+        <span id="notifCount"></span>
+      </div>
+      <div class="notif-list" id="notifList">
+        <div class="notif-empty">
+          <i class="fa-solid fa-bell-slash"></i>
+          No updates yet.<br>Updates from admin will appear here.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-content">
+
+  <!-- Welcome Banner -->
+  <div class="welcome-banner">
+    <div class="welcome-text">
+      <h2>Welcome back, {{ client.name|default:user.get_full_name|default:"Client" }}! 👋</h2>
+      <p>Manage your organization's ID cards and staff members.</p>
+    </div>
+    <div class="welcome-date">
+      <div class="date" id="welcomeDate">Loading...</div>
+      <div class="time" id="welcomeTime">00:00:00</div>
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="stats-cards">
+    <div class="stat-card">
+      <div class="stat-icon pending">
+        <i class="fa-solid fa-clock"></i>
+      </div>
+      <div class="stat-info">
+        <div class="stat-value" id="stat-pending">0</div>
+        <div class="stat-label">Pending Cards</div>
+        <span class="stat-change negative"><i class="fa-solid fa-arrow-down"></i> In process</span>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon verified">
+        <i class="fa-solid fa-check-circle"></i>
+      </div>
+      <div class="stat-info">
+        <div class="stat-value" id="stat-verified">0</div>
+        <div class="stat-label">Verified Cards</div>
+        <span class="stat-change positive"><i class="fa-solid fa-arrow-up"></i> Ready for approval</span>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon approved">
+        <i class="fa-solid fa-thumbs-up"></i>
+      </div>
+      <div class="stat-info">
+        <div class="stat-value" id="stat-approved">0</div>
+        <div class="stat-label">Approved Cards</div>
+        <span class="stat-change positive"><i class="fa-solid fa-arrow-up"></i> Ready to download</span>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon downloaded">
+        <i class="fa-solid fa-download"></i>
+      </div>
+      <div class="stat-info">
+        <div class="stat-value" id="stat-download">0</div>
+        <div class="stat-label">Downloaded Cards</div>
+        <span class="stat-change positive"><i class="fa-solid fa-arrow-up"></i> Completed</span>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(99,102,241,.12); color:var(--accent-primary,#6366f1);">
+        <i class="fa-solid fa-layer-group"></i>
+      </div>
+      <div class="stat-info">
+        <div class="stat-value" id="stat-total">0</div>
+        <div class="stat-label">Total ID Cards</div>
+        <span class="stat-change positive"><i class="fa-solid fa-arrow-up"></i> Your organization</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 1 — Recent Activity + Quick Actions -->
+  <div class="dashboard-grid">
+
+    <!-- Recent Activity -->
+    <div class="dashboard-card">
+      <div class="dashboard-card-header">
+        <h3><i class="fa-solid fa-history"></i> Recent Activity</h3>
+      </div>
+      <div class="dashboard-card-body">
+        <div class="activity-list">
+          <div class="activity-item">
+            <div class="activity-icon add">
+              <i class="fa-solid fa-plus"></i>
+            </div>
+            <div class="activity-content">
+              <div class="activity-text"><strong>{{ user.username }}</strong> uploaded new ID cards</div>
+              <div class="activity-time">2 hours ago</div>
+            </div>
+          </div>
+          <div class="activity-item">
+            <div class="activity-icon verify">
+              <i class="fa-solid fa-check"></i>
+            </div>
+            <div class="activity-content">
+              <div class="activity-text">Cards verified by <strong>Admin</strong></div>
+              <div class="activity-time">4 hours ago</div>
+            </div>
+          </div>
+          <div class="activity-item">
+            <div class="activity-icon approve">
+              <i class="fa-solid fa-thumbs-up"></i>
+            </div>
+            <div class="activity-content">
+              <div class="activity-text">Cards approved for download</div>
+              <div class="activity-time">5 hours ago</div>
+            </div>
+          </div>
+          <div class="activity-item">
+            <div class="activity-icon edit">
+              <i class="fa-solid fa-download"></i>
+            </div>
+            <div class="activity-content">
+              <div class="activity-text">Downloaded batch of ID cards</div>
+              <div class="activity-time">Yesterday</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="dashboard-card">
+      <div class="dashboard-card-header">
+        <h3><i class="fa-solid fa-bolt"></i> Quick Actions</h3>
+      </div>
+      <div class="dashboard-card-body">
+        <div class="quick-actions">
+          {% if perm_idcard_setting_list or perm_idcard_pending_list or perm_idcard_verified_list or perm_idcard_approved_list or perm_idcard_download_list or perm_idcard_pool_list or perm_idcard_reprint_list %}
+          <a href="{% url 'client:idcard_group' %}" class="quick-action-btn">
+            <i class="fa-solid fa-id-card"></i>
+            <span>ID Card Group</span>
+          </a>
+          {% endif %}
+          {% if perm_idcard_setting_list %}
+          <a href="{% url 'client:group_settings' %}" class="quick-action-btn">
+            <i class="fa-solid fa-table-list"></i>
+            <span>Group Settings</span>
+          </a>
+          {% endif %}
+          {% if is_client_admin and perm_idcard_client_list %}
+          <a href="{% url 'client:staff' %}" class="quick-action-btn">
+            <i class="fa-solid fa-user-tie"></i>
+            <span>Manage Staff</span>
+          </a>
+          {% endif %}
+          {% if perm_idcard_bulk_download %}
+          <a href="#" class="quick-action-btn">
+            <i class="fa-solid fa-download"></i>
+            <span>Bulk Download</span>
+          </a>
+          {% endif %}
+          {% if perm_idcard_bulk_upload %}
+          <a href="#" class="quick-action-btn">
+            <i class="fa-solid fa-upload"></i>
+            <span>Bulk Upload</span>
+          </a>
+          {% endif %}
+          <a href="{% url 'settings' %}" class="quick-action-btn">
+            <i class="fa-solid fa-gear"></i>
+            <span>Settings</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // ── Welcome date/time ──
+  function updateDateTime() {
+    const now = new Date();
+    const dateEl = document.getElementById('welcomeDate');
+    const timeEl = document.getElementById('welcomeTime');
+    if (dateEl) dateEl.textContent = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'short', day: '2-digit' });
+    if (timeEl) timeEl.textContent = now.toLocaleTimeString('en-US', { hour12: true });
+  }
+  updateDateTime();
+  setInterval(updateDateTime, 1000);
+
+  // ── Load dashboard stats ──
+  loadDashboardData();
+
+  // ── Notification bell toggle ──
+  const notifBtn = document.getElementById('notifBtn');
+  const notifDropdown = document.getElementById('notifDropdown');
+  if (notifBtn && notifDropdown) {
+    notifBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      notifDropdown.classList.toggle('open');
+    });
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('#notifWrapper')) {
+        notifDropdown.classList.remove('open');
+      }
+    });
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') notifDropdown.classList.remove('open');
+    });
+  }
+});
+
+async function loadDashboardData() {
+  try {
+    const response = await fetch('{% url "client:api_dashboard" %}');
+    const data = await response.json();
+
+    if (data.success) {
+      const stats = data.data.card_counts;
+      document.getElementById('stat-total').textContent    = stats.total    || 0;
+      document.getElementById('stat-pending').textContent  = stats.pending  || 0;
+      document.getElementById('stat-verified').textContent = stats.verified || 0;
+      document.getElementById('stat-approved').textContent = stats.approved || 0;
+      document.getElementById('stat-download').textContent = stats.download || 0;
+    } else {
+      console.error('Dashboard data error:', data.error);
+    }
+  } catch (err) {
+    console.error('Error loading dashboard:', err);
+  }
+}
+</script>
+{% endblock %}

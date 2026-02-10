@@ -1,0 +1,165 @@
+{% load static %}
+{% load custom_filters %}
+<!-- ID Cards Table -->
+{% cache_bust as cb %}
+<div class="table-wrapper">
+    <div class="table-container idcard-table">
+        <table id="data-table">
+            <thead>
+                <tr>
+                    <th class="checkbox-col">
+                        <input type="checkbox" id="selectAll" title="Select all">
+                    </th>
+                    <th class="sr-col">Sr No.</th>
+                    {% for field in table.fields|reorder_fields_for_display %}
+                    {% check_image_field field.type field.name as is_img %}
+                    {% if is_img %}
+                    <th class="image-col" data-field-name="{{ field.name }}" data-field-type="image">{{ field.name }}</th>
+                    {% else %}
+                    <th class="dynamic-col" data-field-name="{{ field.name }}" data-field-type="{{ field.type }}">{{ field.name }}</th>
+                    {% endif %}
+                    {% endfor %}
+                    <th class="action-col">Action</th>
+                    {% if perm_idcard_updated_at %}
+                    <th class="fixed-col">Last Updated</th>
+                    <th class="fixed-col">Updated By</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody id="cardsTableBody">
+                {% for card in id_cards %}
+                <tr data-card-id="{{ card.id }}" data-sr-no="{{ card.sr_no }}">
+                    <td class="checkbox-cell">
+                        <input type="checkbox" class="rowCheckbox">
+                    </td>
+                    <td class="sr-no-cell">{{ card.sr_no }}</td>
+                    {% for field in card.ordered_fields|reorder_card_fields_for_display %}
+                        {% check_image_field field.type field.name as is_img %}
+                        {% if is_img %}
+                        <td class="image-field image-cell {{ field.name|get_image_class }}" 
+                            data-field="{{ field.name }}"
+                            data-field-name="{{ field.name }}" 
+                            data-field-type="image"
+                            data-original-value="{{ field.value }}">
+                            <div class="image-with-edit">
+                                {% if field.value and field.value != '' and field.value != 'NOT_FOUND' and not field.value|slice:":8" == "PENDING:" %}
+                                <!-- Image exists - use thumbnail with original fallback -->
+                                <img src="/media/{{ field.value|get_thumbnail_path }}" 
+                                     alt="{{ field.name }}" 
+                                     class="table-image {{ field.name|get_image_class }}" 
+                                     loading="lazy"
+                                     onerror="this.onerror=null; this.src='/media/{{ field.value }}'">
+                                {% elif field.value|slice:":8" == "PENDING:" %}
+                                <!-- PENDING image - show waiting placeholder -->
+                                <div class="no-image pending-placeholder" title="Waiting for upload: {{ field.value|slice:'8:' }}">
+                                    <i class="fa-solid fa-clock"></i>
+                                </div>
+                                {% else %}
+                                <!-- No image - show placeholder -->
+                                <div class="no-image colorful-placeholder" title="No image uploaded">
+                                    <i class="fa-solid fa-user-astronaut"></i>
+                                </div>
+                                {% endif %}
+                                {% if perm_idcard_edit %}
+                                <button class="edit-photo-btn" data-card-id="{{ card.id }}" title="Edit Card">
+                                    <i class="fa-solid fa-pen"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                        {% else %}
+                        <td class="dynamic-field editable-cell {% if field.type == 'textarea' %}long-text{% elif field.type == 'date' or field.type == 'number' %}short-text{% elif field.value|length <= 10 %}short-text{% elif field.value|length > 40 %}long-text{% else %}medium-text{% endif %}" 
+                            data-field="{{ field.name }}"
+                            data-field-name="{{ field.name }}" 
+                            data-field-type="{{ field.type }}"
+                            data-original-value="{{ field.value }}"
+                            title="Double-click to edit">
+                            <span class="cell-value">{{ field.value }}</span>
+                        </td>
+                        {% endif %}
+                    {% endfor %}
+                    <td class="action-cell">
+                        <div class="action-buttons">
+                        {% if current_status == 'pending' or not current_status %}
+                        {% if perm_idcard_verify %}
+                        <button class="row-action-btn verify-row-btn" data-card-id="{{ card.id }}" title="Verify this card">
+                            <i class="fa-solid fa-check"></i>
+                            <span>Verify</span>
+                        </button>
+                        {% endif %}
+                        {% elif current_status == 'verified' %}
+                        {% if perm_idcard_approve %}
+                        <button class="row-action-btn approve-row-btn" data-card-id="{{ card.id }}" title="Approve this card">
+                            <i class="fa-solid fa-check-double"></i>
+                            <span>Approve</span>
+                        </button>
+                        {% endif %}
+                        {% if perm_idcard_verify %}
+                        <button class="row-action-btn unverify-row-btn" data-card-id="{{ card.id }}" title="Move back to pending">
+                            <i class="fa-solid fa-rotate-left"></i>
+                            <span>Unverify</span>
+                        </button>
+                        {% endif %}
+                        {% elif current_status == 'approved' %}
+                        {% if perm_idcard_approve %}
+                        <button class="row-action-btn download-row-btn" data-card-id="{{ card.id }}" title="Move to download list">
+                            <i class="fa-solid fa-download"></i>
+                            <span>Download</span>
+                        </button>
+                        {% endif %}
+                        {% elif current_status == 'pool' %}
+                        {% if perm_idcard_retrieve %}
+                        <button class="row-action-btn retrieve-row-btn" data-card-id="{{ card.id }}" title="Retrieve to pending">
+                            <i class="fa-solid fa-rotate-left"></i>
+                            <span>Retrieve</span>
+                        </button>
+                        {% endif %}
+                        {% elif current_status == 'download' %}
+                        <!-- Download list - Download single card image -->
+                        {% if perm_idcard_bulk_download %}
+                        <button class="row-action-btn download-single-row-btn" data-card-id="{{ card.id }}" title="Download this card's image">
+                            <i class="fa-solid fa-download"></i>
+                            <span>Download</span>
+                        </button>
+                        {% endif %}
+                        {% else %}
+                        <span class="status-badge {{ card.status }}">{{ card.get_status_display }}</span>
+                        {% endif %}
+                        </div>
+                    </td>
+                    {% if perm_idcard_updated_at %}
+                    <td class="date-cell">{{ card.updated_at|date:"d-M-Y h:i A" }}</td>
+                    <td class="user-cell">Admin</td>
+                    {% endif %}
+                </tr>
+                {% empty %}
+                <tr class="no-data-row">
+                    <td colspan="50" class="no-data">
+                        <i class="fa-solid fa-id-card"></i>
+                        <span>No ID cards found</span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <!-- Loading indicator for lazy loading -->
+    <div class="lazy-load-indicator" id="lazyLoadIndicator" style="display: none;">
+        <i class="fa-solid fa-spinner fa-spin"></i>
+        <span>Loading more records...</span>
+    </div>
+</div>
+
+<script>
+// Auto-detect compact mode: if 16+ columns or headers touch each other, enable word-wrap
+(function() {
+    var table = document.getElementById('data-table');
+    if (!table) return;
+    var container = table.closest('.idcard-table');
+    if (!container) return;
+    var cols = table.querySelectorAll('thead th');
+    if (cols.length >= 16 || table.scrollWidth > container.clientWidth) {
+        container.classList.add('compact-mode');
+    }
+})();
+</script>

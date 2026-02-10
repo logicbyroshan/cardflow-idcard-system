@@ -1,0 +1,175 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- SEO Meta Tags Dynamic from BusinessDetails -->
+    <title>{% block title %}{% if business %}{{ business.site_name }}{% else %}Adarsh ID Cards{% endif %}{% endblock %} | {{ business.tagline|default:'Professional ID Card Solutions' }}</title>
+    <meta name="description" content="{% block meta_description %}{{ business.meta_description|default:'Professional ID Cards for Schools and Institutions' }}{% endblock %}">
+    <meta name="keywords" content="{{ business.meta_keywords }}">
+    <link rel="canonical" href="{{ request.build_absolute_uri }}">
+    
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="{% block og_title %}{% if business %}{{ business.site_name }}{% else %}Adarsh ID Cards{% endif %}{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}{{ business.meta_description|default:'Professional ID Cards for Schools and Institutions' }}{% endblock %}">
+    <meta property="og:url" content="{{ request.build_absolute_uri }}">
+    <meta property="og:image" content="{% block og_image %}{% static 'website/images/adarsh.png' %}{% endblock %}">
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    
+    <meta name="theme-color" content="#3498db">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="{% static 'website/images/favicon.ico' %}">
+    <link rel="apple-touch-icon" href="{% static 'website/images/favicon.ico' %}">
+    
+    <!-- Fonts & Icons -->
+    <script src="https://kit.fontawesome.com/b01194457c.js" crossorigin="anonymous"></script>
+    
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="{% static 'website/styles/style.css' %}">
+    <link rel="stylesheet" href="{% static 'website/styles/page-common.css' %}">
+    <link rel="stylesheet" href="{% static 'website/styles/responsive.css' %}">
+    <link rel="stylesheet" href="{% static 'website/styles/page-common-responsive.css' %}">
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <div class="container">
+            <div class="top-bar-content">
+                {% if business.phone %}
+                    <a href="tel:{{ business.phone }}" class="top-bar-item">
+                        <i class="fas fa-phone-alt"></i>
+                        <span>{{ business.phone }}</span>
+                    </a>
+                {% endif %}
+                {% if business.email %}
+                    <a href="mailto:{{ business.email }}" class="top-bar-item">
+                        <i class="fas fa-envelope"></i>
+                        <span>{{ business.email }}</span>
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-content">
+                <div class="logo">
+                    <a href="{% url 'website:home' %}" style="display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit;">
+                        <img src="{% static 'website/images/adarsh.png' %}" alt="Adarsh Logo" class="logo-img">
+                        <span class="logo-text">{{ site_name }}</span>
+                    </a>
+                </div>
+                <ul class="nav-links">
+                    <li><a href="{% url 'website:home' %}">Home</a></li>
+                    <li><a href="{% url 'website:why_choose_us' %}">Why Choose Us</a></li>
+                    <li><a href="{% url 'website:our_work' %}">Our Works</a></li>
+                    <li><a href="{% url 'website:testimonials' %}">Testimonials</a></li>
+                    <li><a href="{% url 'website:home' %}#contact">Contact</a></li>
+                    <li><a href="{% url 'accounts:login' %}" class="btn-cta btn-login"><i class="fas fa-sign-in-alt"></i> Login</a></li>
+                </ul>
+                <div class="hamburger">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Block -->
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <!-- About Section -->
+                <div class="footer-section">
+                    <h4>Adarsh ID Cards</h4>
+                    <p>Your trusted partner for professional ID card solutions with 20+ years of excellence.</p>
+                    <div class="social-links">
+                        <a href="{{ business.facebook_url|default:'#' }}" target="_blank" rel="noopener noreferrer" title="Facebook" {% if not business.facebook_url %}style="pointer-events: none; opacity: 0.5;"{% endif %}>
+                            <i class="fab fa-facebook-f"></i>
+                        </a>
+                        <a href="{{ business.instagram_url|default:'#' }}" target="_blank" rel="noopener noreferrer" title="Instagram" {% if not business.instagram_url %}style="pointer-events: none; opacity: 0.5;"{% endif %}>
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                        <a href="{{ business.twitter_url|default:'#' }}" target="_blank" rel="noopener noreferrer" title="Twitter" {% if not business.twitter_url %}style="pointer-events: none; opacity: 0.5;"{% endif %}>
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <a href="{% if business.whatsapp_number %}https://wa.me/{{ business.whatsapp_number }}{% else %}#{% endif %}" target="_blank" rel="noopener noreferrer" title="WhatsApp" {% if not business.whatsapp_number %}style="pointer-events: none; opacity: 0.5;"{% endif %}>
+                            <i class="fab fa-whatsapp"></i>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Quick Links Section -->
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul>
+                        <li><a href="{% url 'website:home' %}">Home</a></li>
+                        <li><a href="{% url 'website:why_choose_us' %}">Why Choose Us</a></li>
+                        <li><a href="{% url 'website:our_work' %}">Our Works</a></li>
+                        <li><a href="{% url 'website:testimonials' %}">Testimonials</a></li>
+                        <li><a href="{% url 'website:home' %}#contact">Get a Quote</a></li>
+                    </ul>
+                </div>
+
+                <!-- Services Section -->
+                <div class="footer-section">
+                    <h4>Our Expertise</h4>
+                    <ul>
+                        <li>School ID Cards</li>
+                        <li>Staff Identity Cards</li>
+                        <li>Digital Lanyards</li>
+                        <li>Printed Marksheets</li>
+                        <li>Certificate Design</li>
+                        <li>RFID Integration</li>
+                    </ul>
+                </div>
+
+                <!-- Map Section -->
+                <div class="footer-section">
+                    <h4>Our Location</h4>
+                    <div class="footer-map-container">
+                        <iframe 
+                            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d378.3359528312134!2d77.3420797768417!3d23.268663945006807!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x397c6815e6c318ed%3A0xb8b000f506c73674!2sAdarsh%20ID%20Cards!5e1!3m2!1sen!2sin!4v1769799570290!5m2!1sen!2sin" 
+                            width="100%" 
+                            height="185" 
+                            style="border:0; border-radius: 8px;" 
+                            allowfullscreen="" 
+                            loading="lazy"
+                            referrerpolicy="no-referrer-when-downgrade">
+                        </iframe>
+                        {% if business.address %}
+                        <p style="margin-top: 1rem; font-size: 0.85rem; line-height: 1.4;">
+                            <i class="fas fa-map-marker-alt"></i> {{ business.address }}
+                        </p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p>&copy; {% now "Y" %} {{ site_name }}. All rights reserved. | <a href="{% url 'website:privacy_policy' %}">Privacy Policy</a></p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Global Scripts -->
+    <script src="{% static 'website/scripts/main.js' %}" defer></script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

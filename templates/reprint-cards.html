@@ -1,0 +1,77 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reprint ID Cards - Adarsh ID Cards</title>
+  <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700&display=swap" rel="stylesheet">
+  
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="{% static 'css/variables.css' %}?v=5">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=42">
+  <link rel="stylesheet" href="{% static 'css/common.css' %}?v=50">
+  <link rel="stylesheet" href="{% static 'css/idcard-actions.css' %}?v=60">
+  <link rel="stylesheet" href="{% static 'css/idcard-actions-enhanced.css' %}?v=7">
+  <link rel="stylesheet" href="{% static 'css/reprint-cards.css' %}?v=6">
+  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=2">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Global Variables -->
+  <script>
+    var TABLE_ID = {{ table.id }};
+    var CLIENT_ID = {{ client.id }};
+    var CURRENT_STEP = '{{ current_step|default:"requests" }}';
+    var CURRENT_STATUS = 'pending';
+  </script>
+</head>
+<body>
+  <!-- Sidebar -->
+  {% include 'partials/sidebar.html' %}
+
+  <!-- Main Content Area -->
+  <main class="main idcard-actions-page reprint-cards-page">
+    <!-- Top Navigation Bar with 3-Step Tabs -->
+    {% include 'partials/reprint/topbar.html' %}
+
+    <div class="main-content">
+      <!-- Step Content (action bars, search, table, pagination) -->
+      {% include 'partials/reprint/content.html' %}
+    </div>
+  </main>
+
+  <!-- Side Modal for Edit/View (reused from idcard-actions) -->
+  {% include 'partials/idcard/side-modal.html' %}
+
+  <!-- Toast Notifications -->
+  {% include 'partials/components/toast.html' %}
+
+  <!-- Common Modules (Load Order Matters) -->
+  <script src="{% static 'js/common/ajax.js' %}?v=2"></script>
+  <script src="{% static 'js/common/toast.js' %}?v=2"></script>
+  <script src="{% static 'js/common/modal.js' %}?v=2"></script>
+  <script src="{% static 'js/common/sidebar.js' %}?v=2"></script>
+  <script src="{% static 'js/common/validation.js' %}?v=2"></script>
+  <script src="{% static 'js/common/utils.js' %}?v=2"></script>
+  <script src="{% static 'js/init.js' %}?v=2"></script>
+  
+  <!-- Legacy compatibility -->
+  <script src="{% static 'js/utils.js' %}?v=3"></script>
+  <script src="{% static 'js/script.js' %}?v=42"></script>
+  <script src="{% static 'js/global-search.js' %}?v=2"></script>
+
+  <!-- Reprint Page Script -->
+  <script src="{% static 'js/idcard-actions-upload.js' %}?v=11"></script>
+  <script src="{% static 'js/idcard-actions-modal.js' %}?v=25"></script>
+  <script src="{% static 'js/reprint-cards.js' %}?v=11"></script>
+  <script>
+    // Initialize the modal module for the reprint page
+    if (typeof initModalModule === 'function') initModalModule();
+  </script>
+</body>
+</html>

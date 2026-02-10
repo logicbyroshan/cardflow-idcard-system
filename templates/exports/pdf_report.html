@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 1.8cm 1cm 1cm 1cm;
+
+            @frame header_frame {
+                -pdf-frame-content: header_content;
+                top: 0.4cm;
+                left: 1cm;
+                right: 1cm;
+                height: 0.8cm;
+            }
+
+            @frame footer_frame {
+                -pdf-frame-content: footer_content;
+                bottom: 0cm;
+                left: 1cm;
+                right: 1cm;
+                height: 0.8cm;
+            }
+        }
+
+        body {
+            font-family: Helvetica, sans-serif;
+            color: #000;
+            text-transform: uppercase;
+        }
+
+        /* Header content — rendered inside header_frame on every page */
+        #header_content {
+            padding: 0;
+        }
+        .header-table { width: 92%; margin: 0 auto; }
+        .inst-name   { text-align: left;   font-weight: bold; font-size: 10pt; }
+        .table-info  { text-align: center; font-weight: bold; font-size: 10pt; }
+        .brand-name  { text-align: right;  font-weight: bold; font-size: 9pt; }
+
+        /* Main data table */
+        table.data-table {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+        }
+
+        table.data-table thead tr {
+            background-color: #f0f0f0;
+        }
+
+        table.data-table th {
+            border: 0.5pt solid #000;
+            padding: 2px 1px;
+            font-size: 7pt;
+            font-weight: bold;
+            text-align: center;
+            vertical-align: middle;
+            word-wrap: break-word;
+        }
+
+        table.data-table td {
+            border: 0.5pt solid #000;
+            padding: 1px 1px;
+            font-size: 7.5pt;
+            font-weight: bold;
+            vertical-align: middle;
+            word-wrap: break-word;
+            line-height: 1.1;
+        }
+
+        /* Image cells — 1mm padding inside cell */
+        table.data-table td.img-cell {
+            padding: 1mm;
+        }
+
+        /* Image sizing — 2.5cm height to match Word export exactly */
+        .card-pic {
+            height: 2.5cm;
+            width: auto;
+            display: block;
+            margin: 0 auto;
+            border: 0.5pt solid #000;
+            padding: 0;
+        }
+
+        /* Placeholder images — no border (placeholder has its own styling) */
+        .card-pic-placeholder {
+            height: 2.5cm;
+            width: auto;
+            display: block;
+            margin: 0 auto;
+            padding: 0;
+        }
+
+        /* Footer content — rendered inside footer_frame on every page */
+        #footer_content {
+            font-size: 6.5pt;
+            color: #000;
+            border-top: 1pt solid #000;
+            padding-top: 1px;
+            line-height: 1.1;
+        }
+        .footer-left  { float: left;  width: 80%; }
+        .footer-right { float: right; width: 20%; text-align: right; font-size: 7pt; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <!-- Repeating header (rendered by @frame header_frame on every page) -->
+    <div id="header_content">
+        <table class="header-table">
+            <tr>
+                <td class="inst-name">INSTITUTE NAME: {{ institution_name }}</td>
+                <td class="table-info">{{ table_name }} ({{ current_date }})</td>
+                <td class="brand-name">ADARSH ID CARDS</td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- Pages with data tables (6 records per page, class-break aware) -->
+    {% for page_rows in pages %}
+    {% if not forloop.first %}<pdf:nextpage/>{% endif %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                {% for col in columns %}
+                <th style="width: {{ col.width }}%;">{{ col.label }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in page_rows %}
+            <tr>
+                {% for cell in row %}
+                <td{% if cell.is_image %} class="img-cell"{% endif %} style="text-align: {{ cell.align }};">
+                    {% if cell.is_image %}
+                        {% if cell.is_placeholder %}
+                            <img src="{{ cell.content }}" class="card-pic-placeholder">
+                        {% else %}
+                            <img src="{{ cell.content }}" class="card-pic">
+                        {% endif %}
+                    {% else %}
+                        {{ cell.content }}
+                    {% endif %}
+                </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endfor %}
+
+    <!-- Repeating footer (rendered by @frame footer_frame on every page) -->
+    <div id="footer_content">
+        <span class="footer-left">
+            {{ export_note_line|upper }}
+            | GENERATED: {{ generated_at }} | {{ export_copyright_line|upper }}
+        </span>
+        <span class="footer-right">
+            PAGE <pdf:pagenumber/> OF <pdf:pagecount/>
+        </span>
+    </div>
+
+</body>
+</html>

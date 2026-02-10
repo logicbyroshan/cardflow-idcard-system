@@ -1,0 +1,244 @@
+{% extends "website/base.html" %}
+{% load static %}
+
+{% block title %}Testimonials{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'website/styles/testimonials.css' %}">
+    <link rel="stylesheet" href="{% static 'website/styles/testimonials-responsive.css' %}">
+{% endblock %}
+
+{% block content %}
+    <!-- Hero Section -->
+    <section class="page-hero">
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-badge">
+                    <i class="fas fa-star"></i>
+                    <span>{% if avg_rating %}{{ avg_rating|floatformat:1 }}{% else %}5.0{% endif %}/5 Average Rating</span>
+                </div>
+                <h1>What Our <span class="gradient-text">Clients Say</span></h1>
+                <p class="hero-subtitle">Real stories from schools across the nation. Discover why {{ total_reviews|default:'500' }}+ institutions trust {{ site_name }}.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Text Testimonials Grid -->
+    <section class="testimonials-grid-section">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">Client Stories</span>
+                <h2>Words of <span class="highlight">Appreciation</span></h2>
+            </div>
+            
+            <!-- Filter Tabs -->
+            <div class="filter-tabs">
+                <button class="filter-tab active" data-filter="all">All Reviews</button>
+                <button class="filter-tab" data-filter="quality">Quality</button>
+                <button class="filter-tab" data-filter="delivery">Delivery</button>
+                <button class="filter-tab" data-filter="design">Design</button>
+                <button class="filter-tab" data-filter="support">Support</button>
+            </div>
+            
+            <div class="testimonials-masonry" id="testimonialGrid">
+                {% for t in text_testimonials %}
+                <div class="testimonial-card" data-category="{{ t.tag|lower }}">
+                    <div class="card-header">
+                        <div class="reviewer-avatar">
+                            {% if t.reviewer_avatar %}
+                                <img src="{{ t.reviewer_avatar.url }}" alt="{{ t.reviewer_name }}">
+                            {% else %}
+                                <div class="avatar-init">{{ t.reviewer_name|slice:":1" }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="reviewer-info">
+                            <h4>{{ t.reviewer_name }}</h4>
+                            <span>{{ t.reviewer_title }}{% if t.reviewer_school %}, {{ t.reviewer_school }}{% endif %}</span>
+                        </div>
+                        <div class="card-rating">
+                            <i class="fas fa-star"></i>
+                            <span>{{ t.rating|floatformat:1 }}</span>
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        <p>{{ t.text|linebreaksbr }}</p>
+                    </div>
+                    <div class="card-footer">
+                        <span class="review-date"><i class="far fa-calendar-alt"></i> {{ t.review_date|date:'M Y' }}</span>
+                        <div class="helpful-btn" data-id="{{ t.id }}">
+                            <i class="far fa-thumbs-up"></i>
+                            <span>Helpful ({{ t.helpful_count }})</span>
+                        </div>
+                    </div>
+                    {% if t.tag %}<div class="card-tag">{{ t.tag }}</div>{% endif %}
+                </div>
+                {% empty %}
+                <div class="testimonial-card" style="grid-column: 1 / -1; text-align: center; opacity: 0.85;">
+                    <div class="stars">
+                        <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                    </div>
+                    <p style="font-size: 1.1rem; color: #94a3b8; margin: 18px 0 0 0;">No reviews yet. Be the first to share your experience!</p>
+                    <div class="testimonial-author">
+                        <div class="avatar-placeholder"><i class="fas fa-user"></i></div>
+                        <div>
+                            <h4>Future Reviewer</h4>
+                            <p>Your School - India</p>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div class="load-more-wrapper">
+                <button class="load-more-btn" id="writeReviewBtn">
+                    <i class="fas fa-pen-fancy"></i> Write a Review
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Ratings Section -->
+    <section class="ratings-section">
+        <div class="container">
+            <!-- SVG Gradient Definition -->
+            <svg style="position: absolute; width: 0; height: 0;">
+                <defs>
+                    <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" style="stop-color:#0a92dd;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#100F57;stop-opacity:1" />
+                    </linearGradient>
+                </defs>
+            </svg>
+            
+            <div class="section-header">
+                <span class="section-badge">Ratings</span>
+                <h2>Excellence in <span class="highlight">Every Aspect</span></h2>
+                <p>See how we perform across different categories</p>
+            </div>
+            
+            <div class="ratings-grid">
+                <div class="rating-card">
+                    <div class="rating-icon">
+                        <i class="fas fa-gem"></i>
+                    </div>
+                    <h4>Quality</h4>
+                    <div class="circle-progress" data-percent="98">
+                        <svg viewBox="0 0 100 100">
+                            <circle class="progress-bg" cx="50" cy="50" r="45"></circle>
+                            <circle class="progress-bar" cx="50" cy="50" r="45"></circle>
+                        </svg>
+                        <span class="progress-value">98%</span>
+                    </div>
+                    <p>Premium materials & printing</p>
+                </div>
+                
+                <div class="rating-card">
+                    <div class="rating-icon">
+                        <i class="fas fa-truck"></i>
+                    </div>
+                    <h4>Delivery</h4>
+                    <div class="circle-progress" data-percent="96">
+                        <svg viewBox="0 0 100 100">
+                            <circle class="progress-bg" cx="50" cy="50" r="45"></circle>
+                            <circle class="progress-bar" cx="50" cy="50" r="45"></circle>
+                        </svg>
+                        <span class="progress-value">96%</span>
+                    </div>
+                    <p>On-time every time</p>
+                </div>
+                
+                <div class="rating-card">
+                    <div class="rating-icon">
+                        <i class="fas fa-paint-brush"></i>
+                    </div>
+                    <h4>Design</h4>
+                    <div class="circle-progress" data-percent="97">
+                        <svg viewBox="0 0 100 100">
+                            <circle class="progress-bg" cx="50" cy="50" r="45"></circle>
+                            <circle class="progress-bar" cx="50" cy="50" r="45"></circle>
+                        </svg>
+                        <span class="progress-value">97%</span>
+                    </div>
+                    <p>Creative & modern designs</p>
+                </div>
+                
+                <div class="rating-card">
+                    <div class="rating-icon">
+                        <i class="fas fa-headset"></i>
+                    </div>
+                    <h4>Support</h4>
+                    <div class="circle-progress" data-percent="99">
+                        <svg viewBox="0 0 100 100">
+                            <circle class="progress-bg" cx="50" cy="50" r="45"></circle>
+                            <circle class="progress-bar" cx="50" cy="50" r="45"></circle>
+                        </svg>
+                        <span class="progress-value">99%</span>
+                    </div>
+                    <p>Always here to help</p>
+                </div>
+                
+                <div class="rating-card">
+                    <div class="rating-icon">
+                        <i class="fas fa-angles-right"></i>
+                    </div>
+                    <h4>Value</h4>
+                    <div class="circle-progress" data-percent="95">
+                        <svg viewBox="0 0 100 100">
+                            <circle class="progress-bg" cx="50" cy="50" r="45"></circle>
+                            <circle class="progress-bar" cx="50" cy="50" r="45"></circle>
+                        </svg>
+                        <span class="progress-value">95%</span>
+                    </div>
+                    <p>Best price-quality ratio</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Review Modal -->
+    <div class="review-modal" id="reviewModal">
+        <div class="review-modal-content">
+            <button class="review-modal-close" id="reviewModalClose"><i class="fas fa-times"></i></button>
+            <h3>Submit Your Feedback</h3>
+            <form id="reviewForm" data-submit-url="{% url 'website:submit_testimonial' %}">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label>Rating</label>
+                    <div class="star-rating">
+                        <i class="fas fa-star" data-rating="1"></i>
+                        <i class="fas fa-star" data-rating="2"></i>
+                        <i class="fas fa-star" data-rating="3"></i>
+                        <i class="fas fa-star" data-rating="4"></i>
+                        <i class="fas fa-star" data-rating="5"></i>
+                    </div>
+                    <input type="hidden" name="rating" id="selectedRating" value="5">
+                </div>
+                <div class="form-group">
+                    <input type="text" name="name" placeholder="Your Name" required>
+                </div>
+                <div class="form-group">
+                    <input type="text" name="school" placeholder="School/Institution Name" required>
+                </div>
+                <div class="form-group">
+                    <textarea name="text" placeholder="Tell us about our quality and service..." rows="4" required></textarea>
+                </div>
+                <button type="submit" class="submit-review-btn">Submit for Approval</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast-container" id="toastContainer">
+        <div class="toast" id="toast">
+            <div class="toast-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="toast-message"></div>
+            <button class="toast-close"><i class="fas fa-times"></i></button>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="{% static 'website/scripts/testimonials.js' %}"></script>
+{% endblock %}

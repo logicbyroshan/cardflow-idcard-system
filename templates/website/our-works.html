@@ -1,0 +1,307 @@
+{% extends 'website/base.html' %}
+{% load static %}
+
+{% block title %}Our Works{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'website/styles/our-works.css' %}">
+    <link rel="stylesheet" href="{% static 'website/styles/our-works-responsive.css' %}">
+{% endblock %}
+
+{% block content %}
+    <!-- Hero Section -->
+    <section class="page-hero">
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-badge">
+                    <i class="fas fa-palette"></i>
+                    <span>Our Creative Portfolio</span>
+                </div>
+                <h1>Crafting <span class="gradient-text">Identity</span> Solutions</h1>
+                <p class="hero-subtitle">Explore our complete range of premium printing solutions crafted with precision and creativity.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Product Categories Showcase (Bento Grid) -->
+    <section class="categories-showcase" id="categories">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">What We Create</span>
+                <h2>Our <span class="highlight">Product Range</span></h2>
+            </div>
+            <div class="categories-grid">
+                {% for cat in bento_categories %}
+                <div class="category-card {% if cat.bento_size == 'large' %}large{% endif %}" data-category="{{ cat.id }}" data-slug="{{ cat.slug }}">
+                    <div class="category-bg">
+                        <div class="bg-placeholder"></div>
+                        <img src="" alt="{{ cat.name }}" class="category-bg-img" data-cat-id="{{ cat.id }}">
+                    </div>
+                    <div class="category-content">
+                        <div class="category-icon">
+                            <i class="{{ cat.icon }}"></i>
+                        </div>
+                        <h3>{{ cat.name }}</h3>
+                        <p>{% if cat.description %}{{ cat.description }}{% else %}Premium {{ cat.name }} designs for institutions.{% endif %}</p>
+                    </div>
+                    <div class="category-overlay">
+                        <button class="explore-btn" data-filter="{{ cat.id }}">
+                            View Samples <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            {% if extra_categories %}
+            <!-- Additional Categories (below bento) -->
+            <div class="extra-categories-bar">
+                {% for cat in extra_categories %}
+                <button class="extra-category-tag explore-btn" data-filter="{{ cat.id }}" data-category="{{ cat.id }}" data-slug="{{ cat.slug }}">
+                    <i class="{{ cat.icon }}"></i>
+                    <span>{{ cat.name }}</span>
+                </button>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </section>
+    
+    <!-- Category Images Data for JS -->
+    {{ category_images|json_script:"categoryImagesData" }}
+
+    <!-- Video Reels Section -->
+    <section class="reels-section" id="reels">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">Behind The Scenes</span>
+                <h2>Watch Our <span class="highlight">Reels</span></h2>
+                <p>See our creative process and product showcases in action</p>
+            </div>
+            <div class="reels-wrapper" data-total-reels="{{ total_reels|default:0 }}" data-loaded-count="{{ reels|length }}" data-reels-url="{% url 'website:load_more_reels' %}">
+                <div class="reels-scroll" id="reelsScroll">
+                    {% if reels %}
+                        {% for reel in reels %}
+                        <div class="reel-card" data-index="{{ forloop.counter0 }}" data-reel-id="{{ reel.id }}">
+                            <div class="reel-video">
+                                {% if reel.video_url %}
+                                    <video class="reel-video-player" muted playsinline loop preload="metadata" {% if reel.thumbnail %}poster="{{ reel.thumbnail.url }}"{% endif %}>
+                                        <source src="{{ reel.video_url }}" type="video/mp4">
+                                    </video>
+                                {% elif reel.thumbnail %}
+                                    <img src="{{ reel.thumbnail.url }}" alt="{{ reel.title }}" class="reel-thumbnail">
+                                {% else %}
+                                    <div class="reel-placeholder"></div>
+                                {% endif %}
+                                <div class="reel-play-overlay">
+                                    <button class="play-reel-btn">
+                                        <i class="fas fa-play"></i>
+                                    </button>
+                                </div>
+                                <div class="reel-info">
+                                    <span class="reel-views"><i class="fas fa-eye"></i> {{ reel.views_count }}</span>
+                                    <span class="reel-likes"><i class="fas fa-heart"></i> {{ reel.likes_count }}</span>
+                                </div>
+                            </div>
+                            <div class="reel-content">
+                                <h4>{{ reel.title }}</h4>
+                                <p>{{ reel.description|default:"Watch our showcase" }}</p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <!-- Placeholder reels when no data -->
+                        <div class="reel-card" data-index="0">
+                            <div class="reel-video">
+                                <div class="reel-placeholder"></div>
+                                <div class="reel-play-overlay">
+                                    <button class="play-reel-btn"><i class="fas fa-play"></i></button>
+                                </div>
+                                <div class="reel-info">
+                                    <span class="reel-views"><i class="fas fa-eye"></i> 12.5K</span>
+                                    <span class="reel-likes"><i class="fas fa-heart"></i> 890</span>
+                                </div>
+                            </div>
+                            <div class="reel-content">
+                                <h4>ID Card Printing Process</h4>
+                                <p>Watch how we create premium ID cards</p>
+                            </div>
+                        </div>
+                        <div class="reel-card" data-index="1">
+                            <div class="reel-video">
+                                <div class="reel-placeholder"></div>
+                                <div class="reel-play-overlay">
+                                    <button class="play-reel-btn"><i class="fas fa-play"></i></button>
+                                </div>
+                                <div class="reel-info">
+                                    <span class="reel-views"><i class="fas fa-eye"></i> 8.2K</span>
+                                    <span class="reel-likes"><i class="fas fa-heart"></i> 654</span>
+                                </div>
+                            </div>
+                            <div class="reel-content">
+                                <h4>Lanyard Customization</h4>
+                                <p>Custom lanyards for every occasion</p>
+                            </div>
+                        </div>
+                        <div class="reel-card" data-index="2">
+                            <div class="reel-video">
+                                <div class="reel-placeholder"></div>
+                                <div class="reel-play-overlay">
+                                    <button class="play-reel-btn"><i class="fas fa-play"></i></button>
+                                </div>
+                                <div class="reel-info">
+                                    <span class="reel-views"><i class="fas fa-eye"></i> 15.8K</span>
+                                    <span class="reel-likes"><i class="fas fa-heart"></i> 1.2K</span>
+                                </div>
+                            </div>
+                            <div class="reel-content">
+                                <h4>Certificate Design Showcase</h4>
+                                <p>Elegant certificates for achievements</p>
+                            </div>
+                        </div>
+                        <div class="reel-card" data-index="3">
+                            <div class="reel-video">
+                                <div class="reel-placeholder"></div>
+                                <div class="reel-play-overlay">
+                                    <button class="play-reel-btn"><i class="fas fa-play"></i></button>
+                                </div>
+                                <div class="reel-info">
+                                    <span class="reel-views"><i class="fas fa-eye"></i> 6.4K</span>
+                                    <span class="reel-likes"><i class="fas fa-heart"></i> 432</span>
+                                </div>
+                            </div>
+                            <div class="reel-content">
+                                <h4>Invitation Card Collection</h4>
+                                <p>Beautiful invites for your events</p>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    {% comment %} Portfolio items of type reel also show here {% endcomment %}
+                    {% for item in portfolio_reels %}
+                    <div class="reel-card" data-index="{{ forloop.counter|add:reels|length }}" data-portfolio-reel="true">
+                        <div class="reel-video">
+                            {% if item.video_file %}
+                                <video class="reel-video-player" muted playsinline loop preload="metadata" {% if item.image %}poster="{{ item.image.url }}"{% endif %}>
+                                    <source src="{{ item.video_file.url }}" type="video/mp4">
+                                </video>
+                            {% elif item.video_url %}
+                                <video class="reel-video-player" muted playsinline loop preload="metadata" {% if item.image %}poster="{{ item.image.url }}"{% endif %}>
+                                    <source src="{{ item.video_url }}" type="video/mp4">
+                                </video>
+                            {% elif item.image %}
+                                <img src="{{ item.image.url }}" alt="{{ item.title }}" class="reel-thumbnail">
+                            {% else %}
+                                <div class="reel-placeholder"></div>
+                            {% endif %}
+                            <div class="reel-play-overlay">
+                                <button class="play-reel-btn"><i class="fas fa-play"></i></button>
+                            </div>
+                        </div>
+                        <div class="reel-content">
+                            <h4>{{ item.title }}</h4>
+                            <p>{{ item.description|default:"Watch our showcase" }}</p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Portfolio Gallery Section -->
+    <section class="portfolio-section" id="portfolio">
+        <div class="container">
+            <div class="section-header">
+                <h2>Portfolio <span class="highlight">Gallery</span></h2>
+            </div>
+
+            <!-- Filter Tabs -->
+            <div class="portfolio-filters">
+                <button class="filter-tab active" data-filter="all"><i class="fas fa-th"></i> All</button>
+                {% for cat in categories %}
+                    <button class="filter-tab" data-filter="{{ cat.id }}">{{ cat.name }}</button>
+                {% endfor %}
+            </div>
+
+            <!-- Portfolio Grid -->
+            <div class="portfolio-grid" id="portfolioGrid">
+                {% for item in portfolio_items %}
+                <div class="portfolio-item {{ item.orientation|default:'square' }} {% if item.item_type == 'video' or item.item_type == 'reel' %}video-type{% endif %}" data-category="{{ item.category_id|default:'' }}">
+                    <div class="portfolio-image">
+                        {% if item.item_type == 'video' or item.item_type == 'reel' %}
+                            {% if item.image %}
+                                <img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy">
+                            {% else %}
+                                <div class="portfolio-video-placeholder"><i class="fas fa-video"></i></div>
+                            {% endif %}
+                            <div class="portfolio-play-icon"><i class="fas fa-play-circle"></i></div>
+                        {% else %}
+                            {% if item.image %}
+                                <img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy">
+                            {% endif %}
+                        {% endif %}
+                        <div class="portfolio-overlay">
+                            <div class="overlay-content">
+                                <span class="portfolio-category">{{ item.category.name|default:"Portfolio" }}</span>
+                                <h4>{{ item.title }}</h4>
+                                <div class="overlay-actions">
+                                    {% if item.item_type == 'video' or item.item_type == 'reel' %}
+                                    <button class="action-btn play-portfolio-btn"
+                                            data-video-url="{{ item.video_file.url|default:item.video_url }}"
+                                            data-title="{{ item.title }}">
+                                        <i class="fas fa-play"></i>
+                                    </button>
+                                    {% endif %}
+                                    {% if item.image %}
+                                    <button class="action-btn zoom-btn" data-src="{{ item.image.url }}" data-title="{{ item.title }}">
+                                        <i class="fas fa-search-plus"></i>
+                                    </button>
+                                    {% endif %}
+                                    <button class="action-btn like-btn">
+                                        <i class="fas fa-heart"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="empty-portfolio-message" style="grid-column: 1 / -1; text-align: center; padding: 60px 20px;">
+                    <p style="color: #94a3b8; font-size: 1.1rem; margin: 0;">No works uploaded yet.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <!-- Modals (Gallery, Lightbox, Video) -->
+    <div class="product-gallery-modal" id="productGalleryModal">
+        <div class="product-gallery-content">
+            <div class="product-gallery-header">
+                <h3 id="productGalleryTitle">Items</h3>
+                <button class="product-gallery-close" id="productGalleryClose"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="product-gallery-grid" id="productGalleryGrid"></div>
+        </div>
+    </div>
+
+    <div class="lightbox" id="lightbox">
+        <button class="lightbox-close" id="lightboxClose"><i class="fas fa-times"></i></button>
+        <div class="lightbox-content">
+            <img src="" id="lightboxImage">
+            <div class="lightbox-caption" id="lightboxCaption"></div>
+        </div>
+    </div>
+
+    <div class="video-modal" id="videoModal">
+        <div class="video-modal-content">
+            <button class="video-modal-close" id="videoModalClose"><i class="fas fa-times"></i></button>
+            <video id="modalVideo" controls src=""></video>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="{% static 'website/scripts/our-works.js' %}?v=3"></script>
+{% endblock %}

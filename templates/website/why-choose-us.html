@@ -1,0 +1,218 @@
+{% extends "website/base.html" %}
+{% load static %}
+
+{% block title %}Why Choose Us{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'website/styles/why-choose-us.css' %}">
+    <link rel="stylesheet" href="{% static 'website/styles/why-choose-us-responsive.css' %}">
+{% endblock %}
+
+{% block content %}
+    <!-- Hero Section -->
+    <section class="page-hero">
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-badge">
+                    <i class="fas fa-award"></i>
+                    <span>Trusted Since 2004</span>
+                </div>
+                <h1>Why <span class="gradient-text">Choose {{ site_name }}</span>?</h1>
+                <p class="hero-subtitle">
+                    {{ business.tagline|default:"Two decades of excellence, innovation, and unwavering commitment to quality. We don't just make ID cards – we build trust." }}
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Key Features Section (Dynamic from Database) -->
+    <section class="key-features">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">Our Strengths</span>
+                <h2>What Makes Us <span class="highlight">Different</span></h2>
+                <p>We combine experience, technology, and dedication to deliver excellence every single time</p>
+            </div>
+            
+            <div class="features-grid">
+                {% for feature in features %}
+                <div class="feature-card {% if feature.is_featured %}featured{% endif %}">
+                    <div class="feature-icon">
+                        <i class="{{ feature.icon }}"></i>
+                    </div>
+                    <div class="feature-number">{{ forloop.counter|stringformat:"02d" }}</div>
+                    <h3>{{ feature.title }}</h3>
+                    <p>{{ feature.description }}</p>
+                    
+                    {% if feature.highlight %}
+                    <div class="feature-highlight">
+                        <span>{{ feature.highlight }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+                {% empty %}
+                <p style="text-align: center; width: 100%; grid-column: 1 / -1;">Our features are being updated. Check back soon!</p>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <!-- Promises We Keep Section -->
+    <section class="promises-section">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">Our Commitment</span>
+                <h2>Promises We <span class="highlight">Keep</span></h2>
+                <p>Not just words, but actions that define our service</p>
+            </div>
+            
+            <div class="promises-grid">
+                <div class="promise-card">
+                    <div class="promise-icon">
+                        <i class="fas fa-truck"></i>
+                    </div>
+                    <h3>On-Time Delivery</h3>
+                    <p>We guarantee delivery within the promised timeframe. Late delivery? We make it right.</p>
+                    <div class="promise-guarantee">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>100% Delivery Guarantee</span>
+                    </div>
+                </div>
+                
+                <div class="promise-card">
+                    <div class="promise-icon">
+                        <i class="fas fa-gem"></i>
+                    </div>
+                    <h3>Premium Quality</h3>
+                    <p>Only the finest materials and latest printing technology. Every card is a masterpiece.</p>
+                    <div class="promise-guarantee">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>Quality Assured</span>
+                    </div>
+                </div>
+                
+                <div class="promise-card">
+                    <div class="promise-icon">
+                        <i class="fas fa-sync-alt"></i>
+                    </div>
+                    <h3>Free Revisions</h3>
+                    <p>Not happy with the design? We'll revise it until it's perfect, at no extra cost.</p>
+                    <div class="promise-guarantee">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>Unlimited Changes</span>
+                    </div>
+                </div>
+                
+                <div class="promise-card">
+                    <div class="promise-icon">
+                        <i class="fas fa-lock"></i>
+                    </div>
+                    <h3>Data Security</h3>
+                    <p>Your data is safe with us. We follow strict privacy protocols for all student information.</p>
+                    <div class="promise-guarantee">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>100% Secure</span>
+                    </div>
+                </div>
+                
+                <div class="promise-card">
+                    <div class="promise-icon">
+                        <i class="fas fa-headset"></i>
+                    </div>
+                    <h3>After-Sales Support</h3>
+                    <p>Our relationship doesn't end at delivery. We're here for replacements and queries.</p>
+                    <div class="promise-guarantee">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>24/7 Support</span>
+                    </div>
+                </div>
+                
+                <div class="promise-card">
+                    <div class="promise-icon">
+                        <i class="fas fa-rupee-sign"></i>
+                    </div>
+                    <h3>Transparent Pricing</h3>
+                    <p>What you see is what you pay. No surprise charges, no hidden fees, ever.</p>
+                    <div class="promise-guarantee">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>No Hidden Costs</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Why Schools Trust Us Section -->
+    <section class="trust-section">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">Trusted Partner</span>
+                <h2>Why Schools <span class="highlight">Trust Us</span></h2>
+                <p>Join 1000+ institutions that rely on us for their ID solutions</p>
+            </div>
+            
+            <div class="trust-reasons">
+                <div class="trust-card">
+                    <div class="trust-icon">
+                        <i class="fas fa-user-graduate"></i>
+                    </div>
+                    <h3>We Understand Schools</h3>
+                    <p>Years of working with educational institutions means we know your unique requirements and challenges.</p>
+                </div>
+                
+                <div class="trust-card">
+                    <div class="trust-icon">
+                        <i class="fas fa-calendar-alt"></i>
+                    </div>
+                    <h3>Academic Calendar Aligned</h3>
+                    <p>We work around your academic schedule, ensuring cards are ready before the session begins.</p>
+                </div>
+                
+                <div class="trust-card">
+                    <div class="trust-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h3>Bulk Order Experts</h3>
+                    <p>From 100 to 10,000+ cards, we handle orders of all sizes with equal dedication and quality.</p>
+                </div>
+                
+                <div class="trust-card">
+                    <div class="trust-icon">
+                        <i class="fas fa-handshake"></i>
+                    </div>
+                    <h3>Long-term Partnerships</h3>
+                    <p>Many schools have been with us for 10+ years. We value relationships over transactions.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section class="faq-section">
+        <div class="container">
+            <div class="section-header">
+                <h2>Frequently Asked <span class="highlight">Questions</span></h2>
+            </div>
+            
+            <div class="faq-container">
+                {% for faq in faqs %}
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <span>{{ faq.question }}</span>
+                        <i class="fas fa-plus"></i>
+                    </div>
+                    <div class="faq-answer">
+                        <p>{{ faq.answer }}</p>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-center">No FAQs available at the moment.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="{% static 'website/scripts/why-choose-us.js' %}"></script>
+{% endblock %}

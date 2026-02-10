@@ -1,0 +1,331 @@
+{% extends "website/admin/base.html" %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}Business Details{% endblock %}
+
+{% block breadcrumb_extra %}
+<i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+<span class="breadcrumb-item active">Business Details</span>
+{% endblock %}
+
+{% block content %}
+<div class="wa-page-container">
+    <div class="wa-dashboard-section">
+        <div class="wa-dashboard-section-header" style="display: flex; align-items: center; justify-content: space-between;">
+            <h3 class="wa-dashboard-section-title"><i class="fa-solid fa-building"></i> Business Details</h3>
+            {% if business and business.is_active %}
+            <span class="badge badge-success">Active</span>
+            {% elif business %}
+            <span class="badge badge-warning">Inactive</span>
+            {% endif %}
+        </div>
+
+        <form id="businessForm" enctype="multipart/form-data" class="wa-form">
+        {% csrf_token %}
+
+        <!-- Basic Info -->
+        <div class="wa-form-group-title"><i class="fa-solid fa-info-circle"></i> Basic Info</div>
+        <div class="wa-form-row">
+            <div class="wa-form-group">
+                <label for="site_name">Business Name</label>
+                <input type="text" id="site_name" name="site_name" value="{{ business.site_name|default:'' }}" placeholder="Adarsh ID Cards">
+            </div>
+            <div class="wa-form-group">
+                <label for="tagline">Tagline</label>
+                <input type="text" id="tagline" name="tagline" value="{{ business.tagline|default:'' }}" placeholder="Your tagline here">
+            </div>
+        </div>
+
+        <!-- Contact Info -->
+        <div class="wa-form-group-title"><i class="fa-solid fa-phone"></i> Contact Info</div>
+        <div class="wa-form-row">
+            <div class="wa-form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" value="{{ business.email|default:'' }}">
+            </div>
+            <div class="wa-form-group">
+                <label for="phone">Phone</label>
+                <input type="text" id="phone" name="phone" value="{{ business.phone|default:'' }}">
+            </div>
+        </div>
+        <div class="wa-form-row">
+            <div class="wa-form-group full">
+                <label for="address">Address</label>
+                <input type="text" id="address" name="address" value="{{ business.address|default:'' }}">
+            </div>
+        </div>
+        <div class="wa-form-row">
+            <div class="wa-form-group">
+                <label for="working_hours">Working Hours</label>
+                <input type="text" id="working_hours" name="working_hours" value="{{ business.working_hours|default:'' }}" placeholder="Mon-Sat: 9AM - 6PM">
+            </div>
+        </div>
+
+        <!-- Social Links -->
+        <div class="wa-form-group-title"><i class="fa-solid fa-share-nodes"></i> Social Links</div>
+        <div class="wa-form-row">
+            <div class="wa-form-group">
+                <label for="facebook_url"><i class="fa-brands fa-facebook"></i> Facebook</label>
+                <input type="url" id="facebook_url" name="facebook_url" value="{{ business.facebook_url|default:'' }}">
+            </div>
+            <div class="wa-form-group">
+                <label for="instagram_url"><i class="fa-brands fa-instagram"></i> Instagram</label>
+                <input type="url" id="instagram_url" name="instagram_url" value="{{ business.instagram_url|default:'' }}">
+            </div>
+        </div>
+        <div class="wa-form-row">
+            <div class="wa-form-group">
+                <label for="twitter_url"><i class="fa-brands fa-twitter"></i> Twitter / X</label>
+                <input type="url" id="twitter_url" name="twitter_url" value="{{ business.twitter_url|default:'' }}">
+            </div>
+            <div class="wa-form-group">
+                <label for="whatsapp_number"><i class="fa-brands fa-whatsapp"></i> WhatsApp</label>
+                <input type="text" id="whatsapp_number" name="whatsapp_number" value="{{ business.whatsapp_number|default:'' }}" placeholder="919876543210">
+            </div>
+        </div>
+
+        <!-- Hero Section -->
+        <div class="wa-form-group-title"><i class="fa-solid fa-image"></i> Hero Section</div>
+        <div class="wa-form-row">
+            <div class="wa-form-group full">
+                <label for="hero_title">Hero Title</label>
+                <input type="text" id="hero_title" name="hero_title" value="{{ business.hero_title|default:'' }}">
+            </div>
+        </div>
+        <div class="wa-form-row">
+            <div class="wa-form-group full">
+                <label for="hero_description">Hero Description</label>
+                <textarea id="hero_description" name="hero_description" rows="3">{{ business.hero_description|default:'' }}</textarea>
+            </div>
+        </div>
+
+        <!-- Dynamic Hero Images Manager -->
+        <div class="wa-form-group-title" style="margin-top: 12px;">
+            <i class="fa-solid fa-images"></i> Hero Slider Images
+            <button type="button" class="btn btn-primary btn-sm" id="addHeroImageBtn" style="margin-left:auto; font-size:0.8rem; padding:5px 12px;">
+                <i class="fa-solid fa-plus"></i> Add Image
+            </button>
+        </div>
+        <div id="heroImagesGrid" class="wa-form-row wa-form-images">
+            {% for hero in hero_images %}
+            <div class="wa-form-group hero-image-card" data-id="{{ hero.pk }}">
+                <div class="wa-img-preview" style="position:relative;">
+                    <img src="{{ hero.image.url }}" alt="{{ hero.title|default:'Hero' }}">
+                    <span class="hero-order-badge" title="Display order">{{ hero.order }}</span>
+                    {% if not hero.is_active %}
+                    <span class="hero-inactive-badge">Inactive</span>
+                    {% endif %}
+                    <button type="button" class="hero-remove-btn hero-delete-btn" title="Remove image">&times;</button>
+                </div>
+            </div>
+            {% empty %}
+            <div class="wa-form-group" id="noHeroImagesMsg">
+                <p style="color:#888;">No hero images yet. Click "Add Image" to upload one.</p>
+            </div>
+            {% endfor %}
+        </div>
+        <!-- Hidden file input for new hero image uploads -->
+        <input type="file" id="heroImageFileInput" accept="image/*" style="display:none;">
+
+        <!-- Footer & SEO -->
+        <div class="wa-form-group-title"><i class="fa-solid fa-paragraph"></i> Footer & SEO</div>
+        <div class="wa-form-row">
+            <div class="wa-form-group full">
+                <label for="footer_text">Footer Text</label>
+                <input type="text" id="footer_text" name="footer_text" value="{{ business.footer_text|default:'' }}">
+            </div>
+        </div>
+        <div class="wa-form-row">
+            <div class="wa-form-group full">
+                <label for="meta_description">Meta Description</label>
+                <textarea id="meta_description" name="meta_description" rows="2">{{ business.meta_description|default:'' }}</textarea>
+            </div>
+        </div>
+        <div class="wa-form-row">
+            <div class="wa-form-group full">
+                <label for="meta_keywords">Meta Keywords</label>
+                <input type="text" id="meta_keywords" name="meta_keywords" value="{{ business.meta_keywords|default:'' }}">
+            </div>
+        </div>
+
+        <!-- Active Toggle -->
+        <div class="wa-form-row">
+            <div class="wa-form-group">
+                <label class="wa-toggle-label">
+                    <input type="checkbox" name="is_active" {% if business.is_active %}checked{% endif %}>
+                    <span>Active (visible on website)</span>
+                </label>
+            </div>
+        </div>
+
+        {% if is_super_admin or perm_website_edit %}
+        <div class="wa-form-actions">
+            <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-save"></i> Save Changes
+            </button>
+        </div>
+        {% endif %}
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    const form = document.getElementById('businessForm');
+    if (!form) return;
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const fd = new FormData(form);
+        // Handle checkbox
+        if (!form.querySelector('[name="is_active"]').checked) {
+            fd.set('is_active', 'false');
+        } else {
+            fd.set('is_active', 'true');
+        }
+
+        try {
+            const res = await fetch('{% url "website_admin:api_business_update" %}', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCSRFToken(), 'X-Requested-With': 'XMLHttpRequest' },
+                body: fd,
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast('Business details saved!', 'success');
+            } else {
+                showToast(data.message || 'Error saving', 'error');
+            }
+        } catch(err) {
+            showToast('Network error', 'error');
+        }
+    });
+
+})();
+
+// ===== Hero Images Manager =====
+(function() {
+    const grid = document.getElementById('heroImagesGrid');
+    const addBtn = document.getElementById('addHeroImageBtn');
+    const fileInput = document.getElementById('heroImageFileInput');
+    if (!grid || !addBtn) return;
+
+    const CSRF = getCSRFToken();
+    const API_BASE = '{% url "website_admin:api_hero_image_list" %}';
+
+    // Add image
+    addBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', async function() {
+        if (!this.files.length) return;
+        const fd = new FormData();
+        fd.append('image', this.files[0]);
+        fd.append('title', '');
+        fd.append('subtitle', '');
+        fd.append('order', grid.querySelectorAll('.hero-image-card').length + 1);
+        try {
+            const res = await fetch('{% url "website_admin:api_hero_image_create" %}', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': CSRF },
+                body: fd,
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast('Hero image added', 'success');
+                location.reload();
+            } else {
+                showToast(data.message || 'Error', 'error');
+            }
+        } catch(err) { showToast('Network error', 'error'); }
+        this.value = '';
+    });
+
+    // Delegate events on grid
+    grid.addEventListener('click', async function(e) {
+        const card = e.target.closest('.hero-image-card');
+        if (!card) return;
+        const id = card.dataset.id;
+
+        // Delete
+        if (e.target.closest('.hero-delete-btn')) {
+            if (!confirm('Delete this hero image?')) return;
+            try {
+                const res = await fetch(`/panel/website/api/hero-images/${id}/delete/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': CSRF },
+                });
+                const data = await res.json();
+                if (data.success) { card.remove(); showToast('Deleted', 'success'); }
+                else showToast(data.message, 'error');
+            } catch(err) { showToast('Network error', 'error'); }
+            return;
+        }
+
+        // Toggle active
+        if (e.target.closest('.hero-toggle-btn')) {
+            const isActive = !card.querySelector('.hero-inactive-badge');
+            const fd = new FormData();
+            fd.append('is_active', isActive ? 'false' : 'true');
+            try {
+                const res = await fetch(`/panel/website/api/hero-images/${id}/update/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': CSRF },
+                    body: fd,
+                });
+                const data = await res.json();
+                if (data.success) { showToast('Toggled', 'success'); location.reload(); }
+                else showToast(data.message, 'error');
+            } catch(err) { showToast('Network error', 'error'); }
+            return;
+        }
+
+        // Edit (save title + subtitle)
+        if (e.target.closest('.hero-edit-btn')) {
+            const title = card.querySelector('.hero-title-input').value;
+            const subtitle = card.querySelector('.hero-subtitle-input').value;
+            const fd = new FormData();
+            fd.append('title', title);
+            fd.append('subtitle', subtitle);
+            try {
+                const res = await fetch(`/panel/website/api/hero-images/${id}/update/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': CSRF },
+                    body: fd,
+                });
+                const data = await res.json();
+                if (data.success) showToast('Updated', 'success');
+                else showToast(data.message, 'error');
+            } catch(err) { showToast('Network error', 'error'); }
+            return;
+        }
+    });
+})();
+</script>
+
+<style>
+.hero-order-badge {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    background: rgba(0,0,0,0.6);
+    color: #fff;
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+.hero-inactive-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: #e74c3c;
+    color: #fff;
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+.hero-image-card { min-width: 160px; max-width: 200px; }
+.wa-btn-xs { padding: 2px 6px; font-size: 0.75rem; }
+</style>
+{% endblock %}

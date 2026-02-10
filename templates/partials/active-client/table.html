@@ -1,0 +1,46 @@
+{% comment %}
+Active Client Table Partial
+Contains: Table displaying active clients with groups info
+{% endcomment %}
+
+<!-- Active Clients Table Start -->
+<div class="table-container">
+    <table class="data-table" id="active-client-table">
+        <thead>
+            <tr>
+                <th class="name-col">Client Name</th>
+                <th class="email-col">Email</th>
+                <th class="phone-col">Phone</th>
+                <th class="updates-col">ID Card Groups</th>
+            </tr>
+        </thead>
+        <tbody id="client-table-body">
+            {% for client in clients %}
+            <tr data-client-id="{{ client.id }}" data-first-group-id="{% if client.id_card_groups.first %}{{ client.id_card_groups.first.id }}{% endif %}">
+                <td class="name-col">{{ client.name }}</td>
+                <td class="email-col">{{ client.user.email }}</td>
+                <td class="phone-col">{{ client.user.phone|default:"-" }}</td>
+                <td class="updates-col">
+                    <div class="group-badges">
+                        <span class="group-badge">
+                            <i class="fa-solid fa-id-card"></i> 
+                            {{ client.id_card_groups.count }} group{{ client.id_card_groups.count|pluralize }}
+                        </span>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr class="no-data-row">
+                <td colspan="4" class="no-data">
+                    <i class="fa-solid fa-building-slash"></i>
+                    <span>No clients found</span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <!-- Empty State for Search -->
+    {% include 'partials/components/empty-state.html' with id="active-client-empty-state" icon="fa-magnifying-glass" title="No Results Found" message="Try adjusting your search criteria" hidden=True %}
+</div>
+<!-- Active Clients Table End -->

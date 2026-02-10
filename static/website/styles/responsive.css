@@ -1,0 +1,1742 @@
+/* ===== Responsive CSS for Adarsh ID Cards Website ===== */
+/* Breakpoints:
+   - Desktop Large: 1280px and above (default styles in style.css)
+   - Desktop Small: 1000px to 1279px (same layout, reduced sizes)
+   - Tablet: 768px to 999px (hamburger menu, collapsed cards)
+   - Mobile: below 768px (mobile app-like experience)
+*/
+
+/* ============================================
+   TOP BAR RESPONSIVE
+============================================ */
+@media (max-width: 767px) {
+    .top-bar {
+        padding: 8px 0;
+    }
+
+    .top-bar-content {
+        justify-content: center;
+        gap: 20px;
+    }
+
+    .top-bar-item span {
+        font-size: 0.8rem;
+    }
+
+    .top-bar-item i {
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .top-bar-content {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .top-bar-item {
+        font-size: 0.85rem;
+    }
+}
+
+/* ============================================
+   PREVENT HORIZONTAL SCROLL
+============================================ */
+html, body {
+    overflow-x: hidden;
+    max-width: 100vw;
+}
+
+/* ============================================
+   HIDE SLIDER DOTS
+============================================ */
+.slider-dots {
+    display: none !important;
+}
+
+/* ============================================
+   GLOBAL PADDING FOR ALL SECTIONS
+============================================ */
+.why-choose-us,
+.our-works,
+.testimonials,
+.contact-section,
+.trusted-schools {
+    padding-left: 20px;
+    padding-right: 20px;
+}
+
+@media (min-width: 1280px) {
+    .why-choose-us,
+    .our-works,
+    .testimonials,
+    .contact-section,
+    .trusted-schools {
+        padding-left: 40px;
+        padding-right: 40px;
+    }
+}
+
+@media (max-width: 767px) {
+    .why-choose-us,
+    .our-works,
+    .testimonials,
+    .contact-section,
+    .trusted-schools {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+}
+
+/* ============================================
+   SMOOTH TRANSITIONS FOR RESPONSIVE ELEMENTS
+============================================ */
+.container,
+.hero-inner,
+.hero-text h1,
+.hero-text p,
+.slide-card,
+.hero-card-wrapper,
+.feature-card,
+.feature-icon,
+.work-item,
+.testimonial-card,
+.contact-wrapper,
+.footer-content,
+h2 {
+    transition: all 0.3s ease;
+}
+
+/* Fluid typography for smoother scaling */
+@media (max-width: 1400px) and (min-width: 1000px) {
+    .hero-text h1 {
+        font-size: clamp(3rem, 3.5vw, 4rem);
+    }
+    
+    .hero-text p {
+        font-size: clamp(1rem, 1.2vw, 1.2rem);
+    }
+    
+    h2 {
+        font-size: clamp(2rem, 2.2vw, 2.5rem) !important;
+    }
+}
+
+/* ============================================
+   DESKTOP SMALL (1000px - 1279px)
+   Same layout, reduced font sizes and gaps
+============================================ */
+@media (max-width: 1279px) and (min-width: 1000px) {
+    .container {
+        max-width: 960px;
+        padding: 0 15px;
+    }
+
+    /* Navbar adjustments */
+    .logo {
+        font-size: 1.3rem;
+        gap: 8px;
+    }
+
+    .logo-img {
+        width: 42px;
+        height: 42px;
+    }
+
+    .nav-links {
+        gap: 1.5rem;
+    }
+
+    .nav-links a {
+        font-size: 0.95rem;
+    }
+
+    .btn-cta {
+        padding: 10px 22px !important;
+        font-size: 0.9rem;
+        border-radius: 50px !important;
+    }
+
+    /* Hero Section */
+    .hero-inner {
+        max-width: 800px;
+        padding-top: 40px;
+    }
+
+    .hero-text .tagline {
+        font-size: 0.9rem;
+        padding: 5px 12px;
+    }
+
+    .hero-text h1 {
+        font-size: 3.2rem;
+    }
+
+    .hero-text p {
+        font-size: 1.1rem;
+    }
+
+    .btn {
+        padding: 14px 28px;
+        font-size: 0.95rem;
+    }
+
+    .hero-card-wrapper {
+        bottom: -180px;
+    }
+
+    .slide-card {
+        max-width: 960px;
+        max-height: none;
+        height: auto;
+        aspect-ratio: 16/9;
+    }
+
+    /* Trusted Schools */
+    .trusted-schools h2 {
+        font-size: 1.6rem;
+        margin-top: 30px;
+    }
+
+    .logos-carousel {
+        max-width: 100%;
+    }
+
+    .logos-track {
+        gap: 40px;
+    }
+
+    .logo-item {
+        min-width: 120px;
+        height: 70px;
+    }
+
+    .logo-item img {
+        max-width: 110px;
+        max-height: 60px;
+    }
+
+    /* Why Choose Us */
+    .why-choose-us {
+        padding: 80px 0;
+    }
+
+    .why-choose-us h2 {
+        font-size: 2.2rem;
+        margin-bottom: 2.5rem;
+    }
+
+    .features-grid {
+        gap: 1.5rem;
+    }
+
+    .feature-card {
+        padding: 2rem;
+    }
+
+    .feature-icon {
+        font-size: 3rem;
+        width: 85px;
+        height: 85px;
+    }
+
+    .feature-card h3 {
+        font-size: 1.25rem;
+    }
+
+    .feature-card p {
+        font-size: 0.9rem;
+    }
+
+    /* Our Works */
+    .our-works {
+        padding: 80px 0;
+    }
+
+    .our-works h2 {
+        font-size: 2.2rem;
+    }
+
+    .works-carousel {
+        max-width: 100%;
+    }
+
+    .works-track {
+        gap: 1.5rem;
+    }
+
+    .work-item {
+        height: 200px;
+        width: 260px;
+    }
+
+    .work-overlay h3 {
+        font-size: 1.3rem;
+    }
+
+    /* Testimonials */
+    .testimonials {
+        padding: 80px 0;
+    }
+
+    .testimonials h2 {
+        font-size: 2.2rem;
+        margin-bottom: 2.5rem;
+    }
+
+    .testimonials-grid {
+        gap: 1.5rem;
+    }
+
+    .testimonial-card {
+        padding: 2rem;
+    }
+
+    .testimonial-card p {
+        font-size: 0.95rem;
+    }
+
+    /* Contact Section */
+    .contact-section {
+        padding: 80px 0;
+    }
+
+    .contact-section h2 {
+        font-size: 2.2rem;
+    }
+
+    .contact-wrapper {
+        gap: 2.5rem;
+    }
+
+    .contact-form-side {
+        padding: 1.5rem;
+    }
+
+    .form-input {
+        padding: 10px 13px;
+        font-size: 0.95rem;
+    }
+
+    .info-box {
+        padding: 1.2rem;
+    }
+
+    .info-icon {
+        font-size: 1.7rem;
+        width: 45px;
+        height: 45px;
+    }
+
+    .info-content h3 {
+        font-size: 1.1rem;
+    }
+
+    .info-content p {
+        font-size: 0.9rem;
+    }
+
+    /* Footer */
+    .footer {
+        padding: 3rem 0 1rem;
+    }
+
+    .footer-content {
+        gap: 1.5rem;
+    }
+
+    .footer-section h4 {
+        font-size: 1rem;
+        margin-bottom: 0.8rem;
+    }
+
+    .footer-section p,
+    .footer-section a {
+        font-size: 0.9rem;
+    }
+
+    .social-links a {
+        width: 36px;
+        height: 36px;
+    }
+}
+
+/* ============================================
+   DESKTOP MEDIUM (1100px - 1199px)
+   Intermediate size for even smoother transition
+============================================ */
+@media (max-width: 1199px) and (min-width: 1100px) {
+    .slide-card {
+        max-width: 920px;
+        max-height: none;
+        aspect-ratio: 16/9;
+    }
+    
+    .hero-text h1 {
+        font-size: 3rem;
+    }
+}
+
+/* ============================================
+   TABLET LARGE (900px - 999px)
+   Intermediate size for smoother transition
+============================================ */
+@media (max-width: 999px) and (min-width: 900px) {
+    .slide-card {
+        max-width: calc(100vw - 40px);
+        max-height: none;
+        aspect-ratio: 16/9;
+    }
+    
+    .hero-text h1 {
+        font-size: 2.8rem;
+    }
+}
+
+/* ============================================
+   TABLET (768px - 999px)
+   Hamburger menu, collapsed cards, smaller fonts
+============================================ */
+@media (max-width: 999px) and (min-width: 768px) {
+    .container {
+        max-width: 100%;
+        padding: 0 20px;
+    }
+
+    /* Navbar - Show Hamburger */
+    .navbar {
+        padding: 0.8rem 0;
+    }
+
+    .logo {
+        font-size: 1.2rem;
+        gap: 8px;
+    }
+
+    .logo-img {
+        width: 40px;
+        height: 40px;
+    }
+
+    .nav-links {
+        display: none;
+        position: fixed;
+        top: 60px;
+        left: 0;
+        right: 0;
+        background: var(--white);
+        flex-direction: column;
+        gap: 0;
+        width: 100%;
+        box-shadow: var(--shadow);
+        z-index: 999;
+        max-height: calc(100vh - 60px);
+        overflow-y: auto;
+    }
+
+    .nav-links.active {
+        display: flex;
+    }
+
+    .nav-links li {
+        border-bottom: 1px solid #eee;
+        width: 100%;
+    }
+
+    .nav-links a {
+        display: block;
+        padding: 15px 20px;
+        font-size: 1rem;
+    }
+
+    .nav-links a:hover {
+        background: var(--light-bg);
+    }
+
+    .btn-cta {
+        margin: 10px 20px;
+        text-align: center;
+        border-radius: 50px !important;
+    }
+
+    .hamburger {
+        display: flex;
+    }
+
+    /* Hero Section - Tablet */
+    .hero {
+        height: auto;
+        min-height: auto;
+        padding-top: 30px;
+        padding-bottom: 0;
+        overflow: visible;
+    }
+
+    .hero-inner {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+        padding-top: 30px;
+        padding-bottom: 0;
+    }
+
+    .hero-card-wrapper {
+        position: relative;
+        bottom: auto;
+        left: 0;
+        right: 0;
+        transform: none;
+        margin-top: 2rem;
+        padding: 0 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .card-slider {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+    }
+
+    .hero-text .tagline {
+        font-size: 0.85rem;
+        padding: 5px 12px;
+    }
+
+    .hero-text h1 {
+        font-size: 2.6rem;
+        margin-bottom: 0.8rem;
+    }
+
+    .hero-text p {
+        font-size: 1rem;
+        line-height: 1.4;
+    }
+
+    .hero-text p br {
+        display: none;
+    }
+
+    .hero-buttons {
+        gap: 0.8rem;
+    }
+
+    .btn {
+        padding: 12px 24px;
+        font-size: 0.9rem;
+    }
+
+    .slide-card {
+        max-width: calc(100vw - 40px);
+        width: 100%;
+        max-height: none;
+        aspect-ratio: 16/9;
+        margin: 0 auto;
+    }
+
+    .slider-dots {
+        gap: 8px;
+        justify-content: center;
+    }
+
+    .dot {
+        width: 10px;
+        height: 10px;
+    }
+
+    .dot.active {
+        width: 26px;
+    }
+
+    /* Spacer adjustment for tablet - not needed anymore */
+    body > div[style*="height: 220px"] {
+        height: 20px !important;
+    }
+}
+
+/* ============================================
+   TABLET SMALL (768px - 849px)
+   Slightly smaller slider for lower tablet range
+============================================ */
+@media (max-width: 849px) and (min-width: 768px) {
+    .slide-card {
+        max-height: none;
+        aspect-ratio: 16/9;
+    }
+    
+    .hero-text h1 {
+        font-size: 2.4rem;
+    }
+    
+    .hero-card-wrapper {
+        margin-top: 1.5rem;
+    }
+}
+
+/* ============================================
+   TABLET CONTENT STYLES (768px - 999px)
+   Styles for tablet content sections
+============================================ */
+@media (max-width: 999px) and (min-width: 768px) {
+    /* Trusted Schools */
+    .trusted-schools {
+        padding: 25px 0 50px 0;
+    }
+
+    .trusted-schools h2 {
+        font-size: 1.5rem;
+        margin-bottom: 1.5rem;
+        margin-top: 30px;
+    }
+
+    .logos-carousel {
+        max-width: 100%;
+        padding: 15px 0;
+    }
+
+    .logos-track {
+        gap: 30px;
+    }
+
+    .logo-item {
+        min-width: 100px;
+        height: 60px;
+    }
+
+    .logo-item img {
+        max-width: 90px;
+        max-height: 50px;
+    }
+
+    /* Why Choose Us - 2 Column Grid */
+    .why-choose-us {
+        padding: 60px 0;
+    }
+
+    .why-choose-us h2 {
+        font-size: 1.9rem;
+        margin-bottom: 2rem;
+    }
+
+    .features-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.2rem;
+    }
+
+    .feature-card {
+        padding: 1.5rem;
+    }
+
+    .feature-icon {
+        font-size: 2.5rem;
+        width: 70px;
+        height: 70px;
+        margin-bottom: 0.8rem;
+        border-radius: 12px;
+    }
+
+    .feature-card h3 {
+        font-size: 1.1rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .feature-card p {
+        font-size: 0.85rem;
+        line-height: 1.5;
+    }
+
+    /* Our Works */
+    .our-works {
+        padding: 60px 0;
+    }
+
+    .our-works h2 {
+        font-size: 1.9rem;
+    }
+
+    .works-carousel {
+        max-width: 100%;
+        padding: 15px 0;
+    }
+
+    .works-track {
+        gap: 1.2rem;
+    }
+
+    .work-item {
+        height: 170px;
+        width: 220px;
+    }
+
+    .work-overlay h3 {
+        font-size: 1.1rem;
+    }
+
+    .work-overlay p {
+        font-size: 0.85rem;
+    }
+
+    /* Testimonials - 2 Column Grid */
+    .testimonials {
+        padding: 60px 0;
+    }
+
+    .testimonials h2 {
+        font-size: 1.9rem;
+        margin-bottom: 2rem;
+    }
+
+    .testimonials-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.2rem;
+    }
+
+    .testimonials-grid .testimonial-card:last-child {
+        grid-column: 1 / -1;
+        max-width: 50%;
+        margin: 0 auto;
+    }
+
+    .testimonial-card {
+        padding: 1.5rem;
+    }
+
+    .stars {
+        font-size: 1rem;
+        margin-bottom: 0.8rem;
+    }
+
+    .testimonial-card > p {
+        font-size: 0.9rem;
+        margin-bottom: 1rem;
+        line-height: 1.6;
+    }
+
+    .testimonial-author img {
+        width: 42px;
+        height: 42px;
+    }
+
+    .testimonial-author h4 {
+        font-size: 0.95rem;
+    }
+
+    .testimonial-author p {
+        font-size: 0.8rem;
+    }
+
+    /* Contact Section */
+    .contact-section {
+        padding: 60px 0;
+    }
+
+    .contact-section h2 {
+        font-size: 1.9rem;
+    }
+
+    .contact-section .section-subtitle {
+        font-size: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .contact-wrapper {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+
+    .contact-form-side {
+        padding: 1.5rem;
+        order: 2;
+    }
+
+    .contact-form {
+        gap: 1rem;
+    }
+
+    .form-input {
+        padding: 11px 13px;
+        font-size: 0.95rem;
+    }
+
+    .form-input.textarea {
+        min-height: 100px;
+    }
+
+    .form-btn {
+        padding: 12px 18px;
+        font-size: 1rem;
+    }
+
+    .contact-info-side {
+        order: 1;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+
+    .info-box {
+        padding: 1.2rem;
+        gap: 1rem;
+    }
+
+    .info-icon {
+        font-size: 1.5rem;
+        width: 42px;
+        height: 42px;
+    }
+
+    .info-content h3 {
+        font-size: 1rem;
+    }
+
+    .info-content p {
+        font-size: 0.85rem;
+    }
+
+    /* Footer - 2 Column Grid */
+    .footer {
+        padding: 3rem 0 1rem;
+    }
+
+    .footer-content {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 2rem;
+    }
+
+    .footer-section:last-child {
+        grid-column: 1 / -1;
+    }
+
+    .footer-map-container iframe {
+        height: 180px;
+    }
+
+    .footer-section h4 {
+        font-size: 1rem;
+        margin-bottom: 0.8rem;
+    }
+
+    .footer-section p,
+    .footer-section a,
+    .footer-section ul li {
+        font-size: 0.9rem;
+        margin-bottom: 0.6rem;
+    }
+
+    .social-links {
+        gap: 0.8rem;
+    }
+
+    .social-links a {
+        width: 36px;
+        height: 36px;
+    }
+
+    .footer-bottom {
+        padding-top: 1.2rem;
+        font-size: 0.85rem;
+    }
+}
+
+/* ============================================
+   MOBILE (below 768px)
+   Mobile app-like experience
+============================================ */
+@media (max-width: 767px) {
+    .container {
+        padding: 0 16px;
+    }
+
+    /* Navbar - Mobile */
+    .navbar {
+        padding: 0.7rem 0;
+    }
+
+    .logo {
+        font-size: 1.1rem;
+        gap: 6px;
+    }
+
+    .logo-img {
+        width: 36px;
+        height: 36px;
+        border-radius: 6px;
+        padding: 3px;
+    }
+
+    .logo span {
+        font-size: 1rem;
+    }
+
+    .nav-links {
+        display: none;
+        position: fixed;
+        top: 54px;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: var(--white);
+        flex-direction: column;
+        gap: 0;
+        width: 100%;
+        box-shadow: var(--shadow);
+        z-index: 999;
+        overflow-y: auto;
+        padding-bottom: 20px;
+    }
+
+    .nav-links.active {
+        display: flex;
+    }
+
+    .nav-links li {
+        border-bottom: 1px solid #f0f0f0;
+        width: 100%;
+    }
+
+    .nav-links a {
+        display: block;
+        padding: 16px 20px;
+        font-size: 1.05rem;
+        font-weight: 500;
+    }
+
+    .nav-links a:active {
+        background: var(--light-bg);
+    }
+
+    .btn-cta {
+        margin: 16px 20px;
+        padding: 14px 24px !important;
+        text-align: center;
+        border-radius: 50px !important;
+        font-size: 1rem !important;
+    }
+
+    .hamburger {
+        display: flex;
+    }
+
+    .hamburger span {
+        width: 22px;
+        height: 2.5px;
+    }
+
+    /* Hero Section - Mobile App Feel */
+    .hero {
+        height: auto;
+        min-height: auto;
+        padding-top: 20px;
+        padding-bottom: 20px;
+        overflow: visible;
+    }
+
+    .hero::before {
+        width: 400px;
+        height: 400px;
+        top: -150px;
+        right: -100px;
+        pointer-events: none;
+    }
+
+    .hero::after {
+        width: 300px;
+        height: 300px;
+        bottom: 100px;
+        left: -80px;
+        pointer-events: none;
+    }
+
+    .hero-inner {
+        max-width: 100%;
+        margin: 0 auto;
+        padding: 16px;
+        padding-top: 20px;
+        padding-bottom: 0;
+    }
+
+    .hero-text .tagline {
+        font-size: 0.75rem;
+        padding: 4px 10px;
+        letter-spacing: 0.5px;
+    }
+
+    .hero-text h1 {
+        font-size: 1.4rem;
+        margin-bottom: 0.6rem;
+        margin-top: 0.8rem;
+        line-height: 1.15;
+        letter-spacing: -0.5px;
+    }
+
+    /* Hide all line breaks on mobile */
+    br {
+        display: none;
+    }
+
+    .hero-text h1 br {
+        display: none;
+    }
+
+    .hero-text p {
+        font-size: 0.85rem;
+        line-height: 1.4;
+        margin-bottom: 1.2rem;
+    }
+
+    .hero-text p br {
+        display: none;
+    }
+
+    .hero-buttons {
+        flex-direction: row;
+        gap: 0.6rem;
+        width: 100%;
+        max-width: 100%;
+        margin: 0 auto;
+        justify-content: center;
+    }
+
+    .btn {
+        width: auto;
+        padding: 12px 20px;
+        font-size: 0.85rem;
+        border-radius: 50px;
+    }
+
+    .hero-card-wrapper {
+        position: relative;
+        bottom: auto;
+        left: 0;
+        right: 0;
+        transform: none;
+        margin-top: 1.5rem;
+        padding: 0 16px;
+        gap: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .card-slider {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+    }
+
+    .slide-card {
+        max-width: calc(100vw - 32px);
+        width: 100%;
+        max-height: none;
+        aspect-ratio: 16/9;
+        border-radius: 16px;
+        border-width: 2px;
+        margin: 0 auto;
+    }
+
+    .slider-dots {
+        gap: 8px;
+        justify-content: center;
+    }
+
+    .dot {
+        width: 8px;
+        height: 8px;
+    }
+
+    .dot.active {
+        width: 24px;
+        border-radius: 4px;
+    }
+
+    /* Spacer for mobile - reduced since hero is now auto height */
+    body > div[style*="height: 220px"] {
+        height: 60px !important;
+    }
+
+    /* Trusted Schools - Mobile */
+    .trusted-schools {
+        padding: 20px 0 40px 0;
+    }
+
+    .trusted-schools h2 {
+        font-size: 1.3rem;
+        margin-bottom: 1.2rem;
+        margin-top: 25px;
+    }
+
+    .logos-carousel {
+        padding: 12px 0;
+    }
+
+    .logos-carousel::before,
+    .logos-carousel::after {
+        width: 40px;
+    }
+
+    .logos-track {
+        gap: 25px;
+        padding: 0 12px;
+    }
+
+    .logo-item {
+        min-width: 90px;
+        height: 55px;
+    }
+
+    .logo-item img {
+        max-width: 80px;
+        max-height: 45px;
+    }
+
+    /* Why Choose Us - Single Column Cards */
+    .why-choose-us {
+        padding: 50px 0;
+    }
+
+    .why-choose-us h2 {
+        font-size: 1.6rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .features-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .feature-card {
+        padding: 1.2rem;
+        display: flex;
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 1rem;
+        text-align: left;
+    }
+
+    .feature-icon {
+        font-size: 1.8rem;
+        width: 55px;
+        height: 55px;
+        min-width: 55px;
+        margin: 0;
+        border-radius: 10px;
+    }
+
+    .feature-card h3 {
+        font-size: 1rem;
+        margin-bottom: 0.3rem;
+        line-height: 1.2;
+    }
+
+    .feature-card p {
+        font-size: 0.85rem;
+        line-height: 1.4;
+    }
+
+    .feature-card:hover {
+        transform: translateY(-4px);
+    }
+
+    /* Our Works - Mobile */
+    .our-works {
+        padding: 50px 0;
+    }
+
+    .our-works h2 {
+        font-size: 1.6rem;
+        margin-bottom: 0.3rem;
+    }
+
+    .section-subtitle {
+        font-size: 0.9rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .works-carousel {
+        padding: 12px 0;
+        margin-top: 1rem;
+    }
+
+    .works-track {
+        gap: 1rem;
+        padding: 0 12px;
+    }
+
+    .work-item {
+        height: 140px;
+        width: 180px;
+        border-radius: 10px;
+    }
+
+    .work-overlay h3 {
+        font-size: 0.95rem;
+        margin-bottom: 0.3rem;
+    }
+
+    .work-overlay p {
+        font-size: 0.75rem;
+    }
+
+    /* Testimonials - Mobile Cards */
+    .testimonials {
+        padding: 50px 0;
+    }
+
+    .testimonials h2 {
+        font-size: 1.6rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .testimonials-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .testimonial-card {
+        padding: 1.2rem;
+        border-left-width: 3px;
+    }
+
+    .stars {
+        font-size: 0.9rem;
+        margin-bottom: 0.6rem;
+    }
+
+    .stars i {
+        margin-right: 0.2rem;
+    }
+
+    .testimonial-card > p {
+        font-size: 0.9rem;
+        margin-bottom: 1rem;
+        line-height: 1.6;
+    }
+
+    .testimonial-author {
+        flex-direction: row;
+        align-items: center;
+        gap: 0.8rem;
+        text-align: left;
+    }
+
+    .testimonial-author img {
+        width: 40px;
+        height: 40px;
+    }
+
+    .testimonial-author h4 {
+        font-size: 0.9rem;
+        margin-bottom: 0.2rem;
+    }
+
+    .testimonial-author p {
+        font-size: 0.75rem;
+    }
+
+    /* Contact Section - Mobile */
+    .contact-section {
+        padding: 50px 0;
+    }
+
+    .contact-section h2 {
+        font-size: 1.6rem;
+        margin-bottom: 0.4rem;
+    }
+
+    .contact-section .section-subtitle {
+        font-size: 0.9rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .contact-wrapper {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+
+    .contact-form-side {
+        padding: 1.2rem;
+        border-radius: 12px;
+        order: 2;
+    }
+
+    .contact-form {
+        gap: 0.8rem;
+    }
+
+    .form-input {
+        padding: 12px 14px;
+        font-size: 16px; /* Prevents zoom on iOS */
+        border-radius: 8px;
+        border-width: 1.5px;
+    }
+
+    .form-input:focus {
+        box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.15);
+    }
+
+    .form-input.textarea {
+        min-height: 100px;
+    }
+
+    .form-btn {
+        padding: 14px 20px;
+        font-size: 1rem;
+        border-radius: 10px;
+        margin-top: 0.3rem;
+    }
+
+    .contact-info-side {
+        order: 1;
+        gap: 0.8rem;
+    }
+
+    .info-box {
+        padding: 1rem;
+        gap: 0.8rem;
+        border-radius: 10px;
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .info-box:hover {
+        transform: translateX(3px);
+    }
+
+    .info-icon {
+        font-size: 1.3rem;
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        border-radius: 8px;
+    }
+
+    .info-content h3 {
+        font-size: 0.95rem;
+        margin-bottom: 0.2rem;
+    }
+
+    .info-content p {
+        font-size: 0.85rem;
+        line-height: 1.4;
+    }
+
+    /* Footer - Mobile */
+    .footer {
+        padding: 2.5rem 0 1rem;
+    }
+
+    .footer::before {
+        width: 350px;
+        height: 350px;
+        top: -100px;
+        left: -100px;
+    }
+
+    .footer::after {
+        width: 250px;
+        height: 250px;
+        bottom: -50px;
+        right: -80px;
+    }
+
+    .footer-content {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+    }
+
+    /* Company info - full width */
+    .footer-section:first-child {
+        grid-column: 1 / -1;
+    }
+
+    /* Quick Links and Services side by side */
+    .footer-section:nth-child(2),
+    .footer-section:nth-child(3) {
+        grid-column: auto;
+        text-align: left;
+    }
+
+    /* Location - full width */
+    .footer-section:last-child {
+        grid-column: 1 / -1;
+    }
+
+    .footer-section {
+        text-align: center;
+    }
+
+    .footer-section h4 {
+        font-size: 1rem;
+        margin-bottom: 0.8rem;
+    }
+
+    .footer-section p,
+    .footer-section a {
+        font-size: 0.9rem;
+    }
+
+    .footer-section ul li {
+        margin-bottom: 0.6rem;
+    }
+
+    .social-links {
+        justify-content: center;
+        gap: 1rem;
+        margin-top: 0.8rem;
+    }
+
+    .social-links a {
+        width: 40px;
+        height: 40px;
+    }
+
+    .footer-map-container {
+        margin-top: 0.5rem;
+    }
+
+    .footer-map-container iframe {
+        height: 160px;
+    }
+
+    .footer-bottom {
+        padding-top: 1rem;
+        font-size: 0.8rem;
+        line-height: 1.6;
+    }
+
+    /* Global Section Heading */
+    h2 {
+        font-size: 1.6rem !important;
+    }
+}
+
+/* ============================================
+   SMALL MOBILE (below 480px)
+   Extra compact for small phones
+============================================ */
+@media (max-width: 479px) {
+    .container {
+        padding: 0 12px;
+    }
+
+    /* Navbar */
+    .logo {
+        font-size: 1rem;
+        gap: 5px;
+    }
+
+    .logo-img {
+        width: 32px;
+        height: 32px;
+    }
+
+    .logo span {
+        font-size: 0.9rem;
+    }
+
+    /* Hero */
+    .hero-inner {
+        padding: 12px;
+        padding-top: 15px;
+    }
+
+    .hero-text .tagline {
+        font-size: 0.7rem;
+        padding: 3px 8px;
+    }
+
+    .hero-text h1 {
+        font-size: 1.2rem;
+    }
+
+    .hero-text p {
+        font-size: 0.8rem;
+    }
+
+    .hero-buttons {
+        max-width: 100%;
+        flex-direction: row;
+        gap: 0.5rem;
+    }
+
+    .btn {
+        padding: 10px 16px;
+        font-size: 0.8rem;
+    }
+
+    .hero-card-wrapper {
+        padding: 0 12px;
+        margin-top: 1rem;
+    }
+
+    .slide-card {
+        max-height: none;
+        aspect-ratio: 16/9;
+        border-radius: 14px;
+    }
+
+    /* Trusted Schools */
+    .trusted-schools h2 {
+        font-size: 1.2rem;
+    }
+
+    .logo-item {
+        min-width: 75px;
+        height: 50px;
+    }
+
+    .logo-item img {
+        max-width: 70px;
+        max-height: 40px;
+    }
+
+    /* Why Choose Us */
+    .why-choose-us h2 {
+        font-size: 1.4rem;
+    }
+
+    .feature-card {
+        padding: 1rem;
+    }
+
+    .feature-icon {
+        font-size: 1.6rem;
+        width: 48px;
+        height: 48px;
+        min-width: 48px;
+    }
+
+    .feature-card h3 {
+        font-size: 0.95rem;
+        line-height: 1.2;
+    }
+
+    .feature-card p {
+        font-size: 0.8rem;
+    }
+
+    /* Our Works */
+    .our-works h2 {
+        font-size: 1.4rem;
+    }
+
+    .work-item {
+        height: 120px;
+        width: 155px;
+    }
+
+    .work-overlay h3 {
+        font-size: 0.85rem;
+    }
+
+    .work-overlay p {
+        font-size: 0.7rem;
+    }
+
+    /* Testimonials */
+    .testimonials h2 {
+        font-size: 1.4rem;
+    }
+
+    .testimonial-card {
+        padding: 1rem;
+    }
+
+    .testimonial-card > p {
+        font-size: 0.85rem;
+    }
+
+    .testimonial-author img {
+        width: 36px;
+        height: 36px;
+    }
+
+    /* Contact */
+    .contact-section h2 {
+        font-size: 1.4rem;
+    }
+
+    .contact-form-side {
+        padding: 1rem;
+    }
+
+    .form-input {
+        padding: 11px 12px;
+    }
+
+    .info-box {
+        padding: 0.8rem;
+    }
+
+    .info-icon {
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
+        font-size: 1.1rem;
+    }
+
+    .info-content h3 {
+        font-size: 0.9rem;
+    }
+
+    .info-content p {
+        font-size: 0.8rem;
+    }
+
+    /* Footer */
+    .footer-section h4 {
+        font-size: 0.95rem;
+    }
+
+    .footer-section p,
+    .footer-section a {
+        font-size: 0.85rem;
+    }
+
+    .footer-map-container iframe {
+        height: 140px;
+    }
+
+    .footer-bottom {
+        font-size: 0.75rem;
+    }
+
+    /* Global */
+    h2 {
+        font-size: 1.4rem !important;
+    }
+}
+
+/* ============================================
+   LANDSCAPE MOBILE
+   Adjustments for landscape orientation
+============================================ */
+@media (max-width: 767px) and (orientation: landscape) {
+    .hero {
+        min-height: auto;
+        padding-top: 15px;
+        padding-bottom: 30px;
+    }
+
+    .hero-inner {
+        padding-top: 10px;
+    }
+
+    .hero-text h1 {
+        font-size: 1.8rem;
+    }
+
+    .hero-buttons {
+        flex-direction: row;
+        max-width: 100%;
+    }
+
+    .btn {
+        width: auto;
+        padding: 12px 26px;
+    }
+
+    .hero-card-wrapper {
+        transform: none;
+        margin-top: 1.5rem;
+    }
+
+    .slide-card {
+        max-height: none;
+        aspect-ratio: 16/9;
+    }
+
+    .nav-links {
+        top: 50px;
+        max-height: calc(100vh - 50px);
+    }
+}
+
+/* ============================================
+   HIGH DPI / RETINA DISPLAYS
+============================================ */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .logo-img {
+        image-rendering: -webkit-optimize-contrast;
+    }
+}
+
+/* ============================================
+   REDUCED MOTION
+   Accessibility for users who prefer less motion
+============================================ */
+@media (prefers-reduced-motion: reduce) {
+    .logos-track,
+    .works-track,
+    .scroll-left-right,
+    .scroll-right-left {
+        animation: none;
+    }
+
+    .feature-card,
+    .testimonial-card,
+    .info-box,
+    .work-item {
+        transition: none;
+    }
+
+    .slide-card.push-out .card-image img,
+    .slide-card.push-in .card-image img {
+        animation: none;
+    }
+}
+
+/* ============================================
+   TOUCH DEVICE OPTIMIZATIONS
+============================================ */
+@media (hover: none) and (pointer: coarse) {
+    /* Increase tap targets */
+    .nav-links a {
+        min-height: 48px;
+        display: flex;
+        align-items: center;
+    }
+
+    .btn {
+        min-height: 48px;
+    }
+
+    .dot {
+        min-width: 32px;
+        min-height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Remove hover effects on touch */
+    .feature-card:hover,
+    .testimonial-card:hover,
+    .info-box:hover {
+        transform: none;
+    }
+
+    .logo-item:hover img {
+        transform: none;
+        filter: grayscale(100%);
+    }
+
+    /* Active states for touch */
+    .feature-card:active {
+        transform: scale(0.98);
+    }
+
+    .btn:active {
+        transform: scale(0.97);
+    }
+
+    .info-box:active {
+        transform: translateX(3px);
+    }
+}

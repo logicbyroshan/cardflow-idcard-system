@@ -1,0 +1,716 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Manage Admin Staff{% endblock %}
+
+{% block breadcrumb %}
+<span class="breadcrumb-item"><i class="fa-solid fa-users-gear"></i> Admin Staff Management</span>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/manage-staff.css' %}?v=3">
+<style>
+  .permission-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+  .permission-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background: var(--bg-secondary, #f5f5f5);
+    border-radius: 4px;
+    font-size: 0.85rem;
+  }
+  .permission-item input[type="checkbox"] {
+    margin: 0;
+  }
+  .permission-category {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: var(--bg-tertiary, #fff);
+    border-radius: 8px;
+    border: 1px solid var(--border-color, #e0e0e0);
+  }
+  .permission-category h4 {
+    margin: 0 0 0.75rem 0;
+    font-size: 0.9rem;
+    color: var(--text-secondary, #666);
+    border-bottom: 1px solid var(--border-color, #e0e0e0);
+    padding-bottom: 0.5rem;
+  }
+  .client-select-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.5rem;
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color, #e0e0e0);
+    border-radius: 6px;
+  }
+  .client-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background: var(--bg-secondary, #f5f5f5);
+    border-radius: 4px;
+  }
+  .staff-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+  .badge-active {
+    background: rgba(76, 175, 80, 0.1);
+    color: #4CAF50;
+  }
+  .badge-inactive {
+    background: rgba(244, 67, 54, 0.1);
+    color: #F44336;
+  }
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+  }
+  .modal-overlay.active {
+    display: flex;
+  }
+  .modal-content {
+    background: var(--bg-primary, #fff);
+    border-radius: 12px;
+    padding: 1.5rem;
+    width: 90%;
+    max-width: 700px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+  .modal-header h3 {
+    margin: 0;
+  }
+  .modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-secondary);
+  }
+  .form-group {
+    margin-bottom: 1rem;
+  }
+  .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+  }
+  .form-group input, .form-group select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color, #e0e0e0);
+    border-radius: 6px;
+    font-size: 1rem;
+  }
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+  .btn-primary {
+    background: var(--primary-color, #2196F3);
+    color: #fff;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+  }
+  .btn-primary:hover {
+    opacity: 0.9;
+  }
+  .btn-secondary {
+    background: var(--bg-secondary, #f5f5f5);
+    color: var(--text-primary, #333);
+    border: 1px solid var(--border-color, #e0e0e0);
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+  }
+  .btn-group {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+  }
+  .staff-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .staff-actions button {
+    padding: 0.5rem;
+    border: none;
+    background: var(--bg-secondary);
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .staff-actions button:hover {
+    background: var(--bg-tertiary);
+  }
+  .alert {
+    padding: 1rem;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+  }
+  .alert-success {
+    background: rgba(76, 175, 80, 0.1);
+    color: #4CAF50;
+    border: 1px solid rgba(76, 175, 80, 0.3);
+  }
+  .alert-error {
+    background: rgba(244, 67, 54, 0.1);
+    color: #F44336;
+    border: 1px solid rgba(244, 67, 54, 0.3);
+  }
+  /* .empty-state styles now in common.css (single source of truth) */
+  .client-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+  .client-badge {
+    display: inline-block;
+    padding: 0.15rem 0.4rem;
+    background: rgba(33, 150, 243, 0.1);
+    color: #2196F3;
+    border-radius: 3px;
+    font-size: 0.7rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-content">
+  <div class="page-header">
+    <h1>Admin Staff Management</h1>
+    <button class="btn-primary" onclick="openCreateModal()">
+      <i class="fa-solid fa-plus"></i> Add Admin Staff
+    </button>
+  </div>
+
+  <div id="alertContainer"></div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2>Admin Staff Members</h2>
+    </div>
+    <div class="card-body">
+      <table class="data-table" id="staffTable">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Designation</th>
+            <th>Assigned Clients</th>
+            <th>Status</th>
+            <th>Permissions</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="staffTableBody">
+          <tr class="empty-row">
+            <td colspan="7">
+              <div class="empty-state">
+                <i class="fa-solid fa-users-gear"></i>
+                <p>Loading admin staff...</p>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Create/Edit Staff Modal -->
+<div class="modal-overlay" id="staffModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="modalTitle">Add Admin Staff</h3>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <form id="staffForm" onsubmit="handleSubmit(event)">
+      <input type="hidden" id="staffId" value="">
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label for="firstName">First Name *</label>
+          <input type="text" id="firstName" name="first_name" required>
+        </div>
+        <div class="form-group">
+          <label for="lastName">Last Name *</label>
+          <input type="text" id="lastName" name="last_name" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email *</label>
+        <input type="email" id="email" name="email" required>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="phone">Phone</label>
+          <input type="tel" id="phone" name="phone">
+        </div>
+        <div class="form-group">
+          <label for="designation">Designation</label>
+          <input type="text" id="designation" name="designation" value="Staff">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="department">Department</label>
+        <input type="text" id="department" name="department">
+      </div>
+
+      <div class="form-group">
+        <label>Assigned Clients</label>
+        <div class="client-select-grid" id="clientsContainer">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Permissions</label>
+        <div id="permissionsContainer">
+          <!-- Client Management -->
+          <div class="permission-category">
+            <h4><i class="fa-solid fa-users"></i> Client Management</h4>
+            <div class="permission-grid" id="clientPermissions"></div>
+          </div>
+
+          <!-- ID Card Data -->
+          <div class="permission-category">
+            <h4><i class="fa-solid fa-id-card"></i> ID Card Data</h4>
+            <div class="permission-grid" id="idcardPermissions"></div>
+          </div>
+
+          <!-- Settings & Bulk -->
+          <div class="permission-category">
+            <h4><i class="fa-solid fa-cog"></i> Settings & Operations</h4>
+            <div class="permission-grid" id="settingsPermissions"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-group">
+        <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn-primary" id="submitBtn">Create Staff</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal-content" style="max-width: 400px;">
+    <div class="modal-header">
+      <h3 id="confirmTitle">Confirm Action</h3>
+      <button class="modal-close" onclick="closeConfirmModal()">&times;</button>
+    </div>
+    <p id="confirmMessage"></p>
+    <div class="btn-group">
+      <button type="button" class="btn-secondary" onclick="closeConfirmModal()">Cancel</button>
+      <button type="button" class="btn-primary" id="confirmBtn" onclick="executeConfirmAction()">Confirm</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const API_BASE = '/panel/staff/api';
+let availablePermissions = [];
+let availableClients = [];
+let confirmAction = null;
+
+// Permission categories
+const PERMISSION_CATEGORIES = {
+  client: ['can_view_clients', 'can_add_clients', 'can_edit_clients', 'can_delete_clients', 'can_toggle_client_status'],
+  idcard: ['can_view_idcard_data', 'can_add_idcard_data', 'can_edit_idcard_data', 'can_delete_idcard_data', 'can_verify_idcard', 'can_approve_idcard'],
+  settings: ['can_view_idcard_settings', 'can_add_idcard_settings', 'can_edit_idcard_settings', 'can_delete_idcard_settings', 'can_upload_images', 'can_reupload_images', 'can_bulk_upload', 'can_bulk_download', 'can_export_data', 'can_download_cards', 'can_view_workflow', 'can_manage_workflow']
+};
+
+// CSRF token
+function getCSRFToken() {
+  return document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+         document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1] || '';
+}
+
+// Show alert
+function showAlert(message, type = 'success') {
+  const container = document.getElementById('alertContainer');
+  container.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+  setTimeout(() => container.innerHTML = '', 5000);
+}
+
+// Load available permissions
+async function loadPermissions() {
+  try {
+    const response = await fetch(`${API_BASE}/permissions/available/`);
+    const data = await response.json();
+    if (data.success) {
+      availablePermissions = data.permissions;
+      renderPermissionCheckboxes();
+    }
+  } catch (error) {
+    console.error('Error loading permissions:', error);
+  }
+}
+
+// Load available clients
+async function loadClients() {
+  try {
+    const response = await fetch(`${API_BASE}/clients/available/`);
+    const data = await response.json();
+    if (data.success) {
+      availableClients = data.clients;
+      renderClientCheckboxes();
+    }
+  } catch (error) {
+    console.error('Error loading clients:', error);
+  }
+}
+
+// Render permission checkboxes
+function renderPermissionCheckboxes() {
+  const containers = {
+    client: document.getElementById('clientPermissions'),
+    idcard: document.getElementById('idcardPermissions'),
+    settings: document.getElementById('settingsPermissions')
+  };
+
+  Object.values(containers).forEach(c => c.innerHTML = '');
+
+  availablePermissions.forEach(perm => {
+    let category = 'settings';
+    for (const [cat, codes] of Object.entries(PERMISSION_CATEGORIES)) {
+      if (codes.includes(perm.codename)) {
+        category = cat;
+        break;
+      }
+    }
+
+    const html = `
+      <label class="permission-item">
+        <input type="checkbox" name="permissions" value="${perm.codename}">
+        ${perm.name.replace('Can ', '')}
+      </label>
+    `;
+    if (containers[category]) {
+      containers[category].innerHTML += html;
+    }
+  });
+}
+
+// Render client checkboxes
+function renderClientCheckboxes() {
+  const container = document.getElementById('clientsContainer');
+  container.innerHTML = availableClients.map(client => `
+    <label class="client-item">
+      <input type="checkbox" name="clients" value="${client.id}">
+      ${client.name}
+    </label>
+  `).join('');
+}
+
+// Load staff list
+async function loadStaff() {
+  try {
+    const response = await fetch(`${API_BASE}/admin-staff/`);
+    const data = await response.json();
+    
+    const tbody = document.getElementById('staffTableBody');
+    
+    if (!data.success || data.staff.length === 0) {
+      tbody.innerHTML = `
+        <tr class="empty-row">
+          <td colspan="7">
+            <div class="empty-state">
+              <i class="fa-solid fa-users-gear"></i>
+              <p>No admin staff yet. Click "Add Admin Staff" to create one.</p>
+            </div>
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = data.staff.map(staff => `
+      <tr>
+        <td>${staff.name}</td>
+        <td>${staff.email}</td>
+        <td>${staff.designation || '-'}</td>
+        <td>
+          <div class="client-badges">
+            ${staff.assigned_clients.slice(0, 3).map(c => `<span class="client-badge">${c.name}</span>`).join('')}
+            ${staff.assigned_clients.length > 3 ? `<span class="client-badge">+${staff.assigned_clients.length - 3}</span>` : ''}
+          </div>
+        </td>
+        <td>
+          <span class="staff-badge ${staff.is_active ? 'badge-active' : 'badge-inactive'}">
+            ${staff.is_active ? 'Active' : 'Inactive'}
+          </span>
+        </td>
+        <td>${staff.permissions_count} permissions</td>
+        <td>
+          <div class="staff-actions">
+            <button onclick="editStaff(${staff.id})" title="Edit">
+              <i class="fa-solid fa-edit"></i>
+            </button>
+            <button onclick="toggleStatus(${staff.id})" title="${staff.is_active ? 'Deactivate' : 'Activate'}">
+              <i class="fa-solid fa-${staff.is_active ? 'ban' : 'check'}"></i>
+            </button>
+            <button onclick="confirmResetPassword(${staff.id}, '${staff.name}')" title="Reset Password">
+              <i class="fa-solid fa-key"></i>
+            </button>
+            <button onclick="confirmDelete(${staff.id}, '${staff.name}')" title="Delete">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  } catch (error) {
+    console.error('Error loading staff:', error);
+    showAlert('Error loading staff list', 'error');
+  }
+}
+
+// Open create modal
+function openCreateModal() {
+  document.getElementById('modalTitle').textContent = 'Add Admin Staff';
+  document.getElementById('submitBtn').textContent = 'Create Staff';
+  document.getElementById('staffId').value = '';
+  document.getElementById('staffForm').reset();
+  document.getElementById('email').removeAttribute('disabled');
+  document.querySelectorAll('input[name="permissions"]').forEach(cb => cb.checked = false);
+  document.querySelectorAll('input[name="clients"]').forEach(cb => cb.checked = false);
+  document.getElementById('staffModal').classList.add('active');
+}
+
+// Edit staff
+async function editStaff(id) {
+  try {
+    const response = await fetch(`${API_BASE}/admin-staff/${id}/`);
+    const data = await response.json();
+    
+    if (data.success) {
+      const staff = data.staff;
+      document.getElementById('modalTitle').textContent = 'Edit Admin Staff';
+      document.getElementById('submitBtn').textContent = 'Update Staff';
+      document.getElementById('staffId').value = staff.id;
+      document.getElementById('firstName').value = staff.first_name;
+      document.getElementById('lastName').value = staff.last_name;
+      document.getElementById('email').value = staff.email;
+      document.getElementById('email').setAttribute('disabled', 'disabled');
+      document.getElementById('phone').value = staff.phone || '';
+      document.getElementById('designation').value = staff.designation || '';
+      document.getElementById('department').value = staff.department || '';
+      
+      // Set permissions
+      document.querySelectorAll('input[name="permissions"]').forEach(cb => {
+        cb.checked = staff.permissions.includes(cb.value);
+      });
+      
+      // Set clients
+      const clientIds = staff.assigned_clients.map(c => c.id);
+      document.querySelectorAll('input[name="clients"]').forEach(cb => {
+        cb.checked = clientIds.includes(parseInt(cb.value));
+      });
+      
+      document.getElementById('staffModal').classList.add('active');
+    }
+  } catch (error) {
+    console.error('Error loading staff details:', error);
+    showAlert('Error loading staff details', 'error');
+  }
+}
+
+// Close modal
+function closeModal() {
+  document.getElementById('staffModal').classList.remove('active');
+}
+
+// Handle form submit
+async function handleSubmit(event) {
+  event.preventDefault();
+  
+  const staffId = document.getElementById('staffId').value;
+  const isEdit = !!staffId;
+  
+  const permissions = Array.from(document.querySelectorAll('input[name="permissions"]:checked'))
+    .map(cb => cb.value);
+  
+  const clients = Array.from(document.querySelectorAll('input[name="clients"]:checked'))
+    .map(cb => parseInt(cb.value));
+  
+  const formData = {
+    first_name: document.getElementById('firstName').value,
+    last_name: document.getElementById('lastName').value,
+    email: document.getElementById('email').value,
+    phone: document.getElementById('phone').value,
+    designation: document.getElementById('designation').value,
+    department: document.getElementById('department').value,
+    permissions: permissions,
+    assigned_clients: clients
+  };
+  
+  try {
+    const url = isEdit ? `${API_BASE}/admin-staff/${staffId}/` : `${API_BASE}/admin-staff/`;
+    const method = isEdit ? 'PUT' : 'POST';
+    
+    const response = await fetch(url, {
+      method: method,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCSRFToken()
+      },
+      body: JSON.stringify(formData)
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      showAlert(data.message);
+      closeModal();
+      loadStaff();
+    } else {
+      showAlert(data.error || 'Operation failed', 'error');
+    }
+  } catch (error) {
+    console.error('Error saving staff:', error);
+    showAlert('Error saving staff', 'error');
+  }
+}
+
+// Toggle staff status
+async function toggleStatus(id) {
+  try {
+    const response = await fetch(`${API_BASE}/admin-staff/${id}/toggle-status/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCSRFToken()
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      showAlert(data.message);
+      loadStaff();
+    } else {
+      showAlert(data.error || 'Failed to toggle status', 'error');
+    }
+  } catch (error) {
+    console.error('Error toggling status:', error);
+    showAlert('Error toggling status', 'error');
+  }
+}
+
+// Confirm modal
+function openConfirmModal(title, message, action) {
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmMessage').textContent = message;
+  confirmAction = action;
+  document.getElementById('confirmModal').classList.add('active');
+}
+
+function closeConfirmModal() {
+  document.getElementById('confirmModal').classList.remove('active');
+  confirmAction = null;
+}
+
+function executeConfirmAction() {
+  if (confirmAction) confirmAction();
+  closeConfirmModal();
+}
+
+// Confirm delete
+function confirmDelete(id, name) {
+  openConfirmModal(
+    'Delete Admin Staff',
+    `Are you sure you want to delete "${name}"? This cannot be undone.`,
+    async () => {
+      try {
+        const response = await fetch(`${API_BASE}/admin-staff/${id}/`, {
+          method: 'DELETE',
+          headers: { 'X-CSRFToken': getCSRFToken() }
+        });
+        const data = await response.json();
+        if (data.success) {
+          showAlert(data.message);
+          loadStaff();
+        } else {
+          showAlert(data.error || 'Failed to delete', 'error');
+        }
+      } catch (error) {
+        showAlert('Error deleting staff', 'error');
+      }
+    }
+  );
+}
+
+// Confirm reset password
+function confirmResetPassword(id, name) {
+  openConfirmModal(
+    'Reset Password',
+    `Reset password for "${name}"? A new password will be sent to their email.`,
+    async () => {
+      try {
+        const response = await fetch(`${API_BASE}/admin-staff/${id}/reset-password/`, {
+          method: 'POST',
+          headers: { 'X-CSRFToken': getCSRFToken() }
+        });
+        const data = await response.json();
+        if (data.success) {
+          showAlert(data.message);
+        } else {
+          showAlert(data.error || 'Failed to reset password', 'error');
+        }
+      } catch (error) {
+        showAlert('Error resetting password', 'error');
+      }
+    }
+  );
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+  loadPermissions();
+  loadClients();
+  loadStaff();
+});
+</script>
+{% endblock %}

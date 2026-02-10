@@ -1,0 +1,1135 @@
+/**
+ * Enhanced Common Styles
+ * Shared styles for partials and components across all pages
+ * Version: 2.1
+ * 
+ * NOTE: CSS Variables are defined in variables.css - DO NOT duplicate here
+ * This file extends variables.css with component-specific styles
+ */
+
+/* ==================== 
+   Content Wrapper 
+   ==================== */
+/* Filter Dropdown */
+.filter-dropdown,
+.filter-group select {
+    padding: var(--space-sm) var(--space-md);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    background: var(--bg-white);
+    font-size: var(--font-size-md);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all var(--transition-base);
+    min-width: 120px;
+    min-height: 36px;
+}
+
+.filter-dropdown:hover,
+.filter-group select:hover {
+    border-color: var(--primary);
+}
+
+.filter-dropdown:focus,
+.filter-group select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.1);
+}
+
+/* ====================
+   Button Styles
+   Base .btn + sizes defined in variables.css (single source of truth)
+   Action bar button sizing defined in common.css (.action-right .btn)
+   ==================== */
+
+/* Button color variants → defined in variables.css (single source of truth)
+   .btn-primary, .btn-secondary, .btn-danger, .btn-purple, .btn-blue,
+   .btn-sm are all in variables.css */
+
+/* ==================== 
+   Table Styles 
+   ==================== */
+.table-container {
+    background: var(--bg-white);
+    border-radius: 0;
+    border: 1px solid var(--border-default);
+    border-top: none;
+    overflow: hidden;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.data-table thead {
+    background: var(--primary-gradient);
+}
+
+.data-table th {
+    padding: var(--space-md) var(--space-sm);
+    text-align: center;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-bold);
+    color: var(--text-white);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    border-bottom: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+}
+
+.data-table td {
+    padding: var(--space-md) var(--space-sm);
+    font-size: var(--font-size-base);
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+    text-align: center;
+}
+
+.data-table tbody tr {
+    cursor: pointer;
+    transition: all var(--transition-base);
+    user-select: none;
+}
+
+.data-table tbody tr:hover {
+    background: var(--gray-50);
+}
+
+.data-table tbody tr.selected {
+    background: var(--bg-selected);
+}
+
+.data-table tbody tr.selected td:first-child {
+    box-shadow: inset 5px 0 0 0 var(--blue);
+}
+
+.data-table tbody tr.selected:hover {
+    background: var(--bg-selected-hover);
+}
+
+.data-table tbody tr.highlight {
+    animation: highlightPulse 1.5s ease-out;
+}
+
+@keyframes highlightPulse {
+    0%, 100% { background: transparent; }
+    50% { background: rgba(var(--primary-rgb), 0.3); }
+}
+
+/* Checkbox Column */
+.checkbox-col {
+    width: 50px;
+    text-align: center;
+    padding: 8px !important;
+}
+
+.checkbox-col input[type="checkbox"],
+.row-checkbox {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: var(--primary);
+    margin: 0;
+}
+
+/* Status Badge → defined in common.css (single source of truth) */
+
+/* Empty State / No Data → defined in common.css (single source of truth) */
+
+/* ====================
+   Unified Image Upload Component
+   ==================== */
+.image-upload-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+}
+
+.image-upload-section .image-upload-label {
+    font-weight: var(--font-weight-medium);
+    color: var(--text-primary);
+    margin-bottom: var(--space-xs);
+}
+
+.image-upload-container {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-md);
+}
+
+.image-preview {
+    width: 80px;
+    height: 80px;
+    border-radius: var(--radius-md);
+    background: var(--gray-100);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: 2px dashed var(--gray-300);
+    flex-shrink: 0;
+}
+
+.image-preview.small {
+    width: 60px;
+    height: 60px;
+}
+
+.image-preview.large {
+    width: 100px;
+    height: 100px;
+}
+
+.image-preview i {
+    font-size: 28px;
+    color: var(--gray-400);
+}
+
+.image-preview.has-image {
+    border-style: solid;
+    border-color: var(--primary);
+}
+
+.image-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.image-upload-controls {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+}
+
+.image-upload-btn {
+    cursor: pointer;
+}
+
+.upload-hint {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+}
+
+.image-path-display {
+    font-size: var(--font-size-xs);
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--radius-sm);
+    background: var(--gray-50);
+    color: var(--text-secondary);
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.image-path-display.no-path {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.image-path-display.has-path {
+    color: var(--success);
+    background: var(--green-bg);
+}
+
+.image-path-display.not-found {
+    color: var(--warning);
+    background: var(--yellow-bg);
+}
+
+.image-path-display.pending {
+    color: var(--info);
+    background: var(--blue-bg);
+}
+
+/* ==================== 
+   Pagination Styles → defined in common.css (single source of truth)
+   .pagination-bar, .pagination-btn, .page-num, .pagination-info,
+   .pagination-left/center/right, .rows-dropdown all in common.css
+   ==================== */
+
+/* Legacy per-page-dropdown (native <select> style) */
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+}
+
+.pagination-controls label {
+    font-size: 13px;
+    color: #666;
+}
+
+/* Page indicator text */
+/* ==================== 
+   Drawer Styles → defined in common.css (single source of truth)
+   common.css defines: .modal-overlay/.drawer-modal (overlay),
+   .drawer-content (panel), .drawer-header, .drawer-close,
+   .drawer-body, .drawer-footer
+   
+   These aliases support older markup that uses .drawer-overlay + .side-drawer
+   ==================== */
+.drawer-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 2000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all var(--transition-slow);
+    overflow: hidden;
+}
+
+.drawer-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.side-drawer {
+    position: fixed;
+    top: 0;
+    right: -650px;
+    width: 650px;
+    max-width: 98vw;
+    height: 100vh;
+    background: var(--bg-white);
+    z-index: 2001;
+    display: flex;
+    flex-direction: column;
+    box-shadow: -10px 0 40px rgba(0, 0, 0, 0.2);
+    transition: right var(--transition-slow);
+}
+
+.side-drawer.open {
+    right: 0;
+}
+
+/* Form inside side-drawer needs to be flex container */
+.side-drawer form,
+.side-drawer .drawer-form {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* .drawer-header, .drawer-close, .drawer-body, .drawer-footer
+   are all defined in common.css — do NOT redefine here */
+
+/* ===========================================
+   DRAWER FORM STYLES
+   =========================================== */
+
+/* Drawer Form Container */
+.drawer-form {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+}
+
+/* Form Sections in Drawer */
+.form-section {
+    margin-bottom: 24px;
+    padding: 20px;
+    background: var(--bg-white);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--gray-200);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.form-section:last-child {
+    margin-bottom: 0;
+}
+
+.section-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--primary);
+    margin: 0 0 16px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--gray-100);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.section-title i {
+    font-size: 16px;
+    color: var(--primary);
+}
+
+/* Form Elements */
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group:last-child {
+    margin-bottom: 0;
+}
+
+.form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-700);
+    margin-bottom: 8px;
+}
+
+.form-group label .required {
+    color: var(--danger);
+    margin-left: 2px;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: var(--space-sm) var(--space-md);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-md);
+    color: var(--text-primary);
+    background: var(--bg-white);
+    transition: all var(--transition-base);
+    min-height: 36px;
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+    color: var(--gray-400);
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.1);
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+/* Profile Upload */
+.profile-upload {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 16px;
+    background: var(--gray-50);
+    border-radius: var(--radius-md);
+}
+
+.profile-preview {
+    width: 80px;
+    height: 100px;
+    border-radius: var(--radius-lg);
+    background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: 2px dashed var(--gray-300);
+    flex-shrink: 0;
+}
+
+.profile-preview i {
+    font-size: 32px;
+    color: var(--gray-400);
+}
+
+.profile-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* When image is present, remove dashed border */
+.profile-preview.has-image {
+    border: 2px solid var(--gray-200);
+}
+
+.profile-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.profile-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.upload-hint {
+    font-size: 12px;
+    color: var(--gray-500);
+    margin: 0;
+}
+
+/* Photo/Profile Path Display */
+.profile-path-display {
+    margin-top: 6px;
+    font-size: 10px;
+    color: var(--text-secondary);
+    max-width: 250px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: monospace;
+    background: var(--gray-200);
+    padding: 3px 8px;
+    border-radius: 3px;
+}
+
+.profile-path-display.no-path {
+    color: var(--gray-400);
+    font-style: italic;
+}
+
+.profile-path-display.not-found {
+    color: var(--yellow-dark);
+    background: var(--yellow-bg);
+}
+
+.profile-path-display.has-path {
+    color: var(--green-dark);
+    background: var(--green-bg);
+}
+
+/* Password Toggle */
+.password-input-wrapper {
+    position: relative;
+}
+
+.password-input-wrapper input {
+    padding-right: 44px;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--gray-400);
+    cursor: pointer;
+    padding: 4px;
+    transition: color var(--transition-base);
+}
+
+.password-toggle:hover {
+    color: var(--primary);
+}
+
+/* Permission Groups */
+.permission-group {
+    margin-bottom: 16px;
+    padding: 16px;
+    background: var(--gray-50);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--gray-100);
+}
+
+.permission-group:last-child {
+    margin-bottom: 0;
+}
+
+.permission-group-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary);
+    margin: 0 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.permission-group-title i {
+    font-size: 14px;
+    color: var(--primary);
+}
+
+.permission-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+}
+
+.permission-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--bg-white);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--gray-200);
+    cursor: pointer;
+    transition: all var(--transition-base);
+}
+
+.permission-item:hover {
+    background: var(--primary-bg);
+    border-color: var(--primary-light);
+}
+
+.permission-item input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--primary);
+}
+
+.permission-item .permission-label {
+    font-size: 13px;
+    color: var(--gray-700);
+    font-weight: 500;
+}
+
+/* ==================== 
+   Center Modal Styles (for delete confirmation, alerts, etc.)
+   ==================== */
+.center-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(6px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.center-modal-overlay.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.center-modal {
+    background: var(--bg-white);
+    border-radius: var(--radius-xl);
+    box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.35);
+    width: 100%;
+    max-width: 420px;
+    max-height: 90vh;
+    overflow: hidden;
+    transform: scale(0.9) translateY(20px);
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    display: flex;
+    flex-direction: column;
+}
+
+.center-modal-overlay.show .center-modal {
+    transform: scale(1) translateY(0);
+}
+
+.center-modal .modal-header {
+    padding: 20px 24px;
+    background: linear-gradient(135deg, var(--red) 0%, var(--red-dark) 100%);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.center-modal .modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-white);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.center-modal .modal-header h3 i {
+    font-size: 20px;
+}
+
+.center-modal .modal-close {
+    width: 34px;
+    height: 34px;
+    border: none;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-white);
+    font-size: 16px;
+    transition: all 0.2s;
+}
+
+.center-modal .modal-close:hover {
+    background: rgba(255, 255, 255, 0.35);
+    transform: rotate(90deg);
+}
+
+.center-modal .modal-body {
+    padding: 32px 24px;
+    background: var(--bg-white);
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex: 1;
+    min-height: 0;
+}
+
+.center-modal .modal-footer {
+    padding: 16px 24px 20px;
+    background: var(--gray-50);
+    border-top: 1px solid var(--gray-200);
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.center-modal .modal-footer .btn {
+    min-width: 100px;
+    padding: 10px 20px;
+    font-weight: 500;
+    border-radius: var(--radius-lg);
+    transition: all 0.2s;
+}
+
+.center-modal .modal-footer .btn-secondary {
+    background: var(--gray-200);
+    color: var(--gray-700);
+    border: none;
+}
+
+.center-modal .modal-footer .btn-secondary:hover {
+    background: var(--gray-300);
+}
+
+.center-modal .modal-footer .btn-danger {
+    background: linear-gradient(135deg, var(--red) 0%, var(--red-dark) 100%);
+    color: var(--text-white);
+    border: none;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+}
+
+.center-modal .modal-footer .btn-danger:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(239, 68, 68, 0.45);
+}
+
+/* Delete Modal Specific */
+.center-modal.delete-modal .modal-header h3 {
+    color: var(--text-white);
+}
+
+/* ==================== 
+   Modal Styles (Legacy - for side drawers)
+   ==================== */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    opacity: 0;
+    visibility: hidden;
+    transition: all var(--transition-slow);
+}
+
+.modal-overlay.open,
+.modal-overlay.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal {
+    background: #fff;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    width: 100%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow: hidden;
+    transform: scale(0.9) translateY(20px);
+    transition: all var(--transition-slow);
+}
+
+.modal-overlay.open .modal,
+.modal-overlay.show .modal {
+    transform: scale(1) translateY(0);
+}
+
+.modal-header {
+    padding: 20px 24px;
+    background: linear-gradient(135deg, var(--gray-50) 0%, var(--gray-100) 100%);
+    border-bottom: 1px solid var(--gray-200);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--gray-800);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.modal-close {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    border-radius: var(--radius);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gray-500);
+    transition: all var(--transition);
+}
+
+.modal-close:hover {
+    background: var(--gray-200);
+    color: var(--gray-700);
+}
+
+.modal-body {
+    padding: 24px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex: 1;
+    min-height: 0;
+}
+
+.modal-footer {
+    padding: 16px 24px;
+    background: var(--gray-50);
+    border-top: 1px solid var(--gray-200);
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+/* Delete Modal Warning Content */
+.delete-modal .modal-header h3 {
+    color: var(--text-white);
+}
+
+.delete-warning {
+    text-align: center;
+    padding: 10px 0;
+}
+
+.delete-warning .delete-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 20px;
+    background: linear-gradient(135deg, var(--red-bg) 0%, #fecaca 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    color: var(--red);
+    animation: pulse-delete 2s infinite;
+}
+
+@keyframes pulse-delete {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 0 15px rgba(239, 68, 68, 0);
+    }
+}
+
+.delete-warning p {
+    margin: 0 0 8px;
+    color: var(--gray-700);
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+.delete-warning p strong {
+    color: var(--gray-900);
+    font-weight: 600;
+}
+
+.delete-warning .delete-note {
+    font-size: 13px;
+    color: var(--gray-500);
+    margin-top: 12px;
+    padding: 10px 16px;
+    background: var(--gray-100);
+    border-radius: var(--radius-lg);
+    display: inline-block;
+}
+
+.delete-warning .delete-note i {
+    margin-right: 6px;
+    color: var(--yellow);
+}
+
+/* View Modal / View Drawer Styles */
+.view-modal {
+    max-width: 600px;
+}
+
+.view-profile-section,
+.view-profile {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xl);
+    margin-bottom: var(--space-xl);
+    padding: var(--space-xl);
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+    border-radius: var(--radius-xl);
+    border: 1px solid rgba(102, 126, 234, 0.15);
+}
+
+.view-profile-image,
+.view-avatar {
+    width: 80px;
+    height: 100px;
+    border-radius: var(--radius-lg);
+    background: var(--primary-gradient);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.35);
+}
+
+.view-profile-image i,
+.view-avatar i {
+    font-size: 32px;
+    color: var(--text-white);
+}
+
+.view-profile-image img,
+.view-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.view-profile-info,
+.view-info {
+    flex: 1;
+}
+
+.view-profile-info h2,
+.view-info h2 {
+    margin: 0 0 8px;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--gray-800);
+}
+
+.view-info .status-badge {
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.view-details-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-sm);
+    margin-bottom: var(--space-lg);
+}
+
+.view-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.view-section-title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary);
+    margin: var(--space-xl) 0 var(--space-md) 0;
+    padding-bottom: var(--space-sm);
+    border-bottom: 2px solid var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.view-section-title i {
+    font-size: 14px;
+}
+
+.view-detail-item,
+.detail-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-lg);
+    padding: var(--space-md) var(--space-lg);
+    background: var(--gray-50);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-sm);
+    border: 1px solid var(--gray-100);
+    transition: all 0.2s ease;
+}
+
+.view-detail-item:hover,
+.detail-item:hover {
+    background: var(--bg-white);
+    border-color: var(--primary);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+}
+
+.view-detail-item i:first-child,
+.detail-icon {
+    width: 40px;
+    height: 40px;
+    background: var(--primary-gradient);
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-white);
+    font-size: 16px;
+    flex-shrink: 0;
+    box-shadow: 0 3px 8px rgba(102, 126, 234, 0.25);
+}
+
+.detail-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.detail-content label,
+.detail-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--gray-500);
+    letter-spacing: 0.8px;
+    margin-bottom: 2px;
+    font-weight: 600;
+}
+
+.detail-content span,
+.detail-value {
+    font-size: 15px;
+    color: var(--gray-800);
+    font-weight: 500;
+    word-break: break-word;
+    overflow-wrap: break-word;
+}
+
+.view-permissions-section h4 {
+    font-size: 14px;
+    color: var(--gray-700);
+    margin: 0 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.permissions-display {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.permission-tag {
+    padding: 4px 10px;
+    background: var(--primary-bg);
+    color: var(--primary-dark);
+    border-radius: var(--radius-full);
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.no-permissions {
+    color: var(--gray-400);
+    font-size: 13px;
+    font-style: italic;
+}
+
+/* ==================== 
+   Toast Styles - MOVED TO common.css
+   All toast styles are now unified in common.css
+   ==================== */
+
+/* Topbar / sidebar-toggle / breadcrumb → defined in style.css (single source of truth) */
+
+/* ==================== 
+   Responsive Styles 
+   ==================== */
+@media (max-width: 768px) {
+    .action-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .pagination-bar {
+        left: 0;
+        flex-direction: column;
+        gap: 8px;
+        padding: 8px 12px;
+        text-align: center;
+    }
+    
+    .side-drawer {
+        width: 100%;
+        right: -100%;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .permission-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .view-details-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .btn .btn-text {
+        display: none;
+    }
+    
+    .btn {
+        padding: 10px 14px;
+    }
+}

@@ -1,0 +1,21 @@
+{% comment %}
+Unified Loading State Component
+===============================
+Usage: 
+  {% include 'partials/components/loading-state.html' with 
+     id="staff-loading" 
+     message="Loading staff..." 
+  %}
+
+Parameters:
+  - id: Unique ID for the loading state (required)
+  - message: Loading message (default: "Loading...")
+  - hidden: Whether initially hidden (default: True)
+
+CSS: Styles defined in partials-common.css
+{% endcomment %}
+
+<div class="loading-state" id="{{ id|default:'loading-state' }}" {% if hidden|default:True %}style="display: none;"{% endif %}>
+    <i class="fa-solid fa-spinner fa-spin"></i>
+    <p>{{ message|default:"Loading..." }}</p>
+</div>

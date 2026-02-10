@@ -1,0 +1,895 @@
+/* ===== Why Choose Us Page Responsive Styles ===== */
+
+/* ===== LARGE DESKTOP (1400px+) ===== */
+@media (min-width: 1400px) {
+    .features-grid,
+    .promises-grid {
+        max-width: 1320px;
+    }
+    
+    .designs-content {
+        max-width: 1320px;
+        gap: 100px;
+    }
+}
+
+/* ===== DESKTOP (1200px - 1399px) ===== */
+@media (max-width: 1399px) {
+    .designs-content {
+        gap: 60px;
+    }
+    
+    .showcase-card.card-1 {
+        width: 220px;
+        height: 320px;
+    }
+    
+    .showcase-card.card-2 {
+        width: 200px;
+        height: 290px;
+    }
+    
+    .showcase-card.card-3 {
+        width: 180px;
+        height: 260px;
+    }
+}
+
+/* ===== TABLET LARGE (992px - 1199px) ===== */
+@media (max-width: 1199px) {
+    .section-header h2 {
+        font-size: 2.4rem;
+    }
+    
+    .features-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .feature-card.featured {
+        grid-column: span 2;
+    }
+    
+    .promises-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .designs-content {
+        grid-template-columns: 1fr;
+        gap: 50px;
+    }
+    
+    .designs-text {
+        text-align: center;
+    }
+    
+    .design-features li {
+        justify-content: center;
+        text-align: left;
+    }
+    
+    .btn-explore {
+        display: inline-flex;
+    }
+    
+    .designs-showcase {
+        height: 400px;
+        max-width: 500px;
+        margin: 0 auto;
+    }
+    
+    .showcase-card.card-1 {
+        width: 200px;
+        height: 280px;
+        left: 10%;
+    }
+    
+    .showcase-card.card-2 {
+        width: 180px;
+        height: 260px;
+        right: 10%;
+    }
+    
+    .showcase-card.card-3 {
+        width: 160px;
+        height: 230px;
+    }
+    
+    .trust-reasons {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* ===== TABLET (768px - 991px) ===== */
+@media (max-width: 991px) {
+    .key-features,
+    .promises-section,
+    .designs-section,
+    .faq-section {
+        padding: 80px 20px;
+    }
+    
+    .trust-section {
+        padding: 80px 20px;
+    }
+    
+    .section-header {
+        margin-bottom: 50px;
+    }
+    
+    .section-header h2 {
+        font-size: 2rem;
+    }
+    
+    .section-header p {
+        font-size: 1rem;
+    }
+    
+    .features-grid {
+        gap: 20px;
+    }
+    
+    .feature-card {
+        padding: 30px 25px;
+    }
+    
+    .feature-card.featured {
+        grid-column: span 1;
+    }
+    
+    .feature-number {
+        font-size: 3rem;
+    }
+    
+    .promises-grid {
+        gap: 20px;
+    }
+    
+    .promise-card {
+        padding: 35px 25px;
+    }
+    
+    .designs-text h2 {
+        font-size: 2rem;
+    }
+    
+    .designs-showcase {
+        height: 350px;
+    }
+    
+    .showcase-card.card-1 {
+        width: 180px;
+        height: 250px;
+    }
+    
+    .showcase-card.card-2 {
+        width: 160px;
+        height: 230px;
+    }
+    
+    .showcase-card.card-3 {
+        width: 150px;
+        height: 210px;
+    }
+    
+    .trust-reasons {
+        gap: 20px;
+    }
+    
+    .trust-card {
+        padding: 30px 20px;
+    }
+    
+    .trust-icon {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .trust-icon i {
+        font-size: 1.5rem;
+    }
+    
+    .faq-question {
+        padding: 20px 25px;
+    }
+    
+    .faq-question span {
+        font-size: 1rem;
+    }
+    
+    .faq-answer p {
+        padding: 0 25px 20px;
+        font-size: 0.9rem;
+    }
+}
+
+/* ===== MOBILE LARGE (576px - 767px) ===== */
+@media (max-width: 767px) {
+    .key-features,
+    .promises-section,
+    .designs-section,
+    .faq-section {
+        padding: 60px 15px;
+    }
+    
+    .trust-section {
+        padding: 60px 15px;
+    }
+    
+    .section-header {
+        margin-bottom: 40px;
+    }
+    
+    .section-badge {
+        padding: 6px 16px;
+        font-size: 0.75rem;
+    }
+    
+    .section-header h2 {
+        font-size: 1.75rem;
+    }
+    
+    .section-header p {
+        font-size: 0.95rem;
+    }
+    
+    .features-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .feature-card {
+        padding: 25px 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .feature-icon {
+        width: 55px;
+        height: 55px;
+        min-width: 55px;
+        border-radius: 14px;
+        margin-bottom: 15px;
+    }
+    
+    .feature-icon i {
+        font-size: 1.4rem;
+    }
+    
+    .feature-number {
+        font-size: 2rem;
+        top: 12px;
+        right: 15px;
+    }
+    
+    .feature-card h3 {
+        font-size: 1.15rem;
+        margin-bottom: 10px;
+        line-height: 1.3;
+    }
+    
+    .feature-card p {
+        font-size: 0.9rem;
+        margin-bottom: 15px;
+        line-height: 1.5;
+    }
+    
+    .feature-tags {
+        gap: 8px;
+        justify-content: center;
+    }
+    
+    .feature-tags span {
+        padding: 6px 12px;
+        font-size: 0.75rem;
+    }
+    
+    .feature-highlight {
+        padding: 8px 18px;
+        font-size: 0.85rem;
+    }
+    
+    .promises-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .promise-card {
+        padding: 30px 20px;
+    }
+    
+    .promise-icon {
+        width: 70px;
+        height: 70px;
+    }
+    
+    .promise-icon i {
+        font-size: 1.8rem;
+    }
+    
+    .promise-card h3 {
+        font-size: 1.15rem;
+    }
+    
+    .promise-guarantee {
+        padding: 8px 16px;
+        font-size: 0.8rem;
+    }
+    
+    .designs-text h2 {
+        font-size: 1.75rem;
+    }
+    
+    .designs-text > p {
+        font-size: 1rem;
+        text-align: center;
+    }
+    
+    .design-features {
+        text-align: left;
+        max-width: 100%;
+        margin: 0 auto 25px;
+        padding: 0 10px;
+    }
+    
+    .design-features li {
+        display: flex;
+        flex-direction: row;
+        text-align: left;
+        gap: 15px;
+        align-items: flex-start;
+        margin-bottom: 18px;
+    }
+    
+    .design-features li i {
+        font-size: 1.3rem;
+        min-width: 28px;
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    
+    .design-features li div {
+        flex: 1;
+    }
+    
+    .design-features li div strong {
+        font-size: 1rem;
+        display: block;
+        margin-bottom: 3px;
+    }
+    
+    .design-features li div span {
+        font-size: 0.85rem;
+        display: block;
+    }
+    
+    .btn-explore {
+        padding: 12px 28px;
+        font-size: 0.95rem;
+        display: flex;
+        width: fit-content;
+        margin: 0 auto;
+    }
+    
+    .designs-showcase {
+        height: 380px;
+        position: relative;
+    }
+    
+    .showcase-card {
+        position: absolute;
+    }
+    
+    .showcase-card.card-1 {
+        width: 170px;
+        height: 240px;
+        left: 5%;
+        top: 0;
+    }
+    
+    .showcase-card.card-2 {
+        width: 160px;
+        height: 225px;
+        right: 5%;
+        top: 80px;
+    }
+    
+    .showcase-card.card-3 {
+        width: 150px;
+        height: 210px;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: 0;
+    }
+    
+    .card-badge {
+        padding: 4px 10px;
+        font-size: 0.6rem;
+    }
+    
+    .trust-reasons {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .trust-card {
+        padding: 25px 20px;
+    }
+    
+    .trust-card h3 {
+        font-size: 1.05rem;
+    }
+    
+    .trust-card p {
+        font-size: 0.85rem;
+    }
+    
+    .school-logo {
+        width: 80px;
+        height: 80px;
+        padding: 12px;
+    }
+    
+    .faq-question {
+        padding: 18px 20px;
+    }
+    
+    .faq-question span {
+        font-size: 0.95rem;
+        padding-right: 10px;
+    }
+    
+    .faq-answer p {
+        padding: 0 20px 18px;
+    }
+}
+
+/* ===== MOBILE (Below 576px) ===== */
+@media (max-width: 575px) {
+    .why-hero {
+        padding: 85px 15px 50px;
+    }
+    
+    .hero-badge {
+        padding: 8px 15px;
+    }
+    
+    .hero-badge i {
+        font-size: 1rem;
+    }
+    
+    .hero-badge span {
+        font-size: 0.8rem;
+    }
+    
+    .hero-content h1 {
+        font-size: 1.75rem;
+    }
+    
+    .hero-subtitle {
+        font-size: 0.9rem;
+    }
+    
+    .hero-stats-row {
+        gap: 10px;
+    }
+    
+    .hero-stat {
+        padding: 15px 10px;
+    }
+    
+    .stat-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+    }
+    
+    .stat-number {
+        font-size: 1.3rem;
+    }
+    
+    .stat-suffix {
+        font-size: 0.9rem;
+    }
+    
+    .stat-label {
+        font-size: 0.7rem;
+    }
+    
+    .key-features,
+    .promises-section,
+    .designs-section,
+    .faq-section,
+    .trust-section {
+        padding: 50px 15px;
+    }
+    
+    .section-header {
+        margin-bottom: 35px;
+    }
+    
+    .section-header h2 {
+        font-size: 1.5rem;
+    }
+    
+    .section-header p {
+        font-size: 0.9rem;
+    }
+    
+    .feature-card {
+        padding: 22px 18px;
+    }
+    
+    .feature-icon {
+        width: 50px;
+        height: 50px;
+        min-width: 50px;
+        border-radius: 12px;
+    }
+    
+    .feature-icon i {
+        font-size: 1.2rem;
+    }
+    
+    .feature-number {
+        font-size: 1.8rem;
+        top: 10px;
+        right: 12px;
+    }
+    
+    .feature-card h3 {
+        font-size: 1.05rem;
+    }
+    
+    .feature-card p {
+        font-size: 0.85rem;
+    }
+    
+    .feature-tags span {
+        padding: 5px 10px;
+        font-size: 0.7rem;
+    }
+    
+    .promise-card {
+        padding: 25px 18px;
+    }
+    
+    .promise-icon {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .promise-icon i {
+        font-size: 1.5rem;
+    }
+    
+    .promise-card h3 {
+        font-size: 1.1rem;
+    }
+    
+    .promise-card p {
+        font-size: 0.85rem;
+    }
+    
+    .designs-text h2 {
+        font-size: 1.5rem;
+    }
+    
+    .design-features {
+        max-width: 100%;
+        padding: 0 5px;
+    }
+    
+    .design-features li {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 15px;
+    }
+    
+    .design-features li i {
+        font-size: 1.1rem;
+        min-width: 24px;
+        width: 24px;
+        height: 24px;
+    }
+    
+    .design-features li div strong {
+        font-size: 0.9rem;
+    }
+    
+    .design-features li div span {
+        font-size: 0.8rem;
+    }
+    
+    .designs-showcase {
+        height: 340px;
+    }
+    
+    .showcase-card.card-1 {
+        width: 150px;
+        height: 210px;
+    }
+    
+    .showcase-card.card-2 {
+        width: 140px;
+        height: 195px;
+        top: 70px;
+    }
+    
+    .showcase-card.card-3 {
+        width: 130px;
+        height: 180px;
+    }
+    
+    .card-badge {
+        padding: 3px 8px;
+        font-size: 0.55rem;
+    }
+    
+    .trust-card {
+        padding: 22px 18px;
+    }
+    
+    .trust-icon {
+        width: 55px;
+        height: 55px;
+    }
+    
+    .trust-icon i {
+        font-size: 1.3rem;
+    }
+    
+    .trust-card h3 {
+        font-size: 1rem;
+    }
+    
+    .trust-card p {
+        font-size: 0.8rem;
+    }
+    
+    .school-logo {
+        width: 70px;
+        height: 70px;
+        padding: 10px;
+    }
+    
+    .logos-track {
+        gap: 25px;
+    }
+    
+    .faq-question {
+        padding: 15px;
+    }
+    
+    .faq-question span {
+        font-size: 0.9rem;
+    }
+    
+    .faq-answer p {
+        padding: 0 15px 15px;
+        font-size: 0.85rem;
+    }
+    
+    .cta-text h2 {
+        font-size: 1.4rem;
+    }
+}
+
+/* ===== SMALL MOBILE (Below 400px) ===== */
+@media (max-width: 399px) {
+    .hero-content h1 {
+        font-size: 1.5rem;
+    }
+    
+    .hero-subtitle {
+        font-size: 0.85rem;
+    }
+    
+    .hero-stat {
+        padding: 12px 8px;
+    }
+    
+    .stat-icon {
+        width: 35px;
+        height: 35px;
+    }
+    
+    .stat-icon i {
+        font-size: 0.9rem;
+    }
+    
+    .stat-number {
+        font-size: 1.1rem;
+    }
+    
+    .stat-suffix {
+        font-size: 0.8rem;
+    }
+    
+    .stat-label {
+        font-size: 0.65rem;
+    }
+    
+    .section-header h2 {
+        font-size: 1.3rem;
+    }
+    
+    .feature-icon {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .feature-icon i {
+        font-size: 1.2rem;
+    }
+    
+    .feature-number {
+        font-size: 2rem;
+    }
+    
+    .feature-card h3 {
+        font-size: 1rem;
+    }
+    
+    .designs-showcase {
+        height: 220px;
+    }
+    
+    .showcase-card.card-1 {
+        width: 100px;
+        height: 145px;
+    }
+    
+    .showcase-card.card-2 {
+        width: 90px;
+        height: 130px;
+    }
+    
+    .showcase-card.card-3 {
+        width: 85px;
+        height: 120px;
+    }
+}
+
+/* ===== LANDSCAPE MOBILE ===== */
+@media (max-height: 500px) and (orientation: landscape) {
+    .why-hero {
+        min-height: auto;
+        padding: 80px 20px 40px;
+    }
+    
+    .hero-content h1 {
+        font-size: 1.8rem;
+        margin-bottom: 10px;
+    }
+    
+    .hero-subtitle {
+        font-size: 0.9rem;
+        margin-bottom: 20px;
+    }
+    
+    .hero-stats-row {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+    }
+    
+    .hero-stat {
+        padding: 15px 10px;
+    }
+    
+    .hero-scroll-indicator {
+        display: none;
+    }
+}
+
+/* ===== TOUCH DEVICE OPTIMIZATIONS ===== */
+@media (hover: none) and (pointer: coarse) {
+    .feature-card:hover,
+    .promise-card:hover,
+    .trust-card:hover,
+    .hero-stat:hover {
+        transform: none;
+    }
+    
+    .showcase-card:hover {
+        transform: none !important;
+        z-index: auto;
+    }
+    
+    .btn-explore:hover {
+        transform: none;
+    }
+    
+    .faq-question {
+        -webkit-tap-highlight-color: rgba(52, 152, 219, 0.2);
+    }
+}
+
+/* ===== REDUCED MOTION ===== */
+@media (prefers-reduced-motion: reduce) {
+    .shape-1,
+    .shape-2,
+    .shape-3,
+    .shape-4 {
+        animation: none;
+    }
+    
+    .hero-scroll-indicator {
+        animation: none;
+    }
+    
+    .showcase-card.card-1,
+    .showcase-card.card-2,
+    .showcase-card.card-3 {
+        animation: none;
+    }
+    
+    .logos-track {
+        animation: none;
+    }
+    
+    .promise-card::before {
+        transition: none;
+    }
+}
+
+/* ===== HIGH CONTRAST MODE ===== */
+@media (prefers-contrast: high) {
+    .hero-badge,
+    .section-badge,
+    .feature-highlight,
+    .check-value {
+        border: 2px solid currentColor;
+    }
+    
+    .feature-card,
+    .promise-card,
+    .trust-card,
+    .faq-item {
+        border-width: 2px;
+    }
+}
+
+/* ===== PRINT STYLES ===== */
+@media print {
+    .why-hero {
+        background: #fff !important;
+        color: #000 !important;
+        min-height: auto;
+        padding: 20px;
+    }
+    
+    .hero-bg-shapes,
+    .hero-scroll-indicator {
+        display: none;
+    }
+    
+    .hero-content h1,
+    .section-header h2 {
+        color: #000 !important;
+    }
+    
+    .gradient-text {
+        -webkit-text-fill-color: #3498db;
+    }
+    
+    .trust-section {
+        background: #f5f5f5 !important;
+        color: #000 !important;
+    }
+    
+    .trust-card {
+        background: #fff !important;
+        color: #000 !important;
+        border: 1px solid #ccc;
+    }
+    
+    .logos-track {
+        animation: none;
+    }
+}

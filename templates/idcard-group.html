@@ -1,0 +1,754 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ID Card Group - {{ client.name }} - Adarsh ID Cards</title>
+  <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/variables.css' %}?v=3">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=38">
+  <link rel="stylesheet" href="{% static 'css/common.css' %}?v=49">
+  <link rel="stylesheet" href="{% static 'css/idcard-group.css' %}?v=40">
+  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=2">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+
+  {% include 'partials/sidebar.html' %}
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- Top Navbar -->
+    <header class="topbar">
+      <div class="nav-left">
+        <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+        <div class="breadcrumb">
+            {% if is_super_admin %}
+            <a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+            {% elif is_admin_staff %}
+            <a href="{% url 'admin_staff_dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+            {% elif is_client or is_client_staff %}
+            <a href="{% url 'client:dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+            {% endif %}
+            <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+            {% if is_client or is_client_staff %}
+            <span class="breadcrumb-item active">ID Card Group</span>
+            {% else %}
+            <a href="{% url 'active_clients' %}" class="breadcrumb-item">Clients</a>
+            <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+            <span class="breadcrumb-item">{{ client.name }}</span>
+            <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+            <span class="breadcrumb-item active">ID Card Group</span>
+            {% endif %}
+        </div>
+      </div>
+
+      <!-- Right - Page Switch Buttons -->
+      <div class="nav-right">
+        <div class="page-switch-btns">
+          <a href="{% if is_client or is_client_staff %}{% url 'client:idcard_group' %}{% else %}{% url 'idcard_group' client.id %}{% endif %}" class="switch-btn active" title="ID Card Group">
+            <i class="fa-solid fa-id-card"></i> <span>ID Card Group</span>
+          </a>
+          {% if is_super_admin or is_admin_staff or perm_idcard_setting_list %}
+          <a href="{% if is_client or is_client_staff %}{% url 'client:group_settings' %}{% else %}#{% endif %}" {% if not is_client and not is_client_staff %}id="switchToGroupSetting"{% endif %} class="switch-btn" title="Group Setting">
+            <i class="fa-solid fa-table-list"></i> <span>Group Setting</span>
+          </a>
+          {% endif %}
+        </div>
+      </div>
+    </header>
+
+    <div class="main-content">
+
+    <!-- Action Bar -->
+    <div class="action-bar">
+        
+        <!-- Search and Filter -->
+        <div class="action-left">
+            <div class="search-box">
+                <i class="fa-solid fa-search search-icon"></i>
+                <input type="text" class="search-input" id="searchInput" placeholder="Search..." autocomplete="off">
+                <button class="search-clear-btn" id="searchClearBtn" type="button" title="Clear search">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="filter-group">
+                <div class="custom-dropdown" id="filterDropdown">
+                    <button class="dropdown-toggle" id="dropdownToggle">
+                        <i class="fa-solid fa-filter"></i>
+                        <span id="selectedText">Filter</span>
+                        <i class="fa-solid fa-chevron-down"></i>
+                    </button>
+                    <div class="dropdown-options" id="dropdownOptions">
+                        <div class="dropdown-option selected" data-value="all">All</div>
+                        <div class="dropdown-option" data-value="pending">Pending</div>
+                        <div class="dropdown-option" data-value="verified">Verified</div>
+                        <div class="dropdown-option" data-value="approved">Approved</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ID Card Tables List -->
+    <div class="table-container idcard-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Action</th>
+                    <th>Bulk Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for table in tables %}
+                <tr data-table-id="{{ table.id }}">
+                    <td>
+                        <strong>{{ table.name }}</strong>
+                    </td>
+                    <td class="action-cell">
+                        <div class="action-buttons">
+                            {% if is_super_admin or perm_idcard_pending_list %}
+                            <a href="{% if is_client or is_client_staff %}{% url 'client:idcard_actions' table.id %}{% else %}{% url 'idcard_actions' table.id %}{% endif %}?status=pending" class="list-btn pending-btn">
+                                <i class="fa-solid fa-clock"></i> Pending
+                                <span class="count-badge">{{ table.pending_count }}</span>
+                            </a>
+                            {% endif %}
+                            {% if is_super_admin or perm_idcard_verified_list %}
+                            <a href="{% if is_client or is_client_staff %}{% url 'client:idcard_actions' table.id %}{% else %}{% url 'idcard_actions' table.id %}{% endif %}?status=verified" class="list-btn verified-btn">
+                                <i class="fa-solid fa-check-circle"></i> Verified
+                                <span class="count-badge">{{ table.verified_count }}</span>
+                            </a>
+                            {% endif %}
+                            {% if is_super_admin or perm_idcard_approved_list %}
+                            <a href="{% if is_client or is_client_staff %}{% url 'client:idcard_actions' table.id %}{% else %}{% url 'idcard_actions' table.id %}{% endif %}?status=approved" class="list-btn approved-btn">
+                                <i class="fa-solid fa-thumbs-up"></i> Approved
+                                <span class="count-badge">{{ table.approved_count }}</span>
+                            </a>
+                            {% endif %}
+                            {% if is_super_admin or perm_idcard_download_list %}
+                            <a href="{% if is_client or is_client_staff %}{% url 'client:idcard_actions' table.id %}{% else %}{% url 'idcard_actions' table.id %}{% endif %}?status=download" class="list-btn download-btn">
+                                <i class="fa-solid fa-download"></i> Downloaded
+                                <span class="count-badge">{{ table.download_count }}</span>
+                            </a>
+                            {% endif %}
+                            {% if is_super_admin or perm_idcard_pool_list %}
+                            <a href="{% if is_client or is_client_staff %}{% url 'client:idcard_actions' table.id %}{% else %}{% url 'idcard_actions' table.id %}{% endif %}?status=pool" class="list-btn pool-btn">
+                                <i class="fa-solid fa-layer-group"></i> Pool
+                                <span class="count-badge">{{ table.pool_count }}</span>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td class="bulk-action-cell">
+                        <div class="bulk-action-buttons">
+                            {% if is_super_admin or perm_reupload_idcard_image %}
+                            <button class="bulk-btn reupload-btn" data-action="reupload" data-table="{{ table.id }}">
+                                <i class="fa-solid fa-upload"></i> Reupload Image
+                            </button>
+                            {% endif %}
+                            {% if is_super_admin or perm_idcard_bulk_download %}
+                            <button class="bulk-btn download-all-btn" data-action="download-all" data-table="{{ table.id }}">
+                                <i class="fa-solid fa-id-card"></i> Download All ID Card
+                            </button>
+                            {% endif %}
+                            {% if is_super_admin or perm_delete_all_idcard %}
+                            <button class="bulk-btn delete-all-btn" data-action="delete-all" data-table="{{ table.id }}">
+                                <i class="fa-solid fa-trash"></i> Delete All ID Cards
+                            </button>
+                            {% endif %}
+                            {% if is_super_admin or perm_idcard_reprint_list %}
+                            <button class="bulk-btn reprint-btn-action" data-action="reprint" data-table="{{ table.id }}">
+                                <i class="fa-solid fa-print"></i> Reprint ID Card
+                            </button>
+                            {% endif %}
+                            {% if is_super_admin or perm_idcard_edit %}
+                            <button class="bulk-btn upgrade-class-btn" data-action="upgrade" data-table="{{ table.id }}" {% if not table.has_class_field %}disabled title="No class column in this table"{% endif %}>
+                                <i class="fa-solid fa-arrow-up"></i> Upgrade All Class
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" style="text-align: center; padding: 40px;">
+                        <div class="no-groups">
+                            <i class="fa-solid fa-table-list"></i>
+                            <h3>No Tables Found</h3>
+                            <p>This client has no ID card tables yet. Go to Group Settings to create tables.</p>
+                            <a href="{% if is_client or is_client_staff %}{% url 'client:group_settings' %}{% else %}{% url 'group_settings' client.id %}{% endif %}" class="btn btn-primary empty-state-action" style="margin-top: 16px;">
+                                <i class="fa-solid fa-gear"></i> Go to Group Settings
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    </div>
+
+  </main>
+
+  <!-- Toast notification -->
+  {% include 'partials/components/toast.html' %}
+
+  <!-- Delete All Confirmation Modal -->
+  <div id="deleteAllModal" class="center-modal-overlay center-modal-theme-red">
+    <div class="center-modal-card">
+      <div class="center-modal-icon">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+      </div>
+      <h3 class="center-modal-title">Delete All ID Cards</h3>
+      <p class="center-modal-subtitle">
+        Table: <strong id="deleteAllTableName"></strong>
+      </p>
+      <p class="center-modal-subtitle">
+        This will permanently delete <strong id="deleteAllCount"></strong> cards from <strong>ALL lists</strong> (Pending, Verified, Approved, Download, Pool).
+      </p>
+      <p class="center-modal-warning">This action CANNOT be undone.</p>
+      <p class="center-modal-label">Enter the 6-digit code below to confirm:</p>
+      <div class="center-modal-code" id="deleteAllCode"></div>
+      <input type="text" id="deleteAllCodeInput" class="center-modal-input" maxlength="6" placeholder="Enter code here">
+      <div class="center-modal-actions">
+        <button id="deleteAllCancel" class="center-modal-btn center-modal-btn-cancel">Cancel</button>
+        <button id="deleteAllConfirm" class="center-modal-btn center-modal-btn-confirm" disabled>Delete All Cards</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upgrade All Classes Confirmation Modal -->
+  <div id="upgradeAllModal" class="center-modal-overlay center-modal-theme-amber">
+    <div class="center-modal-card">
+      <div class="center-modal-icon">
+        <i class="fa-solid fa-arrow-up"></i>
+      </div>
+      <h3 class="center-modal-title">Upgrade All Classes</h3>
+      <p class="center-modal-subtitle">
+        Table: <strong id="upgradeAllTableName"></strong>
+      </p>
+      <p class="center-modal-subtitle">
+        This will upgrade the class value of <strong id="upgradeAllCount"></strong> cards in the <strong>Download list</strong> to the next level (e.g. V &rarr; VI).
+      </p>
+      <p class="center-modal-warning">This action CANNOT be undone.</p>
+      <p class="center-modal-label">Enter the 6-digit code below to confirm:</p>
+      <div class="center-modal-code" id="upgradeAllCode"></div>
+      <input type="text" id="upgradeAllCodeInput" class="center-modal-input" maxlength="6" placeholder="Enter code here">
+      <div class="center-modal-actions">
+        <button id="upgradeAllCancel" class="center-modal-btn center-modal-btn-cancel">Cancel</button>
+        <button id="upgradeAllConfirm" class="center-modal-btn center-modal-btn-confirm" disabled>Upgrade All Classes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reupload Image Modal -->
+  <div id="reuploadModal" class="center-modal-overlay center-modal-theme-blue">
+    <div class="center-modal-card">
+      <div class="center-modal-icon">
+        <i class="fa-solid fa-upload"></i>
+      </div>
+      <h3 class="center-modal-title">Reupload Images</h3>
+      <p class="center-modal-subtitle">Table: <strong id="reuploadTableName"></strong></p>
+      <p class="center-modal-subtitle" style="margin-bottom:16px;">Upload a ZIP file with images. Filenames will be matched against ALL cards in every list (Pending, Verified, Approved, Download, Pool).</p>
+      <div id="reuploadDropZone" class="center-modal-dropzone"
+        ondragover="event.preventDefault(); this.style.borderColor='#3b82f6'; this.style.backgroundColor='#eff6ff';"
+        ondragleave="this.style.borderColor='#d1d5db'; this.style.backgroundColor='';">
+        <i class="fa-solid fa-file-zipper"></i>
+        <p id="reuploadFileName">Click or drag & drop a ZIP file</p>
+        <input type="file" id="reuploadFileInput" accept=".zip" style="display:none;">
+      </div>
+      <div class="center-modal-actions">
+        <button id="reuploadCancel" class="center-modal-btn center-modal-btn-cancel">Cancel</button>
+        <button id="reuploadConfirm" class="center-modal-btn center-modal-btn-confirm" disabled>Upload &amp; Match</button>
+      </div>
+      <div id="reuploadProgress" class="center-modal-progress">
+        <div class="center-modal-progress-track">
+          <div id="reuploadBar" class="center-modal-progress-bar"></div>
+        </div>
+        <p class="center-modal-progress-text" id="reuploadStatus">Uploading...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Common Modules (Load Order Matters) -->
+  <script src="{% static 'js/common/ajax.js' %}?v=2"></script>
+  <script src="{% static 'js/common/toast.js' %}?v=2"></script>
+  <script src="{% static 'js/common/modal.js' %}?v=2"></script>
+  <script src="{% static 'js/common/sidebar.js' %}?v=2"></script>
+  <script src="{% static 'js/common/validation.js' %}?v=2"></script>
+  <script src="{% static 'js/common/utils.js' %}?v=2"></script>
+  <script src="{% static 'js/init.js' %}?v=2"></script>
+  
+  <!-- Legacy compatibility -->
+  <script src="{% static 'js/utils.js' %}?v=3"></script>
+  <script src="{% static 'js/script.js' %}?v=42"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const clientId = {{ client.id }};
+      const isClientRole = {% if is_client or is_client_staff %}true{% else %}false{% endif %};
+      const switchToGroupSettingBtn = document.getElementById('switchToGroupSetting');
+      const searchInput = document.getElementById('searchInput');
+      const tableBody = document.querySelector('.idcard-table tbody');
+
+      // Group Setting button navigation (admin only — client uses direct href)
+      if (switchToGroupSettingBtn) {
+        switchToGroupSettingBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          window.location.href = `/panel/client/${clientId}/settings/`;
+        });
+      }
+
+      // Search functionality
+      if (searchInput) {
+        searchInput.addEventListener('input', function(e) {
+          const searchTerm = e.target.value.toLowerCase();
+          const rows = tableBody.querySelectorAll('tr[data-table-id]');
+          
+          rows.forEach(row => {
+            const tableName = row.querySelector('td:first-child').textContent.toLowerCase();
+            if (tableName.includes(searchTerm)) {
+              row.style.display = '';
+            } else {
+              row.style.display = 'none';
+            }
+          });
+        });
+      }
+
+      // Custom Dropdown functionality
+      const dropdownToggle = document.getElementById('dropdownToggle');
+      const dropdownOptions = document.getElementById('dropdownOptions');
+      const selectedText = document.getElementById('selectedText');
+      const filterDropdown = document.getElementById('filterDropdown');
+
+      if (dropdownToggle && dropdownOptions && filterDropdown) {
+        dropdownToggle.addEventListener('click', function(e) {
+          e.stopPropagation();
+          filterDropdown.classList.toggle('open');
+        });
+
+        dropdownOptions.querySelectorAll('.dropdown-option').forEach(option => {
+          option.addEventListener('click', function() {
+            dropdownOptions.querySelectorAll('.dropdown-option').forEach(o => o.classList.remove('selected'));
+            this.classList.add('selected');
+            selectedText.textContent = this.textContent;
+            filterDropdown.classList.remove('open');
+          });
+        });
+
+        document.addEventListener('click', function(e) {
+          if (!filterDropdown.contains(e.target)) {
+            filterDropdown.classList.remove('open');
+          }
+        });
+      }
+
+      // ==================== DELETE ALL SECURE MODAL ====================
+      const deleteAllModal = document.getElementById('deleteAllModal');
+      const deleteAllCodeDisplay = document.getElementById('deleteAllCode');
+      const deleteAllCodeInput = document.getElementById('deleteAllCodeInput');
+      const deleteAllConfirmBtn = document.getElementById('deleteAllConfirm');
+      const deleteAllCancelBtn = document.getElementById('deleteAllCancel');
+      const deleteAllTableNameEl = document.getElementById('deleteAllTableName');
+      const deleteAllCountEl = document.getElementById('deleteAllCount');
+      let deleteAllTableId = null;
+      let deleteAllExpectedCode = '';
+
+      function openDeleteAllModal(tableId) {
+        deleteAllTableId = tableId;
+        deleteAllCodeInput.value = '';
+        deleteAllConfirmBtn.disabled = true;
+
+        // Request code from backend
+        fetch(`/panel/api/table/${tableId}/cards/generate-delete-code/`, {
+          method: 'POST',
+          headers: { 'X-CSRFToken': window.getCSRFToken ? window.getCSRFToken() : '' }
+        })
+          .then(r => { if (!r.ok) console.error('generate-delete-code status:', r.status); return r.json(); })
+          .then(data => {
+            if (data.success) {
+              deleteAllExpectedCode = data.code;
+              deleteAllCodeDisplay.textContent = data.code;
+              deleteAllTableNameEl.textContent = data.table_name;
+              deleteAllCountEl.textContent = data.total_cards;
+              deleteAllModal.classList.add('show');
+              deleteAllCodeInput.focus();
+            } else {
+              window.showToast(data.message || 'Failed to generate code', 'error');
+            }
+          })
+          .catch(err => { console.error('Delete code generation error:', err); window.showToast('Error generating confirmation code', 'error'); });
+      }
+
+      function closeDeleteAllModal() {
+        deleteAllModal.classList.remove('show');
+        deleteAllTableId = null;
+        deleteAllExpectedCode = '';
+        deleteAllCodeInput.value = '';
+      }
+
+      // Enable confirm only when code matches
+      if (deleteAllCodeInput) {
+        deleteAllCodeInput.addEventListener('input', function() {
+          const match = this.value.trim() === deleteAllExpectedCode;
+          deleteAllConfirmBtn.disabled = !match;
+        });
+      }
+
+      if (deleteAllCancelBtn) deleteAllCancelBtn.addEventListener('click', closeDeleteAllModal);
+      if (deleteAllModal) deleteAllModal.addEventListener('click', function(e) { if (e.target === deleteAllModal) closeDeleteAllModal(); });
+      document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && deleteAllModal && deleteAllModal.classList.contains('show')) closeDeleteAllModal(); });
+
+      if (deleteAllConfirmBtn) {
+        deleteAllConfirmBtn.addEventListener('click', function() {
+          if (!deleteAllTableId || deleteAllConfirmBtn.disabled) return;
+          deleteAllConfirmBtn.disabled = true;
+          deleteAllConfirmBtn.textContent = 'Deleting...';
+
+          fetch(`/panel/api/table/${deleteAllTableId}/cards/bulk-delete/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': window.getCSRFToken ? window.getCSRFToken() : '' },
+            body: JSON.stringify({
+              delete_all: true,
+              confirmation_code: deleteAllCodeInput.value.trim()
+            })
+          })
+          .then(r => { if (!r.ok) console.error('bulk-delete status:', r.status); return r.json(); })
+          .then(data => {
+            closeDeleteAllModal();
+            if (data.success) {
+              window.showToast(data.message || 'All cards deleted successfully!', 'success');
+              setTimeout(() => location.reload(), 1000);
+            } else {
+              window.showToast(data.message || 'Delete failed', 'error');
+            }
+          })
+          .catch(err => {
+            console.error('Bulk delete error:', err);
+            closeDeleteAllModal();
+            window.showToast('Error deleting cards', 'error');
+          });
+        });
+      }
+
+      // ==================== DOWNLOAD ALL ID CARDS ====================
+      function downloadAllCards(tableId) {
+        const btn = document.querySelector(`.download-all-btn[data-table="${tableId}"]`);
+        if (btn) {
+          btn.disabled = true;
+          btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Preparing...';
+        }
+
+        fetch(`/panel/api/table/${tableId}/cards/download-all/`, {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': window.getCSRFToken ? window.getCSRFToken() : '',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({}),
+        })
+        .then(res => { if (!res.ok) console.error('download-all status:', res.status); return res.json(); })
+        .then(data => {
+          if (data.success && data.files && data.files.length > 0) {
+            window.showToast(`Downloading ${data.total_files} file(s)...`, 'success');
+            // Trigger sequential downloads with small delay
+            data.files.forEach((file, index) => {
+              setTimeout(() => {
+                triggerBase64Download(file.data, file.filename, file.type === 'xlsx'
+                  ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                  : 'application/zip'
+                );
+              }, index * 500);
+            });
+          } else {
+            window.showToast(data.message || 'No files to download', 'error');
+          }
+        })
+        .catch(err => {
+          console.error('Download all error:', err);
+          window.showToast('Error downloading files', 'error');
+        })
+        .finally(() => {
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-id-card"></i> Download All ID Card';
+          }
+        });
+      }
+
+      function triggerBase64Download(base64Data, filename, mimeType) {
+        const byteChars = atob(base64Data);
+        const byteNumbers = new Array(byteChars.length);
+        for (let i = 0; i < byteChars.length; i++) {
+          byteNumbers[i] = byteChars.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+
+      // ==================== REUPLOAD IMAGES ====================
+      let reuploadTableId = null;
+      const reuploadModal = document.getElementById('reuploadModal');
+      const reuploadFileInput = document.getElementById('reuploadFileInput');
+      const reuploadDropZone = document.getElementById('reuploadDropZone');
+      const reuploadFileName = document.getElementById('reuploadFileName');
+      const reuploadConfirmBtn = document.getElementById('reuploadConfirm');
+      const reuploadCancelBtn = document.getElementById('reuploadCancel');
+      const reuploadTableName = document.getElementById('reuploadTableName');
+      const reuploadProgress = document.getElementById('reuploadProgress');
+      const reuploadBar = document.getElementById('reuploadBar');
+      const reuploadStatus = document.getElementById('reuploadStatus');
+
+      function openReuploadModal(tableId) {
+        reuploadTableId = tableId;
+        // Get table name from DOM
+        const row = document.querySelector(`tr[data-table-id="${tableId}"]`) || document.querySelector(`.reupload-btn[data-table="${tableId}"]`);
+        const tableName = row ? (row.closest('tr')?.querySelector('td:first-child')?.textContent?.trim() || 'Table') : 'Table';
+        reuploadTableName.textContent = tableName;
+        reuploadFileInput.value = '';
+        reuploadFileName.textContent = 'Click or drag & drop a ZIP file';
+        reuploadConfirmBtn.disabled = true;
+        reuploadProgress.style.display = 'none';
+        reuploadBar.style.width = '0%';
+        reuploadConfirmBtn.textContent = 'Upload & Match';
+        reuploadModal.classList.add('show');
+      }
+
+      function closeReuploadModal() {
+        reuploadModal.classList.remove('show');
+        reuploadTableId = null;
+        reuploadFileInput.value = '';
+      }
+
+      // Drop-zone click opens file picker
+      if (reuploadDropZone) {
+        reuploadDropZone.addEventListener('click', () => reuploadFileInput.click());
+        reuploadDropZone.addEventListener('drop', function(e) {
+          e.preventDefault();
+          this.style.borderColor = '#d1d5db';
+          this.style.backgroundColor = '';
+          if (e.dataTransfer.files.length && e.dataTransfer.files[0].name.toLowerCase().endsWith('.zip')) {
+            reuploadFileInput.files = e.dataTransfer.files;
+            reuploadFileInput.dispatchEvent(new Event('change'));
+          } else {
+            window.showToast('Only ZIP files are allowed', 'error');
+          }
+        });
+      }
+
+      if (reuploadFileInput) {
+        reuploadFileInput.addEventListener('change', function() {
+          if (this.files.length) {
+            const file = this.files[0];
+            if (!file.name.toLowerCase().endsWith('.zip')) {
+              window.showToast('Only ZIP files are allowed', 'error');
+              this.value = '';
+              reuploadFileName.textContent = 'Click or drag & drop a ZIP file';
+              reuploadConfirmBtn.disabled = true;
+              return;
+            }
+            reuploadFileName.textContent = file.name;
+            reuploadConfirmBtn.disabled = false;
+          }
+        });
+      }
+
+      if (reuploadCancelBtn) reuploadCancelBtn.addEventListener('click', closeReuploadModal);
+      if (reuploadModal) reuploadModal.addEventListener('click', function(e) { if (e.target === reuploadModal) closeReuploadModal(); });
+      document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && reuploadModal && reuploadModal.classList.contains('show')) closeReuploadModal(); });
+
+      if (reuploadConfirmBtn) {
+        reuploadConfirmBtn.addEventListener('click', function() {
+          if (!reuploadTableId || !reuploadFileInput.files.length) return;
+          reuploadConfirmBtn.disabled = true;
+          reuploadConfirmBtn.textContent = 'Uploading...';
+          reuploadProgress.style.display = 'block';
+          reuploadBar.style.width = '30%';
+          reuploadStatus.textContent = 'Uploading ZIP...';
+
+          const formData = new FormData();
+          formData.append('photos_zip', reuploadFileInput.files[0]);
+          // No card_ids → matches against ALL cards in the table
+
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', `/panel/api/table/${reuploadTableId}/cards/reupload-images/`);
+          if (window.getCSRFToken) xhr.setRequestHeader('X-CSRFToken', window.getCSRFToken());
+
+          xhr.upload.onprogress = function(e) {
+            if (e.lengthComputable) {
+              const pct = Math.round((e.loaded / e.total) * 60) + 30;
+              reuploadBar.style.width = pct + '%';
+              reuploadStatus.textContent = `Uploading... ${Math.round(e.loaded / e.total * 100)}%`;
+            }
+          };
+
+          xhr.onload = function() {
+            reuploadBar.style.width = '100%';
+            try {
+              const data = JSON.parse(xhr.responseText);
+              if (data.success) {
+                reuploadStatus.textContent = data.message || 'Done!';
+                window.showToast(data.message || 'Images reuploaded!', 'success');
+                setTimeout(() => { closeReuploadModal(); location.reload(); }, 1500);
+              } else {
+                reuploadStatus.textContent = data.message || 'Failed';
+                window.showToast(data.message || 'Reupload failed', 'error');
+                reuploadConfirmBtn.disabled = false;
+                reuploadConfirmBtn.textContent = 'Upload & Match';
+              }
+            } catch (parseErr) {
+              console.error('Reupload parse error:', parseErr);
+              window.showToast('Unexpected error during reupload', 'error');
+              reuploadConfirmBtn.disabled = false;
+              reuploadConfirmBtn.textContent = 'Upload & Match';
+            }
+          };
+
+          xhr.onerror = function() {
+            console.error('Reupload XHR error');
+            window.showToast('Network error during reupload', 'error');
+            reuploadConfirmBtn.disabled = false;
+            reuploadConfirmBtn.textContent = 'Upload & Match';
+            reuploadProgress.style.display = 'none';
+          };
+
+          xhr.send(formData);
+        });
+      }
+
+      // ==================== UPGRADE ALL CLASSES (6-digit confirmation) ==
+      const upgradeAllModal = document.getElementById('upgradeAllModal');
+      const upgradeAllCodeDisplay = document.getElementById('upgradeAllCode');
+      const upgradeAllCodeInput = document.getElementById('upgradeAllCodeInput');
+      const upgradeAllConfirmBtn = document.getElementById('upgradeAllConfirm');
+      const upgradeAllCancelBtn = document.getElementById('upgradeAllCancel');
+      const upgradeAllTableNameEl = document.getElementById('upgradeAllTableName');
+      const upgradeAllCountEl = document.getElementById('upgradeAllCount');
+      let upgradeAllTableId = null;
+      let upgradeAllExpectedCode = '';
+
+      function openUpgradeAllModal(tableId) {
+        upgradeAllTableId = tableId;
+        upgradeAllCodeInput.value = '';
+        upgradeAllConfirmBtn.disabled = true;
+        upgradeAllConfirmBtn.textContent = 'Upgrade All Classes';
+
+        fetch(`/panel/api/table/${tableId}/cards/generate-upgrade-code/`, {
+          method: 'POST',
+          headers: { 'X-CSRFToken': window.getCSRFToken ? window.getCSRFToken() : '' }
+        })
+          .then(r => { if (!r.ok) console.error('generate-upgrade-code status:', r.status); return r.json(); })
+          .then(data => {
+            if (data.success) {
+              upgradeAllExpectedCode = data.code;
+              upgradeAllCodeDisplay.textContent = data.code;
+              upgradeAllTableNameEl.textContent = data.table_name;
+              upgradeAllCountEl.textContent = data.download_count;
+              upgradeAllModal.classList.add('show');
+              upgradeAllCodeInput.focus();
+            } else {
+              window.showToast(data.message || 'Failed to generate code', 'error');
+            }
+          })
+          .catch(err => { console.error('Upgrade code generation error:', err); window.showToast('Error generating confirmation code', 'error'); });
+      }
+
+      function closeUpgradeAllModal() {
+        upgradeAllModal.classList.remove('show');
+        upgradeAllTableId = null;
+        upgradeAllExpectedCode = '';
+        upgradeAllCodeInput.value = '';
+      }
+
+      if (upgradeAllCodeInput) {
+        upgradeAllCodeInput.addEventListener('input', function() {
+          const match = this.value.trim() === upgradeAllExpectedCode;
+          upgradeAllConfirmBtn.disabled = !match;
+        });
+      }
+
+      if (upgradeAllCancelBtn) upgradeAllCancelBtn.addEventListener('click', closeUpgradeAllModal);
+      if (upgradeAllModal) upgradeAllModal.addEventListener('click', function(e) { if (e.target === upgradeAllModal) closeUpgradeAllModal(); });
+      document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && upgradeAllModal && upgradeAllModal.classList.contains('show')) closeUpgradeAllModal(); });
+
+      if (upgradeAllConfirmBtn) {
+        upgradeAllConfirmBtn.addEventListener('click', function() {
+          if (!upgradeAllTableId || upgradeAllConfirmBtn.disabled) return;
+          upgradeAllConfirmBtn.disabled = true;
+          upgradeAllConfirmBtn.textContent = 'Upgrading...';
+
+          fetch(`/panel/api/table/${upgradeAllTableId}/cards/upgrade-classes/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': window.getCSRFToken ? window.getCSRFToken() : '' },
+            body: JSON.stringify({
+              confirmation_code: upgradeAllCodeInput.value.trim()
+            })
+          })
+          .then(r => { if (!r.ok) console.error('upgrade-classes status:', r.status); return r.json(); })
+          .then(data => {
+            closeUpgradeAllModal();
+            if (data.success) {
+              window.showToast(data.message || 'Classes upgraded!', 'success');
+              setTimeout(() => location.reload(), 1200);
+            } else {
+              window.showToast(data.message || 'Upgrade failed', 'error');
+            }
+          })
+          .catch(err => {
+            console.error('Upgrade classes error:', err);
+            closeUpgradeAllModal();
+            window.showToast('Error upgrading classes', 'error');
+          });
+        });
+      }
+
+      // ==================== BULK ACTION BUTTONS ====================
+      document.querySelectorAll('.bulk-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          e.preventDefault();
+          const action = this.dataset.action;
+          const tableId = this.dataset.table;
+          
+          if (action === 'delete-all') {
+            openDeleteAllModal(tableId);
+          } else if (action === 'download-all') {
+            downloadAllCards(tableId);
+          } else if (action === 'upgrade') {
+            openUpgradeAllModal(tableId);
+          } else if (action === 'reupload') {
+            openReuploadModal(tableId);
+          } else if (action === 'reprint') {
+            if (isClientRole) {
+              window.location.href = `/panel/client/table/${tableId}/reprint/`;
+            } else {
+              window.location.href = `/panel/table/${tableId}/reprint/`;
+            }
+          } else {
+            // Unimplemented bulk action
+            window.showToast('This action is not available yet.', 'info');
+          }
+        });
+      });
+    });
+  </script>
+  <script src="{% static 'js/global-search.js' %}?v=2"></script>
+</body>
+</html>

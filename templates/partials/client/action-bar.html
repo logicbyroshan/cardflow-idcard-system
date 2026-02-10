@@ -1,0 +1,48 @@
+{% comment %}
+Client Action Bar Partial
+Contains: Filter dropdown, search input, and action buttons (Add, Edit, Delete, View)
+{% endcomment %}
+
+<!-- Action Bar Start -->
+<div class="action-bar">
+    <div class="action-left">
+        <div class="filter-group">
+            <div class="custom-dropdown" id="filter-dropdown">
+                <button class="dropdown-toggle" id="status-toggle" type="button">
+                    <span id="selected-text">All Clients</span>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <div class="dropdown-options" id="dropdown-options">
+                    <div class="dropdown-option selected" data-value="">All Clients</div>
+                    <div class="dropdown-option" data-value="true">Active Only</div>
+                    <div class="dropdown-option" data-value="false">Inactive Only</div>
+                </div>
+            </div>
+        </div>
+        <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input type="text" id="search-input" class="search-input" placeholder="Search clients...">
+        </div>
+    </div>
+    <div class="action-right">
+        {% if is_super_admin or is_admin_staff %}
+        <button class="btn btn-add" id="add-client-btn" title="Add New Client">
+            <i class="fa-solid fa-plus"></i>
+            <span>Add Client</span>
+        </button>
+        <button class="btn btn-edit" id="edit-client-btn" title="Edit Selected Client" disabled>
+            <i class="fa-solid fa-pen-to-square"></i>
+            <span>Edit</span>
+        </button>
+        <button class="btn btn-delete" id="delete-client-btn" title="Delete Selected Client" disabled>
+            <i class="fa-solid fa-trash-can"></i>
+            <span>Delete</span>
+        </button>
+        {% endif %}
+        <button class="btn btn-view-staff" id="view-client-btn" title="View Selected Client" disabled>
+            <i class="fa-solid fa-eye"></i>
+            <span>View</span>
+        </button>
+    </div>
+</div>
+<!-- Action Bar End -->

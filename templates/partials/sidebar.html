@@ -1,0 +1,131 @@
+{% load static %}
+
+<!-- Sidebar - Permission-controlled menu visibility for all roles -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">
+      <div class="profile square">
+        <img src="{% static 'assets/logo.png' %}" alt="logo">
+      </div>
+      <h3>Adarsh ID Cards</h3>
+    </div>
+  </div>
+  <nav>
+    <!-- Dashboard - Link based on role -->
+    {% if is_super_admin %}
+    <a href="{% url 'dashboard' %}" class="{% if active_page == 'dashboard' %}active{% endif %}">
+      <i class="fa-solid fa-house"></i><span>Dashboard</span>
+    </a>
+    {% elif is_admin_staff %}
+    <a href="{% url 'admin_staff_dashboard' %}" class="{% if active_page == 'dashboard' %}active{% endif %}">
+      <i class="fa-solid fa-house"></i><span>Dashboard</span>
+    </a>
+    {% elif is_client or is_client_staff %}
+    <a href="{% url 'client:dashboard' %}" class="{% if active_page == 'dashboard' %}active{% endif %}">
+      <i class="fa-solid fa-house"></i><span>Dashboard</span>
+    </a>
+    {% endif %}
+    
+    {% if is_super_admin %}
+    <!-- User Management Section - Super Admin Only -->
+    <div class="nav-section">
+      <div class="nav-section-line"></div>
+      <span class="nav-section-title">User Management</span>
+      <div class="nav-section-line"></div>
+    </div>
+    <a href="{% url 'manage_staff' %}" class="{% if active_page == 'manage_staff' %}active{% endif %}">
+      <i class="fa-solid fa-user-tie"></i><span>Manage Staff</span>
+    </a>
+    <a href="{% url 'manage_clients' %}" id="allClientsLink" class="{% if active_page == 'manage_clients' %}active{% endif %}">
+      <i class="fa-solid fa-users"></i><span>Manage Clients</span>
+    </a>
+    {% endif %}
+    
+    {% if is_client and perm_idcard_client_list %}
+    <!-- Staff Management Section - Client Admin Only -->
+    <div class="nav-section">
+      <div class="nav-section-line"></div>
+      <span class="nav-section-title">Management</span>
+      <div class="nav-section-line"></div>
+    </div>
+    <a href="{% url 'client:staff' %}" class="{% if active_page == 'manage_staff' or active_page == 'staff' %}active{% endif %}">
+      <i class="fa-solid fa-user-tie"></i><span>Manage Staff</span>
+    </a>
+    {% endif %}
+    
+    {% if is_super_admin or is_admin_staff %}
+    <!-- ID Card Management Section - Admin -->
+    <div class="nav-section">
+      <div class="nav-section-line"></div>
+      <span class="nav-section-title">ID Card Management</span>
+      <div class="nav-section-line"></div>
+    </div>
+    {% if is_super_admin or perm_idcard_setting_list or perm_idcard_client_list or perm_idcard_pending_list or perm_idcard_verified_list or perm_idcard_approved_list or perm_idcard_download_list or perm_idcard_pool_list or perm_idcard_reprint_list %}
+    <a href="{% url 'active_clients' %}" id="activeClientsLink" class="{% if active_page == 'active_clients' %}active{% endif %}">
+      <i class="fa-solid fa-user-check"></i><span>Active Clients</span>
+    </a>
+    {% endif %}
+    {% endif %}
+    
+    {% if is_client or is_client_staff %}
+    <!-- ID Card Management Section - Client -->
+    <div class="nav-section">
+      <div class="nav-section-line"></div>
+      <span class="nav-section-title">ID Card Management</span>
+      <div class="nav-section-line"></div>
+    </div>
+    {% if perm_idcard_setting_list %}
+    <a href="{% url 'client:group_settings' %}" class="{% if active_page == 'group_settings' %}active{% endif %}">
+      <i class="fa-solid fa-table-list"></i><span>Group Setting</span>
+    </a>
+    {% endif %}
+    {% if perm_idcard_setting_list or perm_idcard_pending_list or perm_idcard_verified_list or perm_idcard_approved_list or perm_idcard_download_list or perm_idcard_pool_list or perm_idcard_reprint_list %}
+    <a href="{% url 'client:idcard_group' %}" class="{% if active_page == 'idcard_group' or active_page == 'active_clients' %}active{% endif %}">
+      <i class="fa-solid fa-id-card"></i><span>ID Card Group</span>
+    </a>
+    {% endif %}
+    {% endif %}
+    
+    {% if is_super_admin or perm_website_view %}
+    <!-- Site Management Section -->
+    <div class="nav-section">
+      <div class="nav-section-line"></div>
+      <span class="nav-section-title">Site Management</span>
+      <div class="nav-section-line"></div>
+    </div>
+    <a href="{% url 'website_admin:dashboard' %}" class="{% if active_page == 'manage_website' %}active{% endif %}">
+      <i class="fa-solid fa-globe"></i><span>Manage Website</span>
+    </a>
+    {% endif %}
+  </nav>
+  <div class="sidebar-footer">
+    <div class="sidebar-actions">
+      <a href="{% url 'settings' %}" class="{% if active_page == 'settings' %}active{% endif %}">
+        <i class="fa-solid fa-gear"></i><span>Settings</span>
+      </a>
+    </div>
+    <div class="sidebar-info">
+      <div class="info-item">
+        <i class="fa-solid fa-calendar-days"></i>
+        <span id="date"></span>
+      </div>
+      <div class="info-item">
+        <i class="fa-solid fa-clock"></i>
+        <span id="time"></span>
+      </div>
+    </div>
+    <div class="sidebar-user">
+      <div class="user-avatar">
+        {% if user.profile_image %}
+        <img src="{{ user.profile_image.url }}" alt="profile">
+        {% else %}
+        <i class="fa-solid fa-user"></i>
+        {% endif %}
+      </div>
+      <div class="user-info">
+        <span class="user-name">{{ user.get_full_name|default:user.username }}</span>
+        <span class="user-role">{{ user_role|default:"User" }}</span>
+      </div>
+    </div>
+  </div>
+</aside>

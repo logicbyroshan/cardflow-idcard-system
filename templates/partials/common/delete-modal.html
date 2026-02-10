@@ -1,0 +1,42 @@
+{% comment %}
+Common Delete Confirmation Modal
+Usage: {% include 'partials/common/delete-modal.html' with modal_id="delete-modal" item_name="client" %}
+
+Variables:
+- modal_id: ID for the modal (default: delete-modal)
+- item_name: Name of item being deleted (e.g., "client", "staff", "record")
+
+Required JavaScript handlers:
+- closeDeleteModal button with id="closeDeleteModal"
+- cancelDeleteBtn button with id="cancelDeleteBtn"
+- confirmDeleteBtn button with id="confirmDeleteBtn"
+{% endcomment %}
+
+<!-- Delete Confirmation Modal -->
+<div class="center-modal-overlay" id="{{ modal_id|default:'delete-modal' }}">
+    <div class="center-modal delete-modal">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-triangle-exclamation"></i> Confirm Delete</h3>
+            <button class="modal-close" id="closeDeleteModal" type="button" aria-label="Close delete modal">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="delete-warning">
+                <div class="delete-icon">
+                    <i class="fa-solid fa-trash-can"></i>
+                </div>
+                <p>Are you sure you want to delete <strong id="deleteStaffName">this {{ item_name|default:'item' }}</strong>?</p>
+                <p class="delete-note"><i class="fa-solid fa-exclamation-circle"></i>This action cannot be undone.</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" id="cancelDeleteBtn" type="button">
+                <i class="fa-solid fa-xmark"></i> Cancel
+            </button>
+            <button class="btn btn-danger" id="confirmDeleteBtn" type="button">
+                <i class="fa-solid fa-trash-can"></i> Delete
+            </button>
+        </div>
+    </div>
+</div>

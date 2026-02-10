@@ -1,0 +1,39 @@
+{% load static %}
+{% comment %}
+Unified Toast Notification Component
+====================================
+Usage: {% include 'partials/components/toast.html' %}
+
+This provides a reusable toast notification container.
+Toast styles are defined in common.css
+
+Types: success (green), error (red), info (blue), warning (orange)
+
+JavaScript: Uses showToast() from utils.js
+  showToast('Message', 'success')  - Green success toast
+  showToast('Message', 'error')    - Red error toast
+  showToast('Message', 'info')     - Blue info toast
+  showToast('Message', 'warning')  - Orange warning toast
+  showToast('Message', true)       - Green success toast (boolean)
+  showToast('Message', false)      - Red error toast (boolean)
+  
+Progress Toasts (for downloads):
+  showProgressToast('Downloading...', 50)   - Show progress at 50%
+  showProgressToast('Downloading...', -1)   - Indeterminate progress
+  showDownloadComplete('Done!')             - Show completion
+  hideToast()                               - Hide immediately
+{% endcomment %}
+
+<!-- Toast Notification -->
+<div id="toast" class="toast">
+  <i id="toastIcon" class="fa-solid fa-check-circle"></i>
+  <div class="toast-content">
+    <div class="toast-message-row">
+      <span id="toastMessage">Success!</span>
+      <span id="toastPercent" class="toast-percent" style="display: none;">0%</span>
+    </div>
+    <div id="toastProgress" class="toast-progress" style="display: none;">
+      <div id="toastProgressBar" class="toast-progress-bar"></div>
+    </div>
+  </div>
+</div>

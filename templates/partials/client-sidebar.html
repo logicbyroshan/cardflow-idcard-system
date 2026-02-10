@@ -1,0 +1,73 @@
+{% load static %}
+
+<!-- Client Sidebar -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">
+      <div class="profile square">
+        <img src="{% static 'assets/logo.png' %}" alt="logo">
+      </div>
+      <h3>{{ client.name|default:"Client Portal" }}</h3>
+    </div>
+  </div>
+  <nav>
+    <a href="{% url 'client:dashboard' %}" class="{% if active_page == 'dashboard' %}active{% endif %}">
+      <i class="fa-solid fa-house"></i><span>Dashboard</span>
+    </a>
+    
+    {% if perm_idcard_setting_list %}
+    <div class="nav-section">
+      <div class="nav-section-line"></div>
+      <span class="nav-section-title">ID Card Management</span>
+      <div class="nav-section-line"></div>
+    </div>
+    <a href="{% url 'client:groups' %}" class="{% if active_page == 'groups' %}active{% endif %}">
+      <i class="fa-solid fa-layer-group"></i><span>Card Groups</span>
+    </a>
+    {% endif %}
+    
+    {% if is_client_admin and perm_idcard_client_list %}
+    <div class="nav-section">
+      <div class="nav-section-line"></div>
+      <span class="nav-section-title">Management</span>
+      <div class="nav-section-line"></div>
+    </div>
+    <a href="{% url 'client:staff' %}" class="{% if active_page == 'staff' %}active{% endif %}">
+      <i class="fa-solid fa-users"></i><span>My Staff</span>
+    </a>
+    {% endif %}
+  </nav>
+  <div class="sidebar-footer">
+    <div class="sidebar-actions">
+      <a href="{% url 'settings' %}" class="{% if active_page == 'settings' %}active{% endif %}">
+        <i class="fa-solid fa-gear"></i><span>Settings</span>
+      </a>
+      <a href="{% url 'logout' %}">
+        <i class="fa-solid fa-right-from-bracket"></i><span>Logout</span>
+      </a>
+    </div>
+    <div class="sidebar-info">
+      <div class="info-item">
+        <i class="fa-solid fa-calendar-days"></i>
+        <span id="date"></span>
+      </div>
+      <div class="info-item">
+        <i class="fa-solid fa-clock"></i>
+        <span id="time"></span>
+      </div>
+    </div>
+    <div class="sidebar-user">
+      <div class="user-avatar">
+        {% if user.profile_image %}
+        <img src="{{ user.profile_image.url }}" alt="profile">
+        {% else %}
+        <i class="fa-solid fa-user"></i>
+        {% endif %}
+      </div>
+      <div class="user-info">
+        <span class="user-name">{{ user.get_full_name|default:user.username }}</span>
+        <span class="user-role">{{ user_role|default:"Client" }}</span>
+      </div>
+    </div>
+  </div>
+</aside>

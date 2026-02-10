@@ -1,0 +1,56 @@
+{% comment %}
+Staff Table Partial
+Contains: Table header and body for displaying staff members
+{% endcomment %}
+
+<!-- Staff Table Start -->
+<div class="table-container">
+    <table class="data-table" id="staff-table">
+        <thead>
+            <tr>
+                <th class="checkbox-col">
+                    <input type="checkbox" id="select-all-checkbox" title="Select All">
+                </th>
+                <th class="name-col">Name</th>
+                <th class="email-col">Email</th>
+                <th class="phone-col">Phone</th>
+                <th class="status-col">Status</th>
+                <th class="created-col">Created At</th>
+                <th class="updated-col">Updated At</th>
+            </tr>
+        </thead>
+        <tbody id="staff-table-body">
+            {% for staff in staff_list %}
+            <tr data-staff-id="{{ staff.id }}" data-staff-status="{% if staff.user.is_active %}active{% else %}inactive{% endif %}">
+                <td class="checkbox-col">
+                    <input type="checkbox" class="row-checkbox" data-id="{{ staff.id }}">
+                </td>
+                <td class="name-col">{{ staff.user.get_full_name|default:staff.user.username }}</td>
+                <td class="email-col">{{ staff.user.email }}</td>
+                <td class="phone-col">{{ staff.user.phone|default:"-" }}</td>
+                <td class="status-col">
+                    <span class="status-badge {% if staff.user.is_active %}active{% else %}inactive{% endif %}">
+                        {% if staff.user.is_active %}Active{% else %}Inactive{% endif %}
+                    </span>
+                </td>
+                <td class="created-col">{{ staff.created_at|date:"d-m-Y h:i a" }}</td>
+                <td class="updated-col">{{ staff.updated_at|date:"d-m-Y h:i a" }}</td>
+            </tr>
+            {% empty %}
+            <tr class="no-data-row">
+                <td colspan="7" class="no-data">
+                    <i class="fa-solid fa-user-slash"></i>
+                    <span>No staff found</span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <!-- Empty State - Shown when search/filter yields no results -->
+    {% include 'partials/components/empty-state.html' with id="staff-empty-state" icon="fa-user-slash" title="No Staff Found" message="Try adjusting your search or filter criteria" hidden=True %}
+    
+    <!-- Loading State -->
+    {% include 'partials/components/loading-state.html' with id="staff-loading-state" message="Loading staff..." hidden=True %}
+</div>
+<!-- Staff Table End -->

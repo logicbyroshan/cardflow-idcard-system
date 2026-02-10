@@ -1,0 +1,388 @@
+{% load static %}
+{% load custom_filters %}
+<!-- Upload XLSX Confirmation Modal -->
+<div class="upload-modal-overlay" id="uploadModalOverlay">
+  <div class="upload-modal">
+    <div class="upload-modal-header">
+      <h3><i class="fa-solid fa-file-excel"></i> Upload Excel File</h3>
+      <button class="upload-modal-close" id="closeUploadModal" aria-label="Close upload modal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="upload-modal-body">
+      <!-- Stage 1: File Selection -->
+      <div class="upload-stage file-select-stage" id="fileSelectStage">
+        <div class="file-select-content">
+          <div class="file-select-icon">
+            <i class="fa-solid fa-file-excel"></i>
+          </div>
+          <h4>Select Excel File to Upload</h4>
+          <p class="file-select-info">Choose an Excel (.xlsx, .xls) or CSV file containing your data</p>
+          <input type="file" id="xlsxFileInput" accept=".xlsx,.xls,.csv" style="display: none;">
+          <button class="btn btn-primary btn-lg" id="selectXlsxFileBtn">
+            <i class="fa-solid fa-folder-open"></i> Browse Files
+          </button>
+          <div class="selected-file-name" id="selectedFileName" style="display: none;">
+            <i class="fa-solid fa-file-excel"></i>
+            <span id="selectedFileNameText"></span>
+            <button class="btn-clear-file" id="clearSelectedFile"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Stage 2: Validation Results (hidden initially) -->
+      <div class="upload-stage validation-stage" id="validationStage" style="display: none;">
+        <div class="upload-status" id="uploadStatus">
+          <i class="fa-solid fa-check-circle success-icon"></i>
+          <span id="uploadStatusText">Fields matched successfully!</span>
+        </div>
+        
+        <div class="field-match-section">
+          <div class="match-group matched" id="matchedFieldsGroup">
+            <div class="match-title"><i class="fa-solid fa-check"></i> Matched Fields</div>
+            <div class="match-list" id="matchedFieldsList"></div>
+          </div>
+          
+          <div class="match-group missing" id="missingFieldsGroup" style="display: none;">
+            <div class="match-title"><i class="fa-solid fa-exclamation-triangle"></i> Missing Fields (will be empty)</div>
+            <div class="match-list" id="missingFieldsList"></div>
+          </div>
+          
+          <div class="match-group ignored" id="ignoredFieldsGroup" style="display: none;">
+            <div class="match-title"><i class="fa-solid fa-eye-slash"></i> Ignored Columns</div>
+            <div class="match-list" id="ignoredFieldsList"></div>
+          </div>
+        </div>
+        
+        <div class="data-rows-info">
+          <i class="fa-solid fa-table-list"></i>
+          <span id="dataRowsCount">0 data rows found</span>
+        </div>
+        
+        <!-- Unified ZIP Upload Section - Single multi-file input -->
+        <div class="photo-zip-section" id="photoZipSection" style="display: none;">
+          <div class="zip-upload-header">
+            <i class="fa-solid fa-images"></i>
+            <span>Upload Photos (Optional)</span>
+          </div>
+          <div class="zip-upload-info">
+            <div class="zip-info-box">
+              <p><strong>How it works:</strong></p>
+              <ul>
+                <li><i class="fa-solid fa-check"></i> Upload one or more ZIP files containing all your photos</li>
+                <li><i class="fa-solid fa-check"></i> Image filenames in ZIP should match values in Excel columns (without extension)</li>
+                <li><i class="fa-solid fa-check"></i> System will auto-detect which images belong to which column</li>
+              </ul>
+            </div>
+          </div>
+          
+          <!-- Single unified ZIP input -->
+          <div class="unified-zip-input">
+            <input type="file" id="unifiedZipInput" accept=".zip" multiple style="display: none;">
+            <button class="btn btn-upload-zip" id="selectZipFilesBtn">
+              <i class="fa-solid fa-folder-open"></i> Select ZIP File(s)
+            </button>
+            <div class="selected-zips-list" id="selectedZipsList" style="display: none;">
+              <!-- Selected ZIPs will be listed here -->
+            </div>
+          </div>
+          
+          <!-- Image columns info (read-only) -->
+          <div class="image-columns-info" id="imageColumnsInfo">
+            <span class="info-label">Image columns detected:</span>
+            <span class="image-columns-list" id="imageColumnsList">None</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Upload Progress Section -->
+      <div class="upload-progress-section" id="uploadProgressSection" style="display: none;">
+        <div class="progress-header">
+          <span class="progress-title"><i class="fa-solid fa-cloud-arrow-up"></i> Uploading...</span>
+          <span class="progress-percentage" id="uploadPercentage">0%</span>
+        </div>
+        <div class="progress-bar-container">
+          <div class="progress-bar" id="uploadProgressBar"></div>
+        </div>
+        <div class="progress-details">
+          <span class="progress-size" id="uploadProgressSize">0 KB / 0 KB</span>
+          <span class="progress-time" id="uploadTimeRemaining">Calculating...</span>
+        </div>
+      </div>
+    </div>
+    <div class="upload-modal-footer">
+      <button class="btn btn-secondary" id="cancelUploadModal">Cancel</button>
+      <button class="btn btn-primary" id="confirmUploadModal" style="display: none;"><i class="fa-solid fa-upload"></i> Proceed with Upload</button>
+    </div>
+  </div>
+</div>
+
+<!-- Image Sort Modal -->
+<div class="upload-modal-overlay" id="imageSortModalOverlay" onclick="if(event.target===this)this.classList.remove('active')">
+  <div class="upload-modal image-sort-modal">
+    <div class="upload-modal-header">
+      <h3><i class="fa-solid fa-image"></i> Image Sort</h3>
+      <button class="upload-modal-close" id="closeImageSortModal" onclick="document.getElementById('imageSortModalOverlay').classList.remove('active')" aria-label="Close image sort modal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="upload-modal-body">
+      <div class="image-sort-form">
+        <div class="form-group">
+          <label for="imageSortColumn"><i class="fa-solid fa-table-columns"></i> Select Image Column</label>
+          <select id="imageSortColumn" class="form-select">
+            <option value="">-- Select Column --</option>
+            {% for field in table.fields %}
+              {% check_image_field field.type field.name as is_img %}
+              {% if is_img %}
+              <option value="{{ field.name }}">{{ field.name|upper }}</option>
+              {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="imageSortCondition"><i class="fa-solid fa-filter"></i> Select Condition</label>
+          <select id="imageSortCondition" class="form-select">
+            <option value="">-- Select Condition --</option>
+            <option value="complete">Complete (Image Uploaded)</option>
+            <option value="pending">Pending (Placeholder Created)</option>
+            <option value="incomplete">Incomplete (No Placeholder)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="upload-modal-footer">
+      <button class="btn btn-secondary" id="clearImageSort" onclick="document.getElementById('imageSortColumn').value='';document.getElementById('imageSortCondition').value='';document.querySelectorAll('#cardsTableBody tr').forEach(r=>r.style.display='');document.getElementById('imageSortModalOverlay').classList.remove('active');if(typeof showToast==='function')showToast('Image filter cleared');">Clear Filter</button>
+      <button class="btn btn-primary" id="applyImageSort" onclick="window.applyImageSortFilter()"><i class="fa-solid fa-check"></i> Apply Sort</button>
+    </div>
+  </div>
+</div>
+
+<script>
+window.applyImageSortFilter = function() {
+    var columnName = document.getElementById('imageSortColumn').value;
+    var condition = document.getElementById('imageSortCondition').value;
+    
+    if (!columnName) {
+        if (typeof showToast === 'function') showToast('Please select an image column', 'error');
+        return;
+    }
+    
+    if (!condition) {
+        if (typeof showToast === 'function') showToast('Please select a condition', 'error');
+        return;
+    }
+    
+    var rows = document.querySelectorAll('#cardsTableBody tr[data-card-id]');
+    var visibleCount = 0;
+    
+    rows.forEach(function(row) {
+        var imageCell = row.querySelector('td.image-cell[data-field-name="' + columnName + '"]');
+        
+        if (!imageCell) {
+            row.style.display = '';
+            return;
+        }
+        
+        var hasImage = imageCell.querySelector('img.table-image') !== null;
+        var originalValue = imageCell.getAttribute('data-original-value') || '';
+        var isPending = originalValue.startsWith('PENDING:');
+        var hasColorfulPlaceholder = imageCell.querySelector('.no-image.colorful-placeholder') !== null;
+        var hasPendingPlaceholder = imageCell.querySelector('.no-image.pending-placeholder') !== null;
+        
+        var showRow = false;
+        
+        switch (condition) {
+            case 'complete':
+                // Has actual image uploaded (not pending, not placeholder)
+                showRow = hasImage && originalValue.trim() !== '' && !isPending;
+                break;
+            case 'pending':
+                // Has PENDING: prefix OR has pending placeholder
+                showRow = isPending || hasPendingPlaceholder;
+                break;
+            case 'incomplete':
+                // No image path at all (colorful placeholder)
+                showRow = hasColorfulPlaceholder || (!hasImage && !isPending && originalValue.trim() === '');
+                break;
+        }
+        
+        row.style.display = showRow ? '' : 'none';
+        if (showRow) visibleCount++;
+    });
+    
+    document.getElementById('imageSortModalOverlay').classList.remove('active');
+    
+    var conditionText = condition === 'complete' ? 'Complete' : 
+                        condition === 'pending' ? 'Pending' : 'Incomplete';
+    if (typeof showToast === 'function') {
+        showToast('Showing ' + visibleCount + ' cards with ' + conditionText + ' images in "' + columnName.toUpperCase() + '"');
+    }
+};
+</script>
+
+<!-- Search All Modal -->
+<div class="upload-modal-overlay" id="searchAllModalOverlay">
+  <div class="upload-modal search-all-modal">
+    <div class="upload-modal-header">
+      <h3><i class="fa-solid fa-magnifying-glass"></i> Search All Lists</h3>
+      <button class="upload-modal-close" id="closeSearchAllModal" aria-label="Close search modal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="upload-modal-body">
+      <div class="search-all-form">
+        <div class="search-input-wrapper">
+          <i class="fa-solid fa-search"></i>
+          <input type="text" id="searchAllInput" placeholder="Search by name, mobile, address..." autocomplete="off">
+          <button class="clear-search-btn" id="clearSearchInput" style="display: none;">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="search-info">
+          <span><i class="fa-solid fa-info-circle"></i> Searches across all lists: Pending, Verified, Pool, Approved, Download</span>
+        </div>
+      </div>
+      <div class="search-results-container" id="searchResultsContainer">
+        <div class="search-placeholder">
+          <i class="fa-solid fa-search"></i>
+          <p>Type to search across all lists</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Permanent Confirmation Modal (Pool List - requires 6-digit code) -->
+<div class="upload-modal-overlay" id="deleteModalOverlay">
+  <div class="upload-modal delete-modal">
+    <div class="upload-modal-header delete-header">
+      <h3><i class="fa-solid fa-triangle-exclamation"></i> Permanent Delete Warning</h3>
+      <button type="button" class="upload-modal-close" id="closeDeleteModal" aria-label="Close delete modal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="upload-modal-body">
+      <div class="delete-warning-content">
+        <div class="delete-warning-icon">
+          <i class="fa-solid fa-trash"></i>
+        </div>
+        <div class="delete-warning-text">
+          <p class="delete-count"><strong id="deleteCountText">0 card(s)</strong> will be permanently deleted</p>
+          <div class="delete-warning-list">
+            <div class="warning-item"><i class="fa-solid fa-xmark"></i> This action <strong>cannot be undone</strong></div>
+            <div class="warning-item"><i class="fa-solid fa-xmark"></i> Data will be <strong>permanently removed</strong> from database</div>
+            <div class="warning-item"><i class="fa-solid fa-xmark"></i> <strong>No retrieve option</strong> available after deletion</div>
+          </div>
+        </div>
+        <!-- 6-digit verification code section -->
+        <div class="delete-verification-section">
+          <div class="verification-code-display">
+            <span class="verification-label">Type this code to confirm:</span>
+            <span class="verification-code" id="deleteVerificationCode">------</span>
+          </div>
+          <div class="verification-input-wrapper">
+            <input type="text" 
+                   id="deleteVerificationInput" 
+                   class="verification-input" 
+                   placeholder="Enter 6-digit code"
+                   maxlength="6"
+                   autocomplete="off">
+            <span class="verification-status" id="verificationStatus"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="upload-modal-footer delete-footer">
+      <button type="button" class="btn btn-secondary" id="cancelDeleteModal">Cancel</button>
+      <button type="button" class="btn btn-danger" id="confirmDeleteModal" disabled><i class="fa-solid fa-trash"></i> Delete Permanently</button>
+    </div>
+  </div>
+</div>
+
+<!-- Simple Delete Confirmation Modal (Pending/Verified - actual delete) -->
+<div class="upload-modal-overlay" id="simpleDeleteModalOverlay">
+  <div class="upload-modal simple-delete-modal">
+    <div class="upload-modal-header simple-delete-header">
+      <h3><i class="fa-solid fa-trash-can"></i> Delete Cards</h3>
+      <button type="button" class="upload-modal-close" id="closeSimpleDeleteModal" aria-label="Close delete modal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="upload-modal-body">
+      <div class="simple-delete-content">
+        <div class="simple-delete-icon">
+          <i class="fa-solid fa-trash-can"></i>
+        </div>
+        <div class="simple-delete-text">
+          <p class="delete-count"><strong id="simpleDeleteCountText">0 card(s)</strong> will be deleted</p>
+          <p class="delete-info">Deleted cards will be moved to Pool. You can retrieve them later or permanently delete from Pool.</p>
+        </div>
+      </div>
+    </div>
+    <div class="upload-modal-footer">
+      <button type="button" class="btn btn-secondary" id="cancelSimpleDeleteModal">Cancel</button>
+      <button type="button" class="btn btn-danger" id="confirmSimpleDeleteModal"><i class="fa-solid fa-trash-can"></i> Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Document Format Selection Modal -->
+<div class="upload-modal-overlay" id="docFormatModalOverlay">
+  <div class="upload-modal doc-format-modal">
+    <div class="upload-modal-header">
+      <h3><i class="fa-solid fa-file-word"></i> Select Document Format</h3>
+      <button class="upload-modal-close" id="closeDocFormatModal" aria-label="Close document format modal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="upload-modal-body">
+      <div class="doc-format-options">
+        <p class="format-info"><i class="fa-solid fa-info-circle"></i> Choose the document format based on your Microsoft Word version:</p>
+        <div class="format-cards">
+          <div class="format-card" data-format="docx">
+            <div class="format-icon">
+              <i class="fa-solid fa-file-word"></i>
+            </div>
+            <div class="format-details">
+              <h4>.DOCX Format</h4>
+              <p>For Word 2007 and later</p>
+              <span class="format-badge recommended">Recommended</span>
+            </div>
+          </div>
+          <div class="format-card" data-format="doc">
+            <div class="format-icon">
+              <i class="fa-solid fa-file-word"></i>
+            </div>
+            <div class="format-details">
+              <h4>.DOC Format</h4>
+              <p>For Word 2003 and earlier</p>
+              <span class="format-badge legacy">Legacy</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="upload-modal-footer">
+      <button class="btn btn-secondary" id="cancelDocFormatModal">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reupload Images Modal (for idcard-actions per-list reupload) -->
+<div id="reuploadActionsModal" class="center-modal-overlay center-modal-theme-red" style="display:none;">
+  <div class="center-modal-card">
+    <div class="center-modal-icon">
+      <i class="fa-solid fa-rotate"></i>
+    </div>
+    <h3 class="center-modal-title">Reupload Images</h3>
+    <p class="center-modal-subtitle">List: <strong id="reuploadActionsListName"></strong></p>
+    <p class="center-modal-subtitle">Cards: <strong id="reuploadActionsCardCount">0</strong></p>
+    <p class="center-modal-subtitle" style="margin-bottom:16px;">Upload a ZIP file with images. Filenames will be matched against the cards in this list.</p>
+    <div id="reuploadActionsDropZone" class="center-modal-dropzone"
+      ondragover="event.preventDefault(); this.style.borderColor='#ef4444'; this.style.backgroundColor='#fef2f2';"
+      ondragleave="this.style.borderColor='#d1d5db'; this.style.backgroundColor='';">
+      <i class="fa-solid fa-file-zipper"></i>
+      <p id="reuploadActionsFileName">Click or drag &amp; drop a ZIP file</p>
+      <input type="file" id="reuploadActionsFileInput" accept=".zip" style="display:none;">
+    </div>
+    <div class="center-modal-actions">
+      <button id="reuploadActionsCancel" class="center-modal-btn center-modal-btn-cancel">Cancel</button>
+      <button id="reuploadActionsConfirm" class="center-modal-btn center-modal-btn-confirm" disabled>Upload &amp; Match</button>
+    </div>
+    <div id="reuploadActionsProgress" class="center-modal-progress">
+      <div class="center-modal-progress-track">
+        <div id="reuploadActionsBar" class="center-modal-progress-bar"></div>
+      </div>
+      <p class="center-modal-progress-text" id="reuploadActionsStatus">Uploading...</p>
+    </div>
+  </div>
+</div>

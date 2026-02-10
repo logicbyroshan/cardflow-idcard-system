@@ -1,0 +1,52 @@
+{% load static %}
+<!-- Search and Filter Bar -->
+<div class="action-bar search-filter-bar">
+    <!-- Left Section - Select All, Image Sort, Search -->
+    <div class="action-left">
+        <div class="filter-group">
+            <button class="btn btn-select-all" id="selectAllDbBtn" title="Select all cards in database">
+                <i class="fa-solid fa-check-double"></i> Select All
+            </button>
+            <button class="btn btn-settings" id="imageSortBtn" title="Filter by image status" onclick="document.getElementById('imageSortModalOverlay').classList.add('active')">
+                <i class="fa-solid fa-image"></i> Image Sort
+            </button>
+        </div>
+        <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input type="text" id="searchInput" placeholder="Search All..." class="search-input" autocomplete="off">
+            <button class="search-clear-btn" id="searchClearBtn" type="button" title="Clear search" aria-label="Clear search">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Right Section - Class and Section Filters -->
+    <div class="action-right">
+        <div class="filter-group">
+            <!-- Class Filter Dropdown -->
+            <div class="custom-dropdown" id="classFilterDropdown">
+                <button class="dropdown-toggle" id="classFilterToggle" type="button">
+                    <i class="fa-solid fa-graduation-cap"></i>
+                    <span id="classFilterText">Class</span>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <div class="dropdown-options" id="classFilterOptions">
+                    <div class="dropdown-option selected" data-value="all">All Classes</div>
+                    <!-- Options will be populated dynamically from table data -->
+                </div>
+            </div>
+            <!-- Section Filter Dropdown -->
+            <div class="custom-dropdown" id="sectionFilterDropdown">
+                <button class="dropdown-toggle" id="sectionFilterToggle" type="button">
+                    <i class="fa-solid fa-layer-group"></i>
+                    <span id="sectionFilterText">Section</span>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <div class="dropdown-options" id="sectionFilterOptions">
+                    <div class="dropdown-option selected" data-value="all">All Sections</div>
+                    <!-- Options will be populated dynamically from table data -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

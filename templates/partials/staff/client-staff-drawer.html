@@ -1,0 +1,195 @@
+{% comment %}
+Client Staff Drawer Partial
+Contains: Side drawer for adding/editing client staff with form fields and permissions
+Mirrors admin staff-drawer.html but with Group Assignment instead of Client Assignment
+{% endcomment %}
+
+<!-- Staff Drawer Start -->
+<div class="drawer-overlay" id="staff-drawer-overlay"></div>
+<aside class="side-drawer" id="staff-drawer">
+    <div class="drawer-header">
+        <h2 class="drawer-title" id="drawer-title">
+            <i class="fa-solid fa-user-plus" id="drawer-icon"></i>
+            <span id="drawer-title-text">Add New Staff</span>
+        </h2>
+        <button type="button" class="drawer-close" id="drawer-close-btn" title="Close">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+    </div>
+    
+    <form id="staff-form" class="drawer-form">
+        <input type="hidden" id="staff-id" name="staff_id">
+        
+        <div class="drawer-body">
+            <!-- Profile Photo Section -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <i class="fa-solid fa-camera"></i> Profile Photo
+                </h3>
+                <div class="profile-upload">
+                    <div class="profile-preview" id="profile-preview">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                    <div class="profile-actions">
+                        <label for="profile-input" class="btn btn-secondary btn-sm">
+                            <i class="fa-solid fa-upload"></i> Upload Photo
+                        </label>
+                        <input type="file" id="profile-input" name="profile" accept="image/*" hidden>
+                        <span class="upload-hint">JPG, PNG (Max 2MB)</span>
+                        <div class="profile-path-display no-path" id="staff-profile-path">No image</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Group Assignment Section (Client Staff Only) -->
+            <div class="form-section" id="group-assignment-section">
+                <h3 class="section-title">
+                    <i class="fa-solid fa-layer-group"></i> Group Assignment
+                </h3>
+                <div class="form-group">
+                    <label>Assign Groups (Classes/Sections)</label>
+                    <div class="client-multiselect" id="group-multiselect">
+                        <div class="client-multiselect-header" id="group-multiselect-toggle">
+                            <span class="client-multiselect-placeholder" id="group-multiselect-text">Select groups...</span>
+                            <i class="fa-solid fa-chevron-down client-multiselect-arrow"></i>
+                        </div>
+                        <div class="client-multiselect-dropdown" id="group-multiselect-dropdown" style="display: none;">
+                            <div class="client-multiselect-search">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input type="text" id="group-search-input" placeholder="Search groups..." autocomplete="off">
+                            </div>
+                            <div class="client-multiselect-list" id="group-multiselect-list">
+                                <!-- Group checkboxes will be populated dynamically -->
+                            </div>
+                            <div class="client-multiselect-empty" id="group-multiselect-empty" style="display: none;">
+                                No groups found
+                            </div>
+                        </div>
+                    </div>
+                    <small class="field-hint">Select groups this staff can manage. Leave empty for all groups.</small>
+                </div>
+            </div>
+            
+            <!-- Staff Information Section -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <i class="fa-solid fa-info-circle"></i> Staff Information
+                </h3>
+                
+                <div class="form-group">
+                    <label for="staff-name">Staff Name <span class="required">*</span></label>
+                    <input type="text" id="staff-name" name="name" placeholder="Enter staff name" required>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="staff-email">Email <span class="required">*</span></label>
+                        <input type="email" id="staff-email" name="email" placeholder="Enter email address" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="staff-phone">Phone <span class="required">*</span></label>
+                        <input type="tel" id="staff-phone" name="phone" placeholder="Enter phone number" required>
+                        <small class="field-hint" style="color: #6b7280; font-size: 11px;">This will be used as password</small>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="staff-address">Address</label>
+                        <textarea id="staff-address" name="address" rows="2" placeholder="Enter address (optional)"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="staff-status">Status</label>
+                        <select id="staff-status" name="is_active">
+                            <option value="true">Active</option>
+                            <option value="false">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Permissions Section -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <i class="fa-solid fa-shield-halved"></i> User Permission
+                </h3>
+                
+                <div class="permission-grid">
+                    <label class="permission-item{% if not perm_idcard_pending_list %} perm-locked{% endif %}" {% if not perm_idcard_pending_list %}title="Admin has not granted you this permission"{% endif %}>
+                        <input type="checkbox" name="perm_idcard_pending_list" id="perm-idcard-pending-list" {% if not perm_idcard_pending_list %}disabled{% endif %}>
+                        <span class="permission-label">Id Card Pending List</span>
+                        {% if not perm_idcard_pending_list %}<i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}
+                    </label>
+                    <label class="permission-item{% if not perm_idcard_verified_list %} perm-locked{% endif %}" {% if not perm_idcard_verified_list %}title="Admin has not granted you this permission"{% endif %}>
+                        <input type="checkbox" name="perm_idcard_verified_list" id="perm-idcard-verified-list" {% if not perm_idcard_verified_list %}disabled{% endif %}>
+                        <span class="permission-label">Id Card Verified List</span>
+                        {% if not perm_idcard_verified_list %}<i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}
+                    </label>
+                    <label class="permission-item{% if not perm_idcard_pool_list %} perm-locked{% endif %}" {% if not perm_idcard_pool_list %}title="Admin has not granted you this permission"{% endif %}>
+                        <input type="checkbox" name="perm_idcard_pool_list" id="perm-idcard-pool-list" {% if not perm_idcard_pool_list %}disabled{% endif %}>
+                        <span class="permission-label">Id Card Pool List</span>
+                        {% if not perm_idcard_pool_list %}<i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}
+                    </label>
+                    <label class="permission-item{% if not perm_idcard_approved_list %} perm-locked{% endif %}" {% if not perm_idcard_approved_list %}title="Admin has not granted you this permission"{% endif %}>
+                        <input type="checkbox" name="perm_idcard_approved_list" id="perm-idcard-approved-list" {% if not perm_idcard_approved_list %}disabled{% endif %}>
+                        <span class="permission-label">Id Card Approved List</span>
+                        {% if not perm_idcard_approved_list %}<i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}
+                    </label>
+                    <label class="permission-item{% if not perm_idcard_download_list %} perm-locked{% endif %}" {% if not perm_idcard_download_list %}title="Admin has not granted you this permission"{% endif %}>
+                        <input type="checkbox" name="perm_idcard_download_list" id="perm-idcard-download-list" {% if not perm_idcard_download_list %}disabled{% endif %}>
+                        <span class="permission-label">Id Card Download List</span>
+                        {% if not perm_idcard_download_list %}<i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}
+                    </label>
+                    <label class="permission-item{% if not perm_idcard_add %} perm-locked{% endif %}" {% if not perm_idcard_add %}title="Admin has not granted you this permission"{% endif %}>
+                        <input type="checkbox" name="perm_idcard_add" id="perm-idcard-add" {% if not perm_idcard_add %}disabled{% endif %}>
+                        <span class="permission-label">Id Card Add</span>
+                        {% if not perm_idcard_add %}<i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}
+                    </label>
+                    <label class="permission-item{% if not perm_idcard_edit %} perm-locked{% endif %}" {% if not perm_idcard_edit %}title="Admin has not granted you this permission"{% endif %}>
+                        <input type="checkbox" name="perm_idcard_edit" id="perm-idcard-edit" {% if not perm_idcard_edit %}disabled{% endif %}>
+                        <span class="permission-label">Id Card Edit</span>
+                        {% if not perm_idcard_edit %}<i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}
+                    </label>
+                    <label class="permission-item{% if not perm_idcard_delete %} perm-locked{% endif %}" {% if not perm_idcard_delete %}title="Admin has not granted you this permission"{% endif %}>
+                        <input type="checkbox" name="perm_idcard_delete" id="perm-idcard-delete" {% if not perm_idcard_delete %}disabled{% endif %}>
+                        <span class="permission-label">Id Card Delete</span>
+                        {% if not perm_idcard_delete %}<i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}
+                    </label>
+                    <label class="permission-item{% if not perm_idcard_info %} perm-locked{% endif %}" {% if not perm_idcard_info %}title="Admin has not granted you this permission"{% endif %}>
+                        <input type="checkbox" name="perm_idcard_info" id="perm-idcard-info" {% if not perm_idcard_info %}disabled{% endif %}>
+                        <span class="permission-label">Id Card Info</span>
+                        {% if not perm_idcard_info %}<i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}
+                    </label>
+                    <label class="permission-item{% if not perm_idcard_approve %} perm-locked{% endif %}" {% if not perm_idcard_approve %}title="Admin has not granted you this permission"{% endif %}>
+                        <input type="checkbox" name="perm_idcard_approve" id="perm-idcard-approve" {% if not perm_idcard_approve %}disabled{% endif %}>
+                        <span class="permission-label">Id Card Approve</span>
+                        {% if not perm_idcard_approve %}<i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}
+                    </label>
+                    <label class="permission-item{% if not perm_idcard_verify %} perm-locked{% endif %}" {% if not perm_idcard_verify %}title="Admin has not granted you this permission"{% endif %}>
+                        <input type="checkbox" name="perm_idcard_verify" id="perm-idcard-verify" {% if not perm_idcard_verify %}disabled{% endif %}>
+                        <span class="permission-label">Id Card Verify</span>
+                        {% if not perm_idcard_verify %}<i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}
+                    </label>
+                    <label class="permission-item{% if not perm_idcard_created_at %} perm-locked{% endif %}" {% if not perm_idcard_created_at %}title="Admin has not granted you this permission"{% endif %}>
+                        <input type="checkbox" name="perm_idcard_created_at" id="perm-idcard-created-at" {% if not perm_idcard_created_at %}disabled{% endif %}>
+                        <span class="permission-label">Id Card Created At</span>
+                        {% if not perm_idcard_created_at %}<i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}
+                    </label>
+                    <label class="permission-item{% if not perm_idcard_updated_at %} perm-locked{% endif %}" {% if not perm_idcard_updated_at %}title="Admin has not granted you this permission"{% endif %}>
+                        <input type="checkbox" name="perm_idcard_updated_at" id="perm-idcard-updated-at" {% if not perm_idcard_updated_at %}disabled{% endif %}>
+                        <span class="permission-label">Id Card Updated At</span>
+                        {% if not perm_idcard_updated_at %}<i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}
+                    </label>
+                </div>
+            </div>
+        </div>
+        
+        <div class="drawer-footer">
+            <button type="button" class="btn btn-secondary" id="drawer-cancel-btn">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="drawer-submit-btn">
+                <span id="submit-btn-text">Add Staff</span>
+            </button>
+        </div>
+    </form>
+</aside>
+<!-- Staff Drawer End -->

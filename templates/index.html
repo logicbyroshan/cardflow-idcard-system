@@ -1,0 +1,465 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard - Adarsh ID Cards</title>
+  <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/variables.css' %}?v=3">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=38">
+  <link rel="stylesheet" href="{% static 'css/common.css' %}?v=49">
+  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=40">
+  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=2">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+
+  {% include 'partials/sidebar.html' %}
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- Top Navbar -->
+    <header class="topbar">
+      <div class="nav-left">
+        <button class="sidebar-toggle" id="sidebarToggle">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+        <div class="breadcrumb">
+          <span class="breadcrumb-item active"><i class="fa-solid fa-house"></i> Dashboard</span>
+        </div>
+      </div>
+      <div class="nav-right">
+        <button class="global-search-btn" id="globalSearchBtn">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <span>Search ID cards...</span>
+          <kbd>Ctrl+K</kbd>
+        </button>
+      </div>
+    </header>
+
+    <!-- Dashboard Content -->
+    <div class="dashboard-content">
+
+      <!-- Welcome Banner -->
+      <div class="welcome-banner">
+        <div class="welcome-text">
+          <h2>Welcome back, {{ user.get_full_name|default:user.username|default:"Super Admin" }}! 👋</h2>
+          <p>Here's what's happening with your ID card system today.</p>
+        </div>
+        <div class="welcome-date">
+          <div class="date" id="welcomeDate">Sunday, Feb 01, 2026</div>
+          <div class="time" id="welcomeTime">00:00:00</div>
+        </div>
+      </div>
+
+      <!-- Stats Cards -->
+      <div class="stats-cards">
+        <div class="stat-card">
+          <div class="stat-icon pending">
+            <i class="fa-solid fa-clock"></i>
+          </div>
+          <div class="stat-info">
+            <div class="stat-value" id="pendingCards">{{ pending_cards|default:0 }}</div>
+            <div class="stat-label">Pending Cards</div>
+            <span class="stat-change negative"><i class="fa-solid fa-arrow-down"></i> In process</span>
+          </div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-icon verified">
+            <i class="fa-solid fa-check-circle"></i>
+          </div>
+          <div class="stat-info">
+            <div class="stat-value" id="verifiedCards">{{ verified_cards|default:0 }}</div>
+            <div class="stat-label">Verified Cards</div>
+            <span class="stat-change positive"><i class="fa-solid fa-arrow-up"></i> Ready for approval</span>
+          </div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-icon approved">
+            <i class="fa-solid fa-thumbs-up"></i>
+          </div>
+          <div class="stat-info">
+            <div class="stat-value" id="approvedCards">{{ approved_cards|default:0 }}</div>
+            <div class="stat-label">Approved Cards</div>
+            <span class="stat-change positive"><i class="fa-solid fa-arrow-up"></i> Ready to download</span>
+          </div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-icon downloaded">
+            <i class="fa-solid fa-download"></i>
+          </div>
+          <div class="stat-info">
+            <div class="stat-value" id="downloadedCards">{{ downloaded_cards|default:0 }}</div>
+            <div class="stat-label">Downloaded Cards</div>
+            <span class="stat-change positive"><i class="fa-solid fa-arrow-up"></i> Completed</span>
+          </div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-icon" style="background:rgba(99,102,241,.12); color:var(--accent-primary,#6366f1);">
+            <i class="fa-solid fa-layer-group"></i>
+          </div>
+          <div class="stat-info">
+            <div class="stat-value" id="totalCards">{{ total_id_cards|default:0 }}</div>
+            <div class="stat-label">Total ID Cards</div>
+            <span class="stat-change positive"><i class="fa-solid fa-arrow-up"></i> All cards</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Grid - Recent Client Updates & Recent Activity -->
+      <div class="dashboard-grid">
+        
+        <!-- Recent Client Updates - Super Admin view -->
+        <div class="dashboard-card">
+          <div class="dashboard-card-header">
+            <h3><i class="fa-solid fa-users"></i> Recent Client Updates</h3>
+            {% if is_super_admin or is_admin_staff %}
+            <a href="{% url 'manage_clients' %}" class="view-all">View All <i class="fa-solid fa-arrow-right"></i></a>
+            {% endif %}
+          </div>
+          <div class="dashboard-card-body tall-body" style="padding: 0;">
+            <div class="recent-table-wrapper">
+            <table class="recent-table">
+              <thead>
+                <tr>
+                  <th>Client</th>
+                  <th class="text-center">Pending</th>
+                  <th class="text-center">Verified</th>
+                  <th class="text-center">Approved</th>
+                  <th class="text-center">Downloaded</th>
+                </tr>
+              </thead>
+              <tbody id="recentClientUpdatesBody">
+                <!-- Will be populated dynamically -->
+                <tr>
+                  <td colspan="5" class="text-center" style="padding: 40px; color: #888;">
+                    <i class="fa-solid fa-spinner fa-spin"></i> Loading...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="dashboard-card">
+          <div class="dashboard-card-header">
+            <h3><i class="fa-solid fa-history"></i> Recent Activity</h3>
+          </div>
+          <div class="dashboard-card-body tall-body">
+            <div class="activity-list" id="recentActivityList">
+              {% if recent_activities %}
+                {% for activity in recent_activities %}
+                <div class="activity-item">
+                  <div class="activity-icon {{ activity.icon_color }}">
+                    <i class="fa-solid {{ activity.icon_class }}"></i>
+                  </div>
+                  <div class="activity-content">
+                    <div class="activity-text">{{ activity.description }}</div>
+                    <div class="activity-time">{{ activity.time_ago }} ago</div>
+                  </div>
+                </div>
+                {% endfor %}
+              {% else %}
+                <div class="activity-item" id="noActivityMessage">
+                  <div class="activity-icon edit">
+                    <i class="fa-solid fa-circle-info"></i>
+                  </div>
+                  <div class="activity-content">
+                    <div class="activity-text">No recent activity to show</div>
+                    <div class="activity-time">Activity will appear here as actions are performed</div>
+                  </div>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Second Row Grid - Quick Actions, Team Overview & Bulk Actions -->
+      <div class="dashboard-grid dashboard-grid-3col">
+        
+        <!-- Quick Actions - Permission controlled -->
+        <div class="dashboard-card">
+          <div class="dashboard-card-header">
+            <h3><i class="fa-solid fa-bolt"></i> Quick Actions</h3>
+          </div>
+          <div class="dashboard-card-body">
+            <div class="quick-actions">
+              {% if is_super_admin or is_admin_staff %}
+              <a href="{% url 'manage_clients' %}?add=1" class="quick-action-btn">
+                <i class="fa-solid fa-user-plus"></i>
+                <span>Add New Client</span>
+              </a>
+              {% endif %}
+              {% if is_super_admin %}
+              <a href="{% url 'manage_staff' %}?add=1" class="quick-action-btn">
+                <i class="fa-solid fa-user-tie"></i>
+                <span>Add New Staff</span>
+              </a>
+              {% endif %}
+              {% if is_super_admin %}
+              <a href="#" class="quick-action-btn" id="takeBackupBtn">
+                <i class="fa-solid fa-database"></i>
+                <span>Take Backup</span>
+              </a>
+              {% endif %}
+              {% if perm_idcard_bulk_download %}
+              <a href="#" class="quick-action-btn">
+                <i class="fa-solid fa-download"></i>
+                <span>Bulk Download</span>
+              </a>
+              {% endif %}
+              {% if perm_idcard_bulk_upload %}
+              <a href="#" class="quick-action-btn">
+                <i class="fa-solid fa-upload"></i>
+                <span>Bulk Upload</span>
+              </a>
+              {% endif %}
+              {% if is_super_admin or is_admin_staff %}
+              <a href="#" class="quick-action-btn">
+                <i class="fa-solid fa-print"></i>
+                <span>Reprint ID Cards</span>
+              </a>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Team Overview -->
+        <div class="dashboard-card">
+          <div class="dashboard-card-header">
+            <h3><i class="fa-solid fa-users"></i> Team Overview</h3>
+          </div>
+          <div class="dashboard-card-body">
+            <div class="cards-overview">
+              <div class="card-overview-item">
+                <div class="card-overview-left">
+                  <div class="card-overview-icon clients">
+                    <i class="fa-solid fa-building"></i>
+                  </div>
+                  <span class="card-overview-label">Total Clients</span>
+                </div>
+                <span class="card-overview-value">{{ total_clients|default:0 }}</span>
+              </div>
+              <div class="card-overview-item">
+                <div class="card-overview-left">
+                  <div class="card-overview-icon active-clients">
+                    <i class="fa-solid fa-user-check"></i>
+                  </div>
+                  <span class="card-overview-label">Active Clients</span>
+                </div>
+                <span class="card-overview-value">{{ active_clients|default:0 }}</span>
+              </div>
+              <div class="card-overview-item">
+                <div class="card-overview-left">
+                  <div class="card-overview-icon staff">
+                    <i class="fa-solid fa-user-tie"></i>
+                  </div>
+                  <span class="card-overview-label">Total Staff</span>
+                </div>
+                <span class="card-overview-value">{{ total_staff|default:0 }}</span>
+              </div>
+              <div class="card-overview-item">
+                <div class="card-overview-left">
+                  <div class="card-overview-icon active-staff">
+                    <i class="fa-solid fa-user-shield"></i>
+                  </div>
+                  <span class="card-overview-label">Active Staff</span>
+                </div>
+                <span class="card-overview-value">{{ active_staff|default:0 }}</span>
+              </div>
+              <div class="card-overview-item">
+                <div class="card-overview-left">
+                  <div class="card-overview-icon staff">
+                    <i class="fa-solid fa-user-gear"></i>
+                  </div>
+                  <span class="card-overview-label">Client Staff</span>
+                </div>
+                <span class="card-overview-value">{{ client_staff_count|default:0 }}</span>
+              </div>
+              <div class="card-overview-item">
+                <div class="card-overview-left">
+                  <div class="card-overview-icon active-clients">
+                    <i class="fa-solid fa-user-check"></i>
+                  </div>
+                  <span class="card-overview-label">Active Client Staff</span>
+                </div>
+                <span class="card-overview-value">{{ active_client_staff_count|default:0 }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bulk Actions -->
+        <div class="dashboard-card">
+          <div class="dashboard-card-header">
+            <h3><i class="fa-solid fa-gears"></i> Bulk Actions</h3>
+          </div>
+          <div class="dashboard-card-body">
+            <div class="bulk-actions-panel">
+              <div class="bulk-actions-selectors">
+                <div class="bulk-select-group">
+                  <label for="bulkClientSelect">Client</label>
+                  <select id="bulkClientSelect">
+                    <option value="">Select Client</option>
+                  </select>
+                </div>
+                <div class="bulk-select-group">
+                  <label for="bulkTableSelect">Table</label>
+                  <select id="bulkTableSelect" disabled>
+                    <option value="">Select Table</option>
+                  </select>
+                </div>
+              </div>
+              <div class="bulk-actions-buttons" id="bulkActionsButtons">
+                <button class="bulk-action-btn" data-action="download-all" disabled>
+                  <i class="fa-solid fa-id-card"></i>
+                  <span>Download All Cards</span>
+                </button>
+                <button class="bulk-action-btn" data-action="delete-all" disabled>
+                  <i class="fa-solid fa-trash"></i>
+                  <span>Delete All Cards</span>
+                </button>
+                <button class="bulk-action-btn" data-action="reprint" disabled>
+                  <i class="fa-solid fa-print"></i>
+                  <span>Reprint Cards</span>
+                </button>
+                <button class="bulk-action-btn" data-action="upgrade" disabled>
+                  <i class="fa-solid fa-arrow-up"></i>
+                  <span>Upgrade All Class</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Global Search Modal -->
+  <div class="global-search-overlay" id="globalSearchOverlay">
+    <div class="global-search-modal">
+      <div class="global-search-header">
+        <div class="search-input-group">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="globalSearchInput" placeholder="Search ID cards by name, address, mobile..." autocomplete="off">
+          <button class="clear-global-search" id="clearGlobalSearch" style="display: none;">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="search-filter-group">
+          <label>Filter:</label>
+          <select id="globalSearchFilter">
+            <option value="all">All Fields</option>
+            <option value="name">Name</option>
+            <option value="address">Address</option>
+            <option value="mobile">Mobile</option>
+          </select>
+        </div>
+        <button class="close-global-search" id="closeGlobalSearch">
+          <i class="fa-solid fa-xmark"></i>
+          <span>ESC</span>
+        </button>
+      </div>
+      <div class="global-search-body" id="globalSearchResults">
+        <div class="search-placeholder">
+          <i class="fa-solid fa-search"></i>
+          <p>Search across all ID cards</p>
+          <span>Enter at least 2 characters to search</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete All Confirmation Modal (Dashboard) -->
+  <div id="dashDeleteAllModal" class="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
+    <div style="background:white; border-radius:12px; padding:32px; max-width:440px; width:90%; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.2);">
+      <div style="margin-bottom:16px;"><i class="fa-solid fa-triangle-exclamation" style="font-size:48px; color:#ef4444;"></i></div>
+      <h3 style="margin:0 0 8px; color:#111827; font-size:20px;">Delete All ID Cards</h3>
+      <p style="color:#6b7280; margin:0 0 8px; font-size:14px;">Table: <strong id="dashDeleteTableName"></strong></p>
+      <p style="color:#6b7280; margin:0 0 4px; font-size:14px;">This will permanently delete <strong id="dashDeleteCount"></strong> cards from <strong>ALL lists</strong>.</p>
+      <p style="color:#ef4444; font-weight:600; margin:8px 0 16px; font-size:13px;">This action CANNOT be undone.</p>
+      <p style="color:#374151; margin:0 0 8px; font-size:14px;">Enter the 6-digit code below to confirm:</p>
+      <div style="background:#fef2f2; border:2px solid #fca5a5; border-radius:8px; padding:12px; margin:0 0 12px; font-size:28px; font-weight:700; letter-spacing:8px; color:#dc2626;" id="dashDeleteCode"></div>
+      <input type="text" id="dashDeleteCodeInput" maxlength="6" placeholder="Enter code here"
+        style="width:100%; padding:12px; font-size:18px; text-align:center; border:2px solid #d1d5db; border-radius:8px; letter-spacing:6px; font-weight:600; margin-bottom:16px; outline:none;"
+        onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#d1d5db'">
+      <div style="display:flex; gap:12px; justify-content:center;">
+        <button id="dashDeleteCancel" style="padding:10px 24px; border:1px solid #d1d5db; background:#f9fafb; color:#374151; border-radius:8px; cursor:pointer; font-size:14px; font-weight:500;">Cancel</button>
+        <button id="dashDeleteConfirm" disabled style="padding:10px 24px; border:none; background:#ef4444; color:white; border-radius:8px; cursor:pointer; font-size:14px; font-weight:600; opacity:0.5;">Delete All Cards</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upgrade All Classes Confirmation Modal (Dashboard) -->
+  <div id="dashUpgradeAllModal" class="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
+    <div style="background:white; border-radius:12px; padding:32px; max-width:440px; width:90%; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.2);">
+      <div style="margin-bottom:16px;"><i class="fa-solid fa-arrow-up" style="font-size:48px; color:#f59e0b;"></i></div>
+      <h3 style="margin:0 0 8px; color:#111827; font-size:20px;">Upgrade All Classes</h3>
+      <p style="color:#6b7280; margin:0 0 8px; font-size:14px;">Table: <strong id="dashUpgradeTableName"></strong></p>
+      <p style="color:#6b7280; margin:0 0 4px; font-size:14px;">This will upgrade the class value of <strong id="dashUpgradeCount"></strong> cards in the <strong>Download list</strong> to the next level (e.g. V &rarr; VI).</p>
+      <p style="color:#f59e0b; font-weight:600; margin:8px 0 16px; font-size:13px;">This action CANNOT be undone.</p>
+      <p style="color:#374151; margin:0 0 8px; font-size:14px;">Enter the 6-digit code below to confirm:</p>
+      <div style="background:#fffbeb; border:2px solid #fcd34d; border-radius:8px; padding:12px; margin:0 0 12px; font-size:28px; font-weight:700; letter-spacing:8px; color:#d97706;" id="dashUpgradeCode"></div>
+      <input type="text" id="dashUpgradeCodeInput" maxlength="6" placeholder="Enter code here"
+        style="width:100%; padding:12px; font-size:18px; text-align:center; border:2px solid #d1d5db; border-radius:8px; letter-spacing:6px; font-weight:600; margin-bottom:16px; outline:none;"
+        onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#d1d5db'">
+      <div style="display:flex; gap:12px; justify-content:center;">
+        <button id="dashUpgradeCancel" style="padding:10px 24px; border:1px solid #d1d5db; background:#f9fafb; color:#374151; border-radius:8px; cursor:pointer; font-size:14px; font-weight:500;">Cancel</button>
+        <button id="dashUpgradeConfirm" disabled style="padding:10px 24px; border:none; background:#f59e0b; color:white; border-radius:8px; cursor:pointer; font-size:14px; font-weight:600; opacity:0.5;">Upgrade All Classes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reupload Image Modal (Dashboard) -->
+  <div id="dashReuploadModal" class="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
+    <div style="background:white; border-radius:12px; padding:32px; max-width:480px; width:90%; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.2);">
+      <div style="margin-bottom:16px;"><i class="fa-solid fa-upload" style="font-size:48px; color:#3b82f6;"></i></div>
+      <h3 style="margin:0 0 8px; color:#111827; font-size:20px;">Reupload Images</h3>
+      <p style="color:#6b7280; margin:0 0 16px; font-size:13px;">Upload a ZIP file. Filenames will be matched against ALL cards in this table.</p>
+      <div id="dashReuploadDropZone" style="border:2px dashed #d1d5db; border-radius:8px; padding:24px; margin-bottom:16px; cursor:pointer; transition:border-color 0.2s, background-color 0.2s;"
+        ondragover="event.preventDefault(); this.style.borderColor='#3b82f6'; this.style.backgroundColor='#eff6ff';"
+        ondragleave="this.style.borderColor='#d1d5db'; this.style.backgroundColor='';">
+        <i class="fa-solid fa-file-zipper" style="font-size:32px; color:#9ca3af; margin-bottom:8px;"></i>
+        <p style="margin:0; color:#6b7280; font-size:14px;" id="dashReuploadFileName">Click or drag & drop a ZIP file</p>
+        <input type="file" id="dashReuploadFileInput" accept=".zip" style="display:none;">
+      </div>
+      <div style="display:flex; gap:12px; justify-content:center;">
+        <button id="dashReuploadCancel" style="padding:10px 24px; border:1px solid #d1d5db; background:#f9fafb; color:#374151; border-radius:8px; cursor:pointer; font-size:14px; font-weight:500;">Cancel</button>
+        <button id="dashReuploadConfirm" disabled style="padding:10px 24px; border:none; background:#3b82f6; color:white; border-radius:8px; cursor:pointer; font-size:14px; font-weight:600; opacity:0.5;">Upload &amp; Match</button>
+      </div>
+      <div id="dashReuploadProgress" style="display:none; margin-top:16px;">
+        <div style="background:#e5e7eb; border-radius:999px; height:8px; overflow:hidden;"><div id="dashReuploadBar" style="background:#3b82f6; height:100%; width:0%; transition:width 0.3s;"></div></div>
+        <p style="color:#6b7280; font-size:13px; margin:8px 0 0;" id="dashReuploadStatus">Uploading...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Common Modules (Load Order Matters) -->
+  <script src="{% static 'js/common/ajax.js' %}?v=2"></script>
+  <script src="{% static 'js/common/toast.js' %}?v=2"></script>
+  <script src="{% static 'js/common/modal.js' %}?v=2"></script>
+  <script src="{% static 'js/common/sidebar.js' %}?v=2"></script>
+  <script src="{% static 'js/common/validation.js' %}?v=2"></script>
+  <script src="{% static 'js/common/utils.js' %}?v=2"></script>
+  <script src="{% static 'js/init.js' %}?v=2"></script>
+  
+  <!-- Legacy compatibility -->
+  <script src="{% static 'js/utils.js' %}?v=3"></script>
+  <script src="{% static 'js/script.js' %}?v=3"></script>
+  <script src="{% static 'js/dashboard.js' %}?v=7"></script>
+  <script src="{% static 'js/global-search.js' %}?v=2"></script>
+</body>
+</html>

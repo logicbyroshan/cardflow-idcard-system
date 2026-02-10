@@ -1,0 +1,275 @@
+{% extends "website/admin/base.html" %}
+{% load static %}
+
+{% block title %}Portfolio / Our Works{% endblock %}
+
+{% block breadcrumb_extra %}
+<i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+<span class="breadcrumb-item active">Portfolio</span>
+{% endblock %}
+
+{% block content %}
+<div class="wa-page-container">
+
+    <!-- Category Management -->
+    <div class="wa-dashboard-section">
+        <div class="wa-action-bar" style="margin-bottom: var(--space-lg);">
+            <div class="wa-action-left">
+                <h3 class="wa-dashboard-section-title"><i class="fa-solid fa-layer-group"></i> Categories</h3>
+                <span class="wa-count-badge">{{ categories|length }} categories</span>
+            </div>
+            <div class="wa-action-right">
+                {% if is_super_admin or perm_website_add %}
+                <button class="btn btn-primary btn-sm" onclick="openCategoryModal()">
+                    <i class="fa-solid fa-plus"></i> Add Category
+                </button>
+                {% endif %}
+            </div>
+        </div>
+        <div class="wa-category-chips" id="categoryChips">
+            {% for cat in categories %}
+            <div class="wa-category-chip {% if cat.is_default %}default{% endif %}{% if cat.is_bento %} bento{% endif %}" data-id="{{ cat.id }}">
+                <i class="{{ cat.icon }}"></i>
+                <span>{{ cat.name }}</span>
+                {% if cat.is_bento %}<small class="wa-bento-badge" title="In bento grid">B</small>{% endif %}
+                <small class="wa-chip-count">{{ cat.items.count }}</small>
+                {% if not cat.is_default %}
+                <div class="wa-chip-actions">
+                    <button class="wa-chip-btn" title="Edit" onclick="editCategory({{ cat.id }}, '{{ cat.name|escapejs }}', '{{ cat.icon|escapejs }}', '{{ cat.description|escapejs }}', {{ cat.order }}, {{ cat.is_bento|yesno:'true,false' }}, '{{ cat.bento_size }}')"><i class="fa-solid fa-pen"></i></button>
+                    <button class="wa-chip-btn danger" title="Delete" onclick="deleteCategory({{ cat.id }})"><i class="fa-solid fa-trash"></i></button>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Portfolio Items -->
+    <div class="wa-dashboard-section">
+        <div class="wa-action-bar" style="margin-bottom: var(--space-lg);">
+            <div class="wa-action-left">
+                <h3 class="wa-dashboard-section-title"><i class="fa-solid fa-images"></i> Portfolio Items</h3>
+                <span class="wa-count-badge">{{ items|length }} items</span>
+            </div>
+            <div class="wa-action-right">
+                {% if is_super_admin or perm_website_add %}
+                <button class="btn btn-primary" onclick="openPortfolioModal()">
+                    <i class="fa-solid fa-plus"></i> Add Item
+                </button>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Category Filter -->
+        <div class="wa-filter-row" id="portfolioFilters">
+            <button class="wa-filter-btn active" data-cat="all">All</button>
+            {% for cat in categories %}
+            <button class="wa-filter-btn" data-cat="{{ cat.id }}">{{ cat.name }}</button>
+            {% endfor %}
+        </div>
+
+        <div class="wa-table-wrap">
+            <table class="wa-table" id="portfolioTable">
+                <thead>
+                    <tr>
+                        <th>Preview</th>
+                        <th>Title</th>
+                        <th>Category</th>
+                        <th>Type</th>
+                        <th>Order</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="portfolioBody">
+                    {% for p in items %}
+                    <tr data-id="{{ p.id }}" data-cat="{{ p.category_id|default:'' }}">
+                        <td>
+                            {% if p.image %}
+                            <img src="{{ p.image.url }}" class="wa-thumb" alt="{{ p.title }}">
+                            {% elif p.item_type == 'video' or p.item_type == 'reel' %}
+                            <span class="wa-thumb-icon"><i class="fa-solid fa-video"></i></span>
+                            {% else %}
+                            <span class="wa-no-img"><i class="fa-solid fa-image"></i></span>
+                            {% endif %}
+                        </td>
+                        <td><strong>{{ p.title }}</strong></td>
+                        <td>{{ p.category.name|default:"—" }}</td>
+                        <td>
+                            <span class="wa-type-badge {{ p.item_type }}">
+                                <i class="fa-solid {% if p.item_type == 'image' %}fa-image{% elif p.item_type == 'video' %}fa-video{% else %}fa-film{% endif %}"></i>
+                                {{ p.get_item_type_display }}
+                            </span>
+                        </td>
+                        <td>{{ p.order }}</td>
+                        <td>
+                            <span class="wa-status-badge {% if p.is_active %}active{% else %}inactive{% endif %}"
+                                  onclick="togglePortfolio({{ p.id }}, this)">
+                                {{ p.is_active|yesno:"Active,Inactive" }}
+                            </span>
+                        </td>
+                        <td class="wa-actions">
+                            {% if is_super_admin or perm_website_edit %}
+                            <button class="btn-icon" title="Edit" onclick="editPortfolio({{ p.id }})"><i class="fa-solid fa-pen"></i></button>
+                            {% endif %}
+                            {% if is_super_admin or perm_website_delete %}
+                            <button class="btn-icon danger" title="Delete" onclick="deletePortfolio({{ p.id }})"><i class="fa-solid fa-trash"></i></button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="wa-empty">No portfolio items yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Category Modal -->
+<div class="wa-modal-overlay" id="categoryModal">
+    <div class="wa-modal" style="max-width: 500px;">
+        <div class="wa-modal-header">
+            <h3 id="categoryModalTitle">Add Category</h3>
+            <button class="wa-modal-close" onclick="closeCategoryModal()">&times;</button>
+        </div>
+        <form id="categoryForm">
+            {% csrf_token %}
+            <input type="hidden" id="cat_id" value="">
+            <div class="wa-form-group">
+                <label for="cat_name">Category Name *</label>
+                <input type="text" id="cat_name" name="name" required>
+            </div>
+            <div class="wa-form-group">
+                <label for="cat_icon">Icon (Font Awesome class)</label>
+                <input type="text" id="cat_icon" name="icon" value="fas fa-folder" placeholder="fas fa-folder">
+            </div>
+            <div class="wa-form-group">
+                <label for="cat_desc">Description</label>
+                <textarea id="cat_desc" name="description" rows="2"></textarea>
+            </div>
+            <div class="wa-form-group">
+                <label for="cat_order">Order</label>
+                <input type="number" id="cat_order" name="order" value="0">
+            </div>
+            <div class="wa-form-row">
+                <div class="wa-form-group">
+                    <label class="wa-toggle-label">
+                        <input type="checkbox" id="cat_is_bento" name="is_bento">
+                        <span>Show in Bento Grid</span>
+                    </label>
+                    <small class="form-hint">Display this category in the bento layout on the public site.</small>
+                </div>
+                <div class="wa-form-group">
+                    <label for="cat_bento_size">Bento Size</label>
+                    <select id="cat_bento_size" name="bento_size">
+                        <option value="normal">Normal</option>
+                        <option value="large">Large (featured)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="wa-modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeCategoryModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Portfolio Modal -->
+<div class="wa-modal-overlay" id="portfolioModal">
+    <div class="wa-modal">
+        <div class="wa-modal-header">
+            <h3 id="portfolioModalTitle">Add Portfolio Item</h3>
+            <button class="wa-modal-close" onclick="closePortfolioModal()">&times;</button>
+        </div>
+        <form id="portfolioForm" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" id="portfolioId" value="">
+            <div class="wa-form-group">
+                <label for="pf_title">Title *</label>
+                <input type="text" id="pf_title" name="title" required>
+            </div>
+            <div class="wa-form-group">
+                <label for="pf_description">Description</label>
+                <textarea id="pf_description" name="description" rows="3"></textarea>
+            </div>
+            <div class="wa-form-row">
+                <div class="wa-form-group">
+                    <label for="pf_category">Category</label>
+                    <select id="pf_category" name="category">
+                        <option value="">— None —</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat.id }}">{{ cat.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="wa-form-group">
+                    <label for="pf_item_type">Type</label>
+                    <select id="pf_item_type" name="item_type" onchange="toggleMediaFields()">
+                        <option value="image">Image</option>
+                        <option value="video">Video</option>
+                        <option value="reel">Reel</option>
+                    </select>
+                </div>
+            </div>
+            <div class="wa-form-row">
+                <div class="wa-form-group">
+                    <label for="pf_order">Display Order</label>
+                    <input type="number" id="pf_order" name="order" value="0">
+                    <small class="form-hint">0 = auto (latest first). Set &gt; 0 for manual ordering.</small>
+                </div>
+                <div class="wa-form-group">
+                    <label for="pf_orientation">Orientation</label>
+                    <select id="pf_orientation" name="orientation">
+                        <option value="">Default</option>
+                        <option value="square">Square</option>
+                        <option value="portrait">Portrait</option>
+                        <option value="landscape">Landscape</option>
+                        <option value="featured">Featured</option>
+                    </select>
+                </div>
+            </div>
+            <!-- Image field -->
+            <div class="wa-form-group">
+                <label for="pf_image">Image / Thumbnail</label>
+                <input type="file" id="pf_image" name="image" accept="image/*">
+                <small class="form-hint">For videos/reels, this serves as the thumbnail/cover.</small>
+            </div>
+            <!-- Video fields (shown for video/reel types) -->
+            <div id="videoFields" style="display:none;">
+                <div class="wa-form-group">
+                    <label for="pf_video_url">Video URL</label>
+                    <input type="url" id="pf_video_url" name="video_url" placeholder="https://...">
+                </div>
+                <div class="wa-form-group">
+                    <label for="pf_video_file">Or Upload Video File</label>
+                    <input type="file" id="pf_video_file" name="video_file" accept="video/*">
+                </div>
+            </div>
+            <div class="wa-form-row">
+                <div class="wa-form-group">
+                    <label class="wa-toggle-label">
+                        <input type="checkbox" id="pf_active" name="is_active" checked>
+                        <span>Active</span>
+                    </label>
+                </div>
+                <div class="wa-form-group">
+                    <label class="wa-toggle-label">
+                        <input type="checkbox" id="pf_featured" name="is_featured">
+                        <span>Featured</span>
+                    </label>
+                </div>
+            </div>
+            <div class="wa-modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closePortfolioModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/website-admin/portfolio.js' %}?v=4"></script>
+{% endblock %}

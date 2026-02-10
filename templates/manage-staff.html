@@ -1,0 +1,69 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Manage Staff - Adarsh Admin</title>
+    {% include 'partials/common/head.html' %}
+    <link rel="stylesheet" href="{% static 'css/manage-staff.css' %}?v=44">
+    <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=2">
+</head>
+<body>
+    <!-- Sidebar -->
+    {% include 'partials/sidebar.html' %}
+
+    <!-- Main Content -->
+    <main class="main">
+        <!-- Topbar -->
+        <header class="topbar">
+            <div class="nav-left">
+                <button class="sidebar-toggle" id="sidebarToggle" title="Toggle Sidebar">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <div class="breadcrumb">
+                    <a href="{% url 'dashboard' %}" class="breadcrumb-item">
+                        <i class="fa-solid fa-house"></i> Home
+                    </a>
+                    <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+                    <span class="breadcrumb-item active">Manage Staff</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Page Content -->
+        <div class="main-content">
+            <!-- Action Bar -->
+            {% include 'partials/staff/action-bar.html' %}
+
+            <!-- Staff Table -->
+            {% include 'partials/staff/table.html' %}
+
+            <!-- Pagination -->
+            {% include 'partials/common/pagination.html' %}
+        </div>
+    </main>
+
+    <!-- Staff Drawer (Add/Edit) -->
+    {% include 'partials/staff/staff-drawer.html' %}
+
+    <!-- Delete Confirmation Modal -->
+    {% include 'partials/common/delete-modal.html' with modal_id="delete-modal" item_name="staff member" %}
+
+    <!-- Toast Notifications -->
+    {% include 'partials/common/toast.html' %}
+
+    <!-- Common Modules (Load Order Matters) -->
+    <script src="{% static 'js/common/ajax.js' %}?v=2"></script>
+    <script src="{% static 'js/common/toast.js' %}?v=2"></script>
+    <script src="{% static 'js/common/modal.js' %}?v=2"></script>
+    <script src="{% static 'js/common/sidebar.js' %}?v=2"></script>
+    <script src="{% static 'js/common/validation.js' %}?v=2"></script>
+    <script src="{% static 'js/common/utils.js' %}?v=2"></script>
+    <script src="{% static 'js/init.js' %}?v=2"></script>
+    
+    <!-- Legacy compatibility -->
+    <script src="{% static 'js/utils.js' %}?v=3"></script>
+    <script src="{% static 'js/script.js' %}?v=42"></script>
+    <script src="{% static 'js/manage-staff.js' %}?v=57"></script>
+    <script src="{% static 'js/global-search.js' %}?v=2"></script>
+</body>
+</html>

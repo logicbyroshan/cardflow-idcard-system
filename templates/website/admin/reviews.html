@@ -1,0 +1,153 @@
+{% extends "website/admin/base.html" %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}Reviews & Testimonials{% endblock %}
+
+{% block breadcrumb_extra %}
+<i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+<span class="breadcrumb-item active">Reviews</span>
+{% endblock %}
+
+{% block content %}
+<div class="wa-page-container">
+    <div class="wa-dashboard-section">
+        <div class="wa-action-bar" style="margin-bottom: var(--space-lg);">
+            <div class="wa-action-left">
+                <h3 class="wa-dashboard-section-title"><i class="fa-solid fa-star"></i> Reviews & Testimonials</h3>
+                <span class="wa-count-badge">{{ reviews|length }} reviews</span>
+            </div>
+            <div class="wa-action-right">
+                {% if is_super_admin or perm_website_add %}
+                <button class="btn btn-primary" onclick="openReviewModal()">
+                    <i class="fa-solid fa-plus"></i> Add Review
+                </button>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="wa-table-wrap">
+    <table class="wa-table" id="reviewsTable">
+        <thead>
+            <tr>
+                <th>Photo</th>
+                <th>Name</th>
+                <th>Role / School</th>
+                <th>Rating</th>
+                <th>Review</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="reviewsBody">
+            {% for r in reviews %}
+            <tr data-id="{{ r.id }}">
+                <td>
+                    {% if r.reviewer_avatar %}
+                    <img src="{{ r.reviewer_avatar.url }}" class="wa-thumb round" alt="{{ r.reviewer_name }}">
+                    {% else %}
+                    <span class="wa-no-img round"><i class="fa-solid fa-user"></i></span>
+                    {% endif %}
+                </td>
+                <td><strong>{{ r.reviewer_name }}</strong></td>
+                <td>{{ r.reviewer_title|default:"" }}{% if r.reviewer_school %} — {{ r.reviewer_school }}{% endif %}</td>
+                <td>
+                    <span class="wa-stars">
+                        {% for i in 5|make_range %}
+                        <i class="fa-solid fa-star {% if i <= r.rating %}filled{% endif %}"></i>
+                        {% endfor %}
+                    </span>
+                </td>
+                <td class="wa-text-truncate" title="{{ r.text }}">{{ r.text|truncatewords:12 }}</td>
+                <td>
+                    <span class="wa-status-badge {% if r.is_active %}active{% else %}inactive{% endif %}"
+                          onclick="toggleReview({{ r.id }}, this)">
+                        {{ r.is_active|yesno:"Approved,Pending" }}
+                    </span>
+                </td>
+                <td class="wa-actions">
+                    {% if is_super_admin or perm_website_edit %}
+                    <button class="btn-icon" title="Edit" onclick="editReview({{ r.id }})"><i class="fa-solid fa-pen"></i></button>
+                    {% endif %}
+                    {% if is_super_admin or perm_website_delete %}
+                    <button class="btn-icon danger" title="Delete" onclick="deleteReview({{ r.id }})"><i class="fa-solid fa-trash"></i></button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="wa-empty">No reviews yet. Add or wait for public submissions.</td></tr>
+            {% endfor %}
+        </tbody>
+        </table>
+        </div>
+    </div>
+</div>
+
+<!-- Review Modal -->
+<div class="wa-modal-overlay" id="reviewModal">
+    <div class="wa-modal">
+        <div class="wa-modal-header">
+            <h3 id="reviewModalTitle">Add Review</h3>
+            <button class="wa-modal-close" onclick="closeReviewModal()">&times;</button>
+        </div>
+        <form id="reviewForm" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" id="reviewId" value="">
+            <div class="wa-form-row">
+                <div class="wa-form-group">
+                    <label for="rv_name">Reviewer Name *</label>
+                    <input type="text" id="rv_name" name="reviewer_name" required>
+                </div>
+                <div class="wa-form-group">
+                    <label for="rv_title">Role / Title</label>
+                    <input type="text" id="rv_title" name="reviewer_title" placeholder="e.g. Principal">
+                </div>
+            </div>
+            <div class="wa-form-row">
+                <div class="wa-form-group">
+                    <label for="rv_school">School / Company</label>
+                    <input type="text" id="rv_school" name="reviewer_school">
+                </div>
+                <div class="wa-form-group">
+                    <label for="rv_tag">Tag</label>
+                    <input type="text" id="rv_tag" name="tag" placeholder="e.g. Quality">
+                </div>
+            </div>
+            <div class="wa-form-group">
+                <label for="rv_text">Review Text *</label>
+                <textarea id="rv_text" name="text" rows="4" required></textarea>
+            </div>
+            <div class="wa-form-row">
+                <div class="wa-form-group">
+                    <label for="rv_rating">Rating</label>
+                    <select id="rv_rating" name="rating">
+                        <option value="5">5 Stars</option>
+                        <option value="4">4 Stars</option>
+                        <option value="3">3 Stars</option>
+                        <option value="2">2 Stars</option>
+                        <option value="1">1 Star</option>
+                    </select>
+                </div>
+                <div class="wa-form-group">
+                    <label for="rv_avatar">Photo</label>
+                    <input type="file" id="rv_avatar" name="reviewer_avatar" accept="image/*">
+                </div>
+            </div>
+            <div class="wa-form-group">
+                <label class="wa-toggle-label">
+                    <input type="checkbox" id="rv_active" name="is_active">
+                    <span>Approved (visible on website)</span>
+                </label>
+            </div>
+            <div class="wa-modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeReviewModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/website-admin/reviews.js' %}?v=2"></script>
+{% endblock %}

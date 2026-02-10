@@ -1,0 +1,78 @@
+{% comment %}
+Staff Drawer Partial
+Contains: Side drawer for viewing staff members of a client
+{% endcomment %}
+
+<!-- Staff Drawer Start -->
+<div class="drawer-overlay" id="staff-drawer-overlay"></div>
+<aside class="side-drawer staff-drawer" id="staff-drawer">
+    <div class="drawer-header">
+        <h2>
+            <i class="fa-solid fa-users"></i>
+            <span id="staff-drawer-title">Staff Members</span>
+        </h2>
+        <button class="drawer-close" id="staff-drawer-close" title="Close">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+    </div>
+    
+    <div class="drawer-body">
+        <!-- Staff Summary Cards -->
+        <div class="staff-summary">
+            <div class="summary-card total">
+                <i class="fa-solid fa-users"></i>
+                <div class="summary-content">
+                    <span class="summary-value" id="staff-total">0</span>
+                    <span class="summary-label">Total Staff</span>
+                </div>
+            </div>
+            <div class="summary-card active">
+                <i class="fa-solid fa-user-check"></i>
+                <div class="summary-content">
+                    <span class="summary-value" id="staff-active">0</span>
+                    <span class="summary-label">Active</span>
+                </div>
+            </div>
+            <div class="summary-card inactive">
+                <i class="fa-solid fa-user-xmark"></i>
+                <div class="summary-content">
+                    <span class="summary-value" id="staff-inactive">0</span>
+                    <span class="summary-label">Inactive</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Search Staff -->
+        <div class="staff-search">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="staff-search-input" placeholder="Search staff...">
+        </div>
+        
+        <!-- Staff List -->
+        <div class="staff-list" id="staff-list">
+            <!-- Staff items will be populated by JavaScript -->
+        </div>
+        
+        <!-- Empty State -->
+        <div class="staff-empty" id="staff-empty" style="display: none;">
+            <i class="fa-solid fa-user-slash"></i>
+            <p>No staff members found</p>
+        </div>
+        
+        <!-- Loading State -->
+        <div class="staff-loading" id="staff-loading" style="display: none;">
+            <i class="fa-solid fa-spinner fa-spin"></i>
+            <p>Loading staff...</p>
+        </div>
+    </div>
+    
+    <div class="drawer-footer">
+        <button class="btn btn-secondary" id="staff-drawer-close-btn">
+            <i class="fa-solid fa-xmark"></i> Close
+        </button>
+        <a class="btn btn-primary" id="manage-staff-link" href="#">
+            <i class="fa-solid fa-external-link"></i> Manage Staff
+        </a>
+    </div>
+</aside>
+<!-- Staff Drawer End -->

@@ -1,0 +1,128 @@
+from django.urls import path
+from . import views
+from exports import views as export_views
+
+urlpatterns = [
+    # ==================== AUTHENTICATION ====================
+    path('login/', views.login_view, name='login'),
+    path('logout/', views.logout_view, name='logout'),
+    path('api/auth/check-email/', views.api_check_email, name='api_check_email'),
+    path('api/auth/login/', views.api_login, name='api_login'),
+    path('api/auth/forgot-password/', views.api_forgot_password, name='api_forgot_password'),
+    path('api/auth/verify-otp/', views.api_verify_otp, name='api_verify_otp'),
+    path('api/auth/reset-password/', views.api_reset_password, name='api_reset_password'),
+    
+    # Role-specific Dashboards
+    path('admin-staff-dashboard/', views.admin_staff_dashboard, name='admin_staff_dashboard'),
+    path('client-dashboard/', views.client_dashboard, name='client_dashboard'),
+    path('client-staff-dashboard/', views.client_staff_dashboard, name='client_staff_dashboard'),
+    
+    # Dashboard (Super Admin)
+    path('', views.dashboard, name='dashboard'),
+    
+    # Global Search API
+    path('api/global-search/', views.api_global_search, name='api_global_search'),
+    
+    # Recent Client Updates API
+    path('api/recent-client-updates/', views.api_recent_client_updates, name='api_recent_client_updates'),
+    
+    # Recent Activity API
+    path('api/recent-activity/', views.api_recent_activity, name='api_recent_activity'),
+    
+    # Staff Management
+    path('manage-staff/', views.manage_staff, name='manage_staff'),
+    
+    # Client Management
+    path('manage-clients/', views.manage_clients, name='manage_clients'),
+    
+    # Active Clients (ID Card Management)
+    path('active-clients/', views.active_clients, name='active_clients'),
+    
+    # ID Card Group for a client (shows all tables with status counts)
+    path('client/<int:client_id>/groups/', views.idcard_group, name='idcard_group'),
+    
+    # ID Card Actions for a table (shows cards, can filter by status)
+    path('table/<int:table_id>/cards/', views.idcard_actions, name='idcard_actions'),
+    
+    # Group Settings for a client (manage tables)
+    path('client/<int:client_id>/settings/', views.group_settings, name='group_settings'),
+    
+    # Reprint Cards for a table
+    path('table/<int:table_id>/reprint/', views.reprint_cards, name='reprint_cards'),
+
+    # Reprint APIs
+    path('api/table/<int:table_id>/reprint/cards/', views.api_reprint_list_cards, name='api_reprint_list_cards'),
+    path('api/table/<int:table_id>/reprint/request/', views.api_reprint_request_create, name='api_reprint_request_create'),
+    path('api/table/<int:table_id>/reprint/step-counts/', views.api_reprint_step_counts, name='api_reprint_step_counts'),
+    path('api/table/<int:table_id>/reprint/confirm-list/', views.api_reprint_confirm_list, name='api_reprint_confirm_list'),
+    path('api/table/<int:table_id>/reprint/confirm/', views.api_reprint_confirm, name='api_reprint_confirm'),
+    path('api/table/<int:table_id>/reprint/reject/', views.api_reprint_reject, name='api_reprint_reject'),
+    path('api/table/<int:table_id>/reprint/download-list/', views.api_reprint_download_list, name='api_reprint_download_list'),
+    path('api/table/<int:table_id>/reprint/mark-downloaded/', views.api_reprint_mark_downloaded, name='api_reprint_mark_downloaded'),
+
+    # Website Management → redirect to new website admin dashboard
+    path('manage-website/', views.manage_website, name='manage_website'),
+    
+    # System Settings
+    path('settings/', views.settings, name='settings'),
+    
+    # ==================== API ENDPOINTS ====================
+    # Client APIs
+    path('api/client/create/', views.api_client_create, name='api_client_create'),
+    path('api/client/<int:client_id>/', views.api_client_get, name='api_client_get'),
+    path('api/client/<int:client_id>/update/', views.api_client_update, name='api_client_update'),
+    path('api/client/<int:client_id>/delete/', views.api_client_delete, name='api_client_delete'),
+    path('api/client/<int:client_id>/toggle-status/', views.api_client_toggle_status, name='api_client_toggle_status'),
+    path('api/client/<int:client_id>/staff/', views.api_client_staff, name='api_client_staff'),
+    
+    # Staff APIs
+    path('api/staff/create/', views.api_staff_create, name='api_staff_create'),
+    path('api/staff/<int:staff_id>/', views.api_staff_get, name='api_staff_get'),
+    path('api/staff/<int:staff_id>/update/', views.api_staff_update, name='api_staff_update'),
+    path('api/staff/<int:staff_id>/delete/', views.api_staff_delete, name='api_staff_delete'),
+    path('api/staff/<int:staff_id>/toggle-status/', views.api_staff_toggle_status, name='api_staff_toggle_status'),
+    path('api/clients/active/', views.api_active_clients_list, name='api_active_clients_list'),
+    
+    # ID Card Table APIs
+    path('api/group/<int:group_id>/tables/', views.api_idcard_table_list, name='api_idcard_table_list'),
+    path('api/group/<int:group_id>/table/create/', views.api_idcard_table_create, name='api_idcard_table_create'),
+    path('api/table/<int:table_id>/', views.api_idcard_table_get, name='api_idcard_table_get'),
+    path('api/table/<int:table_id>/update/', views.api_idcard_table_update, name='api_idcard_table_update'),
+    path('api/table/<int:table_id>/delete/', views.api_idcard_table_delete, name='api_idcard_table_delete'),
+    path('api/table/<int:table_id>/toggle-status/', views.api_idcard_table_toggle_status, name='api_idcard_table_toggle_status'),
+    
+    # ID Card APIs
+    path('api/table/<int:table_id>/cards/', views.api_idcard_list, name='api_idcard_list'),
+    path('api/table/<int:table_id>/cards/all-ids/', views.api_idcard_all_ids, name='api_idcard_all_ids'),
+    path('api/table/<int:table_id>/card/create/', views.api_idcard_create, name='api_idcard_create'),
+    path('api/card/<int:card_id>/', views.api_idcard_get, name='api_idcard_get'),
+    path('api/card/<int:card_id>/update/', views.api_idcard_update, name='api_idcard_update'),
+    path('api/card/<int:card_id>/update-field/', views.api_idcard_update_field, name='api_idcard_update_field'),
+    path('api/card/<int:card_id>/delete/', views.api_idcard_delete, name='api_idcard_delete'),
+    path('api/card/<int:card_id>/status/', views.api_idcard_change_status, name='api_idcard_change_status'),
+    path('api/table/<int:table_id>/cards/bulk-status/', views.api_idcard_bulk_status, name='api_idcard_bulk_status'),
+    path('api/table/<int:table_id>/cards/bulk-delete/', views.api_idcard_bulk_delete, name='api_idcard_bulk_delete'),
+    path('api/table/<int:table_id>/cards/generate-delete-code/', views.api_generate_delete_code, name='api_generate_delete_code'),
+    path('api/table/<int:table_id>/cards/generate-upgrade-code/', views.api_generate_upgrade_code, name='api_generate_upgrade_code'),
+    path('api/table/<int:table_id>/cards/upgrade-classes/', views.api_upgrade_all_classes, name='api_upgrade_all_classes'),
+    path('api/table/<int:table_id>/cards/bulk-upload/', views.api_idcard_bulk_upload, name='api_idcard_bulk_upload'),
+    path('api/table/<int:table_id>/cards/search/', views.api_idcard_search, name='api_idcard_search'),
+    path('api/table/<int:table_id>/status-counts/', views.api_table_status_counts, name='api_table_status_counts'),
+    path('api/table/<int:table_id>/cards/download-images/', export_views.api_export_images, name='api_idcard_download_images'),
+    path('api/table/<int:table_id>/cards/reupload-images/', views.api_idcard_reupload_images, name='api_idcard_reupload_images'),
+    path('api/table/<int:table_id>/cards/download-docx/', export_views.api_export_docx, name='api_idcard_download_docx'),
+    path('api/table/<int:table_id>/cards/download-xlsx/', export_views.api_export_xlsx, name='api_idcard_download_xlsx'),
+    path('api/table/<int:table_id>/cards/download-pdf/', export_views.api_export_pdf, name='api_idcard_download_pdf'),
+    path('api/table/<int:table_id>/cards/download-all/', export_views.api_download_all_cards, name='api_idcard_download_all'),
+    
+    # Export Settings APIs
+    path('api/export-settings/', views.api_export_settings_get, name='api_export_settings_get'),
+    path('api/export-settings/update/', views.api_export_settings_update, name='api_export_settings_update'),
+
+    # Settings/Profile APIs (for all user types)
+    path('api/profile/', views.api_get_profile, name='api_get_profile'),
+    path('api/profile/update/', views.api_update_profile, name='api_update_profile'),
+    path('api/profile/change-password/', views.api_change_password, name='api_change_password'),
+    path('api/profile/upload-image/', views.api_upload_profile_image, name='api_upload_profile_image'),
+    path('api/profile/remove-image/', views.api_remove_profile_image, name='api_remove_profile_image'),
+]

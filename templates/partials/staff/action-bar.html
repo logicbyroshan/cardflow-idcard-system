@@ -1,0 +1,63 @@
+{% comment %}
+Staff Action Bar Partial
+Contains: Filter dropdown, search input, and action buttons
+{% endcomment %}
+
+<!-- Action Bar Start -->
+<div class="action-bar">
+    <div class="action-left">
+        <div class="filter-group">
+            <div class="custom-dropdown" id="status-dropdown">
+                <button class="dropdown-toggle" id="statusToggle" type="button">
+                    <span id="statusSelectedText">All Status</span>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <div class="dropdown-options" id="statusOptions">
+                    <div class="dropdown-option selected" data-value="">All Status</div>
+                    <div class="dropdown-option" data-value="active">Active Only</div>
+                    <div class="dropdown-option" data-value="inactive">Inactive Only</div>
+                </div>
+            </div>
+        </div>
+        <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input type="text" id="search-input" class="search-input" placeholder="Search staff..." autocomplete="off">
+            <button class="search-clear-btn" id="searchClearBtn" type="button" title="Clear search" aria-label="Clear search">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+    </div>
+    <div class="action-right">
+        {% if perm_idcard_client_list %}
+        <button class="btn btn-add" id="addStaffBtn" title="Add New Staff">
+            <i class="fa-solid fa-plus"></i>
+            <span>Add Staff</span>
+        </button>
+        {% endif %}
+        {% if perm_idcard_client_list %}
+        <button class="btn btn-edit" id="editStaffBtn" title="Edit Selected Staff" disabled>
+            <i class="fa-solid fa-pen-to-square"></i>
+            <span>Edit</span>
+        </button>
+        {% endif %}
+        {% if perm_idcard_client_list %}
+        <button class="btn btn-view-staff" id="viewStaffBtn" title="View Selected Staff" disabled>
+            <i class="fa-solid fa-eye"></i>
+            <span>View</span>
+        </button>
+        {% endif %}
+        {% if perm_idcard_client_list %}
+        <button class="btn btn-delete" id="deleteStaffBtn" title="Delete Selected Staff" disabled>
+            <i class="fa-solid fa-trash-can"></i>
+            <span>Delete</span>
+        </button>
+        {% endif %}
+        {% if perm_idcard_client_list %}
+        <button class="btn btn-active" id="activeStaffBtn" title="Toggle Staff Status" disabled>
+            <i class="fa-solid fa-toggle-on"></i>
+            <span>Active</span>
+        </button>
+        {% endif %}
+    </div>
+</div>
+<!-- Action Bar End -->

@@ -1,0 +1,57 @@
+{% load static %}
+<!-- Pagination Bar -->
+<div class="pagination-bar" 
+     id="paginationBar"
+     data-total-count="{{ total_count }}" 
+     data-initial-loaded="{{ id_cards|length }}"
+     data-has-more="{{ has_more|yesno:'true,false' }}"
+     data-table-id="{{ table.id }}"
+     data-status="{{ current_status|default:'pending' }}">
+    
+    <!-- Left - Info -->
+    <div class="pagination-left">
+        <span class="pagination-info">
+            Showing <strong id="showingRange">1-{{ id_cards|length }}</strong> of <strong id="totalCount">{{ total_count }}</strong> results
+        </span>
+        <span class="pagination-selected" id="selectionInfo" style="display: none;">
+            (<strong id="selectedCount">0</strong> selected)
+        </span>
+    </div>
+    
+    <!-- Center - Page Navigation -->
+    <div class="pagination-center">
+        <button class="pagination-btn" id="firstPage" title="Go to first page" aria-label="First page">
+            <i class="fa-solid fa-angles-left"></i>
+        </button>
+        <button class="pagination-btn" id="prevPage" title="Previous page" aria-label="Previous page">
+            <i class="fa-solid fa-chevron-left"></i>
+        </button>
+        <span class="page-numbers" id="pageNumbers">
+            <button class="page-num active">1</button>
+        </span>
+        <button class="pagination-btn" id="nextPage" title="Next page" aria-label="Next page">
+            <i class="fa-solid fa-chevron-right"></i>
+        </button>
+        <button class="pagination-btn" id="lastPage" title="Go to last page" aria-label="Last page">
+            <i class="fa-solid fa-angles-right"></i>
+        </button>
+    </div>
+    
+    <!-- Right - Rows Per Page -->
+    <div class="pagination-right">
+        <label for="rowsToggle">Rows per page:</label>
+        <div class="custom-dropdown rows-dropdown" id="rowsDropdown">
+            <button class="dropdown-toggle" id="rowsToggle" type="button">
+                <span id="rowsSelectedText">50</span>
+                <i class="fa-solid fa-chevron-down"></i>
+            </button>
+            <div class="dropdown-options" id="rowsOptions">
+                <div class="dropdown-option selected" data-value="50">50</div>
+                <div class="dropdown-option" data-value="100">100</div>
+                <div class="dropdown-option" data-value="150">150</div>
+                <div class="dropdown-option" data-value="200">200</div>
+                <div class="dropdown-option" data-value="all">All</div>
+            </div>
+        </div>
+    </div>
+</div>

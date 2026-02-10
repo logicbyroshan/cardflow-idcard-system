@@ -1,0 +1,49 @@
+{% comment %}
+Active Client Action Bar Partial
+Contains: Filter dropdown, search input, and navigation buttons
+{% endcomment %}
+
+<!-- Action Bar Start -->
+<div class="action-bar">
+    <!-- Left Section - Filter and Search -->
+    <div class="action-left">
+        <div class="filter-group">
+            <div class="custom-dropdown" id="filter-dropdown">
+                <button class="dropdown-toggle" id="dropdown-toggle" type="button">
+                    <span id="selected-text">All</span>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <div class="dropdown-options" id="dropdown-options">
+                    <div class="dropdown-option selected" data-value="all">All</div>
+                    <div class="dropdown-option" data-value="name">Name</div>
+                    <div class="dropdown-option" data-value="email">Email</div>
+                    <div class="dropdown-option" data-value="phone">Phone</div>
+                </div>
+            </div>
+        </div>
+        <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input type="text" id="search-input" class="search-input" placeholder="Search All..." autocomplete="off">
+            <button class="search-clear-btn" id="searchClearBtn" type="button" title="Clear search" aria-label="Clear search">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Right Section - Action Buttons -->
+    <div class="action-right">
+        {% if is_super_admin or perm_idcard_setting_list %}
+        <button class="btn btn-group-setting" id="group-setting-btn" disabled title="Manage Group Settings">
+            <i class="fa-solid fa-gear"></i>
+            <span>Group Setting</span>
+        </button>
+        {% endif %}
+        {% if is_super_admin or perm_idcard_setting_list %}
+        <button class="btn btn-idcard-group" id="idcard-group-btn" disabled title="View ID Card Groups">
+            <i class="fa-solid fa-id-card"></i>
+            <span>ID Card Group</span>
+        </button>
+        {% endif %}
+    </div>
+</div>
+<!-- Action Bar End -->

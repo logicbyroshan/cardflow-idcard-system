@@ -1,0 +1,28 @@
+{% comment %}
+Common Topbar Partial
+Usage: {% include 'partials/common/topbar.html' with breadcrumb="Page Name" breadcrumb_sub="Sub Page" %}
+
+Variables:
+- breadcrumb: Main breadcrumb text (required)
+- breadcrumb_sub: Sub breadcrumb text (optional)
+- topbar_extra: Extra content for right side (use block in parent)
+{% endcomment %}
+
+<!-- topbar start -->
+<header class="topbar">
+    <div class="left">
+        <button id="sidebar-toggle" title="Toggle Sidebar" aria-label="Toggle sidebar">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+        <span class="breadcrumb">
+            <span>{{ breadcrumb }}</span>
+            {% if breadcrumb_sub %}
+                <span class="breadcrumb-sub">» {{ breadcrumb_sub }}</span>
+            {% endif %}
+        </span>
+    </div>
+    <div class="right" id="topbar-right">
+        {% block topbar_extra %}{% endblock %}
+    </div>
+</header>
+<!-- topbar end -->

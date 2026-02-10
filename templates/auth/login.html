@@ -1,0 +1,1148 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Adarsh Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/variables.css' %}">
+    <style>
+        :root {
+            /* Override for dark auth theme */
+            --auth-primary: #667eea;
+            --auth-primary-dark: #5a67d8;
+            --auth-primary-light: #818cf8;
+            --auth-bg: linear-gradient(135deg, #1a1c2e 0%, #2d1f3d 50%, #1a1c2e 100%);
+            --auth-card-bg: rgba(30, 32, 48, 0.95);
+            --auth-text-primary: #f8fafc;
+            --auth-text-secondary: #a0aec0;
+            --auth-text-muted: #718096;
+            --auth-border: rgba(102, 126, 234, 0.2);
+            --auth-success: #48bb78;
+            --auth-error: #fc8181;
+            --auth-warning: #f6ad55;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: var(--auth-bg);
+        }
+        
+        .login-container {
+            width: 100%;
+            max-width: 600px;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .login-card {
+            background: var(--auth-card-bg);
+            border-radius: 0;
+            padding: 28px 36px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            border: 1px solid var(--auth-border);
+            backdrop-filter: blur(20px);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .login-card::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .login-card::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .login-card::-webkit-scrollbar-thumb {
+            background: rgba(102, 126, 234, 0.3);
+            border-radius: 3px;
+        }
+        
+        .login-header {
+            text-align: center;
+            margin-bottom: 16px;
+        }
+        
+        .login-logo {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 12px;
+            font-size: 24px;
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        
+        .login-header h1 {
+            color: var(--auth-text-primary);
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        
+        .login-header p {
+            color: var(--auth-text-secondary);
+            font-size: 14px;
+        }
+        
+        /* Step Indicator */
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            margin-bottom: 16px;
+        }
+        
+        .step-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--auth-border);
+            transition: all 0.3s ease;
+        }
+        
+        .step-dot.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            width: 24px;
+            border-radius: 4px;
+        }
+        
+        .step-dot.completed {
+            background: var(--auth-success);
+        }
+        
+        /* Steps */
+        .login-step {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .login-step.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .step-title {
+            color: var(--auth-text-primary);
+            font-size: 17px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            text-align: center;
+        }
+        
+        .step-subtitle {
+            color: var(--auth-text-secondary);
+            font-size: 13px;
+            text-align: center;
+            margin-bottom: 18px;
+        }
+        
+        /* Role Selection */
+        .role-options {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        
+        .role-option {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            background: rgba(102, 126, 234, 0.05);
+            border: 1px solid var(--auth-border);
+            border-radius: 0;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .role-option:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.12);
+        }
+        
+        .role-option.selected {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.18);
+            box-shadow: none;
+        }
+        
+        .role-option input {
+            display: none;
+        }
+        
+        .role-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        }
+        
+        .role-icon.super-admin { background: linear-gradient(135deg, #667eea, #764ba2); }
+        .role-icon.admin-staff { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .role-icon.client { background: linear-gradient(135deg, #48bb78, #38a169); }
+        .role-icon.client-staff { background: linear-gradient(135deg, #4299e1, #3182ce); }
+        
+        .role-info h3 {
+            color: var(--auth-text-primary);
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+        
+        .role-info p {
+            color: var(--auth-text-muted);
+            font-size: 12px;
+        }
+        
+        .role-check {
+            margin-left: auto;
+            width: 22px;
+            height: 22px;
+            border: 2px solid var(--auth-border);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+        
+        .role-option.selected .role-check {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 14px;
+        }
+        
+        .form-group label {
+            display: block;
+            color: var(--auth-text-secondary);
+            font-size: 12px;
+            font-weight: 500;
+            margin-bottom: 6px;
+        }
+        
+        .input-wrapper {
+            position: relative;
+        }
+        
+        .input-wrapper > i {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--auth-text-muted);
+            font-size: 15px;
+        }
+        
+        .input-wrapper input {
+            width: 100%;
+            padding: 10px 10px 10px 40px;
+            background: rgba(102, 126, 234, 0.05);
+            border: 1px solid var(--auth-border);
+            border-radius: 0;
+            color: var(--auth-text-primary);
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+        
+        .input-wrapper input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+        }
+        
+        .input-wrapper input::placeholder {
+            color: var(--auth-text-muted);
+        }
+        
+        .input-wrapper .toggle-password {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--auth-text-muted);
+            cursor: pointer;
+            padding: 4px;
+            font-size: 15px;
+            line-height: 1;
+            z-index: 1;
+        }
+        
+        .input-wrapper .toggle-password:hover {
+            color: var(--auth-text-secondary);
+        }
+        
+        /* User Display */
+        .user-display {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            background: rgba(102, 126, 234, 0.12);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 0;
+            margin-bottom: 14px;
+        }
+        
+        .user-display i {
+            color: #667eea;
+            font-size: 20px;
+        }
+        
+        .user-display .user-info {
+            flex: 1;
+        }
+        
+        .user-display .user-name {
+            color: var(--auth-text-primary);
+            font-size: 15px;
+            font-weight: 600;
+        }
+        
+        .user-display .user-email {
+            color: var(--auth-text-muted);
+            font-size: 13px;
+        }
+        
+        /* Buttons */
+        .btn {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.25);
+        }
+        
+        .btn-primary:hover {
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.35);
+        }
+        
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .btn-secondary {
+            background: transparent;
+            color: var(--auth-text-secondary);
+            border: 1px solid var(--auth-border);
+            margin-top: 8px;
+        }
+        
+        .btn-secondary:hover {
+            border-color: #667eea;
+            color: var(--auth-text-primary);
+            background: rgba(102, 126, 234, 0.1);
+        }
+        
+        .btn-link {
+            background: none;
+            border: none;
+            color: #818cf8;
+            font-size: 13px;
+            cursor: pointer;
+            padding: 0;
+            font-weight: 500;
+        }
+        
+        .btn-link:hover {
+            color: #667eea;
+            text-decoration: underline;
+        }
+        
+        /* Forgot Password Link */
+        .forgot-link {
+            text-align: right;
+            margin-bottom: 16px;
+        }
+        
+        /* OTP Input */
+        .otp-inputs {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        
+        .otp-inputs input {
+            width: 42px;
+            height: 46px;
+            text-align: center;
+            font-size: 20px;
+            font-weight: 600;
+            background: rgba(102, 126, 234, 0.05);
+            border: 1px solid var(--auth-border);
+            border-radius: 0;
+            color: var(--auth-text-primary);
+            transition: all 0.2s ease;
+        }
+        
+        .otp-inputs input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+        }
+        
+        /* Error/Success Messages */
+        .message {
+            padding: 10px 14px;
+            border-radius: 0;
+            font-size: 13px;
+            margin-bottom: 14px;
+            display: none;
+        }
+        
+        .message.error {
+            background: rgba(252, 129, 129, 0.12);
+            border: 1px solid rgba(252, 129, 129, 0.35);
+            color: #fca5a5;
+            display: block;
+        }
+        
+        .message.success {
+            background: rgba(72, 187, 120, 0.12);
+            border: 1px solid rgba(72, 187, 120, 0.35);
+            color: #9ae6b4;
+            display: block;
+        }
+        
+        /* Loading Spinner */
+        .spinner {
+            width: 22px;
+            height: 22px;
+            border: 2px solid transparent;
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Resend Timer */
+        .resend-timer {
+            text-align: center;
+            color: var(--auth-text-muted);
+            font-size: 13px;
+            margin-top: 14px;
+        }
+        
+        .resend-timer button {
+            color: #818cf8;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        .resend-timer button:disabled {
+            color: var(--auth-text-muted);
+            cursor: not-allowed;
+        }
+        
+        /* Dev OTP Display */
+        .dev-otp {
+            background: rgba(246, 173, 85, 0.12);
+            border: 1px solid rgba(246, 173, 85, 0.35);
+            padding: 10px;
+            border-radius: 0;
+            text-align: center;
+            margin-bottom: 14px;
+        }
+        
+        .dev-otp span {
+            color: #f6ad55;
+            font-size: 12px;
+        }
+        
+        .dev-otp strong {
+            display: block;
+            color: #f6ad55;
+            font-size: 22px;
+            letter-spacing: 4px;
+            margin-top: 4px;
+        }
+        
+        /* Footer branding */
+        .login-footer {
+            text-align: center;
+            margin-top: 14px;
+            padding-top: 12px;
+            border-top: 1px solid var(--auth-border);
+        }
+        
+        .login-footer p {
+            color: var(--auth-text-muted);
+            font-size: 12px;
+        }
+        
+        .login-footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .login-footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <div class="login-logo">
+                    <i class="fa-solid fa-id-card"></i>
+                </div>
+                <h1>Adarsh Admin</h1>
+                <p>ID Card Management System</p>
+            </div>
+            
+            <!-- Step Indicator -->
+            <div class="step-indicator">
+                <div class="step-dot active" data-step="1"></div>
+                <div class="step-dot" data-step="2"></div>
+                <div class="step-dot" data-step="3"></div>
+            </div>
+            
+            <!-- Message Display -->
+            <div class="message" id="messageBox"></div>
+            
+            <!-- Step 1: Role Selection -->
+            <div class="login-step active" id="step1">
+                <div class="step-title">Who are you?</div>
+                <div class="step-subtitle">Select your account type to continue</div>
+                
+                <div class="role-options">
+                    <label class="role-option" data-role="super_admin">
+                        <input type="radio" name="role" value="super_admin">
+                        <div class="role-icon super-admin">
+                            <i class="fa-solid fa-crown"></i>
+                        </div>
+                        <div class="role-info">
+                            <h3>Super Admin</h3>
+                            <p>Full system access</p>
+                        </div>
+                        <div class="role-check">
+                            <i class="fa-solid fa-check" style="font-size: 12px;"></i>
+                        </div>
+                    </label>
+                    
+                    <label class="role-option" data-role="admin_staff">
+                        <input type="radio" name="role" value="admin_staff">
+                        <div class="role-icon admin-staff">
+                            <i class="fa-solid fa-user-tie"></i>
+                        </div>
+                        <div class="role-info">
+                            <h3>Admin Staff</h3>
+                            <p>Administrative access</p>
+                        </div>
+                        <div class="role-check">
+                            <i class="fa-solid fa-check" style="font-size: 12px;"></i>
+                        </div>
+                    </label>
+                    
+                    <label class="role-option" data-role="client">
+                        <input type="radio" name="role" value="client">
+                        <div class="role-icon client">
+                            <i class="fa-solid fa-building"></i>
+                        </div>
+                        <div class="role-info">
+                            <h3>Client</h3>
+                            <p>Organization account</p>
+                        </div>
+                        <div class="role-check">
+                            <i class="fa-solid fa-check" style="font-size: 12px;"></i>
+                        </div>
+                    </label>
+                    
+                    <label class="role-option" data-role="client_staff">
+                        <input type="radio" name="role" value="client_staff">
+                        <div class="role-icon client-staff">
+                            <i class="fa-solid fa-users"></i>
+                        </div>
+                        <div class="role-info">
+                            <h3>Client Staff</h3>
+                            <p>Organization staff</p>
+                        </div>
+                        <div class="role-check">
+                            <i class="fa-solid fa-check" style="font-size: 12px;"></i>
+                        </div>
+                    </label>
+                </div>
+                
+                <button class="btn btn-primary" id="btnStep1Next" disabled>
+                    Continue <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+            
+            <!-- Step 2: Email -->
+            <div class="login-step" id="step2">
+                <div class="step-title">Enter your email</div>
+                <div class="step-subtitle" id="step2Subtitle">We'll check if you have an account</div>
+                
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-envelope"></i>
+                        <input type="email" id="emailInput" placeholder="Enter your email" autocomplete="email">
+                    </div>
+                </div>
+                
+                <button class="btn btn-primary" id="btnStep2Next">
+                    <span class="btn-text">Continue</span>
+                    <div class="spinner" style="display: none;"></div>
+                </button>
+                <button class="btn btn-secondary" id="btnStep2Back">
+                    <i class="fa-solid fa-arrow-left"></i> Back
+                </button>
+            </div>
+            
+            <!-- Step 3: Password -->
+            <div class="login-step" id="step3">
+                <div class="step-title">Enter your password</div>
+                <div class="step-subtitle">Welcome back!</div>
+                
+                <div class="user-display" id="userDisplay">
+                    <i class="fa-solid fa-user-circle"></i>
+                    <div class="user-info">
+                        <div class="user-name" id="displayUserName">User Name</div>
+                        <div class="user-email" id="displayUserEmail">user@email.com</div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Password</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-lock"></i>
+                        <input type="password" id="passwordInput" placeholder="Enter your password" autocomplete="current-password" style="padding-right: 44px;">
+                        <button type="button" class="toggle-password" id="togglePassword" aria-label="Toggle password visibility">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="forgot-link">
+                    <button class="btn-link" id="btnForgotPassword">Forgot password?</button>
+                </div>
+                
+                <button class="btn btn-primary" id="btnLogin">
+                    <span class="btn-text">Sign In</span>
+                    <div class="spinner" style="display: none;"></div>
+                </button>
+                <button class="btn btn-secondary" id="btnStep3Back">
+                    <i class="fa-solid fa-arrow-left"></i> Back
+                </button>
+            </div>
+            
+            <!-- Step 4: Forgot Password - OTP -->
+            <div class="login-step" id="step4">
+                <div class="step-title">Verify your email</div>
+                <div class="step-subtitle">Enter the 6-digit code sent to your email</div>
+                
+                <div class="dev-otp" id="devOtpDisplay" style="display: none;">
+                    <span>Development Mode - OTP:</span>
+                    <strong id="devOtpValue">------</strong>
+                </div>
+                
+                <div class="otp-inputs" id="otpInputs">
+                    <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric">
+                    <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric">
+                    <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric">
+                    <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric">
+                    <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric">
+                    <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric">
+                </div>
+                
+                <button class="btn btn-primary" id="btnVerifyOtp">
+                    <span class="btn-text">Verify OTP</span>
+                    <div class="spinner" style="display: none;"></div>
+                </button>
+                
+                <div class="resend-timer">
+                    <span id="resendText">Didn't receive code?</span>
+                    <button id="btnResendOtp" disabled>Resend in <span id="resendTimer">60</span>s</button>
+                </div>
+                
+                <button class="btn btn-secondary" id="btnStep4Back">
+                    <i class="fa-solid fa-arrow-left"></i> Back to Login
+                </button>
+            </div>
+            
+            <!-- Step 5: Reset Password -->
+            <div class="login-step" id="step5">
+                <div class="step-title">Create new password</div>
+                <div class="step-subtitle">Your password must be at least 6 characters</div>
+                
+                <div class="form-group">
+                    <label>New Password</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-lock"></i>
+                        <input type="password" id="newPasswordInput" placeholder="Enter new password" style="padding-right: 44px;">
+                        <button type="button" class="toggle-password" id="toggleNewPassword" aria-label="Toggle password visibility">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Confirm Password</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-lock"></i>
+                        <input type="password" id="confirmPasswordInput" placeholder="Confirm new password">
+                    </div>
+                </div>
+                
+                <button class="btn btn-primary" id="btnResetPassword">
+                    <span class="btn-text">Reset Password</span>
+                    <div class="spinner" style="display: none;"></div>
+                </button>
+            </div>
+            
+            <!-- Footer -->
+            <div class="login-footer">
+                <p>© 2026 <a href="#">Adarsh Admin</a>. All rights reserved.</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // State
+            let currentStep = 1;
+            let selectedRole = '';
+            let email = '';
+            let userName = '';
+            let resetToken = '';
+            let resendCountdown = 0;
+            
+            // Elements
+            const steps = document.querySelectorAll('.login-step');
+            const stepDots = document.querySelectorAll('.step-dot');
+            const messageBox = document.getElementById('messageBox');
+            
+            // Role selection
+            const roleOptions = document.querySelectorAll('.role-option');
+            const btnStep1Next = document.getElementById('btnStep1Next');
+            
+            // Email step
+            const emailInput = document.getElementById('emailInput');
+            const btnStep2Next = document.getElementById('btnStep2Next');
+            const btnStep2Back = document.getElementById('btnStep2Back');
+            
+            // Password step
+            const passwordInput = document.getElementById('passwordInput');
+            const btnLogin = document.getElementById('btnLogin');
+            const btnStep3Back = document.getElementById('btnStep3Back');
+            const btnForgotPassword = document.getElementById('btnForgotPassword');
+            const togglePassword = document.getElementById('togglePassword');
+            
+            // OTP step
+            const otpInputs = document.querySelectorAll('#otpInputs input');
+            const btnVerifyOtp = document.getElementById('btnVerifyOtp');
+            const btnStep4Back = document.getElementById('btnStep4Back');
+            const btnResendOtp = document.getElementById('btnResendOtp');
+            const resendTimerEl = document.getElementById('resendTimer');
+            const devOtpDisplay = document.getElementById('devOtpDisplay');
+            const devOtpValue = document.getElementById('devOtpValue');
+            
+            // Reset password step
+            const newPasswordInput = document.getElementById('newPasswordInput');
+            const confirmPasswordInput = document.getElementById('confirmPasswordInput');
+            const btnResetPassword = document.getElementById('btnResetPassword');
+            const toggleNewPassword = document.getElementById('toggleNewPassword');
+            
+            // Functions
+            function showMessage(message, type = 'error') {
+                messageBox.textContent = message;
+                messageBox.className = 'message ' + type;
+                setTimeout(() => {
+                    messageBox.className = 'message';
+                }, 5000);
+            }
+            
+            function goToStep(step) {
+                steps.forEach(s => s.classList.remove('active'));
+                document.getElementById('step' + step).classList.add('active');
+                
+                stepDots.forEach((dot, index) => {
+                    dot.classList.remove('active', 'completed');
+                    if (index + 1 < step) dot.classList.add('completed');
+                    if (index + 1 === step) dot.classList.add('active');
+                });
+                
+                currentStep = step;
+                messageBox.className = 'message';
+            }
+            
+            function setButtonLoading(btn, loading) {
+                const text = btn.querySelector('.btn-text');
+                const spinner = btn.querySelector('.spinner');
+                if (text) text.style.display = loading ? 'none' : 'inline';
+                if (spinner) spinner.style.display = loading ? 'inline-block' : 'none';
+                btn.disabled = loading;
+            }
+            
+            // Role Selection
+            roleOptions.forEach(option => {
+                option.addEventListener('click', function() {
+                    roleOptions.forEach(o => o.classList.remove('selected'));
+                    this.classList.add('selected');
+                    this.querySelector('input').checked = true;
+                    selectedRole = this.dataset.role;
+                    btnStep1Next.disabled = false;
+                });
+            });
+            
+            btnStep1Next.addEventListener('click', function() {
+                if (selectedRole) {
+                    goToStep(2);
+                    emailInput.focus();
+                }
+            });
+            
+            // Email Step
+            btnStep2Next.addEventListener('click', async function() {
+                email = emailInput.value.trim();
+                if (!email) {
+                    showMessage('Please enter your email');
+                    return;
+                }
+                
+                setButtonLoading(this, true);
+                
+                try {
+                    const response = await fetch('/panel/api/auth/check-email/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email, role: selectedRole })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        userName = data.user_name;
+                        document.getElementById('displayUserName').textContent = userName;
+                        document.getElementById('displayUserEmail').textContent = email;
+                        goToStep(3);
+                        passwordInput.focus();
+                    } else {
+                        showMessage(data.message);
+                    }
+                } catch (error) {
+                    showMessage('Network error. Please try again.');
+                }
+                
+                setButtonLoading(this, false);
+            });
+            
+            emailInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') btnStep2Next.click();
+            });
+            
+            btnStep2Back.addEventListener('click', function() {
+                goToStep(1);
+            });
+            
+            // Password Step
+            togglePassword.addEventListener('click', function() {
+                const type = passwordInput.type === 'password' ? 'text' : 'password';
+                passwordInput.type = type;
+                this.querySelector('i').className = type === 'password' ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash';
+            });
+            
+            btnLogin.addEventListener('click', async function() {
+                const password = passwordInput.value;
+                if (!password) {
+                    showMessage('Please enter your password');
+                    return;
+                }
+                
+                setButtonLoading(this, true);
+                
+                try {
+                    const response = await fetch('/panel/api/auth/login/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email, password, role: selectedRole })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showMessage('Login successful! Redirecting...', 'success');
+                        setTimeout(() => {
+                            window.location.href = data.redirect_url;
+                        }, 500);
+                    } else {
+                        showMessage(data.message);
+                        setButtonLoading(this, false);
+                    }
+                } catch (error) {
+                    showMessage('Network error. Please try again.');
+                    setButtonLoading(this, false);
+                }
+            });
+            
+            passwordInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') btnLogin.click();
+            });
+            
+            btnStep3Back.addEventListener('click', function() {
+                passwordInput.value = '';
+                goToStep(2);
+            });
+            
+            // Forgot Password
+            btnForgotPassword.addEventListener('click', async function() {
+                setButtonLoading(btnLogin, true);
+                
+                try {
+                    const response = await fetch('/panel/api/auth/forgot-password/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email, role: selectedRole })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        // Show OTP step
+                        goToStep(4);
+                        otpInputs[0].focus();
+                        startResendTimer();
+                        
+                        // Show dev OTP if available
+                        if (data.dev_otp) {
+                            devOtpDisplay.style.display = 'block';
+                            devOtpValue.textContent = data.dev_otp;
+                        }
+                    } else {
+                        showMessage(data.message);
+                    }
+                } catch (error) {
+                    showMessage('Network error. Please try again.');
+                }
+                
+                setButtonLoading(btnLogin, false);
+            });
+            
+            // OTP Input handling
+            otpInputs.forEach((input, index) => {
+                input.addEventListener('input', function() {
+                    this.value = this.value.replace(/[^0-9]/g, '');
+                    if (this.value && index < otpInputs.length - 1) {
+                        otpInputs[index + 1].focus();
+                    }
+                });
+                
+                input.addEventListener('keydown', function(e) {
+                    if (e.key === 'Backspace' && !this.value && index > 0) {
+                        otpInputs[index - 1].focus();
+                    }
+                });
+                
+                input.addEventListener('paste', function(e) {
+                    e.preventDefault();
+                    const paste = (e.clipboardData || window.clipboardData).getData('text');
+                    const digits = paste.replace(/[^0-9]/g, '').split('');
+                    otpInputs.forEach((inp, i) => {
+                        if (digits[i]) inp.value = digits[i];
+                    });
+                });
+            });
+            
+            function startResendTimer() {
+                resendCountdown = 60;
+                btnResendOtp.disabled = true;
+                
+                const interval = setInterval(() => {
+                    resendCountdown--;
+                    resendTimerEl.textContent = resendCountdown;
+                    
+                    if (resendCountdown <= 0) {
+                        clearInterval(interval);
+                        btnResendOtp.disabled = false;
+                        btnResendOtp.textContent = 'Resend OTP';
+                    }
+                }, 1000);
+            }
+            
+            btnResendOtp.addEventListener('click', async function() {
+                try {
+                    const response = await fetch('/panel/api/auth/forgot-password/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email, role: selectedRole })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showMessage('OTP sent successfully!', 'success');
+                        startResendTimer();
+                        
+                        if (data.dev_otp) {
+                            devOtpValue.textContent = data.dev_otp;
+                        }
+                    }
+                } catch (error) {
+                    showMessage('Failed to resend OTP');
+                }
+            });
+            
+            btnVerifyOtp.addEventListener('click', async function() {
+                const otp = Array.from(otpInputs).map(i => i.value).join('');
+                if (otp.length !== 6) {
+                    showMessage('Please enter complete 6-digit OTP');
+                    return;
+                }
+                
+                setButtonLoading(this, true);
+                
+                try {
+                    const response = await fetch('/panel/api/auth/verify-otp/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email, otp })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        resetToken = data.reset_token;
+                        goToStep(5);
+                        newPasswordInput.focus();
+                    } else {
+                        showMessage(data.message);
+                    }
+                } catch (error) {
+                    showMessage('Network error. Please try again.');
+                }
+                
+                setButtonLoading(this, false);
+            });
+            
+            btnStep4Back.addEventListener('click', function() {
+                otpInputs.forEach(i => i.value = '');
+                devOtpDisplay.style.display = 'none';
+                goToStep(3);
+            });
+            
+            // Reset Password
+            toggleNewPassword.addEventListener('click', function() {
+                const type = newPasswordInput.type === 'password' ? 'text' : 'password';
+                newPasswordInput.type = type;
+                this.querySelector('i').className = type === 'password' ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash';
+            });
+            
+            btnResetPassword.addEventListener('click', async function() {
+                const newPassword = newPasswordInput.value;
+                const confirmPassword = confirmPasswordInput.value;
+                
+                if (!newPassword || !confirmPassword) {
+                    showMessage('Please fill in both password fields');
+                    return;
+                }
+                
+                if (newPassword !== confirmPassword) {
+                    showMessage('Passwords do not match');
+                    return;
+                }
+                
+                if (newPassword.length < 6) {
+                    showMessage('Password must be at least 6 characters');
+                    return;
+                }
+                
+                setButtonLoading(this, true);
+                
+                try {
+                    const response = await fetch('/panel/api/auth/reset-password/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            email,
+                            reset_token: resetToken,
+                            new_password: newPassword,
+                            confirm_password: confirmPassword
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showMessage(data.message, 'success');
+                        setTimeout(() => {
+                            // Reset and go back to login
+                            newPasswordInput.value = '';
+                            confirmPasswordInput.value = '';
+                            passwordInput.value = '';
+                            goToStep(3);
+                        }, 2000);
+                    } else {
+                        showMessage(data.message);
+                    }
+                } catch (error) {
+                    showMessage('Network error. Please try again.');
+                }
+                
+                setButtonLoading(this, false);
+            });
+        });
+    </script>
+</body>
+</html>

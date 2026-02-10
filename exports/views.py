@@ -1,0 +1,541 @@
+"""
+Export Views Module
+
+API views for export operations.
+All views are READ-ONLY - they never mutate data.
+
+Features:
+- Permission checking
+- Client scoping
+- Proper error responses
+"""
+import json
+import base64
+import logging
+from typing import List, Optional
+
+from django.http import JsonResponse, HttpResponse
+from django.views.decorators.http import require_POST
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404
+
+from core.models import IDCardTable
+from core.services.permission_service import PermissionService
+
+from .services import ExportService
+from .excel import ExcelExporter
+from .zip import ZipExporter, zip_result_to_dict
+
+logger = logging.getLogger(__name__)
+
+MAX_EXPORT_CARD_IDS = 5000
+
+
+def _get_card_ids_from_request(request) -> Optional[List[int]]:
+    """
+    Extract card IDs from POST request body.
+    
+    Handles both form data and JSON body.
+    
+    Args:
+        request: Django HttpRequest
+        
+    Returns:
+        List of card IDs or None if no valid IDs found
+    """
+    card_ids = None
+    
+    # Try JSON body first
+    if request.content_type == 'application/json':
+        try:
+            data = json.loads(request.body)
+            card_ids = data.get('card_ids', [])
+        except (json.JSONDecodeError, ValueError):
+            pass
+    
+    # Fall back to POST data
+    if not card_ids:
+        card_ids_str = request.POST.get('card_ids', '')
+        if card_ids_str:
+            try:
+                card_ids = json.loads(card_ids_str)
+            except (json.JSONDecodeError, ValueError):
+                # Try comma-separated
+                card_ids = [int(x.strip()) for x in card_ids_str.split(',') if x.strip().isdigit()]
+    
+    # Validate and filter
+    if card_ids:
+        card_ids = [int(cid) for cid in card_ids if isinstance(cid, (int, str)) and str(cid).isdigit()]
+        # Cap to prevent OOM / slow SQL
+        if len(card_ids) > MAX_EXPORT_CARD_IDS:
+            card_ids = card_ids[:MAX_EXPORT_CARD_IDS]
+    
+    return card_ids if card_ids else None
+
+
+def _check_export_permission(request):
+    """
+    Check if user has export permission.
+    
+    Returns:
+        None if permitted, JsonResponse with error if not
+    """
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'success': False,
+            'message': 'Authentication required'
+        }, status=401)
+    
+    if not PermissionService.can_bulk_download(request.user):
+        return JsonResponse({
+            'success': False,
+            'message': 'Permission denied: You do not have bulk download access'
+        }, status=403)
+    
+    return None
+
+
+def _check_export_client_scope(request, table_id):
+    """
+    Check if user has access to the client owning this table.
+    
+    Enforces:
+    - super_admin: unrestricted
+    - admin_staff: must be assigned to the client
+    - client / client_staff: must own the table (same client)
+    
+    Returns:
+        None if permitted, JsonResponse with error if not
+    """
+    if PermissionService.is_super_admin(request.user):
+        return None
+    staff_profile = getattr(request.user, 'staff_profile', None)
+    if staff_profile and staff_profile.staff_type == 'admin_staff':
+        table = get_object_or_404(IDCardTable, id=table_id)
+        if not staff_profile.assigned_clients.filter(id=table.group.client_id).exists():
+            return JsonResponse({
+                'success': False,
+                'message': 'Access denied. You are not assigned to this client.'
+            }, status=403)
+    elif request.user.role in ('client', 'client_staff'):
+        from client.services import ClientAccessService
+        table = get_object_or_404(IDCardTable, id=table_id)
+        if not ClientAccessService.can_access_table(request.user, table):
+            return JsonResponse({
+                'success': False,
+                'message': 'Access denied. You are not assigned to this client.'
+            }, status=403)
+    return None
+
+
+# =============================================================================
+# EXCEL EXPORT
+# =============================================================================
+
+@login_required
+@require_POST
+def api_export_xlsx(request, table_id: int) -> HttpResponse:
+    """
+    Export cards to Excel format.
+    
+    POST /api/table/<table_id>/export/xlsx/
+    POST /api/table/<table_id>/cards/download-xlsx/  (legacy URL in core)
+    
+    Body:
+        {
+            "card_ids": [1, 2, 3]
+        }
+        
+    Returns:
+        Excel file download or JSON error
+    """
+    # Check permission
+    perm_error = _check_export_permission(request)
+    if perm_error:
+        return perm_error
+    
+    # Check client scope for admin_staff
+    scope_error = _check_export_client_scope(request, table_id)
+    if scope_error:
+        return scope_error
+    
+    card_ids = _get_card_ids_from_request(request)
+    if not card_ids:
+        return JsonResponse({
+            'success': False,
+            'message': 'No cards selected for export'
+        }, status=400)
+    
+    service = ExportService(request.user)
+    result = service.export_excel(table_id, card_ids)
+    
+    if not result.success:
+        return JsonResponse({
+            'success': False,
+            'message': result.message
+        }, status=400)
+    
+    logger.info("Export XLSX: user=%s table=%d cards=%d", request.user.id, table_id, len(card_ids))
+    return result.response
+
+
+# =============================================================================
+# WORD EXPORT
+# =============================================================================
+
+@login_required
+@require_POST
+def api_export_docx(request, table_id: int) -> HttpResponse:
+    """
+    Export cards to Word format.
+    
+    POST /api/table/<table_id>/export/docx/
+    POST /api/table/<table_id>/cards/download-docx/  (legacy URL in core)
+    
+    Body:
+        {
+            "card_ids": [1, 2, 3],
+            "format": "docx"  // or "doc"
+        }
+        
+    Returns:
+        Word file download or JSON error
+    """
+    # Check permission
+    perm_error = _check_export_permission(request)
+    if perm_error:
+        return perm_error
+    
+    # Check client scope for admin_staff
+    scope_error = _check_export_client_scope(request, table_id)
+    if scope_error:
+        return scope_error
+    
+    card_ids = _get_card_ids_from_request(request)
+    if not card_ids:
+        return JsonResponse({
+            'success': False,
+            'message': 'No cards selected for export'
+        }, status=400)
+    
+    # Get format preference
+    doc_format = 'docx'
+    if request.content_type == 'application/json':
+        try:
+            data = json.loads(request.body)
+            doc_format = data.get('format', 'docx')
+        except (json.JSONDecodeError, ValueError):
+            pass
+    else:
+        doc_format = request.POST.get('format', 'docx')
+    
+    if doc_format not in ('docx', 'doc'):
+        doc_format = 'docx'
+    
+    service = ExportService(request.user)
+    result = service.export_word(table_id, card_ids, doc_format=doc_format)
+    
+    if not result.success:
+        return JsonResponse({
+            'success': False,
+            'message': result.message
+        }, status=400)
+    
+    logger.info("Export %s: user=%s table=%d cards=%d", doc_format.upper(), request.user.id, table_id, len(card_ids))
+    return result.response
+
+
+# =============================================================================
+# PDF EXPORT
+# =============================================================================
+
+@login_required
+@require_POST
+def api_export_pdf(request, table_id: int) -> HttpResponse:
+    """
+    Export cards to PDF format.
+    
+    POST /api/table/<table_id>/export/pdf/
+    POST /api/table/<table_id>/cards/download-pdf/  (legacy URL in core)
+    
+    Body:
+        {
+            "card_ids": [1, 2, 3]
+        }
+        
+    Returns:
+        PDF file download or JSON error
+    """
+    perm_error = _check_export_permission(request)
+    if perm_error:
+        return perm_error
+    
+    # Check client scope for admin_staff
+    scope_error = _check_export_client_scope(request, table_id)
+    if scope_error:
+        return scope_error
+    
+    card_ids = _get_card_ids_from_request(request)
+    if not card_ids:
+        return JsonResponse({
+            'success': False,
+            'message': 'No cards selected for export'
+        }, status=400)
+    
+    service = ExportService(request.user)
+    result = service.export_pdf(table_id, card_ids)
+    
+    if not result.success:
+        return JsonResponse({
+            'success': False,
+            'message': result.message
+        }, status=400)
+    
+    logger.info("Export PDF: user=%s table=%d cards=%d", request.user.id, table_id, len(card_ids))
+    return result.response
+
+
+# =============================================================================
+# IMAGE ZIP EXPORT
+# =============================================================================
+
+@login_required
+@require_POST
+def api_export_images(request, table_id: int) -> JsonResponse:
+    """
+    Export images as ZIP files.
+    
+    POST /api/table/<table_id>/export/images/
+    POST /api/table/<table_id>/cards/download-images/  (legacy URL in core)
+    
+    Body:
+        {
+            "card_ids": [1, 2, 3]
+        }
+        
+    Returns:
+        JSON with base64-encoded ZIP files:
+        {
+            "success": true,
+            "zip_files": [
+                {
+                    "field_name": "PHOTO",
+                    "filename": "TableName_PHOTO_20240101_120000.zip",
+                    "data": "base64...",
+                    "image_count": 10
+                }
+            ],
+            "total_images": 10,
+            "total_zips": 1
+        }
+    """
+    # Check permission
+    perm_error = _check_export_permission(request)
+    if perm_error:
+        return perm_error
+    
+    # Check client scope for admin_staff
+    scope_error = _check_export_client_scope(request, table_id)
+    if scope_error:
+        return scope_error
+    
+    card_ids = _get_card_ids_from_request(request)
+    if not card_ids:
+        return JsonResponse({
+            'success': False,
+            'message': 'No cards selected for export'
+        }, status=400)
+    
+    service = ExportService(request.user)
+    result = service.export_images(table_id, card_ids)
+    
+    logger.info("Export ZIP: user=%s table=%d cards=%d", request.user.id, table_id, len(card_ids))
+    return JsonResponse(zip_result_to_dict(result))
+
+
+# =============================================================================
+# EXPORT PREVIEW
+# =============================================================================
+
+@login_required
+def api_export_preview(request, table_id: int) -> JsonResponse:
+    """
+    Get export preview/capabilities for a table.
+    
+    GET /api/table/<table_id>/export/preview/
+    
+    Returns:
+        JSON with export capabilities:
+        {
+            "success": true,
+            "table_name": "Student Cards",
+            "card_count": 100,
+            "text_field_count": 5,
+            "image_field_count": 2,
+            "available_formats": {
+                "xlsx": true,
+                "docx": true,
+                "doc": true,
+                "zip": true
+            },
+            "can_export": true
+        }
+    """
+    # Check permission
+    perm_error = _check_export_permission(request)
+    if perm_error:
+        return perm_error
+
+    # Check client scope for admin_staff
+    scope_error = _check_export_client_scope(request, table_id)
+    if scope_error:
+        return scope_error
+
+    card_ids = None
+    
+    # Optional card_ids filter
+    card_ids_str = request.GET.get('card_ids', '')
+    if card_ids_str:
+        try:
+            card_ids = json.loads(card_ids_str)
+        except (json.JSONDecodeError, ValueError):
+            card_ids = [int(x.strip()) for x in card_ids_str.split(',') if x.strip().isdigit()]
+    
+    service = ExportService(request.user)
+    result = service.get_export_preview(table_id, card_ids)
+    
+    return JsonResponse(result)
+
+
+# =============================================================================
+# DOWNLOAD ALL (Bulk Export by Status)
+# =============================================================================
+
+# Status lists to export
+_DOWNLOAD_ALL_STATUSES = {
+    'pending': 'Pending',
+    'verified': 'Verified',
+    'approved': 'Approved',
+    'download': 'Download',
+    'pool': 'Pool',
+}
+
+
+@login_required
+@require_POST
+def api_download_all_cards(request, table_id: int) -> JsonResponse:
+    """
+    Download all ID cards for a table, grouped by status list.
+    
+    For each status (Pending/Verified/Approved/Download/Pool) that has cards,
+    generates one XLSX file and one or more ZIP files (one per image field).
+    
+    POST /api/table/<table_id>/cards/download-all/
+    
+    Returns JSON with base64-encoded files:
+    {
+        "success": true,
+        "files": [
+            {
+                "type": "xlsx",
+                "status": "pending",
+                "filename": "Students (Pending)_A7.xlsx",
+                "data": "base64..."
+            },
+            {
+                "type": "zip",
+                "status": "pending",
+                "filename": "Students (Pending)_A7_PHOTO.zip",
+                "data": "base64...",
+                "image_count": 10
+            }
+        ],
+        "total_files": 3
+    }
+    """
+    # Check permission
+    perm_error = _check_export_permission(request)
+    if perm_error:
+        return perm_error
+    
+    # Check client scope for admin_staff
+    scope_error = _check_export_client_scope(request, table_id)
+    if scope_error:
+        return scope_error
+    
+    try:
+        table = get_object_or_404(IDCardTable, id=table_id)
+    except Exception:
+        return JsonResponse({'success': False, 'message': 'Table not found'}, status=404)
+    
+    service = ExportService(request.user)
+    excel_exporter = ExcelExporter()
+    zip_exporter = ZipExporter()
+    
+    # Get client name for filenames
+    client_name = ''
+    if table.group and table.group.client:
+        client_name = table.group.client.name
+    
+    from .utils import clean_filename
+    clean_client = clean_filename(client_name) if client_name else ''
+    clean_table = clean_filename(table.name)
+    
+    files = []
+    counter = 0
+    
+    for status_key, status_label in _DOWNLOAD_ALL_STATUSES.items():
+        # Get cards for this status, scoped by user permissions
+        cards = service.get_scoped_cards(table).filter(status=status_key)
+        
+        card_count = cards.count()
+        if card_count == 0:
+            continue
+        
+        # Safety cap: skip statuses with too many cards
+        MAX_DOWNLOAD_ALL_PER_STATUS = 2000
+        if card_count > MAX_DOWNLOAD_ALL_PER_STATUS:
+            cards = cards[:MAX_DOWNLOAD_ALL_PER_STATUS]
+        
+        counter += 1
+        if clean_client:
+            base_name = f"{clean_client}_{clean_table}_{status_label}"
+        else:
+            base_name = f"{clean_table}_{status_label}"
+        
+        # Generate XLSX (base64)
+        xlsx_result = excel_exporter.export_cards(table, cards)
+        if xlsx_result.success and xlsx_result.response:
+            xlsx_base64 = base64.b64encode(xlsx_result.response.content).decode('utf-8')
+            files.append({
+                'type': 'xlsx',
+                'status': status_key,
+                'filename': f"{base_name}({counter}).xlsx",
+                'data': xlsx_base64,
+            })
+        
+        # Generate ZIP(s) for image fields (base64)
+        zip_result = zip_exporter.export_images(table, cards)
+        if zip_result.success and zip_result.zip_files:
+            for zf in zip_result.zip_files:
+                field_label = zf.field_name.upper().replace(' ', '_')
+                files.append({
+                    'type': 'zip',
+                    'status': status_key,
+                    'filename': f"{base_name}_{field_label}({counter}).zip",
+                    'data': zf.data,
+                    'image_count': zf.image_count,
+                })
+    
+    if not files:
+        return JsonResponse({
+            'success': False,
+            'message': 'No cards found in any list to export'
+        }, status=400)
+    
+    logger.info("Export DOWNLOAD-ALL: user=%s table=%d files=%d", request.user.id, table_id, len(files))
+    return JsonResponse({
+        'success': True,
+        'files': files,
+        'total_files': len(files),
+    })

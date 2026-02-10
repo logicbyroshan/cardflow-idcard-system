@@ -1,0 +1,109 @@
+"""
+Staff API Views
+Contains: All staff-related API endpoints (CRUD, toggle status, active clients list)
+"""
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
+import json
+from .base import api_super_admin_required
+from ..services import StaffService
+from ..models import Client
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+@api_super_admin_required
+def api_staff_create(request):
+    """API endpoint to create a new admin staff"""
+    try:
+        # Check if it's a multipart form (file upload) or JSON
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            data = dict(request.POST)
+            # Convert QueryDict lists to single values
+            data = {k: v[0] if isinstance(v, list) and len(v) == 1 else v for k, v in data.items()}
+            profile_image = request.FILES.get('profile_image')
+        else:
+            data = json.loads(request.body)
+            profile_image = None
+        
+        result = StaffService.create(
+            data, 
+            staff_type='admin_staff', 
+            request=request, 
+            profile_image=profile_image
+        )
+        
+        response_data = result.to_response_dict()
+        # Add email_sent at top level for JS compatibility
+        if result.success and 'email_sent' in result.data:
+            response_data['email_sent'] = result.data['email_sent']
+        
+        return JsonResponse(response_data, status=200 if result.success else 400)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
+
+@csrf_exempt
+@require_http_methods(["GET"])
+@api_super_admin_required
+def api_staff_get(request, staff_id):
+    """API endpoint to get a staff's details"""
+    result = StaffService.get(staff_id, include_permissions=True)
+    return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
+
+
+@csrf_exempt
+@require_http_methods(["PUT", "POST"])
+@api_super_admin_required
+def api_staff_update(request, staff_id):
+    """API endpoint to update a staff"""
+    try:
+        # Check if it's a multipart form (file upload) or JSON
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            data = dict(request.POST)
+            # Convert QueryDict lists to single values
+            data = {k: v[0] if isinstance(v, list) and len(v) == 1 else v for k, v in data.items()}
+            profile_image = request.FILES.get('profile_image')
+        else:
+            data = json.loads(request.body)
+            profile_image = None
+        
+        result = StaffService.update(staff_id, data, profile_image=profile_image)
+        return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
+
+@csrf_exempt
+@require_http_methods(["DELETE", "POST"])
+@api_super_admin_required
+def api_staff_delete(request, staff_id):
+    """API endpoint to delete a staff"""
+    result = StaffService.delete(staff_id)
+    return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+@api_super_admin_required
+def api_staff_toggle_status(request, staff_id):
+    """API endpoint to toggle staff active/inactive status"""
+    result = StaffService.toggle_status(staff_id)
+    return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
+
+
+@csrf_exempt
+@require_http_methods(["GET"])
+@api_super_admin_required
+def api_active_clients_list(request):
+    """API endpoint to get list of active clients for staff assignment dropdown"""
+    clients = Client.objects.filter(status='active').order_by('name').values('id', 'name')
+    return JsonResponse({
+        'success': True,
+        'clients': list(clients)
+    })
