@@ -4,6 +4,7 @@ Contains: Dashboard, Staff Management, Client Management pages, etc.
 """
 from functools import wraps
 import json
+from django.conf import settings as django_settings
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
@@ -794,3 +795,20 @@ def api_export_settings_update(request):
         return JsonResponse({'success': False, 'message': 'No valid fields provided'}, status=400)
 
     return JsonResponse({'success': True, 'message': 'Export settings updated successfully', 'updated': updated})
+
+
+# =============================================================================
+# HEALTH / VERSION ENDPOINT (auth-protected)
+# =============================================================================
+
+@login_required
+@require_any_admin
+def api_health(request):
+    """Auth-protected health & version endpoint."""
+    import django
+    return JsonResponse({
+        'status': 'ok',
+        'version': getattr(django_settings, 'APP_VERSION', 'unknown'),
+        'django': django.get_version(),
+        'debug': django_settings.DEBUG,
+    })

@@ -10,6 +10,7 @@ from .base import (
     api_global_search,
     api_recent_client_updates,
     api_recent_activity,
+    api_health,
     manage_staff,
     manage_clients,
     active_clients,

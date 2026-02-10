@@ -15,6 +15,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # CORE SETTINGS
 # =============================================================================
 
+# Application Version — bumped on each deploy
+APP_VERSION = os.getenv('APP_VERSION', '1.0.0')
+
 # SECURITY WARNING: keep the secret key used in production secret!
 # In production, set SECRET_KEY in .env file
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-dev-key-change-in-production-*m$!x7r9vt=%9aqv1nnaav')

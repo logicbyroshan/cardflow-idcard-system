@@ -1,0 +1,112 @@
+# =============================================================================
+# CD Pipeline — Safe Auto Deploy after CI passes
+# Deploys ONLY from main branch, ONLY after CI succeeds
+# Uses SSH key stored in GitHub Secrets (no secrets in repo)
+# =============================================================================
+
+name: CD — Deploy
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' }}
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SERVER_PORT || 22 }}
+          script_stop: true
+          script: |
+            set -e
+
+            # ── Configuration ──────────────────────────────────────
+            APP_DIR="${{ secrets.APP_DIR }}"
+            SERVICE_NAME="${{ secrets.SERVICE_NAME }}"
+            PYTHON="$APP_DIR/venv/bin/python"
+            PIP="$APP_DIR/venv/bin/pip"
+            DEPLOY_LOG="$APP_DIR/deploy.log"
+
+            echo "========================================" | tee -a "$DEPLOY_LOG"
+            echo "Deploy started: $(date '+%Y-%m-%d %H:%M:%S')" | tee -a "$DEPLOY_LOG"
+            echo "========================================" | tee -a "$DEPLOY_LOG"
+
+            cd "$APP_DIR"
+
+            # ── Step 1: Save current commit for rollback ───────────
+            PREV_COMMIT=$(git rev-parse HEAD)
+            echo "Previous commit: $PREV_COMMIT" | tee -a "$DEPLOY_LOG"
+
+            # ── Step 2: Pull latest code ───────────────────────────
+            echo "Pulling latest code..." | tee -a "$DEPLOY_LOG"
+            git fetch origin main
+            git reset --hard origin/main
+
+            NEW_COMMIT=$(git rev-parse HEAD)
+            echo "New commit: $NEW_COMMIT" | tee -a "$DEPLOY_LOG"
+
+            # ── Step 3: Install/update dependencies ────────────────
+            echo "Installing dependencies..." | tee -a "$DEPLOY_LOG"
+            $PIP install -r requirements.txt --quiet
+
+            # ── Step 4: Django checks ──────────────────────────────
+            echo "Running Django checks..." | tee -a "$DEPLOY_LOG"
+            if ! $PYTHON manage.py check --fail-level WARNING; then
+              echo "ERROR: Django check failed! Rolling back..." | tee -a "$DEPLOY_LOG"
+              git reset --hard "$PREV_COMMIT"
+              $PIP install -r requirements.txt --quiet
+              echo "Rolled back to $PREV_COMMIT" | tee -a "$DEPLOY_LOG"
+              exit 1
+            fi
+
+            # ── Step 5: Run migrations ─────────────────────────────
+            echo "Running migrations..." | tee -a "$DEPLOY_LOG"
+            if ! $PYTHON manage.py migrate --no-input; then
+              echo "ERROR: Migration failed! Rolling back..." | tee -a "$DEPLOY_LOG"
+              git reset --hard "$PREV_COMMIT"
+              $PIP install -r requirements.txt --quiet
+              $PYTHON manage.py migrate --no-input
+              echo "Rolled back to $PREV_COMMIT" | tee -a "$DEPLOY_LOG"
+              exit 1
+            fi
+
+            # ── Step 6: Collect static files ───────────────────────
+            echo "Collecting static files..." | tee -a "$DEPLOY_LOG"
+            $PYTHON manage.py collectstatic --no-input --clear
+
+            # ── Step 7: Write version file ─────────────────────────
+            echo "$NEW_COMMIT" > "$APP_DIR/.deploy_version"
+            echo "$(date '+%Y-%m-%d %H:%M:%S')" >> "$APP_DIR/.deploy_version"
+
+            # ── Step 8: Restart application ────────────────────────
+            echo "Restarting application..." | tee -a "$DEPLOY_LOG"
+            sudo systemctl restart "$SERVICE_NAME"
+
+            # ── Step 9: Health check ───────────────────────────────
+            sleep 3
+            if sudo systemctl is-active --quiet "$SERVICE_NAME"; then
+              echo "Deploy successful!" | tee -a "$DEPLOY_LOG"
+            else
+              echo "WARNING: Service may not have started correctly" | tee -a "$DEPLOY_LOG"
+              echo "Rolling back..." | tee -a "$DEPLOY_LOG"
+              git reset --hard "$PREV_COMMIT"
+              $PIP install -r requirements.txt --quiet
+              $PYTHON manage.py migrate --no-input
+              $PYTHON manage.py collectstatic --no-input --clear
+              sudo systemctl restart "$SERVICE_NAME"
+              echo "Rolled back to $PREV_COMMIT" | tee -a "$DEPLOY_LOG"
+              exit 1
+            fi
+
+            echo "Deploy completed: $(date '+%Y-%m-%d %H:%M:%S')" | tee -a "$DEPLOY_LOG"
+            echo "" | tee -a "$DEPLOY_LOG"

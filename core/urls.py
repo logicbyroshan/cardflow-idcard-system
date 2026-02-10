@@ -125,4 +125,7 @@ urlpatterns = [
     path('api/profile/change-password/', views.api_change_password, name='api_change_password'),
     path('api/profile/upload-image/', views.api_upload_profile_image, name='api_upload_profile_image'),
     path('api/profile/remove-image/', views.api_remove_profile_image, name='api_remove_profile_image'),
+
+    # Health / Version
+    path('api/health/', views.api_health, name='api_health'),
 ]

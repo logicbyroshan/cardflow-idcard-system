@@ -36,6 +36,40 @@
     <link rel="stylesheet" href="{% static 'website/styles/page-common-responsive.css' %}">
 
     {% block extra_css %}{% endblock %}
+
+    <!-- Structured Data (Organization + LocalBusiness) — Public website only -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": ["Organization", "LocalBusiness"],
+      "name": "{{ business.site_name|default:'Adarsh ID Cards' }}",
+      "description": "{{ business.meta_description|default:'Professional ID Card printing and solutions for schools, colleges, and institutions in Bhopal, India.' }}",
+      "url": "{{ request.scheme }}://{{ request.get_host }}/",
+      {% if business.email %}"email": "{{ business.email }}",{% endif %}
+      {% if business.phone %}"telephone": "{{ business.phone }}",{% endif %}
+      {% if business.address %}
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "{{ business.address }}",
+        "addressLocality": "Bhopal",
+        "addressRegion": "Madhya Pradesh",
+        "addressCountry": "IN"
+      },
+      {% endif %}
+      "image": "{{ request.scheme }}://{{ request.get_host }}{% static 'website/images/adarsh.png' %}",
+      "priceRange": "$$",
+      "hasOfferCatalog": {
+        "@type": "OfferCatalog",
+        "name": "Printing Services",
+        "itemListElement": [
+          {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "ID Card Printing"}},
+          {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "PVC ID Cards"}},
+          {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "School ID Cards"}}
+        ]
+      }
+    }
+    </script>
+    {% block extra_structured_data %}{% endblock %}
 </head>
 <body>
     <!-- Top Bar -->

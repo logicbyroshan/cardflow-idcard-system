@@ -119,9 +119,9 @@ class ImageService:
         if len(image_bytes) < 100:
             return False, "Image data is too small"
         
-        MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB per image
+        MAX_IMAGE_SIZE = 25 * 1024 * 1024  # 25MB per image
         if len(image_bytes) > MAX_IMAGE_SIZE:
-            return False, f"Image too large ({len(image_bytes) // 1024 // 1024}MB). Maximum is 10MB."
+            return False, f"Image too large ({len(image_bytes) // 1024 // 1024}MB). Maximum is 25MB."
         
         try:
             from PIL import Image

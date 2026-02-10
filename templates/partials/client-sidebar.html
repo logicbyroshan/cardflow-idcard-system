@@ -55,6 +55,11 @@
         <i class="fa-solid fa-clock"></i>
         <span id="time"></span>
       </div>
+      {% if app_version %}
+      <div class="info-item" style="font-size:0.65rem;opacity:0.5;">
+        <span>v{{ app_version }}</span>
+      </div>
+      {% endif %}
     </div>
     <div class="sidebar-user">
       <div class="user-avatar">
