@@ -44,19 +44,10 @@
           <input type="hidden" id="clientId" name="clientId" value="">
           <div class="drawer-body">
             
-            <!-- Profile Picture Section -->
-            <div class="profile-upload-section">
-              <div class="profile-preview" id="profilePreview">
-                <i class="fa-solid fa-user"></i>
-              </div>
-              <div class="profile-upload-controls">
-                <label class="upload-btn" for="clientProfilePic">
-                  <input type="file" id="clientProfilePic" name="profilePic" accept="image/*" style="display: none;">
-                  <i class="fa-solid fa-camera"></i> Upload Photo
-                </label>
-                <p class="upload-hint">JPG, PNG (Max 2MB)</p>
-                <div class="profile-path-display no-path" id="clientProfilePath">No image</div>
-              </div>
+            <!-- Profile Avatar Placeholder -->
+            <div class="profile-upload-section" style="flex-direction: row; align-items: center; gap: 16px;">
+              {% include 'partials/components/user-avatar.html' with role='client' size='large' %}
+              <p class="upload-hint" style="margin: 0; color: #6b7280; font-size: 13px;">Client avatar</p>
             </div>
 
             <!-- Client Info Section -->
@@ -101,212 +92,233 @@
             <div class="form-section">
               <div class="permission-header"><i class="fa-solid fa-shield-halved"></i> User Permission</div>
               
-              <!-- ID Card Client List Permission -->
+              <!-- Staff Management Permission -->
               <div class="permission-category">
-                <div class="category-title"><i class="fa-solid fa-users"></i> Client Permissions</div>
+                <div class="category-title"><i class="fa-solid fa-users"></i> Staff Management</div>
                 <div class="permissions-grid">
                   <div class="permission-row">
                     <label class="toggle-switch">
                       <input type="checkbox" id="perm_idcard_client_list" name="perm_idcard_client_list" checked>
                       <span class="toggle-slider"></span>
                     </label>
-                    <span class="permission-label">Id Card Client List</span>
+                    <span class="permission-label">Manage Staff</span>
                   </div>
                 </div>
               </div>
               
-              <!-- ID Card Setting Permissions Category -->
+              <!-- Template Settings Permissions -->
               <div class="permission-category">
-                <div class="category-title"><i class="fa-solid fa-cog"></i> ID Card Setting Permissions</div>
+                <div class="category-title"><i class="fa-solid fa-cog"></i> Template Settings</div>
                 <div class="permissions-grid">
                   <div class="permission-row">
                     <label class="toggle-switch">
                       <input type="checkbox" id="perm_idcard_setting_list" name="perm_idcard_setting_list" checked>
                       <span class="toggle-slider"></span>
                     </label>
-                    <span class="permission-label">Id Card Setting List</span>
+                    <span class="permission-label">View Templates</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
                       <input type="checkbox" id="perm_idcard_setting_add" name="perm_idcard_setting_add" checked>
                       <span class="toggle-slider"></span>
                     </label>
-                    <span class="permission-label">Id Card Setting Add</span>
+                    <span class="permission-label">Add Template</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
                       <input type="checkbox" id="perm_idcard_setting_edit" name="perm_idcard_setting_edit" checked>
                       <span class="toggle-slider"></span>
                     </label>
-                    <span class="permission-label">Id Card Setting Edit</span>
+                    <span class="permission-label">Edit Template</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
                       <input type="checkbox" id="perm_idcard_setting_delete" name="perm_idcard_setting_delete" checked>
                       <span class="toggle-slider"></span>
                     </label>
-                    <span class="permission-label">Id Card Setting Delete</span>
+                    <span class="permission-label">Delete Template</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
                       <input type="checkbox" id="perm_idcard_setting_status" name="perm_idcard_setting_status" checked>
                       <span class="toggle-slider"></span>
                     </label>
-                    <span class="permission-label">Id Card Setting Status</span>
+                    <span class="permission-label">Toggle Template Status</span>
                   </div>
                 </div>
               </div>
               
-              <!-- ID Card List Permissions Category -->
+              <!-- View Card Lists Permissions -->
               <div class="permission-category">
-                <div class="category-title"><i class="fa-solid fa-list"></i> ID Card List Permissions</div>
+                <div class="category-title"><i class="fa-solid fa-list"></i> View Card Lists</div>
                 <div class="permissions-grid">
                   <div class="permission-row">
                     <label class="toggle-switch">
                       <input type="checkbox" id="perm_idcard_pending_list" name="perm_idcard_pending_list" checked>
                       <span class="toggle-slider"></span>
                     </label>
-                    <span class="permission-label">Id Card Pending List</span>
+                    <span class="permission-label">View Pending Cards</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
                       <input type="checkbox" id="perm_idcard_verified_list" name="perm_idcard_verified_list" checked>
                       <span class="toggle-slider"></span>
                     </label>
-                    <span class="permission-label">Id Card Verified List</span>
+                    <span class="permission-label">View Verified Cards</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
                       <input type="checkbox" id="perm_idcard_pool_list" name="perm_idcard_pool_list" checked>
                       <span class="toggle-slider"></span>
                     </label>
-                    <span class="permission-label">Id Card Pool List</span>
+                    <span class="permission-label">View Pool Cards</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
                       <input type="checkbox" id="perm_idcard_approved_list" name="perm_idcard_approved_list" checked>
                       <span class="toggle-slider"></span>
                     </label>
-                    <span class="permission-label">Id Card Approved List</span>
+                    <span class="permission-label">View Approved Cards</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
                       <input type="checkbox" id="perm_idcard_download_list" name="perm_idcard_download_list" checked>
                       <span class="toggle-slider"></span>
                     </label>
-                    <span class="permission-label">Id Card Download List</span>
+                    <span class="permission-label">View Download List</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
                       <input type="checkbox" id="perm_idcard_reprint_list" name="perm_idcard_reprint_list" checked>
                       <span class="toggle-slider"></span>
                     </label>
-                    <span class="permission-label">Id Card Reprint List</span>
+                    <span class="permission-label">View Reprint List</span>
                   </div>
                 </div>
               </div>
               
-              <!-- ID Card Action Permissions Category -->
+              <!-- Card Actions Permissions -->
               <div class="permission-category">
-                <div class="category-title"><i class="fa-solid fa-id-card"></i> ID Card Action Permissions</div>
+                <div class="category-title"><i class="fa-solid fa-id-card"></i> Card Actions</div>
                 <div class="permissions-grid">
                   <div class="permission-row">
                     <label class="toggle-switch">
                       <input type="checkbox" id="perm_idcard_add" name="perm_idcard_add" checked>
                       <span class="toggle-slider"></span>
                     </label>
-                    <span class="permission-label">Id Card Add</span>
+                    <span class="permission-label">Add Card</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
                       <input type="checkbox" id="perm_idcard_edit" name="perm_idcard_edit" checked>
                       <span class="toggle-slider"></span>
                     </label>
-                    <span class="permission-label">Id Card Edit</span>
+                    <span class="permission-label">Edit Card</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
                       <input type="checkbox" id="perm_idcard_delete" name="perm_idcard_delete" checked>
                       <span class="toggle-slider"></span>
                     </label>
-                    <span class="permission-label">Id Card Delete</span>
+                    <span class="permission-label">Delete Card</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
                       <input type="checkbox" id="perm_idcard_info" name="perm_idcard_info" checked>
                       <span class="toggle-slider"></span>
                     </label>
-                    <span class="permission-label">Id Card Info</span>
+                    <span class="permission-label">View Card Info</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
                       <input type="checkbox" id="perm_idcard_approve" name="perm_idcard_approve" checked>
                       <span class="toggle-slider"></span>
                     </label>
-                    <span class="permission-label">Id Card Approve</span>
+                    <span class="permission-label">Approve Card</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
                       <input type="checkbox" id="perm_idcard_verify" name="perm_idcard_verify" checked>
                       <span class="toggle-slider"></span>
                     </label>
-                    <span class="permission-label">Id Card Verify</span>
-                  </div>
-                  <div class="permission-row">
-                    <label class="toggle-switch">
-                      <input type="checkbox" id="perm_idcard_bulk_upload" name="perm_idcard_bulk_upload" checked>
-                      <span class="toggle-slider"></span>
-                    </label>
-                    <span class="permission-label">Id Card Bulk Upload</span>
-                  </div>
-                  <div class="permission-row">
-                    <label class="toggle-switch">
-                      <input type="checkbox" id="perm_idcard_bulk_download" name="perm_idcard_bulk_download" checked>
-                      <span class="toggle-slider"></span>
-                    </label>
-                    <span class="permission-label">Id Card Bulk Download</span>
+                    <span class="permission-label">Verify Card</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
                       <input type="checkbox" id="perm_idcard_created_at" name="perm_idcard_created_at" checked>
                       <span class="toggle-slider"></span>
                     </label>
-                    <span class="permission-label">Id Card Created At</span>
+                    <span class="permission-label">View Created Date</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
                       <input type="checkbox" id="perm_idcard_updated_at" name="perm_idcard_updated_at" checked>
                       <span class="toggle-slider"></span>
                     </label>
-                    <span class="permission-label">Id Card Updated At</span>
+                    <span class="permission-label">View Updated Date</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
                       <input type="checkbox" id="perm_idcard_delete_from_pool" name="perm_idcard_delete_from_pool" checked>
                       <span class="toggle-slider"></span>
                     </label>
-                    <span class="permission-label">Id Card Delete From Pool</span>
-                  </div>
-                  <div class="permission-row">
-                    <label class="toggle-switch">
-                      <input type="checkbox" id="perm_delete_all_idcard" name="perm_delete_all_idcard" checked>
-                      <span class="toggle-slider"></span>
-                    </label>
-                    <span class="permission-label">Delete All Id Card</span>
+                    <span class="permission-label">Remove From Pool</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
                       <input type="checkbox" id="perm_reupload_idcard_image" name="perm_reupload_idcard_image" checked>
                       <span class="toggle-slider"></span>
                     </label>
-                    <span class="permission-label">Reupload Id Card Image</span>
+                    <span class="permission-label">Reupload Card Image</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
                       <input type="checkbox" id="perm_idcard_retrieve" name="perm_idcard_retrieve" checked>
                       <span class="toggle-slider"></span>
                     </label>
-                    <span class="permission-label">Id Card Retrieve</span>
+                    <span class="permission-label">Retrieve Card</span>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Bulk Actions Permissions -->
+              <div class="permission-category">
+                <div class="category-title"><i class="fa-solid fa-layer-group"></i> Bulk Actions</div>
+                <div class="permissions-grid">
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_bulk_upload" name="perm_idcard_bulk_upload" checked>
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Bulk Upload Cards</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_bulk_download" name="perm_idcard_bulk_download" checked>
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Bulk Download Cards</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_bulk_reupload" name="perm_idcard_bulk_reupload" checked>
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Bulk Reupload Images</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_delete_all_idcard" name="perm_delete_all_idcard" checked>
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Delete All Cards</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_upgrade_all" name="perm_idcard_upgrade_all" checked>
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Upgrade All Class</span>
                   </div>
                 </div>
               </div>
@@ -334,7 +346,7 @@
         <div class="drawer-body">
           <div class="view-profile">
             <div class="view-avatar" id="viewClientAvatar">
-              <i class="fa-solid fa-user"></i>
+              {% include 'partials/components/user-avatar.html' with role='client' size='large' %}
             </div>
             <div class="view-info">
               <h2 id="viewClientName">-</h2>
@@ -649,54 +661,14 @@
       const table = document.getElementById('clientsTable');
       const tbody = table.querySelector('tbody');
       
-      // Profile elements
-      const profilePicInput = document.getElementById('clientProfilePic');
-      const profilePreview = document.getElementById('profilePreview');
-      const profilePathDisplay = document.getElementById('clientProfilePath');
+      // Phase 1: Profile photo upload removed - using avatar placeholder
+      let selectedProfileFile = null; // Kept for API compatibility
+      
+      // Super Admin flag for client staff management
+      const isSuperAdmin = {% if is_super_admin %}true{% else %}false{% endif %};
       
       let selectedClientId = null;
       let selectedRow = null;
-      let selectedProfileFile = null; // Store the selected file for upload
-
-      // ==================== PROFILE PICTURE UPLOAD PREVIEW ====================
-      if (profilePicInput && profilePreview) {
-        profilePicInput.addEventListener('change', function(e) {
-          const file = e.target.files[0];
-          if (file) {
-            // Validate file size (max 2MB)
-            if (file.size > 2 * 1024 * 1024) {
-              showToast('Image size must be less than 2MB', 'error');
-              profilePicInput.value = '';
-              return;
-            }
-            
-            // Validate file type
-            if (!file.type.startsWith('image/')) {
-              showToast('Please select a valid image file', 'error');
-              profilePicInput.value = '';
-              return;
-            }
-            
-            selectedProfileFile = file;
-            const reader = new FileReader();
-            reader.onload = function(event) {
-              profilePreview.innerHTML = `<img src="${event.target.result}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">`;
-              profilePreview.classList.add('has-image');
-              // Update path display
-              if (profilePathDisplay) {
-                profilePathDisplay.textContent = file.name;
-                profilePathDisplay.classList.remove('no-path', 'not-found');
-                profilePathDisplay.classList.add('has-path');
-              }
-            };
-            reader.onerror = function(error) {
-              console.error('FileReader error:', error);
-              showToast('Failed to read image file', 'error');
-            };
-            reader.readAsDataURL(file);
-          }
-        });
-      }
 
       // ==================== TOAST FUNCTIONS ====================
       // Using shared showToast from utils.js
@@ -782,8 +754,8 @@
         'perm_idcard_setting_list', 'perm_idcard_setting_add', 'perm_idcard_setting_edit', 'perm_idcard_setting_delete', 'perm_idcard_setting_status',
         'perm_idcard_pending_list', 'perm_idcard_verified_list', 'perm_idcard_pool_list', 'perm_idcard_approved_list', 'perm_idcard_download_list', 'perm_idcard_reprint_list',
         'perm_idcard_add', 'perm_idcard_edit', 'perm_idcard_delete', 'perm_idcard_info', 'perm_idcard_approve', 'perm_idcard_verify',
-        'perm_idcard_bulk_upload', 'perm_idcard_bulk_download', 'perm_idcard_created_at', 'perm_idcard_updated_at',
-        'perm_idcard_delete_from_pool', 'perm_delete_all_idcard', 'perm_reupload_idcard_image', 'perm_idcard_retrieve'
+        'perm_idcard_created_at', 'perm_idcard_updated_at', 'perm_idcard_delete_from_pool', 'perm_reupload_idcard_image', 'perm_idcard_retrieve',
+        'perm_idcard_bulk_upload', 'perm_idcard_bulk_download', 'perm_idcard_bulk_reupload', 'perm_delete_all_idcard', 'perm_idcard_upgrade_all'
       ];
 
       // ==================== DRAWER FUNCTIONS ====================
@@ -791,18 +763,7 @@
         clientForm.reset();
         clientIdInput.value = '';
         
-        // Reset profile preview and file
-        selectedProfileFile = null;
-        profilePreview.innerHTML = '<i class="fa-solid fa-user"></i>';
-        profilePreview.classList.remove('has-image');
-        if (profilePicInput) profilePicInput.value = '';
-        
-        // Reset path display
-        if (profilePathDisplay) {
-          profilePathDisplay.textContent = 'No image';
-          profilePathDisplay.classList.remove('has-path', 'not-found');
-          profilePathDisplay.classList.add('no-path');
-        }
+        // Phase 1: Photo upload removed - using avatar placeholder
         
         // Reset all permission toggles to unchecked (OFF by default for new clients)
         permissionFields.forEach(field => {
@@ -827,17 +788,7 @@
             document.getElementById('clientAddress').value = clientData.address || '';
             document.getElementById('clientStatus').value = clientData.is_active !== false ? 'true' : 'false';
             
-            // Load existing photo if available
-            if (clientData.photo_url) {
-              profilePreview.innerHTML = `<img src="${clientData.photo_url}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">`;
-              profilePreview.classList.add('has-image');
-              // Update path display
-              if (profilePathDisplay) {
-                profilePathDisplay.textContent = clientData.photo_url;
-                profilePathDisplay.classList.remove('no-path', 'not-found');
-                profilePathDisplay.classList.add('has-path');
-              }
-            }
+            // Phase 1: Photo upload removed - using avatar placeholder
             
             // Set permissions from client data
             permissionFields.forEach(field => {
@@ -1391,12 +1342,12 @@
 
       // Permission label mapping
       const permissionLabels = {
-        'perm_idcard_client_list': 'Id Card Client List',
-        'perm_idcard_setting_list': 'ID Card Setting List',
-        'perm_idcard_setting_add': 'ID Card Setting Add',
-        'perm_idcard_setting_edit': 'ID Card Setting Edit',
-        'perm_idcard_setting_delete': 'ID Card Setting Delete',
-        'perm_idcard_setting_status': 'ID Card Setting Status'
+        'perm_idcard_client_list': 'Manage Staff',
+        'perm_idcard_setting_list': 'View Templates',
+        'perm_idcard_setting_add': 'Add Template',
+        'perm_idcard_setting_edit': 'Edit Template',
+        'perm_idcard_setting_delete': 'Delete Template',
+        'perm_idcard_setting_status': 'Toggle Template Status'
       };
 
       async function fetchClientStaff(clientId) {
@@ -1460,9 +1411,12 @@
               const permissions = formatPermissions(staff);
               const statusClass = staff.is_active ? 'active' : 'inactive';
               const statusText = staff.is_active ? 'Active' : 'Inactive';
+              const toggleBtnText = staff.is_active ? 'Deactivate' : 'Activate';
+              const toggleBtnIcon = staff.is_active ? 'fa-user-slash' : 'fa-user-check';
+              const toggleBtnClass = staff.is_active ? 'btn-deactivate' : 'btn-activate';
               
               return `
-                <div class="staff-card">
+                <div class="staff-card" data-staff-id="${staff.id}">
                   <div class="staff-card-header">
                     <div class="staff-avatar ${statusClass}">
                       <i class="fa-solid fa-user"></i>
@@ -1510,6 +1464,13 @@
                           : '<span class="no-permissions">No permissions assigned</span>'}
                       </div>
                     </div>
+                    ${isSuperAdmin ? `
+                    <div class="staff-actions">
+                      <button class="btn btn-sm ${toggleBtnClass}" onclick="toggleClientStaffStatus(${staff.id})" title="${toggleBtnText}">
+                        <i class="fa-solid ${toggleBtnIcon}"></i> ${toggleBtnText}
+                      </button>
+                    </div>
+                    ` : ''}
                   </div>
                 </div>
               `;
@@ -1523,6 +1484,33 @@
           inactiveStaffCount.textContent = '0';
         }
       }
+
+      // Toggle client staff status (Super Admin only)
+      window.toggleClientStaffStatus = async function(staffId) {
+        if (!selectedClientId || !isSuperAdmin) return;
+        
+        try {
+          const response = await fetch(`/panel/api/client/${selectedClientId}/staff/${staffId}/toggle-status/`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+            }
+          });
+          
+          const result = await response.json();
+          
+          if (result.success) {
+            showToast(result.message, 'success');
+            // Refresh the staff drawer to show updated status
+            await openStaffDrawer();
+          } else {
+            showToast(result.message || 'Failed to toggle staff status', 'error');
+          }
+        } catch (error) {
+          showToast('Network error. Please try again.', 'error');
+        }
+      };
 
       function closeStaffDrawerFn() {
         staffDrawer.classList.remove('open');

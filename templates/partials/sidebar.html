@@ -113,14 +113,14 @@
         <i class="fa-solid fa-clock"></i>
         <span id="time"></span>
       </div>
+      <div class="info-item">
+        <i class="fa-solid fa-code-branch"></i>
+        <span>{{ APP_VERSION }}</span>
+      </div>
     </div>
     <div class="sidebar-user">
       <div class="user-avatar">
-        {% if user.profile_image %}
-        <img src="{{ user.profile_image.url }}" alt="profile">
-        {% else %}
-        <i class="fa-solid fa-user"></i>
-        {% endif %}
+        {% include 'partials/components/user-avatar.html' with role=user.role size='medium' %}
       </div>
       <div class="user-info">
         <span class="user-name">{{ user.get_full_name|default:user.username }}</span>

@@ -8,6 +8,7 @@
 <!-- Action Bar -->
 <div class="action-bar action-buttons-bar" id="reprintRequestsActionBar">
     <div class="action-buttons-group">
+        {% if not is_client and not is_client_staff %}
         <button class="btn action-btn btn-purple" id="reprintRequestBtn" disabled title="Request reprint for selected cards">
             <i class="fa-solid fa-print"></i>
             <span class="btn-text">Request Reprint</span>
@@ -16,6 +17,7 @@
             <i class="fa-solid fa-pen-to-square"></i>
             <span class="btn-text">Edit</span>
         </button>
+        {% endif %}
         <button class="btn action-btn btn-gray" id="reprintViewBtn" disabled title="View selected card">
             <i class="fa-solid fa-eye"></i>
             <span class="btn-text">View</span>
@@ -184,6 +186,7 @@
 <!-- Action Bar -->
 <div class="action-bar action-buttons-bar" id="reprintConfirmActionBar">
     <div class="action-buttons-group">
+        {% if not is_client and not is_client_staff %}
         <button class="btn action-btn btn-amber" id="confirmReprintBtn" disabled title="Confirm selected reprints">
             <i class="fa-solid fa-check-double"></i>
             <span class="btn-text">Confirm</span>
@@ -192,6 +195,7 @@
             <i class="fa-solid fa-xmark"></i>
             <span class="btn-text">Reject</span>
         </button>
+        {% endif %}
         <button class="btn action-btn btn-gray" id="confirmViewBtn" disabled title="View selected card">
             <i class="fa-solid fa-eye"></i>
             <span class="btn-text">View</span>
@@ -361,10 +365,12 @@
 <!-- Action Bar -->
 <div class="action-bar action-buttons-bar" id="reprintDownloadActionBar">
     <div class="action-buttons-group">
+        {% if not is_client and not is_client_staff %}
         <button class="btn action-btn btn-green" id="downloadReprintBtn" disabled title="Mark selected as downloaded">
             <i class="fa-solid fa-download"></i>
             <span class="btn-text">Download</span>
         </button>
+        {% endif %}
         <button class="btn action-btn btn-gray" id="downloadViewBtn" disabled title="View selected card">
             <i class="fa-solid fa-eye"></i>
             <span class="btn-text">View</span>

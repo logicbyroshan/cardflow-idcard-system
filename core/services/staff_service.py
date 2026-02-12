@@ -35,13 +35,16 @@ class StaffService(BaseService):
         'perm_idcard_pending_list', 'perm_idcard_verified_list',
         'perm_idcard_pool_list', 'perm_idcard_approved_list',
         'perm_idcard_download_list', 'perm_idcard_reprint_list',
-        # ID Card Actions
+        # ID Card Actions (work in Pending and Verified lists only)
         'perm_idcard_add', 'perm_idcard_edit', 'perm_idcard_delete',
         'perm_idcard_info', 'perm_idcard_approve', 'perm_idcard_verify',
-        'perm_idcard_bulk_upload', 'perm_idcard_bulk_download',
         'perm_idcard_created_at', 'perm_idcard_updated_at',
-        'perm_idcard_delete_from_pool', 'perm_delete_all_idcard',
-        'perm_reupload_idcard_image', 'perm_idcard_retrieve',
+        'perm_idcard_delete_from_pool', 'perm_reupload_idcard_image',
+        'perm_idcard_retrieve',
+        # ID Card Bulk Actions (work across all lists)
+        'perm_idcard_bulk_upload', 'perm_idcard_bulk_download',
+        'perm_idcard_bulk_reupload', 'perm_delete_all_idcard',
+        'perm_idcard_upgrade_all',
     ]
     
     @classmethod
@@ -58,7 +61,7 @@ class StaffService(BaseService):
             'designation': staff.designation or '',
             'staff_type': staff.staff_type,
             'status': 'active' if user.is_active else 'inactive',
-            'profile_image_url': user.profile_image.url if user.profile_image else None,
+            'profile_image_url': None,  # Phase 1: profile_image removed - using avatar placeholder
             'created_at': staff.created_at.strftime('%d-%m-%Y %I:%M %p'),
             'updated_at': staff.updated_at.strftime('%d-%m-%Y %I:%M %p'),
         }
@@ -142,8 +145,7 @@ class StaffService(BaseService):
                 )
                 user.set_password(password)
                 
-                if profile_image:
-                    user.profile_image = profile_image
+                # Phase 1: profile_image handling removed - using avatar placeholder
                 user.save()
                 
                 # Build staff kwargs
@@ -255,9 +257,7 @@ class StaffService(BaseService):
             if 'is_active' in data:
                 user.is_active = cls.parse_bool(data['is_active'])
             
-            # Handle profile image
-            if profile_image:
-                user.profile_image = profile_image
+            # Phase 1: profile_image handling removed - using avatar placeholder
             
             user.save()
             
@@ -305,12 +305,7 @@ class StaffService(BaseService):
             user = staff.user
             staff_name = user.get_full_name()
             
-            # Clean up profile image file before deleting
-            if user.profile_image:
-                try:
-                    user.profile_image.delete(save=False)
-                except Exception:
-                    pass
+            # Phase 1: profile_image cleanup removed - using avatar placeholder
             
             with transaction.atomic():
                 staff.delete()

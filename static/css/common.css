@@ -537,27 +537,39 @@ body.modal-open {
   transform: translateY(-1px);
 }
 
-.action-right .btn-delete,
-.action-right .btn-inactive {
+.action-right .btn-delete {
   background: var(--red) !important;
   color: var(--text-white) !important;
   box-shadow: 0 2px 4px rgba(var(--red-rgb), 0.3);
 }
-.action-right .btn-delete:hover:not(:disabled),
-.action-right .btn-inactive:hover:not(:disabled) {
+.action-right .btn-delete:hover:not(:disabled) {
   background: var(--red-dark) !important;
   box-shadow: 0 4px 8px rgba(var(--red-rgb), 0.4);
   transform: translateY(-1px);
 }
 
+/* Inactive button - neutral light gray with good contrast */
+.action-right .btn-inactive {
+  background-color: #f1f3f7 !important;
+  color: #2d3748 !important;
+  border: 1px solid #d1d5db !important;
+  box-shadow: none;
+}
+.action-right .btn-inactive:hover:not(:disabled) {
+  background-color: #e2e8f0 !important;
+  border-color: #cbd5e0 !important;
+  transform: translateY(-1px);
+}
+
 .action-right .btn-active {
-  background: var(--green) !important;
+  background: linear-gradient(135deg, #5b6cff, #8e44ff) !important;
   color: var(--text-white) !important;
-  box-shadow: 0 2px 4px rgba(var(--green-rgb), 0.3);
+  box-shadow: 0 2px 4px rgba(91, 108, 255, 0.3);
+  border: none !important;
 }
 .action-right .btn-active:hover:not(:disabled) {
-  background: var(--green-dark) !important;
-  box-shadow: 0 4px 8px rgba(var(--green-rgb), 0.4);
+  background: linear-gradient(135deg, #4a5df0, #7b38e0) !important;
+  box-shadow: 0 4px 8px rgba(91, 108, 255, 0.4);
   transform: translateY(-1px);
 }
 
@@ -1072,6 +1084,49 @@ tbody tr.selected:hover { background-color: var(--bg-selected-hover); }
 .center-modal-theme-blue .center-modal-btn-confirm:hover:not(:disabled) { background: #2563eb; }
 .center-modal-theme-blue .center-modal-progress-bar { background: #3b82f6; }
 
+.center-modal-theme-purple .center-modal-icon i { color: #8b5cf6; }
+.center-modal-theme-purple .center-modal-warning { color: #8b5cf6; }
+.center-modal-theme-purple .center-modal-code { background: #f5f3ff; border-color: #c4b5fd; color: #7c3aed; }
+.center-modal-theme-purple .center-modal-btn-confirm { background: #8b5cf6; }
+.center-modal-theme-purple .center-modal-btn-confirm:hover:not(:disabled) { background: #7c3aed; }
+.center-modal-theme-purple .center-modal-progress-bar { background: #8b5cf6; }
+
+.center-modal-theme-green .center-modal-icon i { color: #22c55e; }
+.center-modal-theme-green .center-modal-warning { color: #22c55e; }
+.center-modal-theme-green .center-modal-code { background: #f0fdf4; border-color: #86efac; color: #16a34a; }
+.center-modal-theme-green .center-modal-btn-confirm { background: #22c55e; }
+.center-modal-theme-green .center-modal-btn-confirm:hover:not(:disabled) { background: #16a34a; }
+.center-modal-theme-green .center-modal-progress-bar { background: #22c55e; }
+
+/* Download Modal Specific Styles */
+.center-modal-select {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 14px;
+  border: 2px solid #d1d5db;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  outline: none;
+  transition: border-color 0.2s;
+  background: #fff;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 12px center;
+  background-repeat: no-repeat;
+  background-size: 16px 12px;
+}
+.center-modal-select:focus {
+  border-color: #8b5cf6;
+}
+
+.center-modal-note {
+  color: #9ca3af;
+  font-size: 12px;
+  margin: 8px 0 16px;
+  font-style: italic;
+}
+
 /* ===========================================
    SIDE MODAL / DRAWER (Right Side) - original
    =========================================== */
@@ -1443,18 +1498,18 @@ tbody tr.selected:hover { background-color: var(--bg-selected-hover); }
   padding: var(--space-sm) var(--space-lg);
   border-radius: var(--radius-md);
   font-size: var(--font-size-md);
-  font-weight: var(--font-weight-medium);
-  color: var(--text-primary);
-  background: var(--gray-100);
-  border: 1px solid var(--gray-300);
+  font-weight: var(--font-weight-semibold);
+  color: var(--gray-700, #374151);
+  background: var(--gray-200);
+  border: 1px solid var(--gray-400);
   text-decoration: none;
   transition: all var(--transition-base);
   cursor: pointer;
 }
 
 .switch-btn:hover {
-  background: var(--gray-200);
-  border-color: var(--gray-400);
+  background: var(--gray-300);
+  border-color: var(--gray-500, #6b7280);
   color: var(--text-primary);
 }
 
@@ -1601,6 +1656,118 @@ body.sidebar-collapsed .pagination-bar { left: var(--sidebar-collapsed); }
 }
 
 /* ===========================================
+   USER AVATAR PLACEHOLDER COMPONENT
+   Role-based placeholder avatars (no DB storage)
+   =========================================== */
+.user-avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* Size variations — portrait rectangle aspect ratio */
+.user-avatar-placeholder--small {
+  width: 32px;
+  height: 38px;
+  font-size: 14px;
+}
+
+.user-avatar-placeholder--medium {
+  width: 40px;
+  height: 48px;
+  font-size: 18px;
+}
+
+.user-avatar-placeholder--large {
+  width: 72px;
+  height: 90px;
+  font-size: 28px;
+}
+
+/* Role-based styling — distinct colours, soft border */
+.user-avatar-placeholder--super_admin {
+  background: linear-gradient(145deg, #7c3aed 0%, #6d28d9 100%);
+  border: 2px solid rgba(109, 40, 217, 0.35);
+  color: #ede9fe;
+  box-shadow: 0 3px 10px rgba(124, 58, 237, 0.25);
+}
+
+.user-avatar-placeholder--admin_staff {
+  background: linear-gradient(145deg, #2563eb 0%, #1d4ed8 100%);
+  border: 2px solid rgba(29, 78, 216, 0.35);
+  color: #dbeafe;
+  box-shadow: 0 3px 10px rgba(37, 99, 235, 0.25);
+}
+
+.user-avatar-placeholder--client {
+  background: linear-gradient(145deg, #059669 0%, #047857 100%);
+  border: 2px solid rgba(4, 120, 87, 0.35);
+  color: #d1fae5;
+  box-shadow: 0 3px 10px rgba(5, 150, 105, 0.25);
+}
+
+.user-avatar-placeholder--client_staff {
+  background: linear-gradient(145deg, #0891b2 0%, #0e7490 100%);
+  border: 2px solid rgba(14, 116, 144, 0.35);
+  color: #cffafe;
+  box-shadow: 0 3px 10px rgba(8, 145, 178, 0.25);
+}
+
+/* Label styling */
+.user-avatar-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 4px;
+}
+
+.user-avatar-label--super_admin { color: #764ba2; }
+.user-avatar-label--admin_staff { color: #3182ce; }
+.user-avatar-label--client { color: #38a169; }
+.user-avatar-label--client_staff { color: #319795; }
+
+/* Sidebar-specific avatar styling (existing user-avatar class) */
+.sidebar .user-avatar {
+  position: relative;
+}
+
+.sidebar .user-avatar .user-avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  border: none;
+  box-shadow: none;
+}
+
+/* ===========================================
+   ALPINE.JS TRANSITION UTILITIES
+   =========================================== */
+.transition {
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ease-out { transition-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+.ease-in { transition-timing-function: cubic-bezier(0.4, 0, 1, 1); }
+.duration-200 { transition-duration: 200ms; }
+.duration-150 { transition-duration: 150ms; }
+
+.translate-x-full { transform: translateX(100%); }
+.translate-x-0 { transform: translateX(0); }
+.opacity-0 { opacity: 0; }
+.opacity-100 { opacity: 1; }
+.scale-95 { transform: scale(0.95); }
+.scale-100 { transform: scale(1); }
+
+/* Hide elements controlled by Alpine before initialization */
+[x-cloak] { display: none !important; }
+
+/* ===========================================
    RESPONSIVE
    =========================================== */
 @media (max-width: 1024px) {
@@ -1644,3 +1811,127 @@ body.sidebar-collapsed .pagination-bar { left: var(--sidebar-collapsed); }
   
   .toast.show { right: 16px; }
 }
+
+/* ===========================================
+   ALPINE.JS TOAST SYSTEM
+   Phase 4: Fully Alpine Controlled Toast
+   =========================================== */
+.alpine-toast-wrapper {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.alpine-toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  font-family: var(--font-family);
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+  pointer-events: auto;
+  min-width: 280px;
+  max-width: 400px;
+}
+
+.alpine-toast i {
+  font-size: 18px;
+}
+
+.alpine-toast.toast-success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.alpine-toast.toast-error {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+.alpine-toast.toast-warning {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+.alpine-toast.toast-info {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+}
+
+@media (max-width: 600px) {
+  .alpine-toast-wrapper {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+  }
+  
+  .alpine-toast {
+    min-width: auto;
+    max-width: 100%;
+  }
+}
+
+
+/* ===========================================
+   ALPINE MODAL TRANSITIONS (v=52)
+   =========================================== */
+
+/* Alpine x-show transition for modal overlay */
+[x-cloak] { display: none !important; }
+
+.alpine-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+  z-index: 1050;
+}
+
+.alpine-modal-content {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: auto;
+  z-index: 1051;
+}
+
+/* Fade transition for overlay */
+.alpine-fade-enter-active,
+.alpine-fade-leave-active {
+  transition: opacity 0.15s ease;
+}
+
+.alpine-fade-enter-from,
+.alpine-fade-leave-to {
+  opacity: 0;
+}
+
+/* Scale transition for modal content */
+.alpine-scale-enter-active,
+.alpine-scale-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.alpine-scale-enter-from,
+.alpine-scale-leave-to {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.95);
+}
+
+.alpine-scale-enter-to,
+.alpine-scale-leave-from {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+

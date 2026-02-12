@@ -97,6 +97,24 @@ def _check_client_scope_by_card(user, card_id):
     return card, None
 
 
+# ==================== CLIENT READONLY ON APPROVED+ ====================
+# After cards reach approved/download/reprint, client & client_staff users
+# can only VIEW — no edit, delete, status change, or image reupload.
+
+_CLIENT_READONLY_STATUSES = frozenset({'approved', 'download', 'reprint'})
+
+def _client_readonly_response():
+    """Fresh 403 response for each request."""
+    return JsonResponse(
+        {'success': False, 'message': 'Cards in approved / download status cannot be modified by client users.'},
+        status=403,
+    )
+
+def _is_client_readonly(user, card_status):
+    """Return True when client/client_staff tries to modify a card in a locked status."""
+    return user.role in ('client', 'client_staff') and card_status in _CLIENT_READONLY_STATUSES
+
+
 # ==================== IMAGE HELPERS ====================
 # These functions delegate to the real ImageService implementations.
 # NO STUBS. Real implementations in mediafiles/services/.
@@ -335,22 +353,13 @@ def api_idcard_create(request, table_id):
         # Get client for image folder management
         client = table.group.client
         
-        # Helper function to convert string values to uppercase
-        def uppercase_field_data(data):
-            result = {}
-            for key, value in data.items():
-                if isinstance(value, str):
-                    result[key] = value.upper()
-                else:
-                    result[key] = value
-            return result
-        
         # Handle both JSON and FormData
         if request.content_type and 'multipart/form-data' in request.content_type:
             # FormData submission (with files)
             field_data_str = request.POST.get('field_data', '{}')
             field_data = json.loads(field_data_str)
-            field_data = uppercase_field_data(field_data)
+            # Use selective uppercase - preserves image paths, uppercases text fields
+            field_data = BaseService.uppercase_field_data_selective(field_data, table.fields)
             
             # Handle image fields from table configuration
             image_counter = 0
@@ -462,7 +471,8 @@ def api_idcard_create(request, table_id):
             # JSON submission (no files)
             data = json.loads(request.body)
             field_data = data.get('field_data', {})
-            field_data = uppercase_field_data(field_data)
+            # Use selective uppercase - preserves image paths, uppercases text fields
+            field_data = BaseService.uppercase_field_data_selective(field_data, table.fields)
             
             card = IDCard.objects.create(
                 table=table,
@@ -517,171 +527,157 @@ def api_idcard_get(request, card_id):
 @require_http_methods(["POST", "PUT"])
 @api_require_permission('perm_idcard_edit')
 def api_idcard_update(request, card_id):
-    """API endpoint to update an ID Card with file upload support"""
+    """API endpoint to update an ID Card with file upload support.
+    
+    Uses atomic transactions to prevent partial updates.
+    Supports optimistic concurrency control via updated_at timestamp.
+    """
     _card, err = _check_client_scope_by_card(request.user, card_id)
     if err: return err
+    # Client/client_staff cannot edit cards in approved/download/reprint
+    if _is_client_readonly(request.user, _card.status):
+        return _client_readonly_response()
     try:
-        card = get_object_or_404(IDCard, id=card_id)
-        table = card.table
-        
-        # Get client for image folder management
-        client = table.group.client
-        
-        # Helper function to convert string values to uppercase
-        def uppercase_field_data(data):
-            result = {}
-            for key, value in data.items():
-                if isinstance(value, str):
-                    result[key] = value.upper()
-                else:
-                    result[key] = value
-            return result
-        
-        # Handle both JSON and FormData
-        if request.content_type and 'multipart/form-data' in request.content_type:
-            # FormData submission (with files)
-            field_data_str = request.POST.get('field_data', '{}')
-            new_field_data = json.loads(field_data_str)
-            new_field_data = uppercase_field_data(new_field_data)
+        # Use atomic transaction to prevent partial updates
+        with transaction.atomic():
+            # Lock the row with select_for_update to prevent concurrent writes
+            card = IDCard.objects.select_for_update().get(id=card_id)
+            table = card.table
             
-            # Merge with existing field_data to preserve existing image paths
-            existing_field_data = card.field_data or {}
-            existing_field_data.update(new_field_data)
+            # ── Optimistic concurrency check ──
+            # If client sends expected_updated_at, reject if stale
+            expected_updated_at = None
+            _parsed_json_body = None  # Cache for JSON branch to avoid double-parse
+            if request.content_type and 'multipart/form-data' in request.content_type:
+                expected_updated_at = request.POST.get('expected_updated_at', None)
+            else:
+                try:
+                    _parsed_json_body = json.loads(request.body)
+                    expected_updated_at = _parsed_json_body.get('expected_updated_at', None)
+                except Exception:
+                    pass
             
-            # Track saved images for dual-write
-            saved_images = []
+            if expected_updated_at:
+                from django.utils.dateparse import parse_datetime
+                expected_dt = parse_datetime(expected_updated_at)
+                if expected_dt and card.updated_at and abs((card.updated_at - expected_dt).total_seconds()) > 1:
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'This card was modified by another user. Please refresh and try again.',
+                        'conflict': True,
+                        'server_updated_at': card.updated_at.isoformat(),
+                    }, status=409)
             
-            # Handle image fields from table configuration
-            image_counter = 0
-            for field in table.fields:
-                field_type = field.get('type', '')
-                field_name = field.get('name', '')
+            # Get client for image folder management
+            client = table.group.client
+            
+            # Get image field names for this table
+            image_field_names = BaseService.get_image_field_names(table.fields)
+            
+            # Handle both JSON and FormData
+            if request.content_type and 'multipart/form-data' in request.content_type:
+                # FormData submission (with files)
+                field_data_str = request.POST.get('field_data', '{}')
+                new_field_data = json.loads(field_data_str)
+                # Use selective uppercase - preserves image paths, uppercases text fields
+                new_field_data = BaseService.uppercase_field_data_selective(new_field_data, table.fields)
                 
-                # Check if it's an image field by type OR by name (using BaseService)
-                if BaseService.is_image_field(field):
-                    file_key = f"image_{field_name}"
-                    if file_key in request.FILES:
-                        try:
-                            # Save the image with real ImageService (handles delete + thumbnail)
-                            uploaded_file = request.FILES[file_key]
-                            
-                            # Get file extension from uploaded file
-                            original_ext = os.path.splitext(uploaded_file.name)[1].lower() or '.jpg'
-                            
-                            # Read image bytes
-                            image_bytes = uploaded_file.read()
-                            uploaded_file.seek(0)
-                            
-                            # Check if there's an existing image for this field
-                            existing_image_path = existing_field_data.get(field_name, '')
-                            
-                            # Use ImageService - it handles delete of old, naming, and thumbnail
-                            image_counter += 1
-                            result = ImageService.save_image_with_thumbnail(
-                                image_bytes=image_bytes,
-                                client=client,
-                                existing_path=existing_image_path if existing_image_path and existing_image_path != 'NOT_FOUND' else None,
-                                batch_counter=image_counter,
-                                original_ext=original_ext
-                            )
-                            
-                            if result.success and result.data.get('path'):
-                                saved_path = result.data['path']
-                                existing_field_data[field_name] = saved_path
-                                # Track for dual-write
-                                saved_images.append({
-                                    'path': saved_path,
-                                    'field_name': field_name,
-                                    'field_type': field_type or 'photo',
-                                    'original_filename': uploaded_file.name,
-                                    'thumbnail_path': result.data.get('thumbnail_path')
-                                })
-                            else:
-                                # Log the error but continue
-                                logger.warning("Could not save image for field %s: %s", field_name, result.message)
-                        except Exception as img_err:
-                            # Log error but continue with other fields
-                            logger.error("Error processing image for field %s: %s", field_name, img_err)
-            
-            card.field_data = existing_field_data
-            
-            # Handle main photo - save to field_data["PHOTO"] with thumbnail
-            if 'photo' in request.FILES:
-                try:
-                    uploaded_file = request.FILES['photo']
+                # Merge existing field_data as base
+                existing_field_data = card.field_data or {}
+                
+                # First merge text (non-image) fields
+                for key, value in new_field_data.items():
+                    if key not in image_field_names:
+                        existing_field_data[key] = value
+                
+                # Process each image field through centralized handler
+                image_counter = 0
+                for img_field in image_field_names:
+                    uploaded_file = request.FILES.get(f"image_{img_field}")
+                    new_value = new_field_data.get(img_field)  # None if not sent
+                    existing_value = existing_field_data.get(img_field, '')
                     
-                    # Get file extension from uploaded file
-                    original_ext = os.path.splitext(uploaded_file.name)[1].lower() or '.jpg'
-                    
-                    # Read image bytes
-                    image_bytes = uploaded_file.read()
-                    uploaded_file.seek(0)
-                    
-                    # Check if there's an existing PHOTO in field_data (check both cases)
-                    existing_photo_path = existing_field_data.get('PHOTO', '') or existing_field_data.get('Photo', '')
-                    
-                    # Use ImageService - handles delete, naming, thumbnail
-                    result = ImageService.save_image_with_thumbnail(
-                        image_bytes=image_bytes,
-                        client=client,
-                        existing_path=existing_photo_path if existing_photo_path and existing_photo_path != 'NOT_FOUND' else None,
-                        batch_counter=9,  # Use 9 as counter for main photo
-                        original_ext=original_ext
-                    )
-                    
-                    if result.success and result.data.get('path'):
-                        saved_path = result.data['path']
-                        # Save with UPPERCASE key to match table field names
-                        existing_field_data['PHOTO'] = saved_path
-                        # Remove old Photo key if it exists (lowercase P)
-                        if 'Photo' in existing_field_data and 'Photo' != 'PHOTO':
-                            del existing_field_data['Photo']
-                        card.field_data = existing_field_data
-                        logger.debug("Photo updated to: %s", saved_path)
-                        # Track for dual-write
-                        saved_images.append({
-                            'path': saved_path,
-                            'field_name': 'PHOTO',
-                            'field_type': 'photo',
-                            'original_filename': uploaded_file.name,
-                            'thumbnail_path': result.data.get('thumbnail_path')
-                        })
-                    else:
-                        logger.warning("Could not save main photo: %s", result.message)
-                except Exception as photo_err:
-                    logger.error("Error processing main photo: %s", photo_err)
-            
-            card.save()
-            
-            # DUAL-WRITE: Create CardMedia records for saved images
-            for img_info in saved_images:
-                try:
-                    ImageService.create_media_record(
-                        saved_path=img_info['path'],
+                    if uploaded_file is not None or new_value is not None:
+                        image_counter += 1
+                        result = ImageService.process_image_field(
+                            field_name=img_field,
+                            new_value=new_value,
+                            existing_value=existing_value,
+                            client=client,
+                            card=card,
+                            uploaded_file=uploaded_file,
+                            batch_counter=image_counter,
+                            uploaded_by=request.user if request.user.is_authenticated else None,
+                        )
+                        if result.success:
+                            existing_field_data[img_field] = result.data.get('final_value', existing_value)
+                        else:
+                            logger.warning("process_image_field failed for %s: %s", img_field, result.message)
+                
+                # Handle main photo (legacy 'photo' key in request.FILES)
+                if 'photo' in request.FILES:
+                    existing_photo = existing_field_data.get('PHOTO', '') or existing_field_data.get('Photo', '')
+                    result = ImageService.process_image_field(
+                        field_name='PHOTO',
+                        new_value=None,  # upload takes precedence
+                        existing_value=existing_photo,
                         client=client,
                         card=card,
-                        field_name=img_info['field_name'],
-                        media_type=img_info['field_type'],
-                        original_filename=img_info['original_filename'],
-                        uploaded_by=request.user if request.user.is_authenticated else None
+                        uploaded_file=request.FILES['photo'],
+                        batch_counter=9,
+                        uploaded_by=request.user if request.user.is_authenticated else None,
                     )
-                except Exception as media_err:
-                    # Don't fail card update if media record fails
-                    logger.warning("Failed to create CardMedia for %s: %s", img_info['field_name'], media_err)
-        else:
-            # JSON submission (no files)
-            data = json.loads(request.body)
-            
-            if 'field_data' in data:
-                # Merge with existing field_data to preserve image paths and other fields
-                existing_field_data = card.field_data or {}
-                new_field_data = uppercase_field_data(data['field_data'])
-                existing_field_data.update(new_field_data)
+                    if result.success and result.data.get('action') == 'upload':
+                        existing_field_data['PHOTO'] = result.data['final_value']
+                        # Remove old Photo key if it exists
+                        if 'Photo' in existing_field_data and 'Photo' != 'PHOTO':
+                            del existing_field_data['Photo']
+                    elif not result.success:
+                        logger.warning("Could not save main photo: %s", result.message)
+                
                 card.field_data = existing_field_data
-            # Status changes must go through the dedicated change_status endpoint
-            # Direct status assignment is not allowed here
-            
-            card.save()
+                card.save()
+            else:
+                # JSON submission (no files)
+                data = _parsed_json_body or json.loads(request.body)
+                
+                if 'field_data' in data:
+                    # Use selective uppercase - preserves image paths, uppercases text fields
+                    new_field_data = BaseService.uppercase_field_data_selective(data['field_data'], table.fields)
+                    
+                    # Merge existing field_data as base
+                    existing_field_data = card.field_data or {}
+                    
+                    # First merge text (non-image) fields
+                    for key, value in new_field_data.items():
+                        if key not in image_field_names:
+                            existing_field_data[key] = value
+                    
+                    # Process each image field through centralized handler
+                    for img_field in image_field_names:
+                        new_value = new_field_data.get(img_field)  # None if not sent
+                        if new_value is not None:
+                            existing_value = existing_field_data.get(img_field, '')
+                            result = ImageService.process_image_field(
+                                field_name=img_field,
+                                new_value=new_value,
+                                existing_value=existing_value,
+                                client=client,
+                                card=card,
+                            )
+                            if result.success:
+                                existing_field_data[img_field] = result.data.get('final_value', existing_value)
+                            else:
+                                logger.warning("process_image_field failed for %s: %s", img_field, result.message)
+                    
+                    card.field_data = existing_field_data
+                # Status changes must go through the dedicated change_status endpoint
+                # Direct status assignment is not allowed here
+                
+                card.save()
+        
+        # Refresh updated_at after save
+        card.refresh_from_db(fields=['updated_at'])
         
         return JsonResponse({
             'success': True,
@@ -692,8 +688,11 @@ def api_idcard_update(request, card_id):
                 'photo': (card.field_data or {}).get('PHOTO') or (card.photo.url if card.photo else None),
                 'status': card.status,
                 'status_display': card.get_status_display(),
+                'updated_at': card.updated_at.isoformat() if card.updated_at else None,
             }
         })
+    except IDCard.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Card not found'}, status=404)
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON data!'}, status=400)
     except Exception as e:
@@ -707,6 +706,9 @@ def api_idcard_delete(request, card_id):
     """API endpoint to delete an ID Card"""
     _card, err = _check_client_scope_by_card(request.user, card_id)
     if err: return err
+    # Client/client_staff cannot delete cards in approved/download/reprint
+    if _is_client_readonly(request.user, _card.status):
+        return _client_readonly_response()
     try:
         card = get_object_or_404(IDCard, id=card_id)
         card.delete()
@@ -726,6 +728,9 @@ def api_idcard_update_field(request, card_id):
     """API endpoint to update a single field on an ID Card (for inline editing)"""
     _card, err = _check_client_scope_by_card(request.user, card_id)
     if err: return err
+    # Client/client_staff cannot edit cards in approved/download/reprint
+    if _is_client_readonly(request.user, _card.status):
+        return _client_readonly_response()
     try:
         data = json.loads(request.body)
         field = data.get('field')
@@ -746,6 +751,9 @@ def api_idcard_change_status(request, card_id):
     """API endpoint to change an ID Card's status"""
     card, err = _check_client_scope_by_card(request.user, card_id)
     if err: return err
+    # Client/client_staff cannot change status of cards in approved/download/reprint
+    if _is_client_readonly(request.user, card.status):
+        return _client_readonly_response()
     try:
         data = json.loads(request.body)
         new_status = data.get('status')
@@ -799,6 +807,14 @@ def api_idcard_bulk_status(request, table_id):
             return JsonResponse({'success': False, 'message': 'Status is required'}, status=400)
         if not card_ids:
             return JsonResponse({'success': False, 'message': 'No cards selected'}, status=400)
+        
+        # Client/client_staff cannot bulk-change status of cards in approved/download/reprint
+        if request.user.role in ('client', 'client_staff'):
+            locked_count = IDCard.objects.filter(
+                id__in=card_ids, status__in=_CLIENT_READONLY_STATUSES
+            ).count()
+            if locked_count:
+                return _client_readonly_response()
         
         # Retrieve from pool (pool→pending) requires perm_idcard_retrieve
         if new_status == 'pending' and card_ids:
@@ -1364,46 +1380,24 @@ def api_idcard_bulk_upload(request, table_id):
             # Skip any headers that match image field names (those are for ZIP matching only)
             header_to_field = {}
             available_fields = table_fields.copy()
-            image_field_names_upper = [f.upper() for f in image_fields]
             
             # Track which column indices contain image reference values (like PHOTO column)
             image_ref_columns = {}
-            photo_column_idx = None  # Track the generic PHOTO column for any image field
+            unmatched_image_fields = list(image_fields)  # Track which image fields still need matching
             
             for idx, header in enumerate(headers):
-                header_upper = header.upper() if header else ''
-                header_lower = header.lower() if header else ''
-                
-                # Check if this header matches any image field by name or is an image column
-                is_image_ref = False
-                matched_img_field = None
-                
-                for img_field in image_fields:
-                    img_field_upper = img_field.upper()
-                    img_field_lower = img_field.lower()
-                    
-                    # Exact match
-                    if header_upper == img_field_upper:
-                        image_ref_columns[img_field] = idx
-                        is_image_ref = True
-                        matched_img_field = img_field
-                        break
-                    
-                    # Fuzzy match for image fields (e.g., "F PHOTO" -> "F PHOTO" field)
-                    # Normalize both for comparison using BaseService
-                    header_normalized = BaseService.normalize_name(header)
-                    field_normalized = BaseService.normalize_name(img_field)
-                    
-                    if header_normalized == field_normalized:
-                        image_ref_columns[img_field] = idx
-                        is_image_ref = True
-                        matched_img_field = img_field
-                        break
-                
-                # Skip this column for text field matching if it's an image reference column
-                if is_image_ref:
+                if not header:
                     continue
-                    
+                
+                # Try to match this header against unmatched image fields
+                # Uses abbreviation expansion: F PHOTO -> FATHER PHOTO, M PHOTO -> MOTHER PHOTO, etc.
+                matched_img_field = BaseService.find_best_image_field_match(header, unmatched_image_fields)
+                if matched_img_field:
+                    image_ref_columns[matched_img_field] = idx
+                    unmatched_image_fields.remove(matched_img_field)
+                    continue
+                
+                # Not an image field - try text field matching
                 match = BaseService.find_best_field_match(header, available_fields)
                 if match:
                     header_to_field[idx] = match
@@ -1424,6 +1418,9 @@ def api_idcard_bulk_upload(request, table_id):
             total_photos_matched = 0
             errors = []
             
+            # Track all saved image paths for rollback cleanup on failure
+            _saved_image_paths = []
+            
             # Cap rows to prevent excessive uploads
             MAX_BULK_ROWS = 5000
             if len(rows_data) > MAX_BULK_ROWS:
@@ -1437,9 +1434,48 @@ def api_idcard_bulk_upload(request, table_id):
             # Excel row 1 → highest id → shown first in table.
             rows_data = list(reversed(rows_data))
             
+            # ── Pre-scan: detect duplicate photo keys ──────────────
+            # If multiple rows reference the same filename for an image field,
+            # it's ambiguous which row should own the image. Mark ALL of them
+            # as PENDING so the user can assign manually.
+            # _duplicate_keys[(img_field, normalized_key)] = True means "skip image save"
+            from collections import Counter
+            _photo_key_counts = {}  # { img_field: Counter({key: count}) }
+            for _scan_row in rows_data:
+                if all(cell is None or str(cell).strip() == '' for cell in _scan_row):
+                    continue
+                for _img_f in image_fields:
+                    _col_idx = image_ref_columns.get(_img_f)
+                    if _col_idx is None:
+                        continue
+                    if _col_idx < len(_scan_row):
+                        _cv = _scan_row[_col_idx]
+                        if _cv is not None and str(_cv).strip() and str(_cv).strip().lower() != 'none':
+                            if isinstance(_cv, float) and _cv == int(_cv):
+                                _cv = str(int(_cv))
+                            elif isinstance(_cv, int):
+                                _cv = str(_cv)
+                            else:
+                                _cv = str(_cv).strip()
+                            _pk = BaseService.normalize_image_identifier(_cv)
+                            if _pk:
+                                if _img_f not in _photo_key_counts:
+                                    _photo_key_counts[_img_f] = Counter()
+                                _photo_key_counts[_img_f][_pk] += 1
+            
+            _duplicate_keys = set()
+            for _img_f, _counter in _photo_key_counts.items():
+                for _pk, _cnt in _counter.items():
+                    if _cnt > 1:
+                        _duplicate_keys.add((_img_f, _pk))
+            
+            if _duplicate_keys:
+                logger.info("Bulk upload: %d duplicate photo keys found — those rows will be PENDING", len(_duplicate_keys))
+            
             # Process data rows using rows_data collected earlier
-            with transaction.atomic():
-              for row_num, row in enumerate(rows_data, start=2):
+            try:
+              with transaction.atomic():
+               for row_num, row in enumerate(rows_data, start=2):
                 try:
                     # Skip empty rows
                     if all(cell is None or str(cell).strip() == '' for cell in row):
@@ -1497,12 +1533,13 @@ def api_idcard_bulk_upload(request, table_id):
                     
                     # Process image fields - try to match with ZIP photos
                     photos_matched = 0
+                    used_photo_keys_this_row = set()  # Prevent same image going to multiple columns
                     
                     for img_field in image_fields:
-                        # Get the photo reference value from the tracked column
+                        # Get the photo reference value ONLY from the mapped column
+                        # No fallback — if this field has no column mapped, it stays empty
                         photo_column_value = None
                         
-                        # Use the tracked image reference column if available
                         if img_field in image_ref_columns:
                             col_idx = image_ref_columns[img_field]
                             if col_idx < len(row):
@@ -1515,26 +1552,7 @@ def api_idcard_bulk_upload(request, table_id):
                                         photo_column_value = str(cell_value)
                                     else:
                                         photo_column_value = str(cell_value).strip()
-                        else:
-                            # Fallback: look for column named PHOTO or use photo_column_idx
-                            ref_col_idx = photo_column_idx if photo_column_idx is not None else None
-                            if ref_col_idx is None:
-                                # Search for PHOTO column
-                                for col_idx in range(len(headers)):
-                                    if headers[col_idx] and headers[col_idx].upper() == 'PHOTO':
-                                        ref_col_idx = col_idx
-                                        break
-                            
-                            if ref_col_idx is not None and ref_col_idx < len(row):
-                                cell_value = row[ref_col_idx]
-                                if cell_value is not None:
-                                    # Handle numeric values - CASE SENSITIVE
-                                    if isinstance(cell_value, float) and cell_value == int(cell_value):
-                                        photo_column_value = str(int(cell_value))
-                                    elif isinstance(cell_value, int):
-                                        photo_column_value = str(cell_value)
-                                    else:
-                                        photo_column_value = str(cell_value).strip()
+                        # else: field not mapped to any XLSX column — leave empty
                         
                         # Try to match photo from ZIP using normalized matching
                         # This handles: case insensitivity, whitespace, numeric formats
@@ -1542,6 +1560,12 @@ def api_idcard_bulk_upload(request, table_id):
                         
                         # Normalize the Excel cell value for matching
                         photo_key = BaseService.normalize_image_identifier(photo_column_value) if photo_column_value else None
+                        
+                        # Prevent same image appearing in multiple columns within the same row
+                        if photo_key and photo_key in used_photo_keys_this_row:
+                            logger.warning("Row %d: photo_key '%s' already used by another field, skipping for '%s'",
+                                          row_num, photo_key, img_field)
+                            photo_key = None
                         
                         # Debug first few rows
                         if row_num <= 5:
@@ -1557,8 +1581,13 @@ def api_idcard_bulk_upload(request, table_id):
                                 photo_info = field_zip_photos[photo_key]
                             elif unified_zip_photos and photo_key in unified_zip_photos:
                                 photo_info = unified_zip_photos[photo_key]
+                            if photo_info:
+                                used_photo_keys_this_row.add(photo_key)  # Claim this key
                         
-                        if photo_info:
+                        # If this key is used by multiple rows, skip saving — all get PENDING
+                        if photo_key and (img_field, photo_key) in _duplicate_keys:
+                            field_data[img_field] = f'PENDING:{photo_column_value}'
+                        elif photo_info:
                             try:
                                 # Generate new filename with 14-digit timestamp + batch counter
                                 cards_created += 1  # Increment before for 1-based counter
@@ -1575,6 +1604,7 @@ def api_idcard_bulk_upload(request, table_id):
                                 
                                 if result.success and result.data.get('path'):
                                     saved_path = result.data['path']
+                                    _saved_image_paths.append(saved_path)
                                     # Store the relative path for media serving
                                     field_data[img_field] = saved_path
                                     photos_matched += 1
@@ -1627,6 +1657,16 @@ def api_idcard_bulk_upload(request, table_id):
                     
                 except Exception as e:
                     errors.append(f'Row {row_num}: {str(e)}')
+            except Exception as atomic_err:
+                # Transaction rolled back — clean up orphaned image files saved to disk
+                logger.error("Bulk upload transaction failed, cleaning up %d images: %s",
+                             len(_saved_image_paths), atomic_err)
+                for orphan_path in _saved_image_paths:
+                    try:
+                        ImageService.delete_image(orphan_path)
+                    except Exception:
+                        pass
+                raise  # Re-raise so the outer try/except returns error response
         
         elif file_name.endswith('.csv'):
             import csv
@@ -1643,31 +1683,21 @@ def api_idcard_bulk_upload(request, table_id):
             
             # Track image reference columns for CSV
             csv_image_ref_columns = {}
-            csv_photo_column = None  # Track the generic PHOTO column
+            csv_unmatched_image_fields = list(image_fields)  # Track which image fields still need matching
             
             for header in csv_headers:
-                header_upper = header.upper() if header else ''
-                
-                # Check if this is a PHOTO column
-                if header_upper == 'PHOTO':
-                    csv_photo_column = header
-                    # Assign to first image field if not already assigned
-                    if image_fields and image_fields[0] not in csv_image_ref_columns:
-                        csv_image_ref_columns[image_fields[0]] = header
+                if not header:
                     continue
                 
-                # Check if this column matches any image field name exactly
-                is_image_ref = False
-                for img_field in image_fields:
-                    if header_upper == img_field.upper():
-                        csv_image_ref_columns[img_field] = header
-                        is_image_ref = True
-                        break
-                
-                # Skip this column for text field matching if it's an image reference column
-                if is_image_ref:
+                # Try to match this header against unmatched image fields
+                # Uses abbreviation expansion: F PHOTO -> FATHER PHOTO, M PHOTO -> MOTHER PHOTO, etc.
+                matched_img_field = BaseService.find_best_image_field_match(header, csv_unmatched_image_fields)
+                if matched_img_field:
+                    csv_image_ref_columns[matched_img_field] = header
+                    csv_unmatched_image_fields.remove(matched_img_field)
                     continue
-                    
+                
+                # Not an image field - try text field matching
                 match = BaseService.find_best_field_match(header.strip(), available_fields)
                 if match:
                     header_to_field[header] = match
@@ -1721,27 +1751,20 @@ def api_idcard_bulk_upload(request, table_id):
                     
                     # Process image fields - try to match with ZIP photos
                     photos_matched = 0
+                    used_photo_keys_this_row = set()  # Prevent same image going to multiple columns
                     
                     for img_field in image_fields:
-                        # Get the photo reference value from the tracked column
+                        # Get the photo reference value ONLY from the mapped column
+                        # No fallback — if this field has no column mapped, it stays empty
                         photo_column_value = None
                         
-                        # Use tracked image reference column if available
                         if img_field in csv_image_ref_columns:
                             csv_header = csv_image_ref_columns[img_field]
                             cell_value = row.get(csv_header, '')
                             if cell_value and str(cell_value).strip():
                                 # CASE SENSITIVE - do NOT convert to uppercase
                                 photo_column_value = str(cell_value).strip()
-                        else:
-                            # Fallback: look for column named PHOTO or matching image field name
-                            for csv_header, cell_value in row.items():
-                                header_upper = csv_header.upper() if csv_header else ''
-                                if header_upper == 'PHOTO' or header_upper == img_field.upper():
-                                    if cell_value and str(cell_value).strip():
-                                        # CASE SENSITIVE
-                                        photo_column_value = str(cell_value).strip()
-                                    break
+                        # else: field not mapped to any CSV column — leave empty
                         
                         # Try to match photo from ZIP using normalized matching
                         # This handles: case insensitivity, whitespace, numeric formats
@@ -1750,6 +1773,12 @@ def api_idcard_bulk_upload(request, table_id):
                         # Normalize the CSV cell value for matching
                         photo_key = BaseService.normalize_image_identifier(photo_column_value) if photo_column_value else None
                         
+                        # Prevent same image appearing in multiple columns within the same row
+                        if photo_key and photo_key in used_photo_keys_this_row:
+                            logger.warning("CSV Row %d: photo_key '%s' already used by another field, skipping for '%s'",
+                                          row_num, photo_key, img_field)
+                            photo_key = None
+                        
                         # Try to find photo in: 1) field-specific ZIP, 2) unified ZIP pool
                         photo_info = None
                         if photo_key:
@@ -1757,6 +1786,8 @@ def api_idcard_bulk_upload(request, table_id):
                                 photo_info = field_zip_photos[photo_key]
                             elif unified_zip_photos and photo_key in unified_zip_photos:
                                 photo_info = unified_zip_photos[photo_key]
+                            if photo_info:
+                                used_photo_keys_this_row.add(photo_key)  # Claim this key
                         
                         if photo_info:
                             try:
@@ -1875,6 +1906,16 @@ def api_idcard_reupload_images(request, table_id):
     """
     _tbl, err = _check_client_scope_by_table(request.user, table_id)
     if err: return err
+    # Client/client_staff cannot reupload images for tables with approved/download/reprint cards
+    if request.user.role in ('client', 'client_staff'):
+        has_locked = IDCard.objects.filter(
+            table_id=table_id, status__in=_CLIENT_READONLY_STATUSES
+        ).exists()
+        if has_locked:
+            return JsonResponse({
+                'success': False,
+                'message': 'This table contains cards in approved/download status. Client users cannot reupload images.'
+            }, status=403)
     try:
         import zipfile
         from io import BytesIO
@@ -1938,7 +1979,7 @@ def api_idcard_reupload_images(request, table_id):
         
         logger.debug("Reupload: %d images extracted from ZIP, keys: %s", len(zip_photos), list(zip_photos.keys())[:10])
         
-        # Get cards — scoped to selected IDs if provided, else all in table
+        # Get cards — scoped to selected IDs if provided, else all in table for current status
         card_ids = []
         if 'card_ids' in request.POST:
             try:
@@ -1946,10 +1987,18 @@ def api_idcard_reupload_images(request, table_id):
             except (json.JSONDecodeError, TypeError):
                 card_ids = []
         
+        # Filter out empty/falsy values
+        card_ids = [int(cid) for cid in card_ids if cid and str(cid).strip().isdigit()] if card_ids else []
+        
         if card_ids:
             cards = IDCard.objects.filter(table=table, id__in=card_ids).order_by('id')
         else:
-            cards = IDCard.objects.filter(table=table).order_by('id')
+            # No specific IDs — reupload to ALL cards in this table (filtered by status if provided)
+            status_filter = request.POST.get('status', '')
+            if status_filter and status_filter in BaseService.VALID_STATUSES:
+                cards = IDCard.objects.filter(table=table, status=status_filter).order_by('id')
+            else:
+                cards = IDCard.objects.filter(table=table).order_by('id')
         
         updated_count = 0
         matched_count = 0

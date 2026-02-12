@@ -125,7 +125,7 @@
 <!-- Action Bar - Approved List -->
 <div class="action-bar action-buttons-bar" id="approvedActionBar" {% if current_status != 'approved' %}style="display: none;"{% endif %}>
     <div class="action-buttons-group">
-        {% if perm_idcard_edit %}
+        {% if perm_idcard_edit and not is_client and not is_client_staff %}
         <button class="btn action-btn btn-blue" id="editBtnA" disabled title="Edit selected card">
             <i class="fa-solid fa-pen-to-square"></i>
             <span class="btn-text">Edit</span>
@@ -137,11 +137,21 @@
             <span class="btn-text">View</span>
         </button>
         {% endif %}
+        {% if not is_client and not is_client_staff %}
+        {% if perm_idcard_verify %}
+        <button class="btn action-btn btn-red" id="unapprovedBtnA" disabled title="Move back to verified">
+            <i class="fa-solid fa-rotate-left"></i>
+            <span class="btn-text">Unapprove Selected</span>
+        </button>
+        {% endif %}
+        {% endif %}
         {% if perm_idcard_bulk_download %}
+        {% if not is_client and not is_client_staff %}
         <button class="btn action-btn btn-purple" id="downloadCardBtn" disabled title="Move to download list">
             <i class="fa-solid fa-download"></i>
             <span class="btn-text">Download Selected</span>
         </button>
+        {% endif %}
         <div class="action-divider"></div>
         <button class="btn action-btn btn-purple" id="downloadImgBtnA" title="Download images as ZIP">
             <i class="fa-solid fa-image"></i>
@@ -160,7 +170,7 @@
             <span class="btn-text">Download PDF</span>
         </button>
         {% endif %}
-        {% if perm_reupload_idcard_image %}
+        {% if perm_reupload_idcard_image and not is_client and not is_client_staff %}
         <button class="btn action-btn btn-red" id="reuploadImageBtnA" title="Reupload images from ZIP">
             <i class="fa-solid fa-rotate"></i>
             <span class="btn-text">Reupload Image</span>
@@ -172,7 +182,7 @@
 <!-- Action Bar - Download List (Final stage - no status change buttons, only export options) -->
 <div class="action-bar action-buttons-bar" id="downloadActionBar" {% if current_status != 'download' %}style="display: none;"{% endif %}>
     <div class="action-buttons-group">
-        {% if perm_idcard_edit %}
+        {% if perm_idcard_edit and not is_client and not is_client_staff %}
         <button class="btn action-btn btn-blue" id="editBtnD" disabled title="Edit selected card">
             <i class="fa-solid fa-pen-to-square"></i>
             <span class="btn-text">Edit</span>
@@ -203,7 +213,7 @@
             <span class="btn-text">Export PDF</span>
         </button>
         {% endif %}
-        {% if perm_reupload_idcard_image %}
+        {% if perm_reupload_idcard_image and not is_client and not is_client_staff %}
         <button class="btn action-btn btn-red" id="reuploadImageBtnD" title="Reupload images from ZIP">
             <i class="fa-solid fa-rotate"></i>
             <span class="btn-text">Reupload</span>

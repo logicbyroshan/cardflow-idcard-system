@@ -30,6 +30,10 @@ function isRowVisible(row) {
 
 function startCellEdit(cell) {
     if (cell.querySelector('input, textarea, select')) return; // Already editing
+    if (cell.classList.contains('editing')) return; // Already in edit mode
+    
+    // Mark cell as editing to prevent duplicate clicks (Phase 5)
+    cell.classList.add('editing');
     
     const field = cell.getAttribute('data-field') || cell.getAttribute('data-field-name');
     const fieldType = cell.getAttribute('data-field-type') || '';
@@ -42,40 +46,11 @@ function startCellEdit(cell) {
     
     let editElement;
     
-    if (fieldType === 'class') {
-        // Class field: render as dropdown with Roman numerals
-        editElement = document.createElement('select');
-        editElement.className = 'inline-edit-input';
-        const classOptions = ['', 'NURSERY', 'LKG', 'UKG', 'KG', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
-        classOptions.forEach(opt => {
-            const option = document.createElement('option');
-            option.value = opt;
-            option.textContent = opt || 'Select Class...';
-            if (opt === currentValue) option.selected = true;
-            editElement.appendChild(option);
-        });
-    } else if (fieldType === 'section') {
-        // Section field: render as dropdown with A-Z
-        editElement = document.createElement('select');
-        editElement.className = 'inline-edit-input';
-        const emptyOpt = document.createElement('option');
-        emptyOpt.value = '';
-        emptyOpt.textContent = 'Select Section...';
-        editElement.appendChild(emptyOpt);
-        for (let i = 65; i <= 90; i++) {
-            const letter = String.fromCharCode(i);
-            const option = document.createElement('option');
-            option.value = letter;
-            option.textContent = letter;
-            if (letter === currentValue) option.selected = true;
-            editElement.appendChild(option);
-        }
-    } else {
-        // Default: text input
-        editElement = document.createElement('input');
-        editElement.type = 'text';
-        editElement.value = currentValue;
-    }
+    // Phase 4: Class and section now use text inputs instead of dropdowns
+    // All field types use text input for maximum flexibility
+    editElement = document.createElement('input');
+    editElement.type = 'text';
+    editElement.value = currentValue;
     
     editElement.className = 'inline-edit-input';
     
@@ -149,22 +124,29 @@ function cancelCellEdit(cell) {
     cell.style.overflow = '';
     cell.style.padding = '';
     cell.removeAttribute('data-original-value');
+    cell.classList.remove('editing'); // Phase 5: Remove editing class
 }
 
 function saveCellEdit(cell, newValue, cardId, field) {
     const originalValue = cell.getAttribute('data-original-value') || '';
     
-    // Convert to uppercase
-    const uppercaseValue = typeof newValue === 'string' ? newValue.toUpperCase() : newValue;
+    // Check if this is an image field — image paths must NOT be uppercased
+    const fieldType = (cell.getAttribute('data-field-type') || '').toLowerCase();
+    const IMAGE_TYPES = ['photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature', 'image'];
+    const isImageField = IMAGE_TYPES.includes(fieldType);
+    
+    // Convert to uppercase only for non-image text fields
+    const finalValue = (typeof newValue === 'string' && !isImageField) ? newValue.toUpperCase() : newValue;
     
     // If no change, just restore
-    if (uppercaseValue === originalValue) {
+    if (finalValue === originalValue) {
         const esc = window.escapeHtml || ((s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; });
         cell.innerHTML = `<span class="cell-value">${esc(originalValue)}</span>`;
         cell.style.position = '';
         cell.style.overflow = '';
         cell.style.padding = '';
         cell.removeAttribute('data-original-value');
+        cell.classList.remove('editing'); // Phase 5: Remove editing class
         return;
     }
     
@@ -186,7 +168,7 @@ function saveCellEdit(cell, newValue, cardId, field) {
         },
         body: JSON.stringify({
             field: field,
-            value: uppercaseValue
+            value: finalValue
         })
     })
     .then(response => {
@@ -195,12 +177,13 @@ function saveCellEdit(cell, newValue, cardId, field) {
     })
     .then(data => {
         const esc = window.escapeHtml || ((s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; });
-        cell.innerHTML = `<span class="cell-value">${esc(uppercaseValue)}</span>`;
+        cell.innerHTML = `<span class="cell-value">${esc(finalValue)}</span>`;
         cell.style.position = '';
         cell.style.overflow = '';
         cell.style.padding = '';
+        cell.classList.remove('editing'); // Phase 5: Remove editing class
         // Update data-original-value so next edit reads the new value
-        cell.setAttribute('data-original-value', uppercaseValue);
+        cell.setAttribute('data-original-value', finalValue);
         
         // Show success feedback
         cell.style.backgroundColor = '#d4edda';
@@ -211,6 +194,21 @@ function saveCellEdit(cell, newValue, cardId, field) {
         if (typeof showToast === 'function') {
             showToast('Field updated successfully', 'success');
         }
+        
+        // Phase 1: Re-apply filters so edited row hides/shows correctly
+        // e.g. if user changes section from A→C while filter is "A", row disappears
+        if (typeof applyFiltersAndSort === 'function') {
+            applyFiltersAndSort();
+        } else if (typeof window.applyFiltersAndSort === 'function') {
+            window.applyFiltersAndSort();
+        }
+        
+        // Refresh filter dropdown options in case new values were introduced
+        if (typeof populateFilterOptions === 'function') {
+            populateFilterOptions();
+        } else if (typeof window.populateFilterOptions === 'function') {
+            window.populateFilterOptions();
+        }
     })
     .catch(error => {
         console.error('Error updating field:', error);
@@ -219,6 +217,7 @@ function saveCellEdit(cell, newValue, cardId, field) {
         cell.style.position = '';
         cell.style.overflow = '';
         cell.style.padding = '';
+        cell.classList.remove('editing'); // Phase 5: Remove editing class
         cell.removeAttribute('data-original-value');
         
         // Show error feedback
@@ -241,7 +240,8 @@ function makeTableCellsEditable() {
     const table = document.getElementById('data-table');
     if (!table) return;
     
-    table.addEventListener('dblclick', function(e) {
+    // Phase 5: Changed from dblclick to single click for faster editing
+    table.addEventListener('click', function(e) {
         const cell = e.target.closest('td[data-field], td[data-field-name]');
         if (!cell) return;
         
@@ -262,6 +262,11 @@ function makeTableCellsEditable() {
             field.toLowerCase().includes('photo') || 
             field.toLowerCase().includes('image') ||
             field.toLowerCase().includes('picture')) {
+            return;
+        }
+        
+        // Prevent re-triggering if already editing
+        if (cell.classList.contains('editing')) {
             return;
         }
         

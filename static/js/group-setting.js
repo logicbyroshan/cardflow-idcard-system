@@ -272,9 +272,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 `<option value="${t.value}" ${field.type === t.value ? 'selected' : ''}>${t.label}</option>`
             ).join('');
             
+            // In add/edit mode, field name is an editable input; in view mode it's plain text
+            const fieldNameHtml = currentMode !== 'view'
+                ? `<span class="field-name"><input type="text" class="field-name-input" data-idx="${idx}" value="${field.name}" placeholder="Field name"></span>`
+                : `<span class="field-name">${field.name}</span>`;
+            
             li.innerHTML = `
                 <span class="field-drag"><i class="fa-solid fa-grip-vertical"></i></span>
-                <span class="field-name">${field.name}</span>
+                ${fieldNameHtml}
                 <span class="field-type-cell">
                     <select class="field-type-select" data-idx="${idx}" ${currentMode === 'view' ? 'disabled' : ''}>
                         ${typeOptionsHtml}
@@ -745,6 +750,14 @@ document.addEventListener('DOMContentLoaded', function() {
             if (e.target.classList.contains('field-type-select')) {
                 const idx = parseInt(e.target.dataset.idx);
                 currentFields[idx].type = e.target.value;
+            }
+        });
+
+        // Sync field name edits back to currentFields
+        fieldList.addEventListener('input', (e) => {
+            if (e.target.classList.contains('field-name-input')) {
+                const idx = parseInt(e.target.dataset.idx);
+                currentFields[idx].name = e.target.value.trim();
             }
         });
     }

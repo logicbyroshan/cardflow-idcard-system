@@ -221,18 +221,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('clientEmail').value = '';
         document.getElementById('clientPhone').value = '';
         
-        // Reset profile preview
-        const profilePreview = document.getElementById('profilePreview');
-        profilePreview.innerHTML = '<i class="fa-solid fa-user"></i>';
-        profilePreview.classList.remove('has-image');
-        
-        // Reset path display
-        const profilePathDisplay = document.getElementById('clientProfilePath');
-        if (profilePathDisplay) {
-            profilePathDisplay.textContent = 'No image';
-            profilePathDisplay.classList.remove('has-path', 'not-found');
-            profilePathDisplay.classList.add('no-path');
-        }
+        // Phase 1: Profile image upload removed - using avatar placeholder
         
         // Reset all permission checkboxes to checked (default state)
         document.querySelectorAll('.permission-row input[type="checkbox"]').forEach(cb => cb.checked = true);
@@ -251,24 +240,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (emailInput) emailInput.value = clientData.email || '';
         if (phoneInput) phoneInput.value = clientData.phone || '';
         
-        // Populate profile picture path display
-        const profilePathDisplay = document.getElementById('clientProfilePath');
-        const profilePreview = document.getElementById('profilePreview');
-        if (clientData.profile_pic) {
-            if (profilePathDisplay) {
-                profilePathDisplay.textContent = clientData.profile_pic;
-                profilePathDisplay.classList.remove('no-path', 'not-found');
-                profilePathDisplay.classList.add('has-path');
-            }
-            if (profilePreview) {
-                const img = document.createElement('img');
-                img.src = clientData.profile_pic;
-                img.alt = 'Profile';
-                profilePreview.innerHTML = '';
-                profilePreview.appendChild(img);
-                profilePreview.classList.add('has-image');
-            }
-        }
+        // Phase 1: Profile image upload removed - using avatar placeholder
         
         // Populate permissions (HTML IDs use underscores)
         const permissionFields = [
@@ -424,42 +396,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     submitBtn.innerHTML = originalText;
                 }
             } catch (error) {
-                showToast('An error occurred', 'error');
+                console.error('Client form submission error:', error);
+                showToast(error.message || 'An error occurred. Please try again.', 'error');
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = originalText;
             }
         });
     }
     
-    // ====================
-    // Profile Picture Upload Preview
-    // ====================
-    const profilePicInput = document.getElementById('clientProfilePic');
-    const profilePreview = document.getElementById('profilePreview');
-    const profilePathDisplay = document.getElementById('clientProfilePath');
-    
-    if (profilePicInput && profilePreview) {
-        profilePicInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    profilePreview.innerHTML = `<img src="${event.target.result}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">`;
-                    profilePreview.classList.add('has-image');
-                    // Update path display
-                    if (profilePathDisplay) {
-                        profilePathDisplay.textContent = file.name;
-                        profilePathDisplay.classList.remove('no-path', 'not-found');
-                        profilePathDisplay.classList.add('has-path');
-                    }
-                };
-                reader.onerror = function(error) {
-                    console.error('FileReader error:', error);
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-    }
+    // Phase 1: Profile picture upload removed - using avatar placeholder
     
     // ====================
     // Active/Inactive Toggle Button
@@ -489,27 +434,32 @@ document.addEventListener('DOMContentLoaded', function() {
         activeClientBtn.addEventListener('click', async function() {
             if (!selectedClientId) return;
             
-            const result = await toggleClientStatus(selectedClientId);
-            
-            if (result.success) {
-                showToast(result.message, 'success');
+            try {
+                const result = await toggleClientStatus(selectedClientId);
                 
-                // Update UI
-                const statusBadge = selectedRow.querySelector('.status-badge');
-                if (statusBadge) {
-                    if (result.status === 'active') {
-                        statusBadge.classList.remove('inactive');
-                        statusBadge.classList.add('active');
-                        statusBadge.textContent = 'Active';
-                    } else {
-                        statusBadge.classList.remove('active');
-                        statusBadge.classList.add('inactive');
-                        statusBadge.textContent = 'Inactive';
+                if (result.success) {
+                    showToast(result.message, 'success');
+                    
+                    // Update UI
+                    const statusBadge = selectedRow.querySelector('.status-badge');
+                    if (statusBadge) {
+                        if (result.status === 'active') {
+                            statusBadge.classList.remove('inactive');
+                            statusBadge.classList.add('active');
+                            statusBadge.textContent = 'Active';
+                        } else {
+                            statusBadge.classList.remove('active');
+                            statusBadge.classList.add('inactive');
+                            statusBadge.textContent = 'Inactive';
+                        }
                     }
+                    updateActiveButtonState();
+                } else {
+                    showToast(result.message || 'Failed to update status', 'error');
                 }
-                updateActiveButtonState();
-            } else {
-                showToast(result.message || 'Failed to update status', 'error');
+            } catch (error) {
+                console.error('Toggle client status error:', error);
+                showToast(error.message || 'Failed to update status', 'error');
             }
         });
     }
@@ -588,7 +538,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <div class="staff-name">${esc(staff.name)}</div>
                                     <div class="staff-role">${esc(staff.role || 'Staff')}</div>
                                 </div>
-                                <span class="staff-status-badge ${esc(staff.status)}">${staff.status === 'active' ? 'Active' : 'Inactive'}</span>
+                                <span class=\"staff-status-badge ${esc(staff.status)}\">${esc(staff.status_display || (staff.status === 'active' ? 'Active' : 'Inactive'))}</span>
                             </div>
                             <div class="staff-card-body">
                                 <div class="staff-detail-row">

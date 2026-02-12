@@ -94,8 +94,9 @@ def api_super_admin_required(view_func):
 def dashboard(request):
     """Main dashboard view - Super Admin & Admin Staff"""
     # Combine card status counts into a single aggregate query
+    # Exclude 'pool' status from total count
     card_stats = IDCard.objects.aggregate(
-        total=Count('id'),
+        total=Count('id', filter=Q(status__in=['pending', 'verified', 'approved', 'download'])),
         pending=Count('id', filter=Q(status='pending')),
         verified=Count('id', filter=Q(status='verified')),
         approved=Count('id', filter=Q(status='approved')),
@@ -130,7 +131,8 @@ def dashboard(request):
         'active_staff': staff_stats['active'],
         'client_staff_count': cs_stats['total'],
         'active_client_staff_count': cs_stats['active'],
-        'recent_activities': ActivityService.get_recent(limit=10),
+        # Role-based activity filtering - admin_staff gets filtered by assigned clients
+        'recent_activities': ActivityService.get_recent(limit=8, user=request.user),
     })
     return render(request, 'index.html', context)
 
@@ -205,9 +207,10 @@ def api_recent_client_updates(request):
 def api_recent_activity(request):
     """API endpoint for the Recent Activity feed on the dashboard."""
     try:
-        limit = int(request.GET.get('limit', 10))
-        limit = min(limit, 50)  # Cap at 50
-        activities = ActivityService.get_recent(limit=limit)
+        limit = int(request.GET.get('limit', 8))
+        limit = min(limit, 8)  # Cap at 8 for 24hr feed
+        # Role-based activity filtering
+        activities = ActivityService.get_recent(limit=limit, user=request.user)
         return JsonResponse({'success': True, 'activities': activities})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)

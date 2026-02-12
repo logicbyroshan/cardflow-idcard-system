@@ -18,7 +18,6 @@ import zipfile
 from io import BytesIO
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, field
-from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +85,7 @@ class ZipExporter:
         self,
         table,
         cards: QuerySet,
+        status: str = ''
     ) -> ZipExportResult:
         """
         Export images as separate ZIP files for each image field.
@@ -126,7 +126,8 @@ class ZipExporter:
             for field_info in image_fields:
                 field_name = field_info['name']
                 zip_info = self._create_zip_for_field(
-                    cards, field_name, clean_table_name, clean_client_name
+                    cards, field_name, clean_table_name, clean_client_name,
+                    status=status
                 )
                 
                 if zip_info:
@@ -158,7 +159,8 @@ class ZipExporter:
         cards: QuerySet,
         field_name: str,
         table_name: str,
-        client_name: str
+        client_name: str,
+        status: str = ''
     ) -> Optional[ZipFileInfo]:
         """
         Create a ZIP file for a single image field.
@@ -222,13 +224,16 @@ class ZipExporter:
         zip_buffer.seek(0)
         zip_data = zip_buffer.getvalue()
         
-        # Generate clean filename: ClientName_ListName_Field(N).zip
+        # Generate clean filename: ClientName_ListName_Field_Status.zip
         clean_field_name = self._get_readable_field_name(field_name)
-        n = max(1, int(datetime.now().strftime('%S')) % 60 + 1)
+        parts = []
         if client_name:
-            zip_filename = f"{client_name}_{table_name}_{clean_field_name}({n}).zip"
-        else:
-            zip_filename = f"{table_name}_{clean_field_name}({n}).zip"
+            parts.append(client_name)
+        parts.append(table_name)
+        parts.append(clean_field_name)
+        if status:
+            parts.append(clean_filename(status.capitalize()))
+        zip_filename = '_'.join(parts) + '.zip'
         
         # Encode as base64 for JavaScript download
         zip_base64 = base64.b64encode(zip_data).decode('utf-8')

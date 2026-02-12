@@ -60,7 +60,8 @@ class ExcelExporter:
         self,
         table,
         cards: QuerySet,
-        uppercase_values: bool = True
+        uppercase_values: bool = True,
+        status: str = ''
     ) -> ExcelExportResult:
         """
         Export cards to Excel format.
@@ -166,7 +167,7 @@ class ExcelExporter:
                 client_name = table.group.client.name
 
             # Generate filename
-            filename = generate_export_filename(table.name, 'xlsx', client_name=client_name)
+            filename = generate_export_filename(table.name, 'xlsx', client_name=client_name, status=status)
             
             # Create response
             response = HttpResponse(

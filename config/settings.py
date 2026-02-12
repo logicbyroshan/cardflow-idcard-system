@@ -69,6 +69,10 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # Permission Validation Middleware - re-checks permissions on every request
+    # CRITICAL: Must come after AuthenticationMiddleware
+    'core.middleware.PermissionValidationMiddleware',
+    'core.middleware.RoleScopingMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -288,6 +292,13 @@ else:
 # Site URL for email links
 # Local: http://localhost:8000 | Production: Set SITE_URL in .env
 SITE_URL = os.getenv('SITE_URL', 'http://localhost:8000')
+
+
+# =============================================================================
+# APP VERSION
+# =============================================================================
+
+APP_VERSION = os.getenv('APP_VERSION', 'v1.2.0')
 
 
 # =============================================================================

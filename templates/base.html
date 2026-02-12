@@ -7,14 +7,19 @@
   <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'css/style.css' %}?v=30">
-  <link rel="stylesheet" href="{% static 'css/common.css' %}?v=49">
+  <link rel="stylesheet" href="{% static 'css/common.css' %}?v=51">
   <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=2">
   {% block extra_css %}{% endblock %}
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Alpine.js State Module (MUST load before Alpine) -->
+  <script src="{% static 'js/alpine-state.js' %}?v=1"></script>
+  <!-- Alpine.js - Lightweight reactive UI framework -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
 </head>
-<body>
+<body x-data="layoutState()" x-init="init()">
 
   {% include 'partials/sidebar.html' %}
 
@@ -24,8 +29,8 @@
     <!-- Top Navbar -->
     <header class="topbar">
       <div class="nav-left">
-        <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
-          <i class="fa-solid fa-bars"></i>
+        <button class="sidebar-toggle" @click="toggleSidebar()" aria-label="Toggle sidebar">
+          <i class="fa-solid" :class="sidebarOpen ? 'fa-xmark' : 'fa-bars'"></i>
         </button>
         <div class="breadcrumb">
           {% block breadcrumb %}
@@ -40,6 +45,16 @@
     {% block content %}{% endblock %}
 
   </main>
+
+  <!-- Alpine Toast Container -->
+  <div class="alpine-toast-wrapper" x-show="toastQueue.length > 0">
+    <template x-for="toast in toastQueue" :key="toast.id">
+      <div class="alpine-toast" :class="getToastClass(toast.type)" x-transition>
+        <i :class="getToastIcon(toast.type)"></i>
+        <span x-text="toast.message"></span>
+      </div>
+    </template>
+  </div>
 
   <!-- Common Modules (Load Order Matters) -->
   <script src="{% static 'js/common/ajax.js' %}?v=2"></script>

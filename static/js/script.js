@@ -178,16 +178,17 @@ const searchInput = document.getElementById("searchInput");
 
 let currentFilterValue = "all";
 
-// Toggle dropdown open/close - only if elements exist and not on group-setting page
-if (dropdownToggle && customDropdown && !document.querySelector('.group-setting-page')) {
+// Toggle dropdown open/close - only if elements exist and not on group-setting or manage-client page
+// (manage-client has its own inline dropdown handler with column-specific search)
+if (dropdownToggle && customDropdown && !document.querySelector('.group-setting-page') && !document.getElementById('clientForm')) {
     dropdownToggle.addEventListener("click", function(e) {
         e.stopPropagation();
         customDropdown.classList.toggle("open");
     });
 
     // Close dropdown when clicking outside
-    document.addEventListener("click", function() {
-        if (customDropdown) customDropdown.classList.remove("open");
+    document.addEventListener("click", function(e) {
+        if (customDropdown && !customDropdown.contains(e.target)) customDropdown.classList.remove("open");
     });
 
     // Handle option selection

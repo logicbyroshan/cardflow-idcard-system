@@ -1,9 +1,89 @@
 // ID Card Actions - Download Module
 // Contains: Download images, DOCX, XLSX, reupload images
 
+/**
+ * Extract filename from Content-Disposition header, or use fallback.
+ */
+function _getDownloadFilename(xhr, fallbackExt) {
+    const disposition = xhr.getResponseHeader('Content-Disposition');
+    if (disposition) {
+        // Try filename*= (RFC 5987) first, then filename=
+        let match = disposition.match(/filename\*?=(?:UTF-8''|"?)([^";]+)"?/i);
+        if (match && match[1]) return decodeURIComponent(match[1]);
+    }
+    // Fallback: ClientName_TableName_Status.ext (from globals)
+    const clientName = (typeof CLIENT_NAME !== 'undefined' ? CLIENT_NAME : '').replace(/\s+/g, '');
+    const tableName = (typeof TABLE_NAME !== 'undefined' ? TABLE_NAME : '').replace(/\s+/g, '');
+    const status = (typeof CURRENT_STATUS !== 'undefined' ? CURRENT_STATUS : 'pending');
+    const statusCap = status.charAt(0).toUpperCase() + status.slice(1);
+    const parts = [clientName, tableName, statusCap].filter(Boolean);
+    return (parts.length ? parts.join('_') : 'export') + '.' + fallbackExt;
+}
+
+/**
+ * Get current status label for request body.
+ */
+function _getCurrentStatus() {
+    return typeof CURRENT_STATUS !== 'undefined' ? CURRENT_STATUS : '';
+}
+
+/**
+ * Get status label for modal display
+ */
+function _getStatusLabel() {
+    const STATUS_LABELS = {
+        pending: 'Pending',
+        verified: 'Verified',
+        approved: 'Approved',
+        download: 'Download',
+        pool: 'Pool'
+    };
+    return STATUS_LABELS[typeof CURRENT_STATUS !== 'undefined' ? CURRENT_STATUS : 'pending'] || 'Current';
+}
+
+// ==========================================
+// DOWNLOAD MODAL STATE (PDF, XLSX, Images)
+// ==========================================
+
+let pendingDownloadCardIds = [];
+let currentDownloadType = null; // 'pdf', 'xlsx', 'img'
+
+// Modal DOM references (set in initDownloadModals)
+let downloadPdfModal = null;
+let downloadXlsxModal = null;
+let downloadImgModal = null;
+
 // ==========================================
 // DOWNLOAD IMAGES (Separate ZIP per image column)
 // ==========================================
+
+function openDownloadImgModal(cardIds) {
+    pendingDownloadCardIds = cardIds;
+    currentDownloadType = 'img';
+    downloadImgModal = document.getElementById('downloadImgModal');
+    
+    if (!downloadImgModal) {
+        // Fallback: download directly if modal not found
+        downloadImages(cardIds);
+        return;
+    }
+    
+    const listNameEl = document.getElementById('downloadImgListName');
+    const cardCountEl = document.getElementById('downloadImgCardCount');
+    
+    if (listNameEl) listNameEl.textContent = _getStatusLabel() + ' List';
+    if (cardCountEl) cardCountEl.textContent = cardIds.length;
+    
+    downloadImgModal.style.display = 'flex';
+}
+
+function closeDownloadImgModal() {
+    if (downloadImgModal) {
+        downloadImgModal.style.display = 'none';
+    }
+    pendingDownloadCardIds = [];
+    currentDownloadType = null;
+}
 
 function downloadImages(cardIds) {
     const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : null;
@@ -104,22 +184,44 @@ function downloadImages(cardIds) {
         if (typeof showToast === 'function') showToast('Failed to download images', false);
     };
     
-    xhr.send(JSON.stringify({ card_ids: cardIds }));
+    xhr.send(JSON.stringify({ card_ids: cardIds, status: _getCurrentStatus() }));
 }
 
 function initDownloadImagesHandlers() {
     const downloadImgBtnIds = ['downloadImgBtn', 'downloadImgBtnV', 'downloadImgBtnP', 'downloadImgBtnA', 'downloadImgBtnD'];
     
     downloadImgBtnIds.forEach(btnId => {
-        document.getElementById(btnId)?.addEventListener('click', function() {
-            const cardIds = typeof getCardIdsForAction === 'function' ? getCardIdsForAction() : [];
-            if (cardIds.length > 0) {
-                downloadImages(cardIds);
-            } else {
-                if (typeof showToast === 'function') showToast('No cards available to download!', false);
+        document.getElementById(btnId)?.addEventListener('click', async function() {
+            this.disabled = true;
+            try {
+                const cardIds = typeof getAllCardIdsForAction === 'function' ? await getAllCardIdsForAction() : [];
+                if (cardIds.length > 0) {
+                    openDownloadImgModal(cardIds);
+                } else {
+                    if (typeof showToast === 'function') showToast('No cards available to download!', false);
+                }
+            } finally {
+                this.disabled = false;
             }
         });
     });
+    
+    // Modal button handlers
+    document.getElementById('downloadImgCancel')?.addEventListener('click', closeDownloadImgModal);
+    document.getElementById('downloadImgConfirm')?.addEventListener('click', function() {
+        if (pendingDownloadCardIds.length > 0) {
+            closeDownloadImgModal();
+            downloadImages(pendingDownloadCardIds);
+        }
+    });
+    
+    // Close on backdrop click
+    downloadImgModal = document.getElementById('downloadImgModal');
+    if (downloadImgModal) {
+        downloadImgModal.addEventListener('click', function(e) {
+            if (e.target === downloadImgModal) closeDownloadImgModal();
+        });
+    }
 }
 
 // ==========================================
@@ -184,15 +286,7 @@ function downloadDocx(cardIds, format) {
             const a = document.createElement('a');
             a.style.display = 'none';
             a.href = url;
-            
-            const now = new Date();
-            const timestamp = now.getFullYear().toString() + 
-                             (now.getMonth() + 1).toString().padStart(2, '0') + 
-                             now.getDate().toString().padStart(2, '0') + '_' +
-                             now.getHours().toString().padStart(2, '0') + 
-                             now.getMinutes().toString().padStart(2, '0') + 
-                             now.getSeconds().toString().padStart(2, '0');
-            a.download = `idcards_${timestamp}.${format}`;
+            a.download = _getDownloadFilename(xhr, format);
             
             document.body.appendChild(a);
             a.click();
@@ -221,7 +315,7 @@ function downloadDocx(cardIds, format) {
         if (typeof showToast === 'function') showToast('Failed to download document', false);
     };
     
-    xhr.send(JSON.stringify({ card_ids: cardIds, format: format }));
+    xhr.send(JSON.stringify({ card_ids: cardIds, format: format, status: _getCurrentStatus() }));
 }
 
 function initDownloadDocxHandlers() {
@@ -248,12 +342,17 @@ function initDownloadDocxHandlers() {
     const downloadDocxBtnIds = ['downloadDocxBtn', 'downloadDocxBtnV', 'downloadDocxBtnP', 'downloadDocxBtnA', 'downloadDocxBtnD'];
     
     downloadDocxBtnIds.forEach(btnId => {
-        document.getElementById(btnId)?.addEventListener('click', function() {
-            const cardIds = typeof getCardIdsForAction === 'function' ? getCardIdsForAction() : [];
-            if (cardIds.length > 0) {
-                openDocFormatModal(cardIds);
-            } else {
-                if (typeof showToast === 'function') showToast('No cards available to download!', false);
+        document.getElementById(btnId)?.addEventListener('click', async function() {
+            this.disabled = true;
+            try {
+                const cardIds = typeof getAllCardIdsForAction === 'function' ? await getAllCardIdsForAction() : [];
+                if (cardIds.length > 0) {
+                    openDocFormatModal(cardIds);
+                } else {
+                    if (typeof showToast === 'function') showToast('No cards available to download!', false);
+                }
+            } finally {
+                this.disabled = false;
             }
         });
     });
@@ -262,6 +361,34 @@ function initDownloadDocxHandlers() {
 // ==========================================
 // DOWNLOAD XLSX
 // ==========================================
+
+function openDownloadXlsxModal(cardIds) {
+    pendingDownloadCardIds = cardIds;
+    currentDownloadType = 'xlsx';
+    downloadXlsxModal = document.getElementById('downloadXlsxModal');
+    
+    if (!downloadXlsxModal) {
+        // Fallback: download directly if modal not found
+        downloadXlsx(cardIds);
+        return;
+    }
+    
+    const listNameEl = document.getElementById('downloadXlsxListName');
+    const cardCountEl = document.getElementById('downloadXlsxCardCount');
+    
+    if (listNameEl) listNameEl.textContent = _getStatusLabel() + ' List';
+    if (cardCountEl) cardCountEl.textContent = cardIds.length;
+    
+    downloadXlsxModal.style.display = 'flex';
+}
+
+function closeDownloadXlsxModal() {
+    if (downloadXlsxModal) {
+        downloadXlsxModal.style.display = 'none';
+    }
+    pendingDownloadCardIds = [];
+    currentDownloadType = null;
+}
 
 function downloadXlsx(cardIds) {
     const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : null;
@@ -299,15 +426,7 @@ function downloadXlsx(cardIds) {
             const a = document.createElement('a');
             a.style.display = 'none';
             a.href = url;
-            
-            const now = new Date();
-            const timestamp = now.getFullYear().toString() + 
-                             (now.getMonth() + 1).toString().padStart(2, '0') + 
-                             now.getDate().toString().padStart(2, '0') + '_' +
-                             now.getHours().toString().padStart(2, '0') + 
-                             now.getMinutes().toString().padStart(2, '0') + 
-                             now.getSeconds().toString().padStart(2, '0');
-            a.download = `idcards_${timestamp}.xlsx`;
+            a.download = _getDownloadFilename(xhr, 'xlsx');
             
             document.body.appendChild(a);
             a.click();
@@ -336,29 +455,84 @@ function downloadXlsx(cardIds) {
         if (typeof showToast === 'function') showToast('Failed to download Excel file', false);
     };
     
-    xhr.send(JSON.stringify({ card_ids: cardIds }));
+    xhr.send(JSON.stringify({ card_ids: cardIds, status: _getCurrentStatus() }));
 }
 
 function initDownloadXlsxHandlers() {
     const downloadXlsxBtnIds = ['downloadXlsxBtn', 'downloadXlsxBtnV', 'downloadXlsxBtnP', 'downloadXlsxBtnA', 'downloadXlsxBtnD'];
     
     downloadXlsxBtnIds.forEach(btnId => {
-        document.getElementById(btnId)?.addEventListener('click', function() {
-            const cardIds = typeof getCardIdsForAction === 'function' ? getCardIdsForAction() : [];
-            if (cardIds.length > 0) {
-                downloadXlsx(cardIds);
-            } else {
-                if (typeof showToast === 'function') showToast('No cards available to download!', false);
+        document.getElementById(btnId)?.addEventListener('click', async function() {
+            this.disabled = true;
+            try {
+                const cardIds = typeof getAllCardIdsForAction === 'function' ? await getAllCardIdsForAction() : [];
+                if (cardIds.length > 0) {
+                    openDownloadXlsxModal(cardIds);
+                } else {
+                    if (typeof showToast === 'function') showToast('No cards available to download!', false);
+                }
+            } finally {
+                this.disabled = false;
             }
         });
     });
+    
+    // Modal button handlers
+    document.getElementById('downloadXlsxCancel')?.addEventListener('click', closeDownloadXlsxModal);
+    document.getElementById('downloadXlsxConfirm')?.addEventListener('click', function() {
+        if (pendingDownloadCardIds.length > 0) {
+            closeDownloadXlsxModal();
+            downloadXlsx(pendingDownloadCardIds);
+        }
+    });
+    
+    // Close on backdrop click
+    downloadXlsxModal = document.getElementById('downloadXlsxModal');
+    if (downloadXlsxModal) {
+        downloadXlsxModal.addEventListener('click', function(e) {
+            if (e.target === downloadXlsxModal) closeDownloadXlsxModal();
+        });
+    }
 }
 
 // ==========================================
-// DOWNLOAD PDF
+// DOWNLOAD PDF (with template selection modal)
 // ==========================================
 
-function downloadPdf(cardIds) {
+let pendingPdfCardIds = [];
+let selectedPdfTemplate = 'default';
+
+function openDownloadPdfModal(cardIds) {
+    pendingPdfCardIds = cardIds;
+    downloadPdfModal = document.getElementById('downloadPdfModal');
+    
+    if (!downloadPdfModal) {
+        // Fallback: download directly if modal not found
+        downloadPdf(cardIds, 'default');
+        return;
+    }
+    
+    const listNameEl = document.getElementById('downloadPdfListName');
+    const cardCountEl = document.getElementById('downloadPdfCardCount');
+    const templateSelect = document.getElementById('downloadPdfTemplate');
+    
+    if (listNameEl) listNameEl.textContent = _getStatusLabel() + ' List';
+    if (cardCountEl) cardCountEl.textContent = cardIds.length;
+    if (templateSelect) templateSelect.value = 'default';
+    
+    downloadPdfModal.style.display = 'flex';
+}
+
+function closeDownloadPdfModal() {
+    if (downloadPdfModal) {
+        downloadPdfModal.style.display = 'none';
+    }
+    pendingPdfCardIds = [];
+}
+
+function downloadPdf(cardIds, template) {
+    template = template || 'default';
+    
     const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : null;
     if (!tableId) {
         if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
@@ -394,15 +568,7 @@ function downloadPdf(cardIds) {
             const a = document.createElement('a');
             a.style.display = 'none';
             a.href = url;
-            
-            const now = new Date();
-            const timestamp = now.getFullYear().toString() + 
-                             (now.getMonth() + 1).toString().padStart(2, '0') + 
-                             now.getDate().toString().padStart(2, '0') + '_' +
-                             now.getHours().toString().padStart(2, '0') + 
-                             now.getMinutes().toString().padStart(2, '0') + 
-                             now.getSeconds().toString().padStart(2, '0');
-            a.download = `idcards_${timestamp}.pdf`;
+            a.download = _getDownloadFilename(xhr, 'pdf');
             
             document.body.appendChild(a);
             a.click();
@@ -431,22 +597,46 @@ function downloadPdf(cardIds) {
         if (typeof showToast === 'function') showToast('Failed to download PDF file', false);
     };
     
-    xhr.send(JSON.stringify({ card_ids: cardIds }));
+    xhr.send(JSON.stringify({ card_ids: cardIds, status: _getCurrentStatus(), template: template }));
 }
 
 function initDownloadPdfHandlers() {
     const downloadPdfBtnIds = ['downloadPdfBtn', 'downloadPdfBtnV', 'downloadPdfBtnP', 'downloadPdfBtnA', 'downloadPdfBtnD'];
     
     downloadPdfBtnIds.forEach(btnId => {
-        document.getElementById(btnId)?.addEventListener('click', function() {
-            const cardIds = typeof getCardIdsForAction === 'function' ? getCardIdsForAction() : [];
-            if (cardIds.length > 0) {
-                downloadPdf(cardIds);
-            } else {
-                if (typeof showToast === 'function') showToast('No cards available to download!', false);
+        document.getElementById(btnId)?.addEventListener('click', async function() {
+            this.disabled = true;
+            try {
+                const cardIds = typeof getAllCardIdsForAction === 'function' ? await getAllCardIdsForAction() : [];
+                if (cardIds.length > 0) {
+                    openDownloadPdfModal(cardIds);
+                } else {
+                    if (typeof showToast === 'function') showToast('No cards available to download!', false);
+                }
+            } finally {
+                this.disabled = false;
             }
         });
     });
+    
+    // Modal button handlers
+    document.getElementById('downloadPdfCancel')?.addEventListener('click', closeDownloadPdfModal);
+    document.getElementById('downloadPdfConfirm')?.addEventListener('click', function() {
+        if (pendingPdfCardIds.length > 0) {
+            const templateSelect = document.getElementById('downloadPdfTemplate');
+            const template = templateSelect ? templateSelect.value : 'default';
+            closeDownloadPdfModal();
+            downloadPdf(pendingPdfCardIds, template);
+        }
+    });
+    
+    // Close on backdrop click
+    downloadPdfModal = document.getElementById('downloadPdfModal');
+    if (downloadPdfModal) {
+        downloadPdfModal.addEventListener('click', function(e) {
+            if (e.target === downloadPdfModal) closeDownloadPdfModal();
+        });
+    }
 }
 
 // ==========================================
@@ -486,9 +676,10 @@ function openReuploadActionsModal() {
         console.error('Reupload modal not found in DOM (#reuploadActionsModal)');
         return;
     }
-    // Collect card IDs fresh if not already set
-    if (pendingReuploadCardIds.length === 0 && typeof getCardIdsForAction === 'function') {
-        pendingReuploadCardIds = getCardIdsForAction();
+    // Card IDs should already be set by the button handler via getAllCardIdsForAction()
+    // Only fallback to visible cards if something went wrong (should not happen normally)
+    if (pendingReuploadCardIds.length === 0 && typeof getAllVisibleCardIds === 'function') {
+        pendingReuploadCardIds = getAllVisibleCardIds();
     }
     const statusLabel = STATUS_LABELS[typeof CURRENT_STATUS !== 'undefined' ? CURRENT_STATUS : 'pending'] || 'Current';
     if (reuploadActionsListName) reuploadActionsListName.textContent = statusLabel + ' List';
@@ -592,6 +783,7 @@ function initReuploadHandlers() {
             const formData = new FormData();
             formData.append('photos_zip', reuploadActionsFileInput.files[0]);
             formData.append('card_ids', JSON.stringify(pendingReuploadCardIds));
+            formData.append('status', _getCurrentStatus());
 
             const xhr = new XMLHttpRequest();
             xhr.open('POST', `/panel/api/table/${tableId}/cards/reupload-images/`, true);
@@ -645,10 +837,14 @@ function initReuploadHandlers() {
     reuploadBtnIds.forEach(btnId => {
         const btn = document.getElementById(btnId);
         if (btn) {
-            btn.addEventListener('click', function() {
-                // Always open modal — card IDs collected inside openReuploadActionsModal
-                pendingReuploadCardIds = typeof getCardIdsForAction === 'function' ? getCardIdsForAction() : [];
-                openReuploadActionsModal();
+            btn.addEventListener('click', async function() {
+                this.disabled = true;
+                try {
+                    pendingReuploadCardIds = typeof getAllCardIdsForAction === 'function' ? await getAllCardIdsForAction() : [];
+                    openReuploadActionsModal();
+                } finally {
+                    this.disabled = false;
+                }
             });
         }
     });
@@ -658,7 +854,30 @@ function initReuploadHandlers() {
 // INITIALIZATION
 // ==========================================
 
+function initDownloadModals() {
+    // Initialize modal references
+    downloadPdfModal = document.getElementById('downloadPdfModal');
+    downloadXlsxModal = document.getElementById('downloadXlsxModal');
+    downloadImgModal = document.getElementById('downloadImgModal');
+    
+    // Add keyboard escape handler for all download modals
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            if (downloadPdfModal && downloadPdfModal.style.display === 'flex') {
+                closeDownloadPdfModal();
+            }
+            if (downloadXlsxModal && downloadXlsxModal.style.display === 'flex') {
+                closeDownloadXlsxModal();
+            }
+            if (downloadImgModal && downloadImgModal.style.display === 'flex') {
+                closeDownloadImgModal();
+            }
+        }
+    });
+}
+
 function initDownloadModule() {
+    initDownloadModals();
     initDownloadImagesHandlers();
     initDownloadDocxHandlers();
     initDownloadXlsxHandlers();

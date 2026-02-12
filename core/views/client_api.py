@@ -147,3 +147,31 @@ def api_client_staff(request, client_id):
         return JsonResponse({'success': False, 'message': 'Access denied. You are not assigned to this client.'}, status=403)
     result = ClientService.get_staff(client_id)
     return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+@api_super_admin_required
+def api_client_staff_toggle_status(request, client_id, staff_id):
+    """
+    API endpoint for Super Admin to toggle client staff active/inactive status.
+    Validates that the staff belongs to the specified client.
+    """
+    result = ClientService.toggle_client_staff_status(client_id, staff_id)
+    return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
+
+
+@csrf_exempt
+@require_http_methods(["PUT", "POST"])
+@api_super_admin_required
+def api_client_staff_permissions(request, client_id, staff_id):
+    """
+    API endpoint for Super Admin to update client staff permissions.
+    Super Admin can override any permission as long as it doesn't exceed client's permissions.
+    """
+    try:
+        data = json.loads(request.body)
+        result = ClientService.update_client_staff_permissions(client_id, staff_id, data)
+        return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)

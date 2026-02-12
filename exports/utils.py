@@ -120,35 +120,34 @@ def separate_fields_by_type(fields: List[Dict[str, Any]]) -> Dict[str, List[Dict
 # FILENAME GENERATION
 # =============================================================================
 
-def generate_export_filename(base_name: str, extension: str, timestamp: bool = True, client_name: str = '') -> str:
+def generate_export_filename(base_name: str, extension: str, timestamp: bool = True, client_name: str = '', status: str = '') -> str:
     """
     Generate a clean filename for export.
     
-    Format: ClientName_ListName(N).ext
-    where N is a short numeric suffix based on timestamp seconds.
+    Format: ClientName_TableName_Status.ext
     
     Args:
         base_name: Base name for the file (e.g., table name / list name)
         extension: File extension (e.g., 'xlsx', 'docx', 'zip')
         timestamp: (kept for backward compat, ignored now)
         client_name: Client/institution name to prefix
+        status: Status label (e.g., 'pending', 'verified', 'approved')
         
     Returns:
-        Clean filename string like "RoshanDamor_StudentList(1).pdf"
+        Clean filename string like "RoshanDamor_StudentList_Pending.pdf"
     """
     clean_base = clean_filename(base_name)
     
+    parts = []
     if client_name:
-        clean_client = clean_filename(client_name)
-        name_part = f"{clean_client}_{clean_base}"
-    else:
-        name_part = clean_base
+        parts.append(clean_filename(client_name))
+    parts.append(clean_base)
+    if status:
+        parts.append(clean_filename(status.capitalize()))
     
-    # Use seconds-of-minute as a short incrementing number (1-60)
-    from datetime import datetime
-    n = max(1, int(datetime.now().strftime('%S')) % 60 + 1)
+    name_part = '_'.join(parts)
     
-    return f"{name_part}({n}).{extension}"
+    return f"{name_part}.{extension.lower()}"
 
 
 def clean_filename(name: str) -> str:

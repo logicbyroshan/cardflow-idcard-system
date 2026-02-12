@@ -81,201 +81,160 @@ function initSearchHandlers() {
 
 // ==========================================
 // CLASS AND SECTION FILTER HANDLERS
+// Phase 4: Updated to use text input filters instead of dropdowns
 // ==========================================
 
-// Current filter values
-let currentClassFilter = 'all';
-let currentSectionFilter = 'all';
+// Current filter values (exposed globally for table module integration)
+let currentClassFilter = '';
+let currentSectionFilter = '';
+window.currentClassFilter = '';
+window.currentSectionFilter = '';
 
 function initFilterHandlers() {
-    // Populate filter options from table data
-    populateFilterOptions();
-    
-    // Attach click handlers to filter options
-    attachClassFilterHandlers();
-    attachSectionFilterHandlers();
+    initClassFilterDropdown();
+    initSectionFilterDropdown();
+    // Populate options from table data after a short delay to let table render
+    setTimeout(populateFilterOptions, 500);
 }
 
+function initClassFilterDropdown() {
+    const dropdown = document.getElementById('classFilterDropdown');
+    const toggle = document.getElementById('classFilterToggle');
+    const options = document.getElementById('classFilterOptions');
+    const text = document.getElementById('classFilterText');
+    if (!dropdown || !toggle || !options) return;
+
+    toggle.addEventListener('click', function(e) {
+        e.stopPropagation();
+        // Close other filter dropdown
+        const other = document.getElementById('sectionFilterDropdown');
+        if (other) other.classList.remove('open');
+        dropdown.classList.toggle('open');
+    });
+
+    options.addEventListener('click', function(e) {
+        const opt = e.target.closest('.dropdown-option');
+        if (!opt) return;
+        options.querySelectorAll('.dropdown-option').forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected');
+        const val = opt.dataset.value || '';
+        currentClassFilter = val;
+        window.currentClassFilter = val;
+        text.textContent = opt.textContent.trim();
+        dropdown.classList.remove('open');
+        applyClassSectionFilters();
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!dropdown.contains(e.target)) dropdown.classList.remove('open');
+    });
+}
+
+function initSectionFilterDropdown() {
+    const dropdown = document.getElementById('sectionFilterDropdown');
+    const toggle = document.getElementById('sectionFilterToggle');
+    const options = document.getElementById('sectionFilterOptions');
+    const text = document.getElementById('sectionFilterText');
+    if (!dropdown || !toggle || !options) return;
+
+    toggle.addEventListener('click', function(e) {
+        e.stopPropagation();
+        // Close other filter dropdown
+        const other = document.getElementById('classFilterDropdown');
+        if (other) other.classList.remove('open');
+        dropdown.classList.toggle('open');
+    });
+
+    options.addEventListener('click', function(e) {
+        const opt = e.target.closest('.dropdown-option');
+        if (!opt) return;
+        options.querySelectorAll('.dropdown-option').forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected');
+        const val = opt.dataset.value || '';
+        currentSectionFilter = val;
+        window.currentSectionFilter = val;
+        text.textContent = opt.textContent.trim();
+        dropdown.classList.remove('open');
+        applyClassSectionFilters();
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!dropdown.contains(e.target)) dropdown.classList.remove('open');
+    });
+}
+
+/**
+ * Scan table rows and populate class/section filter dropdowns with unique values.
+ * Called after table renders and also after any data change (add/edit/delete/upload).
+ */
 function populateFilterOptions() {
+    const { classIndex, sectionIndex } = getClassSectionColumnIndices();
     const tableBody = document.getElementById('cardsTableBody');
-    if (!tableBody) {
-        return;
-    }
-    
+    if (!tableBody) return;
+
     const rows = tableBody.querySelectorAll('tr[data-card-id]');
     const classValues = new Set();
     const sectionValues = new Set();
-    
-    // Get header indices for Class and Section columns
-    const headerRow = document.querySelector('#data-table thead tr');
-    if (!headerRow) {
-        return;
-    }
-    
-    const headers = headerRow.querySelectorAll('th');
-    let classColIndex = -1;
-    let sectionColIndex = -1;
-    
-    headers.forEach((header, index) => {
-        // Use data-field-name attribute if available, otherwise use text content
-        const fieldName = header.getAttribute('data-field-name') || header.textContent.trim();
-        const fieldNameUpper = fieldName.toUpperCase();
-        
-        // Match CLASS or similar names
-        if (classColIndex === -1 && (fieldNameUpper === 'CLASS' || fieldNameUpper === 'STD' || fieldNameUpper === 'STANDARD' || fieldNameUpper === 'GRADE' || fieldNameUpper.includes('CLASS'))) {
-            classColIndex = index;
-        }
-        // Match SECTION or similar names
-        if (sectionColIndex === -1 && (fieldNameUpper === 'SECTION' || fieldNameUpper === 'SEC' || fieldNameUpper === 'DIV' || fieldNameUpper === 'DIVISION' || fieldNameUpper.includes('SECTION'))) {
-            sectionColIndex = index;
-        }
-    });
-    
-    // Collect unique values from rows
-    rows.forEach((row, rowIndex) => {
+
+    rows.forEach(row => {
         const cells = row.querySelectorAll('td');
-        
-        if (classColIndex >= 0 && classColIndex < cells.length) {
-            // Get the text content, handling span inside cell
-            const cell = cells[classColIndex];
-            const cellValue = cell.querySelector('.cell-value');
-            const classVal = (cellValue ? cellValue.textContent : cell.textContent).trim();
-            if (classVal && classVal !== '-' && classVal !== '') {
-                classValues.add(classVal);
-            }
+        if (classIndex >= 0 && classIndex < cells.length) {
+            const cell = cells[classIndex];
+            const span = cell.querySelector('.cell-value');
+            const val = (span ? span.textContent : cell.textContent).trim();
+            if (val) classValues.add(val);
         }
-        
-        if (sectionColIndex >= 0 && sectionColIndex < cells.length) {
-            const cell = cells[sectionColIndex];
-            const cellValue = cell.querySelector('.cell-value');
-            const sectionVal = (cellValue ? cellValue.textContent : cell.textContent).trim();
-            if (sectionVal && sectionVal !== '-' && sectionVal !== '') {
-                sectionValues.add(sectionVal);
-            }
+        if (sectionIndex >= 0 && sectionIndex < cells.length) {
+            const cell = cells[sectionIndex];
+            const span = cell.querySelector('.cell-value');
+            const val = (span ? span.textContent : cell.textContent).trim();
+            if (val) sectionValues.add(val);
         }
     });
-    
-    // Populate Class dropdown
-    const classOptionsContainer = document.getElementById('classFilterOptions');
-    if (classOptionsContainer && classValues.size > 0) {
-        // Keep "All Classes" option, clear others
-        const allOption = classOptionsContainer.querySelector('[data-value="all"]');
-        classOptionsContainer.innerHTML = '';
-        if (allOption) {
-            classOptionsContainer.appendChild(allOption);
-        } else {
-            const opt = document.createElement('div');
-            opt.className = 'dropdown-option selected';
-            opt.setAttribute('data-value', 'all');
-            opt.textContent = 'All Classes';
-            classOptionsContainer.appendChild(opt);
-        }
-        
-        const sortedClasses = Array.from(classValues).sort((a, b) => {
-            // Try numeric sort first (for roman numerals, convert)
-            const romanToNum = {'I':1,'II':2,'III':3,'IV':4,'V':5,'VI':6,'VII':7,'VIII':8,'IX':9,'X':10,'XI':11,'XII':12};
-            const numA = romanToNum[a.toUpperCase()] || parseInt(a) || 999;
-            const numB = romanToNum[b.toUpperCase()] || parseInt(b) || 999;
-            return numA - numB;
-        });
-        
-        sortedClasses.forEach(classVal => {
-            const option = document.createElement('div');
-            option.className = 'dropdown-option';
-            option.setAttribute('data-value', classVal);
-            option.textContent = classVal;
-            classOptionsContainer.appendChild(option);
-        });
-    }
-    
-    // Populate Section dropdown
-    const sectionOptionsContainer = document.getElementById('sectionFilterOptions');
-    if (sectionOptionsContainer && sectionValues.size > 0) {
-        // Keep "All Sections" option, clear others
-        const allOption = sectionOptionsContainer.querySelector('[data-value="all"]');
-        sectionOptionsContainer.innerHTML = '';
-        if (allOption) {
-            sectionOptionsContainer.appendChild(allOption);
-        } else {
-            const opt = document.createElement('div');
-            opt.className = 'dropdown-option selected';
-            opt.setAttribute('data-value', 'all');
-            opt.textContent = 'All Sections';
-            sectionOptionsContainer.appendChild(opt);
-        }
-        
-        const sortedSections = Array.from(sectionValues).sort();
-        
-        sortedSections.forEach(sectionVal => {
-            const option = document.createElement('div');
-            option.className = 'dropdown-option';
-            option.setAttribute('data-value', sectionVal);
-            option.textContent = sectionVal;
-            sectionOptionsContainer.appendChild(option);
-        });
-    }
-    
-    // Attach click handlers to the new options
-    attachClassFilterHandlers();
-    attachSectionFilterHandlers();
-}
 
-function attachClassFilterHandlers() {
-    // Use event delegation instead of cloning to avoid removing existing dropdown listeners
-    const classOptionsContainer = document.getElementById('classFilterOptions');
-    
-    if (classOptionsContainer && !classOptionsContainer.hasAttribute('data-filter-initialized')) {
-        classOptionsContainer.setAttribute('data-filter-initialized', 'true');
-        
-        classOptionsContainer.addEventListener('click', function(e) {
-            const option = e.target.closest('.dropdown-option');
-            if (!option) return;
-            
-            currentClassFilter = option.getAttribute('data-value');
-            
-            const filterText = document.getElementById('classFilterText');
-            if (filterText) {
-                filterText.textContent = currentClassFilter === 'all' ? 'Class' : currentClassFilter;
+    // Populate class dropdown
+    const classOptions = document.getElementById('classFilterOptions');
+    if (classOptions) {
+        const sorted = [...classValues].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+        classOptions.innerHTML = '<div class="dropdown-option selected" data-value="">All Classes</div>' +
+            sorted.map(v => `<div class="dropdown-option" data-value="${v}">${v}</div>`).join('');
+        // Restore current selection if still valid
+        if (currentClassFilter) {
+            const match = classOptions.querySelector(`[data-value="${currentClassFilter}"]`);
+            if (match) {
+                classOptions.querySelectorAll('.dropdown-option').forEach(o => o.classList.remove('selected'));
+                match.classList.add('selected');
+            } else {
+                // Previous value no longer exists, reset
+                currentClassFilter = '';
+                const text = document.getElementById('classFilterText');
+                if (text) text.textContent = 'All Classes';
             }
-            
-            classOptionsContainer.querySelectorAll('.dropdown-option').forEach(o => o.classList.remove('selected'));
-            option.classList.add('selected');
-            
-            // Propagate: rebuild Section dropdown based on selected class
-            updateSectionOptionsForClass(currentClassFilter);
-            
-            // Apply filters
-            applyClassSectionFilters();
-        });
+        }
+    }
+
+    // Populate section dropdown
+    const sectionOptions = document.getElementById('sectionFilterOptions');
+    if (sectionOptions) {
+        const sorted = [...sectionValues].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+        sectionOptions.innerHTML = '<div class="dropdown-option selected" data-value="">All Sections</div>' +
+            sorted.map(v => `<div class="dropdown-option" data-value="${v}">${v}</div>`).join('');
+        if (currentSectionFilter) {
+            const match = sectionOptions.querySelector(`[data-value="${currentSectionFilter}"]`);
+            if (match) {
+                sectionOptions.querySelectorAll('.dropdown-option').forEach(o => o.classList.remove('selected'));
+                match.classList.add('selected');
+            } else {
+                currentSectionFilter = '';
+                const text = document.getElementById('sectionFilterText');
+                if (text) text.textContent = 'All Sections';
+            }
+        }
     }
 }
 
-function attachSectionFilterHandlers() {
-    // Use event delegation instead of cloning to avoid removing existing dropdown listeners
-    const sectionOptionsContainer = document.getElementById('sectionFilterOptions');
-    
-    if (sectionOptionsContainer && !sectionOptionsContainer.hasAttribute('data-filter-initialized')) {
-        sectionOptionsContainer.setAttribute('data-filter-initialized', 'true');
-        
-        sectionOptionsContainer.addEventListener('click', function(e) {
-            const option = e.target.closest('.dropdown-option');
-            if (!option) return;
-            
-            currentSectionFilter = option.getAttribute('data-value');
-            
-            const filterText = document.getElementById('sectionFilterText');
-            if (filterText) {
-                filterText.textContent = currentSectionFilter === 'all' ? 'Section' : currentSectionFilter;
-            }
-            
-            sectionOptionsContainer.querySelectorAll('.dropdown-option').forEach(o => o.classList.remove('selected'));
-            option.classList.add('selected');
-            
-            // Apply filters
-            applyClassSectionFilters();
-        });
-    }
-}
+// Make populateFilterOptions globally available so table module can call it after data changes
+window.populateFilterOptions = populateFilterOptions;
 
 function getClassSectionColumnIndices() {
     const headerRow = document.querySelector('#data-table thead tr');
@@ -301,131 +260,35 @@ function getClassSectionColumnIndices() {
     return { classIndex, sectionIndex };
 }
 
-/**
- * Rebuild the Section dropdown to show only sections that exist
- * for the given class. If selectedClass is 'all', show all sections.
- * If the currently selected section is not available, reset to 'all'.
- */
-function updateSectionOptionsForClass(selectedClass) {
-    const sectionOptionsContainer = document.getElementById('sectionFilterOptions');
-    if (!sectionOptionsContainer) return;
-
-    const { classIndex, sectionIndex } = getClassSectionColumnIndices();
-    if (sectionIndex < 0) return;
-
-    const tableBody = document.getElementById('cardsTableBody');
-    if (!tableBody) return;
-
-    const rows = tableBody.querySelectorAll('tr[data-card-id]');
-    const sectionValues = new Set();
-
-    rows.forEach(row => {
-        const cells = row.querySelectorAll('td');
-
-        // If filtering by a specific class, only collect sections from matching rows
-        if (selectedClass !== 'all' && classIndex >= 0 && classIndex < cells.length) {
-            const classCell = cells[classIndex];
-            const classSpan = classCell.querySelector('.cell-value');
-            const classVal = (classSpan ? classSpan.textContent : classCell.textContent).trim();
-            if (classVal !== selectedClass) return; // skip non-matching rows
-        }
-
-        if (sectionIndex < cells.length) {
-            const secCell = cells[sectionIndex];
-            const secSpan = secCell.querySelector('.cell-value');
-            const secVal = (secSpan ? secSpan.textContent : secCell.textContent).trim();
-            if (secVal && secVal !== '-' && secVal !== '') {
-                sectionValues.add(secVal);
-            }
-        }
-    });
-
-    // Rebuild section dropdown
-    sectionOptionsContainer.innerHTML = '';
-
-    const allOpt = document.createElement('div');
-    allOpt.className = 'dropdown-option' + (currentSectionFilter === 'all' ? ' selected' : '');
-    allOpt.setAttribute('data-value', 'all');
-    allOpt.textContent = 'All Sections';
-    sectionOptionsContainer.appendChild(allOpt);
-
-    const sortedSections = Array.from(sectionValues).sort();
-
-    sortedSections.forEach(secVal => {
-        const option = document.createElement('div');
-        option.className = 'dropdown-option' + (currentSectionFilter === secVal ? ' selected' : '');
-        option.setAttribute('data-value', secVal);
-        option.textContent = secVal;
-        sectionOptionsContainer.appendChild(option);
-    });
-
-    // If the currently selected section is no longer available, reset to 'all'
-    if (currentSectionFilter !== 'all' && !sectionValues.has(currentSectionFilter)) {
-        currentSectionFilter = 'all';
-        const filterText = document.getElementById('sectionFilterText');
-        if (filterText) {
-            filterText.textContent = 'Section';
-        }
-    }
-}
-
 function applyClassSectionFilters() {
-    const { classIndex, sectionIndex } = getClassSectionColumnIndices();
+    // When a class/section filter is active, we must load ALL rows from the
+    // server first — otherwise we'd only filter the ~200 rows in the DOM
+    // while thousands more remain unloaded.
+    const hasFilter = currentClassFilter || currentSectionFilter;
+    const hasMore = window.lazyLoadState && window.lazyLoadState.hasMore;
     
-    // Get all rows
-    const tableBody = document.getElementById('cardsTableBody');
-    if (!tableBody) {
-        return;
-    }
-    
-    const rows = tableBody.querySelectorAll('tr[data-card-id]');
-    let visibleCount = 0;
-    
-    rows.forEach(row => {
-        const cells = row.querySelectorAll('td');
-        let showRow = true;
-        
-        // Check class filter
-        if (currentClassFilter !== 'all' && classIndex >= 0 && classIndex < cells.length) {
-            const cell = cells[classIndex];
-            const cellValueSpan = cell.querySelector('.cell-value');
-            const val = (cellValueSpan ? cellValueSpan.textContent : cell.textContent).trim();
-            if (val !== currentClassFilter) {
-                showRow = false;
+    if (hasFilter && hasMore && typeof window.loadAllData === 'function') {
+        // loadAllData is async — load everything then apply filters
+        window.loadAllData().then(() => {
+            // Re-read allRows after all data is loaded
+            if (typeof initializeRows === 'function') initializeRows();
+            else if (typeof window.initializeRows === 'function') window.initializeRows();
+            // Now apply the main filter pipeline
+            if (typeof applyFiltersAndSort === 'function') {
+                applyFiltersAndSort();
+            } else if (typeof window.applyFiltersAndSort === 'function') {
+                window.applyFiltersAndSort();
             }
+            // Re-populate filter options with all data now loaded
+            populateFilterOptions();
+        });
+    } else {
+        // All data already loaded or no filter — apply directly
+        if (typeof applyFiltersAndSort === 'function') {
+            applyFiltersAndSort();
+        } else if (typeof window.applyFiltersAndSort === 'function') {
+            window.applyFiltersAndSort();
         }
-        
-        // Check section filter
-        if (showRow && currentSectionFilter !== 'all' && sectionIndex >= 0 && sectionIndex < cells.length) {
-            const cell = cells[sectionIndex];
-            const cellValueSpan = cell.querySelector('.cell-value');
-            const val = (cellValueSpan ? cellValueSpan.textContent : cell.textContent).trim();
-            if (val !== currentSectionFilter) {
-                showRow = false;
-            }
-        }
-        
-        // Also apply search query if exists (get from table module's state)
-        const searchQuery = window.IDCardApp?.tableState?.searchQuery || '';
-        if (showRow && searchQuery) {
-            const rowText = row.textContent.toLowerCase();
-            if (!rowText.includes(searchQuery.toLowerCase())) {
-                showRow = false;
-            }
-        }
-        
-        row.style.display = showRow ? '' : 'none';
-        if (showRow) visibleCount++;
-    });
-    
-    // Update pagination info
-    updateFilteredCount(visibleCount);
-}
-
-function updateFilteredCount(count) {
-    const showingCount = document.getElementById('showing-count');
-    if (showingCount) {
-        showingCount.textContent = count;
     }
 }
 

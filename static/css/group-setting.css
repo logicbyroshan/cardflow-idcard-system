@@ -146,6 +146,27 @@ th:last-child, td:last-child {
   font-weight: 500;
 }
 
+.field-name-input {
+  width: 100%;
+  min-width: 180px;
+  box-sizing: border-box;
+  padding: 6px 10px;
+  border: 1px solid var(--border-default, rgba(0, 0, 0, 0.15));
+  border-radius: var(--radius-md, 6px);
+  font-size: 12px;
+  font-weight: var(--font-weight-medium, 500);
+  color: var(--text-primary, #2c3e50);
+  background-color: var(--bg-white, #fff);
+  outline: none;
+  transition: border-color 0.2s ease;
+  line-height: 1.4;
+}
+
+.field-name-input:focus {
+  border-color: var(--primary, #007bff);
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.15);
+}
+
 .field-type-cell {
   width: 120px;
 }
@@ -446,9 +467,9 @@ th:last-child, td:last-child {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 14px;
-  font-size: 13px;
-  font-weight: 500;
+  padding: 6px 12px;
+  font-size: 14px;
+  font-weight: 600;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s ease;

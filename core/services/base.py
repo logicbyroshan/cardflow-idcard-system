@@ -65,6 +65,16 @@ class BaseService:
     # Valid ID card statuses
     VALID_STATUSES = ['pending', 'verified', 'pool', 'approved', 'download', 'reprint']
     
+    # Canonical image column order for consistent display
+    # Must stay in sync with core/templatetags/custom_filters.py IMAGE_COLUMN_ORDER
+    IMAGE_COLUMN_ORDER = [
+        'photo', 'father photo', 'f photo',
+        'mother photo', 'm photo',
+        'signature', 'sign',
+        'barcode',
+        'qr code', 'qr_code', 'qr',
+    ]
+    
     @staticmethod
     def parse_bool(value: Any) -> bool:
         """Parse boolean from various input types"""
@@ -81,6 +91,84 @@ class BaseService:
             return ''
         return re.sub(r'[^a-z0-9]', '', name.lower())
     
+    # Common abbreviations used in image field names
+    # Maps short form -> canonical form for matching
+    IMAGE_FIELD_ABBREVIATIONS = {
+        'f': 'father',
+        'father': 'father',
+        'm': 'mother',
+        'mother': 'mother',
+        'b': 'back',
+        'back': 'back',
+        'photo': 'photo',
+        'pic': 'photo',
+        'img': 'image',
+        'image': 'image',
+        'sign': 'signature',
+        'sig': 'signature',
+        'signature': 'signature',
+    }
+
+    @classmethod
+    def normalize_image_field_name(cls, name: str) -> str:
+        """
+        Normalize an image field name by expanding abbreviations.
+        E.g. "F PHOTO" -> "father photo", "M PHOTO" -> "mother photo",
+             "B PHOTO" -> "back photo", "SIGN" -> "signature"
+        """
+        if not name:
+            return ''
+        # Split into words on spaces, underscores, hyphens, dots
+        words = re.split(r'[\s_\-\.]+', name.lower().strip())
+        expanded = []
+        for word in words:
+            word = re.sub(r'[^a-z0-9]', '', word)
+            if word:
+                expanded.append(cls.IMAGE_FIELD_ABBREVIATIONS.get(word, word))
+        return ' '.join(expanded)
+
+    @classmethod
+    def find_best_image_field_match(cls, header: str, image_fields: 'List[str]') -> 'Optional[str]':
+        """
+        Find the best matching image field for an XLSX/CSV header.
+        Uses abbreviation expansion + Levenshtein fuzzy matching.
+
+        Returns matched field name or None.
+        """
+        if not header or not image_fields:
+            return None
+
+        # 1. Exact case-insensitive match
+        header_upper = header.upper().strip()
+        for field in image_fields:
+            if field.upper().strip() == header_upper:
+                return field
+
+        # 2. Normalized alphanumeric match (existing behavior)
+        header_normalized = cls.normalize_name(header)
+        for field in image_fields:
+            if cls.normalize_name(field) == header_normalized:
+                return field
+
+        # 3. Abbreviation-expanded match (F PHOTO == FATHER PHOTO)
+        header_expanded = cls.normalize_image_field_name(header)
+        for field in image_fields:
+            if cls.normalize_image_field_name(field) == header_expanded:
+                return field
+
+        # 4. Levenshtein distance on expanded names
+        best_match = None
+        best_distance = float('inf')
+        for field in image_fields:
+            field_expanded = cls.normalize_image_field_name(field)
+            distance = cls.levenshtein_distance(header_expanded, field_expanded)
+            max_distance = 2 if len(field_expanded) >= 8 else 1
+            if distance <= max_distance and distance < best_distance:
+                best_distance = distance
+                best_match = field
+
+        return best_match
+
     @staticmethod
     def normalize_image_identifier(identifier: str) -> str:
         """
@@ -174,6 +262,208 @@ class BaseService:
     def get_image_field_names(cls, table_fields: List[dict]) -> List[str]:
         """Get list of image field names from table fields"""
         return [f['name'] for f in table_fields if cls.is_image_field(f)]
+    
+    @classmethod
+    def _get_image_sort_key(cls, field_name: str) -> int:
+        """
+        Get sort order for an image field based on canonical display order.
+        Photo(0) → Father Photo(1) → Mother Photo(2) → Signature(3) → Barcode(4) → QR(5)
+        
+        Must stay in sync with _get_image_sort_key in core/templatetags/custom_filters.py.
+        """
+        name_lower = field_name.lower().strip()
+        
+        # Check specific qualifiers FIRST (before generic "photo" match)
+        if 'father' in name_lower or re.match(r'^f\s+', name_lower):
+            return 1   # Father Photo / F Photo
+        if 'mother' in name_lower or re.match(r'^m\s+', name_lower):
+            return 2   # Mother Photo / M Photo
+        if re.search(r'\bsign\b|\bsignature\b', name_lower):
+            return 3   # Signature / Sign
+        if 'barcode' in name_lower:
+            return 4   # Barcode
+        if 'qr' in name_lower:
+            return 5   # QR Code
+        if 'photo' in name_lower or 'image' in name_lower or 'pic' in name_lower:
+            return 0   # Photo (generic/standalone)
+        if 'back' in name_lower:
+            return 6   # Back photo
+        return 999  # Unknown image types go last
+    
+    @classmethod
+    def reorder_fields_for_display(cls, table_fields: List[dict]) -> List[dict]:
+        """
+        Reorder fields for display: text fields first, then image fields
+        sorted by canonical order (Photo → Father Photo → Mother Photo →
+        Signature → Barcode → QR Code).
+        
+        Must mirror reorder_fields_for_display in core/templatetags/custom_filters.py.
+        """
+        if not table_fields:
+            return table_fields
+        
+        text_fields = []
+        image_fields = []
+        
+        for field in table_fields:
+            if cls.is_image_field(field):
+                image_fields.append(field)
+            else:
+                text_fields.append(field)
+        
+        image_fields.sort(key=lambda f: cls._get_image_sort_key(f.get('name', '')))
+        
+        return text_fields + image_fields
+    
+    @classmethod
+    def is_image_field_name_for_table(cls, field_name: str, table_fields: List[dict]) -> bool:
+        """
+        Check if a field name is an image field for a specific table.
+        Uses case-insensitive matching against the table's field configuration.
+        
+        Args:
+            field_name: The field name to check
+            table_fields: List of field configs from IDCardTable.fields
+            
+        Returns:
+            True if field_name corresponds to an image field
+        """
+        if not field_name or not table_fields:
+            return False
+        
+        # Normalize for case-insensitive comparison
+        field_name_upper = field_name.upper()
+        
+        for field in table_fields:
+            config_name = field.get('name', '')
+            if config_name.upper() == field_name_upper:
+                return cls.is_image_field(field)
+        
+        # Fallback: check by name pattern if field not in table config
+        return cls.is_image_field_by_name(field_name)
+    
+    @classmethod
+    def uppercase_field_data_selective(cls, data: dict, table_fields: List[dict]) -> dict:
+        """
+        Convert text field values to uppercase, preserving image paths as-is.
+        
+        CRITICAL: Image paths must NOT be uppercased to prevent case-sensitive
+        filesystem issues on Linux servers.
+        
+        Args:
+            data: Dict of field_name -> value
+            table_fields: List of field configs from IDCardTable.fields
+            
+        Returns:
+            Dict with text fields uppercased, image fields preserved
+        """
+        result = {}
+        for key, value in data.items():
+            if isinstance(value, str):
+                # Skip uppercase for image fields - preserve paths exactly
+                if cls.is_image_field_name_for_table(key, table_fields):
+                    result[key] = value
+                else:
+                    result[key] = value.upper()
+            else:
+                result[key] = value
+        return result
+    
+    @staticmethod
+    def normalize_image_path(path: str) -> str:
+        """
+        Normalize an image path to a clean, consistent relative path.
+        
+        Rules:
+        - Convert backslashes to forward slashes (Windows → Linux safe)
+        - Remove double slashes
+        - Strip leading slashes
+        - Strip MEDIA_ROOT prefix if accidentally included
+        - Strip leading 'media/' prefix if present
+        - Preserve PENDING: and NOT_FOUND markers as-is
+        - Return empty string for None/empty input
+        
+        Args:
+            path: Raw image path (could be absolute, relative, or mangled)
+            
+        Returns:
+            Clean relative path from MEDIA_ROOT, or marker/empty string
+        """
+        if not path:
+            return ''
+        
+        path = str(path).strip()
+        
+        # Preserve special markers
+        if path.startswith('PENDING:') or path == 'NOT_FOUND':
+            return path
+        
+        # Backslashes → forward slashes
+        path = path.replace('\\', '/')
+        
+        # Remove double slashes
+        while '//' in path:
+            path = path.replace('//', '/')
+        
+        # Strip MEDIA_ROOT prefix if accidentally included
+        try:
+            from django.conf import settings
+            import os
+            media_root = settings.MEDIA_ROOT.replace('\\', '/')
+            if not media_root.endswith('/'):
+                media_root += '/'
+            if path.startswith(media_root):
+                path = path[len(media_root):]
+        except Exception:
+            pass
+        
+        # Strip leading /media/ or media/ prefix
+        if path.startswith('/media/'):
+            path = path[7:]
+        elif path.startswith('media/'):
+            path = path[6:]
+        
+        # Strip leading slashes
+        path = path.lstrip('/')
+        
+        return path
+    
+    @staticmethod
+    def validate_image_path(path: str, media_root: str = None) -> bool:
+        """
+        Check if an image path points to an existing file on disk.
+        
+        Args:
+            path: Relative path from MEDIA_ROOT (e.g., 'clients_imgs/example/photo.jpg')
+            media_root: Base media directory (defaults to settings.MEDIA_ROOT)
+            
+        Returns:
+            True if file exists, False otherwise
+        """
+        import os
+        from django.conf import settings
+        
+        if not path:
+            return False
+        
+        # Skip validation for PENDING references
+        if path.startswith('PENDING:'):
+            return False
+        
+        # Skip validation for NOT_FOUND markers
+        if path == 'NOT_FOUND':
+            return False
+        
+        # Normalize the path first
+        clean_path = BaseService.normalize_image_path(path)
+        if not clean_path:
+            return False
+        
+        # Build full path
+        base = media_root or settings.MEDIA_ROOT
+        full_path = os.path.join(base, clean_path)
+        
+        return os.path.isfile(full_path)
     
     @staticmethod
     def levenshtein_distance(s1: str, s2: str) -> int:

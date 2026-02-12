@@ -520,7 +520,11 @@ function initXlsxUpload() {
                 });
                 
                 const missingTableFields = tableFieldNames.filter(f => !usedTableFields.has(f));
-                const dataRowCount = jsonData.length - 1;
+                // Count non-blank data rows (skip header row at index 0, skip rows where all cells are empty)
+                const dataRowCount = jsonData.slice(1).filter(row => {
+                    if (!row || !Array.isArray(row)) return false;
+                    return row.some(cell => cell !== null && cell !== undefined && String(cell).trim() !== '');
+                }).length;
                 
                 if (matchedFields.length === 0) {
                     showValidationResults(matchedFields, tableFieldNames, unmatchedUploadedFields, dataRowCount, true);
@@ -587,6 +591,8 @@ function initXlsxUpload() {
             const xhr = new XMLHttpRequest();
             const startTime = Date.now();
             
+            let uploadFinished = false;
+            
             xhr.upload.addEventListener('progress', function(e) {
                 if (e.lengthComputable) {
                     const percentComplete = Math.round((e.loaded / e.total) * 100);
@@ -598,9 +604,15 @@ function initXlsxUpload() {
                     if (progressBar) progressBar.style.width = percentComplete + '%';
                     if (percentageText) percentageText.textContent = percentComplete + '%';
                     
-                    const loadedKB = (e.loaded / 1024).toFixed(1);
-                    const totalKB = (e.total / 1024).toFixed(1);
-                    if (sizeText) sizeText.textContent = `${loadedKB} KB / ${totalKB} KB`;
+                    const loadedMB = (e.loaded / (1024 * 1024));
+                    const totalMB = (e.total / (1024 * 1024));
+                    if (loadedMB >= 1) {
+                        if (sizeText) sizeText.textContent = `${loadedMB.toFixed(1)} MB / ${totalMB.toFixed(1)} MB`;
+                    } else {
+                        const loadedKB = (e.loaded / 1024).toFixed(1);
+                        const totalKB = (e.total / 1024).toFixed(1);
+                        if (sizeText) sizeText.textContent = `${loadedKB} KB / ${totalKB} KB`;
+                    }
                     
                     if (timeText) {
                         if (remainingTime < 1) {
@@ -616,12 +628,23 @@ function initXlsxUpload() {
                 }
             });
             
+            xhr.upload.addEventListener('load', function() {
+                // File data sent to server, now server is processing
+                uploadFinished = true;
+                if (progressBar) progressBar.style.width = '100%';
+                if (percentageText) percentageText.textContent = '100%';
+                if (sizeText) sizeText.textContent = 'Upload complete';
+                if (timeText) timeText.textContent = 'Server processing data...';
+                // Add pulsing animation to indicate ongoing server work
+                if (progressBar) progressBar.classList.add('processing');
+            });
+            
             xhr.addEventListener('load', function() {
                 try {
                     const result = JSON.parse(xhr.responseText);
                     
                     if (xhr.status === 200 && result.success) {
-                        if (progressBar) progressBar.style.width = '100%';
+                        if (progressBar) { progressBar.style.width = '100%'; progressBar.classList.remove('processing'); }
                         if (percentageText) percentageText.textContent = '100%';
                         if (timeText) timeText.textContent = 'Complete!';
                         
@@ -664,7 +687,7 @@ function initXlsxUpload() {
             
             function resetUploadState() {
                 if (progressSection) progressSection.style.display = 'none';
-                if (progressBar) progressBar.style.width = '0%';
+                if (progressBar) { progressBar.style.width = '0%'; progressBar.classList.remove('processing'); }
                 confirmUploadModal.innerHTML = originalText;
                 confirmUploadModal.disabled = false;
                 if (cancelBtn) cancelBtn.disabled = false;

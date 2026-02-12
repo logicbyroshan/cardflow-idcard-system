@@ -546,7 +546,7 @@ function renderCards(cards) {
       <td>${escapeHtml(card.name || '-')}</td>
       <td>${escapeHtml(card.id_number || '-')}</td>
       <td>${escapeHtml(card.class_designation || '-')}</td>
-      <td><span class="status-badge ${card.status}">${formatStatus(card.status)}</span></td>
+      <td><span class="status-badge ${card.status}">${formatStatus(card.status, card.status_display)}</span></td>
       <td>
         <button class="action-btn primary" onclick="viewCard(${card.id})">
           <i class="fa-solid fa-eye"></i>
@@ -619,7 +619,7 @@ function showCardModal(card) {
       </div>
       <div class="card-detail-item">
         <label>Status</label>
-        <div class="value"><span class="status-badge ${card.status}">${formatStatus(card.status)}</span></div>
+        <div class=\"value\"><span class=\"status-badge ${card.status}\">${formatStatus(card.status, card.status_display)}</span></div>
       </div>
       <div class="card-detail-item">
         <label>Father's Name</label>
@@ -673,7 +673,9 @@ function showError(message) {
   `;
 }
 
-function formatStatus(status) {
+function formatStatus(status, statusDisplay) {
+  // Prefer backend-provided status_display, fallback to mapping
+  if (statusDisplay) return statusDisplay;
   const statusMap = {
     'pending': 'Pending',
     'verified': 'Verified',

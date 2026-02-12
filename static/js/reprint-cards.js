@@ -298,14 +298,10 @@ function createReprintPaginator(opts) {
     const origUpdate = window.updateExistingCard || (typeof updateExistingCard !== 'undefined' ? updateExistingCard : null);
 
     window.updateExistingCard = function(cardId, fieldData, imageFiles, mainPhoto) {
-      // Convert to uppercase
-      const uppercaseFieldData = {};
-      for (const [key, value] of Object.entries(fieldData)) {
-        uppercaseFieldData[key] = typeof value === 'string' ? value.toUpperCase() : value;
-      }
-
+      // Send field data as-is - backend handles selective uppercase
+      // (uppercasing text fields while preserving image paths)
       const formData = new FormData();
-      formData.append('field_data', JSON.stringify(uppercaseFieldData));
+      formData.append('field_data', JSON.stringify(fieldData));
 
       if (mainPhoto) {
         formData.append('photo', mainPhoto);

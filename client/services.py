@@ -118,8 +118,8 @@ class ClientDashboardService(BaseService):
                 if item['status'] in counts:
                     counts[item['status']] = item['count']
             
-            # Total cards
-            total_cards = sum(counts.values())
+            # Total cards - exclude 'pool' status
+            total_cards = counts['pending'] + counts['verified'] + counts['approved'] + counts['download']
             
             # Get group count and table count
             group_count = groups.count()

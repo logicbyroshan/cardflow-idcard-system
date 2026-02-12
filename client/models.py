@@ -78,7 +78,8 @@ class Client(models.Model):
     
     # Basic Information
     name = models.CharField(max_length=200)
-    photo = models.ImageField(upload_to='clients_imgs/', blank=True, null=True)
+    # DEPRECATED: photo field removed - use frontend placeholder avatars instead
+    # photo field removed in Phase 1 refactor
     
     # Address
     address = models.TextField(blank=True, null=True)
@@ -109,20 +110,25 @@ class Client(models.Model):
     perm_idcard_reprint_list = models.BooleanField(default=False)
     
     # ID Card Action Permissions (common actions — default ON, dangerous — default OFF)
+    # Note: Actions only work in Pending and Verified lists
     perm_idcard_add = models.BooleanField(default=True)
     perm_idcard_edit = models.BooleanField(default=True)
     perm_idcard_delete = models.BooleanField(default=True)
     perm_idcard_info = models.BooleanField(default=True)
     perm_idcard_approve = models.BooleanField(default=True)
     perm_idcard_verify = models.BooleanField(default=True)
-    perm_idcard_bulk_upload = models.BooleanField(default=True)
-    perm_idcard_bulk_download = models.BooleanField(default=True)
     perm_idcard_created_at = models.BooleanField(default=False)
     perm_idcard_updated_at = models.BooleanField(default=False)
     perm_idcard_delete_from_pool = models.BooleanField(default=False)
-    perm_delete_all_idcard = models.BooleanField(default=False)
-    perm_reupload_idcard_image = models.BooleanField(default=True)
+    perm_reupload_idcard_image = models.BooleanField(default=True)  # Single card reupload
     perm_idcard_retrieve = models.BooleanField(default=True)
+    
+    # ID Card Bulk Action Permissions (work across all lists)
+    perm_idcard_bulk_upload = models.BooleanField(default=True)
+    perm_idcard_bulk_download = models.BooleanField(default=True)
+    perm_idcard_bulk_reupload = models.BooleanField(default=True)  # Bulk reupload for all lists
+    perm_delete_all_idcard = models.BooleanField(default=False)
+    perm_idcard_upgrade_all = models.BooleanField(default=False)  # Upgrade All Class
     
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active', db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -160,33 +166,46 @@ class Client(models.Model):
         """
         Rename the image folder when client name changes.
         Only updates the first 5 chars (name part), suffix stays same.
-        Also updates all card field_data paths to reflect the new folder name.
+        Also updates all card field_data paths, thumbnail folder, and CardMedia records.
         """
         from django.conf import settings
-        
+
         if not self.image_folder_suffix:
             # No folder exists yet
             return
-        
+
         old_code = self.image_folder_code
         old_folder_path = os.path.join(settings.MEDIA_ROOT, f"adarshimg/{old_code}")
-        
+
         # Generate new code with updated name
         new_name_part = generate_folder_code_from_name(self.name)
         new_code = f"{new_name_part}{self.image_folder_suffix}"
         new_folder_path = os.path.join(settings.MEDIA_ROOT, f"adarshimg/{new_code}")
-        
+
         # Rename folder if it exists and codes are different
         if old_code != new_code and os.path.exists(old_folder_path):
             try:
                 os.rename(old_folder_path, new_folder_path)
                 logger.debug("Renamed folder: %s -> %s", old_code, new_code)
-                
-                # Update all card field_data paths that reference the old folder code
+
+                # Also rename thumbnail folder
+                old_thumbs_path = os.path.join(settings.MEDIA_ROOT, f"adarshimg/thumbs/{old_code}")
+                new_thumbs_path = os.path.join(settings.MEDIA_ROOT, f"adarshimg/thumbs/{new_code}")
+                if os.path.exists(old_thumbs_path):
+                    try:
+                        os.rename(old_thumbs_path, new_thumbs_path)
+                        logger.debug("Renamed thumbs folder: %s -> %s", old_code, new_code)
+                    except Exception as e:
+                        logger.warning("Could not rename thumbs folder %s to %s: %s", old_code, new_code, e)
+
+                # Update all card field_data paths (batch update for safety)
                 from workflows.models import IDCard
+                from django.db import transaction
                 old_prefix = f'adarshimg/{old_code}'
                 new_prefix = f'adarshimg/{new_code}'
-                for card in IDCard.objects.filter(table__group__client=self).iterator():
+                batch = []
+                BATCH_SIZE = 500
+                for card in IDCard.objects.filter(table__group__client=self).iterator(chunk_size=BATCH_SIZE):
                     fd = card.field_data or {}
                     updated = False
                     for key, val in fd.items():
@@ -195,20 +214,36 @@ class Client(models.Model):
                             updated = True
                     if updated:
                         card.field_data = fd
-                        card.save(update_fields=['field_data'])
-                
+                        batch.append(card)
+                    if len(batch) >= BATCH_SIZE:
+                        with transaction.atomic():
+                            IDCard.objects.bulk_update(batch, ['field_data'], batch_size=BATCH_SIZE)
+                        batch = []
+                if batch:
+                    with transaction.atomic():
+                        IDCard.objects.bulk_update(batch, ['field_data'], batch_size=BATCH_SIZE)
+
+                # Update CardMedia file paths
+                from mediafiles.models import CardMedia
+                from django.db.models import Value
+                from django.db.models.functions import Replace
+                CardMedia.objects.filter(
+                    client=self,
+                    file__contains=old_prefix
+                ).update(file=Replace('file', Value(old_prefix), Value(new_prefix)))
+
             except Exception as e:
                 logger.warning("Could not rename folder %s to %s: %s", old_code, new_code, e)
-        
+
         self.image_folder_code = new_code
     
     def delete_image_folder(self):
-        """Delete the entire image folder and all contents"""
+        """Delete the entire image folder, thumbnail folder, and all contents"""
         from django.conf import settings
-        
+
         if not self.image_folder_code:
             return
-        
+
         folder_path = os.path.join(settings.MEDIA_ROOT, f"adarshimg/{self.image_folder_code}")
         if os.path.exists(folder_path):
             try:
@@ -216,7 +251,15 @@ class Client(models.Model):
                 logger.debug("Deleted folder: %s", self.image_folder_code)
             except Exception as e:
                 logger.warning("Could not delete folder %s: %s", self.image_folder_code, e)
-    
+
+        # Also delete thumbnail folder
+        thumbs_path = os.path.join(settings.MEDIA_ROOT, f"adarshimg/thumbs/{self.image_folder_code}")
+        if os.path.exists(thumbs_path):
+            try:
+                shutil.rmtree(thumbs_path)
+                logger.debug("Deleted thumbs folder: %s", self.image_folder_code)
+            except Exception as e:
+                logger.warning("Could not delete thumbs folder %s: %s", self.image_folder_code, e)
     def save(self, *args, **kwargs):
         # Check if this is an update and name changed
         if self.pk:

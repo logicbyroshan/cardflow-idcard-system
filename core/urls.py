@@ -74,6 +74,8 @@ urlpatterns = [
     path('api/client/<int:client_id>/delete/', views.api_client_delete, name='api_client_delete'),
     path('api/client/<int:client_id>/toggle-status/', views.api_client_toggle_status, name='api_client_toggle_status'),
     path('api/client/<int:client_id>/staff/', views.api_client_staff, name='api_client_staff'),
+    path('api/client/<int:client_id>/staff/<int:staff_id>/toggle-status/', views.api_client_staff_toggle_status, name='api_client_staff_toggle_status'),
+    path('api/client/<int:client_id>/staff/<int:staff_id>/permissions/', views.api_client_staff_permissions, name='api_client_staff_permissions'),
     
     # Staff APIs
     path('api/staff/create/', views.api_staff_create, name='api_staff_create'),

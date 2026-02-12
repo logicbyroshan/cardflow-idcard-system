@@ -43,6 +43,8 @@ from .client_api import (
     api_client_delete,
     api_client_toggle_status,
     api_client_staff,
+    api_client_staff_toggle_status,
+    api_client_staff_permissions,
 )
 
 from .staff_api import (

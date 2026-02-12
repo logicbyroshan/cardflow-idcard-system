@@ -201,7 +201,7 @@
 
         if (dateEl) {
             dateEl.innerText = now.toLocaleDateString('en-US', {
-                weekday: 'long',
+                weekday: 'short',
                 day: '2-digit',
                 month: 'short',
                 year: 'numeric'
