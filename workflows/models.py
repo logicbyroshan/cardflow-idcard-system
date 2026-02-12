@@ -103,7 +103,11 @@ class IDCardTable(models.Model):
     
     def has_class_field(self):
         """Check if this table has a class field"""
-        return any(f.get('type') == 'class' for f in self.fields)
+        return any(f.get('type') == 'class' or f.get('name', '').lower() == 'class' for f in self.fields)
+    
+    def has_section_field(self):
+        """Check if this table has a section field"""
+        return any(f.get('type') == 'section' or f.get('name', '').lower() == 'section' for f in self.fields)
     
     def has_image_fields(self):
         """Check if this table has any image fields (uses canonical IMAGE_FIELD_TYPES)"""

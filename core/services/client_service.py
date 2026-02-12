@@ -47,13 +47,16 @@ class ClientService(BaseService):
         'perm_idcard_pending_list', 'perm_idcard_verified_list', 
         'perm_idcard_pool_list', 'perm_idcard_approved_list', 
         'perm_idcard_download_list', 'perm_idcard_reprint_list',
-        # ID Card Action Permissions
+        # ID Card Action Permissions (work in Pending and Verified lists only)
         'perm_idcard_add', 'perm_idcard_edit', 'perm_idcard_delete',
         'perm_idcard_info', 'perm_idcard_approve', 'perm_idcard_verify',
-        'perm_idcard_bulk_upload', 'perm_idcard_bulk_download',
         'perm_idcard_created_at', 'perm_idcard_updated_at',
-        'perm_idcard_delete_from_pool', 'perm_delete_all_idcard',
-        'perm_reupload_idcard_image', 'perm_idcard_retrieve',
+        'perm_idcard_delete_from_pool', 'perm_reupload_idcard_image',
+        'perm_idcard_retrieve',
+        # ID Card Bulk Action Permissions (work across all lists)
+        'perm_idcard_bulk_upload', 'perm_idcard_bulk_download',
+        'perm_idcard_bulk_reupload', 'perm_delete_all_idcard',
+        'perm_idcard_upgrade_all',
     ]
     
     @classmethod
@@ -69,7 +72,7 @@ class ClientService(BaseService):
             'state': client.state or '',
             'pincode': client.pincode or '',
             'status': client.status,
-            'photo_url': client.photo.url if client.photo else None,
+            'photo_url': None,  # Phase 1: Photo field removed - using avatar placeholder
             'created_at': client.created_at.strftime('%d-%m-%Y %I:%M %p'),
             'updated_at': client.updated_at.strftime('%d-%m-%Y %I:%M %p'),
         }
@@ -153,10 +156,7 @@ class ClientService(BaseService):
                 
                 client = Client.objects.create(**client_kwargs)
                 
-                # Handle photo
-                if photo:
-                    client.photo = photo
-                    client.save()
+                # Phase 1: Photo field removed - using avatar placeholder
             
             # Send welcome email
             email_sent = False
@@ -229,16 +229,29 @@ class ClientService(BaseService):
                 if field in data:
                     setattr(client, field, data[field])
             
-            # Handle photo
-            if photo:
-                client.photo = photo
+            # Phase 1: Photo field removed - using avatar placeholder
+            
+            # Track revoked permissions for cascade to staff
+            revoked_permissions = []
             
             # Update permissions
             for perm in cls.PERMISSION_FIELDS:
                 if perm in data:
-                    setattr(client, perm, cls.parse_bool(data[perm]))
+                    new_value = cls.parse_bool(data[perm])
+                    old_value = getattr(client, perm, False)
+                    
+                    # Track if permission is being revoked
+                    if old_value and not new_value:
+                        revoked_permissions.append(perm)
+                    
+                    setattr(client, perm, new_value)
             
             client.save()
+            
+            # CRITICAL: Cascade revoked permissions to all staff members
+            # Client Staff Permission ⊆ Client Permission
+            if revoked_permissions:
+                cls._cascade_revoked_permissions(client, revoked_permissions)
             
             return ServiceResult(
                 success=True,
@@ -250,6 +263,47 @@ class ClientService(BaseService):
             return ServiceResult(success=False, message=str(e))
     
     @classmethod
+    def _cascade_revoked_permissions(cls, client: Client, revoked_permissions: List[str]) -> None:
+        """
+        Cascade revoked permissions to all client staff.
+        Enforces: Client Staff Permission ⊆ Client Permission
+        
+        When a client permission is revoked, all staff members must also
+        have that permission revoked.
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        # Get all client staff for this client
+        client_staff = Staff.objects.filter(
+            client=client,
+            staff_type='client_staff'
+        )
+        
+        if not client_staff.exists():
+            return
+        
+        # Update each staff member
+        updated_count = 0
+        for staff in client_staff:
+            staff_changed = False
+            for perm in revoked_permissions:
+                # Only update if staff actually has the permission
+                if hasattr(staff, perm) and getattr(staff, perm, False):
+                    setattr(staff, perm, False)
+                    staff_changed = True
+            
+            if staff_changed:
+                staff.save()
+                updated_count += 1
+        
+        if updated_count > 0:
+            logger.info(
+                "Permission cascade: Revoked permissions %s from %d staff members of client '%s' (ID: %d)",
+                revoked_permissions, updated_count, client.name, client.id
+            )
+    
+    @classmethod
     def delete(cls, client_id: int) -> ServiceResult:
         """Delete a client and associated user"""
         try:
@@ -257,17 +311,7 @@ class ClientService(BaseService):
             user = client.user
             client_name = client.name
             
-            # Clean up photo and profile image files before deleting
-            if client.photo:
-                try:
-                    client.photo.delete(save=False)
-                except Exception:
-                    pass
-            if user.profile_image:
-                try:
-                    user.profile_image.delete(save=False)
-                except Exception:
-                    pass
+            # Phase 1: Photo and profile_image fields removed - using avatar placeholder
             
             with transaction.atomic():
                 client.delete()
@@ -284,6 +328,9 @@ class ClientService(BaseService):
     def toggle_status(cls, client_id: int) -> ServiceResult:
         """Toggle client active/inactive status"""
         try:
+            import logging
+            logger = logging.getLogger(__name__)
+            
             client = get_object_or_404(Client, id=client_id)
             user = client.user
             
@@ -291,25 +338,58 @@ class ClientService(BaseService):
                 client.status = 'inactive'
                 user.is_active = False
                 status_display = 'Inactive'
+                # CRITICAL: Deactivate all client staff when client is deactivated
+                deactivated_staff_count = cls._cascade_deactivate_staff(client)
             else:
                 client.status = 'active'
                 user.is_active = True
                 status_display = 'Active'
+                deactivated_staff_count = 0
             
             with transaction.atomic():
                 client.save()
                 user.save()
             
+            message = f'Client status changed to {status_display}!'
+            if deactivated_staff_count > 0:
+                message += f' ({deactivated_staff_count} staff members also deactivated)'
+                logger.info(
+                    "Client deactivation cascade: Deactivated %d staff members of client '%s' (ID: %d)",
+                    deactivated_staff_count, client.name, client.id
+                )
+            
             return ServiceResult(
                 success=True,
-                message=f'Client status changed to {status_display}!',
+                message=message,
                 data={
                     'status': client.status,
-                    'status_display': status_display
+                    'status_display': status_display,
+                    'staff_deactivated': deactivated_staff_count
                 }
             )
         except Exception as e:
             return ServiceResult(success=False, message=str(e))
+    
+    @classmethod
+    def _cascade_deactivate_staff(cls, client: Client) -> int:
+        """
+        Deactivate all client staff when client is deactivated.
+        Returns the count of staff members deactivated.
+        """
+        # Get all active client staff for this client
+        active_staff = Staff.objects.filter(
+            client=client,
+            staff_type='client_staff',
+            user__is_active=True
+        ).select_related('user')
+        
+        count = 0
+        for staff in active_staff:
+            staff.user.is_active = False
+            staff.user.save()
+            count += 1
+        
+        return count
     
     @classmethod
     def list_all(cls, include_inactive: bool = False) -> ServiceResult:
@@ -357,6 +437,8 @@ class ClientService(BaseService):
                     'designation': staff.designation or '',
                     'address': staff.address or '',
                     'is_active': is_active,
+                    'status': 'active' if is_active else 'inactive',
+                    'status_display': 'Active' if is_active else 'Inactive',
                     'created_at': staff.created_at.strftime('%d-%m-%Y'),
                     # ID Card Client List Permission
                     'perm_idcard_client_list': staff.perm_idcard_client_list,
@@ -376,6 +458,109 @@ class ClientService(BaseService):
                     'total': len(staff_list),
                     'active': active_count,
                     'inactive': inactive_count
+                }
+            )
+        except Exception as e:
+            return ServiceResult(success=False, message=str(e))
+
+    @classmethod
+    def toggle_client_staff_status(cls, client_id: int, staff_id: int) -> ServiceResult:
+        """Toggle a client staff member's active/inactive status (Super Admin only)"""
+        try:
+            client = get_object_or_404(Client, id=client_id)
+            staff = Staff.objects.filter(
+                id=staff_id,
+                client=client,
+                staff_type='client_staff'
+            ).select_related('user').first()
+            
+            if not staff:
+                return ServiceResult(
+                    success=False,
+                    message='Staff member not found or does not belong to this client'
+                )
+            
+            user = staff.user
+            user.is_active = not user.is_active
+            user.save()
+            
+            is_active = user.is_active
+            return ServiceResult(
+                success=True,
+                message=f'Staff {"activated" if is_active else "deactivated"} successfully',
+                data={
+                    'staff_id': staff_id,
+                    'is_active': is_active,
+                    'status': 'active' if is_active else 'inactive',
+                    'status_display': 'Active' if is_active else 'Inactive'
+                }
+            )
+        except Exception as e:
+            return ServiceResult(success=False, message=str(e))
+    
+    @classmethod
+    def update_client_staff_permissions(cls, client_id: int, staff_id: int, permissions: dict) -> ServiceResult:
+        """
+        Update a client staff member's permissions (Super Admin only).
+        Enforces that staff permissions cannot exceed client permissions.
+        """
+        try:
+            client = get_object_or_404(Client, id=client_id)
+            staff = Staff.objects.filter(
+                id=staff_id,
+                client=client,
+                staff_type='client_staff'
+            ).first()
+            
+            if not staff:
+                return ServiceResult(
+                    success=False,
+                    message='Staff member not found or does not belong to this client'
+                )
+            
+            # Permission mapping: staff perm -> client perm
+            STAFF_TO_CLIENT_PERMS = {
+                'perm_idcard_client_list': 'perm_idcard_client_list',
+                'perm_idcard_setting_list': 'perm_idcard_setting_list',
+                'perm_idcard_setting_add': 'perm_idcard_setting_add',
+                'perm_idcard_setting_edit': 'perm_idcard_setting_edit',
+                'perm_idcard_setting_delete': 'perm_idcard_setting_delete',
+                'perm_idcard_setting_status': 'perm_idcard_setting_status',
+            }
+            
+            updated_perms = []
+            rejected_perms = []
+            
+            for perm_name, value in permissions.items():
+                if perm_name not in STAFF_TO_CLIENT_PERMS:
+                    continue  # Ignore unknown permissions
+                
+                client_perm = STAFF_TO_CLIENT_PERMS.get(perm_name)
+                
+                # If trying to grant a permission, verify client has it
+                if value and client_perm:
+                    client_has_perm = getattr(client, client_perm, False)
+                    if not client_has_perm:
+                        rejected_perms.append(perm_name)
+                        continue  # Skip - client doesn't have this permission
+                
+                # Update staff permission
+                setattr(staff, perm_name, bool(value))
+                updated_perms.append(perm_name)
+            
+            staff.save()
+            
+            message = f'Updated {len(updated_perms)} permission(s)'
+            if rejected_perms:
+                message += f'. {len(rejected_perms)} permission(s) rejected (client lacks permission)'
+            
+            return ServiceResult(
+                success=True,
+                message=message,
+                data={
+                    'staff_id': staff_id,
+                    'updated_permissions': updated_perms,
+                    'rejected_permissions': rejected_perms
                 }
             )
         except Exception as e:

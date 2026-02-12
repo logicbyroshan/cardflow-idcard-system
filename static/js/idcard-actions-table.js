@@ -166,6 +166,29 @@ function applyFiltersAndSort() {
     
     const filterColumnIndex = currentFilterField !== 'all' ? getFieldColumnIndex(currentFilterField) : -1;
     
+    // Get class/section filter state from search module (exposed globally)
+    const classFilter = window.currentClassFilter || '';
+    const sectionFilter = window.currentSectionFilter || '';
+    
+    // Resolve class/section column indices once (only if filters are active)
+    let classColIndex = -1;
+    let sectionColIndex = -1;
+    if (classFilter || sectionFilter) {
+        const headerRow = document.querySelector('#data-table thead tr');
+        if (headerRow) {
+            const headers = headerRow.querySelectorAll('th');
+            headers.forEach((header, index) => {
+                const fieldName = (header.getAttribute('data-field-name') || header.textContent.trim()).toUpperCase();
+                if (classColIndex === -1 && (fieldName === 'CLASS' || fieldName === 'STD' || fieldName === 'STANDARD' || fieldName === 'GRADE' || fieldName.includes('CLASS'))) {
+                    classColIndex = index;
+                }
+                if (sectionColIndex === -1 && (fieldName === 'SECTION' || fieldName === 'SEC' || fieldName === 'DIV' || fieldName === 'DIVISION' || fieldName.includes('SECTION'))) {
+                    sectionColIndex = index;
+                }
+            });
+        }
+    }
+    
     filteredRows = allRows.filter(row => {
         if (searchQuery) {
             if (currentFilterField === 'all') {
@@ -196,6 +219,32 @@ function applyFiltersAndSort() {
                 if (rowDate < weekAgo) return false;
             } else if (currentFilter === 'month') {
                 if (rowDate < monthAgo) return false;
+            }
+        }
+        
+        // Class filter — exact match on cell text
+        if (classFilter && classColIndex >= 0) {
+            const cells = row.querySelectorAll('td');
+            if (classColIndex < cells.length) {
+                const cell = cells[classColIndex];
+                const span = cell.querySelector('.cell-value');
+                const val = (span ? span.textContent : cell.textContent).trim();
+                if (val !== classFilter) return false;
+            } else {
+                return false;
+            }
+        }
+        
+        // Section filter — exact match on cell text
+        if (sectionFilter && sectionColIndex >= 0) {
+            const cells = row.querySelectorAll('td');
+            if (sectionColIndex < cells.length) {
+                const cell = cells[sectionColIndex];
+                const span = cell.querySelector('.cell-value');
+                const val = (span ? span.textContent : cell.textContent).trim();
+                if (val !== sectionFilter) return false;
+            } else {
+                return false;
             }
         }
         
@@ -293,9 +342,13 @@ function updatePaginationInfoEndless(totalLoaded) {
     if (paginationInfo) {
         const totalCount = lazyLoadState.totalCount || totalLoaded;
         const hasMore = lazyLoadState.hasMore;
+        const hasFilter = window.currentClassFilter || window.currentSectionFilter || searchQuery;
         
         if (hasMore) {
             paginationInfo.innerHTML = `Showing <strong>1-${totalLoaded}</strong> of <strong>${totalLoaded}</strong> loaded (${totalCount} total)`;
+        } else if (hasFilter && totalLoaded < totalCount) {
+            // Filters active — show filtered count out of total
+            paginationInfo.innerHTML = `Showing <strong>${totalLoaded}</strong> of <strong>${totalCount}</strong> results (filtered)`;
         } else {
             paginationInfo.innerHTML = `Showing <strong>all ${totalLoaded}</strong> results`;
         }
@@ -305,7 +358,9 @@ function updatePaginationInfoEndless(totalLoaded) {
 }
 
 function updatePageNumbersForEndless(totalLoaded) {
-    const totalCount = lazyLoadState.totalCount || totalLoaded;
+    // Use filtered count for pagination when filters are active
+    const hasFilter = window.currentClassFilter || window.currentSectionFilter || searchQuery;
+    const totalCount = (hasFilter ? totalLoaded : lazyLoadState.totalCount) || totalLoaded;
     const totalPages = Math.ceil(totalCount / rowsPerPage) || 1;
     
     const tableContainer = document.querySelector('.idcard-table');
@@ -596,7 +651,7 @@ function createRowFromCard(card, index) {
         return 'photo-type';
     }
     
-    let html = `<td><input type="checkbox" class="rowCheckbox"></td>`;
+    let html = `<td class="checkbox-cell"><input type="checkbox" class="rowCheckbox"></td>`;
     html += `<td class="sr-no-cell">${card.sr_no}</td>`;
     
     if (card.ordered_fields) {
@@ -648,12 +703,13 @@ function createRowFromCard(card, index) {
                 // IMPORTANT: Store raw fieldValue (including PENDING:xxx) for Image Sort filter to work
                 // This matches what template table.html stores
                 html += `<td class="image-field image-cell ${imageTypeClass}" 
+                    data-field="${fieldName}"
                     data-field-name="${fieldName}" 
                     data-field-type="image"
                     data-original-value="${fieldValue}">
                     <div class="image-with-edit">
                         ${imageHtml}
-                        ${(typeof PERMS !== 'undefined' && PERMS.idcard_edit) ? `<button class="edit-photo-btn" data-card-id="${card.id}" title="Edit Card">Edit</button>` : ''}
+                        ${(typeof PERMS !== 'undefined' && PERMS.idcard_edit && !(typeof IS_CLIENT_USER !== 'undefined' && IS_CLIENT_USER && typeof CLIENT_READONLY_STATUSES !== 'undefined' && CLIENT_READONLY_STATUSES.indexOf(lazyLoadState.currentStatus) !== -1)) ? `<button class="edit-photo-btn" data-card-id="${card.id}" title="Edit Card"><i class="fa-solid fa-pen"></i></button>` : ''}
                     </div>
                 </td>`;
             } else {
@@ -662,12 +718,19 @@ function createRowFromCard(card, index) {
                                  fieldValue.length <= 10 ? 'short-text' :
                                  fieldValue.length > 40 ? 'long-text' : 'medium-text';
                 
-                html += `<td class="dynamic-field editable-cell ${textClass}" 
+                // Client users on approved/download/reprint: no inline editing
+                const isLockedForClient = (typeof IS_CLIENT_USER !== 'undefined' && IS_CLIENT_USER
+                    && typeof CLIENT_READONLY_STATUSES !== 'undefined'
+                    && CLIENT_READONLY_STATUSES.indexOf(lazyLoadState.currentStatus) !== -1);
+                const editableClass = isLockedForClient ? 'dynamic-field' : 'dynamic-field editable-cell';
+                const editTitle = isLockedForClient ? '' : 'title="Double-click to edit"';
+                
+                html += `<td class="${editableClass} ${textClass}" 
                     data-field="${fieldName}"
                     data-field-name="${fieldName}" 
                     data-field-type="${fieldType}"
                     data-original-value="${fieldValue}"
-                    title="Double-click to edit">
+                    ${editTitle}>
                     <span class="cell-value">${fieldValue}</span>
                 </td>`;
             }
@@ -681,8 +744,8 @@ function createRowFromCard(card, index) {
     </td>`;
     
     if (typeof PERMS === 'undefined' || PERMS.idcard_updated_at) {
-        html += `<td>${card.updated_at || ''}</td>`;
-        html += `<td>Admin</td>`;
+        html += `<td class="date-cell">${card.updated_at || ''}</td>`;
+        html += `<td class="user-cell">Admin</td>`;
     }
     
     tr.innerHTML = html;
@@ -691,25 +754,30 @@ function createRowFromCard(card, index) {
 
 function getRowActionButtons(status, cardId) {
     var p = (typeof PERMS !== 'undefined') ? PERMS : {};
+    // Client/client_staff: no action buttons on approved/download/reprint
+    var isClientReadonly = (typeof IS_CLIENT_USER !== 'undefined' && IS_CLIENT_USER
+        && typeof CLIENT_READONLY_STATUSES !== 'undefined'
+        && CLIENT_READONLY_STATUSES.indexOf(status) !== -1);
     switch(status) {
         case 'pending':
-            return p.idcard_verify ? `<button class="verify-row-btn" data-card-id="${cardId}">Verify</button>` : '';
+            return p.idcard_verify ? `<button class="row-action-btn verify-row-btn" data-card-id="${cardId}" title="Verify this card"><i class="fa-solid fa-check"></i><span>Verify</span></button>` : '';
         case 'verified': {
             let btns = '';
-            if (p.idcard_approve) btns += `<button class="approve-row-btn" data-card-id="${cardId}">Approve</button>`;
-            if (p.idcard_verify) btns += `<button class="unverify-row-btn" data-card-id="${cardId}">Unverify</button>`;
+            if (p.idcard_approve) btns += `<button class="row-action-btn approve-row-btn" data-card-id="${cardId}" title="Approve this card"><i class="fa-solid fa-check-double"></i><span>Approve</span></button>`;
+            if (p.idcard_verify) btns += `<button class="row-action-btn unverify-row-btn" data-card-id="${cardId}" title="Move back to pending"><i class="fa-solid fa-rotate-left"></i><span>Unverify</span></button>`;
             return btns;
         }
         case 'approved': {
+            if (isClientReadonly) return '';
             let btns = '';
-            if (p.idcard_approve) btns += `<button class="download-row-btn" data-card-id="${cardId}">Download</button>`;
-            btns += `<button class="unapprove-row-btn" data-card-id="${cardId}">Unapprove</button>`;
+            if (p.idcard_approve) btns += `<button class="row-action-btn download-row-btn" data-card-id="${cardId}" title="Move to download list"><i class="fa-solid fa-download"></i><span>Download</span></button>`;
+            if (p.idcard_verify) btns += `<button class="row-action-btn unapprove-row-btn" data-card-id="${cardId}" title="Move back to verified"><i class="fa-solid fa-rotate-left"></i><span>Unapprove</span></button>`;
             return btns;
         }
         case 'download':
-            return `<span class="status-badge download">Downloaded</span>`;
+            return p.idcard_bulk_download ? `<button class="row-action-btn download-single-row-btn" data-card-id="${cardId}" title="Download this card's image"><i class="fa-solid fa-download"></i><span>Download</span></button>` : `<span class="status-badge download">Downloaded</span>`;
         case 'pool':
-            return p.idcard_retrieve ? `<button class="retrieve-row-btn" data-card-id="${cardId}">Retrieve</button>` : '';
+            return p.idcard_retrieve ? `<button class="row-action-btn retrieve-row-btn" data-card-id="${cardId}" title="Retrieve to pending"><i class="fa-solid fa-rotate-left"></i><span>Retrieve</span></button>` : '';
         default:
             return `<span class="status-badge ${status}">${status}</span>`;
     }
@@ -752,7 +820,7 @@ function attachRowEventHandlers(row) {
         });
     });
     
-    row.querySelectorAll('.download-single-btn').forEach(btn => {
+    row.querySelectorAll('.download-single-row-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             if (typeof downloadSingleCard === 'function') downloadSingleCard(this.getAttribute('data-card-id'));
         });
@@ -765,7 +833,10 @@ function attachRowEventHandlers(row) {
     });
     
     row.querySelectorAll('.editable-cell:not(.image-field)').forEach(cell => {
-        cell.addEventListener('dblclick', function() {
+        // Single-click to start editing (Phase 6: Single Click Edit)
+        cell.addEventListener('click', function(e) {
+            // Skip if clicking on a button or already editing
+            if (e.target.closest('button') || this.classList.contains('editing')) return;
             if (typeof startCellEdit === 'function') {
                 startCellEdit(this);
             }
@@ -820,6 +891,11 @@ async function loadMoreData() {
             
             // Handle any broken images in newly loaded rows
             handleBrokenImages();
+            
+            // Re-populate filter dropdowns with any new class/section values
+            if (typeof populateFilterOptions === 'function') {
+                populateFilterOptions();
+            }
             
             updateLazyLoadPaginationInfo();
             
@@ -989,6 +1065,10 @@ function initTableModule() {
     // Handle broken images after table render
     handleBrokenImages();
     
+    // Populate class/section filter dropdowns from table data
+    if (typeof populateFilterOptions === 'function') {
+        populateFilterOptions();
+    }
 
     
     setTimeout(() => {

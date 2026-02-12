@@ -202,7 +202,8 @@ class ExportService:
     def export_excel(
         self,
         table_id: int,
-        card_ids: Optional[List[int]] = None
+        card_ids: Optional[List[int]] = None,
+        status: str = ''
     ) -> ExcelExportResult:
         """
         Export cards to Excel format.
@@ -210,6 +211,7 @@ class ExportService:
         Args:
             table_id: ID of the table to export
             card_ids: Optional list of specific card IDs
+            status: Current status tab label
             
         Returns:
             ExcelExportResult with HttpResponse if successful
@@ -222,7 +224,7 @@ class ExportService:
                 message=context.error_message or 'Permission denied'
             )
         
-        return self._excel_exporter.export_cards(context.table, context.cards)
+        return self._excel_exporter.export_cards(context.table, context.cards, status=status)
     
     # =========================================================================
     # WORD EXPORT
@@ -232,7 +234,8 @@ class ExportService:
         self,
         table_id: int,
         card_ids: Optional[List[int]] = None,
-        doc_format: str = 'docx'
+        doc_format: str = 'docx',
+        status: str = ''
     ) -> WordExportResult:
         """
         Export cards to Word format.
@@ -241,6 +244,7 @@ class ExportService:
             table_id: ID of the table to export
             card_ids: Optional list of specific card IDs
             doc_format: 'docx' or 'doc'
+            status: Current status tab label
             
         Returns:
             WordExportResult with HttpResponse if successful
@@ -254,7 +258,7 @@ class ExportService:
             )
         
         return self._word_exporter.export_cards(
-            context.table, context.cards, doc_format=doc_format
+            context.table, context.cards, doc_format=doc_format, status=status
         )
     
     # =========================================================================
@@ -264,7 +268,8 @@ class ExportService:
     def export_pdf(
         self,
         table_id: int,
-        card_ids: Optional[List[int]] = None
+        card_ids: Optional[List[int]] = None,
+        status: str = ''
     ) -> PdfExportResult:
         """
         Export cards to PDF format.
@@ -272,6 +277,7 @@ class ExportService:
         Args:
             table_id: ID of the table to export
             card_ids: Optional list of specific card IDs
+            status: Current status tab label
             
         Returns:
             PdfExportResult with HttpResponse if successful
@@ -284,7 +290,7 @@ class ExportService:
                 message=context.error_message or 'Permission denied'
             )
         
-        return self._pdf_exporter.export_cards(context.table, context.cards)
+        return self._pdf_exporter.export_cards(context.table, context.cards, status=status)
     
     # =========================================================================
     # IMAGE ZIP EXPORT
@@ -293,7 +299,8 @@ class ExportService:
     def export_images(
         self,
         table_id: int,
-        card_ids: Optional[List[int]] = None
+        card_ids: Optional[List[int]] = None,
+        status: str = ''
     ) -> ZipExportResult:
         """
         Export images as ZIP files (one per image field).
@@ -301,6 +308,7 @@ class ExportService:
         Args:
             table_id: ID of the table to export
             card_ids: Optional list of specific card IDs
+            status: Current status tab label
             
         Returns:
             ZipExportResult with base64-encoded ZIP files
@@ -313,7 +321,7 @@ class ExportService:
                 message=context.error_message or 'Permission denied'
             )
         
-        return self._zip_exporter.export_images(context.table, context.cards)
+        return self._zip_exporter.export_images(context.table, context.cards, status=status)
     
     # =========================================================================
     # COMBINED EXPORT (for download list page)

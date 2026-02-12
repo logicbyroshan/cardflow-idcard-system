@@ -61,21 +61,25 @@ class Staff(models.Model):
     perm_idcard_download_list = models.BooleanField(default=True)
     perm_idcard_reprint_list = models.BooleanField(default=False)
     
-    # ID Card Action Permissions
+    # ID Card Action Permissions (work in Pending and Verified lists only)
     perm_idcard_add = models.BooleanField(default=True)
     perm_idcard_edit = models.BooleanField(default=True)
     perm_idcard_delete = models.BooleanField(default=True)
     perm_idcard_info = models.BooleanField(default=True)
     perm_idcard_approve = models.BooleanField(default=True)
     perm_idcard_verify = models.BooleanField(default=True)
-    perm_idcard_bulk_upload = models.BooleanField(default=True)
-    perm_idcard_bulk_download = models.BooleanField(default=True)
     perm_idcard_created_at = models.BooleanField(default=False)
     perm_idcard_updated_at = models.BooleanField(default=False)
     perm_idcard_delete_from_pool = models.BooleanField(default=False)
-    perm_delete_all_idcard = models.BooleanField(default=False)
-    perm_reupload_idcard_image = models.BooleanField(default=True)
+    perm_reupload_idcard_image = models.BooleanField(default=True)  # Single card reupload
     perm_idcard_retrieve = models.BooleanField(default=True)
+    
+    # ID Card Bulk Action Permissions (work across all lists)
+    perm_idcard_bulk_upload = models.BooleanField(default=True)
+    perm_idcard_bulk_download = models.BooleanField(default=True)
+    perm_idcard_bulk_reupload = models.BooleanField(default=True)  # Bulk reupload for all lists
+    perm_delete_all_idcard = models.BooleanField(default=False)
+    perm_idcard_upgrade_all = models.BooleanField(default=False)  # Upgrade All Class
     
     # Website Management Permissions
     perm_website_view = models.BooleanField(default=False)

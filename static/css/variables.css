@@ -138,7 +138,7 @@
     --radius-pill: 20px;
     
     /* ===== TYPOGRAPHY ===== */
-    --font-family: 'Segoe UI', 'Roboto Condensed', sans-serif;
+    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     --font-size-xs: 10px;
     --font-size-sm: 11px;
     --font-size-base: 12px;

@@ -1,4 +1,4 @@
-"""
+""" 
 PDF Export Module
 
 Handles PDF file generation for ID card data using xhtml2pdf.
@@ -14,7 +14,7 @@ Features:
 - UPPERCASE text for printing clarity
 - Images rendered at 2.5cm height (matches Word export)
 - 1cm margins on all 4 sides (matches Word export)
-- Phase 4: Uses original images (never thumbnails)
+- Phase 4: Uses THUMBNAILS for optimized export file size
 """
 import os
 import io
@@ -121,6 +121,7 @@ class PdfExporter:
         self,
         table,
         cards: QuerySet,
+        status: str = ''
     ) -> PdfExportResult:
         """
         Export cards to PDF format.
@@ -198,7 +199,7 @@ class PdfExporter:
 
             # Generate PDF
             response = HttpResponse(content_type='application/pdf')
-            filename = generate_export_filename(table.name, 'pdf', client_name=institution_name)
+            filename = generate_export_filename(table.name, 'pdf', client_name=institution_name, status=status)
             response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
             pisa_status = pisa.CreatePDF(
@@ -239,8 +240,10 @@ class PdfExporter:
         try:
             from PIL import Image as PILImage
             for card in cards_list[:10]:
-                img_path = ImageService.get_image_path_for_card(
-                    card=card, field_name=field_name, fallback_to_field_data=True
+                # Phase 4: Use thumbnail if available for consistent sizing
+                img_path = ImageService.get_image_path_for_export(
+                    card=card, field_name=field_name, 
+                    prefer_thumbnail=True, fallback_to_field_data=True
                 )
                 if img_path and is_valid_image_path(img_path):
                     abs_path = os.path.join(settings.MEDIA_ROOT, img_path)
@@ -368,10 +371,11 @@ class PdfExporter:
                 }
 
                 if is_image:
-                    # Get original image path (Phase 4: never thumbnail)
-                    img_path = ImageService.get_image_path_for_card(
+                    # Phase 4: Use thumbnail if available for smaller PDF file size
+                    img_path = ImageService.get_image_path_for_export(
                         card=card,
                         field_name=name,
+                        prefer_thumbnail=True,
                         fallback_to_field_data=True
                     )
                     if img_path and is_valid_image_path(img_path):

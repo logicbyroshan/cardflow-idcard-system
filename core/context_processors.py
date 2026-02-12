@@ -7,6 +7,7 @@ This enables permission-based visibility in templates using:
   {% if perm_idcard_client_list %}
   etc.
 """
+from django.conf import settings
 from core.services.permission_service import PermissionService
 from django.conf import settings as django_settings
 
@@ -38,7 +39,7 @@ def permissions(request):
     # Add is_client_admin for backward compatibility with client-sidebar.html
     context['is_client_admin'] = context.get('is_client', False)
     
-    # App version (visible in admin sidebar footer)
-    context['app_version'] = getattr(django_settings, 'APP_VERSION', '')
+    # Add app version
+    context['APP_VERSION'] = getattr(settings, 'APP_VERSION', 'v1.0.0')
     
     return context

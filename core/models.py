@@ -43,7 +43,8 @@ class User(AbstractUser):
     
     phone = models.CharField(max_length=15, blank=True, null=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='client', db_index=True)
-    profile_image = models.ImageField(upload_to='staff_imgs/', blank=True, null=True)
+    # DEPRECATED: profile_image removed - use frontend placeholder avatars instead
+    # profile_image field removed in Phase 1 refactor
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

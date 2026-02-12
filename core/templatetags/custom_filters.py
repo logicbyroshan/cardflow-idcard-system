@@ -1,4 +1,5 @@
 from django import template
+from django.utils.safestring import mark_safe
 import json
 import re
 
@@ -37,11 +38,29 @@ def _is_image_field(field):
 
 
 def _get_image_sort_key(field_name):
-    """Get sort order for image fields based on canonical order"""
+    """
+    Get sort order for image fields based on canonical display order.
+    Photo(0) → Father Photo(1) → Mother Photo(2) → Signature(3) → Barcode(4) → QR(5)
+    
+    Must stay in sync with BaseService._get_image_sort_key in core/services/base.py.
+    """
     name_lower = field_name.lower().strip()
-    for idx, pattern in enumerate(IMAGE_COLUMN_ORDER):
-        if pattern in name_lower or name_lower in pattern:
-            return idx
+    
+    # Check specific qualifiers FIRST (before generic "photo" match)
+    if 'father' in name_lower or re.match(r'^f\s+', name_lower):
+        return 1   # Father Photo / F Photo
+    if 'mother' in name_lower or re.match(r'^m\s+', name_lower):
+        return 2   # Mother Photo / M Photo
+    if re.search(r'\bsign\b|\bsignature\b', name_lower):
+        return 3   # Signature / Sign
+    if 'barcode' in name_lower:
+        return 4   # Barcode
+    if 'qr' in name_lower:
+        return 5   # QR Code
+    if 'photo' in name_lower or 'image' in name_lower or 'pic' in name_lower:
+        return 0   # Photo (generic/standalone)
+    if 'back' in name_lower:
+        return 6   # Back photo
     return 999  # Unknown image types go last
 
 
@@ -326,3 +345,18 @@ def make_range(value):
         return range(1, int(value) + 1)
     except (ValueError, TypeError):
         return []
+
+
+@register.filter(is_safe=True)
+def wrap_header(value):
+    """
+    Insert <br> between words in column headers so they wrap
+    inside narrow table columns instead of being cut off.
+    Usage: {{ field.name|wrap_header }}  →  "Mother<br>Photo"
+    """
+    if not value:
+        return value
+    parts = str(value).split()
+    if len(parts) <= 1:
+        return value
+    return mark_safe('<br>'.join(parts))

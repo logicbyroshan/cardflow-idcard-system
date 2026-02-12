@@ -80,30 +80,8 @@ window.IDCardApp.apiCall = apiCall;
 // ==========================================
 
 function initSidebar() {
-    const sidebar = document.getElementById("sidebar");
-    const sidebarToggle = document.getElementById("sidebarToggle");
-    
-    if (sidebarToggle && sidebar) {
-        const isCollapsed = localStorage.getItem("sidebarCollapsed") === "true";
-        if (isCollapsed) {
-            sidebar.classList.add("collapsed");
-            document.body.classList.add("sidebar-collapsed");
-            sidebarToggle.innerHTML = '<i class="fa-solid fa-bars"></i>';
-        } else {
-            sidebarToggle.innerHTML = '<i class="fa-solid fa-xmark"></i>';
-        }
-        
-        sidebarToggle.addEventListener("click", function() {
-            sidebar.classList.toggle("collapsed");
-            document.body.classList.toggle("sidebar-collapsed");
-            
-            const collapsed = sidebar.classList.contains("collapsed");
-            localStorage.setItem("sidebarCollapsed", collapsed);
-            sidebarToggle.innerHTML = collapsed ? '<i class="fa-solid fa-bars"></i>' : '<i class="fa-solid fa-xmark"></i>';
-        });
-    }
-    
-    // Set active sidebar link
+    // Sidebar toggle is handled by common/sidebar.js (auto-initialized on DOMContentLoaded).
+    // Only set the active sidebar link here to avoid duplicate click handlers.
     const activeClientsLink = document.getElementById('activeClientsLink');
     const allClientsLink = document.getElementById('allClientsLink');
     if (activeClientsLink) activeClientsLink.classList.add('active');
@@ -381,6 +359,44 @@ window.IDCardApp.updateButtonStates = updateButtonStates;
 window.IDCardApp.initCheckboxes = initCheckboxes;
 window.IDCardApp.initSelectAllDbButton = initSelectAllDbButton;
 
+/**
+ * Get ALL card IDs for bulk operations (download, reupload).
+ * If specific rows are checked, returns those IDs (sync).
+ * Otherwise, fetches ALL card IDs from the database for the current status.
+ * Always returns a Promise.
+ */
+async function getAllCardIdsForAction() {
+    // If user has explicitly selected rows (checked checkboxes), use those
+    const selectedIds = getSelectedCardIdsWithDbSelect();
+    if (selectedIds.length > 0) {
+        return selectedIds;
+    }
+
+    // No explicit selection — fetch ALL card IDs from database
+    const tableId = window.IDCardApp.tableId || (typeof TABLE_ID !== 'undefined' ? TABLE_ID : null);
+    const currentStatus = window.IDCardApp.currentStatus || new URLSearchParams(window.location.search).get('status') || 'pending';
+
+    if (!tableId) {
+        console.error('getAllCardIdsForAction: TABLE_ID not found');
+        return [];
+    }
+
+    try {
+        const response = await fetch(`/panel/api/table/${tableId}/cards/all-ids/?status=${currentStatus}`);
+        const data = await response.json();
+        if (data.success && data.card_ids) {
+            return data.card_ids;
+        }
+        return [];
+    } catch (error) {
+        console.error('Error fetching all card IDs:', error);
+        return [];
+    }
+}
+
+window.getAllCardIdsForAction = getAllCardIdsForAction;
+window.IDCardApp.getAllCardIdsForAction = getAllCardIdsForAction;
+
 // ==========================================
 // DROPDOWN FUNCTIONALITY
 // ==========================================
@@ -421,8 +437,8 @@ function initDropdowns() {
     setupDropdown('filterDropdown');
     setupDropdown('rowsDropdown');
     setupDropdown('sortDropdown');
-    setupDropdown('classFilterDropdown');
-    setupDropdown('sectionFilterDropdown');
+    // classFilterDropdown and sectionFilterDropdown are handled by initFilterHandlers()
+    // in idcard-actions-search.js (with event delegation for dynamic options)
     
     // Close dropdowns when clicking outside
     document.addEventListener('click', function(e) {

@@ -12,7 +12,7 @@ Features:
 - Auto-sized columns based on content
 - 7 entries per page with proper pagination
 - Image embedding with borders
-- Phase 3: Prefers CardMedia, falls back to field_data
+- Phase 4: Uses THUMBNAILS for optimized export file size
 """
 import logging
 from io import BytesIO
@@ -69,14 +69,15 @@ class WordExporter:
     IMAGE_HEIGHT_CM = 2.5
     ROW_HEIGHT_CM = 2.5
     PAGE_WIDTH_CM = 27.5  # Landscape A4 with margins
-    # Phase 2: Thumbnails are NEVER used in exports.
-    # ImageService.get_image_path_for_card blocks /thumbs/ paths.
+    # Phase 4: Thumbnails are used for smaller export file size.
+    # Use get_image_path_for_export with prefer_thumbnail=True.
     
     def export_cards(
         self,
         table,
         cards: QuerySet,
-        doc_format: str = 'docx'
+        doc_format: str = 'docx',
+        status: str = ''
     ) -> WordExportResult:
         """
         Export cards to Word format.
@@ -179,7 +180,7 @@ class WordExporter:
             
             # Generate filename and content type
             extension = 'doc' if doc_format == 'doc' else 'docx'
-            filename = generate_export_filename(table.name, extension, client_name=institution_name)
+            filename = generate_export_filename(table.name, extension, client_name=institution_name, status=status)
             
             # python-docx always produces DOCX (OOXML) format regardless of extension
             content_type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
@@ -382,8 +383,10 @@ class WordExporter:
         try:
             from PIL import Image as PILImage
             for card in cards_list[:10]:
-                img_path = ImageService.get_image_path_for_card(
-                    card=card, field_name=field_name, fallback_to_field_data=True
+                # Phase 4: Use thumbnail if available for consistent sizing
+                img_path = ImageService.get_image_path_for_export(
+                    card=card, field_name=field_name, 
+                    prefer_thumbnail=True, fallback_to_field_data=True
                 )
                 if img_path and is_valid_image_path(img_path):
                     if default_storage.exists(img_path):
@@ -576,10 +579,11 @@ class WordExporter:
             cell.width = Cm(column_widths[col_idx])
             
             if field['is_image']:
-                # Phase 3: Use ImageService with CardMedia + fallback
-                image_path = ImageService.get_image_path_for_card(
+                # Phase 4: Use thumbnail for smaller export file size
+                image_path = ImageService.get_image_path_for_export(
                     card=card,
                     field_name=field['name'],
+                    prefer_thumbnail=True,
                     fallback_to_field_data=True
                 )
                 self._add_image_to_cell(

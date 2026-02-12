@@ -449,12 +449,15 @@ function initBulkActionHandlers() {
         }
     });
     
-    // Unapproved Selected button
-    document.getElementById('unapprovedBtn')?.addEventListener('click', function() {
-        const selectedIds = typeof getSelectedCardIds === 'function' ? getSelectedCardIds() : [];
-        if (selectedIds.length > 0) {
-            bulkUnapprove(selectedIds);
-        }
+    // Unapproved Selected button (works for verified and approved lists)
+    const unapprovedBtnIds = ['unapprovedBtn', 'unapprovedBtnA'];
+    unapprovedBtnIds.forEach(btnId => {
+        document.getElementById(btnId)?.addEventListener('click', function() {
+            const selectedIds = typeof getSelectedCardIds === 'function' ? getSelectedCardIds() : [];
+            if (selectedIds.length > 0) {
+                bulkUnapprove(selectedIds);
+            }
+        });
     });
     
     // Unverified Selected button

@@ -425,6 +425,16 @@
     gap: 16px;
 }
 
+/* Profile Upload Section (avatar area at top of drawers) */
+.profile-upload-section {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--gray-200, #e5e7eb);
+}
+
 /* Profile Upload */
 .profile-upload {
     display: flex;
@@ -919,15 +929,15 @@
 .view-profile-image,
 .view-avatar {
     width: 80px;
-    height: 100px;
-    border-radius: var(--radius-lg);
+    height: 80px;
+    border-radius: 50%;
     background: var(--primary-gradient);
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
     flex-shrink: 0;
-    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.35);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
 
 .view-profile-image i,

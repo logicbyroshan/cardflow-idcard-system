@@ -1,14 +1,29 @@
 {% load static %}
 {% load custom_filters %}
-<!-- Side Modal for Add/Edit/View -->
-<div class="side-modal-overlay" id="sideModalOverlay">
-  <div class="side-modal" id="sideModal">
+<!-- Side Modal for Add/Edit/View - Alpine.js powered -->
+<div x-data="sideModalState()" 
+x-init="initGlobalBindings()"
+x-cloak
+@keydown.escape.window="if(isOpen) closeModal()"
+class="side-modal-overlay" 
+id="sideModalOverlay"
+:class="{ 'active': isOpen }">
+  <div class="side-modal" id="sideModal" 
+       x-show="isOpen"
+       x-cloak
+       x-transition:enter="transition ease-out duration-200"
+       x-transition:enter-start="translate-x-full"
+       x-transition:enter-end="translate-x-0"
+       x-transition:leave="transition ease-in duration-150"
+       x-transition:leave-start="translate-x-0"
+       x-transition:leave-end="translate-x-full"
+       @click.stop>
     <div class="side-modal-header">
       <h3 id="sideModalTitle">
         <i class="fa-solid fa-plus"></i>
         <span>Add New Card</span>
       </h3>
-      <button class="side-modal-close" id="closeSideModal" title="Close">
+      <button class="side-modal-close" id="closeSideModal" title="Close" @click="closeModal()">
         <i class="fa-solid fa-xmark"></i>
       </button>
     </div>
@@ -122,50 +137,19 @@
             {% else %}
             <div class="form-group">
               <label for="field_{{ forloop.counter }}">{{ field.name }}</label>
-              {% if field.type == 'class' %}
-              <select id="field_{{ forloop.counter }}"
-                      name="{{ field.name }}"
-                      class="form-control"
-                      data-field-name="{{ field.name }}"
-                      data-field-type="{{ field.type }}">
-                <option value="">Select Class...</option>
-                <option value="NURSERY">Nursery</option>
-                <option value="LKG">LKG</option>
-                <option value="UKG">UKG</option>
-                <option value="KG">KG</option>
-                <option value="I">I</option>
-                <option value="II">II</option>
-                <option value="III">III</option>
-                <option value="IV">IV</option>
-                <option value="V">V</option>
-                <option value="VI">VI</option>
-                <option value="VII">VII</option>
-                <option value="VIII">VIII</option>
-                <option value="IX">IX</option>
-                <option value="X">X</option>
-                <option value="XI">XI</option>
-                <option value="XII">XII</option>
-              </select>
-              {% elif field.type == 'section' %}
-              <select id="field_{{ forloop.counter }}"
-                      name="{{ field.name }}"
-                      class="form-control"
-                      data-field-name="{{ field.name }}"
-                      data-field-type="{{ field.type }}">
-                <option value="">Select Section...</option>
-                {% for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" %}
-                <option value="{{ letter }}">{{ letter }}</option>
-                {% endfor %}
-              </select>
-              {% else %}
+              {% comment %}
+              Phase 4: Class and Section dropdowns replaced with text inputs.
+              Users can now enter any value for class/section for flexibility.
+              {% endcomment %}
               <input type="text" 
                      id="field_{{ forloop.counter }}" 
                      name="{{ field.name }}" 
                      class="form-control"
                      data-field-name="{{ field.name }}"
                      data-field-type="{{ field.type }}"
-                     placeholder="Enter {{ field.name|lower }}...">
-              {% endif %}
+                     placeholder="Enter {{ field.name|lower }}..."
+                     {% if field.type == 'class' %}autocomplete="off" data-uppercase="true"{% endif %}
+                     {% if field.type == 'section' %}autocomplete="off" data-uppercase="true"{% endif %}>
             </div>
             {% endif %}
           {% endfor %}
@@ -174,10 +158,10 @@
     </div>
     
     <div class="side-modal-footer">
-      <button class="btn btn-secondary" id="cancelSideModal">
+      <button class="btn btn-secondary" id="cancelSideModal" @click="closeModal()" type="button">
         <i class="fa-solid fa-xmark"></i> Cancel
       </button>
-      <button class="btn btn-primary" id="saveSideModal">
+      <button class="btn btn-primary" id="saveSideModal" type="button">
         <i class="fa-solid fa-check"></i>
         <span>Save</span>
       </button>

@@ -20,24 +20,10 @@ Contains: Side drawer for adding/editing staff with form fields and permissions
         <input type="hidden" id="staff-id" name="staff_id">
         
         <div class="drawer-body">
-            <!-- Profile Photo Section -->
-            <div class="form-section">
-                <h3 class="section-title">
-                    <i class="fa-solid fa-camera"></i> Profile Photo
-                </h3>
-                <div class="profile-upload">
-                    <div class="profile-preview" id="profile-preview">
-                        <i class="fa-solid fa-user"></i>
-                    </div>
-                    <div class="profile-actions">
-                        <label for="profile-input" class="btn btn-secondary btn-sm">
-                            <i class="fa-solid fa-upload"></i> Upload Photo
-                        </label>
-                        <input type="file" id="profile-input" name="profile" accept="image/*" hidden>
-                        <span class="upload-hint">JPG, PNG (Max 2MB)</span>
-                        <div class="profile-path-display no-path" id="staff-profile-path">No image</div>
-                    </div>
-                </div>
+            <!-- Profile Avatar Placeholder -->
+            <div class="profile-upload-section" style="flex-direction: row; align-items: center; gap: 16px;">
+                {% include 'partials/components/user-avatar.html' with role='admin_staff' size='large' %}
+                <span style="color: #6b7280; font-size: 13px;">Staff avatar</span>
             </div>
 
             <!-- Client Assignment Section (Admin Staff Only) -->
@@ -113,142 +99,159 @@ Contains: Side drawer for adding/editing staff with form fields and permissions
                     <i class="fa-solid fa-shield-halved"></i> User Permission
                 </h3>
                 
-                <!-- Client Permissions -->
+                <!-- Staff Management -->
                 <div class="permission-group">
                     <h4 class="permission-group-title">
-                        <i class="fa-solid fa-users"></i> Client Permissions
+                        <i class="fa-solid fa-users"></i> Staff Management
                     </h4>
                     <div class="permission-grid">
                         <label class="permission-item">
                             <input type="checkbox" name="perm_idcard_client_list" id="perm-idcard-client-list">
-                            <span class="permission-label">Id Card Client List</span>
+                            <span class="permission-label">Manage Staff</span>
                         </label>
                     </div>
                 </div>
                 
-                <!-- ID Card Setting Permissions -->
+                <!-- Template Settings -->
                 <div class="permission-group">
                     <h4 class="permission-group-title">
-                        <i class="fa-solid fa-cog"></i> ID Card Setting Permissions
+                        <i class="fa-solid fa-cog"></i> Template Settings
                     </h4>
                     <div class="permission-grid">
                         <label class="permission-item">
                             <input type="checkbox" name="perm_idcard_setting_list" id="perm-idcard-setting-list">
-                            <span class="permission-label">Id Card Setting List</span>
+                            <span class="permission-label">View Templates</span>
                         </label>
                         <label class="permission-item">
                             <input type="checkbox" name="perm_idcard_setting_add" id="perm-idcard-setting-add">
-                            <span class="permission-label">Id Card Setting Add</span>
+                            <span class="permission-label">Add Template</span>
                         </label>
                         <label class="permission-item">
                             <input type="checkbox" name="perm_idcard_setting_edit" id="perm-idcard-setting-edit">
-                            <span class="permission-label">Id Card Setting Edit</span>
+                            <span class="permission-label">Edit Template</span>
                         </label>
                         <label class="permission-item">
                             <input type="checkbox" name="perm_idcard_setting_delete" id="perm-idcard-setting-delete">
-                            <span class="permission-label">Id Card Setting Delete</span>
+                            <span class="permission-label">Delete Template</span>
                         </label>
                         <label class="permission-item">
                             <input type="checkbox" name="perm_idcard_setting_status" id="perm-idcard-setting-status">
-                            <span class="permission-label">Id Card Setting Status</span>
+                            <span class="permission-label">Toggle Template Status</span>
                         </label>
                     </div>
                 </div>
                 
-                <!-- ID Card List Permissions -->
+                <!-- View Card Lists -->
                 <div class="permission-group">
                     <h4 class="permission-group-title">
-                        <i class="fa-solid fa-list"></i> ID Card List Permissions
+                        <i class="fa-solid fa-list"></i> View Card Lists
                     </h4>
                     <div class="permission-grid">
                         <label class="permission-item">
                             <input type="checkbox" name="perm_idcard_pending_list" id="perm-idcard-pending-list">
-                            <span class="permission-label">Id Card Pending List</span>
+                            <span class="permission-label">View Pending Cards</span>
                         </label>
                         <label class="permission-item">
                             <input type="checkbox" name="perm_idcard_verified_list" id="perm-idcard-verified-list">
-                            <span class="permission-label">Id Card Verified List</span>
+                            <span class="permission-label">View Verified Cards</span>
                         </label>
                         <label class="permission-item">
                             <input type="checkbox" name="perm_idcard_pool_list" id="perm-idcard-pool-list">
-                            <span class="permission-label">Id Card Pool List</span>
+                            <span class="permission-label">View Pool Cards</span>
                         </label>
                         <label class="permission-item">
                             <input type="checkbox" name="perm_idcard_approved_list" id="perm-idcard-approved-list">
-                            <span class="permission-label">Id Card Approved List</span>
+                            <span class="permission-label">View Approved Cards</span>
                         </label>
                         <label class="permission-item">
                             <input type="checkbox" name="perm_idcard_download_list" id="perm-idcard-download-list">
-                            <span class="permission-label">Id Card Download List</span>
+                            <span class="permission-label">View Download List</span>
                         </label>
                         <label class="permission-item">
                             <input type="checkbox" name="perm_idcard_reprint_list" id="perm-idcard-reprint-list">
-                            <span class="permission-label">Id Card Reprint List</span>
+                            <span class="permission-label">View Reprint List</span>
                         </label>
                     </div>
                 </div>
                 
-                <!-- ID Card Action Permissions -->
+                <!-- Card Actions -->
                 <div class="permission-group">
                     <h4 class="permission-group-title">
-                        <i class="fa-solid fa-id-card"></i> ID Card Action Permissions
+                        <i class="fa-solid fa-id-card"></i> Card Actions
                     </h4>
                     <div class="permission-grid">
                         <label class="permission-item">
                             <input type="checkbox" name="perm_idcard_add" id="perm-idcard-add">
-                            <span class="permission-label">Id Card Add</span>
+                            <span class="permission-label">Add Card</span>
                         </label>
                         <label class="permission-item">
                             <input type="checkbox" name="perm_idcard_edit" id="perm-idcard-edit">
-                            <span class="permission-label">Id Card Edit</span>
+                            <span class="permission-label">Edit Card</span>
                         </label>
                         <label class="permission-item">
                             <input type="checkbox" name="perm_idcard_delete" id="perm-idcard-delete">
-                            <span class="permission-label">Id Card Delete</span>
+                            <span class="permission-label">Delete Card</span>
                         </label>
                         <label class="permission-item">
                             <input type="checkbox" name="perm_idcard_info" id="perm-idcard-info">
-                            <span class="permission-label">Id Card Info</span>
+                            <span class="permission-label">View Card Info</span>
                         </label>
                         <label class="permission-item">
                             <input type="checkbox" name="perm_idcard_approve" id="perm-idcard-approve">
-                            <span class="permission-label">Id Card Approve</span>
+                            <span class="permission-label">Approve Card</span>
                         </label>
                         <label class="permission-item">
                             <input type="checkbox" name="perm_idcard_verify" id="perm-idcard-verify">
-                            <span class="permission-label">Id Card Verify</span>
-                        </label>
-                        <label class="permission-item">
-                            <input type="checkbox" name="perm_idcard_bulk_upload" id="perm-idcard-bulk-upload">
-                            <span class="permission-label">Id Card Bulk Upload</span>
-                        </label>
-                        <label class="permission-item">
-                            <input type="checkbox" name="perm_idcard_bulk_download" id="perm-idcard-bulk-download">
-                            <span class="permission-label">Id Card Bulk Download</span>
+                            <span class="permission-label">Verify Card</span>
                         </label>
                         <label class="permission-item">
                             <input type="checkbox" name="perm_idcard_created_at" id="perm-idcard-created-at">
-                            <span class="permission-label">Id Card Created At</span>
+                            <span class="permission-label">View Created Date</span>
                         </label>
                         <label class="permission-item">
                             <input type="checkbox" name="perm_idcard_updated_at" id="perm-idcard-updated-at">
-                            <span class="permission-label">Id Card Updated At</span>
+                            <span class="permission-label">View Updated Date</span>
                         </label>
                         <label class="permission-item">
                             <input type="checkbox" name="perm_idcard_delete_from_pool" id="perm-idcard-delete-from-pool">
-                            <span class="permission-label">Id Card Delete From Pool List</span>
+                            <span class="permission-label">Remove From Pool</span>
                         </label>
                         <label class="permission-item">
                             <input type="checkbox" name="perm_reupload_idcard_image" id="perm-reupload-idcard-image">
-                            <span class="permission-label">Reupload Id Card Image</span>
-                        </label>
-                        <label class="permission-item">
-                            <input type="checkbox" name="perm_delete_all_idcard" id="perm-delete-all-idcard">
-                            <span class="permission-label">Delete All Id Card</span>
+                            <span class="permission-label">Reupload Card Image</span>
                         </label>
                         <label class="permission-item">
                             <input type="checkbox" name="perm_idcard_retrieve" id="perm-idcard-retrieve">
-                            <span class="permission-label">Id Card Retrieve</span>
+                            <span class="permission-label">Retrieve Card</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Bulk Actions -->
+                <div class="permission-group">
+                    <h4 class="permission-group-title">
+                        <i class="fa-solid fa-layer-group"></i> Bulk Actions
+                    </h4>
+                    <div class="permission-grid">
+                        <label class="permission-item">
+                            <input type="checkbox" name="perm_idcard_bulk_upload" id="perm-idcard-bulk-upload">
+                            <span class="permission-label">Bulk Upload Cards</span>
+                        </label>
+                        <label class="permission-item">
+                            <input type="checkbox" name="perm_idcard_bulk_download" id="perm-idcard-bulk-download">
+                            <span class="permission-label">Bulk Download Cards</span>
+                        </label>
+                        <label class="permission-item">
+                            <input type="checkbox" name="perm_idcard_bulk_reupload" id="perm-idcard-bulk-reupload">
+                            <span class="permission-label">Bulk Reupload Images</span>
+                        </label>
+                        <label class="permission-item">
+                            <input type="checkbox" name="perm_delete_all_idcard" id="perm-delete-all-idcard">
+                            <span class="permission-label">Delete All Cards</span>
+                        </label>
+                        <label class="permission-item">
+                            <input type="checkbox" name="perm_idcard_upgrade_all" id="perm-idcard-upgrade-all">
+                            <span class="permission-label">Upgrade All Class</span>
                         </label>
                     </div>
                 </div>

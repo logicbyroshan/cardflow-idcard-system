@@ -30,15 +30,34 @@ logger = logging.getLogger(__name__)
 
 MAX_EXPORT_CARD_IDS = 5000
 
+_VALID_STATUSES = {'pending', 'verified', 'approved', 'download', 'pool'}
 
-def _get_card_ids_from_request(request) -> Optional[List[int]]:
+
+def _get_status_from_request(request) -> str:
+    """Extract status label from POST body (JSON or form data)."""
+    status = ''
+    if request.content_type == 'application/json':
+        try:
+            data = json.loads(request.body)
+            status = data.get('status', '')
+        except (json.JSONDecodeError, ValueError):
+            pass
+    if not status:
+        status = request.POST.get('status', '')
+    return status if status in _VALID_STATUSES else ''
+
+
+def _get_card_ids_from_request(request, table_id: int = None) -> Optional[List[int]]:
     """
     Extract card IDs from POST request body.
     
     Handles both form data and JSON body.
+    When no explicit card_ids are provided but table_id is given,
+    falls back to ALL card IDs for the requested status from the database.
     
     Args:
         request: Django HttpRequest
+        table_id: Optional table ID to fall back to full status query
         
     Returns:
         List of card IDs or None if no valid IDs found
@@ -69,6 +88,19 @@ def _get_card_ids_from_request(request) -> Optional[List[int]]:
         # Cap to prevent OOM / slow SQL
         if len(card_ids) > MAX_EXPORT_CARD_IDS:
             card_ids = card_ids[:MAX_EXPORT_CARD_IDS]
+    
+    # Fallback: if no card_ids provided but table_id is available,
+    # fetch ALL card IDs for the requested status from the database
+    if not card_ids and table_id:
+        from core.models import IDCard, IDCardTable
+        status = _get_status_from_request(request)
+        try:
+            qs = IDCard.objects.filter(table_id=table_id)
+            if status:
+                qs = qs.filter(status=status)
+            card_ids = list(qs.order_by('id').values_list('id', flat=True)[:MAX_EXPORT_CARD_IDS])
+        except Exception:
+            pass
     
     return card_ids if card_ids else None
 
@@ -159,7 +191,7 @@ def api_export_xlsx(request, table_id: int) -> HttpResponse:
     if scope_error:
         return scope_error
     
-    card_ids = _get_card_ids_from_request(request)
+    card_ids = _get_card_ids_from_request(request, table_id=table_id)
     if not card_ids:
         return JsonResponse({
             'success': False,
@@ -167,7 +199,7 @@ def api_export_xlsx(request, table_id: int) -> HttpResponse:
         }, status=400)
     
     service = ExportService(request.user)
-    result = service.export_excel(table_id, card_ids)
+    result = service.export_excel(table_id, card_ids, status=_get_status_from_request(request))
     
     if not result.success:
         return JsonResponse({
@@ -211,7 +243,7 @@ def api_export_docx(request, table_id: int) -> HttpResponse:
     if scope_error:
         return scope_error
     
-    card_ids = _get_card_ids_from_request(request)
+    card_ids = _get_card_ids_from_request(request, table_id=table_id)
     if not card_ids:
         return JsonResponse({
             'success': False,
@@ -233,7 +265,7 @@ def api_export_docx(request, table_id: int) -> HttpResponse:
         doc_format = 'docx'
     
     service = ExportService(request.user)
-    result = service.export_word(table_id, card_ids, doc_format=doc_format)
+    result = service.export_word(table_id, card_ids, doc_format=doc_format, status=_get_status_from_request(request))
     
     if not result.success:
         return JsonResponse({
@@ -275,7 +307,7 @@ def api_export_pdf(request, table_id: int) -> HttpResponse:
     if scope_error:
         return scope_error
     
-    card_ids = _get_card_ids_from_request(request)
+    card_ids = _get_card_ids_from_request(request, table_id=table_id)
     if not card_ids:
         return JsonResponse({
             'success': False,
@@ -283,7 +315,7 @@ def api_export_pdf(request, table_id: int) -> HttpResponse:
         }, status=400)
     
     service = ExportService(request.user)
-    result = service.export_pdf(table_id, card_ids)
+    result = service.export_pdf(table_id, card_ids, status=_get_status_from_request(request))
     
     if not result.success:
         return JsonResponse({
@@ -339,7 +371,7 @@ def api_export_images(request, table_id: int) -> JsonResponse:
     if scope_error:
         return scope_error
     
-    card_ids = _get_card_ids_from_request(request)
+    card_ids = _get_card_ids_from_request(request, table_id=table_id)
     if not card_ids:
         return JsonResponse({
             'success': False,
@@ -347,7 +379,7 @@ def api_export_images(request, table_id: int) -> JsonResponse:
         }, status=400)
     
     service = ExportService(request.user)
-    result = service.export_images(table_id, card_ids)
+    result = service.export_images(table_id, card_ids, status=_get_status_from_request(request))
     
     logger.info("Export ZIP: user=%s table=%d cards=%d", request.user.id, table_id, len(card_ids))
     return JsonResponse(zip_result_to_dict(result))
@@ -504,25 +536,25 @@ def api_download_all_cards(request, table_id: int) -> JsonResponse:
             base_name = f"{clean_table}_{status_label}"
         
         # Generate XLSX (base64)
-        xlsx_result = excel_exporter.export_cards(table, cards)
+        xlsx_result = excel_exporter.export_cards(table, cards, status=status_key)
         if xlsx_result.success and xlsx_result.response:
             xlsx_base64 = base64.b64encode(xlsx_result.response.content).decode('utf-8')
             files.append({
                 'type': 'xlsx',
                 'status': status_key,
-                'filename': f"{base_name}({counter}).xlsx",
+                'filename': f"{base_name}.xlsx",
                 'data': xlsx_base64,
             })
         
         # Generate ZIP(s) for image fields (base64)
-        zip_result = zip_exporter.export_images(table, cards)
+        zip_result = zip_exporter.export_images(table, cards, status=status_key)
         if zip_result.success and zip_result.zip_files:
             for zf in zip_result.zip_files:
                 field_label = zf.field_name.upper().replace(' ', '_')
                 files.append({
                     'type': 'zip',
                     'status': status_key,
-                    'filename': f"{base_name}_{field_label}({counter}).zip",
+                    'filename': f"{base_name}_{field_label}.zip",
                     'data': zf.data,
                     'image_count': zf.image_count,
                 })

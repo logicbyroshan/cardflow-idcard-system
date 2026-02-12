@@ -36,7 +36,7 @@
     table-layout: fixed;
     width: 100%;
     min-width: 1000px;
-    font-family: 'Roboto Condensed', sans-serif;
+    font-family: var(--font-family);
 }
 
 /* Name column - fixed width, left aligned */
@@ -233,12 +233,12 @@
 .bulk-btn {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 5px 8px;
+    gap: 3px;
+    padding: 4px 8px;
     border: none;
     border-radius: 4px;
     font-size: 10px;
-    font-weight: 400;
+    font-weight: 500;
     cursor: pointer;
     transition: all 0.15s ease;
     white-space: nowrap;

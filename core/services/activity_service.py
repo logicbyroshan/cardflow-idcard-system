@@ -248,23 +248,43 @@ class ActivityService:
     # ── query methods ───────────────────────────────────────
 
     @classmethod
-    def get_recent(cls, limit=10):
+    def get_recent(cls, limit=8, hours=24, user=None, hide_admin_names=False):
         """
         Return the most recent activity entries for the dashboard.
-        Returns a list of dicts ready for template rendering.
+        Only shows entries from the last `hours` hours (default 24).
+        
+        Args:
+            limit: Maximum number of entries to return
+            hours: Only show entries from the last N hours
+            user: If provided, filter activities based on user role:
+                - super_admin: All activities
+                - admin_staff: Activities for assigned clients only
+                - client: Activities for own client only
+                - client_staff: Activities for own client only
+            hide_admin_names: If True, replace admin/admin_staff names with "System"
+        
+        Returns:
+            List of dicts ready for template rendering.
         """
+        now = timezone.now()
+        cutoff = now - timezone.timedelta(hours=hours)
+        
+        # Base queryset
         qs = (
             ActivityLog.objects
+            .filter(created_at__gte=cutoff)
             .select_related('user')
-            .order_by('-created_at')[:limit]
+            .order_by('-created_at')
         )
-        now = timezone.now()
+        
+        # Apply role-based filtering
+        if user and user.is_authenticated:
+            qs = cls._apply_role_filter(qs, user)
+        
         results = []
-        for entry in qs:
-            actor = ''
-            if entry.user:
-                actor = entry.user.get_full_name() or entry.user.username
-
+        for entry in qs[:limit]:
+            actor = cls._get_actor_display(entry, user, hide_admin_names)
+            
             results.append({
                 'id': entry.pk,
                 'actor': actor,
@@ -276,3 +296,96 @@ class ActivityService:
                 'created_at': entry.created_at.isoformat(),
             })
         return results
+    
+    @classmethod
+    def _apply_role_filter(cls, queryset, user):
+        """
+        Apply role-based filtering to activity queryset.
+        
+        Role-based visibility:
+        - super_admin: All activities
+        - admin_staff: Activities for assigned clients only
+        - client: Activities for own client only
+        - client_staff: Activities for own client only
+        """
+        from core.services.permission_service import PermissionService
+        
+        # Super admin sees everything
+        if PermissionService.is_super_admin(user):
+            return queryset
+        
+        # Admin staff: filter by assigned clients
+        if user.role == 'admin_staff':
+            staff = getattr(user, 'staff_profile', None)
+            if staff:
+                client_ids = list(staff.assigned_clients.values_list('id', flat=True))
+                if client_ids:
+                    # Filter to activities from assigned clients or by this user
+                    from django.db.models import Q
+                    return queryset.filter(
+                        Q(target_model='Client', target_id__in=client_ids) |
+                        Q(user=user)
+                    )
+                return queryset.filter(user=user)  # No assigned clients, only own activities
+            return queryset.none()
+        
+        # Client: filter to own client activities
+        if user.role == 'client':
+            client = getattr(user, 'client_profile', None)
+            if client:
+                from django.db.models import Q
+                return queryset.filter(
+                    Q(target_model='Client', target_id=client.id) |
+                    Q(user=user) |
+                    # Include card operations for the client's cards
+                    Q(target_model='IDCard', target_name__icontains=client.name)
+                )
+            return queryset.none()
+        
+        # Client staff: filter to own client activities
+        if user.role == 'client_staff':
+            staff = getattr(user, 'staff_profile', None)
+            if staff and staff.client:
+                from django.db.models import Q
+                return queryset.filter(
+                    Q(target_model='Client', target_id=staff.client.id) |
+                    Q(user=user)
+                )
+            return queryset.none()
+        
+        return queryset.none()
+    
+    @classmethod
+    def _get_actor_display(cls, entry, viewing_user, hide_admin_names=False):
+        """
+        Get the display name for the activity actor.
+        
+        If hide_admin_names is True and the actor is admin/admin_staff,
+        and the viewing_user is client/client_staff, show "System" instead.
+        """
+        if not entry.user:
+            return 'System'
+        
+        actor_role = entry.user.role
+        actor_name = entry.user.get_full_name() or entry.user.username
+        
+        # If viewing user is client/client_staff and actor is admin/admin_staff, hide name
+        if hide_admin_names and viewing_user and viewing_user.is_authenticated:
+            if viewing_user.role in ('client', 'client_staff'):
+                if actor_role in ('super_admin', 'admin_staff') or entry.user.is_superuser:
+                    return 'System'
+        
+        return actor_name
+
+    @classmethod
+    def cleanup_old(cls, days=7):
+        """
+        Delete activity log entries older than `days` days.
+        Called periodically (e.g. via management command or scheduled task).
+        Returns the number of entries deleted.
+        """
+        cutoff = timezone.now() - timezone.timedelta(days=days)
+        deleted, _ = ActivityLog.objects.filter(created_at__lt=cutoff).delete()
+        if deleted:
+            logger.info(f'Cleaned up {deleted} old activity log entries')
+        return deleted

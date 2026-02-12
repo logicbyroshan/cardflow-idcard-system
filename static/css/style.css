@@ -359,6 +359,8 @@ body {
   color: var(--primary);
 }
 
+/* .app-version removed — version now uses .info-item like date/time */
+
 .sidebar-user {
   display: flex;
   align-items: center;

@@ -20,25 +20,11 @@ Contains: Side drawer for adding/editing clients with form fields and permission
         <form id="client-form" class="client-form">
             <input type="hidden" id="client-id" name="client_id">
             
-            <!-- Profile Photo Section -->
+            <!-- Profile Avatar Placeholder (Phase 1: Photo upload removed) -->
             <div class="form-section">
-                <h3 class="section-title">
-                    <i class="fa-solid fa-camera"></i> Profile Photo
-                </h3>
-                <div class="profile-upload">
-                    <div class="profile-preview" id="profile-preview">
-                        <i class="fa-solid fa-user"></i>
-                    </div>
-                    <div class="profile-actions">
-                        <label for="profile-input" class="btn btn-secondary btn-sm">
-                            <i class="fa-solid fa-upload"></i> Upload Photo
-                        </label>
-                        <input type="file" id="profile-input" name="profile" accept="image/*" hidden>
-                        <button type="button" class="btn btn-danger btn-sm" id="remove-photo-btn" style="display: none;">
-                            <i class="fa-solid fa-trash"></i> Remove
-                        </button>
-                        <span class="upload-hint">JPG, PNG (Max 2MB)</span>
-                        <div class="profile-path-display no-path" id="client-profile-path">No image</div>
+                <div class="profile-upload" style="justify-content: center;">
+                    <div class="user-avatar-placeholder client" style="width: 80px; height: 80px; font-size: 2rem;">
+                        <i class="fa-solid fa-building"></i>
                     </div>
                 </div>
             </div>
@@ -96,40 +82,40 @@ Contains: Side drawer for adding/editing clients with form fields and permission
                     <i class="fa-solid fa-shield-halved"></i> Permissions
                 </h3>
                 
-                <!-- Staff Permissions -->
+                <!-- Staff Management -->
                 <div class="permission-group">
                     <h4 class="permission-group-title">
-                        <i class="fa-solid fa-users"></i> Client Staff
+                        <i class="fa-solid fa-users"></i> Staff Management
                     </h4>
                     <div class="permission-grid">
                         <label class="permission-item">
                             <input type="checkbox" name="perm_idcard_client_list" id="perm-idcard-client-list">
-                            <span class="permission-label">Id Card Client List</span>
+                            <span class="permission-label">Manage Staff</span>
                         </label>
                     </div>
                 </div>
                 
-                <!-- ID Card Settings Permissions -->
+                <!-- Template Settings Permissions -->
                 <div class="permission-group">
                     <h4 class="permission-group-title">
-                        <i class="fa-solid fa-sliders"></i> ID Card Settings
+                        <i class="fa-solid fa-sliders"></i> Template Settings
                     </h4>
                     <div class="permission-grid">
                         <label class="permission-item">
                             <input type="checkbox" name="perm_idcard_setting_list" id="perm_idcard_setting_list">
-                            <span class="permission-label">View Settings</span>
+                            <span class="permission-label">View Templates</span>
                         </label>
                         <label class="permission-item">
                             <input type="checkbox" name="perm_idcard_setting_add" id="perm_idcard_setting_add">
-                            <span class="permission-label">Add Settings</span>
+                            <span class="permission-label">Add Template</span>
                         </label>
                         <label class="permission-item">
                             <input type="checkbox" name="perm_idcard_setting_edit" id="perm_idcard_setting_edit">
-                            <span class="permission-label">Edit Settings</span>
+                            <span class="permission-label">Edit Template</span>
                         </label>
                         <label class="permission-item">
                             <input type="checkbox" name="perm_idcard_setting_delete" id="perm_idcard_setting_delete">
-                            <span class="permission-label">Delete Settings</span>
+                            <span class="permission-label">Delete Template</span>
                         </label>
                     </div>
                 </div>

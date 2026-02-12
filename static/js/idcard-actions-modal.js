@@ -167,19 +167,32 @@ function openSideModal(mode, cardData = null) {
         populateFormFields(cardData);
     }
     
-    // Show modal
-    if (sideModalOverlay) {
+    // Show modal - Update Alpine state if available, else fallback to class toggle
+    const alpineComponent = sideModalOverlay._x_dataStack?.[0];
+    if (alpineComponent && typeof alpineComponent.openModal === 'function') {
+        // Alpine.js component is available - use its reactive state
+        alpineComponent.openModal(mode);
+    } else {
+        // Fallback: direct class manipulation
         sideModalOverlay.classList.add('active');
-        document.body.style.overflow = 'hidden'; // Lock body scroll
+        document.body.style.overflow = 'hidden';
     }
 }
 
 function closeSideModal() {
     const sideModalOverlay = document.getElementById('sideModalOverlay');
-    if (sideModalOverlay) {
+    
+    // Update Alpine state if available, else fallback to class toggle
+    const alpineComponent = sideModalOverlay?._x_dataStack?.[0];
+    if (alpineComponent && typeof alpineComponent.closeModal === 'function') {
+        // Alpine.js component is available - use its reactive state
+        alpineComponent.closeModal();
+    } else if (sideModalOverlay) {
+        // Fallback: direct class manipulation
         sideModalOverlay.classList.remove('active');
-        document.body.style.overflow = ''; // Restore body scroll
+        document.body.style.overflow = '';
     }
+    
     currentModalMode = 'add';
     currentEditCardId = null;
 }
@@ -401,6 +414,15 @@ function populateFormFields(cardData) {
                 return;
             }
             
+            // Skip .image-path-input elements — they are already populated
+            // when their sibling .image-input (file input) is processed above.
+            // Without this, truncated field names like "MOTHER PHOT" fail the
+            // isImageFieldByNameModal() regex and fall through to the text-field
+            // branch, which overwrites the filename with the full path.
+            if (input.classList.contains('image-path-input')) {
+                return;
+            }
+            
             // PHOTO now uses the unified image grid — handled by the generic image path below
             
             // Handle image/file inputs (check by type AND name to catch fields like 'SIGN')
@@ -584,41 +606,39 @@ function getFormData() {
             
             if (isImageFieldModal(fieldType, fieldName) || input.type === 'file') {
                 if (input.files && input.files[0]) {
+                    // New file selected - add to imageFiles
                     imageFiles[fieldName] = input.files[0];
                 } else {
-                    // No file selected - check if there's a path/reference entered
+                    // No file selected - send existing path or empty for removal
+                    // Backend handles PENDING detection and file validation
                     const fieldCard = input.closest('.image-field-card');
                     const pathInput = fieldCard?.querySelector('.image-path-input');
                     if (pathInput) {
                         const pathValue = (pathInput.value || '').trim();
-                        const directory = pathInput.dataset.directory || '';
                         const originalPath = pathInput.dataset.originalPath || '';
+                        // originalFilename is the filename portion displayed in the input
+                        // (stripped from the full path when modal loaded)
+                        const originalFilename = originalPath ? originalPath.split('/').pop() : '';
                         
-                        if (pathValue) {
-                            if (directory) {
-                                // Has existing directory - check if filename was changed
-                                const originalFilename = getFilenameOnly(originalPath);
-                                if (pathValue !== originalFilename) {
-                                    // Filename was edited → treat as new PENDING reference
-                                    fieldData[fieldName] = `PENDING:${pathValue}`;
-                                } else {
-                                    // No change - keep original path
-                                    fieldData[fieldName] = originalPath;
-                                }
-                            } else {
-                                // No directory - new reference, save as PENDING
-                                fieldData[fieldName] = `PENDING:${pathValue}`;
-                            }
-                        } else {
-                            // Path was cleared — explicitly set to empty so backend removes old value
+                        if (pathValue === '') {
+                            // Path was cleared — send empty for backend to handle removal
                             fieldData[fieldName] = '';
+                        } else if (originalPath && pathValue === originalFilename) {
+                            // User didn't change the displayed filename — keep original path
+                            fieldData[fieldName] = originalPath;
+                        } else {
+                            // User typed a new value (different from original filename)
+                            // or there was no original path — send as-is.
+                            // Backend will validate: if file exists → store path,
+                            // if not → mark as PENDING:{value}
+                            fieldData[fieldName] = pathValue;
                         }
                     }
                 }
             } else {
-                // Convert text values to uppercase
+                // Text fields - send as-is, backend handles uppercase
                 const value = input.value || '';
-                fieldData[fieldName] = typeof value === 'string' ? value.toUpperCase() : value;
+                fieldData[fieldName] = value;
             }
         }
     });
@@ -657,14 +677,10 @@ function createNewCard(fieldData, imageFiles, mainPhoto) {
         return;
     }
     
-    // Convert to uppercase
-    const uppercaseFieldData = {};
-    for (const [key, value] of Object.entries(fieldData)) {
-        uppercaseFieldData[key] = typeof value === 'string' ? value.toUpperCase() : value;
-    }
-    
+    // Send field data as-is - backend handles selective uppercase
+    // (uppercasing text fields while preserving image paths)
     const formData = new FormData();
-    formData.append('field_data', JSON.stringify(uppercaseFieldData));
+    formData.append('field_data', JSON.stringify(fieldData));
     
     if (mainPhoto) {
         formData.append('photo', mainPhoto);
@@ -701,15 +717,10 @@ function createNewCard(fieldData, imageFiles, mainPhoto) {
 
 function updateExistingCard(cardId, fieldData, imageFiles, mainPhoto) {
     
-    // Convert to uppercase
-    const uppercaseFieldData = {};
-    for (const [key, value] of Object.entries(fieldData)) {
-        uppercaseFieldData[key] = typeof value === 'string' ? value.toUpperCase() : value;
-    }
-    
-    
+    // Send field data as-is - backend handles selective uppercase
+    // (uppercasing text fields while preserving image paths)
     const formData = new FormData();
-    formData.append('field_data', JSON.stringify(uppercaseFieldData));
+    formData.append('field_data', JSON.stringify(fieldData));
     
     if (mainPhoto) {
         formData.append('photo', mainPhoto);
@@ -1350,7 +1361,13 @@ window.IDCardApp.closeSideModal = closeSideModal;
 window.IDCardApp.fetchCardAndOpenModal = fetchCardAndOpenModal;
 window.IDCardApp.openSimpleDeleteModal = openSimpleDeleteModal;
 window.IDCardApp.openPermanentDeleteModal = openPermanentDeleteModal;
-window.openSideModal = openSideModal;
-window.closeSideModal = closeSideModal;
+// Only set global openSideModal/closeSideModal if Alpine hasn't already set them
+// Alpine's version triggers reactive state; this version is fallback
+if (typeof window.openSideModal !== 'function') {
+    window.openSideModal = openSideModal;
+}
+if (typeof window.closeSideModal !== 'function') {
+    window.closeSideModal = closeSideModal;
+}
 window.openSimpleDeleteModal = openSimpleDeleteModal;
 window.openPermanentDeleteModal = openPermanentDeleteModal;

@@ -396,6 +396,177 @@ class ImageService:
         """Ensure thumbnail exists, creating if needed."""
         return ThumbnailService.ensure_thumbnail_exists(image_path)
     
+    # ==================== CENTRALIZED IMAGE FIELD PROCESSOR ====================
+    
+    @classmethod
+    def process_image_field(
+        cls,
+        field_name: str,
+        new_value,
+        existing_value: str,
+        client,
+        card=None,
+        uploaded_file=None,
+        batch_counter: int = 1,
+        uploaded_by=None,
+    ) -> 'MediaResult':
+        """
+        Centralized handler for ALL image field mutations.
+        
+        Handles every case:
+          1. UPLOAD   – uploaded_file provided → save + thumbnail + CardMedia
+          2. REMOVAL  – new_value is '' and existing_value had a path → delete file + thumbnail + CardMedia
+          3. REWRITE  – new_value is a different valid path → normalize, validate, return
+          4. UNCHANGED – new_value == existing_value → pass through
+          5. MISSING   – path provided but file missing on disk → PENDING:{filename}
+          6. PENDING   – new_value is PENDING:xxx → pass through
+        
+        Args:
+            field_name:      Name of the image field (e.g. 'PHOTO', 'MOTHER PHOTO')
+            new_value:       The incoming value (str path, '' for removal, None for unchanged)
+            existing_value:  Current stored value in field_data for this field
+            client:          Client model instance (for folder path generation)
+            card:            IDCard model instance (optional, for CardMedia linkage)
+            uploaded_file:   Django UploadedFile or None
+            batch_counter:   Counter for unique filename generation
+            uploaded_by:     User who uploaded (for CardMedia record)
+            
+        Returns:
+            MediaResult with:
+              data['final_value'] – the value to store in field_data
+              data['action']      – one of: 'upload', 'removal', 'rewrite', 'unchanged', 'pending', 'missing'
+              data['path']        – saved path (for uploads)
+              data['thumbnail_path'] – thumbnail path (for uploads)
+        """
+        from core.services.base import BaseService
+        
+        existing_value = existing_value or ''
+        
+        # ── CASE 1: File upload ──────────────────────────────────────
+        if uploaded_file is not None:
+            try:
+                image_bytes = uploaded_file.read()
+                uploaded_file.seek(0)
+                original_ext = '.jpg'
+                if hasattr(uploaded_file, 'name') and uploaded_file.name:
+                    _, ext = os.path.splitext(uploaded_file.name)
+                    if ext:
+                        original_ext = ImageRenamer.normalize_extension(ext)
+                
+                # Determine existing path for replacement
+                replace_path = None
+                if existing_value and existing_value not in ('', 'NOT_FOUND') and not existing_value.startswith('PENDING:'):
+                    replace_path = existing_value
+                
+                result = cls.save_image_with_thumbnail(
+                    image_bytes=image_bytes,
+                    client=client,
+                    existing_path=replace_path,
+                    batch_counter=batch_counter,
+                    original_ext=original_ext,
+                )
+                
+                if result.success and result.data.get('path'):
+                    saved_path = result.data['path']
+                    
+                    # Create CardMedia record (dual-write)
+                    if card:
+                        try:
+                            cls.create_media_record(
+                                saved_path=saved_path,
+                                client=client,
+                                card=card,
+                                field_name=field_name,
+                                media_type='photo',
+                                original_filename=getattr(uploaded_file, 'name', None),
+                                uploaded_by=uploaded_by,
+                            )
+                        except Exception as cm_err:
+                            logger.warning("CardMedia create failed for %s: %s", field_name, cm_err)
+                    
+                    return MediaResult(
+                        success=True,
+                        message="Image uploaded",
+                        data={
+                            'final_value': saved_path,
+                            'action': 'upload',
+                            'path': saved_path,
+                            'thumbnail_path': result.data.get('thumbnail_path'),
+                        },
+                    )
+                else:
+                    return MediaResult(success=False, message=result.message or "Upload failed")
+            except Exception as e:
+                logger.error("process_image_field upload error for %s: %s", field_name, e)
+                return MediaResult(success=False, message=str(e))
+        
+        # Normalize new_value
+        if new_value is None:
+            # None means "not sent / unchanged"
+            return MediaResult(
+                success=True,
+                data={'final_value': existing_value, 'action': 'unchanged'},
+            )
+        
+        new_value = str(new_value).strip() if new_value else ''
+        
+        # ── CASE 6: PENDING reference ───────────────────────────────
+        if new_value.startswith('PENDING:'):
+            return MediaResult(
+                success=True,
+                data={'final_value': new_value, 'action': 'pending'},
+            )
+        
+        # ── CASE 2: Removal ─────────────────────────────────────────
+        if new_value == '':
+            if existing_value and existing_value not in ('', 'NOT_FOUND') and not existing_value.startswith('PENDING:'):
+                # Delete file + thumbnail
+                try:
+                    cls.delete_image(existing_value)
+                    logger.debug("Removed image for field %s: %s", field_name, existing_value)
+                except Exception as del_err:
+                    logger.warning("Failed to delete image for %s: %s", field_name, del_err)
+                
+                # Delete CardMedia record
+                if card:
+                    try:
+                        from mediafiles.models import CardMedia
+                        CardMedia.objects.filter(card=card, field_name=field_name).delete()
+                    except Exception as cm_err:
+                        logger.warning("Failed to delete CardMedia for %s: %s", field_name, cm_err)
+            
+            return MediaResult(
+                success=True,
+                data={'final_value': '', 'action': 'removal'},
+            )
+        
+        # Normalize the path
+        new_value = BaseService.normalize_image_path(new_value)
+        
+        # ── CASE 4: Unchanged ───────────────────────────────────────
+        normalized_existing = BaseService.normalize_image_path(existing_value)
+        if new_value == normalized_existing:
+            return MediaResult(
+                success=True,
+                data={'final_value': existing_value, 'action': 'unchanged'},
+            )
+        
+        # ── CASE 3 / 5: Rewrite or missing ──────────────────────────
+        if BaseService.validate_image_path(new_value):
+            return MediaResult(
+                success=True,
+                data={'final_value': new_value, 'action': 'rewrite'},
+            )
+        else:
+            # File doesn't exist on disk → mark PENDING
+            filename = os.path.basename(new_value) if new_value else ''
+            pending_val = f'PENDING:{filename}' if filename else ''
+            logger.warning("Image not found for %s: %s → %s", field_name, new_value, pending_val)
+            return MediaResult(
+                success=True,
+                data={'final_value': pending_val, 'action': 'missing'},
+            )
+    
     # ==================== FIELD TYPE HELPERS ====================
     
     @classmethod
@@ -464,6 +635,53 @@ class ImageService:
                 return path
         
         return None
+    
+    @classmethod
+    def get_image_path_for_export(
+        cls,
+        card,
+        field_name: str,
+        prefer_thumbnail: bool = False,
+        fallback_to_field_data: bool = True
+    ) -> Optional[str]:
+        """
+        Get image path for export, with optional thumbnail preference.
+        
+        Phase 4 update: PDF/Word exports should use thumbnails for smaller file size.
+        ZIP exports continue using originals.
+        
+        Args:
+            card: IDCard model instance
+            field_name: Name of the image field
+            prefer_thumbnail: If True, try thumbnail first, fall back to original
+            fallback_to_field_data: Whether to check field_data as fallback
+            
+        Returns:
+            Image path (thumbnail if preferred and available, else original)
+        """
+        # Get original path first
+        original_path = cls.get_image_path_for_card(
+            card, field_name, fallback_to_field_data
+        )
+        
+        if not original_path:
+            return None
+        
+        if not prefer_thumbnail:
+            return original_path
+        
+        # Try to get thumbnail path
+        thumb_path = ThumbnailService.get_thumbnail_path(original_path)
+        if thumb_path:
+            # Check if thumbnail exists on disk
+            try:
+                if default_storage.exists(thumb_path):
+                    return thumb_path
+            except Exception as e:
+                logger.debug("Thumbnail not found for %s: %s", original_path, e)
+        
+        # Fall back to original
+        return original_path
     
     @classmethod
     def get_all_images_for_card(

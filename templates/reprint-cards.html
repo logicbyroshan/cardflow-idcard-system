@@ -16,16 +16,21 @@
   <link rel="stylesheet" href="{% static 'css/variables.css' %}?v=5">
   <link rel="stylesheet" href="{% static 'css/style.css' %}?v=42">
   <link rel="stylesheet" href="{% static 'css/common.css' %}?v=50">
-  <link rel="stylesheet" href="{% static 'css/idcard-actions.css' %}?v=60">
+  <link rel="stylesheet" href="{% static 'css/idcard-actions.css' %}?v=61">
   <link rel="stylesheet" href="{% static 'css/idcard-actions-enhanced.css' %}?v=7">
   <link rel="stylesheet" href="{% static 'css/reprint-cards.css' %}?v=6">
   <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=2">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   
+  <!-- Alpine.js - Lightweight reactive UI framework -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
+  
   <!-- Global Variables -->
   <script>
     var TABLE_ID = {{ table.id }};
     var CLIENT_ID = {{ client.id }};
+    var CLIENT_NAME = '{{ client.name|escapejs }}';
+    var TABLE_NAME = '{{ table.name|escapejs }}';
     var CURRENT_STEP = '{{ current_step|default:"requests" }}';
     var CURRENT_STATUS = 'pending';
   </script>

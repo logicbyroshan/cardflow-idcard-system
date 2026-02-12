@@ -267,7 +267,11 @@ class IDCardService(BaseService):
             # Create case-insensitive lookup
             field_data_normalized = {k.upper(): v for k, v in field_data.items()}
             
-            for field in table_fields:
+            # Reorder fields: text first, then images in canonical order
+            # Must match the template filter reorder_fields_for_display
+            reordered_fields = cls.reorder_fields_for_display(table_fields)
+            
+            for field in reordered_fields:
                 field_name = field['name']
                 field_type = field.get('type', 'text')
                 
@@ -391,8 +395,8 @@ class IDCardService(BaseService):
             table = get_object_or_404(IDCardTable, id=table_id)
             client = table.group.client
             
-            # Uppercase all string values
-            field_data = cls.uppercase_dict_values(field_data)
+            # Uppercase text values only — preserve image paths
+            field_data = cls.uppercase_field_data_selective(field_data, table.fields)
             
             # Track saved images for dual-write (Phase 2)
             saved_images = []
@@ -486,7 +490,7 @@ class IDCardService(BaseService):
             existing_data = card.field_data or {}
             
             if field_data:
-                field_data = cls.uppercase_dict_values(field_data)
+                field_data = cls.uppercase_field_data_selective(field_data, table.fields)
                 existing_data.update(field_data)
             
             # Track saved images for dual-write (Phase 2)
@@ -558,6 +562,7 @@ class IDCardService(BaseService):
         """Update a single field on an ID Card (for inline editing)"""
         try:
             card = get_object_or_404(IDCard, id=card_id)
+            table = card.table
             
             if not field:
                 return ServiceResult(success=False, message='Field name is required!')
@@ -565,7 +570,11 @@ class IDCardService(BaseService):
             field_data = card.field_data or {}
             
             if isinstance(value, str):
-                field_data[field] = value.upper()
+                # Only uppercase non-image fields to protect image paths
+                if cls.is_image_field_name_for_table(field, table.fields):
+                    field_data[field] = value
+                else:
+                    field_data[field] = value.upper()
             else:
                 field_data[field] = value
             

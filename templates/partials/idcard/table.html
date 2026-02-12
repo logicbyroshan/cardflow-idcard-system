@@ -14,7 +14,7 @@
                     {% for field in table.fields|reorder_fields_for_display %}
                     {% check_image_field field.type field.name as is_img %}
                     {% if is_img %}
-                    <th class="image-col" data-field-name="{{ field.name }}" data-field-type="image">{{ field.name }}</th>
+                    <th class="image-col" data-field-name="{{ field.name }}" data-field-type="image">{{ field.name|wrap_header }}</th>
                     {% else %}
                     <th class="dynamic-col" data-field-name="{{ field.name }}" data-field-type="{{ field.type }}">{{ field.name }}</th>
                     {% endif %}
@@ -61,21 +61,50 @@
                                 </div>
                                 {% endif %}
                                 {% if perm_idcard_edit %}
+                                {% if is_client or is_client_staff %}
+                                    {% if current_status != 'approved' and current_status != 'download' and current_status != 'reprint' %}
+                                    <button class="edit-photo-btn" data-card-id="{{ card.id }}" title="Edit Card">
+                                        <i class="fa-solid fa-pen"></i>
+                                    </button>
+                                    {% endif %}
+                                {% else %}
                                 <button class="edit-photo-btn" data-card-id="{{ card.id }}" title="Edit Card">
                                     <i class="fa-solid fa-pen"></i>
                                 </button>
                                 {% endif %}
+                                {% endif %}
                             </div>
                         </td>
+                        {% else %}
+                        {% if is_client or is_client_staff %}
+                            {% if current_status == 'approved' or current_status == 'download' or current_status == 'reprint' %}
+                        <td class="dynamic-field {% if field.type == 'textarea' %}long-text{% elif field.type == 'date' or field.type == 'number' %}short-text{% elif field.value|length <= 10 %}short-text{% elif field.value|length > 40 %}long-text{% else %}medium-text{% endif %}" 
+                            data-field="{{ field.name }}"
+                            data-field-name="{{ field.name }}" 
+                            data-field-type="{{ field.type }}"
+                            data-original-value="{{ field.value }}">
+                            <span class="cell-value">{{ field.value }}</span>
+                        </td>
+                            {% else %}
+                        <td class="dynamic-field editable-cell {% if field.type == 'textarea' %}long-text{% elif field.type == 'date' or field.type == 'number' %}short-text{% elif field.value|length <= 10 %}short-text{% elif field.value|length > 40 %}long-text{% else %}medium-text{% endif %}" 
+                            data-field="{{ field.name }}"
+                            data-field-name="{{ field.name }}" 
+                            data-field-type="{{ field.type }}"
+                            data-original-value="{{ field.value }}"
+                            title="Click to edit">
+                            <span class="cell-value">{{ field.value }}</span>
+                        </td>
+                            {% endif %}
                         {% else %}
                         <td class="dynamic-field editable-cell {% if field.type == 'textarea' %}long-text{% elif field.type == 'date' or field.type == 'number' %}short-text{% elif field.value|length <= 10 %}short-text{% elif field.value|length > 40 %}long-text{% else %}medium-text{% endif %}" 
                             data-field="{{ field.name }}"
                             data-field-name="{{ field.name }}" 
                             data-field-type="{{ field.type }}"
                             data-original-value="{{ field.value }}"
-                            title="Double-click to edit">
+                            title="Click to edit">
                             <span class="cell-value">{{ field.value }}</span>
                         </td>
+                        {% endif %}
                         {% endif %}
                     {% endfor %}
                     <td class="action-cell">
@@ -101,11 +130,19 @@
                         </button>
                         {% endif %}
                         {% elif current_status == 'approved' %}
+                        {% if not is_client and not is_client_staff %}
                         {% if perm_idcard_approve %}
                         <button class="row-action-btn download-row-btn" data-card-id="{{ card.id }}" title="Move to download list">
                             <i class="fa-solid fa-download"></i>
                             <span>Download</span>
                         </button>
+                        {% endif %}
+                        {% if perm_idcard_verify %}
+                        <button class="row-action-btn unapprove-row-btn" data-card-id="{{ card.id }}" title="Move back to verified">
+                            <i class="fa-solid fa-rotate-left"></i>
+                            <span>Unapprove</span>
+                        </button>
+                        {% endif %}
                         {% endif %}
                         {% elif current_status == 'pool' %}
                         {% if perm_idcard_retrieve %}

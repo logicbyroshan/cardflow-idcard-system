@@ -24,15 +24,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const table = document.getElementById('staff-table');
     const tbody = document.getElementById('staff-table-body');
     
-    // Profile elements (used in drawer)
-    const profilePicInput = document.getElementById('profile-input');
-    const profilePreview = document.getElementById('profile-preview');
-    const profilePathDisplay = document.getElementById('staff-profile-path');
+    // Phase 1: Profile image upload removed - using avatar placeholder
     
     let selectedStaffId = null;
     let selectedRow = null;
     let currentMode = 'add';
-    let selectedProfileFile = null;
 
     // ==================== ROW SELECTION ====================
     
@@ -284,18 +280,7 @@ document.addEventListener('DOMContentLoaded', function() {
         currentMode = mode;
         staffForm.reset();
         
-        selectedProfileFile = null;
-        if (profilePreview) {
-            profilePreview.innerHTML = '<i class="fa-solid fa-user"></i>';
-            profilePreview.classList.remove('has-image');
-        }
-        if (profilePicInput) profilePicInput.value = '';
-        
-        if (profilePathDisplay) {
-            profilePathDisplay.textContent = 'No image';
-            profilePathDisplay.classList.remove('has-path', 'not-found');
-            profilePathDisplay.classList.add('no-path');
-        }
+        // Phase 1: Profile image upload removed - using avatar placeholder
         
         permissionFields.forEach(field => {
             const el = document.getElementById(field);
@@ -341,20 +326,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('staff-address').value = staffData.address || '';
                 document.getElementById('staff-status').value = staffData.status === 'active' ? 'true' : 'false';
                 
-                if (staffData.profile_image_url && profilePreview) {
-                    const img = document.createElement('img');
-                    img.src = staffData.profile_image_url;
-                    img.alt = 'Profile';
-                    img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
-                    profilePreview.innerHTML = '';
-                    profilePreview.appendChild(img);
-                    profilePreview.classList.add('has-image');
-                    if (profilePathDisplay) {
-                        profilePathDisplay.textContent = staffData.profile_image_url;
-                        profilePathDisplay.classList.remove('no-path', 'not-found');
-                        profilePathDisplay.classList.add('has-path');
-                    }
-                }
+                // Phase 1: Profile image loading removed - using avatar placeholder
                 
                 permissionFields.forEach(field => {
                     const el = document.getElementById(field);
@@ -377,20 +349,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('staff-address').value = staffData.address || '';
                 document.getElementById('staff-status').value = staffData.status === 'active' ? 'true' : 'false';
                 
-                if (staffData.profile_image_url && profilePreview) {
-                    const img = document.createElement('img');
-                    img.src = staffData.profile_image_url;
-                    img.alt = 'Profile';
-                    img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
-                    profilePreview.innerHTML = '';
-                    profilePreview.appendChild(img);
-                    profilePreview.classList.add('has-image');
-                    if (profilePathDisplay) {
-                        profilePathDisplay.textContent = staffData.profile_image_url;
-                        profilePathDisplay.classList.remove('no-path', 'not-found');
-                        profilePathDisplay.classList.add('has-path');
-                    }
-                }
+                // Phase 1: Profile image loading removed - using avatar placeholder
                 
                 permissionFields.forEach(field => {
                     const el = document.getElementById(field);
@@ -463,63 +422,29 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    async function createStaff(formData, file = null) {
+    async function createStaff(formData) {
         try {
-            if (file) {
-                const data = new FormData();
-                data.append('profile_image', file);
-                Object.keys(formData).forEach(key => {
-                    if (key === 'assigned_groups') {
-                        data.append(key, JSON.stringify(formData[key]));
-                    } else {
-                        data.append(key, typeof formData[key] === 'boolean' ? (formData[key] ? 'true' : 'false') : formData[key]);
-                    }
-                });
-                const response = await fetch('/panel/client/api/staff/', {
-                    method: 'POST',
-                    headers: { 'X-CSRFToken': getCsrfToken() },
-                    body: data
-                });
-                return await response.json();
-            } else {
-                const response = await fetch('/panel/client/api/staff/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
-                    body: JSON.stringify(formData)
-                });
-                return await response.json();
-            }
+            // Phase 1: File upload removed - always use JSON
+            const response = await fetch('/panel/client/api/staff/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+                body: JSON.stringify(formData)
+            });
+            return await response.json();
         } catch (error) {
             return { success: false, message: 'Network error. Please try again.' };
         }
     }
     
-    async function updateStaff(staffId, formData, file = null) {
+    async function updateStaff(staffId, formData) {
         try {
-            if (file) {
-                const data = new FormData();
-                data.append('profile_image', file);
-                Object.keys(formData).forEach(key => {
-                    if (key === 'assigned_groups') {
-                        data.append(key, JSON.stringify(formData[key]));
-                    } else {
-                        data.append(key, typeof formData[key] === 'boolean' ? (formData[key] ? 'true' : 'false') : formData[key]);
-                    }
-                });
-                const response = await fetch(`/panel/client/api/staff/${staffId}/`, {
-                    method: 'PUT',
-                    headers: { 'X-CSRFToken': getCsrfToken() },
-                    body: data
-                });
-                return await response.json();
-            } else {
-                const response = await fetch(`/panel/client/api/staff/${staffId}/`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
-                    body: JSON.stringify(formData)
-                });
-                return await response.json();
-            }
+            // Phase 1: File upload removed - always use JSON
+            const response = await fetch(`/panel/client/api/staff/${staffId}/`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+                body: JSON.stringify(formData)
+            });
+            return await response.json();
         } catch (error) {
             return { success: false, message: 'Network error. Please try again.' };
         }
@@ -581,16 +506,21 @@ document.addEventListener('DOMContentLoaded', function() {
     if (activeStaffBtn) {
         activeStaffBtn.addEventListener('click', async () => {
             if (!selectedStaffId) return;
-            const result = await toggleStaffStatus(selectedStaffId);
-            if (result.success) {
-                showToast(result.message, 'success');
-                selectedRow.dataset.staffStatus = result.status;
-                const statusBadge = selectedRow.querySelector('.status-badge');
-                statusBadge.textContent = result.status_display;
-                statusBadge.className = 'status-badge ' + (result.status === 'active' ? 'active' : 'inactive');
-                updateActiveButtonState();
-            } else {
-                showToast(result.message || 'Failed to update status', 'error');
+            try {
+                const result = await toggleStaffStatus(selectedStaffId);
+                if (result.success) {
+                    showToast(result.message, 'success');
+                    selectedRow.dataset.staffStatus = result.status;
+                    const statusBadge = selectedRow.querySelector('.status-badge');
+                    statusBadge.textContent = result.status_display;
+                    statusBadge.className = 'status-badge ' + (result.status === 'active' ? 'active' : 'inactive');
+                    updateActiveButtonState();
+                } else {
+                    showToast(result.message || 'Failed to update status', 'error');
+                }
+            } catch (error) {
+                console.error('Toggle staff status error:', error);
+                showToast(error.message || 'Failed to update status', 'error');
             }
         });
     }
@@ -629,14 +559,13 @@ document.addEventListener('DOMContentLoaded', function() {
             
             try {
                 if (currentMode === 'edit' && selectedStaffId) {
-                    result = await updateStaff(selectedStaffId, formData, selectedProfileFile);
+                    result = await updateStaff(selectedStaffId, formData);
                 } else {
-                    result = await createStaff(formData, selectedProfileFile);
+                    result = await createStaff(formData);
                 }
                 
                 if (result.success) {
                     showToast(result.message || 'Operation successful', 'success');
-                    selectedProfileFile = null;
                     closeDrawer();
                     setTimeout(() => location.reload(), 500);
                 } else {
@@ -645,7 +574,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     submitBtn.innerHTML = originalText;
                 }
             } catch (error) {
-                showToast('An error occurred', 'error');
+                console.error('Client-staff form submission error:', error);
+                showToast(error.message || 'An error occurred. Please try again.', 'error');
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = originalText;
             }
@@ -686,42 +616,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // ==================== PROFILE PICTURE UPLOAD ====================
-    if (profilePicInput && profilePreview) {
-        profilePicInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                if (file.size > 2 * 1024 * 1024) {
-                    showToast('Image size must be less than 2MB', 'error');
-                    profilePicInput.value = '';
-                    return;
-                }
-                
-                if (!file.type.startsWith('image/')) {
-                    showToast('Please select a valid image file', 'error');
-                    profilePicInput.value = '';
-                    return;
-                }
-                
-                selectedProfileFile = file;
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    profilePreview.innerHTML = `<img src="${event.target.result}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">`;
-                    profilePreview.classList.add('has-image');
-                    if (profilePathDisplay) {
-                        profilePathDisplay.textContent = file.name;
-                        profilePathDisplay.classList.remove('no-path', 'not-found');
-                        profilePathDisplay.classList.add('has-path');
-                    }
-                };
-                reader.onerror = function(error) {
-                    console.error('FileReader error:', error);
-                    showToast('Failed to read image file', 'error');
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-    }
+    // Phase 1: Profile picture upload removed - using avatar placeholder
 
     // ==================== FILTER & SEARCH ====================
     const dropdownToggle = document.getElementById('statusToggle');
