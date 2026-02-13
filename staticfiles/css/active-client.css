@@ -1,0 +1,97 @@
+/* ============================================
+   ACTIVE CLIENT PAGE - Specific Styles
+   Uses CSS Variables from variables.css
+   ============================================ */
+
+/* ===========================================
+   TABLE COLUMN WIDTHS - Active Client Specific
+   =========================================== */
+/* Name column - fluid */
+.data-table th:nth-child(1), 
+.data-table td:nth-child(1):not(.no-data) {
+    width: auto;
+    min-width: 180px;
+    text-align: left;
+}
+
+/* Email column - enough width for emails */
+.data-table th:nth-child(2), 
+.data-table td:nth-child(2):not(.no-data) {
+    width: auto;
+    min-width: 200px;
+    text-align: left;
+}
+
+/* Phone column - fixed width */
+.data-table th:nth-child(3), 
+.data-table td:nth-child(3):not(.no-data) {
+    width: 120px;
+    min-width: 120px;
+    max-width: 120px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: left;
+}
+
+/* ID Card Groups column */
+.data-table th:nth-child(4), 
+.data-table td:nth-child(4):not(.no-data) {
+    width: auto;
+    min-width: 200px;
+    text-align: left;
+    white-space: normal;
+}
+
+/* Force table layout fixed for consistent column widths */
+.data-table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+/* ===========================================
+   GROUP BADGES - Active Client Table
+   =========================================== */
+.group-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+}
+
+.group-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: var(--space-xs) var(--space-md);
+    border-radius: var(--radius-pill);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    white-space: nowrap;
+    background: var(--blue-bg);
+    color: var(--blue-dark);
+    border: 1px solid var(--blue-light);
+}
+
+.group-badge i {
+    font-size: var(--font-size-xs);
+}
+
+/* ===========================================
+   SELECTED ROW - Using Variables
+   =========================================== */
+.data-table tbody tr.selected {
+    background: var(--bg-selected) !important;
+}
+
+.data-table tbody tr.selected td:first-child {
+    box-shadow: inset 5px 0 0 0 var(--blue);
+}
+
+.data-table tbody tr.selected:hover {
+    background: var(--bg-selected-hover) !important;
+}
+
+.data-table tbody tr {
+    cursor: pointer;
+    transition: background var(--transition-base);
+}

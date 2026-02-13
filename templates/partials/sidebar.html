@@ -96,6 +96,9 @@
     <a href="{% url 'website_admin:dashboard' %}" class="{% if active_page == 'manage_website' %}active{% endif %}">
       <i class="fa-solid fa-globe"></i><span>Manage Website</span>
     </a>
+    <a href="{% url 'manage_panel' %}" class="{% if active_page == 'manage_panel' %}active{% endif %}">
+      <i class="fa-solid fa-sliders"></i><span>Manage Panel</span>
+    </a>
     {% endif %}
   </nav>
   <div class="sidebar-footer">

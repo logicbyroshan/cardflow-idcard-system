@@ -60,6 +60,40 @@ class IDCardService(BaseService):
                 missing.append(name)
         return missing
     
+    @classmethod
+    def _get_missing_mandatory_fields(cls, card, table_fields):
+        """
+        Return list of mandatory field names that are empty on a card.
+        Checks both text fields and image fields marked as mandatory.
+        """
+        missing = []
+        field_data = card.field_data or {}
+        
+        for field in table_fields:
+            # Skip if field is not marked as mandatory
+            if not field.get('mandatory', False):
+                continue
+            
+            field_name = field.get('name', '')
+            field_type = field.get('type', 'text')
+            
+            if not field_name:
+                continue
+            
+            val = field_data.get(field_name, '')
+            
+            # Check if field is empty
+            if field_type in cls.IMAGE_FIELD_TYPES:
+                # Image field - check for missing/pending/not-found
+                if not val or val == 'NOT_FOUND' or str(val).startswith('PENDING:'):
+                    missing.append(field_name)
+            else:
+                # Text field - check for empty value
+                if not val or str(val).strip() == '':
+                    missing.append(field_name)
+        
+        return missing
+
     # ==================== ID Card Table Operations ====================
     
     @classmethod
@@ -606,7 +640,7 @@ class IDCardService(BaseService):
     
     @classmethod
     def change_status(cls, card_id: int, new_status: str) -> ServiceResult:
-        """Change an ID Card's status (blocks forward moves when images are missing)"""
+        """Change an ID Card's status (blocks forward moves when images are missing or mandatory fields are empty)"""
         try:
             if new_status not in cls.VALID_STATUSES:
                 return ServiceResult(success=False, message='Invalid status!')
@@ -621,11 +655,22 @@ class IDCardService(BaseService):
                     message=f'Cannot change status from {card.get_status_display()} to {new_status}.'
                 )
             
+            table = card.table
+            
+            # --- mandatory field check for pending -> verified transition ---
+            if new_status == 'verified' and card.status == 'pending':
+                missing_mandatory = cls._get_missing_mandatory_fields(card, table.fields or [])
+                if missing_mandatory:
+                    return ServiceResult(
+                        success=False,
+                        message=f'Cannot verify card: required fields are empty: {", ".join(missing_mandatory)}',
+                        data={'missing_fields': missing_mandatory, 'blocked': True}
+                    )
+            
             # --- image-gate for forward transitions ---
             if new_status in cls.FORWARD_IMAGE_CHECK:
                 allowed_from = cls.FORWARD_IMAGE_CHECK[new_status]
                 if card.status in allowed_from:
-                    table = card.table
                     img_names = cls.get_image_field_names(table.fields or [])
                     if img_names:
                         missing = cls._get_missing_image_fields(card, img_names)
@@ -657,7 +702,7 @@ class IDCardService(BaseService):
         card_ids: List[int], 
         new_status: str
     ) -> ServiceResult:
-        """Change status of multiple ID Cards (skips cards with missing images on forward moves)"""
+        """Change status of multiple ID Cards (skips cards with missing images or mandatory fields on forward moves)"""
         try:
             if new_status not in cls.VALID_STATUSES:
                 return ServiceResult(success=False, message='Invalid status!')
@@ -675,6 +720,49 @@ class IDCardService(BaseService):
                     success=False,
                     message=f'No cards eligible for transition to {new_status}.'
                 )
+            
+            # --- mandatory field check for pending -> verified transition ---
+            if new_status == 'verified':
+                cards = list(IDCard.objects.filter(table=table, id__in=card_ids, status='pending'))
+                valid_ids = []
+                skipped_mandatory_ids = []
+                
+                for card in cards:
+                    missing_mandatory = cls._get_missing_mandatory_fields(card, table.fields or [])
+                    if missing_mandatory:
+                        skipped_mandatory_ids.append(card.id)
+                    else:
+                        valid_ids.append(card.id)
+                
+                # Also include cards not in pending (they skip mandatory check)
+                non_pending_ids = [cid for cid in card_ids if cid not in [c.id for c in cards]]
+                valid_ids.extend(non_pending_ids)
+                
+                if not valid_ids and skipped_mandatory_ids:
+                    return ServiceResult(
+                        success=False,
+                        message=f'All {len(skipped_mandatory_ids)} card(s) have missing required fields and cannot be verified.',
+                        data={'skipped_count': len(skipped_mandatory_ids), 'skipped_ids': skipped_mandatory_ids}
+                    )
+                
+                # Update card_ids to only valid ones for further processing
+                card_ids = valid_ids
+                
+                if skipped_mandatory_ids and valid_ids:
+                    # Process valid ones and report skipped
+                    updated_count = IDCard.objects.filter(
+                        table=table, id__in=valid_ids
+                    ).update(status=new_status)
+                    
+                    return ServiceResult(
+                        success=True,
+                        message=f'{updated_count} card(s) verified. {len(skipped_mandatory_ids)} skipped (missing required fields).',
+                        data={
+                            'updated_count': updated_count,
+                            'skipped_count': len(skipped_mandatory_ids),
+                            'skipped_ids': skipped_mandatory_ids
+                        }
+                    )
             
             # --- image-gate for forward transitions ---
             needs_check = new_status in cls.FORWARD_IMAGE_CHECK

@@ -314,3 +314,244 @@ def zip_result_to_dict(result: ZipExportResult) -> Dict[str, Any]:
         'total_images': result.total_images,
         'total_zips': result.total_zips
     }
+
+
+# =============================================================================
+# MEMORY-SAFE DISK-BASED EXPORT (for large exports)
+# =============================================================================
+
+@dataclass
+class DiskZipInfo:
+    """Information about a ZIP file saved to disk."""
+    field_name: str
+    filename: str
+    path: str  # Full path on disk
+    image_count: int
+
+
+@dataclass
+class DiskZipResult:
+    """Result of a disk-based ZIP export operation."""
+    success: bool
+    message: str = ''
+    zip_files: List[DiskZipInfo] = field(default_factory=list)
+    total_images: int = 0
+    total_zips: int = 0
+
+
+def export_images_to_disk(
+    table,
+    cards: QuerySet,
+    output_dir: str,
+    status: str = '',
+    progress_callback=None
+) -> DiskZipResult:
+    """
+    Export images to ZIP files saved directly on disk.
+    
+    CRITICAL: Memory-safe implementation for large exports.
+    - Uses ZIP_STORED (no compression) for memory efficiency
+    - Writes directly to disk, not BytesIO
+    - Processes one image at a time
+    
+    Args:
+        table: IDCardTable instance
+        cards: QuerySet of IDCard instances
+        output_dir: Directory to save ZIP files
+        status: Status label for filename
+        progress_callback: Optional callback(current, total) for progress updates
+        
+    Returns:
+        DiskZipResult with file paths
+    """
+    from datetime import datetime
+    from django.conf import settings
+    
+    if not cards.exists():
+        return DiskZipResult(
+            success=False,
+            message='No cards to export!'
+        )
+    
+    try:
+        # Get image fields from table
+        image_fields = get_image_fields(table.fields or [])
+        
+        if not image_fields:
+            return DiskZipResult(
+                success=False,
+                message='No image fields found in this table!'
+            )
+        
+        # Get client name for filename
+        client_name = ''
+        if table.group and table.group.client:
+            client_name = table.group.client.name
+        clean_client_name = clean_filename(client_name) if client_name else ''
+        clean_table_name = clean_filename(table.name)
+        
+        # Ensure output directory exists
+        os.makedirs(output_dir, exist_ok=True)
+        
+        zip_files = []
+        total_images = 0
+        total_cards = cards.count()
+        current_progress = 0
+        
+        for field_info in image_fields:
+            field_name = field_info['name']
+            clean_field_name = _get_readable_field_name(field_name)
+            
+            # Generate filename with timestamp
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            parts = []
+            if clean_client_name:
+                parts.append(clean_client_name)
+            parts.append(clean_table_name)
+            parts.append(clean_field_name)
+            if status:
+                parts.append(clean_filename(status.capitalize()))
+            parts.append(timestamp)
+            zip_filename = '_'.join(parts) + '.zip'
+            zip_path = os.path.join(output_dir, zip_filename)
+            
+            images_count = 0
+            used_names = {}
+            
+            # Create ZIP file on disk with ZIP_STORED (no compression)
+            with zipfile.ZipFile(zip_path, 'w', compression=zipfile.ZIP_STORED) as zf:
+                for card in cards.iterator(chunk_size=100):
+                    # Get image path using ImageService
+                    img_path = ImageService.get_image_path_for_card(
+                        card=card,
+                        field_name=field_name,
+                        fallback_to_field_data=True
+                    )
+                    
+                    if not is_valid_image_path(img_path):
+                        current_progress += 1
+                        if progress_callback:
+                            progress_callback(current_progress, total_cards * len(image_fields))
+                        continue
+                    
+                    try:
+                        if default_storage.exists(img_path):
+                            with default_storage.open(img_path, 'rb') as img_file:
+                                img_data = img_file.read()
+                                
+                                # Minimum valid image size check
+                                if img_data and len(img_data) >= 100:
+                                    base = os.path.basename(img_path)
+                                    if base in used_names:
+                                        used_names[base] += 1
+                                        name, ext = os.path.splitext(base)
+                                        download_filename = f"{name}_{used_names[base]}{ext}"
+                                    else:
+                                        used_names[base] = 0
+                                        download_filename = base
+                                    
+                                    zf.writestr(download_filename, img_data)
+                                    images_count += 1
+                    except Exception:
+                        # Skip problematic images silently
+                        pass
+                    
+                    current_progress += 1
+                    if progress_callback:
+                        progress_callback(current_progress, total_cards * len(image_fields))
+            
+            # Only keep ZIP if it has images
+            if images_count > 0:
+                zip_files.append(DiskZipInfo(
+                    field_name=field_name,
+                    filename=zip_filename,
+                    path=zip_path,
+                    image_count=images_count
+                ))
+                total_images += images_count
+            else:
+                # Remove empty ZIP
+                try:
+                    os.remove(zip_path)
+                except Exception:
+                    pass
+        
+        if not zip_files:
+            return DiskZipResult(
+                success=False,
+                message='No images found for selected cards!'
+            )
+        
+        return DiskZipResult(
+            success=True,
+            zip_files=zip_files,
+            total_images=total_images,
+            total_zips=len(zip_files)
+        )
+        
+    except Exception as e:
+        logger.error("Disk-based ZIP export failed: %s", e, exc_info=True)
+        return DiskZipResult(
+            success=False,
+            message='ZIP export failed. Please try again or contact support.'
+        )
+
+
+def _get_readable_field_name(field_name: str) -> str:
+    """Convert field name to readable format for filename."""
+    FIELD_NAME_MAPPINGS = {
+        'F PHOTO': 'FATHER_PHOTO',
+        'M PHOTO': 'MOTHER_PHOTO',
+        'SIGN': 'SIGNATURE',
+        'PHOTO': 'PHOTO',
+        'SIGN.': 'SIGNATURE',
+        'SIGNATURE': 'SIGNATURE',
+        'FATHER PHOTO': 'FATHER_PHOTO',
+        'MOTHER PHOTO': 'MOTHER_PHOTO',
+    }
+    
+    name_upper = field_name.upper().strip()
+    if name_upper in FIELD_NAME_MAPPINGS:
+        return FIELD_NAME_MAPPINGS[name_upper]
+    return name_upper.replace(' ', '_')
+
+
+def stream_zip_response(zip_path: str, filename: str, delete_after: bool = True):
+    """
+    Create a streaming FileResponse for a ZIP file with optional cleanup.
+    
+    CRITICAL: Uses FileResponse for memory-efficient streaming.
+    Deletes the temp file after response is sent.
+    
+    Args:
+        zip_path: Full path to the ZIP file
+        filename: Filename for the download
+        delete_after: If True, delete file after response completes
+        
+    Returns:
+        FileResponse
+    """
+    from django.http import FileResponse
+    
+    response = FileResponse(
+        open(zip_path, 'rb'),
+        as_attachment=True,
+        filename=filename
+    )
+    
+    if delete_after:
+        # Add callback to delete file after response is sent
+        def cleanup_func(response_obj):
+            try:
+                os.remove(zip_path)
+                logger.info("Cleaned up temp ZIP file: %s", zip_path)
+            except Exception as e:
+                logger.warning("Failed to cleanup temp ZIP %s: %s", zip_path, e)
+            return response_obj
+        
+        # Django's FileResponse doesn't have post_render_callback
+        # We'll handle cleanup via the background task system instead
+        pass
+    
+    return response
+

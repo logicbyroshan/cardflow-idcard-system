@@ -1,0 +1,588 @@
+// ID Card Actions - Core Utilities Module
+// Contains: Sidebar toggle, checkbox functionality, API helpers
+// Note: CSRF token and toast functions are now in utils.js
+
+// ==========================================
+// GLOBAL STATE
+// ==========================================
+window.IDCardApp = window.IDCardApp || {};
+
+// ==========================================
+// TABLE ID HELPER
+// ==========================================
+function getTableId() {
+    return typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
+}
+
+// Expose globally
+window.getTableId = getTableId;
+window.IDCardApp.getTableId = getTableId;
+
+// ==========================================
+// EXPOSE UTILS FUNCTIONS TO IDCardApp
+// (utils.js must be loaded before this file)
+// ==========================================
+if (typeof getCSRFToken === 'function') {
+    window.IDCardApp.getCSRFToken = getCSRFToken;
+}
+if (typeof showToast === 'function') {
+    window.IDCardApp.showToast = showToast;
+}
+if (typeof showProgressToast === 'function') {
+    window.IDCardApp.showProgressToast = showProgressToast;
+}
+if (typeof showDownloadComplete === 'function') {
+    window.IDCardApp.showDownloadComplete = showDownloadComplete;
+}
+if (typeof hideToast === 'function') {
+    window.IDCardApp.hideProgressToast = hideToast;
+}
+
+// ==========================================
+// API CALL HELPER
+// ==========================================
+
+function apiCall(url, method, data = null) {
+    const options = {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
+        }
+    };
+    if (data) options.body = JSON.stringify(data);
+    
+    return fetch(url, options)
+        .then(response => {
+            if (!response.ok) {
+                return response.json().catch(() => ({})).then(errData => {
+                    const msg = (response.status === 403)
+                        ? (errData.message || 'Permission denied')
+                        : (errData.message || 'Request failed (' + response.status + ')');
+                    throw new Error(msg);
+                });
+            }
+            return response.json();
+        })
+        .catch(error => {
+            console.error('API Error:', error);
+            if (typeof showToast === 'function') showToast(error.message || 'Network error', false);
+            throw error;
+        });
+}
+
+// Expose globally
+window.apiCall = apiCall;
+window.IDCardApp.apiCall = apiCall;
+
+// ==========================================
+// SIDEBAR FUNCTIONALITY
+// ==========================================
+
+function initSidebar() {
+    // Sidebar toggle is handled by common/sidebar.js (auto-initialized on DOMContentLoaded).
+    // Only set the active sidebar link here to avoid duplicate click handlers.
+    const activeClientsLink = document.getElementById('activeClientsLink');
+    const allClientsLink = document.getElementById('allClientsLink');
+    if (activeClientsLink) activeClientsLink.classList.add('active');
+    if (allClientsLink) allClientsLink.classList.remove('active');
+}
+
+// Expose globally
+window.IDCardApp.initSidebar = initSidebar;
+
+// ==========================================
+// CHECKBOX FUNCTIONALITY
+// ==========================================
+
+// Track last clicked checkbox for Shift+Click range selection
+let lastClickedCheckboxIndex = null;
+
+// Function to get current row checkboxes (live query)
+function getRowCheckboxes() {
+    return document.querySelectorAll(".rowCheckbox");
+}
+
+function getSelectedCardIds() {
+    const checked = document.querySelectorAll('.rowCheckbox:checked');
+    return [...checked].map(cb => cb.closest('tr').getAttribute('data-card-id'));
+}
+
+// Get all visible card IDs from current list
+function getAllVisibleCardIds() {
+    const allRows = document.querySelectorAll('#cardsTableBody tr[data-card-id]');
+    return [...allRows].map(row => row.getAttribute('data-card-id')).filter(id => id);
+}
+
+// Get card IDs - selected if any, otherwise all visible
+function getCardIdsForAction() {
+    const selectedIds = getSelectedCardIds();
+    return selectedIds.length > 0 ? selectedIds : getAllVisibleCardIds();
+}
+
+// Update button states when checkboxes change
+function updateButtonStates() {
+    const rowCheckboxes = getRowCheckboxes();
+    const checkedBoxes = [...rowCheckboxes].filter(cb => cb.checked);
+    const singleSelected = checkedBoxes.length === 1;
+    const anySelected = checkedBoxes.length >= 1;
+    const noneSelected = checkedBoxes.length === 0;
+    
+    // No-selection buttons (Add, Upload XLSX) - disabled when any row is selected
+    const addBtn = document.getElementById('addBtn');
+    const uploadXlsxBtn = document.getElementById('uploadXlsxBtn');
+    if (addBtn) addBtn.disabled = anySelected;
+    if (uploadXlsxBtn) uploadXlsxBtn.disabled = anySelected;
+    
+    // Enable/disable buttons based on selection
+    // Single select buttons (Edit, View)
+    document.querySelectorAll('[id^="editBtn"], [id^="viewBtn"]').forEach(btn => {
+        if (btn) btn.disabled = !singleSelected;
+    });
+    
+    // Multi select buttons (Delete, Verify, Approve, Unapproved, Retrieve, Unverify, Download Card, Back to Approved)
+    document.querySelectorAll('[id^="deleteBtn"], [id^="verifyBtn"], [id^="approveBtn"], [id^="unapprovedBtn"], [id^="retrieveBtn"], [id^="unverifyBtn"], #downloadCardBtn').forEach(btn => {
+        if (btn) btn.disabled = !anySelected;
+    });
+    
+    // Delete Permanent button (Pool list only)
+    const deletePermanentBtn = document.getElementById('deletePermanentBtnP');
+    if (deletePermanentBtn) deletePermanentBtn.disabled = !anySelected;
+}
+
+function initCheckboxes() {
+    const selectAll = document.getElementById("selectAll");
+    
+    // Select All checkbox
+    if (selectAll) {
+        selectAll.addEventListener("change", function() {
+            const rowCheckboxes = getRowCheckboxes();
+            rowCheckboxes.forEach(cb => {
+                cb.checked = this.checked;
+                // Sync .selected class with checkbox state
+                const row = cb.closest('tr');
+                if (row) {
+                    if (this.checked) row.classList.add('selected');
+                    else row.classList.remove('selected');
+                }
+            });
+            updateButtonStates();
+            
+            // If unchecking, also deactivate the Select All DB button
+            if (!this.checked) {
+                const selectAllDbBtn = document.getElementById('selectAllDbBtn');
+                if (selectAllDbBtn) {
+                    selectAllDbBtn.classList.remove('active');
+                    window.IDCardApp.allDbCardIds = null;
+                }
+            }
+        });
+    }
+    
+    // Individual row checkboxes - use event delegation
+    const tableBody = document.getElementById('cardsTableBody');
+    if (tableBody) {
+        // Handle Shift+Click for range selection
+        tableBody.addEventListener('click', function(e) {
+            if (e.target.classList.contains('rowCheckbox')) {
+                const rowCheckboxes = [...getRowCheckboxes()];
+                const currentIndex = rowCheckboxes.indexOf(e.target);
+                
+                if (e.shiftKey && lastClickedCheckboxIndex !== null && currentIndex !== lastClickedCheckboxIndex) {
+                    // Shift+Click: Range selection
+                    e.preventDefault(); // Prevent default checkbox behavior
+                    
+                    const start = Math.min(lastClickedCheckboxIndex, currentIndex);
+                    const end = Math.max(lastClickedCheckboxIndex, currentIndex);
+                    
+                    // Check all checkboxes in range (from anchor to current, inclusive)
+                    for (let i = start; i <= end; i++) {
+                        if (rowCheckboxes[i]) {
+                            rowCheckboxes[i].checked = true;
+                            // Sync .selected class
+                            const row = rowCheckboxes[i].closest('tr');
+                            if (row) row.classList.add('selected');
+                        }
+                    }
+                    
+                    // Trigger change event for button state update
+                    updateButtonStates();
+                    
+                    // Don't update lastClickedCheckboxIndex for shift+click 
+                    // so user can continue selecting ranges from the original anchor
+                } else {
+                    // Normal click (without Shift): Toggle this checkbox and set as anchor
+                    // Update last clicked index - this becomes the anchor for Shift+Click
+                    lastClickedCheckboxIndex = currentIndex;
+                    
+                    // Also uncheck selectAll if unchecking a checkbox
+                    if (!e.target.checked && selectAll) {
+                        selectAll.checked = false;
+                    }
+                }
+            }
+        });
+        
+        // Handle checkbox state changes
+        tableBody.addEventListener('change', function(e) {
+            if (e.target.classList.contains('rowCheckbox')) {
+                // Sync .selected class with checkbox state
+                const row = e.target.closest('tr');
+                if (row) {
+                    if (e.target.checked) row.classList.add('selected');
+                    else row.classList.remove('selected');
+                }
+                const rowCheckboxes = getRowCheckboxes();
+                if (!e.target.checked) {
+                    selectAll.checked = false;
+                    // Also deactivate Select All DB if any checkbox is unchecked
+                    const selectAllDbBtn = document.getElementById('selectAllDbBtn');
+                    if (selectAllDbBtn) {
+                        selectAllDbBtn.classList.remove('active');
+                        window.IDCardApp.allDbCardIds = null;
+                    }
+                } else if ([...rowCheckboxes].every(c => c.checked)) {
+                    selectAll.checked = true;
+                }
+                updateButtonStates();
+            }
+        });
+    }
+    
+    // Reset last clicked index when page changes or data reloads
+    window.IDCardApp.resetShiftClickIndex = function() {
+        lastClickedCheckboxIndex = null;
+    };
+    
+    // Select All Database button
+    initSelectAllDbButton();
+    
+    // Initial button state
+    updateButtonStates();
+}
+
+// Select All Database functionality
+function initSelectAllDbButton() {
+    const selectAllDbBtn = document.getElementById('selectAllDbBtn');
+    if (!selectAllDbBtn) return;
+    
+    selectAllDbBtn.addEventListener('click', async function() {
+        const tableId = window.IDCardApp.tableId;
+        const currentStatus = window.IDCardApp.currentStatus || new URLSearchParams(window.location.search).get('status') || 'pending';
+        
+        if (!tableId) {
+            showToast('Table ID not found', false);
+            return;
+        }
+        
+        // If already active, deselect all
+        if (this.classList.contains('active')) {
+            this.classList.remove('active');
+            window.IDCardApp.allDbCardIds = null;
+            
+            // Uncheck all visible checkboxes
+            const selectAll = document.getElementById("selectAll");
+            if (selectAll) {
+                selectAll.checked = false;
+                selectAll.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            showToast('Selection cleared');
+            return;
+        }
+        
+        // Show loading state
+        const originalContent = this.innerHTML;
+        this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading...';
+        this.disabled = true;
+        
+        try {
+            const response = await fetch(`/panel/api/table/${tableId}/cards/all-ids/?status=${currentStatus}`);
+            const data = await response.json();
+            
+            if (data.success && data.card_ids) {
+                // Store all card IDs globally
+                window.IDCardApp.allDbCardIds = data.card_ids;
+                
+                // Mark button as active
+                this.classList.add('active');
+                
+                // Check all visible checkboxes
+                const selectAll = document.getElementById("selectAll");
+                if (selectAll) {
+                    selectAll.checked = true;
+                    const rowCheckboxes = getRowCheckboxes();
+                    rowCheckboxes.forEach(cb => {
+                        cb.checked = true;
+                    });
+                }
+                
+                updateButtonStates();
+                showToast(`Selected all ${data.total_count} cards`);
+            } else {
+                showToast(data.message || 'Failed to get card IDs', false);
+            }
+        } catch (error) {
+            console.error('Error fetching all card IDs:', error);
+            showToast('Error fetching card IDs', false);
+        } finally {
+            this.innerHTML = originalContent;
+            this.disabled = false;
+        }
+    });
+}
+
+// Override getSelectedCardIds to use all DB IDs when Select All DB is active
+const originalGetSelectedCardIds = getSelectedCardIds;
+function getSelectedCardIdsWithDbSelect() {
+    // If Select All DB is active, return all DB card IDs
+    if (window.IDCardApp.allDbCardIds && window.IDCardApp.allDbCardIds.length > 0) {
+        const selectAllDbBtn = document.getElementById('selectAllDbBtn');
+        if (selectAllDbBtn && selectAllDbBtn.classList.contains('active')) {
+            return window.IDCardApp.allDbCardIds;
+        }
+    }
+    // Otherwise, return selected visible checkboxes
+    return originalGetSelectedCardIds();
+}
+
+// Expose globally
+window.getRowCheckboxes = getRowCheckboxes;
+window.getSelectedCardIds = getSelectedCardIdsWithDbSelect;
+window.getAllVisibleCardIds = getAllVisibleCardIds;
+window.getCardIdsForAction = getCardIdsForAction;
+window.updateButtonStates = updateButtonStates;
+window.IDCardApp.getRowCheckboxes = getRowCheckboxes;
+window.IDCardApp.getSelectedCardIds = getSelectedCardIdsWithDbSelect;
+window.IDCardApp.getAllVisibleCardIds = getAllVisibleCardIds;
+window.IDCardApp.getCardIdsForAction = getCardIdsForAction;
+window.IDCardApp.updateButtonStates = updateButtonStates;
+window.IDCardApp.initCheckboxes = initCheckboxes;
+window.IDCardApp.initSelectAllDbButton = initSelectAllDbButton;
+
+/**
+ * Get ALL card IDs for bulk operations (download, reupload).
+ * If specific rows are checked, returns those IDs (sync).
+ * Otherwise, fetches ALL card IDs from the database for the current status.
+ * Always returns a Promise.
+ */
+async function getAllCardIdsForAction() {
+    // If user has explicitly selected rows (checked checkboxes), use those
+    const selectedIds = getSelectedCardIdsWithDbSelect();
+    if (selectedIds.length > 0) {
+        return selectedIds;
+    }
+
+    // No explicit selection — fetch ALL card IDs from database
+    const tableId = window.IDCardApp.tableId || (typeof TABLE_ID !== 'undefined' ? TABLE_ID : null);
+    const currentStatus = window.IDCardApp.currentStatus || new URLSearchParams(window.location.search).get('status') || 'pending';
+
+    if (!tableId) {
+        console.error('getAllCardIdsForAction: TABLE_ID not found');
+        return [];
+    }
+
+    try {
+        const response = await fetch(`/panel/api/table/${tableId}/cards/all-ids/?status=${currentStatus}`);
+        const data = await response.json();
+        if (data.success && data.card_ids) {
+            return data.card_ids;
+        }
+        return [];
+    } catch (error) {
+        console.error('Error fetching all card IDs:', error);
+        return [];
+    }
+}
+
+window.getAllCardIdsForAction = getAllCardIdsForAction;
+window.IDCardApp.getAllCardIdsForAction = getAllCardIdsForAction;
+
+// ==========================================
+// DROPDOWN FUNCTIONALITY
+// ==========================================
+
+function setupDropdown(dropdownId) {
+    const dropdown = document.getElementById(dropdownId);
+    if (!dropdown) return;
+    
+    const toggle = dropdown.querySelector('.dropdown-toggle');
+    const options = dropdown.querySelectorAll('.dropdown-option');
+    
+    toggle.addEventListener('click', function(e) {
+        e.stopPropagation();
+        // Close other dropdowns
+        document.querySelectorAll('.custom-dropdown.open').forEach(d => {
+            if (d !== dropdown) d.classList.remove('open');
+        });
+        dropdown.classList.toggle('open');
+    });
+    
+    options.forEach(option => {
+        option.addEventListener('click', function() {
+            options.forEach(o => o.classList.remove('selected'));
+            this.classList.add('selected');
+            
+            // Update toggle text if needed
+            const selectedText = toggle.querySelector('span');
+            if (selectedText) {
+                selectedText.textContent = this.textContent;
+            }
+            
+            dropdown.classList.remove('open');
+        });
+    });
+}
+
+function initDropdowns() {
+    setupDropdown('filterDropdown');
+    setupDropdown('rowsDropdown');
+    setupDropdown('sortDropdown');
+    // classFilterDropdown and sectionFilterDropdown are handled by initFilterHandlers()
+    // in idcard-actions-search.js (with event delegation for dynamic options)
+    
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', function(e) {
+        // Don't close if clicking inside a dropdown
+        if (e.target.closest('.custom-dropdown')) return;
+        
+        document.querySelectorAll('.custom-dropdown.open').forEach(d => {
+            d.classList.remove('open');
+        });
+    });
+}
+
+// Expose globally
+window.IDCardApp.setupDropdown = setupDropdown;
+window.IDCardApp.initDropdowns = initDropdowns;
+
+// ==========================================
+// DYNAMIC TEXT ALIGNMENT
+// ==========================================
+
+function applyDynamicAlignment() {
+    const table = document.querySelector('.idcard-table table');
+    if (!table) return;
+    
+    const rows = table.querySelectorAll('tbody tr[data-card-id]');
+    if (rows.length === 0) return;
+    
+    // Get all dynamic field columns (skip checkbox, sr no, image fields, action, fixed cols)
+    const headerCells = table.querySelectorAll('thead th');
+    const columnAlignments = [];
+    
+    // First pass: determine if any cell in each column has long text (> 15 chars)
+    headerCells.forEach((th, colIndex) => {
+        // Skip non-dynamic columns
+        if (th.classList.contains('checkbox-col') || 
+            th.classList.contains('sr-col') || 
+            th.classList.contains('image-col') ||
+            th.classList.contains('action-col') ||
+            th.classList.contains('fixed-col')) {
+            columnAlignments[colIndex] = null; // Don't change these
+            return;
+        }
+        
+        // Check all cells in this column
+        let hasLongText = false;
+        rows.forEach(row => {
+            const cell = row.cells[colIndex];
+            if (cell && cell.classList.contains('dynamic-field')) {
+                const text = cell.textContent.trim();
+                if (text.length > 15) {
+                    hasLongText = true;
+                }
+            }
+        });
+        
+        // If any cell has long text, all cells in column should be left aligned
+        columnAlignments[colIndex] = hasLongText ? 'left' : 'left'; // Always left for consistency
+    });
+    
+    // Second pass: apply alignment to all cells in each column
+    rows.forEach(row => {
+        row.querySelectorAll('td.dynamic-field').forEach(cell => {
+            cell.style.textAlign = 'left';
+        });
+    });
+    
+    // Sr No column - center
+    document.querySelectorAll('.idcard-table td:nth-child(2)').forEach(cell => {
+        cell.style.textAlign = 'center';
+    });
+}
+
+// Expose globally
+window.applyDynamicAlignment = applyDynamicAlignment;
+window.IDCardApp.applyDynamicAlignment = applyDynamicAlignment;
+
+// ==========================================
+// HORIZONTAL SCROLL WITH ALT + MOUSE WHEEL
+// ==========================================
+
+function initHorizontalScroll() {
+    const tableContainer = document.querySelector('.idcard-table');
+    if (tableContainer) {
+        tableContainer.addEventListener('wheel', function(e) {
+            // If Alt key is held, scroll horizontally
+            if (e.altKey) {
+                e.preventDefault();
+                // Slow scroll speed - 25% for smoother scrolling
+                this.scrollLeft += e.deltaY * 0.25;
+            }
+        }, { passive: false });
+    }
+}
+
+// Expose globally
+window.IDCardApp.initHorizontalScroll = initHorizontalScroll;
+
+// ==========================================
+// TOAST STYLES (inline CSS)
+// ==========================================
+
+const toastStyle = document.createElement('style');
+toastStyle.textContent = `
+    .toast {
+        position: fixed;
+        bottom: 80px;
+        right: 20px;
+        padding: 12px 20px;
+        border-radius: 8px;
+        background: #333;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 14px;
+        z-index: 9999;
+        transform: translateY(100px);
+        opacity: 0;
+        transition: all 0.3s ease;
+    }
+    .toast.show {
+        transform: translateY(0);
+        opacity: 1;
+    }
+    .toast.success {
+        background: #22c55e;
+    }
+    .toast.error {
+        background: #ef4444;
+    }
+`;
+document.head.appendChild(toastStyle);
+
+// ==========================================
+// CORE MODULE INITIALIZATION
+// ==========================================
+
+function initCoreModule() {
+    initSidebar();
+    initCheckboxes();
+    initDropdowns();
+    initHorizontalScroll();
+    applyDynamicAlignment();
+}
+
+// Expose globally
+window.IDCardApp.initCoreModule = initCoreModule;

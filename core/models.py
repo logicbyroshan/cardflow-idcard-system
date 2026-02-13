@@ -292,3 +292,305 @@ class ActivityLog(models.Model):
     def icon_color(self):
         """Returns CSS class (add/edit/delete/verify/approve) for this action type."""
         return self.ACTION_ICONS.get(self.action, ('fa-circle-info', 'edit'))[1]
+
+
+class BackgroundTask(models.Model):
+    """
+    Tracks background tasks for async processing.
+    
+    CRITICAL: Only ONE heavy task per user at a time to prevent RAM exhaustion.
+    
+    Usage:
+        task = BackgroundTask.objects.create(
+            user=user,
+            task_type="bulk_upload",
+            file_path="temp/upload.xlsx",
+            total=1000
+        )
+        
+        # In background worker:
+        task.mark_started()
+        
+        # During processing:
+        task.update_progress(500)
+        
+        # On completion:
+        task.mark_completed(result_path="exports/result.zip")
+    """
+    TASK_TYPES = [
+        ("bulk_upload", "Bulk Upload"),
+        ("reupload_images", "Reupload Images"),
+        ("export_zip", "Export Zip"),
+        ("export_pdf", "Export PDF"),
+        ("export_docx", "Export DOCX"),
+        ("export_excel", "Export Excel"),
+    ]
+    
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("processing", "Processing"),
+        ("completed", "Completed"),
+        ("failed", "Failed"),
+        ("cancelled", "Cancelled"),
+    ]
+    
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='background_tasks'
+    )
+    task_type = models.CharField(max_length=30, choices=TASK_TYPES)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending", db_index=True)
+    
+    # Progress tracking
+    progress = models.IntegerField(default=0)
+    total = models.IntegerField(default=0)
+    
+    # File paths (relative to MEDIA_ROOT)
+    file_path = models.CharField(max_length=500, blank=True, null=True)  # Input file
+    result_path = models.CharField(max_length=500, blank=True, null=True)  # Output file
+    
+    # Additional metadata stored as JSON
+    metadata = models.JSONField(default=dict, blank=True)
+    
+    # Error message if failed
+    error_message = models.TextField(blank=True, null=True)
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    started_at = models.DateTimeField(blank=True, null=True)
+    completed_at = models.DateTimeField(blank=True, null=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'status']),
+            models.Index(fields=['task_type', 'status']),
+        ]
+    
+    def __str__(self):
+        return f"{self.get_task_type_display()} - {self.get_status_display()} ({self.progress}/{self.total})"
+    
+    @property
+    def progress_percentage(self):
+        """Get progress as percentage (0-100)"""
+        if self.total <= 0:
+            return 0
+        return min(100, int((self.progress / self.total) * 100))
+    
+    @property
+    def is_active(self):
+        """Check if task is currently running"""
+        return self.status in ("pending", "processing")
+    
+    @property
+    def is_done(self):
+        """Check if task has finished (completed, failed, or cancelled)"""
+        return self.status in ("completed", "failed", "cancelled")
+    
+    def cleanup_files(self):
+        """
+        Remove temporary files associated with this task.
+        Call this after task completion or on failure.
+        
+        Cleans up:
+        - Main input file (file_path)
+        - Field-specific ZIP files (metadata['zip_paths'])
+        - Unified ZIP files (metadata['unified_zip_paths'])
+        """
+        import os
+        import logging
+        from django.conf import settings
+        
+        logger = logging.getLogger(__name__)
+        
+        def safe_delete(file_path):
+            """Safely delete a file by relative or absolute path."""
+            if not file_path:
+                return
+            try:
+                # Convert relative path to absolute if needed
+                if not os.path.isabs(file_path):
+                    full_path = os.path.join(settings.MEDIA_ROOT, file_path)
+                else:
+                    full_path = file_path
+                
+                if os.path.exists(full_path):
+                    os.remove(full_path)
+                    logger.info("Cleaned up file: %s", file_path)
+            except Exception as e:
+                logger.warning("Failed to cleanup file %s: %s", file_path, e)
+        
+        # Cleanup main input file
+        if self.file_path:
+            safe_delete(self.file_path)
+        
+        # Cleanup ZIP files from metadata
+        metadata = self.metadata or {}
+        
+        # Field-specific ZIPs: {'field_name': 'relative/path.zip', ...}
+        zip_paths = metadata.get('zip_paths', {})
+        for field_name, zip_path in zip_paths.items():
+            safe_delete(zip_path)
+        
+        # Unified ZIPs: ['relative/path1.zip', 'relative/path2.zip', ...]
+        unified_zip_paths = metadata.get('unified_zip_paths', [])
+        for zip_path in unified_zip_paths:
+            safe_delete(zip_path)
+    
+    def mark_started(self):
+        """Mark task as started processing"""
+        from django.utils import timezone
+        self.status = "processing"
+        self.started_at = timezone.now()
+        self.save(update_fields=["status", "started_at", "updated_at"])
+    
+    def mark_completed(self, result_path=None):
+        """Mark task as successfully completed"""
+        from django.utils import timezone
+        self.status = "completed"
+        self.completed_at = timezone.now()
+        if result_path:
+            self.result_path = result_path
+        self.save(update_fields=["status", "completed_at", "result_path", "updated_at"])
+    
+    def mark_failed(self, error_message):
+        """Mark task as failed with error message"""
+        from django.utils import timezone
+        self.status = "failed"
+        self.error_message = str(error_message)[:2000]  # Truncate long errors
+        self.completed_at = timezone.now()
+        self.save(update_fields=["status", "error_message", "completed_at", "updated_at"])
+        self.cleanup_files()
+    
+    def update_progress(self, progress, total=None):
+        """Update progress counter efficiently"""
+        update_fields = ["progress", "updated_at"]
+        self.progress = progress
+        if total is not None:
+            self.total = total
+            update_fields.append("total")
+        self.save(update_fields=update_fields)
+    
+    @classmethod
+    def has_active_task(cls, user, task_type=None):
+        """
+        Check if user has an active (pending/processing) task.
+        Used to prevent multiple concurrent heavy operations.
+        
+        Args:
+            user: User instance
+            task_type: Optional task type to filter by
+            
+        Returns:
+            BackgroundTask instance if active task exists, None otherwise
+        """
+        qs = cls.objects.filter(user=user, status__in=["pending", "processing"])
+        if task_type:
+            qs = qs.filter(task_type=task_type)
+        return qs.first()
+    
+    @classmethod
+    def create_if_no_active(cls, user, task_type, **kwargs):
+        """
+        Atomically create a task only if user has no active tasks.
+        Prevents race conditions where two requests try to create tasks simultaneously.
+        
+        Args:
+            user: User instance
+            task_type: Task type string
+            **kwargs: Additional fields for BackgroundTask
+            
+        Returns:
+            tuple: (task, error_message) - task is None if creation failed
+        """
+        from django.db import transaction
+        
+        with transaction.atomic():
+            # Lock the user's active tasks for update
+            active = cls.objects.select_for_update().filter(
+                user=user,
+                status__in=["pending", "processing"]
+            ).first()
+            
+            if active:
+                return None, f"You already have an active task ({active.get_task_type_display()}). Please wait for it to complete."
+            
+            # Safe to create new task
+            task = cls.objects.create(
+                user=user,
+                task_type=task_type,
+                status='pending',
+                **kwargs
+            )
+            return task, None
+    
+    @classmethod
+    def cleanup_stale_tasks(cls, hours=24):
+        """
+        Mark stale tasks (stuck in processing for too long) as failed.
+        Should be called periodically (e.g., on server startup).
+        
+        Args:
+            hours: Number of hours after which a processing task is considered stale
+        """
+        import logging
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        logger = logging.getLogger(__name__)
+        stale_threshold = timezone.now() - timedelta(hours=hours)
+        stale_tasks = cls.objects.filter(
+            status="processing",
+            started_at__lt=stale_threshold
+        )
+        
+        count = 0
+        for task in stale_tasks:
+            task.mark_failed(f"Task timed out after {hours} hours")
+            count += 1
+        
+        if count:
+            logger.info("Cleaned up %d stale background tasks", count)
+        
+        return count
+    
+    @classmethod
+    def cleanup_old_results(cls, days=7):
+        """
+        Delete old completed task records and their result files.
+        Should be called periodically.
+        
+        Args:
+            days: Number of days to keep completed tasks
+        """
+        import logging
+        from django.utils import timezone
+        from datetime import timedelta
+        from django.core.files.storage import default_storage
+        
+        logger = logging.getLogger(__name__)
+        old_threshold = timezone.now() - timedelta(days=days)
+        old_tasks = cls.objects.filter(
+            status__in=["completed", "failed", "cancelled"],
+            completed_at__lt=old_threshold
+        )
+        
+        count = 0
+        for task in old_tasks:
+            # Clean up result file if exists
+            if task.result_path:
+                try:
+                    if default_storage.exists(task.result_path):
+                        default_storage.delete(task.result_path)
+                except Exception as e:
+                    logger.warning("Failed to cleanup result file %s: %s", task.result_path, e)
+            
+            task.delete()
+            count += 1
+        
+        if count:
+            logger.info("Cleaned up %d old background task records", count)
+        
+        return count

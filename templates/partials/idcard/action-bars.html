@@ -65,6 +65,30 @@
         </button>
         {% endif %}
     </div>
+    <!-- Navigation Buttons (Right Side) -->
+    {% if is_super_admin or is_admin_staff %}
+    <div class="action-buttons-group action-nav-group">
+        <a href="{% url 'idcard_group' client_id=client.id %}" class="btn action-btn btn-gray" title="Back to ID Card Group">
+            <i class="fa-solid fa-layer-group"></i>
+            <span class="btn-text">ID Card Group</span>
+        </a>
+        <a href="{% url 'group_settings' client_id=client.id %}" class="btn action-btn btn-gray" title="Group Settings">
+            <i class="fa-solid fa-gear"></i>
+            <span class="btn-text">Group Setting</span>
+        </a>
+    </div>
+    {% elif is_client %}
+    <div class="action-buttons-group action-nav-group">
+        <a href="{% url 'client:idcard_group' %}" class="btn action-btn btn-gray" title="Back to ID Card Group">
+            <i class="fa-solid fa-layer-group"></i>
+            <span class="btn-text">ID Card Group</span>
+        </a>
+        <a href="{% url 'client:group_settings' %}" class="btn action-btn btn-gray" title="Group Settings">
+            <i class="fa-solid fa-gear"></i>
+            <span class="btn-text">Group Setting</span>
+        </a>
+    </div>
+    {% endif %}
 </div>
 
 <!-- Action Bar - Verified List -->
@@ -120,6 +144,30 @@
         </button>
         {% endif %}
     </div>
+    <!-- Navigation Buttons (Right Side) -->
+    {% if is_super_admin or is_admin_staff %}
+    <div class="action-buttons-group action-nav-group">
+        <a href="{% url 'idcard_group' client_id=client.id %}" class="btn action-btn btn-gray" title="Back to ID Card Group">
+            <i class="fa-solid fa-layer-group"></i>
+            <span class="btn-text">ID Card Group</span>
+        </a>
+        <a href="{% url 'group_settings' client_id=client.id %}" class="btn action-btn btn-gray" title="Group Settings">
+            <i class="fa-solid fa-gear"></i>
+            <span class="btn-text">Group Setting</span>
+        </a>
+    </div>
+    {% elif is_client %}
+    <div class="action-buttons-group action-nav-group">
+        <a href="{% url 'client:idcard_group' %}" class="btn action-btn btn-gray" title="Back to ID Card Group">
+            <i class="fa-solid fa-layer-group"></i>
+            <span class="btn-text">ID Card Group</span>
+        </a>
+        <a href="{% url 'client:group_settings' %}" class="btn action-btn btn-gray" title="Group Settings">
+            <i class="fa-solid fa-gear"></i>
+            <span class="btn-text">Group Setting</span>
+        </a>
+    </div>
+    {% endif %}
 </div>
 
 <!-- Action Bar - Approved List -->
@@ -177,6 +225,30 @@
         </button>
         {% endif %}
     </div>
+    <!-- Navigation Buttons (Right Side) -->
+    {% if is_super_admin or is_admin_staff %}
+    <div class="action-buttons-group action-nav-group">
+        <a href="{% url 'idcard_group' client_id=client.id %}" class="btn action-btn btn-gray" title="Back to ID Card Group">
+            <i class="fa-solid fa-layer-group"></i>
+            <span class="btn-text">ID Card Group</span>
+        </a>
+        <a href="{% url 'group_settings' client_id=client.id %}" class="btn action-btn btn-gray" title="Group Settings">
+            <i class="fa-solid fa-gear"></i>
+            <span class="btn-text">Group Setting</span>
+        </a>
+    </div>
+    {% elif is_client %}
+    <div class="action-buttons-group action-nav-group">
+        <a href="{% url 'client:idcard_group' %}" class="btn action-btn btn-gray" title="Back to ID Card Group">
+            <i class="fa-solid fa-layer-group"></i>
+            <span class="btn-text">ID Card Group</span>
+        </a>
+        <a href="{% url 'client:group_settings' %}" class="btn action-btn btn-gray" title="Group Settings">
+            <i class="fa-solid fa-gear"></i>
+            <span class="btn-text">Group Setting</span>
+        </a>
+    </div>
+    {% endif %}
 </div>
 
 <!-- Action Bar - Download List (Final stage - no status change buttons, only export options) -->
@@ -220,6 +292,30 @@
         </button>
         {% endif %}
     </div>
+    <!-- Navigation Buttons (Right Side) -->
+    {% if is_super_admin or is_admin_staff %}
+    <div class="action-buttons-group action-nav-group">
+        <a href="{% url 'idcard_group' client_id=client.id %}" class="btn action-btn btn-gray" title="Back to ID Card Group">
+            <i class="fa-solid fa-layer-group"></i>
+            <span class="btn-text">ID Card Group</span>
+        </a>
+        <a href="{% url 'group_settings' client_id=client.id %}" class="btn action-btn btn-gray" title="Group Settings">
+            <i class="fa-solid fa-gear"></i>
+            <span class="btn-text">Group Setting</span>
+        </a>
+    </div>
+    {% elif is_client %}
+    <div class="action-buttons-group action-nav-group">
+        <a href="{% url 'client:idcard_group' %}" class="btn action-btn btn-gray" title="Back to ID Card Group">
+            <i class="fa-solid fa-layer-group"></i>
+            <span class="btn-text">ID Card Group</span>
+        </a>
+        <a href="{% url 'client:group_settings' %}" class="btn action-btn btn-gray" title="Group Settings">
+            <i class="fa-solid fa-gear"></i>
+            <span class="btn-text">Group Setting</span>
+        </a>
+    </div>
+    {% endif %}
 </div>
 
 <!-- Action Bar - Pool List (ALWAYS LAST) -->
@@ -263,6 +359,30 @@
         </button>
         {% endif %}
     </div>
+    <!-- Navigation Buttons -->
+    {% if is_super_admin or is_admin_staff %}
+    <div class="action-buttons-group action-nav-group">
+        <a href="{% url 'idcard_group' client_id=client.id %}" class="btn action-btn btn-gray" title="Back to ID Card Group">
+            <i class="fa-solid fa-layer-group"></i>
+            <span class="btn-text">ID Card Group</span>
+        </a>
+        <a href="{% url 'group_settings' client_id=client.id %}" class="btn action-btn btn-gray" title="Group Settings">
+            <i class="fa-solid fa-gear"></i>
+            <span class="btn-text">Group Setting</span>
+        </a>
+    </div>
+    {% elif is_client %}
+    <div class="action-buttons-group action-nav-group">
+        <a href="{% url 'client:idcard_group' %}" class="btn action-btn btn-gray" title="Back to ID Card Group">
+            <i class="fa-solid fa-layer-group"></i>
+            <span class="btn-text">ID Card Group</span>
+        </a>
+        <a href="{% url 'client:group_settings' %}" class="btn action-btn btn-gray" title="Group Settings">
+            <i class="fa-solid fa-gear"></i>
+            <span class="btn-text">Group Setting</span>
+        </a>
+    </div>
+    {% endif %}
     <!-- Permanent Delete - Separated to far right for safety -->
     {% if perm_idcard_delete_from_pool %}
     <div class="action-buttons-group pool-danger-zone">

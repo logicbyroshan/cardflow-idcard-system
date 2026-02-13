@@ -63,6 +63,9 @@ urlpatterns = [
     # Website Management → redirect to new website admin dashboard
     path('manage-website/', views.manage_website, name='manage_website'),
     
+    # Manage Panel (Coming Soon)
+    path('manage-panel/', views.manage_panel, name='manage_panel'),
+    
     # System Settings
     path('settings/', views.settings, name='settings'),
     
@@ -116,6 +119,16 @@ urlpatterns = [
     path('api/table/<int:table_id>/cards/download-xlsx/', export_views.api_export_xlsx, name='api_idcard_download_xlsx'),
     path('api/table/<int:table_id>/cards/download-pdf/', export_views.api_export_pdf, name='api_idcard_download_pdf'),
     path('api/table/<int:table_id>/cards/download-all/', export_views.api_download_all_cards, name='api_idcard_download_all'),
+    
+    # Background Task APIs (for async bulk operations)
+    path('api/task-status/<int:task_id>/', views.api_task_status, name='api_task_status'),
+    path('api/task-download/<int:task_id>/', views.api_task_download, name='api_task_download'),
+    path('api/task-cancel/<int:task_id>/', views.api_task_cancel, name='api_task_cancel'),
+    path('api/tasks/', views.api_task_list, name='api_task_list'),
+    path('api/task-active/', views.api_task_active, name='api_task_active'),
+    path('api/table/<int:table_id>/bulk-upload-task/', views.api_create_bulk_upload_task, name='api_create_bulk_upload_task'),
+    path('api/table/<int:table_id>/reupload-task/', views.api_create_reupload_task, name='api_create_reupload_task'),
+    path('api/table/<int:table_id>/export-task/', views.api_create_export_task, name='api_create_export_task'),
     
     # Export Settings APIs
     path('api/export-settings/', views.api_export_settings_get, name='api_export_settings_get'),

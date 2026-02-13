@@ -1,0 +1,584 @@
+"""
+Bulk Upload Processor
+
+Memory-efficient bulk upload processing for ID cards.
+
+CRITICAL DESIGN RULES:
+1. NEVER load entire file into memory
+2. Process ZIP images ONE at a time
+3. Batch database inserts (100 records)
+4. Update progress after each batch
+5. Cleanup temp files on completion/failure
+
+Usage:
+    # Called from background worker
+    from core.services.bulk_upload_processor import process_bulk_upload
+    process_bulk_upload(task)
+"""
+import os
+import json
+import logging
+import zipfile
+from io import BytesIO
+
+from django.conf import settings
+from django.db import transaction
+from django.shortcuts import get_object_or_404
+from django.core.files.storage import default_storage
+
+logger = logging.getLogger(__name__)
+
+# Batch size for database operations
+BATCH_SIZE = 100
+
+# Maximum rows to process
+MAX_BULK_ROWS = 5000
+
+
+def process_bulk_upload(task):
+    """
+    Process a bulk upload task from files saved on disk.
+    
+    CRITICAL:
+    - ZIP files are opened from disk, not loaded into memory
+    - Images are extracted and processed one at a time
+    - Database inserts are batched
+    - Progress is updated incrementally
+    
+    Args:
+        task: BackgroundTask instance with:
+            - file_path: Path to saved XLSX/CSV file
+            - metadata: {
+                'table_id': int,
+                'zip_paths': {field_name: relative_path, ...},  # Optional
+                'unified_zip_paths': [relative_path, ...],  # Optional
+            }
+    """
+    from core.models import IDCardTable, IDCard
+    from core.services.base import BaseService
+    from core.services.image_service import ImageService
+    from core.views.idcard_api import validate_image_bytes, convert_class_value, convert_section_value
+    
+    metadata = task.metadata or {}
+    table_id = metadata.get('table_id')
+    
+    if not table_id:
+        task.mark_failed("Missing table_id in metadata")
+        return
+    
+    try:
+        table = IDCardTable.objects.select_related('group__client').get(id=table_id)
+        client = table.group.client
+    except IDCardTable.DoesNotExist:
+        task.mark_failed(f"Table {table_id} not found")
+        return
+    
+    # Get full path to uploaded file
+    file_path = os.path.join(settings.MEDIA_ROOT, task.file_path) if task.file_path else None
+    if not file_path or not os.path.exists(file_path):
+        task.mark_failed(f"Upload file not found: {task.file_path}")
+        return
+    
+    file_name = os.path.basename(file_path).lower()
+    
+    # Get field configuration
+    all_table_fields = table.fields or []
+    table_fields = [f['name'] for f in all_table_fields if not BaseService.is_image_field(f)]
+    image_fields = [f['name'] for f in all_table_fields if BaseService.is_image_field(f)]
+    
+    # Initialize counters
+    cards_created = 0
+    photos_matched = 0
+    errors = []
+    
+    try:
+        # Parse XLSX/CSV and get rows
+        if file_name.endswith(('.xlsx', '.xls')):
+            rows_data, headers, header_to_field, image_ref_columns = _parse_excel_file(
+                file_path, table_fields, image_fields, all_table_fields
+            )
+        elif file_name.endswith('.csv'):
+            rows_data, headers, header_to_field, image_ref_columns = _parse_csv_file(
+                file_path, table_fields, image_fields, all_table_fields
+            )
+        else:
+            task.mark_failed("Invalid file format. Expected .xlsx, .xls, or .csv")
+            return
+        
+        if not rows_data:
+            task.mark_failed("No data rows found in file")
+            return
+        
+        if len(rows_data) > MAX_BULK_ROWS:
+            task.mark_failed(f"File has {len(rows_data)} rows. Maximum allowed is {MAX_BULK_ROWS}.")
+            return
+        
+        # Update total count
+        task.update_progress(0, len(rows_data))
+        
+        # Reverse rows so first Excel row gets highest DB id (preserves order when displayed newest-first)
+        rows_data = list(reversed(rows_data))
+        
+        # Get ZIP file paths from metadata
+        zip_paths = metadata.get('zip_paths', {})
+        unified_zip_paths = metadata.get('unified_zip_paths', [])
+        
+        # Process rows in batches
+        batch = []
+        saved_image_paths = []  # Track for rollback cleanup
+        field_type_lookup = {f['name']: f['type'] for f in all_table_fields}
+        
+        for row_idx, row in enumerate(rows_data):
+            try:
+                # Skip empty rows
+                if _is_empty_row(row):
+                    continue
+                
+                # Parse field data from row
+                field_data = _parse_row_fields(row, header_to_field, field_type_lookup)
+                
+                # Process image fields - match with ZIP photos ONE AT A TIME
+                for img_field in image_fields:
+                    photo_column_value = _get_image_reference_from_row(
+                        row, img_field, image_ref_columns, headers
+                    )
+                    
+                    if photo_column_value:
+                        # Try to find and save image from ZIP
+                        result = _find_and_save_image_from_zips(
+                            photo_column_value=photo_column_value,
+                            img_field=img_field,
+                            zip_paths=zip_paths,
+                            unified_zip_paths=unified_zip_paths,
+                            client=client,
+                            batch_counter=len(batch) + cards_created + 1,
+                            user=task.user
+                        )
+                        
+                        if result['success']:
+                            field_data[img_field] = result['path']
+                            saved_image_paths.append(result['path'])
+                            photos_matched += 1
+                        else:
+                            # Save as PENDING for later reupload
+                            field_data[img_field] = f'PENDING:{photo_column_value}'
+                    else:
+                        field_data[img_field] = ''
+                
+                # Create card object (don't save yet)
+                card = IDCard(
+                    table=table,
+                    field_data=field_data,
+                    status='pending'
+                )
+                batch.append(card)
+                
+                # Batch insert when batch is full
+                if len(batch) >= BATCH_SIZE:
+                    with transaction.atomic():
+                        IDCard.objects.bulk_create(batch)
+                        # Create CardMedia records for each card
+                        for card in batch:
+                            _create_media_records_for_card(card, image_fields, client, task.user)
+                        cards_created += len(batch)
+                    batch = []
+                    
+                    # Update progress
+                    task.update_progress(row_idx + 1)
+                    logger.info("Bulk upload progress: %d/%d", row_idx + 1, len(rows_data))
+                    
+            except Exception as row_err:
+                errors.append(f"Row {row_idx + 2}: {str(row_err)}")
+                logger.error("Error processing row %d: %s", row_idx + 2, row_err)
+        
+        # Insert remaining batch
+        if batch:
+            with transaction.atomic():
+                IDCard.objects.bulk_create(batch)
+                for card in batch:
+                    _create_media_records_for_card(card, image_fields, client, task.user)
+                cards_created += len(batch)
+        
+        # Update final progress
+        task.update_progress(len(rows_data))
+        
+        # Build result message
+        result_msg = f"Created {cards_created} ID cards with {photos_matched} photos matched"
+        
+        # Store results in metadata
+        task.metadata['result'] = {
+            'cards_created': cards_created,
+            'photos_matched': photos_matched,
+            'error_count': len(errors),
+            'errors': errors[:10] if errors else []
+        }
+        task.save(update_fields=['metadata'])
+        
+        # Mark completed
+        task.mark_completed()
+        logger.info("Bulk upload completed: %s", result_msg)
+        
+    except Exception as e:
+        logger.exception("Bulk upload failed: %s", e)
+        task.mark_failed(str(e))
+    
+    finally:
+        # Cleanup temp files
+        _cleanup_task_files(task)
+
+
+def _parse_excel_file(file_path, table_fields, image_fields, all_table_fields):
+    """
+    Parse Excel file and return rows with header mapping.
+    
+    CRITICAL: Uses openpyxl's read_only mode for memory efficiency.
+    """
+    import openpyxl
+    from core.services.base import BaseService
+    
+    # Read magic bytes to detect format
+    with open(file_path, 'rb') as f:
+        magic_bytes = f.read(4)
+    
+    is_zip = magic_bytes[:2] == b'PK'
+    is_old_xls = magic_bytes[0] == 0xD0 and magic_bytes[1] == 0xCF
+    
+    headers = []
+    rows_data = []
+    
+    if is_zip or file_path.lower().endswith('.xlsx'):
+        # New xlsx format - use openpyxl with read_only for memory efficiency
+        wb = openpyxl.load_workbook(file_path, read_only=True, data_only=True)
+        ws = wb.active
+        
+        row_iter = ws.iter_rows(values_only=True)
+        
+        # Get header row
+        try:
+            header_row = next(row_iter)
+            headers = [str(cell).strip() if cell else '' for cell in header_row]
+        except StopIteration:
+            return [], [], {}, {}
+        
+        # Get data rows
+        for row in row_iter:
+            rows_data.append(row)
+        
+        wb.close()
+        
+    elif is_old_xls or file_path.lower().endswith('.xls'):
+        # Old xls format - use xlrd
+        import xlrd
+        wb = xlrd.open_workbook(file_path)
+        ws = wb.sheet_by_index(0)
+        
+        # Get headers
+        for col_idx in range(ws.ncols):
+            cell_val = ws.cell_value(0, col_idx)
+            headers.append(str(cell_val).strip() if cell_val else '')
+        
+        # Get data rows
+        for row_idx in range(1, ws.nrows):
+            row = []
+            for col_idx in range(ws.ncols):
+                row.append(ws.cell_value(row_idx, col_idx))
+            rows_data.append(tuple(row))
+    
+    # Map headers to fields
+    header_to_field, image_ref_columns = _map_headers_to_fields(
+        headers, table_fields, image_fields, all_table_fields
+    )
+    
+    return rows_data, headers, header_to_field, image_ref_columns
+
+
+def _parse_csv_file(file_path, table_fields, image_fields, all_table_fields):
+    """
+    Parse CSV file and return rows with header mapping.
+    """
+    import csv
+    from core.services.base import BaseService
+    
+    rows_data = []
+    headers = []
+    
+    with open(file_path, 'r', encoding='utf-8-sig') as f:
+        reader = csv.reader(f)
+        
+        # Get headers
+        try:
+            headers = [h.strip() for h in next(reader)]
+        except StopIteration:
+            return [], [], {}, {}
+        
+        # Get data rows as tuples
+        for row in reader:
+            rows_data.append(tuple(row))
+    
+    # Map headers to fields
+    header_to_field, image_ref_columns = _map_headers_to_fields(
+        headers, table_fields, image_fields, all_table_fields
+    )
+    
+    return rows_data, headers, header_to_field, image_ref_columns
+
+
+def _map_headers_to_fields(headers, table_fields, image_fields, all_table_fields):
+    """
+    Map Excel/CSV headers to table field names.
+    """
+    from core.services.base import BaseService
+    
+    header_to_field = {}
+    image_ref_columns = {}
+    available_fields = table_fields.copy()
+    unmatched_image_fields = list(image_fields)
+    
+    for idx, header in enumerate(headers):
+        if not header:
+            continue
+        
+        # Try to match against image fields first
+        matched_img_field = BaseService.find_best_image_field_match(header, unmatched_image_fields)
+        if matched_img_field:
+            image_ref_columns[matched_img_field] = idx
+            unmatched_image_fields.remove(matched_img_field)
+            continue
+        
+        # Try text field matching
+        match = BaseService.find_best_field_match(header, available_fields)
+        if match:
+            header_to_field[idx] = match
+            available_fields.remove(match)
+    
+    return header_to_field, image_ref_columns
+
+
+def _is_empty_row(row):
+    """Check if a row is empty."""
+    if isinstance(row, dict):
+        return all(not v or str(v).strip() == '' for v in row.values())
+    return all(cell is None or str(cell).strip() == '' for cell in row)
+
+
+def _parse_row_fields(row, header_to_field, field_type_lookup):
+    """
+    Parse field values from a row.
+    """
+    from core.views.idcard_api import convert_class_value, convert_section_value
+    from datetime import datetime, timedelta
+    
+    field_data = {}
+    
+    for col_idx, field_name in header_to_field.items():
+        if col_idx < len(row):
+            value = row[col_idx]
+            if value is not None:
+                # Handle different value types
+                if hasattr(value, 'strftime'):
+                    value = value.strftime('%d-%m-%Y')
+                elif isinstance(value, float):
+                    # Check for Excel date serial numbers
+                    if 1 < value < 60000 and any(x in field_name.lower() for x in ['date', 'dob', 'birth']):
+                        excel_epoch = datetime(1899, 12, 30)
+                        actual_date = excel_epoch + timedelta(days=int(value))
+                        value = actual_date.strftime('%d-%m-%Y')
+                    elif value == int(value):
+                        value = str(int(value)).upper()
+                    else:
+                        value = str(value).upper()
+                elif isinstance(value, int):
+                    if 1 < value < 60000 and any(x in field_name.lower() for x in ['date', 'dob', 'birth']):
+                        excel_epoch = datetime(1899, 12, 30)
+                        actual_date = excel_epoch + timedelta(days=value)
+                        value = actual_date.strftime('%d-%m-%Y')
+                    else:
+                        value = str(value).upper()
+                else:
+                    value = str(value).strip().upper()
+                
+                field_data[field_name] = value
+            else:
+                field_data[field_name] = ''
+        else:
+            field_data[field_name] = ''
+    
+    # Apply class/section conversions
+    for fname in list(field_data.keys()):
+        ftype = field_type_lookup.get(fname, 'text')
+        if ftype == 'class' and field_data[fname]:
+            field_data[fname] = convert_class_value(field_data[fname])
+        elif ftype == 'section' and field_data[fname]:
+            field_data[fname] = convert_section_value(field_data[fname])
+    
+    return field_data
+
+
+def _get_image_reference_from_row(row, img_field, image_ref_columns, headers):
+    """
+    Get image reference value from row for a specific image field.
+    """
+    if img_field not in image_ref_columns:
+        return None
+    
+    col_idx = image_ref_columns[img_field]
+    if col_idx < len(row):
+        cell_value = row[col_idx]
+        if cell_value is not None and str(cell_value).strip() and str(cell_value).strip().lower() != 'none':
+            # Handle numeric values
+            if isinstance(cell_value, float) and cell_value == int(cell_value):
+                return str(int(cell_value))
+            elif isinstance(cell_value, int):
+                return str(cell_value)
+            else:
+                return str(cell_value).strip()
+    
+    return None
+
+
+def _find_and_save_image_from_zips(photo_column_value, img_field, zip_paths, unified_zip_paths, 
+                                   client, batch_counter, user):
+    """
+    Find an image in ZIP files and save it.
+    
+    CRITICAL: Processes ONE image at a time from ZIP.
+    Never extracts entire ZIP into memory.
+    """
+    from core.services.base import BaseService
+    from core.services.image_service import ImageService
+    from core.views.idcard_api import validate_image_bytes
+    
+    normalized_key = BaseService.normalize_image_identifier(photo_column_value)
+    if not normalized_key:
+        return {'success': False, 'error': 'Invalid photo reference'}
+    
+    # Try field-specific ZIP first
+    if img_field in zip_paths:
+        zip_path = os.path.join(settings.MEDIA_ROOT, zip_paths[img_field])
+        result = _find_image_in_zip(zip_path, normalized_key)
+        if result['found']:
+            return _save_extracted_image(result, client, batch_counter)
+    
+    # Try unified ZIPs
+    for zip_rel_path in unified_zip_paths:
+        zip_path = os.path.join(settings.MEDIA_ROOT, zip_rel_path)
+        result = _find_image_in_zip(zip_path, normalized_key)
+        if result['found']:
+            return _save_extracted_image(result, client, batch_counter)
+    
+    return {'success': False, 'error': 'Image not found in any ZIP'}
+
+
+def _find_image_in_zip(zip_path, normalized_key):
+    """
+    Find a single image in a ZIP file by normalized key.
+    
+    CRITICAL: Opens ZIP from disk, extracts only ONE file.
+    """
+    from core.services.base import BaseService
+    from core.views.idcard_api import validate_image_bytes
+    
+    if not os.path.exists(zip_path):
+        return {'found': False}
+    
+    try:
+        with zipfile.ZipFile(zip_path, 'r') as zf:
+            for zip_info in zf.infolist():
+                if zip_info.is_dir():
+                    continue
+                
+                # Skip large files
+                if zip_info.file_size > 20 * 1024 * 1024:  # 20MB
+                    continue
+                
+                base_name = os.path.basename(zip_info.filename)
+                name_without_ext = os.path.splitext(base_name)[0]
+                ext = os.path.splitext(base_name)[1].lower()
+                
+                if ext not in ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']:
+                    continue
+                
+                file_key = BaseService.normalize_image_identifier(name_without_ext)
+                if file_key == normalized_key:
+                    # Found matching file - extract only this one
+                    image_bytes = zf.read(zip_info.filename)
+                    is_valid, error_msg = validate_image_bytes(image_bytes)
+                    if is_valid:
+                        return {
+                            'found': True,
+                            'bytes': image_bytes,
+                            'ext': ext,
+                            'original_name': base_name
+                        }
+    except Exception as e:
+        logger.error("Error reading ZIP %s: %s", zip_path, e)
+    
+    return {'found': False}
+
+
+def _save_extracted_image(result, client, batch_counter):
+    """
+    Save an extracted image using ImageService.
+    """
+    from core.services.image_service import ImageService
+    
+    try:
+        save_result = ImageService.save_image_with_thumbnail(
+            image_bytes=result['bytes'],
+            client=client,
+            existing_path=None,
+            batch_counter=batch_counter,
+            original_ext=result['ext']
+        )
+        
+        if save_result.success and save_result.data.get('path'):
+            return {'success': True, 'path': save_result.data['path']}
+        else:
+            return {'success': False, 'error': save_result.message}
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
+
+
+def _create_media_records_for_card(card, image_fields, client, user):
+    """
+    Create CardMedia records for a card's images.
+    """
+    from core.services.image_service import ImageService
+    
+    field_data = card.field_data or {}
+    
+    for img_field in image_fields:
+        img_path = field_data.get(img_field, '')
+        if img_path and not img_path.startswith('PENDING:') and img_path not in ('', 'NOT_FOUND'):
+            try:
+                ImageService.create_media_record(
+                    saved_path=img_path,
+                    client=client,
+                    card=card,
+                    field_name=img_field,
+                    media_type='photo',
+                    original_filename=None,
+                    uploaded_by=user
+                )
+            except Exception as e:
+                logger.warning("Failed to create CardMedia for %s: %s", img_field, e)
+
+
+def _cleanup_task_files(task):
+    """
+    Clean up all temporary files associated with a task.
+    """
+    from core.services.background_worker import cleanup_temp_file
+    
+    # Clean up main file
+    if task.file_path:
+        cleanup_temp_file(task.file_path)
+    
+    # Clean up ZIP files from metadata
+    metadata = task.metadata or {}
+    
+    for field_name, zip_path in metadata.get('zip_paths', {}).items():
+        cleanup_temp_file(zip_path)
+    
+    for zip_path in metadata.get('unified_zip_paths', []):
+        cleanup_temp_file(zip_path)

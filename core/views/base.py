@@ -590,6 +590,17 @@ def manage_website(request):
     return redirect('/panel/website/')
 
 
+# Manage Panel (Coming Soon)
+@super_admin_required
+def manage_panel(request):
+    """Manage Panel page - Coming Soon."""
+    context = {
+        'is_super_admin': True,
+        'active_page': 'manage_panel',
+    }
+    return render(request, 'manage-panel.html', context)
+
+
 # Reprint Cards
 @login_required
 @require_any_admin

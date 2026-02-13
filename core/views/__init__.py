@@ -18,6 +18,7 @@ from .base import (
     idcard_actions,
     group_settings,
     manage_website,
+    manage_panel,
     reprint_cards,
     settings,
     api_export_settings_get,
@@ -100,4 +101,15 @@ from .reprint_api import (
     api_reprint_reject,
     api_reprint_download_list,
     api_reprint_mark_downloaded,
+)
+
+from .task_api import (
+    api_task_status,
+    api_task_download,
+    api_task_cancel,
+    api_task_list,
+    api_task_active,
+    api_create_bulk_upload_task,
+    api_create_reupload_task,
+    api_create_export_task,
 )

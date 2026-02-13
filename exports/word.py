@@ -622,6 +622,7 @@ class WordExporter:
                             # Process image
                             pil_img = Image.open(BytesIO(img_data))
                             pil_img.verify()
+                            pil_img.close()  # Close after verify
                             pil_img = Image.open(BytesIO(img_data))
                             
                             if pil_img.mode in ('RGBA', 'LA', 'P'):
@@ -635,6 +636,7 @@ class WordExporter:
                             
                             img_stream = BytesIO()
                             pil_img.save(img_stream, format='JPEG', quality=90)
+                            pil_img.close()  # Close after saving
                             img_stream.seek(0)
                             
                             para = cell.paragraphs[0]

@@ -189,6 +189,9 @@ class ThumbnailService:
                     final_ratio, quality, orig_len, len(thumb_bytes),
                 )
             
+            # Explicitly close PIL image to free memory
+            img.close()
+            
             return thumb_bytes
             
         except Exception as e:

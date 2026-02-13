@@ -1,0 +1,480 @@
+/* ID Card Group Page Specific Styles */
+
+/* Override generic row selection cursor — this page doesn't use row selection */
+.idcard-table tbody tr {
+    cursor: default;
+    user-select: auto;
+}
+
+/* Ensure bulk/action buttons always show pointer cursor */
+.idcard-table .bulk-btn,
+.idcard-table .list-btn {
+    cursor: pointer !important;
+    position: relative;
+    z-index: 2;
+}
+
+/* Editable cell input style */
+.idcard-table td input[type="text"] {
+    font-size: 12px;
+    border: 1px solid #bbb;
+    padding: 2px 4px;
+    border-radius: 3px;
+    width: 90%;
+    background: #fff;
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.15s;
+}
+
+.idcard-table td input[type="text"]:focus-visible {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.15);
+}
+/* Override table layout for ID Card Group page */
+.idcard-table table {
+    table-layout: fixed;
+    width: 100%;
+    min-width: 1000px;
+    font-family: var(--font-family);
+}
+
+/* Name column - fixed width, left aligned */
+.idcard-table th:nth-child(1),
+.idcard-table td:nth-child(1) {
+    width: 120px;
+    min-width: 120px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 400;
+    font-size: 11px;
+    text-align: left;
+    padding-left: 15px;
+}
+
+/* Action column - fixed width for 5 buttons, center aligned */
+.idcard-table th:nth-child(2),
+.idcard-table td:nth-child(2) {
+    width: 480px;
+    min-width: 480px;
+    text-align: center;
+}
+
+/* Bulk Action column - fixed width for 5 buttons, center aligned */
+.idcard-table th:nth-child(3),
+.idcard-table td:nth-child(3) {
+    width: 400px;
+    min-width: 400px;
+    text-align: center;
+}
+
+/* Action Cell Styling */
+.action-cell {
+    padding: 8px 10px !important;
+}
+
+.action-buttons {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 4px;
+    justify-content: center;
+    align-items: center;
+}
+
+/* List Buttons Base Style - No icons, compact */
+.list-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 3px;
+    padding: 4px 6px;
+    border: none;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 400;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    min-width: 85px;
+}
+
+/* Hide icons in list buttons */
+.list-btn i {
+    display: none;
+}
+
+/* Count Badge */
+.count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 14px;
+    padding: 0 3px;
+    border-radius: 7px;
+    font-size: 9px;
+    font-weight: 500;
+    margin-left: 2px;
+    text-align: center;
+}
+
+/* Pending Button - Yellow/Amber (waiting status) */
+.pending-btn {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fcd34d;
+}
+
+.pending-btn:hover {
+    background: #fde68a;
+}
+
+.pending-btn .count-badge {
+    background: #f59e0b;
+    color: #fff;
+}
+
+/* Verified Button - Green (success status) */
+.verified-btn {
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #6ee7b7;
+}
+
+.verified-btn:hover {
+    background: #a7f3d0;
+}
+
+.verified-btn .count-badge {
+    background: #10b981;
+    color: #fff;
+}
+
+/* Pool Button - Red (deleted/removed status) */
+.pool-btn {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+
+.pool-btn:hover {
+    background: #fecaca;
+}
+
+.pool-btn .count-badge {
+    background: #ef4444;
+    color: #fff;
+}
+
+/* Approved Button - Blue (approved status) */
+.approved-btn {
+    background: #dbeafe;
+    color: #1e40af;
+    border: 1px solid #93c5fd;
+}
+
+.approved-btn:hover {
+    background: #bfdbfe;
+}
+
+.approved-btn .count-badge {
+    background: #3b82f6;
+    color: #fff;
+}
+
+/* Download Button - Gray/Neutral (action) */
+.download-btn {
+    background: #f3f4f6;
+    color: #374151 !important;
+    border: 1px solid #d1d5db;
+}
+
+.download-btn:hover {
+    background: #e5e7eb;
+}
+
+.download-btn .count-badge {
+    background: #6b7280;
+    color: #fff;
+}
+
+/* Reprint Status Button - Cyan/Teal (for status list) */
+.reprint-btn {
+    background: #cffafe;
+    color: #0e7490;
+    border: 1px solid #67e8f9;
+}
+
+.reprint-btn:hover {
+    background: #a5f3fc;
+}
+
+.reprint-btn .count-badge {
+    background: #06b6d4;
+    color: #fff;
+}
+
+/* Bulk Action Cell Styling */
+.bulk-action-cell {
+    padding: 8px 10px !important;
+}
+
+.bulk-action-buttons {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 4px;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Bulk Buttons Base Style */
+.bulk-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 4px 8px;
+    border: none;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    justify-content: center;
+}
+
+/* Hide icons in bulk buttons */
+.bulk-btn i {
+    display: none;
+}
+
+/* Reupload Button - Orange/Amber */
+.reupload-btn {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fcd34d;
+}
+
+.reupload-btn:hover {
+    background: #fde68a;
+    border-color: #fbbf24;
+}
+
+/* Download All ID Card Button - Purple/Primary */
+.download-all-btn {
+    background: #4f46e5;
+    color: #fff;
+    border: none;
+}
+
+.download-all-btn:hover {
+    background: #4338ca;
+}
+
+/* Delete All ID Cards Button - Red/Danger */
+.delete-all-btn {
+    background: #ef4444;
+    color: #fff;
+    border: none;
+}
+
+.delete-all-btn:hover {
+    background: #dc2626;
+}
+
+/* Reprint ID Card Bulk Action Button - Cyan/Teal */
+.reprint-btn-action {
+    background: #06b6d4;
+    color: #fff;
+    border: none;
+}
+
+.reprint-btn-action:hover {
+    background: #0891b2;
+}
+
+/* Upgrade All Class Button - Green */
+.upgrade-class-btn {
+    background: #22c55e;
+    color: #fff;
+    border: none;
+}
+
+.upgrade-class-btn:hover {
+    background: #16a34a;
+}
+
+/* Disabled state for bulk buttons (e.g. no class column) */
+.bulk-btn:disabled,
+.bulk-btn[disabled] {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* Responsive adjustments for 1024px and above */
+@media (min-width: 1024px) and (max-width: 1200px) {
+    .idcard-table table {
+        min-width: 980px;
+    }
+    
+    .idcard-table th:nth-child(1),
+    .idcard-table td:nth-child(1) {
+        width: 100px;
+        min-width: 100px;
+        font-size: 10px;
+    }
+    
+    .idcard-table th:nth-child(2),
+    .idcard-table td:nth-child(2) {
+        width: 450px;
+        min-width: 450px;
+    }
+    
+    .idcard-table th:nth-child(3),
+    .idcard-table td:nth-child(3) {
+        width: 380px;
+        min-width: 380px;
+    }
+    
+    .action-buttons {
+        gap: 2px;
+    }
+    
+    .list-btn {
+        padding: 3px 4px;
+        font-size: 9px;
+        min-width: 75px;
+    }
+    
+    .count-badge {
+        min-width: 28px;
+        height: 12px;
+        font-size: 8px;
+        padding: 0 2px;
+    }
+    
+    .bulk-action-buttons {
+        gap: 2px;
+    }
+    
+    .bulk-btn {
+        padding: 3px 5px;
+        font-size: 8px;
+    }
+}
+
+@media (min-width: 1201px) and (max-width: 1400px) {
+    .action-buttons {
+        gap: 3px;
+    }
+    
+    .list-btn {
+        padding: 3px 5px;
+        font-size: 9px;
+        min-width: 80px;
+    }
+    
+    .count-badge {
+        min-width: 30px;
+        height: 12px;
+        font-size: 8px;
+    }
+    
+    .bulk-btn {
+        padding: 4px 6px;
+        font-size: 9px;
+    }
+}
+
+/* Transition for count badges */
+.count-badge {
+    transition: all 0.15s ease;
+}
+
+/* ==================== 
+   Groups Grid Styles
+   ==================== */
+.groups-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+    padding: 20px;
+}
+
+.group-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 2px solid transparent;
+}
+
+.group-card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
+}
+
+.group-card.selected {
+    border-color: #3b82f6;
+    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+}
+
+.group-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.group-icon {
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 18px;
+}
+
+.group-card-body {
+    padding: 16px;
+}
+
+.group-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0 0 8px 0;
+}
+
+.group-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: #f9fafb;
+    border-top: 1px solid #e5e7eb;
+}
+
+.group-stat {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.group-stat i {
+    color: #3b82f6;
+}
+
+/* .no-groups base styles in common.css (single source of truth).
+   grid-column override is also in common.css. */

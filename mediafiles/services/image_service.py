@@ -132,6 +132,7 @@ class ImageService:
             # Try to open and verify the image
             img = Image.open(BytesIO(image_bytes))
             img.verify()
+            img.close()  # Close after verify (verify invalidates the image object)
             
             # Re-open to check it's actually readable
             img = Image.open(BytesIO(image_bytes))
@@ -139,8 +140,10 @@ class ImageService:
             
             # Check format is supported
             if img.format and img.format.lower() not in ['jpeg', 'jpg', 'png', 'gif', 'bmp', 'webp']:
+                img.close()
                 return False, f"Unsupported image format: {img.format}"
             
+            img.close()
             return True, None
             
         except Exception as e:

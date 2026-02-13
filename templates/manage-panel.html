@@ -1,0 +1,161 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage Panel - Adarsh ID Cards</title>
+  {% include 'partials/common/head.html' %}
+  <link rel="stylesheet" href="{% static 'css/common.css' %}?v=50">
+  <style>
+    .coming-soon-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: calc(100vh - 120px);
+      padding: 40px 20px;
+      text-align: center;
+    }
+    
+    .coming-soon-icon {
+      width: 120px;
+      height: 120px;
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      border-radius: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 32px;
+      box-shadow: 0 20px 40px rgba(99, 102, 241, 0.3);
+      animation: float 3s ease-in-out infinite;
+    }
+    
+    .coming-soon-icon i {
+      font-size: 48px;
+      color: white;
+    }
+    
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    
+    .coming-soon-title {
+      font-size: 32px;
+      font-weight: 700;
+      color: #1f2937;
+      margin-bottom: 12px;
+    }
+    
+    .coming-soon-subtitle {
+      font-size: 18px;
+      color: #6b7280;
+      margin-bottom: 24px;
+      max-width: 500px;
+    }
+    
+    .coming-soon-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+      border: 1px solid #f59e0b;
+      border-radius: 50px;
+      color: #92400e;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    
+    .coming-soon-badge i {
+      font-size: 16px;
+    }
+    
+    .coming-soon-features {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      justify-content: center;
+      margin-top: 40px;
+      max-width: 600px;
+    }
+    
+    .feature-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      color: #4b5563;
+      font-size: 14px;
+    }
+    
+    .feature-item i {
+      color: #6366f1;
+    }
+  </style>
+</head>
+<body>
+  {% include 'partials/sidebar.html' %}
+
+  <main class="main">
+    <!-- Top Navbar -->
+    <header class="topbar">
+      <div class="nav-left">
+        <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+        <div class="breadcrumb">
+          <a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+          <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+          <span class="breadcrumb-item active">Manage Panel</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Coming Soon Content -->
+    <div class="coming-soon-container">
+      <div class="coming-soon-icon">
+        <i class="fa-solid fa-sliders"></i>
+      </div>
+      
+      <h1 class="coming-soon-title">Manage Panel</h1>
+      <p class="coming-soon-subtitle">
+        We're building something amazing! This feature will allow you to customize and manage your panel settings.
+      </p>
+      
+      <div class="coming-soon-badge">
+        <i class="fa-solid fa-clock"></i>
+        Coming Soon
+      </div>
+      
+      <div class="coming-soon-features">
+        <div class="feature-item">
+          <i class="fa-solid fa-palette"></i>
+          Theme Customization
+        </div>
+        <div class="feature-item">
+          <i class="fa-solid fa-bell"></i>
+          Notification Settings
+        </div>
+        <div class="feature-item">
+          <i class="fa-solid fa-shield-halved"></i>
+          Security Options
+        </div>
+        <div class="feature-item">
+          <i class="fa-solid fa-database"></i>
+          Backup & Restore
+        </div>
+      </div>
+    </div>
+  </main>
+
+  {% include 'partials/components/toast.html' %}
+  
+  <script src="{% static 'js/common/sidebar.js' %}?v=2"></script>
+  <script src="{% static 'js/init.js' %}?v=2"></script>
+</body>
+</html>

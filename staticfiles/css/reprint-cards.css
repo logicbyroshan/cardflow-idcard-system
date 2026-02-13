@@ -1,0 +1,412 @@
+/* ============================================
+   REPRINT CARDS PAGE - Specific Styles
+   3-Step Workflow: Requests → Confirm → Download
+   ============================================ */
+
+/* ===========================================
+   STEP ARROW BETWEEN TABS
+   =========================================== */
+.tab-arrow {
+  font-size: 10px;
+  color: #9ca3af;
+  margin: 0 2px;
+}
+
+/* ===========================================
+   STEP NUMBER BADGE (inside each tab)
+   =========================================== */
+.tab-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(0,0,0,0.1);
+  color: inherit;
+  flex-shrink: 0;
+}
+
+/* ===========================================
+   TAB 1 — REPRINT REQUESTS (Purple)
+   =========================================== */
+.reprint-requests-tab {
+  background: #ede9fe;
+  color: #5b21b6;
+  border: 1px solid #c4b5fd;
+}
+
+.reprint-requests-tab:hover {
+  background: #ddd6fe;
+}
+
+.reprint-requests-tab .tab-count {
+  background: #8b5cf6;
+  color: #fff;
+}
+
+.reprint-requests-tab .tab-step-num {
+  background: rgba(139, 92, 246, 0.2);
+}
+
+.reprint-requests-tab.active {
+  background: #8b5cf6;
+  color: #fff;
+  border-color: #7c3aed;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.4);
+}
+
+.reprint-requests-tab.active .tab-count {
+  background: #fff;
+  color: #8b5cf6;
+}
+
+.reprint-requests-tab.active .tab-step-num {
+  background: rgba(255,255,255,0.25);
+}
+
+/* ===========================================
+   TAB 2 — CONFIRM REPRINT (Amber)
+   =========================================== */
+.reprint-confirm-tab {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+
+.reprint-confirm-tab:hover {
+  background: #fde68a;
+}
+
+.reprint-confirm-tab .tab-count {
+  background: #f59e0b;
+  color: #fff;
+}
+
+.reprint-confirm-tab .tab-step-num {
+  background: rgba(245, 158, 11, 0.2);
+}
+
+.reprint-confirm-tab.active {
+  background: #f59e0b;
+  color: #fff;
+  border-color: #d97706;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+}
+
+.reprint-confirm-tab.active .tab-count {
+  background: #fff;
+  color: #f59e0b;
+}
+
+.reprint-confirm-tab.active .tab-step-num {
+  background: rgba(255,255,255,0.25);
+}
+
+/* ===========================================
+   TAB 3 — DOWNLOAD REPRINTS (Green)
+   =========================================== */
+.reprint-download-tab {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #6ee7b7;
+}
+
+.reprint-download-tab:hover {
+  background: #a7f3d0;
+}
+
+.reprint-download-tab .tab-count {
+  background: #10b981;
+  color: #fff;
+}
+
+.reprint-download-tab .tab-step-num {
+  background: rgba(16, 185, 129, 0.2);
+}
+
+.reprint-download-tab.active {
+  background: #10b981;
+  color: #fff;
+  border-color: #059669;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+}
+
+.reprint-download-tab.active .tab-count {
+  background: #fff;
+  color: #10b981;
+}
+
+.reprint-download-tab.active .tab-step-num {
+  background: rgba(255,255,255,0.25);
+}
+
+/* ===========================================
+   REPRINT PAGE OVERRIDES
+   =========================================== */
+.reprint-cards-page .no-data {
+  text-align: center;
+  padding: 0;
+}
+
+/* ===========================================
+   REPRINT ACTION BAR OVERRIDES
+   (Button colors are defined in variables.css)
+   =========================================== */
+
+/* ===========================================
+   REPRINT ROW — ALREADY REQUESTED HIGHLIGHT
+   =========================================== */
+tr.reprint-requested {
+  background: #faf5ff !important;
+}
+tr.reprint-requested td {
+  color: #7c3aed;
+}
+tr.reprint-requested:hover {
+  background: #f5f3ff !important;
+}
+
+/* ===========================================
+   REPRINT BADGE + SINGLE BUTTON
+   =========================================== */
+.reprint-badge-requested {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #7c3aed;
+  background: #ede9fe;
+  padding: 3px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.reprint-badge-requested i {
+  font-size: 10px;
+}
+
+.btn-reprint-single {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid #c4b5fd;
+  background: #f5f3ff;
+  color: #7c3aed;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-reprint-single:hover {
+  background: #8b5cf6;
+  color: #fff;
+  border-color: #7c3aed;
+}
+
+/* ===========================================
+   SELECTION INDICATOR
+   =========================================== */
+.pagination-selected {
+  margin-left: 8px;
+  color: #7c3aed;
+  font-size: 12px;
+}
+
+/* ===========================================
+   REASON MODAL
+   =========================================== */
+.reprint-reason-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.15s ease;
+}
+.reprint-reason-modal {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  width: 420px;
+  max-width: 92vw;
+  overflow: hidden;
+}
+.reprint-reason-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.reprint-reason-header i {
+  color: #8b5cf6;
+  font-size: 18px;
+}
+.reprint-reason-header h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+}
+.reprint-reason-body {
+  padding: 20px;
+}
+.reprint-reason-body label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 6px;
+}
+.reprint-reason-body textarea {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+  transition: border 0.15s;
+}
+.reprint-reason-body textarea:focus {
+  outline: none;
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 3px rgba(139,92,246,0.1);
+}
+.reprint-reason-body .reason-hint {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 4px;
+}
+.reprint-reason-footer {
+  padding: 12px 20px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.reprint-reason-footer .btn-cancel {
+  padding: 7px 16px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #374151;
+  font-size: 13px;
+  cursor: pointer;
+}
+.reprint-reason-footer .btn-cancel:hover {
+  background: #f3f4f6;
+}
+.reprint-reason-footer .btn-submit {
+  padding: 7px 16px;
+  border-radius: 6px;
+  border: 1px solid #7c3aed;
+  background: #8b5cf6;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.reprint-reason-footer .btn-submit:hover {
+  background: #7c3aed;
+}
+.reprint-reason-footer .btn-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ===========================================
+   STEP 2: CONFIRM REPRINT STYLES
+   =========================================== */
+
+/* Amber button — action-bar scoped override (color in variables.css) */
+
+/* Inline confirm/reject action buttons */
+.confirm-action-btns {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+}
+.btn-confirm-single,
+.btn-reject-single {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-confirm-single {
+  background: #ecfdf5;
+  color: #059669;
+  border-color: #a7f3d0;
+}
+.btn-confirm-single:hover {
+  background: #059669;
+  color: #fff;
+  border-color: #059669;
+}
+.btn-reject-single {
+  background: #fef2f2;
+  color: #dc2626;
+  border-color: #fecaca;
+}
+.btn-reject-single:hover {
+  background: #dc2626;
+  color: #fff;
+  border-color: #dc2626;
+}
+
+/* Reason cell truncation */
+.reason-cell {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+/* ===========================================
+   STEP 3: DOWNLOAD REPRINTS STYLES
+   =========================================== */
+
+/* Green button — action-bar scoped override (color in variables.css) */
+
+/* Single download button per row */
+.btn-download-single {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid #a7f3d0;
+  background: #ecfdf5;
+  color: #059669;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-download-single:hover {
+  background: #059669;
+  color: #fff;
+  border-color: #059669;
+}
