@@ -281,6 +281,9 @@ def api_export_docx(request, table_id: int) -> HttpResponse:
 # PDF EXPORT
 # =============================================================================
 
+# PDF generation is memory-intensive; use a lower limit
+MAX_PDF_EXPORT_CARD_IDS = 2000
+
 @login_required
 @require_POST
 def api_export_pdf(request, table_id: int) -> HttpResponse:
@@ -314,6 +317,10 @@ def api_export_pdf(request, table_id: int) -> HttpResponse:
             'message': 'No cards selected for export'
         }, status=400)
     
+    # Apply PDF-specific limit (more strict for memory reasons)
+    if len(card_ids) > MAX_PDF_EXPORT_CARD_IDS:
+        card_ids = card_ids[:MAX_PDF_EXPORT_CARD_IDS]
+    
     service = ExportService(request.user)
     result = service.export_pdf(table_id, card_ids, status=_get_status_from_request(request))
     
@@ -330,6 +337,9 @@ def api_export_pdf(request, table_id: int) -> HttpResponse:
 # =============================================================================
 # IMAGE ZIP EXPORT
 # =============================================================================
+
+# Image/ZIP exports are memory-intensive; use a reasonable limit
+MAX_ZIP_EXPORT_CARD_IDS = 3000
 
 @login_required
 @require_POST
@@ -377,6 +387,10 @@ def api_export_images(request, table_id: int) -> JsonResponse:
             'success': False,
             'message': 'No cards selected for export'
         }, status=400)
+    
+    # Apply ZIP-specific limit (memory-intensive)
+    if len(card_ids) > MAX_ZIP_EXPORT_CARD_IDS:
+        card_ids = card_ids[:MAX_ZIP_EXPORT_CARD_IDS]
     
     service = ExportService(request.user)
     result = service.export_images(table_id, card_ids, status=_get_status_from_request(request))
@@ -462,6 +476,9 @@ def api_download_all_cards(request, table_id: int) -> JsonResponse:
     For each status (Pending/Verified/Approved/Download/Pool) that has cards,
     generates one XLSX file and one or more ZIP files (one per image field).
     
+    Memory-efficient implementation: processes data in batches and limits
+    total export size to prevent server crashes.
+    
     POST /api/table/<table_id>/cards/download-all/
     
     Returns JSON with base64-encoded files:
@@ -485,6 +502,8 @@ def api_download_all_cards(request, table_id: int) -> JsonResponse:
         "total_files": 3
     }
     """
+    import gc  # For memory cleanup
+    
     # Check permission
     perm_error = _check_export_permission(request)
     if perm_error:
@@ -516,18 +535,30 @@ def api_download_all_cards(request, table_id: int) -> JsonResponse:
     files = []
     counter = 0
     
+    # Memory-efficient limits
+    MAX_CARDS_PER_STATUS = 1000  # Reduced from 2000
+    MAX_TOTAL_CARDS = 3000  # Total card limit across all statuses
+    total_cards_processed = 0
+    
     for status_key, status_label in _DOWNLOAD_ALL_STATUSES.items():
         # Get cards for this status, scoped by user permissions
-        cards = service.get_scoped_cards(table).filter(status=status_key)
+        cards_qs = service.get_scoped_cards(table).filter(status=status_key)
         
-        card_count = cards.count()
+        card_count = cards_qs.count()
         if card_count == 0:
             continue
         
-        # Safety cap: skip statuses with too many cards
-        MAX_DOWNLOAD_ALL_PER_STATUS = 2000
-        if card_count > MAX_DOWNLOAD_ALL_PER_STATUS:
-            cards = cards[:MAX_DOWNLOAD_ALL_PER_STATUS]
+        # Check total limit
+        remaining_capacity = MAX_TOTAL_CARDS - total_cards_processed
+        if remaining_capacity <= 0:
+            logger.warning("Download-all reached total card limit for table %d", table_id)
+            break
+        
+        # Apply per-status and remaining capacity limits
+        effective_limit = min(MAX_CARDS_PER_STATUS, remaining_capacity, card_count)
+        cards = cards_qs[:effective_limit]
+        
+        total_cards_processed += effective_limit
         
         counter += 1
         if clean_client:
@@ -535,29 +566,45 @@ def api_download_all_cards(request, table_id: int) -> JsonResponse:
         else:
             base_name = f"{clean_table}_{status_label}"
         
-        # Generate XLSX (base64)
-        xlsx_result = excel_exporter.export_cards(table, cards, status=status_key)
-        if xlsx_result.success and xlsx_result.response:
-            xlsx_base64 = base64.b64encode(xlsx_result.response.content).decode('utf-8')
-            files.append({
-                'type': 'xlsx',
-                'status': status_key,
-                'filename': f"{base_name}.xlsx",
-                'data': xlsx_base64,
-            })
-        
-        # Generate ZIP(s) for image fields (base64)
-        zip_result = zip_exporter.export_images(table, cards, status=status_key)
-        if zip_result.success and zip_result.zip_files:
-            for zf in zip_result.zip_files:
-                field_label = zf.field_name.upper().replace(' ', '_')
+        # Generate XLSX (base64) - XLSX is generally small
+        try:
+            xlsx_result = excel_exporter.export_cards(table, cards, status=status_key)
+            if xlsx_result.success and xlsx_result.response:
+                xlsx_base64 = base64.b64encode(xlsx_result.response.content).decode('utf-8')
                 files.append({
-                    'type': 'zip',
+                    'type': 'xlsx',
                     'status': status_key,
-                    'filename': f"{base_name}_{field_label}.zip",
-                    'data': zf.data,
-                    'image_count': zf.image_count,
+                    'filename': f"{base_name}.xlsx",
+                    'data': xlsx_base64,
                 })
+                # Clean up XLSX response to free memory
+                del xlsx_result
+        except Exception as e:
+            logger.error("XLSX export failed for status %s: %s", status_key, e)
+        
+        # Force garbage collection after XLSX
+        gc.collect()
+        
+        # Generate ZIP(s) for image fields (base64) - use batched processing
+        try:
+            zip_result = zip_exporter.export_images(table, cards, status=status_key)
+            if zip_result.success and zip_result.zip_files:
+                for zf in zip_result.zip_files:
+                    field_label = zf.field_name.upper().replace(' ', '_')
+                    files.append({
+                        'type': 'zip',
+                        'status': status_key,
+                        'filename': f"{base_name}_{field_label}.zip",
+                        'data': zf.data,
+                        'image_count': zf.image_count,
+                    })
+            # Clean up ZIP result to free memory
+            del zip_result
+        except Exception as e:
+            logger.error("ZIP export failed for status %s: %s", status_key, e)
+        
+        # Force garbage collection after each status to prevent memory buildup
+        gc.collect()
     
     if not files:
         return JsonResponse({
@@ -565,9 +612,13 @@ def api_download_all_cards(request, table_id: int) -> JsonResponse:
             'message': 'No cards found in any list to export'
         }, status=400)
     
-    logger.info("Export DOWNLOAD-ALL: user=%s table=%d files=%d", request.user.id, table_id, len(files))
+    logger.info("Export DOWNLOAD-ALL: user=%s table=%d files=%d cards=%d", 
+                request.user.id, table_id, len(files), total_cards_processed)
+    
     return JsonResponse({
         'success': True,
         'files': files,
         'total_files': len(files),
+        'total_cards': total_cards_processed,
+        'note': f"Limited to {MAX_TOTAL_CARDS} total cards" if total_cards_processed >= MAX_TOTAL_CARDS else None
     })

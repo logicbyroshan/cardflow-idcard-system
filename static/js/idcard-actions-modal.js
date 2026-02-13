@@ -1086,11 +1086,12 @@ function initModalModule() {
             });
         }
     
-    if (sideModalOverlay) {
-        sideModalOverlay.addEventListener('click', function(e) {
-            if (e.target === this) closeSideModal();
-        });
-    }
+    // NOTE: Removed click-outside-to-close behavior - modal should only close via X or Cancel button
+    // if (sideModalOverlay) {
+    //     sideModalOverlay.addEventListener('click', function(e) {
+    //         if (e.target === this) closeSideModal();
+    //     });
+    // }
     
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape' && sideModalOverlay?.classList.contains('active')) {

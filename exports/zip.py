@@ -165,6 +165,8 @@ class ZipExporter:
         """
         Create a ZIP file for a single image field.
         
+        Memory-efficient: Uses iterator() to avoid loading all cards into memory.
+        
         Phase 2 guarantee: Thumbnails are NEVER included.
         get_image_path_for_card blocks /thumbs/ paths.
         
@@ -185,8 +187,16 @@ class ZipExporter:
         images_count = 0
         used_names = {}
         
+        # Maximum images per ZIP to prevent memory issues
+        MAX_IMAGES_PER_ZIP = 1000
+        
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
-            for card in cards:
+            # Use iterator() for memory-efficient QuerySet iteration
+            for card in cards.iterator(chunk_size=100):
+                if images_count >= MAX_IMAGES_PER_ZIP:
+                    logger.warning("ZIP export reached image limit for field %s", field_name)
+                    break
+                
                 # Phase 3: Use ImageService with CardMedia + fallback
                 img_path = ImageService.get_image_path_for_card(
                     card=card,
@@ -214,6 +224,9 @@ class ZipExporter:
                                     download_filename = base
                                 zf.writestr(download_filename, img_data)
                                 images_count += 1
+                                
+                                # Free memory for large images
+                                del img_data
                 except Exception:
                     # Skip problematic images silently
                     continue

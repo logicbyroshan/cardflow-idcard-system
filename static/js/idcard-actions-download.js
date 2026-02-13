@@ -72,7 +72,8 @@ function openDownloadImgModal(cardIds) {
     const cardCountEl = document.getElementById('downloadImgCardCount');
     
     if (listNameEl) listNameEl.textContent = _getStatusLabel() + ' List';
-    if (cardCountEl) cardCountEl.textContent = cardIds.length;
+    // Show "All" if no specific cards selected, otherwise show the count
+    if (cardCountEl) cardCountEl.textContent = cardIds.length > 0 ? cardIds.length : 'All';
     
     downloadImgModal.style.display = 'flex';
 }
@@ -86,16 +87,13 @@ function closeDownloadImgModal() {
 }
 
 function downloadImages(cardIds) {
-    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : null;
+    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
     if (!tableId) {
         if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
         return;
     }
     
-    if (cardIds.length === 0) {
-        if (typeof showToast === 'function') showToast('No cards selected!', false);
-        return;
-    }
+    // Note: If cardIds is empty, backend will fetch all cards for current status
     
     if (typeof showProgressToast === 'function') showProgressToast('Preparing images...', -1);
     
@@ -194,12 +192,13 @@ function initDownloadImagesHandlers() {
         document.getElementById(btnId)?.addEventListener('click', async function() {
             this.disabled = true;
             try {
-                const cardIds = typeof getAllCardIdsForAction === 'function' ? await getAllCardIdsForAction() : [];
-                if (cardIds.length > 0) {
-                    openDownloadImgModal(cardIds);
-                } else {
-                    if (typeof showToast === 'function') showToast('No cards available to download!', false);
-                }
+                let cardIds = typeof getAllCardIdsForAction === 'function' ? await getAllCardIdsForAction() : [];
+                // If we couldn't get card IDs, proceed anyway - backend will use all cards for current status
+                openDownloadImgModal(cardIds);
+            } catch (error) {
+                console.error('Error getting card IDs for download:', error);
+                // Proceed with empty array - backend handles fallback
+                openDownloadImgModal([]);
             } finally {
                 this.disabled = false;
             }
@@ -209,10 +208,8 @@ function initDownloadImagesHandlers() {
     // Modal button handlers
     document.getElementById('downloadImgCancel')?.addEventListener('click', closeDownloadImgModal);
     document.getElementById('downloadImgConfirm')?.addEventListener('click', function() {
-        if (pendingDownloadCardIds.length > 0) {
-            closeDownloadImgModal();
-            downloadImages(pendingDownloadCardIds);
-        }
+        closeDownloadImgModal();
+        downloadImages(pendingDownloadCardIds);
     });
     
     // Close on backdrop click
@@ -249,16 +246,13 @@ function closeDocFormatModal() {
 }
 
 function downloadDocx(cardIds, format) {
-    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : null;
+    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
     if (!tableId) {
         if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
         return;
     }
     
-    if (cardIds.length === 0) {
-        if (typeof showToast === 'function') showToast('No cards selected!', false);
-        return;
-    }
+    // Note: If cardIds is empty, backend will fetch all cards for current status
     
     closeDocFormatModal();
     
@@ -333,7 +327,7 @@ function initDownloadDocxHandlers() {
     document.querySelectorAll('.format-card').forEach(card => {
         card.addEventListener('click', function() {
             const format = this.getAttribute('data-format');
-            if (format && pendingDocxDownloadIds.length > 0) {
+            if (format) {
                 downloadDocx(pendingDocxDownloadIds, format);
             }
         });
@@ -345,12 +339,11 @@ function initDownloadDocxHandlers() {
         document.getElementById(btnId)?.addEventListener('click', async function() {
             this.disabled = true;
             try {
-                const cardIds = typeof getAllCardIdsForAction === 'function' ? await getAllCardIdsForAction() : [];
-                if (cardIds.length > 0) {
-                    openDocFormatModal(cardIds);
-                } else {
-                    if (typeof showToast === 'function') showToast('No cards available to download!', false);
-                }
+                let cardIds = typeof getAllCardIdsForAction === 'function' ? await getAllCardIdsForAction() : [];
+                openDocFormatModal(cardIds);
+            } catch (error) {
+                console.error('Error getting card IDs for download:', error);
+                openDocFormatModal([]);
             } finally {
                 this.disabled = false;
             }
@@ -377,7 +370,8 @@ function openDownloadXlsxModal(cardIds) {
     const cardCountEl = document.getElementById('downloadXlsxCardCount');
     
     if (listNameEl) listNameEl.textContent = _getStatusLabel() + ' List';
-    if (cardCountEl) cardCountEl.textContent = cardIds.length;
+    // Show "All" if no specific cards selected, otherwise show the count
+    if (cardCountEl) cardCountEl.textContent = cardIds.length > 0 ? cardIds.length : 'All';
     
     downloadXlsxModal.style.display = 'flex';
 }
@@ -391,16 +385,13 @@ function closeDownloadXlsxModal() {
 }
 
 function downloadXlsx(cardIds) {
-    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : null;
+    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
     if (!tableId) {
         if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
         return;
     }
     
-    if (cardIds.length === 0) {
-        if (typeof showToast === 'function') showToast('No cards to download!', false);
-        return;
-    }
+    // Note: If cardIds is empty, backend will fetch all cards for current status
     
     if (typeof showProgressToast === 'function') showProgressToast('Preparing Excel file...', -1);
     
@@ -465,12 +456,11 @@ function initDownloadXlsxHandlers() {
         document.getElementById(btnId)?.addEventListener('click', async function() {
             this.disabled = true;
             try {
-                const cardIds = typeof getAllCardIdsForAction === 'function' ? await getAllCardIdsForAction() : [];
-                if (cardIds.length > 0) {
-                    openDownloadXlsxModal(cardIds);
-                } else {
-                    if (typeof showToast === 'function') showToast('No cards available to download!', false);
-                }
+                let cardIds = typeof getAllCardIdsForAction === 'function' ? await getAllCardIdsForAction() : [];
+                openDownloadXlsxModal(cardIds);
+            } catch (error) {
+                console.error('Error getting card IDs for download:', error);
+                openDownloadXlsxModal([]);
             } finally {
                 this.disabled = false;
             }
@@ -480,10 +470,8 @@ function initDownloadXlsxHandlers() {
     // Modal button handlers
     document.getElementById('downloadXlsxCancel')?.addEventListener('click', closeDownloadXlsxModal);
     document.getElementById('downloadXlsxConfirm')?.addEventListener('click', function() {
-        if (pendingDownloadCardIds.length > 0) {
-            closeDownloadXlsxModal();
-            downloadXlsx(pendingDownloadCardIds);
-        }
+        closeDownloadXlsxModal();
+        downloadXlsx(pendingDownloadCardIds);
     });
     
     // Close on backdrop click
@@ -517,7 +505,8 @@ function openDownloadPdfModal(cardIds) {
     const templateSelect = document.getElementById('downloadPdfTemplate');
     
     if (listNameEl) listNameEl.textContent = _getStatusLabel() + ' List';
-    if (cardCountEl) cardCountEl.textContent = cardIds.length;
+    // Show "All" if no specific cards selected, otherwise show the count
+    if (cardCountEl) cardCountEl.textContent = cardIds.length > 0 ? cardIds.length : 'All';
     if (templateSelect) templateSelect.value = 'default';
     
     downloadPdfModal.style.display = 'flex';
@@ -533,16 +522,13 @@ function closeDownloadPdfModal() {
 function downloadPdf(cardIds, template) {
     template = template || 'default';
     
-    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : null;
+    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
     if (!tableId) {
         if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
         return;
     }
     
-    if (cardIds.length === 0) {
-        if (typeof showToast === 'function') showToast('No cards selected!', false);
-        return;
-    }
+    // Note: If cardIds is empty, backend will fetch all cards for current status
     
     if (typeof showProgressToast === 'function') showProgressToast('Preparing PDF file...', -1);
     
@@ -607,12 +593,11 @@ function initDownloadPdfHandlers() {
         document.getElementById(btnId)?.addEventListener('click', async function() {
             this.disabled = true;
             try {
-                const cardIds = typeof getAllCardIdsForAction === 'function' ? await getAllCardIdsForAction() : [];
-                if (cardIds.length > 0) {
-                    openDownloadPdfModal(cardIds);
-                } else {
-                    if (typeof showToast === 'function') showToast('No cards available to download!', false);
-                }
+                let cardIds = typeof getAllCardIdsForAction === 'function' ? await getAllCardIdsForAction() : [];
+                openDownloadPdfModal(cardIds);
+            } catch (error) {
+                console.error('Error getting card IDs for download:', error);
+                openDownloadPdfModal([]);
             } finally {
                 this.disabled = false;
             }
@@ -622,12 +607,10 @@ function initDownloadPdfHandlers() {
     // Modal button handlers
     document.getElementById('downloadPdfCancel')?.addEventListener('click', closeDownloadPdfModal);
     document.getElementById('downloadPdfConfirm')?.addEventListener('click', function() {
-        if (pendingPdfCardIds.length > 0) {
-            const templateSelect = document.getElementById('downloadPdfTemplate');
-            const template = templateSelect ? templateSelect.value : 'default';
-            closeDownloadPdfModal();
-            downloadPdf(pendingPdfCardIds, template);
-        }
+        const templateSelect = document.getElementById('downloadPdfTemplate');
+        const template = templateSelect ? templateSelect.value : 'default';
+        closeDownloadPdfModal();
+        downloadPdf(pendingPdfCardIds, template);
     });
     
     // Close on backdrop click

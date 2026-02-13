@@ -336,15 +336,17 @@ th:last-child, td:last-child {
 .mandatory-toggle {
   position: relative;
   display: inline-block;
-  width: 32px;
-  height: 18px;
+  width: 36px;
+  height: 20px;
   cursor: pointer;
+  vertical-align: middle;
 }
 
 .mandatory-toggle input {
   opacity: 0;
   width: 0;
   height: 0;
+  position: absolute;
 }
 
 .mandatory-toggle .toggle-slider {
@@ -354,29 +356,30 @@ th:last-child, td:last-child {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #ccc;
+  background-color: #9ca3af;
   transition: 0.3s;
-  border-radius: 18px;
+  border-radius: 20px;
 }
 
-.mandatory-toggle .toggle-slider:before {
+.mandatory-toggle .toggle-slider::before {
   position: absolute;
   content: "";
-  height: 14px;
-  width: 14px;
+  height: 16px;
+  width: 16px;
   left: 2px;
   bottom: 2px;
-  background-color: white;
+  background-color: #fff;
   transition: 0.3s;
   border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .mandatory-toggle input:checked + .toggle-slider {
   background-color: var(--primary, #007bff);
 }
 
-.mandatory-toggle input:checked + .toggle-slider:before {
-  transform: translateX(14px);
+.mandatory-toggle input:checked + .toggle-slider::before {
+  transform: translateX(16px);
 }
 
 /* Field Count Styling */
