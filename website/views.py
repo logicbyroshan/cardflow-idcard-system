@@ -89,11 +89,12 @@ def our_work(request):
         )
     ).order_by('has_order', 'order', '-created_at')
     
-    # Build category cover images (first image per category)
+    # Build category images for bento card sliding effect (multiple images per category)
     category_images = {}
     for cat in categories:
-        cover = cat.cover_image_url
-        category_images[str(cat.id)] = cover
+        cat_items = items.filter(category=cat, image__isnull=False).exclude(image='')[:10]
+        images = [item.image.url for item in cat_items if item.image]
+        category_images[str(cat.id)] = images if images else []
     
     # Separate reel-type items for the reels section
     portfolio_reels = items.filter(item_type='reel')

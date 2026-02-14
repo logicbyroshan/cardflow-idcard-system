@@ -54,57 +54,73 @@ document.addEventListener('DOMContentLoaded', function() {
     const exploreButtons = document.querySelectorAll('.explore-btn');
     const productModal = document.getElementById('productGalleryModal');
     const galleryGrid = document.getElementById('productGalleryGrid');
+    
+    // Get category images data for modal
+    let categoryImagesForModal = {};
+    const dataEl = document.getElementById('categoryImagesData');
+    if (dataEl) {
+        try {
+            categoryImagesForModal = JSON.parse(dataEl.textContent);
+        } catch (e) {
+            console.warn('Could not parse category images data');
+        }
+    }
 
     exploreButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
             const categoryId = btn.dataset.filter;
-            // Find category name from the card
+            // Find category name from the card or extra category tag
             const card = btn.closest('.category-card');
-            const catName = card ? card.querySelector('h3').textContent : 'Items';
+            const extraTag = btn.closest('.extra-category-tag');
+            let catName = 'Items';
+            if (card) {
+                catName = card.querySelector('h3').textContent;
+            } else if (extraTag) {
+                catName = extraTag.querySelector('span')?.textContent || 'Items';
+            }
             document.getElementById('productGalleryTitle').textContent = catName;
             
             galleryGrid.innerHTML = '';
             
-            // Find all items matching this category ID
-            const matches = document.querySelectorAll(`.portfolio-item[data-category="${categoryId}"]`);
+            // Get images from category data OR from portfolio items on page
+            const categoryImages = categoryImagesForModal[categoryId] || [];
+            const portfolioMatches = document.querySelectorAll(`.portfolio-item[data-category="${categoryId}"]`);
             
-            if (matches.length === 0) {
-                galleryGrid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; padding: 40px;">No samples available for this category yet.</p>';
+            // Collect all image URLs
+            let allImages = [...categoryImages];
+            
+            // Also add any portfolio items from the page that might have different images
+            portfolioMatches.forEach(item => {
+                const img = item.querySelector('.portfolio-image img');
+                if (img && img.src && !allImages.includes(img.src)) {
+                    allImages.push(img.src);
+                }
+            });
+            
+            if (allImages.length === 0) {
+                galleryGrid.innerHTML = '<p style="text-align: center; padding: 60px 20px; color: #666;">No samples available for this category yet.</p>';
+                productModal.classList.add('active');
+                document.body.classList.add('modal-open');
+                return;
             }
 
-            matches.forEach(item => {
-                const isVideo = item.classList.contains('video-type');
-                const img = item.querySelector('.portfolio-image img');
+            // Create gallery items from images
+            allImages.forEach((imgUrl, index) => {
                 const wrapper = document.createElement('div');
-                wrapper.className = 'gallery-item' + (isVideo ? ' video-item' : '');
+                wrapper.className = 'gallery-item';
                 
-                if (img) {
-                    const clone = img.cloneNode();
-                    wrapper.appendChild(clone);
-                } else if (isVideo) {
-                    const placeholder = document.createElement('div');
-                    placeholder.className = 'portfolio-video-placeholder';
-                    placeholder.innerHTML = '<i class="fas fa-video"></i>';
-                    wrapper.appendChild(placeholder);
-                }
+                const img = document.createElement('img');
+                img.src = imgUrl;
+                img.alt = `${catName} Sample ${index + 1}`;
+                img.loading = 'lazy';
+                wrapper.appendChild(img);
                 
-                // Add title
-                const title = item.querySelector('.overlay-content h4');
-                if (title) {
-                    const info = document.createElement('div');
-                    info.className = 'gallery-item-info';
-                    info.innerHTML = `<h4>${title.textContent}</h4>`;
-                    wrapper.appendChild(info);
-                }
-                
-                // Click to open lightbox or video
+                // Click to open lightbox
                 wrapper.addEventListener('click', () => {
-                    if (isVideo) {
-                        const videoBtn = item.querySelector('.play-portfolio-btn');
-                        if (videoBtn) videoBtn.click();
-                    } else if (img) {
-                        openLightbox(img.src, title ? title.textContent : '');
-                    }
+                    openLightbox(imgUrl, `${catName} Sample`);
                 });
                 
                 galleryGrid.appendChild(wrapper);
@@ -346,11 +362,24 @@ function initReelsCarousel() {
                 playBtn.parentNode.replaceChild(newBtn, playBtn);
                 newBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    if (video.paused) {
-                        if (currentIndex !== index) { currentIndex = index; centerCarousel(); }
-                        else { video.play().then(() => { card.classList.add('playing'); currentlyPlaying = video; }); }
-                    } else { video.pause(); card.classList.remove('playing'); }
+                    // Open video in modal for fullscreen playback
+                    const videoSrc = video.querySelector('source')?.src || video.src;
+                    if (videoSrc) {
+                        const videoModal = document.getElementById('videoModal');
+                        const modalVideo = document.getElementById('modalVideo');
+                        if (videoModal && modalVideo) {
+                            modalVideo.src = videoSrc;
+                            videoModal.classList.add('active');
+                            document.body.classList.add('modal-open');
+                            modalVideo.play();
+                        }
+                    }
                 });
+            } else if (playBtn) {
+                // For reel cards without video (just thumbnail)
+                const newBtn = playBtn.cloneNode(true);
+                playBtn.parentNode.replaceChild(newBtn, playBtn);
+                // No action for thumbnail-only cards
             }
             if (video) {
                 video.removeEventListener('ended', handleVideoEnded);
@@ -406,8 +435,8 @@ function initReelsCarousel() {
 }
 
 /**
- * Initialize Category Card Background Images
- * Shows first image from each category as card cover
+ * Initialize Category Card Background Images with Sliding Effect
+ * Creates an infinite sliding carousel within each bento card
  */
 function initCategoryBackgrounds() {
     const dataElement = document.getElementById('categoryImagesData');
@@ -419,17 +448,39 @@ function initCategoryBackgrounds() {
         
         categoryCards.forEach(card => {
             const catId = card.dataset.category;
-            const imageUrl = categoryImages[catId];
+            const images = categoryImages[catId];
+            const slider = card.querySelector('.category-slider');
             
-            if (imageUrl) {
-                const bgImg = card.querySelector('.category-bg-img');
-                if (bgImg) {
-                    bgImg.src = imageUrl;
-                    // Hide placeholder when image loads
-                    bgImg.onload = function() {
-                        const placeholder = card.querySelector('.bg-placeholder');
-                        if (placeholder) placeholder.style.display = 'none';
-                    };
+            if (!slider) return;
+            
+            if (images && images.length > 0) {
+                // Hide placeholder
+                const placeholder = card.querySelector('.bg-placeholder');
+                if (placeholder) placeholder.style.display = 'none';
+                
+                // Create slider track with duplicated images for infinite effect
+                const sliderTrack = document.createElement('div');
+                sliderTrack.className = 'slider-track';
+                
+                // Create images - duplicate for seamless infinite loop
+                const allImages = [...images, ...images];
+                allImages.forEach((url, index) => {
+                    const img = document.createElement('img');
+                    img.src = url;
+                    img.alt = `Sample ${index + 1}`;
+                    img.className = 'slider-img';
+                    img.loading = 'lazy';
+                    sliderTrack.appendChild(img);
+                });
+
+                slider.appendChild(sliderTrack);
+
+                // Start animation only if we have multiple images
+                if (images.length > 1) {
+                    // Calculate animation duration based on number of images
+                    const duration = images.length * 4; // 4 seconds per image
+                    sliderTrack.style.animationDuration = `${duration}s`;
+                    sliderTrack.classList.add('sliding');
                 }
             }
         });
@@ -437,3 +488,5 @@ function initCategoryBackgrounds() {
         console.warn('Could not parse category images data:', e);
     }
 }
+
+                    sliderTrack.classList.add('sliding');

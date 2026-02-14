@@ -24,8 +24,6 @@
                 .then(d => {
                     if (!d.success) return;
                     const p = d.item;
-                    document.getElementById('pf_title').value = p.title || '';
-                    document.getElementById('pf_description').value = p.description || '';
                     document.getElementById('pf_category').value = p.category_id || '';
                     document.getElementById('pf_item_type').value = p.item_type || 'image';
                     document.getElementById('pf_orientation').value = p.orientation || '';

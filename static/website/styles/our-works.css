@@ -84,14 +84,31 @@ body.modal-open {
     transform: rotate(90deg);
 }
 
+/* Pinterest-style Masonry Grid */
 .product-gallery-grid {
     flex: 1;
-    padding: 25px;
+    padding: 20px;
     overflow-y: auto;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 20px;
-    align-content: start;
+    column-count: 4;
+    column-gap: 16px;
+}
+
+@media (max-width: 1200px) {
+    .product-gallery-grid {
+        column-count: 3;
+    }
+}
+
+@media (max-width: 900px) {
+    .product-gallery-grid {
+        column-count: 2;
+    }
+}
+
+@media (max-width: 600px) {
+    .product-gallery-grid {
+        column-count: 1;
+    }
 }
 
 .product-gallery-grid::-webkit-scrollbar {
@@ -110,25 +127,32 @@ body.modal-open {
 
 .gallery-item {
     position: relative;
-    border-radius: 15px;
+    border-radius: 12px;
     overflow: hidden;
     background: #f8f9fa;
-    border: 1px solid #e2e8f0;
     cursor: pointer;
     transition: all 0.3s ease;
+    margin-bottom: 16px;
+    break-inside: avoid;
+    display: inline-block;
+    width: 100%;
 }
 
 .gallery-item:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+    transform: scale(1.02);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
 }
 
 .gallery-item img,
 .gallery-item video {
     width: 100%;
-    height: 200px;
-    object-fit: cover;
+    height: auto;
     display: block;
+}
+
+/* Video item play button overlay */
+.gallery-item.video-item {
+    position: relative;
 }
 
 .gallery-item.video-item::after {
@@ -144,6 +168,7 @@ body.modal-open {
     display: flex;
     align-items: center;
     justify-content: center;
+    pointer-events: none;
 }
 
 .gallery-item.video-item::before {
@@ -157,6 +182,7 @@ body.modal-open {
     color: #fff;
     font-size: 1.2rem;
     z-index: 1;
+    pointer-events: none;
 }
 
 .gallery-item-info {
@@ -223,6 +249,59 @@ body.modal-open {
     width: 100%;
     height: 100%;
     background: linear-gradient(135deg, #100F57 0%, #1a1980 50%, #0a92dd 100%);
+}
+
+/* Category Slider for Bento Cards */
+.category-slider {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.category-slider .slider-track {
+    display: flex;
+    height: 100%;
+    will-change: transform;
+}
+
+.category-slider .slider-track.sliding {
+    animation: slideImages linear infinite;
+}
+
+.category-slider .slider-img {
+    flex-shrink: 0;
+    min-width: 100%;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Single image - no animation needed */
+.category-slider .slider-track:not(.sliding) .slider-img {
+    min-width: 100%;
+}
+
+/* Pause animation on hover */
+.category-card:hover .slider-track.sliding {
+    animation-play-state: paused;
+}
+
+/* Scale effect on hover */
+.category-card:hover .slider-track {
+    transform: scale(1.05);
+    transition: transform 0.5s ease;
+}
+
+@keyframes slideImages {
+    0% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(-50%);
+    }
 }
 
 .category-bg .category-bg-img {
@@ -1107,8 +1186,14 @@ body.modal-open {
 
 .video-modal-content {
     position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
+    width: auto;
+}
+
+/* Portrait video (reels) */
+.video-modal-content.portrait {
     max-width: 400px;
-    width: 90%;
 }
 
 .video-modal-close {
@@ -1117,7 +1202,7 @@ body.modal-open {
     right: 0;
     width: 40px;
     height: 40px;
-    background: rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.2);
     border: none;
     border-radius: 50%;
     display: flex;
@@ -1127,15 +1212,19 @@ body.modal-open {
     font-size: 1.2rem;
     cursor: pointer;
     transition: all 0.3s ease;
+    z-index: 10;
 }
 
 .video-modal-close:hover {
-    background: rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.3);
+    transform: rotate(90deg);
 }
 
 .video-modal-content video {
     width: 100%;
-    border-radius: 20px;
+    max-height: 85vh;
+    border-radius: 16px;
+    object-fit: contain;
 }
 
 /* Active nav link */

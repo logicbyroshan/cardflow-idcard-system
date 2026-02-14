@@ -458,8 +458,6 @@ def api_portfolio_list(request):
     qs = PortfolioItem.objects.select_related('category').all().order_by('order', '-created_at')
     data = [{
         'id': p.id,
-        'title': p.title,
-        'description': p.description,
         'image': p.image.url if p.image else None,
         'category': p.category.name if p.category else '—',
         'category_id': p.category_id,
@@ -478,9 +476,23 @@ def api_portfolio_list(request):
 @website_add_required
 def api_portfolio_create(request):
     """Create a portfolio item."""
+    import uuid
+    cat_id = request.POST.get('category')
+    
+    # Auto-generate title from category name
+    title = 'Portfolio Item'
+    if cat_id:
+        try:
+            cat = PortfolioCategory.objects.get(pk=int(cat_id))
+            title = f"{cat.name} {uuid.uuid4().hex[:6].upper()}"
+        except PortfolioCategory.DoesNotExist:
+            title = f"Item {uuid.uuid4().hex[:6].upper()}"
+    else:
+        title = f"Item {uuid.uuid4().hex[:6].upper()}"
+    
     item = PortfolioItem(
-        title=request.POST.get('title', ''),
-        description=request.POST.get('description', ''),
+        title=title,
+        description='',
         orientation=request.POST.get('orientation', ''),
         item_type=request.POST.get('item_type', 'image'),
         video_url=request.POST.get('video_url', ''),
@@ -488,7 +500,6 @@ def api_portfolio_create(request):
         is_active=request.POST.get('is_active', 'true') in ('true', '1', 'on', 'True'),
         is_featured=request.POST.get('is_featured', 'false') in ('true', '1', 'on', 'True'),
     )
-    cat_id = request.POST.get('category')
     if cat_id:
         item.category_id = int(cat_id)
     img = request.FILES.get('image')
@@ -509,8 +520,6 @@ def api_portfolio_get(request, pk):
         'success': True,
         'item': {
             'id': p.id,
-            'title': p.title,
-            'description': p.description,
             'image': p.image.url if p.image else None,
             'category_id': p.category_id,
             'orientation': p.orientation,
@@ -529,7 +538,7 @@ def api_portfolio_get(request, pk):
 def api_portfolio_update(request, pk):
     """Update a portfolio item."""
     p = get_object_or_404(PortfolioItem, pk=pk)
-    for f in ['title', 'description', 'orientation', 'item_type', 'video_url']:
+    for f in ['orientation', 'item_type', 'video_url']:
         val = request.POST.get(f)
         if val is not None:
             setattr(p, f, val)
