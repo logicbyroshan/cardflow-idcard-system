@@ -1,0 +1,24 @@
+{% comment %}
+Pagination Component (Tailwind)
+================================
+Usage:
+  {% include 'components/pagination.html' with pagination_id="staff-pagination" %}
+
+Parameters:
+  - pagination_id : Unique ID (default: "pagination")
+  - info_id       : ID for the "Showing X-Y of Z" text (default: pagination-info)
+  - controls_id   : ID for the button container (default: pagination-controls)
+
+JS contract:
+  Info text:  #<info_id>.textContent = 'Showing 1-10 of 50'
+  Buttons:    Inject page buttons into #<controls_id>
+{% endcomment %}
+
+<div id="{{ pagination_id|default:'pagination' }}" class="pagination-bar">
+  <span class="pagination-info" id="{{ info_id|default:'pagination-info' }}">
+    Showing 0 results
+  </span>
+  <div class="pagination-controls" id="{{ controls_id|default:'pagination-controls' }}">
+    <!-- Page buttons injected by JS -->
+  </div>
+</div>

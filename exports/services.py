@@ -18,7 +18,6 @@ from django.shortcuts import get_object_or_404
 
 from core.models import IDCardTable, IDCard
 from core.services.permission_service import PermissionService
-from staff.services import ClientScopingService
 
 from .excel import ExcelExporter, ExcelExportResult
 from .word import WordExporter, WordExportResult
@@ -86,7 +85,7 @@ class ExportService:
     
     def can_view_download_list(self) -> bool:
         """Check if user can view download list."""
-        return PermissionService.has_permission(self.user, 'perm_idcard_download_list')
+        return PermissionService.has(self.user, 'perm_idcard_download_list')
     
     def get_scoped_cards(
         self,
@@ -95,33 +94,27 @@ class ExportService:
     ) -> QuerySet:
         """
         Get cards scoped to user's access level.
-        
-        - Super Admin: All cards in table
-        - Admin Staff: Only cards from assigned clients
-        - Client: Only their own cards
-        - Client Staff: Based on permissions
-        
-        Args:
-            table: IDCardTable instance
-            card_ids: Optional list of specific card IDs to filter
-            
-        Returns:
-            Scoped QuerySet of IDCard instances
+        Delegates role-based filtering to PermissionService.
+        Safety cap of 5000 records when no card_ids provided.
         """
+        MAX_EXPORT_CARDS = 5000
         # Base queryset
         if card_ids:
-            cards = IDCard.objects.filter(table=table, id__in=card_ids)
+            cards = IDCard.objects.filter(table=table, id__in=card_ids[:MAX_EXPORT_CARDS])
         else:
             cards = IDCard.objects.filter(table=table)
         
+        # Super admin sees all
+        if PermissionService.is_super_admin(self.user):
+            return cards.order_by('-id')
+        
         # Apply client scoping for admin staff
-        if self.user.role == 'admin_staff':
-            cards = ClientScopingService.filter_by_accessible_clients(
-                self.user, cards, client_field='table__group__client'
-            )
+        if PermissionService.is_admin_staff(self.user):
+            accessible_ids = PermissionService.get_accessible_client_ids(self.user)
+            cards = cards.filter(table__group__client_id__in=accessible_ids)
         
         # For client users, scope to their own client
-        elif self.user.role == 'client':
+        elif PermissionService.is_client(self.user):
             client = getattr(self.user, 'client_profile', None)
             if client:
                 cards = cards.filter(table__group__client=client)
@@ -129,14 +122,21 @@ class ExportService:
                 cards = cards.none()
         
         # For client staff, scope to their client
-        elif self.user.role == 'client_staff':
+        elif PermissionService.is_client_staff(self.user):
             staff = getattr(self.user, 'staff_profile', None)
             if staff and staff.client:
                 cards = cards.filter(table__group__client=staff.client)
             else:
                 cards = cards.none()
         
-        return cards.order_by('-id')
+        else:
+            cards = cards.none()
+        
+        result = cards.order_by('-id')
+        # Safety cap when no specific card_ids provided
+        if not card_ids:
+            result = result[:MAX_EXPORT_CARDS]
+        return result
     
     def _prepare_context(
         self,
@@ -166,7 +166,7 @@ class ExportService:
             )
         
         try:
-            table = get_object_or_404(IDCardTable, id=table_id)
+            table = get_object_or_404(IDCardTable.objects.select_related('group__client'), id=table_id)
         except Exception:
             return ExportContext(
                 user=self.user,

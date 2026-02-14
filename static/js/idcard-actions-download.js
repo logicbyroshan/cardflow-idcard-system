@@ -1,6 +1,9 @@
 // ID Card Actions - Download Module
 // Contains: Download images, DOCX, XLSX, reupload images
 
+(function() {
+'use strict';
+
 /**
  * Extract filename from Content-Disposition header, or use fallback.
  */
@@ -876,3 +879,5 @@ window.IDCardApp.downloadDocx = downloadDocx;
 window.IDCardApp.downloadXlsx = downloadXlsx;
 window.IDCardApp.downloadPdf = downloadPdf;
 window.IDCardApp.reuploadImages = reuploadImages;
+
+})();

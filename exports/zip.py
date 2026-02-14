@@ -12,6 +12,7 @@ Features:
 - Phase 3: Prefers CardMedia, falls back to field_data
 """
 import os
+import re
 import base64
 import logging
 import zipfile
@@ -215,6 +216,10 @@ class ZipExporter:
                             # Minimum valid image size check
                             if img_data and len(img_data) >= 100:
                                 base = os.path.basename(img_path)
+                                # Sanitize filename for ZIP entry
+                                base = re.sub(r'[\x00-\x1f\x7f<>:"/\\|?*]', '_', base)
+                                if not base or base == '.':
+                                    base = 'image.jpg'
                                 if base in used_names:
                                     used_names[base] += 1
                                     name, ext = os.path.splitext(base)
@@ -553,18 +558,17 @@ def stream_zip_response(zip_path: str, filename: str, delete_after: bool = True)
     )
     
     if delete_after:
-        # Add callback to delete file after response is sent
-        def cleanup_func(response_obj):
+        # Attach cleanup callback so temp file is deleted after streaming
+        original_close = response.close
+        def close_with_cleanup():
+            original_close()
             try:
-                os.remove(zip_path)
-                logger.info("Cleaned up temp ZIP file: %s", zip_path)
+                if os.path.exists(zip_path):
+                    os.remove(zip_path)
+                    logger.info("Cleaned up temp ZIP file: %s", zip_path)
             except Exception as e:
                 logger.warning("Failed to cleanup temp ZIP %s: %s", zip_path, e)
-            return response_obj
-        
-        # Django's FileResponse doesn't have post_render_callback
-        # We'll handle cleanup via the background task system instead
-        pass
+        response.close = close_with_cleanup
     
     return response
 

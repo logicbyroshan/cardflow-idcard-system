@@ -1,6 +1,7 @@
 
 from pathlib import Path
 from dotenv import load_dotenv
+from django.core.exceptions import ImproperlyConfigured
 import os
 import dj_database_url
 
@@ -20,11 +21,19 @@ APP_VERSION = os.getenv('APP_VERSION', '1.0.0')
 
 # SECURITY WARNING: keep the secret key used in production secret!
 # In production, set SECRET_KEY in .env file
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-dev-key-change-in-production-*m$!x7r9vt=%9aqv1nnaav')
+_default_secret = 'django-insecure-dev-key-change-in-production-*m$!x7r9vt=%9aqv1nnaav'
+SECRET_KEY = os.getenv('SECRET_KEY', _default_secret)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-# Local default: True | Production: Set DEBUG=False in .env
-DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 'yes')
+# Safe default: False — must explicitly opt-in to DEBUG mode
+DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes')
+
+# Crash fast in production if SECRET_KEY is still the insecure default
+if not DEBUG and SECRET_KEY == _default_secret:
+    raise ImproperlyConfigured(
+        'SECRET_KEY must be set to a secure random value in production. '
+        'Set the SECRET_KEY environment variable.'
+    )
 
 # Allowed Hosts
 # In DEBUG mode allow everything; in production read from .env
@@ -305,35 +314,106 @@ APP_VERSION = os.getenv('APP_VERSION', 'v1.2.0')
 
 
 # =============================================================================
-# LOGGING (Optional - useful for debugging in production)
+# LOGGING
 # =============================================================================
 
-if not DEBUG:
-    LOGGING = {
-        'version': 1,
-        'disable_existing_loggers': False,
-        'formatters': {
-            'verbose': {
-                'format': '{levelname} {asctime} {module} {message}',
-                'style': '{',
-            },
+LOG_DIR = os.path.join(BASE_DIR, 'logs')
+os.makedirs(LOG_DIR, exist_ok=True)
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+
+    'formatters': {
+        'verbose': {
+            'format': '[{asctime}] {levelname} {name} {module}.{funcName}:{lineno} — {message}',
+            'style': '{',
+            'datefmt': '%Y-%m-%d %H:%M:%S',
         },
-        'handlers': {
-            'console': {
-                'class': 'logging.StreamHandler',
-                'formatter': 'verbose',
-            },
+        'simple': {
+            'format': '{levelname} {name}: {message}',
+            'style': '{',
         },
-        'root': {
-            'handlers': ['console'],
+    },
+
+    'filters': {
+        'require_debug_false': {
+            '()': 'django.utils.log.RequireDebugFalse',
+        },
+    },
+
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose' if not DEBUG else 'simple',
             'level': 'INFO',
         },
-        'loggers': {
-            'django': {
-                'handlers': ['console'],
-                'level': 'INFO',
-                'propagate': False,
-            },
+        'file_app': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(LOG_DIR, 'app.log'),
+            'maxBytes': 10 * 1024 * 1024,  # 10 MB
+            'backupCount': 5,
+            'formatter': 'verbose',
+            'level': 'INFO',
         },
-    }
+        'file_error': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(LOG_DIR, 'error.log'),
+            'maxBytes': 10 * 1024 * 1024,
+            'backupCount': 10,
+            'formatter': 'verbose',
+            'level': 'ERROR',
+        },
+        'file_security': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(LOG_DIR, 'security.log'),
+            'maxBytes': 10 * 1024 * 1024,
+            'backupCount': 10,
+            'formatter': 'verbose',
+            'level': 'INFO',
+        },
+    },
 
+    'root': {
+        'handlers': ['console', 'file_app', 'file_error'],
+        'level': 'INFO',
+    },
+
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'file_app'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django.security': {
+            'handlers': ['file_security'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'accounts': {
+            'handlers': ['console', 'file_security', 'file_app'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'core.middleware': {
+            'handlers': ['console', 'file_security', 'file_app'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'core.services': {
+            'handlers': ['console', 'file_app', 'file_error'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'exports': {
+            'handlers': ['console', 'file_app', 'file_error'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'mediafiles': {
+            'handlers': ['console', 'file_app'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}

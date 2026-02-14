@@ -147,6 +147,10 @@ def generate_export_filename(base_name: str, extension: str, timestamp: bool = T
     
     name_part = '_'.join(parts)
     
+    # Cap total filename length (without extension) to 150
+    if len(name_part) > 150:
+        name_part = name_part[:150].rstrip('_.')
+    
     return f"{name_part}.{extension.lower()}"
 
 
@@ -163,15 +167,20 @@ def clean_filename(name: str) -> str:
     if not name:
         return 'export'
     
+    # Strip null bytes and control characters
+    clean = re.sub(r'[\x00-\x1f\x7f]', '', name)
     # Remove or replace invalid characters
-    clean = re.sub(r'[<>:"/\\|?*]', '', name)
+    clean = re.sub(r'[<>:"/\\|?*]', '', clean)
     # Replace multiple spaces/underscores with single underscore
     clean = re.sub(r'[\s_]+', '_', clean)
-    # Remove leading/trailing underscores
-    clean = clean.strip('_')
+    # Remove leading/trailing underscores and dots (Windows issue)
+    clean = clean.strip('_.')
     # Truncate if too long
     if len(clean) > 50:
-        clean = clean[:50]
+        clean = clean[:50].rstrip('_.')
+    # Block Windows reserved device names
+    if re.match(r'^(CON|PRN|AUX|NUL|COM[0-9]|LPT[0-9])$', clean, re.IGNORECASE):
+        clean = f'_{clean}'
     
     return clean or 'export'
 

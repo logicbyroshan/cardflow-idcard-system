@@ -41,7 +41,6 @@ class PermissionValidationMiddleware:
         '/media/',
         '/admin/',
         '/favicon.ico',
-        '/',  # Public website
     ]
     
     # URL patterns for public website (exempt from auth)
@@ -78,11 +77,11 @@ class PermissionValidationMiddleware:
     
     def _is_exempt_url(self, path):
         """Check if URL is exempt from permission validation"""
+        # Public website pages (not under /panel/) don't need auth validation
+        if not path.startswith('/panel/') and not path.startswith('/api/'):
+            return True
         for exempt in self.EXEMPT_URLS:
             if path.startswith(exempt):
-                return True
-        for pattern in self.PUBLIC_URL_PATTERNS:
-            if path.startswith(pattern):
                 return True
         return False
     
@@ -254,34 +253,26 @@ class RoleScopingMiddleware:
         return self.get_response(request)
     
     def _annotate_request_scope(self, request):
-        """Add role-based scope attributes to request"""
+        """Add role-based scope attributes to request — delegates to PermissionService."""
+        from core.services.permission_service import PermissionService
         user = request.user
         
-        # Initialize scope attributes
+        # Initialize scope attributes (via single authority)
         request.user_scope = {
-            'is_super_admin': user.is_superuser or user.role == 'super_admin',
-            'is_admin_staff': user.role == 'admin_staff',
-            'is_client': user.role == 'client',
-            'is_client_staff': user.role == 'client_staff',
+            'is_super_admin': PermissionService.is_super_admin(user),
+            'is_admin_staff': PermissionService.is_admin_staff(user),
+            'is_client': PermissionService.is_client(user),
+            'is_client_staff': PermissionService.is_client_staff(user),
             'client_id': None,
-            'accessible_client_ids': [],
+            'accessible_client_ids': PermissionService.get_accessible_client_ids(user),
         }
         
-        if user.role == 'client':
+        if PermissionService.is_client(user):
             client = getattr(user, 'client_profile', None)
             if client:
                 request.user_scope['client_id'] = client.id
-                request.user_scope['accessible_client_ids'] = [client.id]
         
-        elif user.role == 'client_staff':
+        elif PermissionService.is_client_staff(user):
             staff = getattr(user, 'staff_profile', None)
             if staff and staff.client:
                 request.user_scope['client_id'] = staff.client.id
-                request.user_scope['accessible_client_ids'] = [staff.client.id]
-        
-        elif user.role == 'admin_staff':
-            staff = getattr(user, 'staff_profile', None)
-            if staff:
-                request.user_scope['accessible_client_ids'] = list(
-                    staff.assigned_clients.values_list('id', flat=True)
-                )

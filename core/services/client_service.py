@@ -207,51 +207,55 @@ class ClientService(BaseService):
             client = get_object_or_404(Client, id=client_id)
             user = client.user
             
-            # Update user fields
-            if data.get('email'):
-                new_email = data['email'].strip().lower()
-                if new_email != user.email.lower():
-                    if User.objects.filter(email__iexact=new_email).exclude(id=user.id).exists():
-                        return ServiceResult(success=False, message='A user with this email already exists')
-                    user.email = new_email
-            if data.get('phone'):
-                user.phone = data['phone']
-            if data.get('name'):
-                name_parts = data['name'].split()
-                user.first_name = name_parts[0] if name_parts else ''
-                user.last_name = ' '.join(name_parts[1:]) if len(name_parts) > 1 else ''
-            user.save()
+            with transaction.atomic():
+                # Update user fields
+                if data.get('email'):
+                    new_email = data['email'].strip().lower()
+                    if new_email != user.email.lower():
+                        if User.objects.filter(email__iexact=new_email).exclude(id=user.id).exists():
+                            return ServiceResult(success=False, message='A user with this email already exists')
+                        user.email = new_email
+                if data.get('phone'):
+                    user.phone = data['phone']
+                if data.get('name'):
+                    name_parts = data['name'].split()
+                    user.first_name = name_parts[0] if name_parts else ''
+                    user.last_name = ' '.join(name_parts[1:]) if len(name_parts) > 1 else ''
+                user.save()
+                
+                # Update client fields
+                if data.get('name'):
+                    client.name = data['name']
+                for field in ['address', 'city', 'state', 'pincode']:
+                    if field in data:
+                        setattr(client, field, data[field])
+                
+                # Phase 1: Photo field removed - using avatar placeholder
+                
+                # Track revoked permissions for cascade to staff
+                revoked_permissions = []
+                
+                # Update permissions
+                for perm in cls.PERMISSION_FIELDS:
+                    if perm in data:
+                        new_value = cls.parse_bool(data[perm])
+                        old_value = getattr(client, perm, False)
+                        
+                        # Track if permission is being revoked
+                        if old_value and not new_value:
+                            revoked_permissions.append(perm)
+                        
+                        setattr(client, perm, new_value)
+                
+                client.save()
+                
+                # CRITICAL: Cascade revoked permissions to all staff members
+                # Client Staff Permission ⊆ Client Permission
+                if revoked_permissions:
+                    cls._cascade_revoked_permissions(client, revoked_permissions)
             
-            # Update client fields
-            if data.get('name'):
-                client.name = data['name']
-            for field in ['address', 'city', 'state', 'pincode']:
-                if field in data:
-                    setattr(client, field, data[field])
-            
-            # Phase 1: Photo field removed - using avatar placeholder
-            
-            # Track revoked permissions for cascade to staff
-            revoked_permissions = []
-            
-            # Update permissions
-            for perm in cls.PERMISSION_FIELDS:
-                if perm in data:
-                    new_value = cls.parse_bool(data[perm])
-                    old_value = getattr(client, perm, False)
-                    
-                    # Track if permission is being revoked
-                    if old_value and not new_value:
-                        revoked_permissions.append(perm)
-                    
-                    setattr(client, perm, new_value)
-            
-            client.save()
-            
-            # CRITICAL: Cascade revoked permissions to all staff members
-            # Client Staff Permission ⊆ Client Permission
-            if revoked_permissions:
-                cls._cascade_revoked_permissions(client, revoked_permissions)
+            # Refresh from DB to return authoritative state
+            client.refresh_from_db()
             
             return ServiceResult(
                 success=True,
@@ -548,7 +552,11 @@ class ClientService(BaseService):
                 setattr(staff, perm_name, bool(value))
                 updated_perms.append(perm_name)
             
-            staff.save()
+            with transaction.atomic():
+                staff.save()
+            
+            # Refresh to confirm persistence
+            staff.refresh_from_db()
             
             message = f'Updated {len(updated_perms)} permission(s)'
             if rejected_perms:

@@ -3,12 +3,23 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
   <title>Manage Clients - Adarsh ID Cards</title>
-  {% include 'partials/common/head.html' %}
-  <link rel="stylesheet" href="{% static 'css/manage-client.css' %}?v=47">
+  <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS (single stylesheet) -->
+  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=2">
   <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=2">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Alpine.js State Module (MUST load before Alpine) -->
+  <script src="{% static 'js/alpine-state.js' %}?v=1"></script>
+  <!-- Alpine.js -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
 </head>
-<body>
+<body x-data="layoutState()">
 
   {% include 'partials/sidebar.html' %}
 
@@ -45,9 +56,9 @@
           <div class="drawer-body">
             
             <!-- Profile Avatar Placeholder -->
-            <div class="profile-upload-section" style="flex-direction: row; align-items: center; gap: 16px;">
+            <div class="profile-upload-section flex flex-row items-center gap-4">
               {% include 'partials/components/user-avatar.html' with role='client' size='large' %}
-              <p class="upload-hint" style="margin: 0; color: #6b7280; font-size: 13px;">Client avatar</p>
+              <p class="text-gray-500 m-0" style="font-size:8px">Client avatar</p>
             </div>
 
             <!-- Client Info Section -->
@@ -55,31 +66,31 @@
               <div class="section-title"><i class="fa-solid fa-user"></i> Client Information</div>
               
               <div class="form-group">
-                <label for="clientName">Name <span class="required">*</span></label>
-                <input type="text" id="clientName" name="clientName" placeholder="Enter client name" required>
+                <label class="form-label" for="clientName">Name <span class="required">*</span></label>
+                <input class="form-input" type="text" id="clientName" name="clientName" placeholder="Enter client name" required>
               </div>
               
               <div class="form-row">
                 <div class="form-group">
-                  <label for="clientEmail">Email <span class="required">*</span></label>
-                  <input type="email" id="clientEmail" name="clientEmail" placeholder="Enter email address" required>
-                  <span class="field-error" id="clientEmailError" style="display: none; color: #ef4444; font-size: 12px; margin-top: 4px;"></span>
+                  <label class="form-label" for="clientEmail">Email <span class="required">*</span></label>
+                  <input class="form-input" type="email" id="clientEmail" name="clientEmail" placeholder="Enter email address" required>
+                  <span class="field-error" id="clientEmailError" style="display: none;"></span>
                 </div>
                 <div class="form-group">
-                  <label for="clientPhone">Phone <span class="required">*</span></label>
-                  <input type="text" id="clientPhone" name="clientPhone" placeholder="Enter phone number" required>
-                  <small class="field-hint" style="color: #6b7280; font-size: 11px;">This will be used as password</small>
+                  <label class="form-label" for="clientPhone">Phone <span class="required">*</span></label>
+                  <input class="form-input" type="text" id="clientPhone" name="clientPhone" placeholder="Enter phone number" required>
+                  <small class="text-xs text-gray-500">This will be used as password</small>
                 </div>
               </div>
               
               <div class="form-row">
                 <div class="form-group">
-                  <label for="clientAddress">Address</label>
-                  <textarea id="clientAddress" name="clientAddress" placeholder="Enter address (optional)" rows="2"></textarea>
+                  <label class="form-label" for="clientAddress">Address</label>
+                  <textarea class="form-textarea" id="clientAddress" name="clientAddress" placeholder="Enter address (optional)" rows="2"></textarea>
                 </div>
                 <div class="form-group">
-                  <label for="clientStatus">Status</label>
-                  <select id="clientStatus" name="is_active">
+                  <label class="form-label" for="clientStatus">Status</label>
+                  <select class="form-select" id="clientStatus" name="is_active">
                     <option value="true">Active</option>
                     <option value="false">Inactive</option>
                   </select>
@@ -327,8 +338,8 @@
 
           </div>
           <div class="drawer-footer">
-            <button type="button" class="btn btn-cancel" id="cancelClientDrawer">Cancel</button>
-            <button type="submit" class="btn btn-save" id="submitClientBtn">
+            <button type="button" class="btn btn-md btn-neutral" id="cancelClientDrawer">Cancel</button>
+            <button type="submit" class="btn btn-md btn-primary" id="submitClientBtn">
               <i class="fa-solid fa-plus"></i> Add Client
             </button>
           </div>
@@ -394,8 +405,8 @@
           </div>
         </div>
         <div class="drawer-footer">
-          <button type="button" class="btn btn-cancel" id="closeViewModalBtn">Close</button>
-          <button type="button" class="btn btn-save" id="editFromViewBtn">
+          <button type="button" class="btn btn-md btn-neutral" id="closeViewModalBtn">Close</button>
+          <button type="button" class="btn btn-md btn-primary" id="editFromViewBtn">
             <i class="fa-solid fa-pen"></i> Edit Client
           </button>
         </div>
@@ -403,28 +414,31 @@
     </div>
 
     <!-- Delete Confirmation Modal (Center Modal) -->
-    <div id="delete-modal" class="center-modal-overlay">
-      <div class="center-modal delete-modal">
+    <div id="delete-modal" class="modal-backdrop"
+         onclick="if(event.target===this) this.classList.remove('show')">
+      <div class="modal-center modal-danger" onclick="event.stopPropagation()">
         <div class="modal-header">
           <h3><i class="fa-solid fa-triangle-exclamation"></i> Confirm Delete</h3>
-          <button class="modal-close" id="closeDeleteModal" type="button" aria-label="Close delete modal">
+          <button class="modal-close" id="closeDeleteModal" type="button" aria-label="Close delete modal"
+                  onclick="document.getElementById('delete-modal').classList.remove('show')">
             <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
         <div class="modal-body">
-          <div class="delete-warning">
-            <div class="delete-icon">
-              <i class="fa-solid fa-trash-can"></i>
+          <div class="flex flex-col items-center text-center py-2">
+            <div class="w-10 h-10 rounded-sm bg-danger-bg flex items-center justify-center mb-2">
+              <i class="fa-solid fa-trash-can text-danger" style="font-size:14px"></i>
             </div>
-            <p>Are you sure you want to delete <strong id="deleteClientName">this client</strong>?</p>
-            <p class="delete-note"><i class="fa-solid fa-exclamation-circle"></i>This action cannot be undone.</p>
+            <p style="font-size:8px" class="text-gray-700">Are you sure you want to delete <strong id="deleteClientName">this client</strong>?</p>
+            <p class="text-gray-400 mt-1 flex items-center gap-1" style="font-size:7px"><i class="fa-solid fa-exclamation-circle"></i> This action cannot be undone.</p>
           </div>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-secondary" id="cancelDeleteBtn" type="button">
+          <button class="btn btn-md btn-neutral" id="cancelDeleteBtn" type="button"
+                  onclick="document.getElementById('delete-modal').classList.remove('show')">
             <i class="fa-solid fa-xmark"></i> Cancel
           </button>
-          <button class="btn btn-danger" id="confirmDeleteBtn" type="button">
+          <button class="btn btn-md btn-danger" id="confirmDeleteBtn" type="button">
             <i class="fa-solid fa-trash-can"></i> Delete
           </button>
         </div>
@@ -432,28 +446,31 @@
     </div>
 
     <!-- Status Change Confirmation Modal (Center Modal) -->
-    <div id="status-modal" class="center-modal-overlay">
-      <div class="center-modal status-modal">
-        <div class="modal-header" id="statusModalHeader" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+    <div id="status-modal" class="modal-backdrop"
+         onclick="if(event.target===this) this.classList.remove('show')">
+      <div class="modal-center modal-warning" onclick="event.stopPropagation()">
+        <div class="modal-header" id="statusModalHeader">
           <h3><i class="fa-solid fa-toggle-on"></i> Confirm Status Change</h3>
-          <button class="modal-close" id="closeStatusModal" type="button" aria-label="Close status modal">
+          <button class="modal-close" id="closeStatusModal" type="button" aria-label="Close status modal"
+                  onclick="document.getElementById('status-modal').classList.remove('show')">
             <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
         <div class="modal-body">
-          <div class="status-warning">
-            <div class="status-icon" id="statusModalIcon">
-              <i class="fa-solid fa-toggle-on" style="font-size: 48px; color: #f59e0b;"></i>
+          <div class="flex flex-col items-center text-center py-2">
+            <div class="w-10 h-10 rounded-sm bg-warning-bg flex items-center justify-center mb-2" id="statusModalIcon">
+              <i class="fa-solid fa-toggle-on text-warning" style="font-size:14px"></i>
             </div>
-            <p id="statusModalMessage">Are you sure you want to change the status of <strong id="statusClientName">this client</strong>?</p>
-            <p class="status-note" id="statusNote"><i class="fa-solid fa-info-circle"></i> This will affect client's login access.</p>
+            <p id="statusModalMessage" style="font-size:8px" class="text-gray-700">Are you sure you want to change the status of <strong id="statusClientName">this client</strong>?</p>
+            <p class="text-gray-400 mt-1 flex items-center gap-1" id="statusNote" style="font-size:7px"><i class="fa-solid fa-info-circle"></i> This will affect client's login access.</p>
           </div>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-secondary" id="cancelStatusBtn" type="button">
+          <button class="btn btn-md btn-neutral" id="cancelStatusBtn" type="button"
+                  onclick="document.getElementById('status-modal').classList.remove('show')">
             <i class="fa-solid fa-xmark"></i> Cancel
           </button>
-          <button class="btn btn-primary" id="confirmStatusBtn" type="button" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none;">
+          <button class="btn btn-md btn-warning" id="confirmStatusBtn" type="button">
             <i class="fa-solid fa-check"></i> Confirm
           </button>
         </div>
@@ -515,7 +532,7 @@
           </div>
         </div>
         <div class="drawer-footer">
-          <button type="button" class="btn btn-cancel" id="closeStaffDrawerBtn">Close</button>
+          <button type="button" class="btn btn-md btn-neutral" id="closeStaffDrawerBtn">Close</button>
         </div>
       </div>
     </div>
@@ -526,7 +543,7 @@
     <div class="action-bar">
         
         <!-- Left Section - Filter and Search -->
-        <div class="action-left">
+        <div class="action-bar-left">
             <div class="filter-group">
                 <div class="custom-dropdown" id="filterDropdown">
                     <button class="dropdown-toggle" id="dropdownToggle">
@@ -551,21 +568,21 @@
         </div>
 
         <!-- Right Section - Action Buttons -->
-        <div class="action-right">
+        <div class="action-bar-right">
             <div class="actions">
                 <div class="btn-group">
                     {% if is_super_admin %}
-                    <button class="btn btn-add" id="addClientBtn"><i class="fa-solid fa-plus"></i> Add</button>
+                    <button class="btn btn-md btn-primary" id="addClientBtn"><i class="fa-solid fa-plus"></i> Add</button>
                     {% endif %}
-                    <button class="btn btn-edit" id="editClientBtn" disabled><i class="fa-solid fa-pen"></i> Edit</button>
-                    <button class="btn btn-view" id="viewClientBtn" disabled><i class="fa-solid fa-eye"></i> View</button>
-                    <button class="btn btn-view-staff" id="viewStaffBtn" disabled><i class="fa-solid fa-users"></i> Staff</button>
+                    <button class="btn btn-md btn-neutral" id="editClientBtn" disabled><i class="fa-solid fa-pen"></i> Edit</button>
+                    <button class="btn btn-md btn-neutral" id="viewClientBtn" disabled><i class="fa-solid fa-eye"></i> View</button>
+                    <button class="btn btn-md btn-neutral" id="viewStaffBtn" disabled><i class="fa-solid fa-users"></i> Staff</button>
                 </div>
                 {% if is_super_admin %}
                 <div class="btn-separator"></div>
                 <div class="btn-group">
-                    <button class="btn btn-delete" id="deleteClientBtn" disabled><i class="fa-solid fa-trash"></i> Delete</button>
-                    <button class="btn btn-active" id="activeClientBtn" disabled><i class="fa-solid fa-check"></i> Active</button>
+                    <button class="btn btn-md btn-danger" id="deleteClientBtn" disabled><i class="fa-solid fa-trash"></i> Delete</button>
+                    <button class="btn btn-md btn-warning" id="activeClientBtn" disabled><i class="fa-solid fa-check"></i> Active</button>
                 </div>
                 {% endif %}
             </div>
@@ -573,8 +590,8 @@
     </div>
 
     <!-- Table -->
-    <div class="table-container">
-        <table id="clientsTable">
+    <div class="table-wrapper">
+        <table class="data-table" id="clientsTable">
             <thead>
                 <tr>
                     <th>Name</th>
@@ -644,18 +661,12 @@
 
   </main>
 
-  <!-- Common Modules (Load Order Matters) -->
-  <script src="{% static 'js/common/ajax.js' %}?v=2"></script>
-  <script src="{% static 'js/common/toast.js' %}?v=2"></script>
-  <script src="{% static 'js/common/modal.js' %}?v=2"></script>
-  <script src="{% static 'js/common/sidebar.js' %}?v=2"></script>
-  <script src="{% static 'js/common/validation.js' %}?v=2"></script>
-  <script src="{% static 'js/common/utils.js' %}?v=2"></script>
-  <script src="{% static 'js/init.js' %}?v=2"></script>
-  
-  <!-- Legacy compatibility -->
-  <script src="{% static 'js/utils.js' %}?v=3"></script>
-  <script src="{% static 'js/script.js' %}?v=3"></script>
+  <!-- Core Modules (Load Order: api → toast → modal → utils → init) -->
+  <script src="{% static 'js/core/api.js' %}?v=1"></script>
+  <script src="{% static 'js/core/toast.js' %}?v=1"></script>
+  <script src="{% static 'js/core/modal.js' %}?v=1"></script>
+  <script src="{% static 'js/core/utils.js' %}?v=1"></script>
+  <script src="{% static 'js/init.js' %}?v=3"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       // ==================== ELEMENTS ====================
@@ -898,17 +909,19 @@
         // Update modal appearance based on action
         if (currentStatus === 'active') {
           // Going to deactivate
-          statusModalHeader.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
-          statusModalIcon.innerHTML = '<i class="fa-solid fa-ban" style="font-size: 48px; color: #ef4444;"></i>';
+          statusModalHeader.style.background = '#dc2626';
+          statusModalIcon.innerHTML = '<i class="fa-solid fa-ban text-danger" style="font-size: 14px;"></i>';
           statusNote.innerHTML = '<i class="fa-solid fa-exclamation-circle"></i> This will prevent the client from logging in.';
-          confirmStatusBtn.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+          confirmStatusBtn.className = 'btn btn-md btn-danger';
+          confirmStatusBtn.style.background = '';
           confirmStatusBtn.innerHTML = '<i class="fa-solid fa-ban"></i> Deactivate';
         } else {
           // Going to activate
-          statusModalHeader.style.background = 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)';
-          statusModalIcon.innerHTML = '<i class="fa-solid fa-check-circle" style="font-size: 48px; color: #22c55e;"></i>';
+          statusModalHeader.style.background = '#16a34a';
+          statusModalIcon.innerHTML = '<i class="fa-solid fa-check-circle text-success" style="font-size: 14px;"></i>';
           statusNote.innerHTML = '<i class="fa-solid fa-info-circle"></i> This will allow the client to log in.';
-          confirmStatusBtn.style.background = 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)';
+          confirmStatusBtn.className = 'btn btn-md btn-success';
+          confirmStatusBtn.style.background = '';
           confirmStatusBtn.innerHTML = '<i class="fa-solid fa-check"></i> Activate';
         }
         
@@ -926,8 +939,7 @@
       // ==================== API CALLS ====================
       async function fetchClientDetails(clientId) {
         try {
-          const response = await fetch(`/panel/api/client/${clientId}/`);
-          const data = await response.json();
+          const data = await ApiClient.get(`/panel/api/client/${clientId}/`);
           if (data.success) {
             return data.client;
           } else {
@@ -950,18 +962,9 @@
             Object.keys(formData).forEach(key => {
               data.append(key, typeof formData[key] === 'boolean' ? (formData[key] ? 'true' : 'false') : formData[key]);
             });
-            const response = await fetch('/panel/api/client/create/', {
-              method: 'POST',
-              body: data
-            });
-            return await response.json();
+            return await ApiClient.upload('/panel/api/client/create/', data);
           } else {
-            const response = await fetch('/panel/api/client/create/', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(formData)
-            });
-            return await response.json();
+            return await ApiClient.post('/panel/api/client/create/', formData);
           }
         } catch (error) {
           return { success: false, message: 'Network error. Please try again.' };
@@ -978,18 +981,9 @@
             Object.keys(formData).forEach(key => {
               data.append(key, typeof formData[key] === 'boolean' ? (formData[key] ? 'true' : 'false') : formData[key]);
             });
-            const response = await fetch(`/panel/api/client/${clientId}/update/`, {
-              method: 'POST',
-              body: data
-            });
-            return await response.json();
+            return await ApiClient.upload(`/panel/api/client/${clientId}/update/`, data);
           } else {
-            const response = await fetch(`/panel/api/client/${clientId}/update/`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(formData)
-            });
-            return await response.json();
+            return await ApiClient.post(`/panel/api/client/${clientId}/update/`, formData);
           }
         } catch (error) {
           return { success: false, message: 'Network error. Please try again.' };
@@ -998,11 +992,7 @@
       
       async function deleteClientApi(clientId) {
         try {
-          const response = await fetch(`/panel/api/client/${clientId}/delete/`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-          });
-          return await response.json();
+          return await ApiClient.post(`/panel/api/client/${clientId}/delete/`, {});
         } catch (error) {
           return { success: false, message: 'Network error. Please try again.' };
         }
@@ -1010,11 +1000,7 @@
       
       async function toggleClientStatus(clientId) {
         try {
-          const response = await fetch(`/panel/api/client/${clientId}/toggle-status/`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-          });
-          return await response.json();
+          return await ApiClient.post(`/panel/api/client/${clientId}/toggle-status/`, {});
         } catch (error) {
           return { success: false, message: 'Network error. Please try again.' };
         }
@@ -1074,9 +1060,6 @@
           if (el) formData[field] = el.checked;
         });
         {% endif %}
-        
-        // Debug: Log permission data being sent (remove in production)
-        console.log('Client form data being submitted:', JSON.stringify(formData, null, 2));
         
         const clientId = clientIdInput.value;
         let result;
@@ -1447,8 +1430,7 @@
 
       async function fetchClientStaff(clientId) {
         try {
-          const response = await fetch(`/panel/api/client/${clientId}/staff/`);
-          const data = await response.json();
+          const data = await ApiClient.get(`/panel/api/client/${clientId}/staff/`);
           if (data.success) {
             return data;
           } else {
@@ -1585,15 +1567,7 @@
         if (!selectedClientId || !isSuperAdmin) return;
         
         try {
-          const response = await fetch(`/panel/api/client/${selectedClientId}/staff/${staffId}/toggle-status/`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
-            }
-          });
-          
-          const result = await response.json();
+          const result = await ApiClient.post(`/panel/api/client/${selectedClientId}/staff/${staffId}/toggle-status/`, {});
           
           if (result.success) {
             showToast(result.message, 'success');

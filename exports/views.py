@@ -130,33 +130,17 @@ def _check_export_permission(request):
 def _check_export_client_scope(request, table_id):
     """
     Check if user has access to the client owning this table.
-    
-    Enforces:
-    - super_admin: unrestricted
-    - admin_staff: must be assigned to the client
-    - client / client_staff: must own the table (same client)
+    Delegates to PermissionService.can_access_client() (single authority).
     
     Returns:
         None if permitted, JsonResponse with error if not
     """
-    if PermissionService.is_super_admin(request.user):
-        return None
-    staff_profile = getattr(request.user, 'staff_profile', None)
-    if staff_profile and staff_profile.staff_type == 'admin_staff':
-        table = get_object_or_404(IDCardTable, id=table_id)
-        if not staff_profile.assigned_clients.filter(id=table.group.client_id).exists():
-            return JsonResponse({
-                'success': False,
-                'message': 'Access denied. You are not assigned to this client.'
-            }, status=403)
-    elif request.user.role in ('client', 'client_staff'):
-        from client.services import ClientAccessService
-        table = get_object_or_404(IDCardTable, id=table_id)
-        if not ClientAccessService.can_access_table(request.user, table):
-            return JsonResponse({
-                'success': False,
-                'message': 'Access denied. You are not assigned to this client.'
-            }, status=403)
+    table = get_object_or_404(IDCardTable, id=table_id)
+    if not PermissionService.can_access_client(request.user, table.group.client_id):
+        return JsonResponse({
+            'success': False,
+            'message': 'Access denied. You are not assigned to this client.'
+        }, status=403)
     return None
 
 

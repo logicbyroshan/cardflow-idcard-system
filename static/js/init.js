@@ -5,17 +5,14 @@
  * It ensures all common modules are loaded and provides a global namespace.
  * 
  * Load Order:
- * 1. common/ajax.js     - CSRF token, API calls
- * 2. common/toast.js    - Toast notifications
- * 3. common/modal.js    - Modal/Drawer management
- * 4. common/sidebar.js  - Sidebar functionality (auto-initializes)
- * 5. common/validation.js - Form validation
- * 6. common/utils.js    - Image utilities, helpers
- * 7. init.js            - This file (orchestration)
+ * 1. core/api.js       - CSRF token, API calls (ApiClient)
+ * 2. core/toast.js     - Toast notifications (Toast)
+ * 3. core/modal.js     - Modal/Drawer management (ModalManager)
+ * 4. core/utils.js     - Image utilities, validation, helpers
+ * 5. init.js           - This file (orchestration)
  * 
  * Then page-specific scripts:
  * - dashboard.js        - Dashboard page
- * - manage-client.js    - Client management page
  * - manage-staff.js     - Staff management page
  * - group-setting.js    - Group/Table settings page
  * - active-client.js    - Active clients page
@@ -55,12 +52,10 @@
      */
     function verifyModules() {
         const requiredModules = [
-            { name: 'Ajax', check: () => window.AdarshAjax || window.getCSRFToken },
-            { name: 'Toast', check: () => window.AdarshToast || window.showToast },
-            { name: 'Modal', check: () => window.AdarshModal || window.ModalController },
-            { name: 'Sidebar', check: () => window.AdarshSidebar || window.initSidebar },
-            { name: 'Validation', check: () => window.AdarshValidation || window.validateForm },
-            { name: 'Utils', check: () => window.AdarshUtils || window.getThumbPath }
+            { name: 'Api', check: () => window.ApiClient || window.AdarshAjax },
+            { name: 'Toast', check: () => window.Toast || window.AdarshToast || window.showToast },
+            { name: 'Modal', check: () => window.ModalManager || window.AdarshModal },
+            { name: 'Utils', check: () => window.AdarshUtils || window.escapeHtml }
         ];
 
         const loaded = [];

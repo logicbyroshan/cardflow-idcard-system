@@ -843,11 +843,10 @@ textarea.form-control {
 .idcard-table {
     flex: 1;
     overflow: auto;
-    border: 1px solid rgba(0,0,0,0.15);
+    border: 1px solid #e5e7eb;
     border-radius: 0;
     background: #fff;
     margin: 0;
-    /* Enable horizontal scrolling when table exceeds viewport */
     overflow-x: auto;
     overflow-y: auto;
 }
@@ -859,25 +858,13 @@ textarea.form-control {
     table-layout: auto;
 }
 
-/* Make table scrollable horizontally for many columns */
 .idcard-table::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
 }
-
-.idcard-table::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 0;
-}
-
-.idcard-table::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
-    border-radius: 0;
-}
-
-.idcard-table::-webkit-scrollbar-thumb:hover {
-    background: #a1a1a1;
-}
+.idcard-table::-webkit-scrollbar-track { background: #f3f4f6; }
+.idcard-table::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+.idcard-table::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
 
 /* Make main-content flex container */
 .main-content {
@@ -901,11 +888,11 @@ textarea.form-control {
    ========================================== */
 
 .action-buttons-bar {
-    background: rgba(255, 255, 255, 0.95);
-    border: 1px solid rgba(0,0,0,0.15);
+    background: #fff;
+    border: 1px solid #e5e7eb;
     border-bottom: none;
     border-radius: 0;
-    padding: 8px 16px;
+    padding: 5px 10px;
     margin-bottom: 0;
     display: flex;
     justify-content: space-between;
@@ -916,21 +903,21 @@ textarea.form-control {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
 }
 
 /* Pool Danger Zone - far right */
 .pool-danger-zone {
     margin-left: auto;
-    padding-left: 16px;
+    padding-left: 10px;
     border-left: 2px solid #fee2e2;
 }
 
 /* Navigation Group - right aligned */
 .action-nav-group {
     margin-left: auto;
-    padding-left: 16px;
-    border-left: 1px solid rgba(0, 0, 0, 0.1);
+    padding-left: 10px;
+    border-left: 1px solid #e5e7eb;
 }
 
 .action-nav-group .btn.action-btn {
@@ -969,19 +956,20 @@ textarea.form-control {
 .action-buttons-group .btn.action-btn {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    padding: 6px 12px;
-    font-size: 13px;
+    gap: 4px;
+    padding: 4px 8px;
+    font-size: 8px;
     font-weight: 600;
-    border-radius: 5px;
+    border-radius: 2px;
     cursor: pointer;
     border: none;
-    transition: all 0.2s ease;
+    transition: all 0.15s ease;
     white-space: nowrap;
+    height: 28px;
 }
 
 .action-buttons-group .btn.action-btn i {
-    font-size: 12px;
+    font-size: 9px;
 }
 
 .action-buttons-group .btn.action-btn:disabled {
@@ -1032,12 +1020,12 @@ textarea.form-control {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: rgba(255, 255, 255, 0.95);
-    border: 1px solid rgba(0,0,0,0.1);
+    background: #fff;
+    border: 1px solid #e5e7eb;
     border-top: none;
     border-bottom: none;
-    padding: 8px 12px;
-    gap: 12px;
+    padding: 5px 10px;
+    gap: 8px;
     margin-bottom: 0;
 }
 
@@ -1301,27 +1289,27 @@ textarea.form-control {
 .action-tabs {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
 }
 
 .tab-arrow {
-    font-size: 10px;
+    font-size: 8px;
     color: #9ca3af;
-    margin: 0 2px;
+    margin: 0 1px;
     flex-shrink: 0;
 }
 
 .action-tab {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 10px;
-    border-radius: 6px;
-    font-size: 11px;
-    font-weight: 500;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 2px;
+    font-size: 8px;
+    font-weight: 600;
     text-decoration: none;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.15s ease;
     white-space: nowrap;
 }
 
@@ -1333,12 +1321,12 @@ textarea.form-control {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 28px;
-    height: 18px;
-    padding: 0 6px;
-    border-radius: 9px;
-    font-size: 10px;
-    font-weight: 600;
+    min-width: 20px;
+    height: 14px;
+    padding: 0 4px;
+    border-radius: 7px;
+    font-size: 7px;
+    font-weight: 700;
 }
 
 /* Pending Tab - Yellow */
@@ -1484,27 +1472,27 @@ textarea.form-control {
 /* Inline editable cell input style for all list pages */
 .inline-edit-input {
     font-size: 11px;
-    border: 1px solid #bbb;
-    padding: 2px 4px;
-    border-radius: 3px;
+    border: 1px solid #d1d5db;
+    padding: 1px 3px;
+    border-radius: 2px;
     width: 90%;
     background: #fff;
     outline: none;
     box-sizing: border-box;
     transition: border-color 0.15s;
     font-weight: 400;
-    letter-spacing: -0.2px;
+    letter-spacing: 0;
 }
 
 .inline-edit-input:focus-visible {
     border-color: var(--primary);
-    box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.15);
+    box-shadow: 0 0 0 1px rgba(var(--primary-rgb), 0.15);
 }
 
 /* ID Card Actions - Action Bar Customizations */
 .idcard-actions-page .action-bar {
     border-top: none;
-    border-bottom: 2px solid rgba(0,0,0,0.15);
+    border-bottom: 1px solid #e5e7eb;
 }
 
 /* Sticky header */
@@ -1515,20 +1503,20 @@ textarea.form-control {
 }
 
 .idcard-table thead th {
-    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    background: #1e1e2e;
 }
 
-/* Action Bar Button Styles - Compact with rounded corners */
+/* Action Bar Button Styles - Compact */
 .action-buttons-group .btn {
-    padding: 6px 12px;
-    font-size: 11px;
-    gap: 5px;
-    border-radius: var(--radius-md);
-    min-height: 32px;
+    padding: 4px 8px;
+    font-size: 8px;
+    gap: 4px;
+    border-radius: 2px;
+    height: 28px;
 }
 
 .action-buttons-group .btn i {
-    font-size: 11px;
+    font-size: 9px;
 }
 
 /* Duplicate color block removed — colors consolidated above (L~1113). */
@@ -1541,18 +1529,18 @@ textarea.form-control {
     border-collapse: collapse;
 }
 
-/* Reduced padding for all cells */
+/* Compact table cells */
 .idcard-table th,
 .idcard-table td {
-    padding: 1px 3px;
-    font-size: 12px;
+    padding: 2px 4px;
+    font-size: 8px;
     font-weight: 400;
-    letter-spacing: -0.2px;
+    letter-spacing: 0;
     white-space: normal;
     word-wrap: break-word;
     overflow-wrap: break-word;
     text-align: left;
-    border-bottom: 1px solid rgba(0,0,0,0.05);
+    border-bottom: 1px solid #f3f4f6;
     vertical-align: middle;
     text-transform: uppercase;
 }
@@ -1560,20 +1548,20 @@ textarea.form-control {
 /* Dynamic field cells - auto width based on content */
 .idcard-table td.dynamic-field {
     white-space: nowrap;
-    min-width: 80px;
+    min-width: 70px;
     width: auto;
-    line-height: 1.4;
+    line-height: 1.3;
     vertical-align: middle;
-    padding: 1px 3px;
+    padding: 2px 4px;
 }
 
 /* Long text fields like address - allow wrapping */
 .idcard-table td.dynamic-field.long-text {
     white-space: normal;
     word-wrap: break-word;
-    min-width: 120px;
-    max-width: 250px;
-    line-height: 1.4;
+    min-width: 100px;
+    max-width: 200px;
+    line-height: 1.3;
 }
 
 /* Short text fields - allow wrap if touching edge */
@@ -1587,7 +1575,7 @@ textarea.form-control {
 .idcard-table td.dynamic-field.medium-text {
     white-space: normal;
     word-wrap: break-word;
-    line-height: 1.4;
+    line-height: 1.3;
 }
 
 /* Image field cells - percentage with min-width */
@@ -1621,18 +1609,17 @@ textarea.form-control {
 }
 
 .idcard-table th {
-    font-size: 11px;
-    font-weight: 600;
+    font-size: 7px;
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.3px;
     color: #fff;
-    padding: 6px 4px;
-    /* Allow word-wrap for long headers like "Father Photo", "Mother Photo" */
+    padding: 5px 4px;
     white-space: normal;
     word-wrap: break-word;
     word-break: normal;
     line-height: 1.3;
-    min-width: 50px;
+    min-width: 40px;
     vertical-align: middle;
 }
 
@@ -1641,69 +1628,69 @@ textarea.form-control {
     text-transform: uppercase;
 }
 
-/* Fixed columns - Checkbox - percentage with min-width */
+/* Fixed columns - Checkbox */
 .idcard-table .checkbox-col,
 .idcard-table td:first-child {
-    width: 32px;
-    min-width: 32px;
-    max-width: 32px;
+    width: 28px;
+    min-width: 28px;
+    max-width: 28px;
     text-align: center;
-    padding: 1px 1px;
+    padding: 1px;
 }
 
-/* Fixed columns - Sr No - percentage with min-width */
+/* Fixed columns - Sr No */
 .idcard-table .sr-col,
 .idcard-table td:nth-child(2) {
-    width: 50px;
-    min-width: 50px;
-    max-width: 55px;
+    width: 36px;
+    min-width: 36px;
+    max-width: 40px;
     text-align: left;
     padding-left: 4px;
 }
 
 /* Dynamic columns - auto width based on content */
 .idcard-table .dynamic-col {
-    min-width: 80px;
+    min-width: 70px;
     width: auto;
     white-space: nowrap;
-    padding: 1px 3px;
+    padding: 2px 4px;
     text-align: left;
 }
 
 /* Dynamic field cells - auto width based on content */
 .idcard-table td.dynamic-field {
-    min-width: 80px;
+    min-width: 70px;
     width: auto;
     white-space: nowrap;
-    padding: 1px 3px;
+    padding: 2px 4px;
     text-align: left;
 }
 
 /* Short text fields - smaller min-width */
 .idcard-table td.dynamic-field.short-text {
-    min-width: 60px;
+    min-width: 50px;
 }
 
 /* Medium text fields */
 .idcard-table td.dynamic-field.medium-text {
-    min-width: 90px;
+    min-width: 80px;
 }
 
-/* Long text fields (addresses, remarks) - allow wrapping for very long content */
+/* Long text fields (addresses, remarks) - allow wrapping */
 .idcard-table td.dynamic-field.long-text {
-    min-width: 120px;
-    max-width: 250px;
+    min-width: 100px;
+    max-width: 200px;
     white-space: normal;
     word-wrap: break-word;
 }
 
-/* Image column header for dynamic image fields */
+/* Image column header */
 .idcard-table .image-col {
-    width: 60px;
-    min-width: 60px;
-    max-width: 65px;
+    width: 50px;
+    min-width: 50px;
+    max-width: 55px;
     text-align: center !important;
-    padding: 6px 4px !important;
+    padding: 4px 2px !important;
     white-space: normal;
     word-break: break-word;
     overflow-wrap: break-word;
@@ -1718,14 +1705,14 @@ textarea.form-control {
     overflow-wrap: normal;
 }
 
-/* Image cell styling for dynamic image fields - same width as passport */
+/* Image cell styling - compact */
 .idcard-table td.image-cell {
     text-align: center;
     vertical-align: middle;
-    padding: 4px;
-    width: 60px;
-    min-width: 60px;
-    max-width: 65px;
+    padding: 2px;
+    width: 50px;
+    min-width: 50px;
+    max-width: 55px;
 }
 
 /* Ensure image-field overrides left-aligned dynamic-field */
@@ -1734,79 +1721,60 @@ textarea.form-control {
     vertical-align: middle !important;
 }
 
-/* Signature type cells - same width as passport */
-.idcard-table td.image-cell.signature-type {
-    width: 60px;
-    min-width: 60px;
-    max-width: 65px;
-}
-
-/* QR code cells - same width as passport */
-.idcard-table td.image-cell.qr-type {
-    width: 60px;
-    min-width: 60px;
-    max-width: 65px;
-}
-
-/* Barcode cells - same width as passport */
+/* All image type cells - uniform width */
+.idcard-table td.image-cell.signature-type,
+.idcard-table td.image-cell.qr-type,
 .idcard-table td.image-cell.barcode-type {
-    width: 60px;
-    min-width: 60px;
-    max-width: 65px;
+    width: 50px;
+    min-width: 50px;
+    max-width: 55px;
 }
 
-/* Dynamic image field images - Photo type (default) - Passport size */
+/* Table images - compact */
 .table-image {
-    width: 50px;
-    height: 60px;
+    width: 40px;
+    height: 48px;
     border-radius: 2px;
     object-fit: cover;
-    border: 1px solid #ddd;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    border: 1px solid #e5e7eb;
     display: block;
     margin: 0 auto;
     cursor: pointer;
-    transition: transform 0.2s ease;
-    background: #f1f5f9;
+    transition: transform 0.15s ease;
+    background: #f3f4f6;
     position: relative;
 }
 
-/* Signature images - Fixed width, auto height, minimize cropping */
 .table-image.signature-type {
-    width: 50px;
+    width: 40px;
     height: auto;
-    max-width: 50px;
-    max-height: 60px;
+    max-width: 40px;
+    max-height: 48px;
     border-radius: 0;
     object-fit: contain;
     border: none;
-    box-shadow: none;
     background: transparent;
 }
 
-/* QR code images - Fixed width, auto height */
 .table-image.qr-type {
-    width: 50px;
+    width: 40px;
     height: auto;
-    max-width: 50px;
-    max-height: 55px;
+    max-width: 40px;
+    max-height: 44px;
     border-radius: 0;
     object-fit: contain;
     border: none;
-    box-shadow: none;
     background: transparent;
 }
 
-/* Barcode images - Fixed width, auto height */
 .table-image.barcode-type {
-    width: 50px;
+    width: 40px;
     height: auto;
-    max-width: 50px;
-    max-height: 35px;
+    max-width: 40px;
+    max-height: 28px;
     border-radius: 0;
     object-fit: contain;
     border: none;
-    box-shadow: none;
     background: transparent;
 }
 
@@ -1824,8 +1792,7 @@ textarea.form-control {
 }
 
 .table-image:hover {
-    transform: scale(1.1);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transform: scale(1.08);
 }
 
 /* Image with edit button wrapper */
@@ -1834,20 +1801,20 @@ textarea.form-control {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 2px;
+    gap: 1px;
     width: 100%;
     height: 100%;
 }
 
 .edit-photo-btn {
-    width: 40px;
-    padding: 2px 4px;
-    font-size: 9px;
+    width: 34px;
+    padding: 1px 3px;
+    font-size: 7px;
     font-weight: 600;
-    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    background: #3b82f6;
     color: white;
     border: none;
-    border-radius: 3px;
+    border-radius: 2px;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -1855,25 +1822,24 @@ textarea.form-control {
 }
 
 .edit-photo-btn i {
-    font-size: 9px;
+    font-size: 7px;
 }
 
 /* Placeholder when no image in dynamic image field - Passport size */
 .no-image {
-    width: 45px;
-    height: 55px;
+    width: 36px;
+    height: 44px;
     border-radius: 2px;
-    border: 1px solid #ddd;
-    background: linear-gradient(135deg, #e8ecf1 0%, #d5dce6 100%);
+    border: 1px solid #e5e7eb;
+    background: #f3f4f6;
     display: flex;
     align-items: center;
     justify-content: center;
     margin: 0 auto;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.08);
 }
 
 .no-image i {
-    font-size: 16px;
+    font-size: 12px;
     color: #94a3b8;
 }
 
@@ -1945,20 +1911,20 @@ textarea.form-control {
     color: #b0bec5;
 }
 
-/* Fixed columns - Action - wider for buttons */
+/* Fixed columns - action col */
 .idcard-table .action-col {
-    width: 110px;
-    min-width: 110px;
+    width: 90px;
+    min-width: 90px;
     text-align: center;
 }
 
-/* Dynamic columns - Last Updated, Updated By - auto width */
+/* Dynamic columns - Last Updated, Updated By */
 .idcard-table .fixed-col {
-    min-width: 90px;
+    min-width: 70px;
     width: auto;
     text-align: left;
     white-space: nowrap;
-    padding: 1px 3px;
+    padding: 2px 4px;
 }
 
 /* Photo cell styling */
@@ -1967,146 +1933,60 @@ textarea.form-control {
     vertical-align: middle;
     padding: 1px;
     width: 4%;
-    min-width: 50px;
+    min-width: 40px;
 }
 
-/* Row hover effect */
+/* Row hover */
 .idcard-table tbody tr:hover {
-    background-color: rgba(102, 126, 234, 0.05);
+    background-color: #f9fafb;
 }
 
-/* Verify row button */
-.verify-row-btn {
-    padding: 3px 10px;
-    font-size: 9px;
-    font-weight: 500;
-    background: #22c55e;
-    color: #fff;
-    border: none;
-    border-radius: 3px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    white-space: nowrap;
-}
-
-.verify-row-btn:hover {
-    background: #16a34a;
-}
-
-/* Unapprove row button - red */
-.unapprove-row-btn {
-    padding: 3px 10px;
-    font-size: 9px;
-    font-weight: 500;
-    background: #ef4444;
-    color: #fff;
-    border: none;
-    border-radius: 3px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    white-space: nowrap;
-}
-
-.unapprove-row-btn:hover {
-    background: #dc2626;
-}
-
-/* Unverify row button - red */
-.unverify-row-btn {
-    padding: 3px 10px;
-    font-size: 9px;
-    font-weight: 500;
-    background: #ef4444;
-    color: #fff;
-    border: none;
-    border-radius: 3px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    white-space: nowrap;
-}
-
-.unverify-row-btn:hover {
-    background: #dc2626;
-}
-
-/* Download row button - blue */
-.download-row-btn {
-    padding: 3px 10px;
-    font-size: 9px;
-    font-weight: 500;
-    background: #3b82f6;
-    color: #fff;
-    border: none;
-    border-radius: 3px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    white-space: nowrap;
-}
-
-.download-row-btn:hover {
-    background: #2563eb;
-}
-
-/* Download single button - green (for download list) */
-.download-single-btn {
-    padding: 3px 10px;
-    font-size: 9px;
-    font-weight: 500;
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    color: #fff;
-    border: none;
-    border-radius: 3px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    white-space: nowrap;
-}
-
-.download-single-btn:hover {
-    background: linear-gradient(135deg, #059669 0%, #047857 100%);
-}
-
-/* Back to approved row button - orange */
-.back-approved-row-btn {
-    padding: 3px 10px;
-    font-size: 9px;
-    font-weight: 500;
-    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-    color: #fff;
-    border: none;
-    border-radius: 3px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    white-space: nowrap;
-}
-
-.back-approved-row-btn:hover {
-    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
-}
-
-/* Retrieve row button - blue */
+/* Row action buttons — unified compact style */
+.verify-row-btn,
+.approve-row-btn,
+.unverify-row-btn,
+.unapprove-row-btn,
+.download-row-btn,
+.download-single-btn,
+.back-approved-row-btn,
 .retrieve-row-btn {
-    padding: 3px 10px;
-    font-size: 9px;
-    font-weight: 500;
-    background: #3b82f6;
+    padding: 2px 6px;
+    font-size: 7px;
+    font-weight: 600;
     color: #fff;
     border: none;
-    border-radius: 3px;
+    border-radius: 2px;
     cursor: pointer;
     transition: all 0.15s ease;
     white-space: nowrap;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
 }
+.verify-row-btn { background: #22c55e; }
+.verify-row-btn:hover { background: #16a34a; }
+.approve-row-btn { background: #22c55e; }
+.approve-row-btn:hover { background: #16a34a; }
+.unverify-row-btn { background: #ef4444; }
+.unverify-row-btn:hover { background: #dc2626; }
+.unapprove-row-btn { background: #ef4444; }
+.unapprove-row-btn:hover { background: #dc2626; }
+.download-row-btn { background: #3b82f6; }
+.download-row-btn:hover { background: #2563eb; }
+.download-single-btn { background: #10b981; }
+.download-single-btn:hover { background: #059669; }
+.back-approved-row-btn { background: #f59e0b; }
+.back-approved-row-btn:hover { background: #d97706; }
+.retrieve-row-btn { background: #3b82f6; }
+.retrieve-row-btn:hover { background: #2563eb; }
 
-.retrieve-row-btn:hover {
-    background: #2563eb;
-}
-
-/* Action cell - center buttons with gap, stacked vertically */
+/* Action cell - compact */
 .action-cell {
     text-align: center !important;
     vertical-align: middle;
-    min-width: 110px;
-    width: 110px;
+    min-width: 90px;
+    width: 90px;
 }
 
 .action-cell .action-buttons {
@@ -2114,7 +1994,7 @@ textarea.form-control {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    gap: 2px;
+    gap: 1px;
     white-space: nowrap;
 }
 
@@ -2126,44 +2006,27 @@ textarea.form-control {
     min-width: max-content;
 }
 
-/* Approve row button - green */
-.approve-row-btn {
-    padding: 3px 10px;
-    font-size: 9px;
-    font-weight: 500;
-    background: #22c55e;
-    color: #fff;
-    border: none;
-    border-radius: 3px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    white-space: nowrap;
-}
-
-.approve-row-btn:hover {
-    background: #16a34a;
-}
+/* Approve row button - already defined above in unified block */
 
 /* ==========================================
    CONSISTENT TABLE DISPLAY FOR ALL STATUSES
-   All lists show the same columns, only action buttons differ
    ========================================== */
 
 /* Status badge styling */
 .status-badge {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 4px 10px;
-    font-size: 10px;
-    font-weight: 600;
-    border-radius: 4px;
+    gap: 3px;
+    padding: 2px 6px;
+    font-size: 7px;
+    font-weight: 700;
+    border-radius: 2px;
     text-transform: uppercase;
     white-space: nowrap;
 }
 
 .status-badge i {
-    font-size: 10px;
+    font-size: 7px;
 }
 
 .status-badge.download {
@@ -2191,13 +2054,13 @@ textarea.form-control {
     color: #fff;
 }
 
-/* Edit photo button styling */
+/* Edit photo button - override for inline-table usage */
 .edit-photo-btn {
     padding: 0;
-    font-size: 8px;
-    font-weight: 500;
+    font-size: 7px;
+    font-weight: 600;
     background: transparent;
-    color: #3498db;
+    color: #3b82f6;
     border: none;
     border-radius: 0;
     cursor: pointer;
@@ -2209,19 +2072,19 @@ textarea.form-control {
 }
 
 .edit-photo-btn i {
-    font-size: 8px;
-    margin-right: 2px;
+    font-size: 7px;
+    margin-right: 1px;
 }
 
 .edit-photo-btn:hover {
     background: transparent;
-    color: #2980b9;
+    color: #2563eb;
 }
 
 /* Checkbox styling */
 .idcard-table input[type="checkbox"] {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
     cursor: pointer;
     accent-color: var(--primary);
 }

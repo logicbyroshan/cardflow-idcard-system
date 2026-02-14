@@ -1,3 +1,6 @@
+# Tailwind CSS standalone CLI binary
+tailwindcss.exe
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
@@ -6,6 +9,7 @@ __pycache__/
 # C extensions
 *.so
 /media/
+/logs/
 # Distribution / packaging
 .Python
 build/

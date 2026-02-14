@@ -2,6 +2,9 @@
 // Contains: Inline cell editing functionality
 // Note: Uses shared getCSRFToken from utils.js
 
+(function() {
+'use strict';
+
 // ==========================================
 // HELPER FUNCTIONS
 // ==========================================
@@ -158,22 +161,9 @@ function saveCellEdit(cell, newValue, cardId, field) {
     `;
     
     // Save via API
-    const csrfToken = getCSRFToken();
-    
-    fetch(`/panel/api/card/${cardId}/update-field/`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrfToken,
-        },
-        body: JSON.stringify({
-            field: field,
-            value: finalValue
-        })
-    })
-    .then(response => {
-        if (!response.ok) throw new Error('Update failed');
-        return response.json();
+    ApiClient.post(`/panel/api/card/${cardId}/update-field/`, {
+        field: field,
+        value: finalValue
     })
     .then(data => {
         const esc = window.escapeHtml || ((s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; });
@@ -429,3 +419,5 @@ window.openImagePreview = openImagePreview;
 window.IDCardApp = window.IDCardApp || {};
 window.IDCardApp.initEditModule = initEditModule;
 window.IDCardApp.startCellEdit = startCellEdit;
+
+})();

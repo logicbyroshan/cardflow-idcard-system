@@ -1,6 +1,14 @@
 """
-ID Card Service Module
-Contains: ID Card and ID Card Table CRUD, status management, search
+ID Card Service Module — SINGLE AUTHORITY for IDCard / IDCardTable mutations.
+
+Contains: ID Card and ID Card Table CRUD, status management, search,
+field upgrades, and default-group provisioning.
+
+ARCHITECTURE RULES:
+- All IDCard/IDCardTable mutations MUST go through IDCardService.
+- Views must NOT call .save(), .create(), .delete() on IDCard or IDCardTable.
+- Status changes delegate internally to WorkflowService.transition().
+- Image handling delegates to ImageService (single authority for files).
 """
 import logging
 from typing import Dict, Any, List
@@ -273,6 +281,18 @@ class IDCardService(BaseService):
             )
         except Exception as e:
             return ServiceResult(success=False, message=str(e))
+
+    @classmethod
+    def ensure_default_group(cls, client) -> 'IDCardGroup':
+        """Return the first IDCardGroup for a client, creating one if none exists."""
+        group = IDCardGroup.objects.filter(client=client).first()
+        if not group:
+            group = IDCardGroup.objects.create(
+                client=client,
+                name=f"{client.name} - Default Group",
+                is_active=True,
+            )
+        return group
     
     # ==================== ID Card Operations ====================
     
@@ -399,7 +419,8 @@ class IDCardService(BaseService):
     
     @classmethod
     def get_all_card_ids(cls, table_id: int, status_filter: str = None) -> ServiceResult:
-        """Get all card IDs for a table (for Select All)"""
+        """Get all card IDs for a table (for Select All). Capped at 50,000."""
+        MAX_CARD_IDS = 50000
         try:
             table = get_object_or_404(IDCardTable, id=table_id)
             
@@ -407,7 +428,7 @@ class IDCardService(BaseService):
             if status_filter and status_filter in cls.VALID_STATUSES:
                 cards_query = cards_query.filter(status=status_filter)
             
-            card_ids = list(cards_query.values_list('id', flat=True))
+            card_ids = list(cards_query.values_list('id', flat=True)[:MAX_CARD_IDS])
             
             return ServiceResult(
                 success=True,
@@ -422,9 +443,19 @@ class IDCardService(BaseService):
         table_id: int, 
         field_data: Dict[str, Any],
         image_files: Dict[str, Any] = None,
-        uploaded_by=None
+        uploaded_by=None,
+        legacy_photo_file=None,
     ) -> ServiceResult:
-        """Create a new ID Card"""
+        """Create a new ID Card.
+
+        Args:
+            table_id: IDCardTable PK.
+            field_data: Dict of field values (text + image paths).
+            image_files: Dict of uploaded files keyed by ``image_<field_name>``.
+            uploaded_by: User who triggered the upload.
+            legacy_photo_file: Optional UploadedFile for the legacy ``photo``
+                               key (pre-field-config tables).
+        """
         try:
             table = get_object_or_404(IDCardTable, id=table_id)
             client = table.group.client
@@ -436,8 +467,8 @@ class IDCardService(BaseService):
             saved_images = []
             
             # Handle image uploads if provided
+            image_counter = 0
             if image_files:
-                image_counter = 0
                 for field in table.fields:
                     if cls.is_image_field(field):
                         field_name = field['name']
@@ -446,28 +477,40 @@ class IDCardService(BaseService):
                         if file_key in image_files:
                             image_counter += 1
                             uploaded_file = image_files[file_key]
-                            result = ImageService.save_image(
-                                uploaded_file,
-                                client,
-                                batch_counter=image_counter
+                            img_bytes = uploaded_file.read()
+                            uploaded_file.seek(0)
+                            original_ext = '.jpg'
+                            if hasattr(uploaded_file, 'name') and uploaded_file.name:
+                                _, _ext = __import__('os').path.splitext(uploaded_file.name)
+                                if _ext:
+                                    original_ext = _ext.lower()
+                            result = ImageService.save_new_image(
+                                image_bytes=img_bytes,
+                                client=client,
+                                field_name=field_name,
+                                card=None,  # card not yet created
+                                batch_counter=image_counter,
+                                original_ext=original_ext,
+                                original_filename=getattr(uploaded_file, 'name', None),
+                                uploaded_by=uploaded_by,
                             )
                             if result.success:
-                                field_data[field_name] = result.data['path']
-                                # Track for dual-write
+                                field_data[field_name] = result.data['final_value']
                                 saved_images.append({
-                                    'path': result.data['path'],
+                                    'path': result.data['final_value'],
                                     'field_name': field_name,
                                     'field_type': field.get('type', 'photo'),
                                     'original_filename': getattr(uploaded_file, 'name', None)
                                 })
             
+            from .workflow_service import WorkflowService
             card = IDCard.objects.create(
                 table=table,
                 field_data=field_data,
-                status='pending'
+                status=WorkflowService.INITIAL_STATUS
             )
             
-            # DUAL-WRITE: Create CardMedia records for saved images (Phase 2)
+            # DUAL-WRITE: Create CardMedia records for saved images
             for img_info in saved_images:
                 try:
                     ImageService.create_media_record(
@@ -480,8 +523,36 @@ class IDCardService(BaseService):
                         uploaded_by=uploaded_by
                     )
                 except Exception as media_err:
-                    # Don't fail card creation if media record fails
                     logger.warning("Failed to create CardMedia for %s: %s", img_info['field_name'], media_err)
+            
+            # Legacy 'photo' key — old clients may send a separate photo file
+            if legacy_photo_file:
+                try:
+                    original_ext = '.jpg'
+                    if hasattr(legacy_photo_file, 'name') and legacy_photo_file.name:
+                        _, _ext = __import__('os').path.splitext(legacy_photo_file.name)
+                        if _ext:
+                            original_ext = _ext.lower()
+                    img_bytes = legacy_photo_file.read()
+                    legacy_photo_file.seek(0)
+                    image_counter += 1
+                    result = ImageService.save_new_image(
+                        image_bytes=img_bytes,
+                        client=client,
+                        field_name='PHOTO',
+                        card=card,
+                        batch_counter=image_counter,
+                        original_ext=original_ext,
+                        original_filename=getattr(legacy_photo_file, 'name', None),
+                        uploaded_by=uploaded_by,
+                    )
+                    if result.success and result.data.get('final_value'):
+                        fd = card.field_data or {}
+                        fd['PHOTO'] = result.data['final_value']
+                        card.field_data = fd
+                        card.save()
+                except Exception as photo_err:
+                    logger.error("Error saving legacy photo during create: %s", photo_err)
             
             return ServiceResult(
                 success=True,
@@ -496,7 +567,7 @@ class IDCardService(BaseService):
     def get_card(cls, card_id: int) -> ServiceResult:
         """Get a single ID Card"""
         try:
-            card = get_object_or_404(IDCard, id=card_id)
+            card = get_object_or_404(IDCard.objects.select_related('table'), id=card_id)
             
             data = cls.serialize_card(card)
             data['table_name'] = card.table.name
@@ -512,82 +583,130 @@ class IDCardService(BaseService):
         field_data: Dict[str, Any] = None,
         status: str = None,
         image_files: Dict[str, Any] = None,
-        uploaded_by=None
+        uploaded_by=None,
+        expected_updated_at: str = None,
+        legacy_photo_file=None,
     ) -> ServiceResult:
-        """Update an ID Card"""
+        """Update an ID Card with atomic concurrency control.
+
+        Args:
+            card_id: IDCard PK.
+            field_data: Partial field_data to merge (text + image path values).
+            status: Ignored — use WorkflowService.transition().
+            image_files: Dict of uploaded files keyed by ``image_<field_name>``.
+            uploaded_by: User who triggered the upload.
+            expected_updated_at: ISO-8601 timestamp for optimistic concurrency.
+                If the card was modified since this timestamp, a 'conflict'
+                ServiceResult is returned.
+            legacy_photo_file: Optional UploadedFile for the legacy ``photo``
+                               key (pre-field-config tables).
+        """
         try:
-            card = get_object_or_404(IDCard, id=card_id)
-            table = card.table
-            client = table.group.client
-            
-            # Merge with existing field_data
-            existing_data = card.field_data or {}
-            
-            if field_data:
-                field_data = cls.uppercase_field_data_selective(field_data, table.fields)
-                existing_data.update(field_data)
-            
-            # Track saved images for dual-write (Phase 2)
-            saved_images = []
-            
-            # Handle image uploads
-            if image_files:
-                image_counter = 0
-                for field in table.fields:
-                    if cls.is_image_field(field):
-                        field_name = field['name']
-                        file_key = f"image_{field_name}"
-                        
-                        if file_key in image_files:
-                            existing_path = existing_data.get(field_name, '')
+            from django.db import transaction as db_transaction
+            from django.utils.dateparse import parse_datetime
+
+            with db_transaction.atomic():
+                # Lock the row to prevent concurrent writes
+                card = IDCard.objects.select_for_update().select_related('table__group__client').get(id=card_id)
+                table = card.table
+                client = table.group.client
+
+                # ── Optimistic concurrency check ──
+                if expected_updated_at:
+                    expected_dt = parse_datetime(expected_updated_at)
+                    if expected_dt and card.updated_at and abs((card.updated_at - expected_dt).total_seconds()) > 1:
+                        return ServiceResult(
+                            success=False,
+                            message='This card was modified by another user. Please refresh and try again.',
+                            data={
+                                'conflict': True,
+                                'server_updated_at': card.updated_at.isoformat(),
+                            },
+                        )
+
+                existing_data = card.field_data or {}
+                image_field_names = cls.get_image_field_names(table.fields)
+
+                if field_data:
+                    field_data = cls.uppercase_field_data_selective(field_data, table.fields)
+
+                    # Merge text (non-image) fields
+                    for key, value in field_data.items():
+                        if key not in image_field_names:
+                            existing_data[key] = value
+
+                    # Process each image field via ImageService.process_image_field
+                    image_counter = 0
+                    for img_field in image_field_names:
+                        uploaded_file = image_files.get(f"image_{img_field}") if image_files else None
+                        new_value = field_data.get(img_field)  # None if not sent
+
+                        if uploaded_file is not None or new_value is not None:
+                            existing_value = existing_data.get(img_field, '')
                             image_counter += 1
-                            uploaded_file = image_files[file_key]
-                            
-                            result = ImageService.save_image(
-                                uploaded_file,
-                                client,
-                                existing_path=existing_path,
-                                batch_counter=image_counter
+                            result = ImageService.process_image_field(
+                                field_name=img_field,
+                                new_value=new_value,
+                                existing_value=existing_value,
+                                client=client,
+                                card=card,
+                                uploaded_file=uploaded_file,
+                                batch_counter=image_counter,
+                                uploaded_by=uploaded_by,
                             )
                             if result.success:
-                                existing_data[field_name] = result.data['path']
-                                # Track for dual-write
-                                saved_images.append({
-                                    'path': result.data['path'],
-                                    'field_name': field_name,
-                                    'field_type': field.get('type', 'photo'),
-                                    'original_filename': getattr(uploaded_file, 'name', None)
-                                })
-            
-            card.field_data = existing_data
-            
-            if status and status in cls.VALID_STATUSES:
-                card.status = status
-            
-            card.save()
-            
-            # DUAL-WRITE: Create CardMedia records for saved images (Phase 2)
-            for img_info in saved_images:
-                try:
-                    ImageService.create_media_record(
-                        saved_path=img_info['path'],
+                                existing_data[img_field] = result.data.get('final_value', existing_value)
+                            else:
+                                logger.warning("process_image_field failed for %s: %s", img_field, result.message)
+
+                # Legacy 'photo' key
+                if legacy_photo_file:
+                    existing_photo = existing_data.get('PHOTO', '') or existing_data.get('Photo', '')
+                    result = ImageService.process_image_field(
+                        field_name='PHOTO',
+                        new_value=None,  # upload takes precedence
+                        existing_value=existing_photo,
                         client=client,
                         card=card,
-                        field_name=img_info['field_name'],
-                        media_type=img_info['field_type'],
-                        original_filename=img_info['original_filename'],
-                        uploaded_by=uploaded_by
+                        uploaded_file=legacy_photo_file,
+                        batch_counter=9,
+                        uploaded_by=uploaded_by,
                     )
-                except Exception as media_err:
-                    # Don't fail card update if media record fails
-                    logger.warning("Failed to create CardMedia for %s: %s", img_info['field_name'], media_err)
-            
+                    if result.success and result.data.get('action') == 'upload':
+                        existing_data['PHOTO'] = result.data['final_value']
+                        if 'Photo' in existing_data and 'Photo' != 'PHOTO':
+                            del existing_data['Photo']
+                    elif not result.success:
+                        logger.warning("Could not save legacy photo: %s", result.message)
+
+                card.field_data = existing_data
+
+                # Status changes MUST go through WorkflowService.transition().
+                if status:
+                    logger.warning(
+                        "IDCardService.update_card() called with status=%s for card %s — "
+                        "ignored. Use WorkflowService.transition() instead.",
+                        status, card_id
+                    )
+
+                card.save()
+
+            # Refresh updated_at after commit so the caller can send it
+            # back for the next concurrency check.
+            card.refresh_from_db(fields=['updated_at'])
+
+            card_data = cls.serialize_card(card)
+            # Include ISO updated_at for concurrency round-trip
+            card_data['updated_at_iso'] = card.updated_at.isoformat() if card.updated_at else None
+
             return ServiceResult(
                 success=True,
                 message='ID Card updated successfully!',
-                data={'card': cls.serialize_card(card)}
+                data={'card': card_data}
             )
-            
+
+        except IDCard.DoesNotExist:
+            return ServiceResult(success=False, message='Card not found')
         except Exception as e:
             return ServiceResult(success=False, message=str(e))
     
@@ -595,32 +714,36 @@ class IDCardService(BaseService):
     def update_single_field(cls, card_id: int, field: str, value: Any) -> ServiceResult:
         """Update a single field on an ID Card (for inline editing)"""
         try:
-            card = get_object_or_404(IDCard, id=card_id)
-            table = card.table
-            
-            if not field:
-                return ServiceResult(success=False, message='Field name is required!')
-            
-            field_data = card.field_data or {}
-            
-            if isinstance(value, str):
-                # Only uppercase non-image fields to protect image paths
-                if cls.is_image_field_name_for_table(field, table.fields):
-                    field_data[field] = value
+            from django.db import transaction
+            with transaction.atomic():
+                card = IDCard.objects.select_for_update().get(id=card_id)
+                table = card.table
+                
+                if not field:
+                    return ServiceResult(success=False, message='Field name is required!')
+                
+                field_data = card.field_data or {}
+                
+                if isinstance(value, str):
+                    # Only uppercase non-image fields to protect image paths
+                    if cls.is_image_field_name_for_table(field, table.fields):
+                        field_data[field] = value
+                    else:
+                        field_data[field] = value.upper()
                 else:
-                    field_data[field] = value.upper()
-            else:
-                field_data[field] = value
+                    field_data[field] = value
+                
+                card.field_data = field_data
+                card.save()
+                
+                return ServiceResult(
+                    success=True,
+                    message='Field updated successfully!',
+                    data={'field': field, 'value': field_data[field]}
+                )
             
-            card.field_data = field_data
-            card.save()
-            
-            return ServiceResult(
-                success=True,
-                message='Field updated successfully!',
-                data={'field': field, 'value': field_data[field]}
-            )
-            
+        except IDCard.DoesNotExist:
+            return ServiceResult(success=False, message='Card not found')
         except Exception as e:
             return ServiceResult(success=False, message=str(e))
     
@@ -639,58 +762,21 @@ class IDCardService(BaseService):
             return ServiceResult(success=False, message=str(e))
     
     @classmethod
-    def change_status(cls, card_id: int, new_status: str) -> ServiceResult:
-        """Change an ID Card's status (blocks forward moves when images are missing or mandatory fields are empty)"""
+    def change_status(cls, card_id: int, new_status: str, user=None, request=None) -> ServiceResult:
+        """
+        Change an ID Card's status — delegates to WorkflowService.transition().
+
+        Kept as a thin wrapper so existing callers don't break.
+        Permission & activity logging are handled by WorkflowService when
+        user/request are supplied.
+        """
         try:
-            if new_status not in cls.VALID_STATUSES:
-                return ServiceResult(success=False, message='Invalid status!')
-            
+            from .workflow_service import WorkflowService
+
             card = get_object_or_404(IDCard, id=card_id)
-            
-            # --- enforce valid status transitions ---
-            allowed = cls.VALID_TRANSITIONS.get(card.status, [])
-            if new_status not in allowed:
-                return ServiceResult(
-                    success=False,
-                    message=f'Cannot change status from {card.get_status_display()} to {new_status}.'
-                )
-            
-            table = card.table
-            
-            # --- mandatory field check for pending -> verified transition ---
-            if new_status == 'verified' and card.status == 'pending':
-                missing_mandatory = cls._get_missing_mandatory_fields(card, table.fields or [])
-                if missing_mandatory:
-                    return ServiceResult(
-                        success=False,
-                        message=f'Cannot verify card: required fields are empty: {", ".join(missing_mandatory)}',
-                        data={'missing_fields': missing_mandatory, 'blocked': True}
-                    )
-            
-            # --- image-gate for forward transitions ---
-            if new_status in cls.FORWARD_IMAGE_CHECK:
-                allowed_from = cls.FORWARD_IMAGE_CHECK[new_status]
-                if card.status in allowed_from:
-                    img_names = cls.get_image_field_names(table.fields or [])
-                    if img_names:
-                        missing = cls._get_missing_image_fields(card, img_names)
-                        if missing:
-                            return ServiceResult(
-                                success=False,
-                                message=f'Cannot move card: images missing for {", ".join(missing)}. Upload all images first.',
-                                data={'missing_fields': missing, 'blocked': True}
-                            )
-            
-            card.status = new_status
-            card.save()
-            
-            return ServiceResult(
-                success=True,
-                message=f'Card status changed to {card.get_status_display()}!',
-                data={
-                    'status': card.status,
-                    'status_display': card.get_status_display()
-                }
+            return WorkflowService.transition(
+                card, new_status, user=user, request=request,
+                skip_permission=(user is None),
             )
         except Exception as e:
             return ServiceResult(success=False, message=str(e))
@@ -700,130 +786,23 @@ class IDCardService(BaseService):
         cls, 
         table_id: int, 
         card_ids: List[int], 
-        new_status: str
+        new_status: str,
+        user=None,
+        request=None,
     ) -> ServiceResult:
-        """Change status of multiple ID Cards (skips cards with missing images or mandatory fields on forward moves)"""
+        """
+        Change status of multiple ID Cards — delegates to WorkflowService.bulk_transition().
+
+        Kept as a thin wrapper so existing callers don't break.
+        """
         try:
-            if new_status not in cls.VALID_STATUSES:
-                return ServiceResult(success=False, message='Invalid status!')
-            
+            from .workflow_service import WorkflowService
+
             table = get_object_or_404(IDCardTable, id=table_id)
-            
-            # --- filter cards to only those with valid transitions ---
-            valid_from_statuses = [s for s, targets in cls.VALID_TRANSITIONS.items() if new_status in targets]
-            card_ids = list(
-                IDCard.objects.filter(table=table, id__in=card_ids, status__in=valid_from_statuses)
-                .values_list('id', flat=True)
-            )
-            if not card_ids:
-                return ServiceResult(
-                    success=False,
-                    message=f'No cards eligible for transition to {new_status}.'
-                )
-            
-            # --- mandatory field check for pending -> verified transition ---
-            if new_status == 'verified':
-                cards = list(IDCard.objects.filter(table=table, id__in=card_ids, status='pending'))
-                valid_ids = []
-                skipped_mandatory_ids = []
-                
-                for card in cards:
-                    missing_mandatory = cls._get_missing_mandatory_fields(card, table.fields or [])
-                    if missing_mandatory:
-                        skipped_mandatory_ids.append(card.id)
-                    else:
-                        valid_ids.append(card.id)
-                
-                # Also include cards not in pending (they skip mandatory check)
-                non_pending_ids = [cid for cid in card_ids if cid not in [c.id for c in cards]]
-                valid_ids.extend(non_pending_ids)
-                
-                if not valid_ids and skipped_mandatory_ids:
-                    return ServiceResult(
-                        success=False,
-                        message=f'All {len(skipped_mandatory_ids)} card(s) have missing required fields and cannot be verified.',
-                        data={'skipped_count': len(skipped_mandatory_ids), 'skipped_ids': skipped_mandatory_ids}
-                    )
-                
-                # Update card_ids to only valid ones for further processing
-                card_ids = valid_ids
-                
-                if skipped_mandatory_ids and valid_ids:
-                    # Process valid ones and report skipped
-                    updated_count = IDCard.objects.filter(
-                        table=table, id__in=valid_ids
-                    ).update(status=new_status)
-                    
-                    return ServiceResult(
-                        success=True,
-                        message=f'{updated_count} card(s) verified. {len(skipped_mandatory_ids)} skipped (missing required fields).',
-                        data={
-                            'updated_count': updated_count,
-                            'skipped_count': len(skipped_mandatory_ids),
-                            'skipped_ids': skipped_mandatory_ids
-                        }
-                    )
-            
-            # --- image-gate for forward transitions ---
-            needs_check = new_status in cls.FORWARD_IMAGE_CHECK
-            if needs_check:
-                img_names = cls.get_image_field_names(table.fields or [])
-                if img_names:
-                    allowed_from = cls.FORWARD_IMAGE_CHECK[new_status]
-                    cards = list(IDCard.objects.filter(table=table, id__in=card_ids))
-                    valid_ids = []
-                    skipped_ids = []
-                    
-                    for card in cards:
-                        if card.status in allowed_from:
-                            missing = cls._get_missing_image_fields(card, img_names)
-                            if missing:
-                                skipped_ids.append(card.id)
-                            else:
-                                valid_ids.append(card.id)
-                        else:
-                            valid_ids.append(card.id)
-                    
-                    if not valid_ids and skipped_ids:
-                        return ServiceResult(
-                            success=False,
-                            message=f'All {len(skipped_ids)} card(s) have missing images and cannot be moved forward.',
-                            data={'skipped_count': len(skipped_ids), 'skipped_ids': skipped_ids}
-                        )
-                    
-                    updated_count = 0
-                    if valid_ids:
-                        updated_count = IDCard.objects.filter(
-                            table=table, id__in=valid_ids
-                        ).update(status=new_status)
-                    
-                    if skipped_ids:
-                        return ServiceResult(
-                            success=True,
-                            message=f'{updated_count} card(s) updated. {len(skipped_ids)} skipped (missing images).',
-                            data={
-                                'updated_count': updated_count,
-                                'skipped_count': len(skipped_ids),
-                                'skipped_ids': skipped_ids
-                            }
-                        )
-                    
-                    return ServiceResult(
-                        success=True,
-                        message=f'{updated_count} cards updated to {new_status}!',
-                        data={'updated_count': updated_count}
-                    )
-            
-            # No image check needed — normal bulk update
-            updated_count = IDCard.objects.filter(
-                table=table, 
-                id__in=card_ids
-            ).update(status=new_status)
-            
-            return ServiceResult(
-                success=True,
-                message=f'{updated_count} cards updated to {new_status}!',
-                data={'updated_count': updated_count}
+            return WorkflowService.bulk_transition(
+                table, card_ids, new_status,
+                user=user, request=request,
+                skip_permission=(user is None),
             )
         except Exception as e:
             return ServiceResult(success=False, message=str(e))
@@ -927,5 +906,70 @@ class IDCardService(BaseService):
                 }
             )
             
+        except Exception as e:
+            return ServiceResult(success=False, message=str(e))
+
+    @classmethod
+    def upgrade_all_classes(cls, table_id: int) -> ServiceResult:
+        """
+        Upgrade the class field value for all download-status cards in a table.
+        Each class value is bumped to the next level (e.g. V → VI).
+        Cards at XII remain unchanged.
+        Returns: ServiceResult with data={'upgraded', 'skipped', 'total'}
+        """
+        from core.utils.field_utils import CLASS_UPGRADE_MAP
+        try:
+            from django.db import transaction
+            table = get_object_or_404(IDCardTable, id=table_id)
+            fields = table.fields or []
+
+            # Find the class field name
+            class_field_name = None
+            for field in fields:
+                if field.get('type') == 'class':
+                    class_field_name = field.get('name')
+                    break
+
+            if not class_field_name:
+                return ServiceResult(
+                    success=False,
+                    message='No class field found in this table configuration'
+                )
+
+            cards = IDCard.objects.filter(table=table, status='download')
+            total = cards.count()
+            if total == 0:
+                return ServiceResult(
+                    success=False,
+                    message='No cards in the Download list to upgrade'
+                )
+
+            upgraded = 0
+            skipped = 0
+            cards_to_update = []
+            with transaction.atomic():
+                for card in cards:
+                    field_data = card.field_data or {}
+                    current_val = str(field_data.get(class_field_name, '')).strip().upper()
+                    if current_val in CLASS_UPGRADE_MAP:
+                        field_data[class_field_name] = CLASS_UPGRADE_MAP[current_val]
+                        card.field_data = field_data
+                        cards_to_update.append(card)
+                        upgraded += 1
+                    else:
+                        skipped += 1
+                if cards_to_update:
+                    IDCard.objects.bulk_update(cards_to_update, ['field_data', 'updated_at'], batch_size=500)
+
+            return ServiceResult(
+                success=True,
+                message=f'Upgraded {upgraded} card(s). {skipped} skipped (already XII or unknown value).',
+                data={
+                    'upgraded': upgraded,
+                    'skipped': skipped,
+                    'total': total,
+                    'client_name': getattr(table.group.client, 'name', ''),
+                }
+            )
         except Exception as e:
             return ServiceResult(success=False, message=str(e))

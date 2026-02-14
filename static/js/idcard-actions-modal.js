@@ -1,6 +1,9 @@
 // ID Card Actions - Modal Module
 // Contains: Side modal (add/edit/view), delete modal
 
+(function() {
+'use strict';
+
 // ==========================================
 // IMAGE FIELD TYPES
 // NOTE: Must stay in sync with mediafiles/constants.py and idcard-actions-upload.js
@@ -655,8 +658,7 @@ function getMainPhotoFile() {
 }
 
 function fetchCardAndOpenModal(mode, cardId) {
-    fetch(`/panel/api/card/${cardId}/`)
-        .then(response => response.json())
+    ApiClient.get(`/panel/api/card/${cardId}/`)
         .then(data => {
             if (data.success) {
                 openSideModal(mode, data.card);
@@ -690,14 +692,7 @@ function createNewCard(fieldData, imageFiles, mainPhoto) {
         formData.append(`image_${fieldName}`, file);
     }
     
-    fetch(`/panel/api/table/${tableId}/card/create/`, {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': typeof getCSRFToken === 'function' ? getCSRFToken() : ''
-        },
-        body: formData
-    })
-    .then(response => response.json())
+    ApiClient.upload(`/panel/api/table/${tableId}/card/create/`, formData)
     .then(data => {
         if (data.success) {
             if (typeof showToast === 'function') showToast('Card added successfully!');
@@ -730,14 +725,7 @@ function updateExistingCard(cardId, fieldData, imageFiles, mainPhoto) {
         formData.append(`image_${fieldName}`, file);
     }
     
-    fetch(`/panel/api/card/${cardId}/update/`, {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': typeof getCSRFToken === 'function' ? getCSRFToken() : ''
-        },
-        body: formData
-    })
-    .then(response => response.json())
+    ApiClient.upload(`/panel/api/card/${cardId}/update/`, formData)
     .then(data => {
         if (data.success) {
             if (typeof showToast === 'function') showToast('Card updated successfully!');
@@ -931,15 +919,7 @@ function initDeleteModal() {
             this.disabled = true;
             this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Deleting...';
             
-            fetch(`/panel/api/table/${tableId}/cards/bulk-delete/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': typeof getCSRFToken === 'function' ? getCSRFToken() : ''
-                },
-                body: JSON.stringify({ card_ids: cardIds })
-            })
-            .then(response => response.json())
+            ApiClient.post(`/panel/api/table/${tableId}/cards/bulk-delete/`, { card_ids: cardIds })
             .then(data => {
                 closeDeleteModalFn();
                 if (data.success) {
@@ -1029,15 +1009,7 @@ function initSimpleDeleteModal() {
             this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Deleting...';
             
             // Delete cards (moves to pool status)
-            fetch(`/panel/api/table/${tableId}/cards/bulk-status/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': typeof getCSRFToken === 'function' ? getCSRFToken() : ''
-                },
-                body: JSON.stringify({ card_ids: cardIds, status: 'pool' })
-            })
-            .then(response => response.json())
+            ApiClient.post(`/panel/api/table/${tableId}/cards/bulk-status/`, { card_ids: cardIds, status: 'pool' })
             .then(data => {
                 closeSimpleDeleteModalFn();
                 if (data.success) {
@@ -1324,36 +1296,6 @@ function initModalModule() {
     }
 }
 
-function directPermanentDelete(cardIds) {
-    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
-    if (!tableId) {
-        if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
-        return;
-    }
-    
-    fetch(`/panel/api/table/${tableId}/cards/bulk-delete/`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': typeof getCSRFToken === 'function' ? getCSRFToken() : ''
-        },
-        body: JSON.stringify({ card_ids: cardIds })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            if (typeof showToast === 'function') showToast(`${data.deleted_count} card(s) permanently deleted`);
-            location.reload();
-        } else {
-            if (typeof showToast === 'function') showToast(data.message || 'Failed to delete cards', false);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        if (typeof showToast === 'function') showToast('Failed to delete cards', false);
-    });
-}
-
 // Expose globally
 window.IDCardApp = window.IDCardApp || {};
 window.IDCardApp.initModalModule = initModalModule;
@@ -1372,3 +1314,7 @@ if (typeof window.closeSideModal !== 'function') {
 }
 window.openSimpleDeleteModal = openSimpleDeleteModal;
 window.openPermanentDeleteModal = openPermanentDeleteModal;
+window.closeDeleteModalFn = closeDeleteModalFn;
+window.closeSimpleDeleteModalFn = closeSimpleDeleteModalFn;
+
+})();

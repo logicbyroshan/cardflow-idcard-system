@@ -166,7 +166,8 @@ class AuthService:
     @staticmethod
     def get_dashboard_url(user):
         """Get the appropriate dashboard URL for a user based on their role."""
-        if user.is_superuser or user.role == 'super_admin':
+        from core.services.permission_service import PermissionService
+        if PermissionService.is_super_admin(user):
             return DASHBOARD_URLS['super_admin']
         return DASHBOARD_URLS.get(user.role, '/panel/')
 

@@ -22,10 +22,13 @@ logger = logging.getLogger(__name__)
 
 def cleanup_stale_tasks(hours=24):
     """
-    Mark tasks stuck in 'processing' state as failed.
+    Mark tasks stuck in 'processing' or 'pending' state as failed.
+    
+    Pending tasks older than the threshold likely had their submission
+    lost due to a server restart before the worker picked them up.
     
     Args:
-        hours: Consider tasks stale if processing for longer than this
+        hours: Consider tasks stale if older than this
         
     Returns:
         Number of tasks cleaned up
@@ -33,17 +36,24 @@ def cleanup_stale_tasks(hours=24):
     from core.models import BackgroundTask
     
     stale_threshold = timezone.now() - timedelta(hours=hours)
-    stale_tasks = BackgroundTask.objects.filter(
+
+    # Processing tasks — check started_at
+    stale_processing = BackgroundTask.objects.filter(
         status='processing',
         started_at__lt=stale_threshold
     )
+    # Pending tasks — check created_at (never started)
+    stale_pending = BackgroundTask.objects.filter(
+        status='pending',
+        created_at__lt=stale_threshold
+    )
     
     count = 0
-    for task in stale_tasks:
+    for task in list(stale_processing) + list(stale_pending):
         try:
             task.mark_failed(f'Task timed out after {hours} hours (server restart or worker crash)')
             count += 1
-            logger.info("Marked stale task %d as failed", task.id)
+            logger.info("Marked stale task %d (%s) as failed", task.id, task.status)
         except Exception as e:
             logger.error("Failed to mark task %d as failed: %s", task.id, e)
     

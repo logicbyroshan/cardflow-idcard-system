@@ -1,13 +1,19 @@
 """
 Reprint API Views
-Contains: API endpoints for the Reprint Cards workflow
+Contains: API endpoints for the Reprint Cards workflow.
+
+ARCHITECTURE RULES (enforced):
+- Views are ULTRA-THIN: parse request → call service → return JsonResponse.
+- NO .save(), .create(), .delete() on ReprintRequest in views.
+- All mutations delegate to ReprintWorkflowService.
+- Permission enforcement via @api_require_permission decorators.
+- Client scoping via _check_reprint_table_scope.
 """
 import json
 
 from django.shortcuts import get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
-from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Q
 
 from ..models import IDCard, IDCardTable, ReprintRequest
@@ -43,7 +49,6 @@ def _check_reprint_table_scope(user, table_id):
     return table, None
 
 
-@csrf_exempt
 @require_http_methods(["GET"])
 @api_require_permission('perm_idcard_reprint_list')
 def api_reprint_list_cards(request, table_id):
@@ -116,7 +121,6 @@ def api_reprint_list_cards(request, table_id):
     })
 
 
-@csrf_exempt
 @require_http_methods(["POST"])
 @api_require_permission('perm_idcard_reprint_list')
 def api_reprint_request_create(request, table_id):
@@ -136,44 +140,24 @@ def api_reprint_request_create(request, table_id):
     card_ids = body.get('card_ids', [])
     reason = body.get('reason', '')
 
-    if not card_ids:
-        return JsonResponse({'status': 'error', 'message': 'No card IDs provided'}, status=400)
-
-    # Validate cards belong to this table
-    valid_cards = IDCard.objects.filter(table=table, id__in=card_ids)
-    valid_ids = set(valid_cards.values_list('id', flat=True))
-
-    # Skip cards that already have a pending/confirmed reprint
-    already_requested = set(
-        ReprintRequest.objects.filter(
-            table=table,
-            card_id__in=valid_ids,
-            status__in=['requested', 'confirmed'],
-        ).values_list('card_id', flat=True)
+    from ..services.workflow_service import ReprintWorkflowService
+    result = ReprintWorkflowService.create_requests(
+        table=table,
+        card_ids=card_ids,
+        reason=reason,
+        requested_by=request.user,
     )
 
-    new_ids = valid_ids - already_requested
-    created_count = 0
-
-    for card_id in new_ids:
-        ReprintRequest.objects.create(
-            card_id=card_id,
-            table=table,
-            status='requested',
-            reason=reason,
-            requested_by=request.user,
-        )
-        created_count += 1
-
-    return JsonResponse({
-        'status': 'success',
-        'message': f'{created_count} reprint request(s) created',
-        'created_count': created_count,
-        'skipped_count': len(already_requested & set(card_ids)),
-    })
+    if result.success:
+        return JsonResponse({
+            'status': 'success',
+            'message': result.message,
+            'created_count': result.data['created_count'],
+            'skipped_count': result.data['skipped_count'],
+        })
+    return JsonResponse({'status': 'error', 'message': result.message}, status=400)
 
 
-@csrf_exempt
 @require_http_methods(["GET"])
 @api_require_permission('perm_idcard_reprint_list')
 def api_reprint_step_counts(request, table_id):
@@ -192,7 +176,6 @@ def api_reprint_step_counts(request, table_id):
 
 # ─── Confirm step APIs ─────────────────────────────────────────────
 
-@csrf_exempt
 @require_http_methods(["GET"])
 @api_require_permission('perm_idcard_reprint_list')
 def api_reprint_confirm_list(request, table_id):
@@ -257,14 +240,13 @@ def api_reprint_confirm_list(request, table_id):
     })
 
 
-@csrf_exempt
 @require_http_methods(["POST"])
 @api_require_permission('perm_idcard_reprint_list')
 def api_reprint_confirm(request, table_id):
     """
     Confirm one or more reprint requests.
     Body: { "rr_ids": [1, 2, 3] }
-    Changes status from 'requested' → 'confirmed'.
+    Delegates to ReprintWorkflowService: requested → confirmed.
     """
     table, err = _check_reprint_table_scope(request.user, table_id)
     if err: return err
@@ -278,18 +260,18 @@ def api_reprint_confirm(request, table_id):
     if not rr_ids:
         return JsonResponse({'status': 'error', 'message': 'No reprint IDs provided'}, status=400)
 
-    updated = ReprintRequest.objects.filter(
-        id__in=rr_ids, table=table, status='requested'
-    ).update(status='confirmed')
+    from ..services.workflow_service import ReprintWorkflowService
+    result = ReprintWorkflowService.bulk_transition(table, rr_ids, 'confirmed', user=request.user)
 
-    return JsonResponse({
-        'status': 'success',
-        'message': f'{updated} reprint(s) confirmed',
-        'confirmed_count': updated,
-    })
+    if result.success:
+        return JsonResponse({
+            'status': 'success',
+            'message': result.message,
+            'confirmed_count': result.data.get('updated_count', 0),
+        })
+    return JsonResponse({'status': 'error', 'message': result.message}, status=400)
 
 
-@csrf_exempt
 @require_http_methods(["POST"])
 @api_require_permission('perm_idcard_reprint_list')
 def api_reprint_reject(request, table_id):
@@ -307,23 +289,21 @@ def api_reprint_reject(request, table_id):
         return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
 
     rr_ids = body.get('rr_ids', [])
-    if not rr_ids:
-        return JsonResponse({'status': 'error', 'message': 'No reprint IDs provided'}, status=400)
 
-    deleted, _ = ReprintRequest.objects.filter(
-        id__in=rr_ids, table=table, status='requested'
-    ).delete()
+    from ..services.workflow_service import ReprintWorkflowService
+    result = ReprintWorkflowService.reject_requests(table=table, rr_ids=rr_ids)
 
-    return JsonResponse({
-        'status': 'success',
-        'message': f'{deleted} reprint(s) rejected',
-        'rejected_count': deleted,
-    })
+    if result.success:
+        return JsonResponse({
+            'status': 'success',
+            'message': result.message,
+            'rejected_count': result.data['rejected_count'],
+        })
+    return JsonResponse({'status': 'error', 'message': result.message}, status=400)
 
 
 # ─── Download step APIs ────────────────────────────────────────────
 
-@csrf_exempt
 @require_http_methods(["GET"])
 @api_require_permission('perm_idcard_reprint_list')
 def api_reprint_download_list(request, table_id):
@@ -388,14 +368,13 @@ def api_reprint_download_list(request, table_id):
     })
 
 
-@csrf_exempt
 @require_http_methods(["POST"])
 @api_require_permission('perm_idcard_reprint_list')
 def api_reprint_mark_downloaded(request, table_id):
     """
     Mark one or more confirmed reprint requests as downloaded.
     Body: { "rr_ids": [1, 2, 3] }
-    Changes status from 'confirmed' → 'downloaded'.
+    Delegates to ReprintWorkflowService: confirmed → downloaded.
     """
     table, err = _check_reprint_table_scope(request.user, table_id)
     if err:
@@ -410,12 +389,13 @@ def api_reprint_mark_downloaded(request, table_id):
     if not rr_ids:
         return JsonResponse({'status': 'error', 'message': 'No reprint IDs provided'}, status=400)
 
-    updated = ReprintRequest.objects.filter(
-        id__in=rr_ids, table=table, status='confirmed'
-    ).update(status='downloaded')
+    from ..services.workflow_service import ReprintWorkflowService
+    result = ReprintWorkflowService.bulk_transition(table, rr_ids, 'downloaded', user=request.user)
 
-    return JsonResponse({
-        'status': 'success',
-        'message': f'{updated} reprint(s) marked as downloaded',
-        'downloaded_count': updated,
-    })
+    if result.success:
+        return JsonResponse({
+            'status': 'success',
+            'message': result.message,
+            'downloaded_count': result.data.get('updated_count', 0),
+        })
+    return JsonResponse({'status': 'error', 'message': result.message}, status=400)

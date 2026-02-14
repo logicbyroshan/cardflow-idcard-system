@@ -68,6 +68,10 @@ class IDCardGroup(models.Model):
     class Meta:
         app_label = 'core'  # Keep migration compatibility - model stays in core migrations
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['is_active']),
+            models.Index(fields=['created_at']),
+        ]
 
 
 class IDCardTable(models.Model):
@@ -132,6 +136,10 @@ class IDCardTable(models.Model):
     class Meta:
         app_label = 'core'  # Keep migration compatibility - model stays in core migrations
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['is_active']),
+            models.Index(fields=['created_at']),
+        ]
     
     def clean(self):
         from django.core.exceptions import ValidationError
@@ -237,6 +245,10 @@ class IDCard(models.Model):
     class Meta:
         app_label = 'core'  # Keep migration compatibility - model stays in core migrations
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['table', 'status']),
+            models.Index(fields=['created_at']),
+        ]
 
 
 class ReprintRequest(models.Model):
@@ -270,3 +282,7 @@ class ReprintRequest(models.Model):
     class Meta:
         app_label = 'core'
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['table', 'status']),
+            models.Index(fields=['created_at']),
+        ]

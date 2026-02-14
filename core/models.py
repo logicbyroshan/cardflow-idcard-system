@@ -67,6 +67,11 @@ class User(AbstractUser):
             self.is_staff = True  # Superusers should have staff access
         super().save(*args, **kwargs)
     
+    class Meta:
+        indexes = [
+            models.Index(fields=['email']),
+        ]
+
     @property
     def is_super_admin(self):
         """
@@ -367,6 +372,8 @@ class BackgroundTask(models.Model):
         indexes = [
             models.Index(fields=['user', 'status']),
             models.Index(fields=['task_type', 'status']),
+            models.Index(fields=['created_at']),
+            models.Index(fields=['completed_at']),
         ]
     
     def __str__(self):
@@ -494,8 +501,8 @@ class BackgroundTask(models.Model):
     @classmethod
     def create_if_no_active(cls, user, task_type, **kwargs):
         """
-        Atomically create a task only if user has no active tasks.
-        Prevents race conditions where two requests try to create tasks simultaneously.
+        Atomically create a task only if user has no active tasks
+        AND the system-wide queue is not full.
         
         Args:
             user: User instance
@@ -507,6 +514,8 @@ class BackgroundTask(models.Model):
         """
         from django.db import transaction
         
+        MAX_QUEUED_TASKS = 10  # system-wide limit
+        
         with transaction.atomic():
             # Lock the user's active tasks for update
             active = cls.objects.select_for_update().filter(
@@ -516,6 +525,13 @@ class BackgroundTask(models.Model):
             
             if active:
                 return None, f"You already have an active task ({active.get_task_type_display()}). Please wait for it to complete."
+            
+            # Check system-wide queue depth
+            pending_count = cls.objects.filter(
+                status__in=["pending", "processing"]
+            ).count()
+            if pending_count >= MAX_QUEUED_TASKS:
+                return None, f"System is busy ({pending_count} tasks queued). Please try again later."
             
             # Safe to create new task
             task = cls.objects.create(

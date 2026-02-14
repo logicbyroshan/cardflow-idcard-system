@@ -1,0 +1,25 @@
+{% comment %}
+Action Bar Component (Tailwind)
+================================
+Provides the standardized toolbar above tables.
+
+Usage:
+  {% include 'components/action-bar.html' %}
+
+  Then inject left/right content into .action-bar-left / .action-bar-right
+  via Django blocks or JavaScript.
+
+Parameters:
+  - bar_id    : Unique ID (optional, default: "action-bar")
+  - left_content  : HTML for left side (optional)
+  - right_content : HTML for right side (optional)
+{% endcomment %}
+
+<div id="{{ bar_id|default:'action-bar' }}" class="action-bar">
+  <div class="action-bar-left" id="{{ bar_id|default:'action-bar' }}-left">
+    {{ left_content|default:""|safe }}
+  </div>
+  <div class="action-bar-right" id="{{ bar_id|default:'action-bar' }}-right">
+    {{ right_content|default:""|safe }}
+  </div>
+</div>

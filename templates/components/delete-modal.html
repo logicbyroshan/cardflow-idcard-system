@@ -1,0 +1,62 @@
+{% comment %}
+Delete Confirmation Modal (Tailwind)
+=====================================
+Pre-built center modal for delete confirmations.
+
+Usage:
+  {% include 'components/delete-modal.html' with
+     modal_id="delete-modal"
+     item_name="client"
+  %}
+
+JS contract:
+  Show:  document.getElementById('delete-modal').classList.remove('hidden')
+  Hide:  document.getElementById('delete-modal').classList.add('hidden')
+  Name:  document.getElementById('deleteItemName').textContent = 'John Doe'
+  Confirm button: #confirmDeleteBtn
+  Cancel button:  #cancelDeleteBtn
+{% endcomment %}
+
+<div id="{{ modal_id|default:'delete-modal' }}" class="modal-backdrop"
+     onclick="if(event.target===this) this.classList.remove('show')">
+  <div class="modal-center modal-danger" onclick="event.stopPropagation()">
+
+    <!-- Header -->
+    <div class="modal-header">
+      <h3><i class="fa-solid fa-triangle-exclamation"></i> Confirm Delete</h3>
+      <button type="button" class="modal-close" id="closeDeleteModal"
+              onclick="document.getElementById('{{ modal_id|default:'delete-modal' }}').classList.remove('show')"
+              aria-label="Close">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="modal-body">
+      <div class="flex flex-col items-center text-center py-2">
+        <div class="w-10 h-10 rounded-sm bg-danger-bg flex items-center justify-center mb-2">
+          <i class="fa-solid fa-trash-can text-danger" style="font-size:14px"></i>
+        </div>
+        <p class="text-gray-700" style="font-size:8px">
+          Are you sure you want to delete
+          <strong id="deleteStaffName">this {{ item_name|default:'item' }}</strong>?
+        </p>
+        <p class="text-gray-400 mt-1 flex items-center gap-1" style="font-size:7px">
+          <i class="fa-solid fa-exclamation-circle"></i> This action cannot be undone.
+        </p>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="modal-footer">
+      <button type="button" class="btn btn-md btn-neutral" id="cancelDeleteBtn"
+              onclick="document.getElementById('{{ modal_id|default:'delete-modal' }}').classList.remove('show')">
+        <i class="fa-solid fa-xmark"></i> Cancel
+      </button>
+      <button type="button" class="btn btn-md btn-danger" id="confirmDeleteBtn">
+        <i class="fa-solid fa-trash-can"></i> Delete
+      </button>
+    </div>
+
+  </div>
+</div>

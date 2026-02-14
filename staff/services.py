@@ -1,5 +1,5 @@
-"""
-Staff Services Module
+﻿"""
+Staff Services Module — SINGLE AUTHORITY for admin-staff mutations.
 
 Handles:
 - Admin Staff creation by Super Admin
@@ -8,10 +8,16 @@ Handles:
 - Client scoping for data access
 - Access control enforcement
 
-RULES:
-- Only Super Admin (super_admin/superuser) can create/manage admin staff
-- Admin Staff can only operate on assigned clients
-- Uses Django's native permission system
+ARCHITECTURE RULES:
+- Views must NOT call .save(), .create(), .delete() on Staff/User directly.
+- All admin-staff mutations go through AdminStaffCreationService.
+- Permission checks use PermissionService.is_super_admin() (single authority).
+- Client scoping delegates to PermissionService.get_accessible_clients().
+
+ACCESS RULES:
+- Only Super Admin (super_admin/superuser) can create/manage admin staff.
+- Admin Staff can only operate on assigned clients.
+- Uses Django's native permission system.
 """
 from typing import Dict, Any, Optional, List
 
@@ -21,6 +27,7 @@ from django.db import transaction
 from django.db.models import QuerySet
 
 from core.models import User, Client, Staff
+from core.services.permission_service import PermissionService
 from core.utils.email_utils import generate_secure_password, send_welcome_email
 
 
@@ -239,7 +246,7 @@ class AdminStaffCreationService:
         """
         try:
             # Verify creator is super admin
-            if not cls._is_shop_owner(created_by):
+            if not PermissionService.is_super_admin(created_by):
                 return {
                     'success': False,
                     'error': 'Only Super Admin can create admin staff'
@@ -335,7 +342,7 @@ class AdminStaffCreationService:
         Update an existing admin staff member.
         """
         try:
-            if not cls._is_shop_owner(updated_by):
+            if not PermissionService.is_super_admin(updated_by):
                 return {
                     'success': False,
                     'error': 'Only Super Admin can update admin staff'
@@ -393,7 +400,7 @@ class AdminStaffCreationService:
         Delete an admin staff member.
         """
         try:
-            if not cls._is_shop_owner(deleted_by):
+            if not PermissionService.is_super_admin(deleted_by):
                 return {
                     'success': False,
                     'error': 'Only Super Admin can delete admin staff'
@@ -428,7 +435,7 @@ class AdminStaffCreationService:
         Toggle admin staff active/inactive status.
         """
         try:
-            if not cls._is_shop_owner(toggled_by):
+            if not PermissionService.is_super_admin(toggled_by):
                 return {
                     'success': False,
                     'error': 'Only Super Admin can toggle staff status'
@@ -462,7 +469,7 @@ class AdminStaffCreationService:
         Reset admin staff password and send email.
         """
         try:
-            if not cls._is_shop_owner(reset_by):
+            if not PermissionService.is_super_admin(reset_by):
                 return {
                     'success': False,
                     'error': 'Only Super Admin can reset staff password'
@@ -505,7 +512,7 @@ class AdminStaffCreationService:
         Only accessible by Super Admin.
         """
         try:
-            if not cls._is_shop_owner(user):
+            if not PermissionService.is_super_admin(user):
                 return {
                     'success': False,
                     'error': 'Only Super Admin can view admin staff list'
@@ -531,7 +538,7 @@ class AdminStaffCreationService:
                         {'id': c.id, 'name': c.name}
                         for c in staff.assigned_clients.all()
                     ],
-                    'assigned_clients_count': staff.assigned_clients.count(),
+                    'assigned_clients_count': len(staff.assigned_clients.all()),
                     'permissions_count': len(permissions),
                     'created_at': staff.created_at.isoformat(),
                 })
@@ -551,7 +558,7 @@ class AdminStaffCreationService:
         Get detailed info for a single admin staff member.
         """
         try:
-            if not cls._is_shop_owner(user):
+            if not PermissionService.is_super_admin(user):
                 return {
                     'success': False,
                     'error': 'Only Super Admin can view admin staff details'
@@ -591,112 +598,66 @@ class AdminStaffCreationService:
             
         except Exception as e:
             return {'success': False, 'error': str(e)}
-    
-    @staticmethod
-    def _is_shop_owner(user: User) -> bool:
-        """Check if user is Super Admin (super_admin or superuser)."""
-        return user.is_authenticated and (user.is_superuser or user.role == 'super_admin')
 
 
 # =============================================================================
-# CLIENT SCOPING SERVICE
+# CLIENT SCOPING SERVICE — delegates to PermissionService (single authority)
 # =============================================================================
 
 class ClientScopingService:
     """
     Service for enforcing client-based data scoping.
-    
-    Admin Staff can only access data for clients they are assigned to.
-    This service provides queryset filtering and access checks.
+    Now delegates to PermissionService for all role/scope decisions.
     """
     
     @classmethod
     def get_accessible_clients(cls, user: User) -> QuerySet:
-        """
-        Get QuerySet of clients accessible to the user.
-        
-        - Super Admin: All clients
-        - Admin Staff: Only assigned clients
-        - Others: Empty QuerySet
-        """
+        """Get QuerySet of clients accessible to the user."""
+        from core.services.permission_service import PermissionService
         if not user.is_authenticated:
             return Client.objects.none()
-        
-        # Super Admin sees all
-        if user.is_superuser or user.role == 'super_admin':
+        if PermissionService.is_super_admin(user):
             return Client.objects.all()
-        
-        # Admin Staff sees assigned clients
-        if user.role == 'admin_staff':
+        if PermissionService.is_admin_staff(user):
             staff = getattr(user, 'staff_profile', None)
             if staff and staff.staff_type == 'admin_staff':
                 return staff.assigned_clients.all()
-        
         return Client.objects.none()
     
     @classmethod
     def get_accessible_client_ids(cls, user: User) -> List[int]:
         """Get list of accessible client IDs for the user."""
-        return list(cls.get_accessible_clients(user).values_list('id', flat=True))
+        from core.services.permission_service import PermissionService
+        return PermissionService.get_accessible_client_ids(user)
     
     @classmethod
     def can_access_client(cls, user: User, client_id: int) -> bool:
-        """
-        Check if user can access a specific client.
-        """
-        if not user.is_authenticated:
-            return False
-        
-        # Super Admin can access all
-        if user.is_superuser or user.role == 'super_admin':
-            return True
-        
-        # Admin Staff can access assigned clients
-        if user.role == 'admin_staff':
-            staff = getattr(user, 'staff_profile', None)
-            if staff:
-                return staff.can_access_client(client_id)
-        
-        return False
+        """Check if user can access a specific client."""
+        from core.services.permission_service import PermissionService
+        return PermissionService.can_access_client(user, client_id)
     
     @classmethod
     def filter_by_accessible_clients(cls, user: User, queryset: QuerySet, client_field: str = 'client') -> QuerySet:
-        """
-        Filter a queryset to only include records for accessible clients.
-        
-        Args:
-            user: The requesting user
-            queryset: The queryset to filter
-            client_field: The field path to the client FK (e.g., 'client', 'table__group__client')
-        
-        Returns:
-            Filtered queryset
-        """
+        """Filter queryset to only include records for accessible clients."""
+        from core.services.permission_service import PermissionService
         if not user.is_authenticated:
             return queryset.none()
-        
-        # Super Admin sees all
-        if user.is_superuser or user.role == 'super_admin':
+        if PermissionService.is_super_admin(user):
             return queryset
-        
-        # Admin Staff sees only assigned clients
-        if user.role == 'admin_staff':
-            accessible_ids = cls.get_accessible_client_ids(user)
+        if PermissionService.is_admin_staff(user):
+            accessible_ids = PermissionService.get_accessible_client_ids(user)
             filter_kwargs = {f'{client_field}__id__in': accessible_ids}
             return queryset.filter(**filter_kwargs)
-        
         return queryset.none()
     
     @classmethod
     def get_scope_context(cls, user: User) -> Dict[str, Any]:
-        """
-        Get client scoping context for templates/views.
-        """
+        """Get client scoping context for templates/views."""
+        from core.services.permission_service import PermissionService
         accessible = cls.get_accessible_clients(user)
-        
         return {
-            'is_shop_owner': user.is_superuser or user.role == 'super_admin',
-            'is_admin_staff': user.role == 'admin_staff',
+            'is_shop_owner': PermissionService.is_super_admin(user),
+            'is_admin_staff': PermissionService.is_admin_staff(user),
             'accessible_clients': list(accessible.values('id', 'name')),
             'accessible_client_ids': list(accessible.values_list('id', flat=True)),
             'has_client_access': accessible.exists(),
@@ -704,7 +665,7 @@ class ClientScopingService:
 
 
 # =============================================================================
-# PERMISSION CHECK DECORATORS
+# PERMISSION CHECK DECORATORS — delegates to permission_service decorators
 # =============================================================================
 
 from functools import wraps
@@ -713,64 +674,26 @@ from django.shortcuts import redirect
 
 
 def require_shop_owner(view_func):
-    """
-    Decorator to require Super Admin (super_admin/superuser) access.
-    Returns 403 for API views, redirects for page views.
-    """
-    @wraps(view_func)
-    def wrapper(request, *args, **kwargs):
-        user = request.user
-        
-        if not user.is_authenticated:
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'success': False, 'error': 'Not authenticated'}, status=401)
-            return redirect('/panel/auth/login/')
-        
-        if not (user.is_superuser or user.role == 'super_admin'):
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'success': False, 'error': 'Super Admin access required'}, status=403)
-            return redirect('/panel/auth/dashboard/staff/')
-        
-        return view_func(request, *args, **kwargs)
-    
-    return wrapper
+    """Deprecated — delegates to require_super_admin from permission_service."""
+    from core.services.permission_service import require_super_admin
+    return require_super_admin(view_func)
 
 
 def require_admin_staff_or_owner(view_func):
-    """
-    Decorator to require Admin Staff or Super Admin access.
-    """
-    @wraps(view_func)
-    def wrapper(request, *args, **kwargs):
-        user = request.user
-        
-        if not user.is_authenticated:
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'success': False, 'error': 'Not authenticated'}, status=401)
-            return redirect('/panel/auth/login/')
-        
-        if not (user.is_superuser or user.role in ['super_admin', 'admin_staff']):
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
-            return redirect('/panel/auth/login/')
-        
-        return view_func(request, *args, **kwargs)
-    
-    return wrapper
+    """Deprecated — delegates to require_any_admin from permission_service."""
+    from core.services.permission_service import require_any_admin
+    return require_any_admin(view_func)
 
 
 def check_client_access(client_id_param: str = 'client_id'):
     """
     Decorator to check if user can access a specific client.
-    
-    Usage:
-        @check_client_access('client_id')
-        def my_view(request, client_id):
-            ...
+    Delegates to PermissionService.can_access_client().
     """
     def decorator(view_func):
         @wraps(view_func)
         def wrapper(request, *args, **kwargs):
+            from core.services.permission_service import PermissionService
             client_id = kwargs.get(client_id_param) or request.GET.get(client_id_param) or request.POST.get(client_id_param)
             
             if client_id:
@@ -779,7 +702,7 @@ def check_client_access(client_id_param: str = 'client_id'):
                 except (TypeError, ValueError):
                     return JsonResponse({'success': False, 'error': 'Invalid client ID'}, status=400)
                 
-                if not ClientScopingService.can_access_client(request.user, client_id):
+                if not PermissionService.can_access_client(request.user, client_id):
                     return JsonResponse({
                         'success': False,
                         'error': 'You do not have access to this client'
@@ -794,22 +717,19 @@ def check_client_access(client_id_param: str = 'client_id'):
 def check_permission(codename: str):
     """
     Decorator to check if user has a specific Django permission.
-    
-    Usage:
-        @check_permission('can_view_clients')
-        def my_view(request):
-            ...
+    Delegates super_admin check to PermissionService.
     """
     def decorator(view_func):
         @wraps(view_func)
         def wrapper(request, *args, **kwargs):
+            from core.services.permission_service import PermissionService
             user = request.user
             
             if not user.is_authenticated:
                 return JsonResponse({'success': False, 'error': 'Not authenticated'}, status=401)
             
-            # Super Admin has all permissions
-            if user.is_superuser or user.role == 'super_admin':
+            # Super Admin has all permissions (via single authority)
+            if PermissionService.is_super_admin(user):
                 return view_func(request, *args, **kwargs)
             
             # Check permission

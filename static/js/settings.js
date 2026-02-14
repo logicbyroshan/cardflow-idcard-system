@@ -30,15 +30,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 formData.append('profile_image', file);
                 
                 try {
-                    const response = await fetch('/panel/api/profile/upload-image/', {
-                        method: 'POST',
-                        body: formData,
-                        headers: {
-                            'X-CSRFToken': getCSRFToken()
-                        }
-                    });
-                    
-                    const data = await response.json();
+                    const data = await ApiClient.upload('/panel/api/profile/upload-image/', formData);
                     
                     if (data.success) {
                         // Update avatar displays
@@ -97,16 +89,7 @@ document.addEventListener('DOMContentLoaded', function() {
             };
             
             try {
-                const response = await fetch('/panel/api/profile/update/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCSRFToken()
-                    },
-                    body: JSON.stringify(formData)
-                });
-                
-                const data = await response.json();
+                const data = await ApiClient.post('/panel/api/profile/update/', formData);
                 
                 if (data.success) {
                     showToast('Profile information updated successfully!', 'success');
@@ -169,20 +152,11 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             try {
-                const response = await fetch('/panel/api/profile/change-password/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCSRFToken()
-                    },
-                    body: JSON.stringify({
-                        current_password: currentPassword,
-                        new_password: newPassword,
-                        confirm_password: confirmPassword
-                    })
+                const data = await ApiClient.post('/panel/api/profile/change-password/', {
+                    current_password: currentPassword,
+                    new_password: newPassword,
+                    confirm_password: confirmPassword
                 });
-                
-                const data = await response.json();
                 
                 if (data.success) {
                     showToast('Password updated successfully!', 'success');
@@ -211,8 +185,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // ===== Load Profile Data =====
     async function loadProfile() {
         try {
-            const response = await fetch('/panel/api/profile/');
-            const data = await response.json();
+            const data = await ApiClient.get('/panel/api/profile/');
             
             if (data.success) {
                 const profile = data.profile;
@@ -327,19 +300,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if (statusSpan) statusSpan.textContent = '';
             
             try {
-                const response = await fetch('/panel/api/export-settings/update/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCSRFToken()
-                    },
-                    body: JSON.stringify({
-                        export_note_line: noteLine,
-                        export_copyright_line: copyrightLine
-                    })
+                const data = await ApiClient.post('/panel/api/export-settings/update/', {
+                    export_note_line: noteLine,
+                    export_copyright_line: copyrightLine
                 });
-                
-                const data = await response.json();
                 
                 if (data.success) {
                     showToast('Export settings saved successfully!', 'success');

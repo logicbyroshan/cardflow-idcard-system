@@ -145,8 +145,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // ==================== DOWNLOAD EXCEL FUNCTION ====================
     async function downloadTableFields(tableId) {
         try {
-            const response = await fetch(`/panel/api/table/${tableId}/`);
-            const data = await response.json();
+            const data = await ApiClient.get(`/panel/api/table/${tableId}/`);
             
             if (!data.success) {
                 showToast(data.message || 'Error fetching table data', 'error');
@@ -414,8 +413,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // ==================== API FUNCTIONS ====================
     async function fetchTableData(tableId) {
         try {
-            const response = await fetch(`/panel/api/table/${tableId}/`);
-            const data = await response.json();
+            const data = await ApiClient.get(`/panel/api/table/${tableId}/`);
             if (data.success) return data.table;
             showToast(data.message || 'Error fetching table data', 'error');
             return null;
@@ -451,12 +449,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         try {
             let url = currentMode === 'add' ? `/panel/api/group/${groupId}/table/create/` : `/panel/api/table/${selectedTableId}/update/`;
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const data = await response.json();
+            const data = await ApiClient.post(url, payload);
 
             if (data.success) {
                 showToast(data.message || 'Table saved successfully!', 'success');
@@ -491,8 +484,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (modalConfirm) modalConfirm.disabled = true;
 
         try {
-            const response = await fetch(`/panel/api/table/${selectedTableId}/toggle-status/`, { method: 'POST' });
-            const data = await response.json();
+            const data = await ApiClient.post(`/panel/api/table/${selectedTableId}/toggle-status/`);
 
             if (data.success) {
                 showToast(data.message || 'Status updated!', 'success');
@@ -569,8 +561,7 @@ document.addEventListener('DOMContentLoaded', function() {
             confirmDeleteBtn.disabled = true;
 
             try {
-                const response = await fetch(`/panel/api/table/${selectedTableId}/delete/`, { method: 'DELETE' });
-                const data = await response.json();
+                const data = await ApiClient.delete(`/panel/api/table/${selectedTableId}/delete/`);
                 
                 if (data.success) {
                     showToast(data.message || 'Table deleted successfully!', 'success');

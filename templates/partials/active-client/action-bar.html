@@ -6,7 +6,7 @@ Contains: Filter dropdown, search input, and navigation buttons
 <!-- Action Bar Start -->
 <div class="action-bar">
     <!-- Left Section - Filter and Search -->
-    <div class="action-left">
+    <div class="action-bar-left">
         <div class="filter-group">
             <div class="custom-dropdown" id="filter-dropdown">
                 <button class="dropdown-toggle" id="dropdown-toggle" type="button">
@@ -31,15 +31,15 @@ Contains: Filter dropdown, search input, and navigation buttons
     </div>
 
     <!-- Right Section - Action Buttons -->
-    <div class="action-right">
+    <div class="action-bar-right">
         {% if is_super_admin or perm_idcard_setting_list %}
-        <button class="btn btn-group-setting" id="group-setting-btn" disabled title="Manage Group Settings">
+        <button class="btn btn-md btn-neutral" id="group-setting-btn" disabled title="Manage Group Settings">
             <i class="fa-solid fa-gear"></i>
             <span>Group Setting</span>
         </button>
         {% endif %}
         {% if is_super_admin or perm_idcard_setting_list %}
-        <button class="btn btn-idcard-group" id="idcard-group-btn" disabled title="View ID Card Groups">
+        <button class="btn btn-md btn-primary" id="idcard-group-btn" disabled title="View ID Card Groups">
             <i class="fa-solid fa-id-card"></i>
             <span>ID Card Group</span>
         </button>

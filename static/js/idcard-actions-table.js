@@ -1,6 +1,9 @@
 // ID Card Actions - Table Management Module
 // Contains: Pagination, lazy loading, row management, table rendering
 
+(function() {
+'use strict';
+
 // ==========================================
 // STATE VARIABLES
 // ==========================================
@@ -898,17 +901,7 @@ async function loadMoreData() {
         const offset = lazyLoadState.loadedCount;
         const url = `/panel/api/table/${lazyLoadState.tableId}/cards/?status=${lazyLoadState.currentStatus}&offset=${offset}&limit=${lazyLoadState.batchSize}`;
         
-        const response = await fetch(url, {
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error('Failed to load more data');
-        }
-        
-        const data = await response.json();
+        const data = await ApiClient.get(url);
         
         if (data.cards && data.cards.length > 0) {
             const tableBody = document.getElementById('cardsTableBody');
@@ -1173,3 +1166,5 @@ window.IDCardApp.searchRows = searchRows;
 window.IDCardApp.filterByField = filterByField;
 window.IDCardApp.sortRows = sortRows;
 window.IDCardApp.setRowsPerPage = setRowsPerPage;
+
+})();

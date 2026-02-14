@@ -1,10 +1,16 @@
 """
-Client Services Module
-Contains: Business logic for client-facing features
+Client Services Module — business logic for client-facing features.
+
 - Dashboard data aggregation
-- Client staff management
+- Client staff management (CRUD with permission checks)
 - Card data access (read-only for their client)
 - Image upload handling
+
+ARCHITECTURE RULES:
+- Views must NOT call .save(), .create(), .delete() on models directly.
+- All client-facing mutations go through services in this file.
+- Permission enforcement uses PermissionService (single authority).
+- Status transitions delegate to WorkflowService.
 """
 from typing import Dict, Any, Optional, List
 from django.db import transaction
@@ -26,14 +32,15 @@ class ClientAccessService:
         """
         Get the Client instance for a user.
         Works for both 'client' and 'client_staff' roles.
+        Delegates role checks to PermissionService (single authority).
         """
         if not user.is_authenticated:
             return None
         
-        if user.role == 'client':
+        if PermissionService.is_client(user):
             return getattr(user, 'client_profile', None)
         
-        if user.role == 'client_staff':
+        if PermissionService.is_client_staff(user):
             staff = getattr(user, 'staff_profile', None)
             if staff:
                 return staff.client
@@ -166,26 +173,6 @@ class ClientDashboardService(BaseService):
                 }
             )
             
-            # Annotate groups with counts in 1 query (instead of 2 per group)
-            groups_annotated = IDCardGroup.objects.filter(
-                client=client, is_active=True
-            ).annotate(
-                active_table_count=Count('tables', filter=Q(tables__is_active=True)),
-                total_card_count=Count('tables__id_cards'),
-            )[:5]
-            
-            result.data['groups'] = [
-                {
-                    'id': g.id,
-                    'name': g.name,
-                    'table_count': g.active_table_count,
-                    'card_count': g.total_card_count,
-                }
-                for g in groups_annotated
-            ]
-            
-            return result
-            
         except Exception as e:
             return ServiceResult(success=False, message=str(e))
     
@@ -280,17 +267,12 @@ class ClientStaffService(BaseService):
     def can_manage_staff(cls, user) -> bool:
         """
         Check if user can manage client staff.
-        Only Client Admin (role='client') with perm_idcard_client_list permission can manage.
+        Delegates to PermissionService.has() (single authority).
         """
-        if not user.is_authenticated or user.role != 'client':
+        if not PermissionService.is_client(user):
             return False
         
-        client = ClientAccessService.get_client_for_user(user)
-        if not client:
-            return False
-        
-        # Check if client has staff management permission
-        return client.perm_idcard_client_list
+        return PermissionService.has(user, 'perm_idcard_client_list')
     
     @classmethod
     def list_staff(cls, user) -> ServiceResult:
@@ -964,7 +946,10 @@ class ClientCardService(BaseService):
     @classmethod
     def change_card_status(cls, user, card_id: int, new_status: str) -> ServiceResult:
         """
-        Change a card's status (with permission checks).
+        Change a card's status — delegates to WorkflowService.transition().
+
+        WorkflowService enforces: transition matrix, permissions, mandatory
+        fields, image gate, client-readonly guard, activity logging.
         """
         try:
             client = ClientAccessService.get_client_for_user(user)
@@ -973,7 +958,7 @@ class ClientCardService(BaseService):
             
             # Get card
             try:
-                card = IDCard.objects.get(id=card_id)
+                card = IDCard.objects.select_related('table').get(id=card_id)
             except IDCard.DoesNotExist:
                 return ServiceResult(success=False, message='Card not found')
             
@@ -981,26 +966,9 @@ class ClientCardService(BaseService):
             if not ClientAccessService.can_access_card(user, card):
                 return ServiceResult(success=False, message='Access denied')
             
-            # Check status change permission
-            if new_status not in cls.VALID_STATUSES:
-                return ServiceResult(success=False, message='Invalid status')
-            
-            # Permission mapping for status changes
-            # verify = pending -> verified
-            # approve = verified/pool -> approved
-            if new_status == 'verified':
-                if not PermissionService.has_permission(user, 'perm_idcard_verify'):
-                    return ServiceResult(success=False, message='No permission to verify cards')
-            elif new_status == 'approved':
-                if not PermissionService.has_permission(user, 'perm_idcard_approve'):
-                    return ServiceResult(success=False, message='No permission to approve cards')
-            
-            old_status = card.status
-            
-            # Delegate to IDCardService for transition validation & image gating
-            from core.services import IDCardService
-            result = IDCardService.change_status(card.id, new_status)
-            return result
+            # Delegate entirely to WorkflowService (handles permissions + all guards)
+            from core.services.workflow_service import WorkflowService
+            return WorkflowService.transition(card, new_status, user=user)
             
         except Exception as e:
             return ServiceResult(success=False, message=str(e))
@@ -1008,7 +976,10 @@ class ClientCardService(BaseService):
     @classmethod
     def bulk_change_status(cls, user, table_id: int, card_ids: List[int], new_status: str) -> ServiceResult:
         """
-        Change status for multiple cards (with permission checks).
+        Change status for multiple cards — delegates to WorkflowService.bulk_transition().
+
+        WorkflowService enforces: transition matrix, permissions, mandatory
+        fields, image gate, client-readonly guard, activity logging.
         """
         try:
             client = ClientAccessService.get_client_for_user(user)
@@ -1024,18 +995,9 @@ class ClientCardService(BaseService):
             if not ClientAccessService.can_access_table(user, table):
                 return ServiceResult(success=False, message='Access denied')
             
-            # Check permission
-            if new_status == 'verified':
-                if not PermissionService.has_permission(user, 'perm_idcard_verify'):
-                    return ServiceResult(success=False, message='No permission to verify cards')
-            elif new_status == 'approved':
-                if not PermissionService.has_permission(user, 'perm_idcard_approve'):
-                    return ServiceResult(success=False, message='No permission to approve cards')
-            
-            # Delegate to IDCardService for transition validation & image gating
-            from core.services import IDCardService
-            result = IDCardService.bulk_change_status(table.id, card_ids, new_status)
-            return result
+            # Delegate entirely to WorkflowService (handles permissions + all guards)
+            from core.services.workflow_service import WorkflowService
+            return WorkflowService.bulk_transition(table, card_ids, new_status, user=user)
             
         except Exception as e:
             return ServiceResult(success=False, message=str(e))

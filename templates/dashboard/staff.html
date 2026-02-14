@@ -3,19 +3,28 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
   <title>Dashboard - Adarsh ID Cards</title>
   <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'css/variables.css' %}?v=3">
+  <!-- Tailwind CSS (primary) -->
+  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=2">
+  <!-- Legacy (backward compat for unmigrated classes) -->
   <link rel="stylesheet" href="{% static 'css/style.css' %}?v=38">
   <link rel="stylesheet" href="{% static 'css/common.css' %}?v=49">
+  <!-- Page-specific: dashboard -->
   <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=38">
   <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=2">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Alpine.js State Module (MUST load before Alpine) -->
+  <script src="{% static 'js/alpine-state.js' %}?v=1"></script>
+  <!-- Alpine.js -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
 </head>
-<body>
+<body x-data="layoutState()">
 
   {% include 'partials/sidebar.html' %}
 
@@ -342,18 +351,12 @@
     </div>
   </div>
 
-  <!-- Common Modules (Load Order Matters) -->
-  <script src="{% static 'js/common/ajax.js' %}?v=2"></script>
-  <script src="{% static 'js/common/toast.js' %}?v=2"></script>
-  <script src="{% static 'js/common/modal.js' %}?v=2"></script>
-  <script src="{% static 'js/common/sidebar.js' %}?v=2"></script>
-  <script src="{% static 'js/common/validation.js' %}?v=2"></script>
-  <script src="{% static 'js/common/utils.js' %}?v=2"></script>
-  <script src="{% static 'js/init.js' %}?v=2"></script>
-  
-  <!-- Legacy compatibility -->
-  <script src="{% static 'js/utils.js' %}?v=3"></script>
-  <script src="{% static 'js/script.js' %}?v=3"></script>
+  <!-- Core Modules (Load Order: api → toast → modal → utils → init) -->
+  <script src="{% static 'js/core/api.js' %}?v=1"></script>
+  <script src="{% static 'js/core/toast.js' %}?v=1"></script>
+  <script src="{% static 'js/core/modal.js' %}?v=1"></script>
+  <script src="{% static 'js/core/utils.js' %}?v=1"></script>
+  <script src="{% static 'js/init.js' %}?v=3"></script>
   <script src="{% static 'js/dashboard.js' %}?v=3"></script>
   <script src="{% static 'js/global-search.js' %}?v=2"></script>
 </body>

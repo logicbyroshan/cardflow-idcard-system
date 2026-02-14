@@ -195,11 +195,8 @@ function createReprintPaginator(opts) {
   // Initial pagination on page load
   if (paginator) paginator.paginate();
 
-  // ── Helpers ──
-  function getCSRFToken() {
-    const cookie = document.cookie.split(';').find(c => c.trim().startsWith('csrftoken='));
-    return cookie ? cookie.split('=')[1] : '';
-  }
+  // ── Helpers (core/ globals) ──
+  const getCSRFToken = window.getCSRFToken || (() => '');
 
   function getCheckboxes() {
     return tableBody ? Array.from(tableBody.querySelectorAll('.reprintRowCheckbox:not(:disabled)')) : [];
@@ -311,14 +308,7 @@ function createReprintPaginator(opts) {
         formData.append(`image_${fieldName}`, file);
       }
 
-      fetch(`/panel/api/card/${cardId}/update/`, {
-        method: 'POST',
-        headers: {
-          'X-CSRFToken': typeof getCSRFToken === 'function' ? getCSRFToken() : ''
-        },
-        body: formData
-      })
-      .then(r => r.json())
+      ApiClient.upload(`/panel/api/card/${cardId}/update/`, formData)
       .then(data => {
         if (data.success) {
           if (typeof showToast === 'function') showToast('Card updated successfully!');
@@ -400,11 +390,7 @@ function createReprintPaginator(opts) {
   function fetchCards(query) {
     const url = `/panel/api/table/${TABLE_ID_VAL}/reprint/cards/?q=${encodeURIComponent(query || '')}&limit=200`;
 
-    fetch(url, {
-      method: 'GET',
-      headers: { 'X-Requested-With': 'XMLHttpRequest' }
-    })
-    .then(r => r.json())
+    ApiClient.get(url)
     .then(data => {
       if (data.status === 'success') {
         renderCards(data.cards || [], data.total || 0);
@@ -505,12 +491,7 @@ function createReprintPaginator(opts) {
            n === 'photo' || n === 'image' || n === 'picture' || n === 'pic' || n === 'img';
   }
 
-  function escapeHtml(str) {
-    if (!str) return '';
-    const div = document.createElement('div');
-    div.textContent = String(str);
-    return div.innerHTML;
-  }
+  const escapeHtml = window.escapeHtml || ((s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; });
 
   // ── Reason Modal ──
   function openReasonModal(cardIds) {
@@ -563,16 +544,7 @@ function createReprintPaginator(opts) {
 
   // ── Submit Reprint Request ──
   function submitReprintRequest(cardIds, reason, overlay) {
-    fetch(`/panel/api/table/${TABLE_ID_VAL}/reprint/request/`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': getCSRFToken(),
-        'X-Requested-With': 'XMLHttpRequest'
-      },
-      body: JSON.stringify({ card_ids: cardIds, reason: reason })
-    })
-    .then(r => r.json())
+    ApiClient.post(`/panel/api/table/${TABLE_ID_VAL}/reprint/request/`, { card_ids: cardIds, reason: reason })
     .then(data => {
       overlay.remove();
 
@@ -612,21 +584,15 @@ function createReprintPaginator(opts) {
 
   // ── Refresh Step Counts ──
   function refreshStepCounts() {
-    fetch(`/panel/api/table/${TABLE_ID_VAL}/reprint/step-counts/`, {
-      method: 'GET',
-      headers: { 'X-Requested-With': 'XMLHttpRequest' }
-    })
-    .then(r => r.json())
-    .then(data => {
-      if (data.status === 'success') {
-        const counts = data.counts;
-        // Update tab badges
-        updateTabCount('.reprint-requests-tab .tab-count', counts.requested || 0);
-        updateTabCount('.reprint-confirm-tab .tab-count', counts.confirmed || 0);
-        updateTabCount('.reprint-download-tab .tab-count', counts.downloaded || 0);
-      }
-    })
-    .catch(() => {});
+    ApiClient.get(`/panel/api/table/${TABLE_ID_VAL}/reprint/step-counts/`)
+      .then(data => {
+        if (data.status === 'success') {
+          const c = data.counts;
+          updateTabCount('.reprint-requests-tab .tab-count', c.requested || 0);
+          updateTabCount('.reprint-confirm-tab .tab-count', c.confirmed || 0);
+          updateTabCount('.reprint-download-tab .tab-count', c.downloaded || 0);
+        }
+      }).catch(() => {});
   }
 
   function updateTabCount(selector, count) {
@@ -634,26 +600,8 @@ function createReprintPaginator(opts) {
     if (el) el.textContent = count;
   }
 
-  // ── Toast (reuse existing or inline) ──
-  function showToast(message, type) {
-    // Try existing toast system
-    if (typeof window.showToast === 'function') {
-      window.showToast(message, type);
-      return;
-    }
-    // Try common toast container
-    const container = document.getElementById('toast-container') || document.querySelector('.toast-container');
-    if (container) {
-      const toast = document.createElement('div');
-      toast.className = `toast toast-${type || 'info'}`;
-      toast.textContent = message;
-      container.appendChild(toast);
-      setTimeout(() => toast.remove(), 4000);
-      return;
-    }
-    // Fallback: simple alert
-    alert(message);
-  }
+  // Toast: delegate to core/toast.js global
+  const showToast = window.showToast || ((msg, type) => { /* silent fallback */ });
 
 })();
 
@@ -690,11 +638,8 @@ function createReprintPaginator(opts) {
   // Initial pagination on page load
   if (paginator) paginator.paginate();
 
-  // ── Helpers ──
-  function getCSRFToken() {
-    const cookie = document.cookie.split(';').find(c => c.trim().startsWith('csrftoken='));
-    return cookie ? cookie.split('=')[1] : '';
-  }
+  // ── Helpers (core/ globals) ──
+  const getCSRFToken = window.getCSRFToken || (() => '');
 
   function getCheckboxes() {
     return tableBody ? Array.from(tableBody.querySelectorAll('.confirmRowCheckbox')) : [];
@@ -798,16 +743,7 @@ function createReprintPaginator(opts) {
 
   // ── Confirm API Call ──
   function performConfirm(rrIds) {
-    fetch(`/panel/api/table/${TABLE_ID_VAL}/reprint/confirm/`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': getCSRFToken(),
-        'X-Requested-With': 'XMLHttpRequest'
-      },
-      body: JSON.stringify({ rr_ids: rrIds })
-    })
-    .then(r => r.json())
+    ApiClient.post(`/panel/api/table/${TABLE_ID_VAL}/reprint/confirm/`, { rr_ids: rrIds })
     .then(data => {
       if (data.status === 'success') {
         showToast(`${data.confirmed_count} reprint${data.confirmed_count !== 1 ? 's' : ''} confirmed`, 'success');
@@ -831,16 +767,7 @@ function createReprintPaginator(opts) {
 
   // ── Reject API Call ──
   function performReject(rrIds) {
-    fetch(`/panel/api/table/${TABLE_ID_VAL}/reprint/reject/`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': getCSRFToken(),
-        'X-Requested-With': 'XMLHttpRequest'
-      },
-      body: JSON.stringify({ rr_ids: rrIds })
-    })
-    .then(r => r.json())
+    ApiClient.post(`/panel/api/table/${TABLE_ID_VAL}/reprint/reject/`, { rr_ids: rrIds })
     .then(data => {
       if (data.status === 'success') {
         showToast(`${data.rejected_count} reprint${data.rejected_count !== 1 ? 's' : ''} rejected`, 'success');
@@ -888,11 +815,7 @@ function createReprintPaginator(opts) {
   function fetchConfirmItems(query) {
     const url = `/panel/api/table/${TABLE_ID_VAL}/reprint/confirm-list/?q=${encodeURIComponent(query || '')}&limit=200`;
 
-    fetch(url, {
-      method: 'GET',
-      headers: { 'X-Requested-With': 'XMLHttpRequest' }
-    })
-    .then(r => r.json())
+    ApiClient.get(url)
     .then(data => {
       if (data.status === 'success') {
         renderConfirmItems(data.items || [], data.total || 0);
@@ -1016,7 +939,7 @@ function createReprintPaginator(opts) {
     }
   }
 
-  // ── Shared Helpers ──
+  // ── Shared Helpers (delegates to core modules) ──
   function isImageField(type, name) {
     if (!type && !name) return false;
     const t = (type || '').toLowerCase();
@@ -1024,51 +947,19 @@ function createReprintPaginator(opts) {
     return t === 'image' || t === 'photo' || t === 'file' ||
            n === 'photo' || n === 'image' || n === 'picture' || n === 'pic' || n === 'img';
   }
-
-  function escapeHtml(str) {
-    if (!str) return '';
-    const div = document.createElement('div');
-    div.textContent = String(str);
-    return div.innerHTML;
-  }
-
+  const escapeHtml = window.escapeHtml || ((s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; });
+  const showToast = window.showToast || ((msg, type) => { /* silent fallback */ });
+  function updateTabCount(sel, count) { const el = document.querySelector(sel); if (el) el.textContent = count; }
   function refreshStepCounts() {
-    fetch(`/panel/api/table/${TABLE_ID_VAL}/reprint/step-counts/`, {
-      method: 'GET',
-      headers: { 'X-Requested-With': 'XMLHttpRequest' }
-    })
-    .then(r => r.json())
-    .then(data => {
-      if (data.status === 'success') {
-        const counts = data.counts;
-        updateTabCount('.reprint-requests-tab .tab-count', counts.requested || 0);
-        updateTabCount('.reprint-confirm-tab .tab-count', counts.confirmed || 0);
-        updateTabCount('.reprint-download-tab .tab-count', counts.downloaded || 0);
-      }
-    })
-    .catch(() => {});
-  }
-
-  function updateTabCount(selector, count) {
-    const el = document.querySelector(selector);
-    if (el) el.textContent = count;
-  }
-
-  function showToast(message, type) {
-    if (typeof window.showToast === 'function') {
-      window.showToast(message, type);
-      return;
-    }
-    const container = document.getElementById('toast-container') || document.querySelector('.toast-container');
-    if (container) {
-      const toast = document.createElement('div');
-      toast.className = `toast toast-${type || 'info'}`;
-      toast.textContent = message;
-      container.appendChild(toast);
-      setTimeout(() => toast.remove(), 4000);
-      return;
-    }
-    alert(message);
+    ApiClient.get(`/panel/api/table/${TABLE_ID_VAL}/reprint/step-counts/`)
+      .then(data => {
+        if (data.status === 'success') {
+          const c = data.counts;
+          updateTabCount('.reprint-requests-tab .tab-count', c.requested || 0);
+          updateTabCount('.reprint-confirm-tab .tab-count', c.confirmed || 0);
+          updateTabCount('.reprint-download-tab .tab-count', c.downloaded || 0);
+        }
+      }).catch(() => {});
   }
 
 })();
@@ -1105,11 +996,8 @@ function createReprintPaginator(opts) {
   // Initial pagination on page load
   if (paginator) paginator.paginate();
 
-  // ── Helpers ──
-  function getCSRFToken() {
-    const cookie = document.cookie.split(';').find(c => c.trim().startsWith('csrftoken='));
-    return cookie ? cookie.split('=')[1] : '';
-  }
+  // ── Helpers (core/ globals) ──
+  const getCSRFToken = window.getCSRFToken || (() => '');
 
   function getCheckboxes() {
     return tableBody ? Array.from(tableBody.querySelectorAll('.downloadRowCheckbox')) : [];
@@ -1194,16 +1082,7 @@ function createReprintPaginator(opts) {
 
   // ── Download (Mark as Downloaded) API Call ──
   function performDownload(rrIds) {
-    fetch(`/panel/api/table/${TABLE_ID_VAL}/reprint/mark-downloaded/`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': getCSRFToken(),
-        'X-Requested-With': 'XMLHttpRequest'
-      },
-      body: JSON.stringify({ rr_ids: rrIds })
-    })
-    .then(r => r.json())
+    ApiClient.post(`/panel/api/table/${TABLE_ID_VAL}/reprint/mark-downloaded/`, { rr_ids: rrIds })
     .then(data => {
       if (data.status === 'success') {
         showToast(`${data.downloaded_count} reprint${data.downloaded_count !== 1 ? 's' : ''} marked as downloaded`, 'success');
@@ -1251,11 +1130,7 @@ function createReprintPaginator(opts) {
   function fetchDownloadItems(query) {
     const url = `/panel/api/table/${TABLE_ID_VAL}/reprint/download-list/?q=${encodeURIComponent(query || '')}&limit=200`;
 
-    fetch(url, {
-      method: 'GET',
-      headers: { 'X-Requested-With': 'XMLHttpRequest' }
-    })
-    .then(r => r.json())
+    ApiClient.get(url)
     .then(data => {
       if (data.status === 'success') {
         renderDownloadItems(data.items || [], data.total || 0);
@@ -1371,7 +1246,7 @@ function createReprintPaginator(opts) {
     }
   }
 
-  // ── Shared Helpers ──
+  // ── Shared Helpers (delegates to core modules) ──
   function isImageField(type, name) {
     if (!type && !name) return false;
     const t = (type || '').toLowerCase();
@@ -1379,51 +1254,19 @@ function createReprintPaginator(opts) {
     return t === 'image' || t === 'photo' || t === 'file' ||
            n === 'photo' || n === 'image' || n === 'picture' || n === 'pic' || n === 'img';
   }
-
-  function escapeHtml(str) {
-    if (!str) return '';
-    const div = document.createElement('div');
-    div.textContent = String(str);
-    return div.innerHTML;
-  }
-
+  const escapeHtml = window.escapeHtml || ((s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; });
+  const showToast = window.showToast || ((msg, type) => { /* silent fallback */ });
+  function updateTabCount(sel, count) { const el = document.querySelector(sel); if (el) el.textContent = count; }
   function refreshStepCounts() {
-    fetch(`/panel/api/table/${TABLE_ID_VAL}/reprint/step-counts/`, {
-      method: 'GET',
-      headers: { 'X-Requested-With': 'XMLHttpRequest' }
-    })
-    .then(r => r.json())
-    .then(data => {
-      if (data.status === 'success') {
-        const counts = data.counts;
-        updateTabCount('.reprint-requests-tab .tab-count', counts.requested || 0);
-        updateTabCount('.reprint-confirm-tab .tab-count', counts.confirmed || 0);
-        updateTabCount('.reprint-download-tab .tab-count', counts.downloaded || 0);
-      }
-    })
-    .catch(() => {});
-  }
-
-  function updateTabCount(selector, count) {
-    const el = document.querySelector(selector);
-    if (el) el.textContent = count;
-  }
-
-  function showToast(message, type) {
-    if (typeof window.showToast === 'function') {
-      window.showToast(message, type);
-      return;
-    }
-    const container = document.getElementById('toast-container') || document.querySelector('.toast-container');
-    if (container) {
-      const toast = document.createElement('div');
-      toast.className = `toast toast-${type || 'info'}`;
-      toast.textContent = message;
-      container.appendChild(toast);
-      setTimeout(() => toast.remove(), 4000);
-      return;
-    }
-    alert(message);
+    ApiClient.get(`/panel/api/table/${TABLE_ID_VAL}/reprint/step-counts/`)
+      .then(data => {
+        if (data.status === 'success') {
+          const c = data.counts;
+          updateTabCount('.reprint-requests-tab .tab-count', c.requested || 0);
+          updateTabCount('.reprint-confirm-tab .tab-count', c.confirmed || 0);
+          updateTabCount('.reprint-download-tab .tab-count', c.downloaded || 0);
+        }
+      }).catch(() => {});
   }
 
 })();

@@ -4,16 +4,14 @@ Contains: All staff-related API endpoints (CRUD, toggle status, active clients l
 """
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
-from django.views.decorators.csrf import csrf_exempt
 import json
-from .base import api_super_admin_required
+from ..services.permission_service import api_require_super_admin
 from ..services import StaffService
 from ..models import Client
 
 
-@csrf_exempt
 @require_http_methods(["POST"])
-@api_super_admin_required
+@api_require_super_admin
 def api_staff_create(request):
     """API endpoint to create a new admin staff"""
     try:
@@ -46,18 +44,16 @@ def api_staff_create(request):
         return JsonResponse({'success': False, 'message': str(e)}, status=400)
 
 
-@csrf_exempt
 @require_http_methods(["GET"])
-@api_super_admin_required
+@api_require_super_admin
 def api_staff_get(request, staff_id):
     """API endpoint to get a staff's details"""
     result = StaffService.get(staff_id, include_permissions=True)
     return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
 
 
-@csrf_exempt
 @require_http_methods(["PUT", "POST"])
-@api_super_admin_required
+@api_require_super_admin
 def api_staff_update(request, staff_id):
     """API endpoint to update a staff"""
     try:
@@ -79,27 +75,24 @@ def api_staff_update(request, staff_id):
         return JsonResponse({'success': False, 'message': str(e)}, status=400)
 
 
-@csrf_exempt
 @require_http_methods(["DELETE", "POST"])
-@api_super_admin_required
+@api_require_super_admin
 def api_staff_delete(request, staff_id):
     """API endpoint to delete a staff"""
     result = StaffService.delete(staff_id)
     return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
 
 
-@csrf_exempt
 @require_http_methods(["POST"])
-@api_super_admin_required
+@api_require_super_admin
 def api_staff_toggle_status(request, staff_id):
     """API endpoint to toggle staff active/inactive status"""
     result = StaffService.toggle_status(staff_id)
     return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
 
 
-@csrf_exempt
 @require_http_methods(["GET"])
-@api_super_admin_required
+@api_require_super_admin
 def api_active_clients_list(request):
     """API endpoint to get list of active clients for staff assignment dropdown"""
     clients = Client.objects.filter(status='active').order_by('name').values('id', 'name')

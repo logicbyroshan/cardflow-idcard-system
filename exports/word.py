@@ -117,6 +117,15 @@ class WordExporter:
                 success=False,
                 message='No cards to export!'
             )
+
+        # Hard cap to prevent OOM — python-docx embeds all images in memory
+        MAX_WORD_CARDS = 500
+        card_count = cards.count()
+        if card_count > MAX_WORD_CARDS:
+            return WordExportResult(
+                success=False,
+                message=f'Word export limited to {MAX_WORD_CARDS} cards (requested {card_count}). Use Excel or reduce your selection.'
+            )
         
         try:
             # Separate fields by type: text fields first, then image fields
@@ -185,9 +194,11 @@ class WordExporter:
             # python-docx always produces DOCX (OOXML) format regardless of extension
             content_type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
             
-            response = HttpResponse(doc_buffer.getvalue(), content_type=content_type)
+            doc_bytes = doc_buffer.getvalue()
+            doc_buffer.close()
+            response = HttpResponse(doc_bytes, content_type=content_type)
             response['Content-Disposition'] = f'attachment; filename="{filename}"'
-            response['Content-Length'] = len(doc_buffer.getvalue())
+            response['Content-Length'] = len(doc_bytes)
             
             return WordExportResult(
                 success=True,
@@ -391,11 +402,10 @@ class WordExporter:
                 if img_path and is_valid_image_path(img_path):
                     if default_storage.exists(img_path):
                         with default_storage.open(img_path, 'rb') as f:
-                            img = PILImage.open(f)
-                            w, h = img.size
-                            img.close()
-                            if h > 0:
-                                return self.IMAGE_HEIGHT_CM * (w / h)
+                            with PILImage.open(f) as img:
+                                w, h = img.size
+                                if h > 0:
+                                    return self.IMAGE_HEIGHT_CM * (w / h)
         except Exception:
             pass
         return self.IMAGE_HEIGHT_CM * DEFAULT_RATIO
@@ -620,29 +630,32 @@ class WordExporter:
                         
                         if img_data and len(img_data) >= 100:
                             # Process image
+                            with Image.open(BytesIO(img_data)) as verify_img:
+                                verify_img.verify()
                             pil_img = Image.open(BytesIO(img_data))
-                            pil_img.verify()
-                            pil_img.close()  # Close after verify
-                            pil_img = Image.open(BytesIO(img_data))
-                            
-                            if pil_img.mode in ('RGBA', 'LA', 'P'):
-                                pil_img = pil_img.convert('RGB')
-                            
-                            # Add 0.5pt border INSIDE the image (no layout shift)
-                            from PIL import ImageDraw
-                            draw = ImageDraw.Draw(pil_img)
-                            iw, ih = pil_img.size
-                            draw.rectangle([0, 0, iw - 1, ih - 1], outline='black', width=1)
-                            
-                            img_stream = BytesIO()
-                            pil_img.save(img_stream, format='JPEG', quality=90)
-                            pil_img.close()  # Close after saving
+                            try:
+                                if pil_img.mode in ('RGBA', 'LA', 'P'):
+                                    converted = pil_img.convert('RGB')
+                                    pil_img.close()
+                                    pil_img = converted
+                                
+                                # Add 0.5pt border INSIDE the image (no layout shift)
+                                from PIL import ImageDraw
+                                draw = ImageDraw.Draw(pil_img)
+                                iw, ih = pil_img.size
+                                draw.rectangle([0, 0, iw - 1, ih - 1], outline='black', width=1)
+                                
+                                img_stream = BytesIO()
+                                pil_img.save(img_stream, format='JPEG', quality=90)
+                            finally:
+                                pil_img.close()
                             img_stream.seek(0)
                             
                             para = cell.paragraphs[0]
                             run = para.add_run()
                             # Add picture (creates relationship), then convert to VML
                             inline_shape = run.add_picture(img_stream, height=Cm(self.IMAGE_HEIGHT_CM))
+                            img_stream.close()
                             self._convert_to_vml(run, inline_shape)
                             para.alignment = WD_ALIGN_PARAGRAPH.CENTER
                             self._set_para_spacing(para, parse_xml, nsdecls)

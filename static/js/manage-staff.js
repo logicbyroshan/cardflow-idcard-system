@@ -157,8 +157,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Fetch active clients from API
     async function fetchActiveClients() {
         try {
-            const response = await fetch('/panel/api/clients/active/');
-            const data = await response.json();
+            const data = await ApiClient.get('/panel/api/clients/active/');
             if (data.success) {
                 allClients = data.clients || [];
             }
@@ -446,8 +445,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // ==================== API CALLS ====================
     async function fetchStaffDetails(staffId) {
         try {
-            const response = await fetch(`/panel/api/staff/${staffId}/`);
-            const data = await response.json();
+            const data = await ApiClient.get(`/panel/api/staff/${staffId}/`);
             if (data.success) {
                 return data.staff;
             } else {
@@ -463,12 +461,8 @@ document.addEventListener('DOMContentLoaded', function() {
     async function createStaff(formData) {
         try {
             // Phase 1: File upload removed - always use JSON
-            const response = await fetch('/panel/api/staff/create/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
-            });
-            return await response.json();
+            const data = await ApiClient.post('/panel/api/staff/create/', formData);
+            return data;
         } catch (error) {
             return { success: false, message: 'Network error. Please try again.' };
         }
@@ -477,12 +471,8 @@ document.addEventListener('DOMContentLoaded', function() {
     async function updateStaff(staffId, formData) {
         try {
             // Phase 1: File upload removed - always use JSON
-            const response = await fetch(`/panel/api/staff/${staffId}/update/`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
-            });
-            return await response.json();
+            const data = await ApiClient.post(`/panel/api/staff/${staffId}/update/`, formData);
+            return data;
         } catch (error) {
             return { success: false, message: 'Network error. Please try again.' };
         }
@@ -490,11 +480,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     async function deleteStaffApi(staffId) {
         try {
-            const response = await fetch(`/panel/api/staff/${staffId}/delete/`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            });
-            return await response.json();
+            const data = await ApiClient.post(`/panel/api/staff/${staffId}/delete/`);
+            return data;
         } catch (error) {
             return { success: false, message: 'Network error. Please try again.' };
         }
@@ -502,11 +489,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     async function toggleStaffStatus(staffId) {
         try {
-            const response = await fetch(`/panel/api/staff/${staffId}/toggle-status/`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            });
-            return await response.json();
+            const data = await ApiClient.post(`/panel/api/staff/${staffId}/toggle-status/`);
+            return data;
         } catch (error) {
             return { success: false, message: 'Network error. Please try again.' };
         }
@@ -659,16 +643,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const selectedText = document.getElementById('statusSelectedText');
     const searchInput = document.getElementById('search-input');
     
-    let currentFilter = '';
-    
-    // Column map for staff table (with checkbox as column 0)
-    const filterColumnMap = {
-        '': null,  // All - search all columns
-        'active': 4,  // Status column
-        'inactive': 4
-    };
-    
-    function performSearch() {
+    let currentFilter = '';\n    \n    function performSearch() {
         const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
         const rows = document.querySelectorAll('.data-table tbody tr');
         

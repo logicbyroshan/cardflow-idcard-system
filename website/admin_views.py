@@ -1,8 +1,14 @@
 """
 Website Admin Views
-
+===================
 Dashboard + CRUD API for managing public website content.
 Mounted at /panel/website/
+
+Architecture rule: Views are ULTRA-THIN.
+  - Validate request (parse POST/FILES/JSON)
+  - Call WebsiteService method
+  - Return JsonResponse
+  - NO .save(), .create(), .delete(), .update() on any model
 """
 import json
 
@@ -10,7 +16,10 @@ from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 
-from core.services.permission_service import PermissionService
+from core.services.permission_service import (
+    PermissionService,
+    api_require_permission,
+)
 from core.services.activity_service import ActivityService
 
 from .models import (
@@ -26,14 +35,24 @@ from .models import (
     ContactSubmission,
     WebsiteStatus,
 )
+from .services import (
+    WebsiteStatusService,
+    BusinessDetailsService,
+    TrustedClientService,
+    TestimonialService,
+    PortfolioItemService,
+    PortfolioCategoryService,
+    HeroImageService,
+    _parse_bool,
+)
 
 
 # =============================================================================
-# DECORATORS
+# DECORATORS — thin wrappers delegating to PermissionService (single authority)
 # =============================================================================
 
 def website_admin_required(view_func):
-    """Require super_admin or admin_staff with perm_website_view."""
+    """Require perm_website_view (super_admin auto-passes via PermissionService.has)."""
     from functools import wraps
 
     @wraps(view_func)
@@ -44,7 +63,7 @@ def website_admin_required(view_func):
                 return JsonResponse({'success': False, 'message': 'Authentication required'}, status=401)
             from django.shortcuts import redirect
             return redirect('/panel/auth/login/')
-        if not (PermissionService.is_super_admin(user) or PermissionService.has_permission(user, 'perm_website_view')):
+        if not PermissionService.has(user, 'perm_website_view'):
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({'success': False, 'message': 'Website access denied'}, status=403)
             from django.shortcuts import redirect
@@ -54,7 +73,7 @@ def website_admin_required(view_func):
 
 
 def website_edit_required(view_func):
-    """Require super_admin or perm_website_edit for write operations."""
+    """Require perm_website_edit (super_admin auto-passes via PermissionService.has)."""
     from functools import wraps
 
     @wraps(view_func)
@@ -62,14 +81,14 @@ def website_edit_required(view_func):
         user = request.user
         if not user.is_authenticated:
             return JsonResponse({'success': False, 'message': 'Authentication required'}, status=401)
-        if not (PermissionService.is_super_admin(user) or PermissionService.has_permission(user, 'perm_website_edit')):
+        if not PermissionService.has(user, 'perm_website_edit'):
             return JsonResponse({'success': False, 'message': 'Edit permission required'}, status=403)
         return view_func(request, *args, **kwargs)
     return wrapper
 
 
 def website_add_required(view_func):
-    """Require super_admin or perm_website_add for create operations."""
+    """Require perm_website_add (super_admin auto-passes via PermissionService.has)."""
     from functools import wraps
 
     @wraps(view_func)
@@ -77,14 +96,14 @@ def website_add_required(view_func):
         user = request.user
         if not user.is_authenticated:
             return JsonResponse({'success': False, 'message': 'Authentication required'}, status=401)
-        if not (PermissionService.is_super_admin(user) or PermissionService.has_permission(user, 'perm_website_add')):
+        if not PermissionService.has(user, 'perm_website_add'):
             return JsonResponse({'success': False, 'message': 'Add permission required'}, status=403)
         return view_func(request, *args, **kwargs)
     return wrapper
 
 
 def website_delete_required(view_func):
-    """Require super_admin or perm_website_delete for delete operations."""
+    """Require perm_website_delete (super_admin auto-passes via PermissionService.has)."""
     from functools import wraps
 
     @wraps(view_func)
@@ -92,14 +111,14 @@ def website_delete_required(view_func):
         user = request.user
         if not user.is_authenticated:
             return JsonResponse({'success': False, 'message': 'Authentication required'}, status=401)
-        if not (PermissionService.is_super_admin(user) or PermissionService.has_permission(user, 'perm_website_delete')):
+        if not PermissionService.has(user, 'perm_website_delete'):
             return JsonResponse({'success': False, 'message': 'Delete permission required'}, status=403)
         return view_func(request, *args, **kwargs)
     return wrapper
 
 
 def website_publish_required(view_func):
-    """Require super_admin or perm_website_publish for publish operations."""
+    """Require perm_website_publish (super_admin auto-passes via PermissionService.has)."""
     from functools import wraps
 
     @wraps(view_func)
@@ -107,7 +126,7 @@ def website_publish_required(view_func):
         user = request.user
         if not user.is_authenticated:
             return JsonResponse({'success': False, 'message': 'Authentication required'}, status=401)
-        if not (PermissionService.is_super_admin(user) or PermissionService.has_permission(user, 'perm_website_publish')):
+        if not PermissionService.has(user, 'perm_website_publish'):
             return JsonResponse({'success': False, 'message': 'Publish permission required'}, status=403)
         return view_func(request, *args, **kwargs)
     return wrapper
@@ -201,11 +220,9 @@ def portfolio_page(request):
 @website_publish_required
 def api_toggle_website_status(request):
     """Toggle website between Live and Draft."""
-    obj, _ = WebsiteStatus.objects.get_or_create(pk=1)
-    obj.status = 'draft' if obj.status == 'live' else 'live'
-    obj.save()
-    ActivityService.log_website_update(request, f'status changed to {obj.status}')
-    return JsonResponse({'success': True, 'status': obj.status})
+    new_status = WebsiteStatusService.toggle_status()
+    ActivityService.log_website_update(request, f'status changed to {new_status}')
+    return JsonResponse({'success': True, 'status': new_status})
 
 
 # =============================================================================
@@ -216,28 +233,12 @@ def api_toggle_website_status(request):
 @website_edit_required
 def api_business_update(request):
     """Create or update business details (singleton)."""
-    business, _ = BusinessDetails.objects.get_or_create(pk=1)
-
-    fields = [
-        'site_name', 'tagline', 'address', 'phone', 'email', 'working_hours',
-        'facebook_url', 'instagram_url', 'twitter_url', 'whatsapp_number',
-        'hero_title', 'hero_description', 'meta_description', 'meta_keywords',
-        'footer_text',
-    ]
-    for f in fields:
+    data = {}
+    for f in BusinessDetailsService.EDITABLE_FIELDS + ['is_active']:
         val = request.POST.get(f)
         if val is not None:
-            setattr(business, f, val)
-
-    # Handle is_active toggle
-    is_active = request.POST.get('is_active')
-    if is_active is not None:
-        business.is_active = is_active in ('true', '1', 'on', 'True')
-
-    # Legacy hero_image1-4 fields are kept on model for backward compat
-    # but new uploads go through the HeroImage API (/api/hero-images/create/)
-
-    business.save()
+            data[f] = val
+    BusinessDetailsService.update(data)
     ActivityService.log_website_update(request, 'business details')
     return JsonResponse({'success': True, 'message': 'Business details updated'})
 
@@ -246,12 +247,10 @@ def api_business_update(request):
 @website_edit_required
 def api_business_toggle_status(request):
     """Toggle business details active/inactive."""
-    business = BusinessDetails.objects.first()
-    if not business:
+    success, is_active = BusinessDetailsService.toggle_status()
+    if not success:
         return JsonResponse({'success': False, 'message': 'No business details found'}, status=404)
-    business.is_active = not business.is_active
-    business.save()
-    return JsonResponse({'success': True, 'is_active': business.is_active})
+    return JsonResponse({'success': True, 'is_active': is_active})
 
 
 # =============================================================================
@@ -261,7 +260,7 @@ def api_business_toggle_status(request):
 @website_admin_required
 def api_client_list(request):
     """List trusted clients."""
-    qs = TrustedClient.objects.all().order_by('order')
+    qs = TrustedClientService.list_all()
     data = [{
         'id': c.id,
         'name': c.name,
@@ -276,22 +275,19 @@ def api_client_list(request):
 @website_add_required
 def api_client_create(request):
     """Create a trusted client."""
-    client = TrustedClient(
+    client = TrustedClientService.create(
         name=request.POST.get('name', ''),
         order=int(request.POST.get('order', 0)),
-        is_active=request.POST.get('is_active', 'true') in ('true', '1', 'on', 'True'),
+        is_active=_parse_bool(request.POST.get('is_active', 'true')),
+        logo=request.FILES.get('logo'),
     )
-    logo = request.FILES.get('logo')
-    if logo:
-        client.logo = logo
-    client.save()
     return JsonResponse({'success': True, 'message': 'Client created', 'id': client.id})
 
 
 @website_admin_required
 def api_client_get(request, pk):
     """Get a single trusted client."""
-    c = get_object_or_404(TrustedClient, pk=pk)
+    c = TrustedClientService.get(pk)
     return JsonResponse({
         'success': True,
         'client': {
@@ -308,20 +304,13 @@ def api_client_get(request, pk):
 @website_edit_required
 def api_client_update(request, pk):
     """Update a trusted client."""
-    c = get_object_or_404(TrustedClient, pk=pk)
-    name = request.POST.get('name')
-    if name is not None:
-        c.name = name
-    order = request.POST.get('order')
-    if order is not None:
-        c.order = int(order)
-    is_active = request.POST.get('is_active')
-    if is_active is not None:
-        c.is_active = is_active in ('true', '1', 'on', 'True')
-    logo = request.FILES.get('logo')
-    if logo:
-        c.logo = logo
-    c.save()
+    TrustedClientService.update(
+        pk,
+        name=request.POST.get('name'),
+        order=request.POST.get('order'),
+        is_active=request.POST.get('is_active'),
+        logo=request.FILES.get('logo'),
+    )
     return JsonResponse({'success': True, 'message': 'Client updated'})
 
 
@@ -329,8 +318,7 @@ def api_client_update(request, pk):
 @website_delete_required
 def api_client_delete(request, pk):
     """Delete a trusted client."""
-    c = get_object_or_404(TrustedClient, pk=pk)
-    c.delete()
+    TrustedClientService.delete(pk)
     return JsonResponse({'success': True, 'message': 'Client deleted'})
 
 
@@ -338,10 +326,8 @@ def api_client_delete(request, pk):
 @website_edit_required
 def api_client_toggle(request, pk):
     """Toggle trusted client active/inactive."""
-    c = get_object_or_404(TrustedClient, pk=pk)
-    c.is_active = not c.is_active
-    c.save()
-    return JsonResponse({'success': True, 'is_active': c.is_active})
+    is_active = TrustedClientService.toggle(pk)
+    return JsonResponse({'success': True, 'is_active': is_active})
 
 
 # =============================================================================
@@ -351,7 +337,7 @@ def api_client_toggle(request, pk):
 @website_admin_required
 def api_review_list(request):
     """List testimonials."""
-    qs = Testimonial.objects.all().order_by('-created_at')
+    qs = TestimonialService.list_all()
     data = [{
         'id': r.id,
         'reviewer_name': r.reviewer_name,
@@ -371,26 +357,23 @@ def api_review_list(request):
 @website_add_required
 def api_review_create(request):
     """Create a testimonial."""
-    review = Testimonial(
+    review = TestimonialService.create(
         reviewer_name=request.POST.get('reviewer_name', ''),
         reviewer_title=request.POST.get('reviewer_title', ''),
         reviewer_school=request.POST.get('reviewer_school', ''),
         text=request.POST.get('text', ''),
         tag=request.POST.get('tag', ''),
         rating=int(request.POST.get('rating', 5)),
-        is_active=request.POST.get('is_active', 'false') in ('true', '1', 'on', 'True'),
+        is_active=_parse_bool(request.POST.get('is_active', 'false')),
+        reviewer_avatar=request.FILES.get('reviewer_avatar'),
     )
-    avatar = request.FILES.get('reviewer_avatar')
-    if avatar:
-        review.reviewer_avatar = avatar
-    review.save()
     return JsonResponse({'success': True, 'message': 'Review created', 'id': review.id})
 
 
 @website_admin_required
 def api_review_get(request, pk):
     """Get a single review."""
-    r = get_object_or_404(Testimonial, pk=pk)
+    r = TestimonialService.get(pk)
     return JsonResponse({
         'success': True,
         'review': {
@@ -411,21 +394,17 @@ def api_review_get(request, pk):
 @website_edit_required
 def api_review_update(request, pk):
     """Update a testimonial."""
-    r = get_object_or_404(Testimonial, pk=pk)
-    for f in ['reviewer_name', 'reviewer_title', 'reviewer_school', 'text', 'tag']:
-        val = request.POST.get(f)
-        if val is not None:
-            setattr(r, f, val)
-    rating = request.POST.get('rating')
-    if rating is not None:
-        r.rating = int(rating)
-    is_active = request.POST.get('is_active')
-    if is_active is not None:
-        r.is_active = is_active in ('true', '1', 'on', 'True')
-    avatar = request.FILES.get('reviewer_avatar')
-    if avatar:
-        r.reviewer_avatar = avatar
-    r.save()
+    TestimonialService.update(
+        pk,
+        reviewer_name=request.POST.get('reviewer_name'),
+        reviewer_title=request.POST.get('reviewer_title'),
+        reviewer_school=request.POST.get('reviewer_school'),
+        text=request.POST.get('text'),
+        tag=request.POST.get('tag'),
+        rating=request.POST.get('rating'),
+        is_active=request.POST.get('is_active'),
+        reviewer_avatar=request.FILES.get('reviewer_avatar'),
+    )
     return JsonResponse({'success': True, 'message': 'Review updated'})
 
 
@@ -433,8 +412,7 @@ def api_review_update(request, pk):
 @website_delete_required
 def api_review_delete(request, pk):
     """Delete a testimonial."""
-    r = get_object_or_404(Testimonial, pk=pk)
-    r.delete()
+    TestimonialService.delete(pk)
     return JsonResponse({'success': True, 'message': 'Review deleted'})
 
 
@@ -442,10 +420,8 @@ def api_review_delete(request, pk):
 @website_edit_required
 def api_review_toggle(request, pk):
     """Toggle review active/inactive (approval)."""
-    r = get_object_or_404(Testimonial, pk=pk)
-    r.is_active = not r.is_active
-    r.save()
-    return JsonResponse({'success': True, 'is_active': r.is_active})
+    is_active = TestimonialService.toggle(pk)
+    return JsonResponse({'success': True, 'is_active': is_active})
 
 
 # =============================================================================
@@ -455,7 +431,7 @@ def api_review_toggle(request, pk):
 @website_admin_required
 def api_portfolio_list(request):
     """List portfolio items."""
-    qs = PortfolioItem.objects.select_related('category').all().order_by('order', '-created_at')
+    qs = PortfolioItemService.list_all()
     data = [{
         'id': p.id,
         'image': p.image.url if p.image else None,
@@ -476,46 +452,24 @@ def api_portfolio_list(request):
 @website_add_required
 def api_portfolio_create(request):
     """Create a portfolio item."""
-    import uuid
-    cat_id = request.POST.get('category')
-    
-    # Auto-generate title from category name
-    title = 'Portfolio Item'
-    if cat_id:
-        try:
-            cat = PortfolioCategory.objects.get(pk=int(cat_id))
-            title = f"{cat.name} {uuid.uuid4().hex[:6].upper()}"
-        except PortfolioCategory.DoesNotExist:
-            title = f"Item {uuid.uuid4().hex[:6].upper()}"
-    else:
-        title = f"Item {uuid.uuid4().hex[:6].upper()}"
-    
-    item = PortfolioItem(
-        title=title,
-        description='',
+    item = PortfolioItemService.create(
+        category_id=request.POST.get('category'),
         orientation=request.POST.get('orientation', ''),
         item_type=request.POST.get('item_type', 'image'),
         video_url=request.POST.get('video_url', ''),
         order=int(request.POST.get('order', 0)),
-        is_active=request.POST.get('is_active', 'true') in ('true', '1', 'on', 'True'),
-        is_featured=request.POST.get('is_featured', 'false') in ('true', '1', 'on', 'True'),
+        is_active=_parse_bool(request.POST.get('is_active', 'true')),
+        is_featured=_parse_bool(request.POST.get('is_featured', 'false')),
+        image=request.FILES.get('image'),
+        video_file=request.FILES.get('video_file'),
     )
-    if cat_id:
-        item.category_id = int(cat_id)
-    img = request.FILES.get('image')
-    if img:
-        item.image = img
-    vid = request.FILES.get('video_file')
-    if vid:
-        item.video_file = vid
-    item.save()
     return JsonResponse({'success': True, 'message': 'Portfolio item created', 'id': item.id})
 
 
 @website_admin_required
 def api_portfolio_get(request, pk):
     """Get a single portfolio item."""
-    p = get_object_or_404(PortfolioItem, pk=pk)
+    p = PortfolioItemService.get(pk)
     return JsonResponse({
         'success': True,
         'item': {
@@ -537,30 +491,18 @@ def api_portfolio_get(request, pk):
 @website_edit_required
 def api_portfolio_update(request, pk):
     """Update a portfolio item."""
-    p = get_object_or_404(PortfolioItem, pk=pk)
-    for f in ['orientation', 'item_type', 'video_url']:
-        val = request.POST.get(f)
-        if val is not None:
-            setattr(p, f, val)
-    cat_id = request.POST.get('category')
-    if cat_id is not None:
-        p.category_id = int(cat_id) if cat_id else None
-    order = request.POST.get('order')
-    if order is not None:
-        p.order = int(order)
-    is_active = request.POST.get('is_active')
-    if is_active is not None:
-        p.is_active = is_active in ('true', '1', 'on', 'True')
-    is_featured = request.POST.get('is_featured')
-    if is_featured is not None:
-        p.is_featured = is_featured in ('true', '1', 'on', 'True')
-    img = request.FILES.get('image')
-    if img:
-        p.image = img
-    vid = request.FILES.get('video_file')
-    if vid:
-        p.video_file = vid
-    p.save()
+    PortfolioItemService.update(
+        pk,
+        orientation=request.POST.get('orientation'),
+        item_type=request.POST.get('item_type'),
+        video_url=request.POST.get('video_url'),
+        category_id=request.POST.get('category'),
+        order=request.POST.get('order'),
+        is_active=request.POST.get('is_active'),
+        is_featured=request.POST.get('is_featured'),
+        image=request.FILES.get('image'),
+        video_file=request.FILES.get('video_file'),
+    )
     return JsonResponse({'success': True, 'message': 'Portfolio item updated'})
 
 
@@ -568,8 +510,7 @@ def api_portfolio_update(request, pk):
 @website_delete_required
 def api_portfolio_delete(request, pk):
     """Delete a portfolio item."""
-    p = get_object_or_404(PortfolioItem, pk=pk)
-    p.delete()
+    PortfolioItemService.delete(pk)
     return JsonResponse({'success': True, 'message': 'Portfolio item deleted'})
 
 
@@ -577,10 +518,8 @@ def api_portfolio_delete(request, pk):
 @website_edit_required
 def api_portfolio_toggle(request, pk):
     """Toggle portfolio item active/inactive."""
-    p = get_object_or_404(PortfolioItem, pk=pk)
-    p.is_active = not p.is_active
-    p.save()
-    return JsonResponse({'success': True, 'is_active': p.is_active})
+    is_active = PortfolioItemService.toggle(pk)
+    return JsonResponse({'success': True, 'is_active': is_active})
 
 
 # =============================================================================
@@ -590,7 +529,7 @@ def api_portfolio_toggle(request, pk):
 @website_admin_required
 def api_portfolio_category_list(request):
     """List portfolio categories."""
-    cats = PortfolioCategory.objects.all().order_by('order')
+    cats = PortfolioCategoryService.list_all()
     data = [{
         'id': c.id,
         'name': c.name,
@@ -612,12 +551,12 @@ def api_portfolio_category_list(request):
 def api_portfolio_category_create(request):
     """Create a portfolio category."""
     body = json.loads(request.body) if request.content_type == 'application/json' else request.POST
-    cat = PortfolioCategory.objects.create(
+    cat = PortfolioCategoryService.create(
         name=body.get('name', ''),
         icon=body.get('icon', 'fas fa-folder'),
         description=body.get('description', ''),
         order=int(body.get('order', 0)),
-        is_bento=body.get('is_bento', False) in (True, 'true', '1', 'on'),
+        is_bento=body.get('is_bento', False),
         bento_size=body.get('bento_size', 'normal'),
     )
     return JsonResponse({'success': True, 'message': 'Category created', 'id': cat.id, 'slug': cat.slug})
@@ -627,25 +566,17 @@ def api_portfolio_category_create(request):
 @website_edit_required
 def api_portfolio_category_update(request, pk):
     """Update a portfolio category."""
-    cat = get_object_or_404(PortfolioCategory, pk=pk)
     body = json.loads(request.body) if request.content_type == 'application/json' else request.POST
-    for f in ['name', 'icon', 'description']:
-        val = body.get(f)
-        if val is not None:
-            setattr(cat, f, val)
-    order = body.get('order')
-    if order is not None:
-        cat.order = int(order)
-    is_active = body.get('is_active')
-    if is_active is not None:
-        cat.is_active = is_active in (True, 'true', '1', 'on')
-    is_bento = body.get('is_bento')
-    if is_bento is not None:
-        cat.is_bento = is_bento in (True, 'true', '1', 'on')
-    bento_size = body.get('bento_size')
-    if bento_size in ('large', 'normal'):
-        cat.bento_size = bento_size
-    cat.save()
+    PortfolioCategoryService.update(
+        pk,
+        name=body.get('name'),
+        icon=body.get('icon'),
+        description=body.get('description'),
+        order=body.get('order'),
+        is_active=body.get('is_active'),
+        is_bento=body.get('is_bento'),
+        bento_size=body.get('bento_size'),
+    )
     return JsonResponse({'success': True, 'message': 'Category updated'})
 
 
@@ -653,10 +584,10 @@ def api_portfolio_category_update(request, pk):
 @website_delete_required
 def api_portfolio_category_delete(request, pk):
     """Delete a portfolio category (only non-default)."""
-    cat = get_object_or_404(PortfolioCategory, pk=pk)
-    if cat.is_default:
-        return JsonResponse({'success': False, 'message': 'Cannot delete default categories'}, status=400)
-    cat.delete()
+    try:
+        PortfolioCategoryService.delete(pk)
+    except ValueError as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=400)
     return JsonResponse({'success': True, 'message': 'Category deleted'})
 
 
@@ -667,7 +598,7 @@ def api_portfolio_category_delete(request, pk):
 @website_edit_required
 def api_hero_image_list(request):
     """GET: return all hero images ordered by position."""
-    images = HeroImage.objects.order_by('order', 'pk')
+    images = HeroImageService.list_all()
     data = [
         {
             'id': img.pk,
@@ -690,16 +621,11 @@ def api_hero_image_create(request):
     if not image_file:
         return JsonResponse({'success': False, 'message': 'Image file is required'}, status=400)
 
-    title = request.POST.get('title', '')
-    subtitle = request.POST.get('subtitle', '')
-    order = int(request.POST.get('order', 0))
-
-    hero = HeroImage.objects.create(
+    hero = HeroImageService.create(
         image=image_file,
-        title=title,
-        subtitle=subtitle,
-        order=order,
-        is_active=True,
+        title=request.POST.get('title', ''),
+        subtitle=request.POST.get('subtitle', ''),
+        order=int(request.POST.get('order', 0)),
     )
     ActivityService.log_website_update(request, 'hero image added')
     return JsonResponse({
@@ -714,27 +640,14 @@ def api_hero_image_create(request):
 @website_edit_required
 def api_hero_image_update(request, pk):
     """POST: update hero image details (replace image optional)."""
-    hero = get_object_or_404(HeroImage, pk=pk)
-
-    title = request.POST.get('title')
-    subtitle = request.POST.get('subtitle')
-    order = request.POST.get('order')
-    is_active = request.POST.get('is_active')
-
-    if title is not None:
-        hero.title = title
-    if subtitle is not None:
-        hero.subtitle = subtitle
-    if order is not None:
-        hero.order = int(order)
-    if is_active is not None:
-        hero.is_active = is_active in ('true', '1', 'on', 'True')
-
-    new_image = request.FILES.get('image')
-    if new_image:
-        hero.image = new_image
-
-    hero.save()
+    HeroImageService.update(
+        pk,
+        title=request.POST.get('title'),
+        subtitle=request.POST.get('subtitle'),
+        order=request.POST.get('order'),
+        is_active=request.POST.get('is_active'),
+        image=request.FILES.get('image'),
+    )
     ActivityService.log_website_update(request, 'hero image updated')
     return JsonResponse({'success': True, 'message': 'Hero image updated'})
 
@@ -743,8 +656,7 @@ def api_hero_image_update(request, pk):
 @website_delete_required
 def api_hero_image_delete(request, pk):
     """POST: delete a hero image."""
-    hero = get_object_or_404(HeroImage, pk=pk)
-    hero.delete()
+    HeroImageService.delete(pk)
     ActivityService.log_website_update(request, 'hero image deleted')
     return JsonResponse({'success': True, 'message': 'Hero image deleted'})
 
@@ -756,8 +668,7 @@ def api_hero_image_reorder(request):
     try:
         data = json.loads(request.body)
         order_list = data.get('order', [])
-        for idx, pk in enumerate(order_list):
-            HeroImage.objects.filter(pk=pk).update(order=idx + 1)
+        HeroImageService.reorder(order_list)
         return JsonResponse({'success': True, 'message': 'Order updated'})
     except (json.JSONDecodeError, ValueError):
         return JsonResponse({'success': False, 'message': 'Invalid data'}, status=400)

@@ -19,8 +19,7 @@
         document.getElementById('portfolioId').value = id || '';
         document.getElementById('videoFields').style.display = 'none';
         if (id) {
-            fetch(`${BASE}/portfolio/${id}/`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-                .then(r => r.json())
+            ApiClient.get(`${BASE}/portfolio/${id}/`)
                 .then(d => {
                     if (!d.success) return;
                     const p = d.item;
@@ -51,12 +50,7 @@
         else fd.set('is_active', 'true');
         if (!fd.has('is_featured')) fd.append('is_featured', 'false');
         else fd.set('is_featured', 'true');
-        fetch(url, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': getCSRFToken(), 'X-Requested-With': 'XMLHttpRequest' },
-            body: fd
-        })
-            .then(r => r.json())
+        ApiClient.upload(url, fd)
             .then(d => {
                 if (d.success) { showToast(d.message, 'success'); location.reload(); }
                 else showToast(d.message || 'Error', 'error');
@@ -67,21 +61,13 @@
     /* DELETE / TOGGLE */
     window.deletePortfolio = function (id) {
         if (!confirm('Delete this portfolio item?')) return;
-        fetch(`${BASE}/portfolio/${id}/delete/`, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': getCSRFToken(), 'X-Requested-With': 'XMLHttpRequest' }
-        })
-            .then(r => r.json())
+        ApiClient.post(`${BASE}/portfolio/${id}/delete/`)
             .then(d => { if (d.success) { showToast(d.message, 'success'); location.reload(); } else showToast(d.message, 'error'); })
             .catch(() => showToast('Network error', 'error'));
     };
 
     window.togglePortfolio = function (id, badge) {
-        fetch(`${BASE}/portfolio/${id}/toggle/`, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': getCSRFToken(), 'X-Requested-With': 'XMLHttpRequest' }
-        })
-            .then(r => r.json())
+        ApiClient.post(`${BASE}/portfolio/${id}/toggle/`)
             .then(d => {
                 if (d.success) {
                     badge.textContent = d.is_active ? 'Active' : 'Inactive';
@@ -134,11 +120,7 @@
 
     window.deleteCategory = function (id) {
         if (!confirm('Delete this category? Items will keep their content but lose category assignment.')) return;
-        fetch(`${BASE}/portfolio-categories/${id}/delete/`, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': getCSRFToken(), 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' }
-        })
-            .then(r => r.json())
+        ApiClient.post(`${BASE}/portfolio-categories/${id}/delete/`)
             .then(d => { if (d.success) { showToast(d.message, 'success'); location.reload(); } else showToast(d.message, 'error'); })
             .catch(() => showToast('Network error', 'error'));
     };
@@ -155,16 +137,7 @@
             bento_size: document.getElementById('cat_bento_size').value || 'normal',
         };
         const url = id ? `${BASE}/portfolio-categories/${id}/update/` : `${BASE}/portfolio-categories/create/`;
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': getCSRFToken(),
-                'X-Requested-With': 'XMLHttpRequest',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
-        })
-            .then(r => r.json())
+        ApiClient.post(url, payload)
             .then(d => {
                 if (d.success) { showToast(d.message, 'success'); location.reload(); }
                 else showToast(d.message || 'Error', 'error');

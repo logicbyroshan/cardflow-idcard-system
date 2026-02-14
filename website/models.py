@@ -449,6 +449,11 @@ class ContactSubmission(models.Model):
         verbose_name = 'Contact Submission'
         verbose_name_plural = 'Contact Submissions'
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['status']),
+            models.Index(fields=['email_status']),
+            models.Index(fields=['created_at']),
+        ]
     
     def __str__(self):
         return f"{self.name}: {self.subject}"

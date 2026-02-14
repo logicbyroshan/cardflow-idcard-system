@@ -14,8 +14,8 @@
 
 function layoutState() {
     return {
-        // Sidebar state - persisted to localStorage
-        sidebarOpen: localStorage.getItem('sidebarCollapsed') !== 'true',
+        // Sidebar state - persisted to localStorage, default CLOSED
+        sidebarOpen: localStorage.getItem('sidebarCollapsed') === 'false',
         
         // Toast queue for notifications
         toastQueue: [],

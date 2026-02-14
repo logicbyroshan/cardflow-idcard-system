@@ -12,8 +12,7 @@
         document.getElementById('clientForm').reset();
         document.getElementById('clientId').value = id || '';
         if (id) {
-            fetch(`${BASE}/clients/${id}/`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-                .then(r => r.json())
+            ApiClient.get(`${BASE}/clients/${id}/`)
                 .then(d => {
                     if (!d.success) return;
                     const c = d.client;
@@ -39,12 +38,7 @@
         const url = id ? `${BASE}/clients/${id}/update/` : `${BASE}/clients/create/`;
         if (!fd.has('is_active')) fd.append('is_active', 'false');
         else fd.set('is_active', 'true');
-        fetch(url, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': getCSRFToken(), 'X-Requested-With': 'XMLHttpRequest' },
-            body: fd
-        })
-            .then(r => r.json())
+        ApiClient.upload(url, fd)
             .then(d => {
                 if (d.success) { showToast(d.message, 'success'); location.reload(); }
                 else showToast(d.message || 'Error', 'error');
@@ -56,21 +50,13 @@
 
     window.deleteClient = function (id) {
         if (!confirm('Delete this client?')) return;
-        fetch(`${BASE}/clients/${id}/delete/`, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': getCSRFToken(), 'X-Requested-With': 'XMLHttpRequest' }
-        })
-            .then(r => r.json())
+        ApiClient.post(`${BASE}/clients/${id}/delete/`)
             .then(d => { if (d.success) { showToast(d.message, 'success'); location.reload(); } else showToast(d.message, 'error'); })
             .catch(() => showToast('Network error', 'error'));
     };
 
     window.toggleClient = function (id, badge) {
-        fetch(`${BASE}/clients/${id}/toggle/`, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': getCSRFToken(), 'X-Requested-With': 'XMLHttpRequest' }
-        })
-            .then(r => r.json())
+        ApiClient.post(`${BASE}/clients/${id}/toggle/`)
             .then(d => {
                 if (d.success) {
                     badge.textContent = d.is_active ? 'Active' : 'Inactive';

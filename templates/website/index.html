@@ -1,5 +1,6 @@
 {% extends 'website/base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block content %}
     <!-- Hero Section -->
@@ -12,7 +13,7 @@
                 </div>
                 <h1>
                     {% if business.hero_title %}
-                        {{ business.hero_title|safe }}
+                        {{ business.hero_title|safe_html }}
                     {% else %}
                         Professional <span class="gradient-text">ID Cards</span> <br>for Your Institution
                     {% endif %}

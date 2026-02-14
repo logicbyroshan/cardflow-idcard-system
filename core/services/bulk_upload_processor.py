@@ -57,7 +57,7 @@ def process_bulk_upload(task):
     from core.models import IDCardTable, IDCard
     from core.services.base import BaseService
     from core.services.image_service import ImageService
-    from core.views.idcard_api import validate_image_bytes, convert_class_value, convert_section_value
+    from core.utils.field_utils import validate_image_bytes, convert_class_value, convert_section_value
     
     metadata = task.metadata or {}
     table_id = metadata.get('table_id')
@@ -365,7 +365,7 @@ def _parse_row_fields(row, header_to_field, field_type_lookup):
     """
     Parse field values from a row.
     """
-    from core.views.idcard_api import convert_class_value, convert_section_value
+    from core.utils.field_utils import convert_class_value, convert_section_value
     from datetime import datetime, timedelta
     
     field_data = {}
@@ -446,7 +446,7 @@ def _find_and_save_image_from_zips(photo_column_value, img_field, zip_paths, uni
     """
     from core.services.base import BaseService
     from core.services.image_service import ImageService
-    from core.views.idcard_api import validate_image_bytes
+    from core.utils.field_utils import validate_image_bytes
     
     normalized_key = BaseService.normalize_image_identifier(photo_column_value)
     if not normalized_key:
@@ -476,7 +476,7 @@ def _find_image_in_zip(zip_path, normalized_key):
     CRITICAL: Opens ZIP from disk, extracts only ONE file.
     """
     from core.services.base import BaseService
-    from core.views.idcard_api import validate_image_bytes
+    from core.utils.field_utils import validate_image_bytes
     
     if not os.path.exists(zip_path):
         return {'found': False}
@@ -518,21 +518,22 @@ def _find_image_in_zip(zip_path, normalized_key):
 
 def _save_extracted_image(result, client, batch_counter):
     """
-    Save an extracted image using ImageService.
+    Save an extracted image using ImageService single-authority entry point.
     """
     from core.services.image_service import ImageService
     
     try:
-        save_result = ImageService.save_image_with_thumbnail(
+        save_result = ImageService.save_new_image(
             image_bytes=result['bytes'],
             client=client,
-            existing_path=None,
+            field_name='photo',  # generic; caller sets real field in field_data
+            card=None,  # card not yet created during bulk upload
             batch_counter=batch_counter,
-            original_ext=result['ext']
+            original_ext=result['ext'],
         )
         
-        if save_result.success and save_result.data.get('path'):
-            return {'success': True, 'path': save_result.data['path']}
+        if save_result.success and save_result.data.get('final_value'):
+            return {'success': True, 'path': save_result.data['final_value']}
         else:
             return {'success': False, 'error': save_result.message}
     except Exception as e:

@@ -1,6 +1,9 @@
 // ID Card Actions - Upload Module
 // Contains: XLSX upload, ZIP upload, field matching
 
+(function() {
+'use strict';
+
 // ==========================================
 // CONSTANTS
 // NOTE: Must stay in sync with mediafiles/constants.py
@@ -923,3 +926,5 @@ function initUploadModule() {
 window.IDCardApp = window.IDCardApp || {};
 window.IDCardApp.initUploadModule = initUploadModule;
 window.IDCardApp.closeUploadModal = closeUploadModalFn;
+
+})();

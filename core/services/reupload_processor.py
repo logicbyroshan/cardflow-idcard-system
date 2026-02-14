@@ -46,7 +46,7 @@ def process_reupload_images(task):
     from core.models import IDCardTable, IDCard
     from core.services.base import BaseService
     from core.services.image_service import ImageService
-    from core.views.idcard_api import validate_image_bytes
+    from core.utils.field_utils import validate_image_bytes
     
     metadata = task.metadata or {}
     table_id = metadata.get('table_id')
@@ -167,17 +167,29 @@ def process_reupload_images(task):
                             errors.append(f"Card {card.pk}: Invalid image - {error_msg}")
                             continue
                         
-                        # Save image using ImageService
-                        result = ImageService.save_image_with_thumbnail(
-                            image_bytes=image_bytes,
-                            client=client,
-                            existing_path=existing_path,
-                            batch_counter=batch_counter,
-                            original_ext=zip_entry['ext']
-                        )
+                        # Save image using single-authority entry point
+                        if existing_path:
+                            result = ImageService.replace_image(
+                                image_bytes=image_bytes,
+                                client=client,
+                                field_name=img_field,
+                                existing_path=existing_path,
+                                card=card,
+                                batch_counter=batch_counter,
+                                original_ext=zip_entry['ext'],
+                            )
+                        else:
+                            result = ImageService.save_new_image(
+                                image_bytes=image_bytes,
+                                client=client,
+                                field_name=img_field,
+                                card=card,
+                                batch_counter=batch_counter,
+                                original_ext=zip_entry['ext'],
+                            )
                         
-                        if result.success and result.data.get('path'):
-                            field_data[img_field] = result.data['path']
+                        if result.success and result.data.get('final_value'):
+                            field_data[img_field] = result.data['final_value']
                             card_updated = True
                             logger.debug("Reupload: Card %s field %s updated", card.pk, img_field)
                         else:

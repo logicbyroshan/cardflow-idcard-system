@@ -6,10 +6,13 @@ Views for client-facing features:
 - Staff Management (for Client Admin)
 - Card Data Views
 - Image Uploads
-- ID Card Group (shared admin template)
-- ID Card Actions (shared admin template)
-- Group Settings (shared admin template)
-- Reprint Cards (shared admin template)
+- ID Card Group / Actions / Group Settings / Reprint Cards (shared templates)
+
+ARCHITECTURE RULES (enforced):
+- Views are ULTRA-THIN: parse request → call service → return response.
+- NO .save(), .create(), .delete() on any model in this file.
+- All mutations delegate to client/services.py or core services.
+- Access control via @require_client_user / @require_client_admin decorators.
 """
 import json
 from functools import wraps
@@ -40,12 +43,13 @@ from .services import (
 def require_client_user(view_func):
     """
     Decorator to require client or client_staff role.
+    Delegates role check to PermissionService (single authority).
     """
     @wraps(view_func)
     @login_required(login_url='/panel/auth/login/')
     def wrapper(request, *args, **kwargs):
         user = request.user
-        if user.role not in ('client', 'client_staff'):
+        if not PermissionService.is_client_role(user):
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({
                     'success': False,
@@ -59,13 +63,13 @@ def require_client_user(view_func):
 def require_client_admin(view_func):
     """
     Decorator to require client role (not client_staff).
-    Used for staff management and other admin-only features.
+    Delegates role check to PermissionService (single authority).
     """
     @wraps(view_func)
     @login_required(login_url='/panel/auth/login/')
     def wrapper(request, *args, **kwargs):
         user = request.user
-        if user.role != 'client':
+        if not PermissionService.is_client(user):
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({
                     'success': False,
@@ -100,9 +104,9 @@ def dashboard(request):
     context = {
         'user': user,
         'user_name': user.get_full_name() or user.username,
-        'user_role': 'Client Admin' if user.role == 'client' else 'Client Staff',
+        'user_role': 'Client Admin' if PermissionService.is_client(user) else 'Client Staff',
         'client': client,
-        'is_client_admin': user.role == 'client',
+        'is_client_admin': PermissionService.is_client(user),
         'active_page': 'dashboard',
         **permissions,
     }
@@ -134,9 +138,9 @@ def card_groups(request):
     context = {
         'user': user,
         'user_name': user.get_full_name() or user.username,
-        'user_role': 'Client Admin' if user.role == 'client' else 'Client Staff',
+        'user_role': 'Client Admin' if PermissionService.is_client(user) else 'Client Staff',
         'client': client,
-        'is_client_admin': user.role == 'client',
+        'is_client_admin': PermissionService.is_client(user),
         'active_page': 'groups',
         'groups': result.data.get('groups', []) if result.success else [],
         **permissions,
@@ -168,7 +172,7 @@ def card_table(request, table_id):
     
     # Verify access
     try:
-        table = IDCardTable.objects.get(id=table_id)
+        table = IDCardTable.objects.select_related('group__client').get(id=table_id)
     except IDCardTable.DoesNotExist:
         return redirect('/panel/client/groups/')
     
@@ -183,9 +187,9 @@ def card_table(request, table_id):
     context = {
         'user': user,
         'user_name': user.get_full_name() or user.username,
-        'user_role': 'Client Admin' if user.role == 'client' else 'Client Staff',
+        'user_role': 'Client Admin' if PermissionService.is_client(user) else 'Client Staff',
         'client': client,
-        'is_client_admin': user.role == 'client',
+        'is_client_admin': PermissionService.is_client(user),
         'active_page': 'groups',
         'table': table,
         'group': table.group,
@@ -749,7 +753,7 @@ def client_idcard_actions(request, table_id):
     if not any(PermissionService.has_permission(user, p) for p in LIST_PERMISSIONS):
         return redirect('/panel/client/dashboard/')
     
-    table = get_object_or_404(IDCardTable, id=table_id)
+    table = get_object_or_404(IDCardTable.objects.select_related('group__client'), id=table_id)
     
     # Verify ownership
     if not ClientAccessService.can_access_table(user, table):
@@ -842,13 +846,8 @@ def client_group_settings(request):
         return redirect('/panel/client/dashboard/')
     
     # Get the first group for client, or create one if none exists
-    group = IDCardGroup.objects.filter(client=client).first()
-    if not group:
-        group = IDCardGroup.objects.create(
-            client=client,
-            name=f"{client.name} - Default Group",
-            is_active=True
-        )
+    from core.services import IDCardService
+    group = IDCardService.ensure_default_group(client)
     tables = IDCardTable.objects.filter(group=group).annotate(
         total_cards=Count('id_cards')
     )
@@ -875,7 +874,7 @@ def client_reprint_cards(request, table_id):
     if not client:
         return redirect('/panel/client/dashboard/')
     
-    table = get_object_or_404(IDCardTable, id=table_id)
+    table = get_object_or_404(IDCardTable.objects.select_related('group__client'), id=table_id)
     
     # Verify ownership
     if not ClientAccessService.can_access_table(user, table):

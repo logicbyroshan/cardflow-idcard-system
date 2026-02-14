@@ -170,12 +170,14 @@ class ExcelExporter:
             filename = generate_export_filename(table.name, 'xlsx', client_name=client_name, status=status)
             
             # Create response
+            xlsx_bytes = xlsx_buffer.getvalue()
+            xlsx_buffer.close()
             response = HttpResponse(
-                xlsx_buffer.getvalue(),
+                xlsx_bytes,
                 content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
             )
             response['Content-Disposition'] = f'attachment; filename="{filename}"'
-            response['Content-Length'] = len(xlsx_buffer.getvalue())
+            response['Content-Length'] = len(xlsx_bytes)
             
             return ExcelExportResult(
                 success=True,

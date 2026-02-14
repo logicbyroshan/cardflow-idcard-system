@@ -196,6 +196,7 @@ def privacy_policy(request):
 def submit_testimonial(request):
     """Handles AJAX submission of a new review (Public)"""
     try:
+        from .services import TestimonialService
         name = request.POST.get('name', '').strip()
         school = request.POST.get('school', '').strip()
         text = request.POST.get('text', '').strip()
@@ -204,19 +205,16 @@ def submit_testimonial(request):
         if not all([name, school, text]):
             return JsonResponse({'success': False, 'message': 'All fields are required.'}, status=400)
 
-        # Validate and clamp rating
         try:
             rating_val = int(rating)
         except (ValueError, TypeError):
             rating_val = 5
-        rating_val = max(1, min(5, rating_val))
 
-        Testimonial.objects.create(
+        TestimonialService.create_public(
             reviewer_name=name,
             reviewer_school=school,
             text=text,
             rating=rating_val,
-            is_active=False  # Requires Admin Approval
         )
         return JsonResponse({'success': True, 'message': 'Review submitted! It will appear once approved.'})
     except Exception as e:
@@ -228,6 +226,7 @@ def submit_testimonial(request):
 def submit_contact(request):
     """Handles AJAX submission of the contact form"""
     try:
+        from .services import ContactSubmissionService
         name = request.POST.get('name', '').strip()
         email = request.POST.get('email', '').strip()
         phone = request.POST.get('phone', '').strip()
@@ -237,28 +236,18 @@ def submit_contact(request):
         if not all([name, email, subject, message]):
             return JsonResponse({'success': False, 'message': 'Please fill required fields.'}, status=400)
 
-        # Validate email format
         try:
             validate_email(email)
         except ValidationError:
             return JsonResponse({'success': False, 'message': 'Please enter a valid email address.'}, status=400)
 
-        # Create the lead in the DB
-        submission = ContactSubmission.objects.create(
+        ContactSubmissionService.create(
             name=name,
             email=email,
             phone=phone,
             subject=subject,
-            message=message
+            message=message,
         )
-
-        # Attempt to send email notification
-        try:
-            from .email_utils import send_contact_email
-            send_contact_email(submission)
-        except Exception:
-            logger.warning(f"Email send failed for contact submission {submission.id}")
-
         return JsonResponse({'success': True, 'message': 'Message sent successfully!'})
     except Exception as e:
         logger.error(f"Contact form submission failed: {e}")

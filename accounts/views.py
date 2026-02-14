@@ -4,6 +4,7 @@ Accounts Views Module
 API views and page views for authentication flow.
 """
 import json
+import logging
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views import View
@@ -15,6 +16,9 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 
 from .services import AuthService, OTPService, RoleService, DASHBOARD_URLS
+from .rate_limit import rate_limit
+
+logger = logging.getLogger(__name__)
 
 
 # =============================================================================
@@ -95,7 +99,8 @@ class OwnerDashboardView(BaseDashboardView):
     
     def dispatch(self, request, *args, **kwargs):
         if request.user.is_authenticated:
-            if request.user.is_superuser or request.user.role == 'super_admin':
+            from core.services.permission_service import PermissionService
+            if PermissionService.is_super_admin(request.user):
                 return redirect('/panel/')
         return super().dispatch(request, *args, **kwargs)
     
@@ -144,6 +149,7 @@ class ClientStaffDashboardView(BaseDashboardView):
 # =============================================================================
 
 @method_decorator(csrf_exempt, name='dispatch')
+@method_decorator(rate_limit(max_requests=10, window_seconds=60), name='dispatch')
 class CheckEmailAPIView(View):
     """
     API endpoint to check if user email exists.
@@ -184,6 +190,7 @@ class CheckEmailAPIView(View):
 
 
 @method_decorator(csrf_exempt, name='dispatch')
+@method_decorator(rate_limit(max_requests=5, window_seconds=60), name='dispatch')
 class LoginAPIView(View):
     """
     API endpoint for user login.
@@ -214,6 +221,7 @@ class LoginAPIView(View):
                 
                 # Log activity
                 ActivityService.log_login(request, result['user'])
+                logger.info("Login success: user=%s role=%s", email, role)
                 
                 return JsonResponse({
                     'success': True,
@@ -221,6 +229,7 @@ class LoginAPIView(View):
                     'message': result['message']
                 })
             else:
+                logger.warning("Login failed: email=%s role=%s reason=%s", email, role, result['message'])
                 return JsonResponse({
                     'success': False,
                     'message': result['message']
@@ -232,13 +241,15 @@ class LoginAPIView(View):
                 'message': 'Invalid JSON data'
             }, status=400)
         except Exception as e:
+            logger.exception("Login error for email=%s", email if 'email' in dir() else 'unknown')
             return JsonResponse({
                 'success': False,
-                'message': str(e)
+                'message': 'An unexpected error occurred. Please try again.'
             }, status=500)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
+@method_decorator(rate_limit(max_requests=3, window_seconds=60), name='dispatch')
 class ForgotPasswordAPIView(View):
     """
     API endpoint to request password reset OTP.
@@ -257,14 +268,16 @@ class ForgotPasswordAPIView(View):
                 }, status=400)
             
             result = OTPService.send_otp(email)
+            logger.info("Password reset requested: email=%s success=%s", email, result['success'])
             
             response_data = {
                 'success': result['success'],
                 'message': result['message']
             }
             
-            # Include dev OTP in debug mode
-            if result.get('dev_otp'):
+            # Include dev OTP in debug mode only
+            from django.conf import settings as django_settings
+            if django_settings.DEBUG and result.get('dev_otp'):
                 response_data['dev_otp'] = result['dev_otp']
             
             return JsonResponse(response_data)
@@ -282,6 +295,7 @@ class ForgotPasswordAPIView(View):
 
 
 @method_decorator(csrf_exempt, name='dispatch')
+@method_decorator(rate_limit(max_requests=5, window_seconds=60), name='dispatch')
 class VerifyOTPAPIView(View):
     """
     API endpoint to verify OTP.
@@ -325,6 +339,7 @@ class VerifyOTPAPIView(View):
 
 
 @method_decorator(csrf_exempt, name='dispatch')
+@method_decorator(rate_limit(max_requests=5, window_seconds=60), name='dispatch')
 class ResetPasswordAPIView(View):
     """
     API endpoint to reset password.

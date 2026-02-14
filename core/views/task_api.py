@@ -11,6 +11,11 @@ CRITICAL FEATURES:
 - Block multiple concurrent heavy tasks per user
 - Progress tracking with polling support
 - Safe file download with cleanup
+
+ARCHITECTURE RULES (enforced):
+- Views are ULTRA-THIN: parse request → call service → return JsonResponse.
+- NO .save(), .delete() on BackgroundTask in views.
+- Task cancellation delegates to background_worker.cancel_task().
 """
 import os
 import json
@@ -18,7 +23,6 @@ import logging
 
 from django.http import JsonResponse, FileResponse, Http404
 from django.views.decorators.http import require_http_methods, require_POST, require_GET
-from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import get_object_or_404
 from django.conf import settings
 
@@ -38,7 +42,6 @@ logger = logging.getLogger(__name__)
 
 # ==================== TASK STATUS API ====================
 
-@csrf_exempt
 @require_GET
 @api_require_any_authenticated
 def api_task_status(request, task_id):
@@ -102,7 +105,6 @@ def api_task_status(request, task_id):
         }, status=400)
 
 
-@csrf_exempt
 @require_GET
 @api_require_any_authenticated
 def api_task_download(request, task_id):
@@ -133,8 +135,13 @@ def api_task_download(request, task_id):
                 'message': 'No result file available'
             }, status=404)
         
-        # Get full path
-        full_path = os.path.join(settings.MEDIA_ROOT, task.result_path)
+        # Get full path with traversal guard
+        full_path = os.path.realpath(os.path.join(settings.MEDIA_ROOT, task.result_path))
+        if not full_path.startswith(os.path.realpath(str(settings.MEDIA_ROOT))):
+            return JsonResponse({
+                'success': False,
+                'message': 'Invalid file path'
+            }, status=400)
         
         if not os.path.exists(full_path):
             return JsonResponse({
@@ -163,7 +170,6 @@ def api_task_download(request, task_id):
         }, status=400)
 
 
-@csrf_exempt  
 @require_POST
 @api_require_any_authenticated
 def api_task_cancel(request, task_id):
@@ -176,31 +182,12 @@ def api_task_cancel(request, task_id):
     but their status will be marked as cancelled.
     """
     try:
-        # Users can only cancel their own tasks
-        if PermissionService.is_super_admin(request.user):
-            task = get_object_or_404(BackgroundTask, id=task_id)
-        else:
-            task = get_object_or_404(BackgroundTask, id=task_id, user=request.user)
-        
-        if task.status in ('completed', 'failed', 'cancelled'):
-            return JsonResponse({
-                'success': False,
-                'message': f'Task is already {task.status}'
-            }, status=400)
-        
-        # Mark as cancelled
-        from django.utils import timezone
-        task.status = 'cancelled'
-        task.completed_at = timezone.now()
-        task.save(update_fields=['status', 'completed_at', 'updated_at'])
-        
-        # Cleanup files
-        task.cleanup_files()
-        
-        return JsonResponse({
-            'success': True,
-            'message': 'Task cancelled'
-        })
+        from ..services.background_worker import cancel_task
+        result = cancel_task(task_id, user=request.user)
+
+        if result['success']:
+            return JsonResponse({'success': True, 'message': result['message']})
+        return JsonResponse({'success': False, 'message': result['message']}, status=400)
         
     except Exception as e:
         logger.error("Error cancelling task: %s", e)
@@ -210,7 +197,6 @@ def api_task_cancel(request, task_id):
         }, status=400)
 
 
-@csrf_exempt
 @require_GET
 @api_require_any_authenticated
 def api_task_list(request):
@@ -278,7 +264,6 @@ def api_task_list(request):
         }, status=400)
 
 
-@csrf_exempt
 @require_GET
 @api_require_any_authenticated
 def api_task_active(request):
@@ -330,7 +315,6 @@ def api_task_active(request):
 
 # ==================== BULK UPLOAD TASK CREATION ====================
 
-@csrf_exempt
 @require_POST
 @api_require_permission('perm_idcard_bulk_upload')
 def api_create_bulk_upload_task(request, table_id):
@@ -473,7 +457,6 @@ def api_create_bulk_upload_task(request, table_id):
 
 # ==================== REUPLOAD IMAGES TASK CREATION ====================
 
-@csrf_exempt
 @require_POST
 @api_require_permission('perm_reupload_idcard_image')
 def api_create_reupload_task(request, table_id):
@@ -584,7 +567,6 @@ def api_create_reupload_task(request, table_id):
 
 # ==================== EXPORT TASK CREATION ====================
 
-@csrf_exempt
 @require_POST
 @api_require_permission('perm_idcard_bulk_download')
 def api_create_export_task(request, table_id):

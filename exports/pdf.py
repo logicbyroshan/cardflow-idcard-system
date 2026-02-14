@@ -75,10 +75,17 @@ def _link_callback(uri, rel):
         static_root = getattr(settings, 'STATIC_ROOT', None)
         if static_root:
             path = os.path.join(static_root, uri.replace(settings.STATIC_URL, ''))
+            # Guard against path traversal
+            path = os.path.realpath(path)
+            if not path.startswith(os.path.realpath(static_root)):
+                return uri
         else:
             # Fallback for dev: use STATICFILES_DIRS
             for sdir in getattr(settings, 'STATICFILES_DIRS', []):
                 candidate = os.path.join(sdir, uri.replace(settings.STATIC_URL, ''))
+                candidate = os.path.realpath(candidate)
+                if not candidate.startswith(os.path.realpath(sdir)):
+                    continue
                 if os.path.isfile(candidate):
                     return candidate
             return uri
@@ -145,6 +152,15 @@ class PdfExporter:
             return PdfExportResult(
                 success=False,
                 message='No cards to export!'
+            )
+
+        # Hard cap to prevent OOM — xhtml2pdf is very memory-hungry with images
+        MAX_PDF_CARDS = 500
+        card_count = cards.count()
+        if card_count > MAX_PDF_CARDS:
+            return PdfExportResult(
+                success=False,
+                message=f'PDF export limited to {MAX_PDF_CARDS} cards (requested {card_count}). Use Excel or reduce your selection.'
             )
 
         try:
@@ -215,6 +231,8 @@ class PdfExporter:
                     message='Error generating PDF. Check server logs.'
                 )
 
+            response['Content-Length'] = len(response.content)
+
             return PdfExportResult(
                 success=True,
                 response=response,
@@ -249,11 +267,10 @@ class PdfExporter:
                     abs_path = os.path.join(settings.MEDIA_ROOT, img_path)
                     if os.path.isfile(abs_path):
                         with open(abs_path, 'rb') as f:
-                            img = PILImage.open(f)
-                            w, h = img.size
-                            img.close()
-                            if h > 0:
-                                return IMAGE_HEIGHT * (w / h)
+                            with PILImage.open(f) as img:
+                                w, h = img.size
+                                if h > 0:
+                                    return IMAGE_HEIGHT * (w / h)
         except Exception:
             pass
         return IMAGE_HEIGHT * DEFAULT_RATIO

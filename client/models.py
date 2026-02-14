@@ -284,3 +284,6 @@ class Client(models.Model):
     class Meta:
         app_label = 'core'  # Keep migration compatibility - model stays in core migrations
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['created_at']),
+        ]

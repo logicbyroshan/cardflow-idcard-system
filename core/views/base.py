@@ -1,6 +1,13 @@
 """
-Base views - Helper functions and Page views
+Base views — Helper functions and Page views.
 Contains: Dashboard, Staff Management, Client Management pages, etc.
+
+ARCHITECTURE RULES (enforced):
+- Views are ULTRA-THIN: parse request → call service → return response.
+- NO .save(), .create(), .delete(), .update() on any model in this file.
+- All mutations MUST go through the service layer (IDCardService,
+  PermissionService, ClientService, etc.).
+- Scoping uses PermissionService.get_accessible_clients() / can_access_client().
 """
 from functools import wraps
 import json
@@ -8,7 +15,6 @@ from django.conf import settings as django_settings
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
-from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q
 from ..models import Client, Staff, IDCardGroup, IDCard, IDCardTable, ReprintRequest, User, SystemSettings
@@ -17,8 +23,10 @@ from ..services.activity_service import ActivityService
 from ..services.permission_service import (
     PermissionService,
     require_any_admin,
+    require_super_admin as _require_super_admin,
     api_require_any_admin,
     api_require_any_authenticated,
+    api_require_super_admin as _api_require_super_admin,
 )
 
 def get_user_role(user):
@@ -26,67 +34,12 @@ def get_user_role(user):
     return user.get_role_display()
 
 
-def is_super_admin_user(user):
-    """
-    Check if user has super admin privileges.
-    Accepts EITHER:
-    - Django's is_superuser=True (admin panel access)
-    - Business role='super_admin' (custom role field)
-    This ensures backward compatibility and prevents lockouts.
-    """
-    return user.is_superuser or user.role == 'super_admin'
-
-
 def super_admin_required(view_func):
-    """Decorator to ensure only super_admin can access the view"""
-    @wraps(view_func)
-    def wrapper(request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return redirect('login')
-        if not is_super_admin_user(request.user):
-            # Redirect to appropriate dashboard
-            if request.user.role == 'admin_staff':
-                return redirect('admin_staff_dashboard')
-            elif request.user.role == 'client':
-                return redirect('client_dashboard')
-            elif request.user.role == 'client_staff':
-                return redirect('client_staff_dashboard')
-            return redirect('login')
-        return view_func(request, *args, **kwargs)
-    return wrapper
-
-
-def api_login_required(view_func):
-    """Decorator to ensure API endpoints require authentication"""
-    @wraps(view_func)
-    def wrapper(request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return JsonResponse({
-                'success': False,
-                'message': 'Authentication required',
-                'redirect': '/panel/login/'
-            }, status=401)
-        return view_func(request, *args, **kwargs)
-    return wrapper
-
-
-def api_super_admin_required(view_func):
-    """Decorator to ensure API endpoints require super_admin role"""
-    @wraps(view_func)
-    def wrapper(request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return JsonResponse({
-                'success': False,
-                'message': 'Authentication required',
-                'redirect': '/panel/login/'
-            }, status=401)
-        if not is_super_admin_user(request.user):
-            return JsonResponse({
-                'success': False,
-                'message': 'Access denied. Super Admin privileges required.'
-            }, status=403)
-        return view_func(request, *args, **kwargs)
-    return wrapper
+    """
+    Deprecated — delegates to require_super_admin from permission_service.
+    Kept for backward-compatible imports.
+    """
+    return _require_super_admin(view_func)
 
 
 # Dashboard
@@ -138,7 +91,6 @@ def dashboard(request):
     return render(request, 'index.html', context)
 
 
-@csrf_exempt
 @require_http_methods(["GET"])
 @api_require_any_admin
 def api_recent_client_updates(request):
@@ -147,16 +99,10 @@ def api_recent_client_updates(request):
         limit = int(request.GET.get('limit', 5))
         user = request.user
         
-        # Get recent active clients - scoped by user role
-        if PermissionService.is_super_admin(user):
-            clients = Client.objects.filter(status='active').order_by('-updated_at')[:limit]
-        else:
-            # Admin staff sees only their assigned clients
-            staff_profile = getattr(user, 'staff_profile', None)
-            if staff_profile and staff_profile.staff_type == 'admin_staff':
-                clients = staff_profile.assigned_clients.filter(status='active').order_by('-updated_at')[:limit]
-            else:
-                clients = Client.objects.none()
+        # Get recent active clients - scoped by PermissionService
+        clients = PermissionService.get_accessible_clients(
+            user, Client.objects.filter(status='active')
+        ).order_by('-updated_at')[:limit]
         
         results = []
         
@@ -202,7 +148,6 @@ def api_recent_client_updates(request):
         }, status=500)
 
 
-@csrf_exempt
 @require_http_methods(["GET"])
 @api_require_any_admin
 def api_recent_activity(request):
@@ -217,7 +162,6 @@ def api_recent_activity(request):
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
-@csrf_exempt
 @require_http_methods(["GET"])
 @api_require_any_authenticated
 def api_global_search(request):
@@ -249,7 +193,6 @@ def api_global_search(request):
         if PermissionService.is_super_admin(user):
             pass  # super_admin sees all
         elif user.role in ('client', 'client_staff'):
-            # Client users only see their own client's cards
             from client.services import ClientAccessService
             client = ClientAccessService.get_client_for_user(user)
             if client:
@@ -257,11 +200,10 @@ def api_global_search(request):
             else:
                 base_cards = base_cards.none()
         else:
-            # Admin staff sees only assigned clients
-            staff_profile = getattr(user, 'staff_profile', None)
-            if staff_profile and staff_profile.staff_type == 'admin_staff':
-                assigned_client_ids = staff_profile.assigned_clients.values_list('id', flat=True)
-                base_cards = base_cards.filter(table__group__client_id__in=assigned_client_ids)
+            # Admin staff sees only assigned clients — use PermissionService
+            accessible_ids = PermissionService.get_accessible_client_ids(user)
+            if accessible_ids:
+                base_cards = base_cards.filter(table__group__client_id__in=accessible_ids)
             else:
                 base_cards = base_cards.none()
         
@@ -360,15 +302,9 @@ def manage_staff(request):
 def manage_clients(request):
     """View to manage all clients - Super Admin sees all, Admin Staff sees assigned only"""
     user = request.user
-    if PermissionService.is_super_admin(user):
-        clients = Client.objects.all().select_related('user')
-    else:
-        # Admin staff sees only their assigned clients
-        staff_profile = getattr(user, 'staff_profile', None)
-        if staff_profile and staff_profile.staff_type == 'admin_staff':
-            clients = staff_profile.assigned_clients.all().select_related('user')
-        else:
-            clients = Client.objects.none()
+    clients = PermissionService.get_accessible_clients(
+        user, Client.objects.all().select_related('user')
+    )
     context = {
         'active_page': 'manage_clients',
         'user_role': get_user_role(request.user),
@@ -384,16 +320,10 @@ def active_clients(request):
     """View active clients for ID card management - Super Admin and Admin Staff"""
     user = request.user
     
-    # Super admin sees all active clients
-    if PermissionService.is_super_admin(user):
-        clients = Client.objects.filter(status='active').select_related('user')
-    else:
-        # Admin staff sees only their assigned clients
-        staff_profile = getattr(user, 'staff_profile', None)
-        if staff_profile and staff_profile.staff_type == 'admin_staff':
-            clients = staff_profile.assigned_clients.filter(status='active').select_related('user')
-        else:
-            clients = Client.objects.none()
+    # Scoped by PermissionService
+    clients = PermissionService.get_accessible_clients(
+        user, Client.objects.filter(status='active').select_related('user')
+    )
     
     context = {
         'active_page': 'active_clients',
@@ -410,15 +340,10 @@ def idcard_group(request, client_id):
     """View ID card groups/tables for a specific client with status counts"""
     client = get_object_or_404(Client, id=client_id)
     
-    # Check if admin staff has access to this client
+    # Check if user has access to this client
     user = request.user
-    if not PermissionService.is_super_admin(user):
-        staff_profile = getattr(user, 'staff_profile', None)
-        if staff_profile and staff_profile.staff_type == 'admin_staff':
-            if not staff_profile.assigned_clients.filter(id=client_id).exists():
-                return redirect('active_clients')  # No access to this client
-        else:
-            return redirect('login')
+    if not PermissionService.can_access_client(user, client_id):
+        return redirect('active_clients')
     
     # Get all tables for this client's groups with status counts
     tables = IDCardTable.objects.filter(group__client=client).select_related('group').annotate(
@@ -445,18 +370,12 @@ def idcard_group(request, client_id):
 @require_any_admin
 def idcard_actions(request, table_id):
     """View and manage ID cards in a table, optionally filtered by status"""
-    table = get_object_or_404(IDCardTable, id=table_id)
+    table = get_object_or_404(IDCardTable.objects.select_related('group__client'), id=table_id)
     
-    # Check if admin staff has access to this table's client
+    # Check if user has access to this table's client
     user = request.user
-    if not PermissionService.is_super_admin(user):
-        staff_profile = getattr(user, 'staff_profile', None)
-        if staff_profile and staff_profile.staff_type == 'admin_staff':
-            client_id = table.group.client_id
-            if not staff_profile.assigned_clients.filter(id=client_id).exists():
-                return redirect('active_clients')  # No access to this client's table
-        else:
-            return redirect('login')
+    if not PermissionService.can_access_client(user, table.group.client_id):
+        return redirect('active_clients')
     
     status_filter = request.GET.get('status', None)
     
@@ -552,23 +471,12 @@ def idcard_actions(request, table_id):
 def group_settings(request, client_id):
     """Settings for a specific client - manage their groups and tables"""
     client = get_object_or_404(Client, id=client_id)
-    # Check if admin staff has access to this client
+    # Check if user has access to this client
     user = request.user
-    if not PermissionService.is_super_admin(user):
-        staff_profile = getattr(user, 'staff_profile', None)
-        if staff_profile and staff_profile.staff_type == 'admin_staff':
-            if not staff_profile.assigned_clients.filter(id=client_id).exists():
-                return redirect('active_clients')
-        else:
-            return redirect('login')
+    if not PermissionService.can_access_client(user, client_id):
+        return redirect('active_clients')
     # Get the first group for client, or create one if none exists
-    group = IDCardGroup.objects.filter(client=client).first()
-    if not group:
-        group = IDCardGroup.objects.create(
-            client=client,
-            name=f"{client.name} - Default Group",
-            is_active=True
-        )
+    group = IDCardService.ensure_default_group(client)
     tables = IDCardTable.objects.filter(group=group).annotate(
         total_cards=Count('id_cards')
     )
@@ -606,18 +514,12 @@ def manage_panel(request):
 @require_any_admin
 def reprint_cards(request, table_id):
     """Reprint ID Cards page — 3-step workflow: Requests → Confirm → Download"""
-    table = get_object_or_404(IDCardTable, id=table_id)
+    table = get_object_or_404(IDCardTable.objects.select_related('group__client'), id=table_id)
 
-    # Check access for admin staff
+    # Check access for user
     user = request.user
-    if not PermissionService.is_super_admin(user):
-        staff_profile = getattr(user, 'staff_profile', None)
-        if staff_profile and staff_profile.staff_type == 'admin_staff':
-            client_id = table.group.client_id
-            if not staff_profile.assigned_clients.filter(id=client_id).exists():
-                return redirect('active_clients')
-        else:
-            return redirect('login')
+    if not PermissionService.can_access_client(user, table.group.client_id):
+        return redirect('active_clients')
 
     # Check perm_idcard_reprint_list permission
     if not PermissionService.has_permission(user, 'perm_idcard_reprint_list'):
@@ -819,10 +721,266 @@ def api_export_settings_update(request):
 @require_any_admin
 def api_health(request):
     """Auth-protected health & version endpoint."""
-    import django
     return JsonResponse({
         'status': 'ok',
         'version': getattr(django_settings, 'APP_VERSION', 'unknown'),
-        'django': django.get_version(),
-        'debug': django_settings.DEBUG,
+    })
+
+
+# =============================================================================
+# PERMISSION DEBUG ENDPOINT (super_admin only)
+# =============================================================================
+
+@login_required
+def api_debug_permissions(request):
+    """
+    Self-check endpoint: returns the effective permissions for the requesting
+    user (or for a target_user_id if the requester is super_admin).
+
+    GET /panel/api/debug/permissions/
+    GET /panel/api/debug/permissions/?user_id=42
+    """
+    from ..services.permission_service import PermissionService, api_require_super_admin
+    if not PermissionService.is_super_admin(request.user):
+        return JsonResponse({'success': False, 'message': 'Super admin access required'}, status=403)
+
+    target_user = request.user
+    user_id = request.GET.get('user_id')
+    if user_id:
+        try:
+            target_user = User.objects.get(pk=int(user_id))
+        except (User.DoesNotExist, ValueError):
+            return JsonResponse({'success': False, 'message': 'User not found'}, status=404)
+
+    info = PermissionService.debug_permissions(target_user)
+    return JsonResponse({'success': True, 'data': info})
+
+
+# =============================================================================
+# WORKFLOW DEBUG ENDPOINT (super_admin only)
+# =============================================================================
+
+@login_required
+def api_debug_workflow(request):
+    """
+    Workflow self-check endpoint.
+
+    GET /panel/api/debug/workflow-check/?card_id=123
+        Returns: current status, allowed transitions (all + user-filtered),
+                 mandatory-field status, image-field status.
+
+    GET /panel/api/debug/workflow-check/
+        Returns: global transition matrix + reprint matrix.
+    """
+    from ..services.permission_service import PermissionService
+    from ..services.workflow_service import WorkflowService, ReprintWorkflowService
+
+    if not PermissionService.is_super_admin(request.user):
+        return JsonResponse({'success': False, 'message': 'Super admin access required'}, status=403)
+
+    card_id = request.GET.get('card_id')
+    if card_id:
+        try:
+            data = WorkflowService.debug_workflow(int(card_id), user=request.user)
+        except (ValueError, TypeError):
+            return JsonResponse({'success': False, 'message': 'Invalid card_id'}, status=400)
+        return JsonResponse({'success': True, 'data': data})
+
+    # Global matrix view
+    return JsonResponse({
+        'success': True,
+        'data': {
+            'idcard_transitions': WorkflowService.ALLOWED_TRANSITIONS,
+            'idcard_initial_status': WorkflowService.INITIAL_STATUS,
+            'idcard_perm_map': WorkflowService.TRANSITION_PERM_MAP,
+            'reprint_transitions': ReprintWorkflowService.ALLOWED_TRANSITIONS,
+            'reprint_initial_status': ReprintWorkflowService.INITIAL_STATUS,
+        }
+    })
+
+
+# =============================================================================
+# ALLOWED TRANSITIONS API (any authenticated user)
+# =============================================================================
+
+@require_http_methods(["GET"])
+@login_required
+def api_card_allowed_transitions(request, card_id):
+    """
+    Return the transitions allowed for a specific card for the requesting user.
+
+    GET /panel/api/card/<card_id>/allowed-transitions/
+    Response: { "success": true, "allowed_transitions": ["verified", "pool"] }
+    """
+    from ..services.workflow_service import WorkflowService
+
+    try:
+        card = get_object_or_404(IDCard, id=card_id)
+    except Exception:
+        return JsonResponse({'success': False, 'message': 'Card not found'}, status=404)
+
+    allowed = WorkflowService.get_allowed_transitions(card, user=request.user)
+    return JsonResponse({
+        'success': True,
+        'current_status': card.status,
+        'allowed_transitions': allowed,
+    })
+
+
+# =============================================================================
+# IMAGE INTEGRITY DEBUG ENDPOINT (super_admin only)
+# =============================================================================
+
+@login_required
+def api_debug_image_integrity(request):
+    """
+    Image integrity self-check endpoint.
+
+    GET /panel/api/debug/image-integrity/?card_id=123
+        Returns per-card: each image field's stored value, file-on-disk status,
+        thumbnail status, CardMedia record status.
+
+    GET /panel/api/debug/image-integrity/?table_id=45
+        Returns aggregate: total cards, missing images count, missing thumbnails
+        count, orphan CardMedia count.
+    """
+    from ..services.permission_service import PermissionService
+    from ..services.image_service import ImageService
+    from ..services.base import BaseService
+    from mediafiles.models import CardMedia
+    from mediafiles.services import ThumbnailService
+    from django.core.files.storage import default_storage
+
+    if not PermissionService.is_super_admin(request.user):
+        return JsonResponse({'success': False, 'message': 'Super admin access required'}, status=403)
+
+    card_id = request.GET.get('card_id')
+    table_id = request.GET.get('table_id')
+
+    if card_id:
+        try:
+            card = get_object_or_404(IDCard, id=int(card_id))
+        except (ValueError, TypeError):
+            return JsonResponse({'success': False, 'message': 'Invalid card_id'}, status=400)
+
+        table = card.table
+        image_field_names = BaseService.get_image_field_names(table.fields)
+        field_data = card.field_data or {}
+        fields_report = []
+
+        for fname in image_field_names:
+            value = field_data.get(fname, '')
+            file_exists = False
+            thumb_exists = False
+            thumb_path = None
+            cm_exists = False
+
+            if value and value not in ('NOT_FOUND', '') and not value.startswith('PENDING:'):
+                try:
+                    file_exists = default_storage.exists(value)
+                except Exception:
+                    pass
+                thumb_path = ThumbnailService.get_thumbnail_path(value)
+                if thumb_path:
+                    try:
+                        thumb_exists = default_storage.exists(thumb_path)
+                    except Exception:
+                        pass
+
+            cm_exists = CardMedia.objects.filter(card=card, field_name=fname).exists()
+
+            fields_report.append({
+                'field_name': fname,
+                'stored_value': value,
+                'is_pending': value.startswith('PENDING:') if value else False,
+                'is_empty': not value or value in ('', 'NOT_FOUND'),
+                'file_on_disk': file_exists,
+                'thumbnail_path': thumb_path,
+                'thumbnail_on_disk': thumb_exists,
+                'card_media_exists': cm_exists,
+            })
+
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'card_id': card.pk,
+                'status': card.status,
+                'fields': fields_report,
+            }
+        })
+
+    if table_id:
+        try:
+            table = get_object_or_404(IDCardTable, id=int(table_id))
+        except (ValueError, TypeError):
+            return JsonResponse({'success': False, 'message': 'Invalid table_id'}, status=400)
+
+        image_field_names = BaseService.get_image_field_names(table.fields)
+        cards = IDCard.objects.filter(table=table)
+        total = cards.count()
+        missing_files = 0
+        missing_thumbs = 0
+        pending_count = 0
+        empty_count = 0
+
+        # Sample up to 500 cards for performance
+        sample = cards.order_by('id')[:500]
+
+        for card in sample:
+            fd = card.field_data or {}
+            for fname in image_field_names:
+                val = fd.get(fname, '')
+                if not val or val in ('', 'NOT_FOUND'):
+                    empty_count += 1
+                elif val.startswith('PENDING:'):
+                    pending_count += 1
+                else:
+                    try:
+                        if not default_storage.exists(val):
+                            missing_files += 1
+                    except Exception:
+                        missing_files += 1
+                    tp = ThumbnailService.get_thumbnail_path(val)
+                    if tp:
+                        try:
+                            if not default_storage.exists(tp):
+                                missing_thumbs += 1
+                        except Exception:
+                            missing_thumbs += 1
+
+        # Orphan CardMedia count (records pointing to non-existent cards)
+        orphan_cm = CardMedia.objects.filter(
+            card__table=table,
+        ).exclude(
+            card__in=cards,
+        ).count()
+
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'table_id': table.pk,
+                'table_name': table.name,
+                'total_cards': total,
+                'sampled_cards': sample.count(),
+                'image_fields': image_field_names,
+                'missing_files': missing_files,
+                'missing_thumbnails': missing_thumbs,
+                'pending_images': pending_count,
+                'empty_images': empty_count,
+                'orphan_card_media': orphan_cm,
+            }
+        })
+
+    return JsonResponse({
+        'success': True,
+        'data': {
+            'usage': 'Pass ?card_id=N for per-card check, or ?table_id=N for aggregate.',
+            'entry_points': [
+                'ImageService.save_new_image()',
+                'ImageService.replace_image()',
+                'ImageService.mark_pending()',
+                'ImageService.remove_image()',
+                'ImageService.process_image_field()',
+            ],
+        }
     })

@@ -135,8 +135,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function fetchActiveGroups() {
         try {
-            const response = await fetch('/panel/client/api/groups/active/');
-            const data = await response.json();
+            const data = await ApiClient.get('/panel/client/api/groups/active/');
             if (data.success) {
                 allGroups = data.groups || [];
             }
@@ -399,17 +398,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ==================== API CALLS (Client Endpoints) ====================
     
-    function getCsrfToken() {
-        // Use global getCSRFToken from ajax.js if available
-        if (typeof window.getCSRFToken === 'function') return window.getCSRFToken();
-        const cookie = document.cookie.split(';').find(c => c.trim().startsWith('csrftoken='));
-        return cookie ? cookie.split('=')[1] : '';
-    }
-    
     async function fetchStaffDetails(staffId) {
         try {
-            const response = await fetch(`/panel/client/api/staff/${staffId}/`);
-            const data = await response.json();
+            const data = await ApiClient.get(`/panel/client/api/staff/${staffId}/`);
             if (data.success) {
                 return data.data;
             } else {
@@ -425,12 +416,8 @@ document.addEventListener('DOMContentLoaded', function() {
     async function createStaff(formData) {
         try {
             // Phase 1: File upload removed - always use JSON
-            const response = await fetch('/panel/client/api/staff/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
-                body: JSON.stringify(formData)
-            });
-            return await response.json();
+            const data = await ApiClient.post('/panel/client/api/staff/', formData);
+            return data;
         } catch (error) {
             return { success: false, message: 'Network error. Please try again.' };
         }
@@ -439,12 +426,8 @@ document.addEventListener('DOMContentLoaded', function() {
     async function updateStaff(staffId, formData) {
         try {
             // Phase 1: File upload removed - always use JSON
-            const response = await fetch(`/panel/client/api/staff/${staffId}/`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
-                body: JSON.stringify(formData)
-            });
-            return await response.json();
+            const data = await ApiClient.put(`/panel/client/api/staff/${staffId}/`, formData);
+            return data;
         } catch (error) {
             return { success: false, message: 'Network error. Please try again.' };
         }
@@ -452,11 +435,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     async function deleteStaffApi(staffId) {
         try {
-            const response = await fetch(`/panel/client/api/staff/${staffId}/`, {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() }
-            });
-            return await response.json();
+            const data = await ApiClient.delete(`/panel/client/api/staff/${staffId}/`);
+            return data;
         } catch (error) {
             return { success: false, message: 'Network error. Please try again.' };
         }
@@ -464,11 +444,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     async function toggleStaffStatus(staffId) {
         try {
-            const response = await fetch(`/panel/client/api/staff/${staffId}/toggle-status/`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() }
-            });
-            return await response.json();
+            const data = await ApiClient.post(`/panel/client/api/staff/${staffId}/toggle-status/`);
+            return data;
         } catch (error) {
             return { success: false, message: 'Network error. Please try again.' };
         }

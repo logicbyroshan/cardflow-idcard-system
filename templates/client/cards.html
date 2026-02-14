@@ -586,11 +586,11 @@ async function viewCard(cardId) {
     if (data.success) {
       showCardModal(data.data);
     } else {
-      alert(data.error || 'Failed to load card details');
+      if (typeof showToast === 'function') showToast(data.error || 'Failed to load card details', 'error');
     }
   } catch (error) {
     console.error('Error loading card:', error);
-    alert('Network error. Please try again.');
+    if (typeof showToast === 'function') showToast('Network error. Please try again.', 'error');
   }
 }
 

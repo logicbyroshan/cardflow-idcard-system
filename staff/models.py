@@ -110,3 +110,6 @@ class Staff(models.Model):
         app_label = 'core'  # Keep migration compatibility - model stays in core migrations
         verbose_name_plural = "Staff"
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['created_at']),
+        ]

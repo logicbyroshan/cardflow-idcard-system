@@ -361,10 +361,9 @@ const PERMISSION_CATEGORIES = {
   settings: ['can_view_idcard_settings', 'can_add_idcard_settings', 'can_edit_idcard_settings', 'can_delete_idcard_settings', 'can_upload_images', 'can_reupload_images', 'can_bulk_upload', 'can_bulk_download', 'can_export_data', 'can_download_cards', 'can_view_workflow', 'can_manage_workflow']
 };
 
-// CSRF token
+// CSRF token — use centralized ApiClient.getCSRFToken()
 function getCSRFToken() {
-  return document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
-         document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1] || '';
+  return ApiClient.getCSRFToken();
 }
 
 // Show alert
@@ -377,8 +376,7 @@ function showAlert(message, type = 'success') {
 // Load available permissions
 async function loadPermissions() {
   try {
-    const response = await fetch(`${API_BASE}/permissions/available/`);
-    const data = await response.json();
+    const data = await ApiClient.get(`${API_BASE}/permissions/available/`);
     if (data.success) {
       availablePermissions = data.permissions;
       renderPermissionCheckboxes();
@@ -391,8 +389,7 @@ async function loadPermissions() {
 // Load available clients
 async function loadClients() {
   try {
-    const response = await fetch(`${API_BASE}/clients/available/`);
-    const data = await response.json();
+    const data = await ApiClient.get(`${API_BASE}/clients/available/`);
     if (data.success) {
       availableClients = data.clients;
       renderClientCheckboxes();
@@ -447,8 +444,7 @@ function renderClientCheckboxes() {
 // Load staff list
 async function loadStaff() {
   try {
-    const response = await fetch(`${API_BASE}/admin-staff/`);
-    const data = await response.json();
+    const data = await ApiClient.get(`${API_BASE}/admin-staff/`);
     
     const tbody = document.getElementById('staffTableBody');
     
@@ -522,8 +518,7 @@ function openCreateModal() {
 // Edit staff
 async function editStaff(id) {
   try {
-    const response = await fetch(`${API_BASE}/admin-staff/${id}/`);
-    const data = await response.json();
+    const data = await ApiClient.get(`${API_BASE}/admin-staff/${id}/`);
     
     if (data.success) {
       const staff = data.staff;
@@ -590,16 +585,9 @@ async function handleSubmit(event) {
     const url = isEdit ? `${API_BASE}/admin-staff/${staffId}/` : `${API_BASE}/admin-staff/`;
     const method = isEdit ? 'PUT' : 'POST';
     
-    const response = await fetch(url, {
-      method: method,
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': getCSRFToken()
-      },
-      body: JSON.stringify(formData)
-    });
-    
-    const data = await response.json();
+    const data = await (method === 'PUT' 
+      ? ApiClient.put(url, formData) 
+      : ApiClient.post(url, formData));
     
     if (data.success) {
       showAlert(data.message);
@@ -617,15 +605,7 @@ async function handleSubmit(event) {
 // Toggle staff status
 async function toggleStatus(id) {
   try {
-    const response = await fetch(`${API_BASE}/admin-staff/${id}/toggle-status/`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': getCSRFToken()
-      }
-    });
-    
-    const data = await response.json();
+    const data = await ApiClient.post(`${API_BASE}/admin-staff/${id}/toggle-status/`, {});
     
     if (data.success) {
       showAlert(data.message);
@@ -664,11 +644,7 @@ function confirmDelete(id, name) {
     `Are you sure you want to delete "${name}"? This cannot be undone.`,
     async () => {
       try {
-        const response = await fetch(`${API_BASE}/admin-staff/${id}/`, {
-          method: 'DELETE',
-          headers: { 'X-CSRFToken': getCSRFToken() }
-        });
-        const data = await response.json();
+        const data = await ApiClient.delete(`${API_BASE}/admin-staff/${id}/`);
         if (data.success) {
           showAlert(data.message);
           loadStaff();
@@ -689,11 +665,7 @@ function confirmResetPassword(id, name) {
     `Reset password for "${name}"? A new password will be sent to their email.`,
     async () => {
       try {
-        const response = await fetch(`${API_BASE}/admin-staff/${id}/reset-password/`, {
-          method: 'POST',
-          headers: { 'X-CSRFToken': getCSRFToken() }
-        });
-        const data = await response.json();
+        const data = await ApiClient.post(`${API_BASE}/admin-staff/${id}/reset-password/`, {});
         if (data.success) {
           showAlert(data.message);
         } else {

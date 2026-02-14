@@ -137,62 +137,67 @@ class ThumbnailService:
             
             # Open and validate image
             img = Image.open(BytesIO(image_bytes))
-            
-            # Convert to RGB if necessary (for JPEG output)
-            if img.mode in ('RGBA', 'LA', 'P'):
-                background = Image.new('RGB', img.size, (255, 255, 255))
-                if img.mode == 'P':
-                    img = img.convert('RGBA')
-                background.paste(img, mask=img.split()[-1] if 'A' in img.mode else None)
-                img = background
-            elif img.mode != 'RGB':
-                img = img.convert('RGB')
-            
-            # Handle EXIF orientation
             try:
-                img = ImageOps.exif_transpose(img)
-            except Exception:
-                pass
-            
-            # Create thumbnail (maintains aspect ratio)
-            img.thumbnail(size, Image.Resampling.LANCZOS)
-            
-            # --- Phase 2: size-aware quality loop ---
-            orig_len = original_size_bytes or len(image_bytes)
-            quality = cls.QUALITY  # start at configured default (85)
-            
-            for _ in range(20):  # safety cap
-                output = BytesIO()
-                img.save(output, format='JPEG', quality=quality, optimize=True)
-                thumb_bytes = output.getvalue()
+                # Convert to RGB if necessary (for JPEG output)
+                if img.mode in ('RGBA', 'LA', 'P'):
+                    background = Image.new('RGB', img.size, (255, 255, 255))
+                    if img.mode == 'P':
+                        img_converted = img.convert('RGBA')
+                        img.close()
+                        img = img_converted
+                    background.paste(img, mask=img.split()[-1] if 'A' in img.mode else None)
+                    img.close()
+                    img = background
+                elif img.mode != 'RGB':
+                    img_converted = img.convert('RGB')
+                    img.close()
+                    img = img_converted
                 
-                ratio = orig_len / max(len(thumb_bytes), 1)
+                # Handle EXIF orientation
+                try:
+                    img = ImageOps.exif_transpose(img)
+                except Exception:
+                    pass
                 
-                if ratio >= MIN_SIZE_RATIO or quality <= MIN_QUALITY:
-                    break
+                # Create thumbnail (maintains aspect ratio)
+                img.thumbnail(size, Image.Resampling.LANCZOS)
                 
-                # Not small enough — drop quality and retry
-                quality = max(quality - QUALITY_STEP, MIN_QUALITY)
-            
-            # Log ratio for observability
-            final_ratio = orig_len / max(len(thumb_bytes), 1)
-            if final_ratio < MIN_SIZE_RATIO:
-                logger.warning(
-                    "Thumbnail ratio %.1f× is below target %d× (quality=%d, "
-                    "orig=%d bytes, thumb=%d bytes)",
-                    final_ratio, MIN_SIZE_RATIO, quality,
-                    orig_len, len(thumb_bytes),
-                )
-            else:
-                logger.debug(
-                    "Thumbnail OK: %.1f× smaller (quality=%d, orig=%d, thumb=%d)",
-                    final_ratio, quality, orig_len, len(thumb_bytes),
-                )
-            
-            # Explicitly close PIL image to free memory
-            img.close()
-            
-            return thumb_bytes
+                # --- Phase 2: size-aware quality loop ---
+                orig_len = original_size_bytes or len(image_bytes)
+                quality = cls.QUALITY  # start at configured default (85)
+                
+                for _ in range(20):  # safety cap
+                    output = BytesIO()
+                    img.save(output, format='JPEG', quality=quality, optimize=True)
+                    thumb_bytes = output.getvalue()
+                    
+                    ratio = orig_len / max(len(thumb_bytes), 1)
+                    
+                    if ratio >= MIN_SIZE_RATIO or quality <= MIN_QUALITY:
+                        break
+                    
+                    # Not small enough — drop quality and retry
+                    quality = max(quality - QUALITY_STEP, MIN_QUALITY)
+                
+                # Log ratio for observability
+                final_ratio = orig_len / max(len(thumb_bytes), 1)
+                if final_ratio < MIN_SIZE_RATIO:
+                    logger.warning(
+                        "Thumbnail ratio %.1f× is below target %d× (quality=%d, "
+                        "orig=%d bytes, thumb=%d bytes)",
+                        final_ratio, MIN_SIZE_RATIO, quality,
+                        orig_len, len(thumb_bytes),
+                    )
+                else:
+                    logger.debug(
+                        "Thumbnail OK: %.1f× smaller (quality=%d, orig=%d, thumb=%d)",
+                        final_ratio, quality, orig_len, len(thumb_bytes),
+                    )
+                
+                return thumb_bytes
+            finally:
+                # Explicitly close PIL image to free memory
+                img.close()
             
         except Exception as e:
             logger.error("Failed to generate thumbnail: %s", e)

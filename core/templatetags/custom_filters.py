@@ -1,4 +1,5 @@
 from django import template
+from django.utils.html import escape
 from django.utils.safestring import mark_safe
 import json
 import re
@@ -7,6 +8,44 @@ import re
 from mediafiles.constants import IMAGE_FIELD_TYPES, IMAGE_FIELD_NAME_PATTERNS
 
 register = template.Library()
+
+# ---------------------------------------------------------------------------
+# safe_html filter — whitelist-based HTML sanitiser (no external deps)
+# ---------------------------------------------------------------------------
+_SAFE_TAGS = frozenset([
+    'span', 'br', 'b', 'i', 'em', 'strong', 'u', 'small', 'mark', 'sub', 'sup',
+])
+# Matches any HTML tag (opening, closing, self-closing)
+_TAG_RE = re.compile(r'<(/?)(\w+)([^>]*)(/?)>', re.IGNORECASE | re.DOTALL)
+# Dangerous attribute patterns (event handlers, javascript: URIs)
+_BAD_ATTR_RE = re.compile(r'\bon\w+\s*=|javascript\s*:', re.IGNORECASE)
+
+
+def _sanitize_tag(match):
+    """Keep whitelisted tags, strip dangerous attributes, escape others."""
+    slash_open, tag_name, attrs, slash_close = match.groups()
+    if tag_name.lower() not in _SAFE_TAGS:
+        return ''  # strip non-whitelisted tag entirely
+    # Strip dangerous attributes (onclick=, onerror=, javascript:, etc.)
+    if _BAD_ATTR_RE.search(attrs):
+        # Only keep class= and style= attributes
+        safe_attrs = re.findall(r'\b(class|style)\s*=\s*"[^"]*"', attrs, re.IGNORECASE)
+        attrs = ' ' + ' '.join(f'{k}="{v}"' for k, v in []) if not safe_attrs else ' ' + ' '.join(safe_attrs)
+        if not safe_attrs:
+            attrs = ''
+    return f'<{slash_open}{tag_name}{attrs}{slash_close}>'
+
+
+@register.filter(name='safe_html')
+def safe_html(value):
+    """
+    Allow only whitelisted inline HTML tags; strip everything else.
+    Usage: {{ business.hero_title|safe_html }}
+    """
+    if not value:
+        return ''
+    result = _TAG_RE.sub(_sanitize_tag, str(value))
+    return mark_safe(result)
 
 # Canonical image column order (for consistent display)
 IMAGE_COLUMN_ORDER = ['photo', 'father photo', 'f photo', 'mother photo', 'm photo', 'signature', 'sign', 'barcode', 'qr code', 'qr_code', 'qr']
@@ -356,7 +395,8 @@ def wrap_header(value):
     """
     if not value:
         return value
+    from django.utils.html import escape
     parts = str(value).split()
     if len(parts) <= 1:
-        return value
-    return mark_safe('<br>'.join(parts))
+        return escape(value)
+    return mark_safe('<br>'.join(escape(p) for p in parts))

@@ -1,6 +1,9 @@
 // ID Card Actions - API Module
 // Contains: Card status operations, bulk operations, row action handlers
 
+(function() {
+'use strict';
+
 // ==========================================
 // SINGLE CARD STATUS OPERATIONS
 // ==========================================
@@ -280,24 +283,7 @@ function bulkDeletePermanent(cardIds) {
     }
 }
 
-function createCard(fieldData) {
-    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
-    if (!tableId) {
-        if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
-        return;
-    }
-    
-    if (typeof apiCall === 'function') {
-        apiCall(`/panel/api/tables/${tableId}/cards/`, 'POST', { field_data: fieldData })
-            .then(data => {
-                if (typeof showToast === 'function') showToast('Card created successfully');
-                location.reload();
-            });
-    }
-}
-
-// ==========================================
-// ROW ACTION BUTTON HANDLERS
+// ==========================================\n// ROW ACTION BUTTON HANDLERS
 // ==========================================
 
 function initRowActionHandlers() {
@@ -347,18 +333,10 @@ function bulkDownload(cardIds) {
     
     const csrfToken = typeof getCSRFToken === 'function' ? getCSRFToken() : '';
     
-    fetch(`/panel/api/table/${tableId}/cards/bulk-status/`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrfToken,
-        },
-        body: JSON.stringify({
-            card_ids: cardIds,
-            status: 'download'
-        })
+    ApiClient.post(`/panel/api/table/${tableId}/cards/bulk-status/`, {
+        card_ids: cardIds,
+        status: 'download'
     })
-    .then(response => response.json())
     .then(data => {
         if (data.success) {
             if (typeof showToast === 'function') showToast(`${data.updated_count} card(s) moved to download list`);
@@ -386,18 +364,10 @@ function bulkBackToApproved(cardIds) {
     
     const csrfToken = typeof getCSRFToken === 'function' ? getCSRFToken() : '';
     
-    fetch(`/panel/api/table/${tableId}/cards/bulk-status/`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrfToken,
-        },
-        body: JSON.stringify({
-            card_ids: cardIds,
-            status: 'approved'
-        })
+    ApiClient.post(`/panel/api/table/${tableId}/cards/bulk-status/`, {
+        card_ids: cardIds,
+        status: 'approved'
     })
-    .then(response => response.json())
     .then(data => {
         if (data.success) {
             if (typeof showToast === 'function') showToast(`${data.updated_count} card(s) moved back to approved`);
@@ -531,7 +501,6 @@ window.bulkRetrieve = bulkRetrieve;
 window.bulkDeletePermanent = bulkDeletePermanent;
 window.bulkDownload = bulkDownload;
 window.bulkBackToApproved = bulkBackToApproved;
-window.createCard = createCard;
 
 window.IDCardApp = window.IDCardApp || {};
 window.IDCardApp.initApiModule = initApiModule;
@@ -539,3 +508,5 @@ window.IDCardApp.verifyCard = verifyCard;
 window.IDCardApp.approveCard = approveCard;
 window.IDCardApp.bulkVerify = bulkVerify;
 window.IDCardApp.bulkDelete = bulkDelete;
+
+})();

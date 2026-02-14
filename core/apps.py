@@ -1,6 +1,15 @@
 from django.apps import AppConfig
 
 
+def _set_sqlite_pragmas(sender, connection, **kwargs):
+    """Enable WAL mode and extended busy_timeout for SQLite connections."""
+    if connection.vendor == 'sqlite':
+        cursor = connection.cursor()
+        cursor.execute('PRAGMA journal_mode=WAL;')
+        cursor.execute('PRAGMA synchronous=NORMAL;')
+        cursor.execute('PRAGMA busy_timeout=30000;')
+
+
 class CoreConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "core"
@@ -29,13 +38,17 @@ class CoreConfig(AppConfig):
         """
         import os
         import sys
+
+        # SQLite WAL mode for concurrent access (dev env; production uses PostgreSQL)
+        from django.db.backends.signals import connection_created
+        connection_created.connect(_set_sqlite_pragmas)
         
         # Skip cleanup during migrations and other management commands
         running_server = (
-            'runserver' in sys.argv or
-            'gunicorn' in sys.argv[0] if sys.argv else False or
-            os.environ.get('RUN_MAIN') == 'true' or
-            os.environ.get('GUNICORN_WORKER_READY') == 'true'
+            'runserver' in sys.argv
+            or (bool(sys.argv) and 'gunicorn' in sys.argv[0])
+            or os.environ.get('RUN_MAIN') == 'true'
+            or os.environ.get('GUNICORN_WORKER_READY') == 'true'
         )
         
         # Only run cleanup in main process when running server
@@ -47,7 +60,8 @@ class CoreConfig(AppConfig):
                 ensure_directories()
                 
                 # Mark any stuck tasks from previous server session as failed
-                cleanup_stale_tasks(hours=24)
+                # Use 1-hour threshold: tasks surviving past a restart are certainly dead
+                cleanup_stale_tasks(hours=1)
                 
             except Exception as e:
                 # Don't crash startup if cleanup fails

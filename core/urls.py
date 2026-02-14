@@ -143,4 +143,16 @@ urlpatterns = [
 
     # Health / Version
     path('api/health/', views.api_health, name='api_health'),
+
+    # Allowed transitions for a card (any authenticated user)
+    path('api/card/<int:card_id>/allowed-transitions/', views.api_card_allowed_transitions, name='api_card_allowed_transitions'),
 ]
+
+# Debug endpoints — only available when DEBUG=True
+from django.conf import settings as _settings
+if _settings.DEBUG:
+    urlpatterns += [
+        path('api/debug/permissions/', views.api_debug_permissions, name='api_debug_permissions'),
+        path('api/debug/workflow-check/', views.api_debug_workflow, name='api_debug_workflow'),
+        path('api/debug/image-integrity/', views.api_debug_image_integrity, name='api_debug_image_integrity'),
+    ]

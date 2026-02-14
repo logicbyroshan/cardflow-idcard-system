@@ -390,25 +390,25 @@ body.modal-open {
 .action-right .btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
+  gap: 4px;
+  padding: 4px 8px;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all var(--transition-base);
   border: none;
-  min-height: 32px;
+  height: 28px;
 }
 
-.action-right .btn i { font-size: 11px; }
+.action-right .btn i { font-size: 8px; }
 
 /* Standard Navigation Button (Group Setting, ID Card Group) */
 .action-right .btn-group-setting,
 .action-right .btn-idcard-group {
-  padding: 8px 16px;
+  padding: 4px 10px;
   font-size: var(--font-size-md);
-  min-height: 36px;
+  height: 28px;
 }
 
 .action-right .btn-group-setting i,
@@ -420,25 +420,22 @@ body.modal-open {
 .btn-settings {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
+  gap: 4px;
+  padding: 4px 8px;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all var(--transition-base);
   border: none;
-  height: 36px;
+  height: 28px;
   box-sizing: border-box;
   background: var(--gray-500);
   color: var(--text-white);
-  box-shadow: 0 2px 4px rgba(107, 114, 128, 0.3);
 }
 
 .btn-settings:hover:not(:disabled) {
   background: var(--gray-600);
-  box-shadow: 0 4px 8px rgba(107, 114, 128, 0.4);
-  transform: translateY(-1px);
 }
 
 .btn-settings:disabled {
@@ -447,43 +444,38 @@ body.modal-open {
 }
 
 .btn-settings i {
-  font-size: 11px;
+  font-size: 8px;
 }
 
 /* Select All Database Button */
 .btn-select-all {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
+  gap: 4px;
+  padding: 4px 8px;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all var(--transition-base);
   border: none;
-  height: 36px;
+  height: 28px;
   box-sizing: border-box;
-  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  background: #8b5cf6;
   color: var(--text-white);
-  box-shadow: 0 2px 4px rgba(124, 58, 237, 0.3);
   white-space: nowrap;
 }
 
 .btn-select-all:hover:not(:disabled) {
-  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
-  box-shadow: 0 4px 8px rgba(124, 58, 237, 0.4);
-  transform: translateY(-1px);
+  background: #7c3aed;
 }
 
 .btn-select-all.active {
-  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.4), 0 2px 4px rgba(34, 197, 94, 0.3);
+  background: #22c55e;
 }
 
 .btn-select-all.active:hover:not(:disabled) {
-  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
-  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.4), 0 4px 8px rgba(34, 197, 94, 0.4);
+  background: #16a34a;
 }
 
 .btn-select-all:disabled {
@@ -492,7 +484,7 @@ body.modal-open {
 }
 
 .btn-select-all i {
-  font-size: 11px;
+  font-size: 8px;
 }
 
 .action-right .btn-idcard-group i {
@@ -504,24 +496,18 @@ body.modal-open {
 .action-right .btn-edit {
   background: var(--blue) !important;
   color: var(--text-white) !important;
-  box-shadow: 0 2px 4px rgba(var(--blue-rgb), 0.3);
 }
 .action-right .btn-add:hover:not(:disabled),
 .action-right .btn-edit:hover:not(:disabled) {
   background: var(--blue-dark) !important;
-  box-shadow: 0 4px 8px rgba(var(--blue-rgb), 0.4);
-  transform: translateY(-1px);
 }
 
 .action-right .btn-view {
   background: var(--gray-500) !important;
   color: var(--text-white) !important;
-  box-shadow: 0 2px 4px rgba(107, 114, 128, 0.3);
 }
 .action-right .btn-view:hover:not(:disabled) {
   background: var(--gray-600) !important;
-  box-shadow: 0 4px 8px rgba(107, 114, 128, 0.4);
-  transform: translateY(-1px);
 }
 
 .action-right .btn-view-staff,
@@ -529,25 +515,19 @@ body.modal-open {
 .action-right .btn-group-setting {
   background: var(--purple) !important;
   color: var(--text-white) !important;
-  box-shadow: 0 2px 4px rgba(var(--purple-rgb), 0.3);
 }
 .action-right .btn-view-staff:hover:not(:disabled),
 .action-right .btn-settings:hover:not(:disabled),
 .action-right .btn-group-setting:hover:not(:disabled) {
   background: var(--purple-dark) !important;
-  box-shadow: 0 4px 8px rgba(var(--purple-rgb), 0.4);
-  transform: translateY(-1px);
 }
 
 .action-right .btn-delete {
   background: var(--red) !important;
   color: var(--text-white) !important;
-  box-shadow: 0 2px 4px rgba(var(--red-rgb), 0.3);
 }
 .action-right .btn-delete:hover:not(:disabled) {
   background: var(--red-dark) !important;
-  box-shadow: 0 4px 8px rgba(var(--red-rgb), 0.4);
-  transform: translateY(-1px);
 }
 
 /* Inactive button - neutral light gray with good contrast */
@@ -564,26 +544,20 @@ body.modal-open {
 }
 
 .action-right .btn-active {
-  background: linear-gradient(135deg, #5b6cff, #8e44ff) !important;
+  background: #5b6cff !important;
   color: var(--text-white) !important;
-  box-shadow: 0 2px 4px rgba(91, 108, 255, 0.3);
   border: none !important;
 }
 .action-right .btn-active:hover:not(:disabled) {
-  background: linear-gradient(135deg, #4a5df0, #7b38e0) !important;
-  box-shadow: 0 4px 8px rgba(91, 108, 255, 0.4);
-  transform: translateY(-1px);
+  background: #4a5df0 !important;
 }
 
 .action-right .btn-idcard-group {
   background: var(--teal) !important;
   color: var(--text-white) !important;
-  box-shadow: 0 2px 4px rgba(var(--teal-rgb), 0.3);
 }
 .action-right .btn-idcard-group:hover:not(:disabled) {
   background: var(--teal-dark) !important;
-  box-shadow: 0 4px 8px rgba(var(--teal-rgb), 0.4);
-  transform: translateY(-1px);
 }
 
 /* Button Separator - for separating groups of buttons */
@@ -625,7 +599,7 @@ table {
 }
 
 thead {
-  background: var(--primary-gradient);
+  background: #1e1e2e;
 }
 
 th, td {
@@ -876,9 +850,9 @@ tbody tr.selected:hover { background-color: var(--bg-selected-hover); }
 
 .modal-actions .btn {
   min-width: 60px;
-  padding: 6px 0;
-  border-radius: var(--radius-md);
-  background: var(--primary-gradient);
+  padding: 4px 0;
+  border-radius: 2px;
+  background: #3b82f6;
   color: var(--text-white);
   border: none;
   font-weight: var(--font-weight-medium);
@@ -886,7 +860,7 @@ tbody tr.selected:hover { background-color: var(--bg-selected-hover); }
   transition: background var(--transition-base);
 }
 
-.modal-actions .btn:hover { background: var(--primary-gradient-hover); }
+.modal-actions .btn:hover { background: #2563eb; }
 .modal-actions .btn::after { display: none; }
 
 /* ===========================================
@@ -911,12 +885,12 @@ tbody tr.selected:hover { background-color: var(--bg-selected-hover); }
 
 .center-modal-card {
   background: #fff;
-  border-radius: 16px;
-  padding: 32px 28px 28px;
-  max-width: 460px;
+  border-radius: 2px;
+  padding: 20px 18px 18px;
+  max-width: 400px;
   width: 92%;
   text-align: center;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.18);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
   animation: centerModalIn 0.22s ease-out;
 }
 @keyframes centerModalIn {
@@ -925,59 +899,59 @@ tbody tr.selected:hover { background-color: var(--bg-selected-hover); }
 }
 
 .center-modal-icon {
-  margin-bottom: 14px;
+  margin-bottom: 8px;
 }
 .center-modal-icon i {
-  font-size: 44px;
+  font-size: 28px;
 }
 
 .center-modal-title {
-  margin: 0 0 6px;
+  margin: 0 0 4px;
   color: #111827;
-  font-size: 20px;
+  font-size: 12px;
   font-weight: 700;
 }
 
 .center-modal-subtitle {
   color: #6b7280;
   margin: 0 0 4px;
-  font-size: 14px;
+  font-size: 9px;
   line-height: 1.5;
 }
 
 .center-modal-warning {
   font-weight: 600;
-  margin: 8px 0 16px;
-  font-size: 13px;
+  margin: 6px 0 10px;
+  font-size: 8px;
 }
 
 .center-modal-label {
   color: #374151;
-  margin: 0 0 8px;
-  font-size: 14px;
+  margin: 0 0 6px;
+  font-size: 9px;
 }
 
 .center-modal-code {
-  border-radius: 10px;
-  padding: 12px;
-  margin: 0 0 12px;
-  font-size: 28px;
+  border-radius: 2px;
+  padding: 8px;
+  margin: 0 0 8px;
+  font-size: 18px;
   font-weight: 700;
-  letter-spacing: 8px;
+  letter-spacing: 6px;
   border-width: 2px;
   border-style: solid;
 }
 
 .center-modal-input {
   width: 100%;
-  padding: 12px;
-  font-size: 18px;
+  padding: 8px;
+  font-size: 12px;
   text-align: center;
-  border: 2px solid #d1d5db;
-  border-radius: 10px;
-  letter-spacing: 6px;
+  border: 1px solid #d1d5db;
+  border-radius: 2px;
+  letter-spacing: 4px;
   font-weight: 600;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
   outline: none;
   transition: border-color 0.2s;
   box-sizing: border-box;
@@ -988,9 +962,9 @@ tbody tr.selected:hover { background-color: var(--bg-selected-hover); }
 
 .center-modal-dropzone {
   border: 2px dashed #d1d5db;
-  border-radius: 10px;
-  padding: 28px 16px;
-  margin-bottom: 16px;
+  border-radius: 2px;
+  padding: 16px 10px;
+  margin-bottom: 10px;
   cursor: pointer;
   transition: border-color 0.2s, background-color 0.2s;
 }
@@ -999,28 +973,28 @@ tbody tr.selected:hover { background-color: var(--bg-selected-hover); }
   background: #f9fafb;
 }
 .center-modal-dropzone i {
-  font-size: 32px;
+  font-size: 20px;
   color: #9ca3af;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 .center-modal-dropzone p {
   margin: 0;
   color: #6b7280;
-  font-size: 14px;
+  font-size: 8px;
 }
 
 .center-modal-actions {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   justify-content: center;
   margin-top: 4px;
 }
 
 .center-modal-btn {
-  padding: 10px 24px;
-  border-radius: 10px;
+  padding: 5px 14px;
+  border-radius: 2px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 8px;
   font-weight: 500;
   transition: opacity 0.15s, background 0.15s;
 }
@@ -1045,24 +1019,24 @@ tbody tr.selected:hover { background-color: var(--bg-selected-hover); }
 
 .center-modal-progress {
   display: none;
-  margin-top: 16px;
+  margin-top: 10px;
 }
 .center-modal-progress-track {
   background: #e5e7eb;
-  border-radius: 999px;
-  height: 8px;
+  border-radius: 2px;
+  height: 6px;
   overflow: hidden;
 }
 .center-modal-progress-bar {
   height: 100%;
   width: 0%;
   transition: width 0.3s;
-  border-radius: 999px;
+  border-radius: 2px;
 }
 .center-modal-progress-text {
   color: #6b7280;
-  font-size: 13px;
-  margin: 8px 0 0;
+  font-size: 8px;
+  margin: 6px 0 0;
 }
 
 /* Theme colors for center modals */
@@ -1185,15 +1159,15 @@ tbody tr.selected:hover { background-color: var(--bg-selected-hover); }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-xl) 25px;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  padding: 10px 16px;
+  background: #1e1e2e;
   color: var(--text-white);
   flex-shrink: 0;
 }
 
 .modal-header h3,
 .drawer-header h3 {
-  font-size: var(--font-size-2xl);
+  font-size: 9px;
   color: var(--text-white);
   font-weight: var(--font-weight-semibold);
   margin: 0;
@@ -1204,17 +1178,17 @@ tbody tr.selected:hover { background-color: var(--bg-selected-hover); }
 
 .modal-overlay .modal-close,
 .drawer-close {
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
   border: none;
   background: rgba(255, 255, 255, 0.2);
-  border-radius: var(--radius-lg);
+  border-radius: 2px;
   color: var(--text-white);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: var(--font-size-xl);
+  font-size: 8px;
   transition: background var(--transition-base);
   position: static;
 }
@@ -1236,7 +1210,7 @@ tbody tr.selected:hover { background-color: var(--bg-selected-hover); }
 
 .modal-body,
 .drawer-body {
-  padding: 25px;
+  padding: 12px;
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
@@ -1250,17 +1224,17 @@ tbody tr.selected:hover { background-color: var(--bg-selected-hover); }
   display: flex;
   justify-content: flex-end;
   gap: var(--space-md);
-  padding: var(--space-lg) 25px;
+  padding: 8px 12px;
   border-top: 1px solid var(--gray-200);
   background: var(--gray-50);
   flex-shrink: 0;
 }
 
 .drawer-footer .btn {
-  padding: var(--space-md) var(--space-xl);
-  font-size: var(--font-size-lg);
+  padding: 4px 10px;
+  font-size: 8px;
   font-weight: var(--font-weight-medium);
-  border-radius: var(--radius-lg);
+  border-radius: 2px;
   display: flex;
   align-items: center;
   gap: var(--space-sm);
@@ -1290,32 +1264,26 @@ tbody tr.selected:hover { background-color: var(--bg-selected-hover); }
 .drawer-footer .btn-save,
 .drawer-footer .drawer-footer .modal-actions .btn-save,
 .modal-actions .btn-confirm {
-  background: var(--primary-gradient);
+  background: #3b82f6;
   color: var(--text-white);
   border: none;
-  box-shadow: var(--shadow-primary);
 }
 
 .drawer-footer .btn-save:hover,
 .drawer-footer .drawer-footer .modal-actions .btn-save:hover,
 .modal-actions .btn-confirm:hover {
-  background: var(--primary-gradient-hover);
-  box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.4);
-  transform: translateY(-1px);
+  background: #2563eb;
 }
 
 /* Update Button (Green) */
 .drawer-footer .btn-update {
-  background: linear-gradient(135deg, var(--green) 0%, var(--green-dark) 100%);
+  background: var(--green);
   color: var(--text-white);
   border: none;
-  box-shadow: 0 2px 8px rgba(var(--green-rgb), 0.3);
 }
 
 .drawer-footer .btn-update:hover {
-  background: linear-gradient(135deg, var(--green-dark) 0%, #15803d 100%);
-  box-shadow: 0 4px 12px rgba(var(--green-rgb), 0.4);
-  transform: translateY(-1px);
+  background: var(--green-dark);
 }
 
 /* Delete/Danger Button */
@@ -1323,19 +1291,16 @@ tbody tr.selected:hover { background-color: var(--bg-selected-hover); }
 .drawer-footer .btn-danger,
 .modal-actions .btn-delete,
 .modal-actions .btn-danger {
-  background: linear-gradient(90deg, var(--red) 0%, var(--red-dark) 100%);
+  background: var(--red);
   color: var(--text-white);
   border: none;
-  box-shadow: 0 2px 8px rgba(var(--red-rgb), 0.3);
 }
 
 .drawer-footer .btn-delete:hover,
 .drawer-footer .btn-danger:hover,
 .modal-actions .btn-delete:hover,
 .modal-actions .btn-danger:hover {
-  background: linear-gradient(90deg, var(--red-dark) 0%, #b91c1c 100%);
-  box-shadow: 0 4px 12px rgba(var(--red-rgb), 0.4);
-  transform: translateY(-1px);
+  background: var(--red-dark);
 }
 
 
@@ -1563,15 +1528,15 @@ body.sidebar-collapsed .pagination-bar { left: var(--sidebar-collapsed); }
 .pagination-center {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 .pagination-btn {
-  width: 34px;
-  height: 34px;
+  width: 26px;
+  height: 26px;
   border: 1px solid var(--border-default);
   background: var(--bg-white);
-  border-radius: var(--radius-lg);
+  border-radius: 2px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1585,8 +1550,6 @@ body.sidebar-collapsed .pagination-bar { left: var(--sidebar-collapsed); }
   background: var(--primary);
   border-color: var(--primary);
   color: var(--text-white);
-  transform: translateY(-1px);
-  box-shadow: 0 3px 8px rgba(var(--primary-rgb), 0.3);
 }
 
 .pagination-btn:disabled { opacity: 0.4; cursor: not-allowed; background: var(--gray-100); }
@@ -1600,17 +1563,17 @@ body.sidebar-collapsed .pagination-bar { left: var(--sidebar-collapsed); }
 }
 
 .page-num {
-  min-width: 34px;
-  height: 34px;
+  min-width: 26px;
+  height: 26px;
   border: 1px solid var(--border-default);
   background: var(--bg-white);
-  border-radius: var(--radius-lg);
+  border-radius: 2px;
   cursor: pointer;
   font-size: var(--font-size-md);
   font-weight: var(--font-weight-medium);
   color: var(--text-secondary);
   transition: all var(--transition-base);
-  padding: 0 8px;
+  padding: 0 6px;
 }
 
 .page-num:hover {
@@ -1620,10 +1583,9 @@ body.sidebar-collapsed .pagination-bar { left: var(--sidebar-collapsed); }
 }
 
 .page-num.active {
-  background: var(--primary-gradient);
+  background: #1e1e2e;
   border-color: transparent;
   color: var(--text-white);
-  box-shadow: 0 2px 6px rgba(var(--primary-rgb), 0.35);
 }
 
 .pagination-right {

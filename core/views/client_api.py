@@ -4,27 +4,23 @@ Contains: All client-related API endpoints (CRUD, toggle status, get staff)
 """
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
-from django.views.decorators.csrf import csrf_exempt
 import json
 from ..services import ClientService
 from ..services.activity_service import ActivityService
-from ..services.permission_service import PermissionService, api_require_any_admin
-from .base import api_super_admin_required
+from ..services.permission_service import (
+    PermissionService,
+    api_require_any_admin,
+    api_require_super_admin,
+)
 
 
 def _check_admin_staff_client_access(user, client_id):
-    """Check if admin_staff has access to a specific client. Returns True if allowed."""
-    if PermissionService.is_super_admin(user):
-        return True
-    staff_profile = getattr(user, 'staff_profile', None)
-    if staff_profile and staff_profile.staff_type == 'admin_staff':
-        return staff_profile.assigned_clients.filter(id=client_id).exists()
-    return False
+    """Check if user has access to a specific client. Delegates to PermissionService."""
+    return PermissionService.can_access_client(user, client_id)
 
 
-@csrf_exempt
 @require_http_methods(["POST"])
-@api_super_admin_required
+@api_require_super_admin
 def api_client_create(request):
     """API endpoint to create a new client"""
     try:
@@ -57,7 +53,6 @@ def api_client_create(request):
         return JsonResponse({'success': False, 'message': str(e)}, status=400)
 
 
-@csrf_exempt
 @require_http_methods(["GET"])
 @api_require_any_admin
 def api_client_get(request, client_id):
@@ -68,7 +63,6 @@ def api_client_get(request, client_id):
     return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
 
 
-@csrf_exempt
 @require_http_methods(["PUT", "POST"])
 @api_require_any_admin
 def api_client_update(request, client_id):
@@ -103,9 +97,8 @@ def api_client_update(request, client_id):
         return JsonResponse({'success': False, 'message': str(e)}, status=400)
 
 
-@csrf_exempt
 @require_http_methods(["DELETE", "POST"])
-@api_super_admin_required
+@api_require_super_admin
 def api_client_delete(request, client_id):
     """API endpoint to delete a client (Super Admin only)"""
     # Get client name before deletion for the activity log
@@ -121,9 +114,8 @@ def api_client_delete(request, client_id):
     return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
 
 
-@csrf_exempt
 @require_http_methods(["POST"])
-@api_super_admin_required
+@api_require_super_admin
 def api_client_toggle_status(request, client_id):
     """API endpoint to toggle client active/inactive status (Super Admin only)"""
     result = ClientService.toggle_status(client_id)
@@ -138,7 +130,6 @@ def api_client_toggle_status(request, client_id):
     return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
 
 
-@csrf_exempt
 @require_http_methods(["GET"])
 @api_require_any_admin
 def api_client_staff(request, client_id):
@@ -149,9 +140,8 @@ def api_client_staff(request, client_id):
     return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
 
 
-@csrf_exempt
 @require_http_methods(["POST"])
-@api_super_admin_required
+@api_require_super_admin
 def api_client_staff_toggle_status(request, client_id, staff_id):
     """
     API endpoint for Super Admin to toggle client staff active/inactive status.
@@ -161,9 +151,8 @@ def api_client_staff_toggle_status(request, client_id, staff_id):
     return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
 
 
-@csrf_exempt
 @require_http_methods(["PUT", "POST"])
-@api_super_admin_required
+@api_require_super_admin
 def api_client_staff_permissions(request, client_id, staff_id):
     """
     API endpoint for Super Admin to update client staff permissions.

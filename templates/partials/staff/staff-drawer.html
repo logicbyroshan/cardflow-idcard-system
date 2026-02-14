@@ -1,6 +1,7 @@
 {% comment %}
 Staff Drawer Partial
 Contains: Side drawer for adding/editing staff with form fields and permissions
+Uses Tailwind CSS component classes.
 {% endcomment %}
 
 <!-- Staff Drawer Start -->
@@ -16,14 +17,14 @@ Contains: Side drawer for adding/editing staff with form fields and permissions
         </button>
     </div>
     
-    <form id="staff-form" class="drawer-form">
+    <form id="staff-form">
         <input type="hidden" id="staff-id" name="staff_id">
         
         <div class="drawer-body">
             <!-- Profile Avatar Placeholder -->
-            <div class="profile-upload-section" style="flex-direction: row; align-items: center; gap: 16px;">
+            <div class="profile-upload-section flex-row items-center gap-4">
                 {% include 'partials/components/user-avatar.html' with role='admin_staff' size='large' %}
-                <span style="color: #6b7280; font-size: 13px;">Staff avatar</span>
+                <span class="text-xs text-gray-500">Staff avatar</span>
             </div>
 
             <!-- Client Assignment Section (Admin Staff Only) -->
@@ -32,7 +33,7 @@ Contains: Side drawer for adding/editing staff with form fields and permissions
                     <i class="fa-solid fa-building-user"></i> Client Assignment
                 </h3>
                 <div class="form-group">
-                    <label>Assign Clients</label>
+                    <label class="form-label">Assign Clients</label>
                     <div class="client-multiselect" id="client-multiselect">
                         <div class="client-multiselect-header" id="client-multiselect-toggle">
                             <span class="client-multiselect-placeholder" id="client-multiselect-text">Select clients...</span>
@@ -62,30 +63,30 @@ Contains: Side drawer for adding/editing staff with form fields and permissions
                 </h3>
                 
                 <div class="form-group">
-                    <label for="staff-name">Staff Name <span class="required">*</span></label>
-                    <input type="text" id="staff-name" name="name" placeholder="Enter staff name" required>
+                    <label class="form-label" for="staff-name">Staff Name <span class="required">*</span></label>
+                    <input type="text" id="staff-name" name="name" class="form-input" placeholder="Enter staff name" required>
                 </div>
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="staff-email">Email <span class="required">*</span></label>
-                        <input type="email" id="staff-email" name="email" placeholder="Enter email address" required>
+                        <label class="form-label" for="staff-email">Email <span class="required">*</span></label>
+                        <input type="email" id="staff-email" name="email" class="form-input" placeholder="Enter email address" required>
                     </div>
                     <div class="form-group">
-                        <label for="staff-phone">Phone <span class="required">*</span></label>
-                        <input type="tel" id="staff-phone" name="phone" placeholder="Enter phone number" required>
-                        <small class="field-hint" style="color: #6b7280; font-size: 11px;">This will be used as password</small>
+                        <label class="form-label" for="staff-phone">Phone <span class="required">*</span></label>
+                        <input type="tel" id="staff-phone" name="phone" class="form-input" placeholder="Enter phone number" required>
+                        <small class="field-hint">This will be used as password</small>
                     </div>
                 </div>
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="staff-address">Address</label>
-                        <textarea id="staff-address" name="address" rows="2" placeholder="Enter address (optional)"></textarea>
+                        <label class="form-label" for="staff-address">Address</label>
+                        <textarea id="staff-address" name="address" class="form-textarea" rows="2" placeholder="Enter address (optional)"></textarea>
                     </div>
                     <div class="form-group">
-                        <label for="staff-status">Status</label>
-                        <select id="staff-status" name="is_active">
+                        <label class="form-label" for="staff-status">Status</label>
+                        <select id="staff-status" name="is_active" class="form-select">
                             <option value="true">Active</option>
                             <option value="false">Inactive</option>
                         </select>
@@ -259,8 +260,8 @@ Contains: Side drawer for adding/editing staff with form fields and permissions
         </div>
         
         <div class="drawer-footer">
-            <button type="button" class="btn btn-secondary" id="drawer-cancel-btn">Cancel</button>
-            <button type="submit" class="btn btn-primary" id="drawer-submit-btn">
+            <button type="button" class="btn btn-md btn-neutral" id="drawer-cancel-btn">Cancel</button>
+            <button type="submit" class="btn btn-md btn-primary" id="drawer-submit-btn">
                 <span id="submit-btn-text">Add Staff</span>
             </button>
         </div>

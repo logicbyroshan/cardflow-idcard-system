@@ -130,20 +130,17 @@ class ImageService:
             Image.MAX_IMAGE_PIXELS = 25_000_000  # ~25MP, reasonable for ID cards
             
             # Try to open and verify the image
-            img = Image.open(BytesIO(image_bytes))
-            img.verify()
-            img.close()  # Close after verify (verify invalidates the image object)
+            with Image.open(BytesIO(image_bytes)) as img:
+                img.verify()
             
             # Re-open to check it's actually readable
-            img = Image.open(BytesIO(image_bytes))
-            img.load()
+            with Image.open(BytesIO(image_bytes)) as img:
+                img.load()
+                
+                # Check format is supported
+                if img.format and img.format.lower() not in ['jpeg', 'jpg', 'png', 'gif', 'bmp', 'webp']:
+                    return False, f"Unsupported image format: {img.format}"
             
-            # Check format is supported
-            if img.format and img.format.lower() not in ['jpeg', 'jpg', 'png', 'gif', 'bmp', 'webp']:
-                img.close()
-                return False, f"Unsupported image format: {img.format}"
-            
-            img.close()
             return True, None
             
         except Exception as e:
@@ -200,7 +197,180 @@ class ImageService:
             logger.warning("Could not create temp folder: %s", e)
         return temp_path
     
-    # ==================== IMAGE SAVING ====================
+    # ==================== SINGLE-AUTHORITY ENTRY POINTS ====================
+    # All image mutations MUST go through one of these four methods.
+    # They guarantee: save + thumbnail + CardMedia + return final_value.
+    # Callers store the returned data['final_value'] in field_data — nothing else.
+
+    @classmethod
+    def save_new_image(
+        cls,
+        image_bytes: bytes,
+        client,
+        field_name: str,
+        card=None,
+        batch_counter: int = 1,
+        original_ext: str = '.jpg',
+        original_filename: str = None,
+        uploaded_by=None,
+    ) -> 'MediaResult':
+        """
+        Single entry point for saving a NEW image (no existing path).
+
+        Pipeline:
+          1. Save image to client folder (collision-safe)
+          2. Generate thumbnail
+          3. Create CardMedia record (if card provided)
+
+        Returns:
+            MediaResult with data['final_value'] — the path to store in field_data.
+        """
+        result = cls.save_image_with_thumbnail(
+            image_bytes=image_bytes,
+            client=client,
+            existing_path=None,
+            batch_counter=batch_counter,
+            original_ext=original_ext,
+        )
+        if not result.success:
+            return result
+
+        saved_path = result.data.get('path', '')
+
+        # CardMedia dual-write
+        if card and saved_path:
+            try:
+                cls.create_media_record(
+                    saved_path=saved_path,
+                    client=client,
+                    card=card,
+                    field_name=field_name,
+                    media_type='photo',
+                    original_filename=original_filename,
+                    uploaded_by=uploaded_by,
+                )
+            except Exception as cm_err:
+                logger.warning("CardMedia create failed in save_new_image for %s: %s", field_name, cm_err)
+
+        result.data['final_value'] = saved_path
+        result.data['action'] = 'upload'
+        return result
+
+    @classmethod
+    def replace_image(
+        cls,
+        image_bytes: bytes,
+        client,
+        field_name: str,
+        existing_path: str,
+        card=None,
+        batch_counter: int = 1,
+        original_ext: str = '.jpg',
+        original_filename: str = None,
+        uploaded_by=None,
+    ) -> 'MediaResult':
+        """
+        Single entry point for REPLACING an existing image.
+
+        Pipeline:
+          1. Save new image (edit naming preserves original 14-digit base)
+          2. Delete old image + old thumbnail
+          3. Generate new thumbnail
+          4. Update CardMedia record (if card provided)
+
+        Returns:
+            MediaResult with data['final_value'] — the new path to store in field_data.
+        """
+        # Treat invalid existing paths as a fresh save
+        if not existing_path or existing_path in ('NOT_FOUND', '') or existing_path.startswith('PENDING:'):
+            return cls.save_new_image(
+                image_bytes=image_bytes,
+                client=client,
+                field_name=field_name,
+                card=card,
+                batch_counter=batch_counter,
+                original_ext=original_ext,
+                original_filename=original_filename,
+                uploaded_by=uploaded_by,
+            )
+
+        result = cls.save_image_with_thumbnail(
+            image_bytes=image_bytes,
+            client=client,
+            existing_path=existing_path,
+            batch_counter=batch_counter,
+            original_ext=original_ext,
+        )
+        if not result.success:
+            return result
+
+        saved_path = result.data.get('path', '')
+
+        # CardMedia: delete old, create new
+        if card and saved_path:
+            try:
+                from ..models import CardMedia
+                CardMedia.objects.filter(card=card, field_name=field_name).delete()
+                cls.create_media_record(
+                    saved_path=saved_path,
+                    client=client,
+                    card=card,
+                    field_name=field_name,
+                    media_type='photo',
+                    original_filename=original_filename,
+                    uploaded_by=uploaded_by,
+                )
+            except Exception as cm_err:
+                logger.warning("CardMedia update failed in replace_image for %s: %s", field_name, cm_err)
+
+        result.data['final_value'] = saved_path
+        result.data['action'] = 'upload'
+        return result
+
+    @classmethod
+    def mark_pending(cls, field_name: str, reference: str) -> 'MediaResult':
+        """
+        Mark an image field as pending — no image available yet.
+
+        Returns:
+            MediaResult with data['final_value'] = 'PENDING:{reference}' or ''.
+        """
+        if reference:
+            final_value = f'PENDING:{reference}'
+        else:
+            final_value = ''
+        return MediaResult(
+            success=True,
+            data={'final_value': final_value, 'action': 'pending'},
+        )
+
+    @classmethod
+    def remove_image(cls, field_name: str, current_path: str, card=None) -> 'MediaResult':
+        """
+        Remove an image — deletes file, thumbnail, and CardMedia.
+
+        Returns:
+            MediaResult with data['final_value'] = ''.
+        """
+        if current_path and current_path not in ('', 'NOT_FOUND') and not current_path.startswith('PENDING:'):
+            try:
+                cls.delete_image(current_path)
+            except Exception as del_err:
+                logger.warning("Failed to delete image for %s: %s", field_name, del_err)
+
+            if card:
+                try:
+                    from ..models import CardMedia
+                    CardMedia.objects.filter(card=card, field_name=field_name).delete()
+                except Exception as cm_err:
+                    logger.warning("Failed to delete CardMedia for %s: %s", field_name, cm_err)
+
+        return MediaResult(
+            success=True,
+            data={'final_value': '', 'action': 'removal'},
+        )
+
+    # ==================== IMAGE SAVING (internal) ====================
     
     @classmethod
     def save_image(
@@ -446,6 +616,7 @@ class ImageService:
         existing_value = existing_value or ''
         
         # ── CASE 1: File upload ──────────────────────────────────────
+        # Delegates to save_new_image / replace_image (single authority).
         if uploaded_file is not None:
             try:
                 image_bytes = uploaded_file.read()
@@ -456,49 +627,40 @@ class ImageService:
                     if ext:
                         original_ext = ImageRenamer.normalize_extension(ext)
                 
-                # Determine existing path for replacement
-                replace_path = None
-                if existing_value and existing_value not in ('', 'NOT_FOUND') and not existing_value.startswith('PENDING:'):
-                    replace_path = existing_value
+                original_filename = getattr(uploaded_file, 'name', None)
                 
-                result = cls.save_image_with_thumbnail(
-                    image_bytes=image_bytes,
-                    client=client,
-                    existing_path=replace_path,
-                    batch_counter=batch_counter,
-                    original_ext=original_ext,
+                # Determine existing path for replacement
+                has_existing = (
+                    existing_value
+                    and existing_value not in ('', 'NOT_FOUND')
+                    and not existing_value.startswith('PENDING:')
                 )
                 
-                if result.success and result.data.get('path'):
-                    saved_path = result.data['path']
-                    
-                    # Create CardMedia record (dual-write)
-                    if card:
-                        try:
-                            cls.create_media_record(
-                                saved_path=saved_path,
-                                client=client,
-                                card=card,
-                                field_name=field_name,
-                                media_type='photo',
-                                original_filename=getattr(uploaded_file, 'name', None),
-                                uploaded_by=uploaded_by,
-                            )
-                        except Exception as cm_err:
-                            logger.warning("CardMedia create failed for %s: %s", field_name, cm_err)
-                    
-                    return MediaResult(
-                        success=True,
-                        message="Image uploaded",
-                        data={
-                            'final_value': saved_path,
-                            'action': 'upload',
-                            'path': saved_path,
-                            'thumbnail_path': result.data.get('thumbnail_path'),
-                        },
+                if has_existing:
+                    result = cls.replace_image(
+                        image_bytes=image_bytes,
+                        client=client,
+                        field_name=field_name,
+                        existing_path=existing_value,
+                        card=card,
+                        batch_counter=batch_counter,
+                        original_ext=original_ext,
+                        original_filename=original_filename,
+                        uploaded_by=uploaded_by,
                     )
                 else:
-                    return MediaResult(success=False, message=result.message or "Upload failed")
+                    result = cls.save_new_image(
+                        image_bytes=image_bytes,
+                        client=client,
+                        field_name=field_name,
+                        card=card,
+                        batch_counter=batch_counter,
+                        original_ext=original_ext,
+                        original_filename=original_filename,
+                        uploaded_by=uploaded_by,
+                    )
+                
+                return result
             except Exception as e:
                 logger.error("process_image_field upload error for %s: %s", field_name, e)
                 return MediaResult(success=False, message=str(e))
@@ -515,33 +677,12 @@ class ImageService:
         
         # ── CASE 6: PENDING reference ───────────────────────────────
         if new_value.startswith('PENDING:'):
-            return MediaResult(
-                success=True,
-                data={'final_value': new_value, 'action': 'pending'},
-            )
+            return cls.mark_pending(field_name, new_value[8:])
         
         # ── CASE 2: Removal ─────────────────────────────────────────
+        # Delegates to remove_image (single authority).
         if new_value == '':
-            if existing_value and existing_value not in ('', 'NOT_FOUND') and not existing_value.startswith('PENDING:'):
-                # Delete file + thumbnail
-                try:
-                    cls.delete_image(existing_value)
-                    logger.debug("Removed image for field %s: %s", field_name, existing_value)
-                except Exception as del_err:
-                    logger.warning("Failed to delete image for %s: %s", field_name, del_err)
-                
-                # Delete CardMedia record
-                if card:
-                    try:
-                        from mediafiles.models import CardMedia
-                        CardMedia.objects.filter(card=card, field_name=field_name).delete()
-                    except Exception as cm_err:
-                        logger.warning("Failed to delete CardMedia for %s: %s", field_name, cm_err)
-            
-            return MediaResult(
-                success=True,
-                data={'final_value': '', 'action': 'removal'},
-            )
+            return cls.remove_image(field_name, existing_value, card=card)
         
         # Normalize the path
         new_value = BaseService.normalize_image_path(new_value)

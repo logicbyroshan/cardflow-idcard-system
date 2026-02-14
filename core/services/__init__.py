@@ -1,19 +1,26 @@
 # =============================================================================
-# ADARSH ADMIN - SERVICE LAYER
+# ADARSH ADMIN — SERVICE LAYER
 # =============================================================================
-# 
-# Services contain reusable business logic separated from views.
-# Views should be thin - only handling HTTP request/response.
-# 
-# FOLDER STRUCTURE:
-# services/
-#     __init__.py          - Exports all services
-#     base.py              - Base service class, common utilities
-#     client_service.py    - Client CRUD operations
-#     staff_service.py     - Staff CRUD operations
-#     idcard_service.py    - ID Card CRUD, status management
-#     image_service.py     - Image upload, processing, filename generation
-#     permission_service.py - Permission checking utilities
+#
+# ARCHITECTURE RULES (enforced):
+# - Views are ULTRA-THIN: parse request → call service → return response.
+# - NO .save(), .create(), .delete(), .update() on ANY model in views.
+# - All mutations MUST go through the appropriate service.
+# - Services validate input, execute atomically, and return ServiceResult.
+#
+# SINGLE AUTHORITIES:
+#   PermissionService  → all permission decisions
+#   WorkflowService    → all IDCard status transitions
+#   ReprintWorkflowService → all ReprintRequest status transitions
+#   IDCardService      → all IDCard / IDCardTable / IDCardGroup mutations
+#   ImageService       → all file I/O (save, replace, delete images)
+#   ClientService      → all Client mutations (admin side)
+#   StaffService       → all Staff mutations (admin side)
+#   WebsiteService*    → all website-content mutations (in website/services.py)
+#   UserProfileService → user profile / password mutations
+#
+# DEPENDENCY DIRECTION: Views → Services → Models (only).
+# Services must NOT import from views.
 # =============================================================================
 
 from .base import ServiceResult, BaseService
@@ -23,6 +30,7 @@ from .staff_service import StaffService
 from .idcard_service import IDCardService
 from .permission_service import PermissionService
 from .activity_service import ActivityService
+from .workflow_service import WorkflowService, ReprintWorkflowService
 
 __all__ = [
     'ServiceResult',
@@ -33,4 +41,6 @@ __all__ = [
     'IDCardService',
     'PermissionService',
     'ActivityService',
+    'WorkflowService',
+    'ReprintWorkflowService',
 ]

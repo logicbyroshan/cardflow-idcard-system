@@ -203,8 +203,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!tbody) return;
         const esc = typeof escapeHtml === 'function' ? escapeHtml : (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
         
-        fetch('/panel/api/recent-client-updates/?limit=5')
-            .then(response => response.json())
+        ApiClient.get('/panel/api/recent-client-updates/?limit=5')
             .then(data => {
                 if (data.success && data.clients.length > 0) {
                     tbody.innerHTML = data.clients.map(client => `
@@ -277,8 +276,7 @@ document.addEventListener('DOMContentLoaded', function() {
     async function loadBulkClients() {
         if (!bulkClientSelect) return;
         try {
-            const response = await fetch('/panel/api/clients/active/');
-            const data = await response.json();
+            const data = await ApiClient.get('/panel/api/clients/active/');
             if (data.success && data.clients) {
                 data.clients.forEach(client => {
                     const opt = document.createElement('option');
@@ -305,8 +303,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!clientId) return;
 
             try {
-                const response = await fetch(`/panel/api/group/${clientId}/tables/`);
-                const data = await response.json();
+                const data = await ApiClient.get(`/panel/api/group/${clientId}/tables/`);
                 if (data.success && data.tables) {
                     data.tables.forEach(table => {
                         const opt = document.createElement('option');
@@ -354,8 +351,6 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 if (typeof showToast === 'function') {
                     showToast(`${action} action coming soon!`, 'info');
-                } else {
-                    alert(`${action} action coming soon!`);
                 }
             }
         });
@@ -380,15 +375,14 @@ document.addEventListener('DOMContentLoaded', function() {
         if (dashDeleteCodeInput) dashDeleteCodeInput.value = '';
         if (dashDeleteConfirmBtn) { dashDeleteConfirmBtn.disabled = true; dashDeleteConfirmBtn.style.opacity = '0.5'; dashDeleteConfirmBtn.textContent = 'Delete All Cards'; }
 
-        fetch(`/panel/api/table/${tableId}/cards/generate-delete-code/`, { method: 'POST', headers: { 'Content-Type': 'application/json' } })
-          .then(r => r.json())
+        ApiClient.post(`/panel/api/table/${tableId}/cards/generate-delete-code/`)
           .then(data => {
             if (data.success) {
               dashDeleteExpectedCode = data.code;
               if (dashDeleteCodeDisplay) dashDeleteCodeDisplay.textContent = data.code;
               if (dashDeleteTableNameEl) dashDeleteTableNameEl.textContent = data.table_name;
               if (dashDeleteCountEl) dashDeleteCountEl.textContent = data.total_cards;
-              if (dashDeleteModal) dashDeleteModal.style.display = 'flex';
+              if (dashDeleteModal) dashDeleteModal.classList.add('show');
               if (dashDeleteCodeInput) dashDeleteCodeInput.focus();
             } else {
               if (typeof showToast === 'function') showToast(data.message || 'Failed to generate code', 'error');
@@ -398,7 +392,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function dashCloseDeleteAllModal() {
-        if (dashDeleteModal) dashDeleteModal.style.display = 'none';
+        if (dashDeleteModal) dashDeleteModal.classList.remove('show');
         dashDeleteTableId = null;
         dashDeleteExpectedCode = '';
         if (dashDeleteCodeInput) dashDeleteCodeInput.value = '';
@@ -419,12 +413,7 @@ document.addEventListener('DOMContentLoaded', function() {
             dashDeleteConfirmBtn.disabled = true;
             dashDeleteConfirmBtn.textContent = 'Deleting...';
 
-            fetch(`/panel/api/table/${dashDeleteTableId}/cards/bulk-delete/`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ delete_all: true, confirmation_code: dashDeleteCodeInput.value.trim() })
-            })
-            .then(r => r.json())
+            ApiClient.post(`/panel/api/table/${dashDeleteTableId}/cards/bulk-delete/`, { delete_all: true, confirmation_code: dashDeleteCodeInput.value.trim() })
             .then(data => {
                 dashCloseDeleteAllModal();
                 if (typeof showToast === 'function') showToast(data.message || (data.success ? 'Deleted!' : 'Failed'), data.success ? 'success' : 'error');
@@ -444,12 +433,7 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.disabled = true;
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Preparing...</span>';
 
-        fetch(`/panel/api/table/${tableId}/cards/download-all/`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({})
-        })
-        .then(r => r.json())
+        ApiClient.post(`/panel/api/table/${tableId}/cards/download-all/`)
         .then(data => {
             if (data.success && data.files && data.files.length > 0) {
                 if (typeof showToast === 'function') showToast(`Downloading ${data.total_files} file(s)...`, 'success');
@@ -468,17 +452,7 @@ document.addEventListener('DOMContentLoaded', function() {
         .finally(() => { btn.disabled = false; btn.innerHTML = origHtml; });
     }
 
-    function dashTriggerBase64Download(base64Data, filename, mimeType) {
-        const byteChars = atob(base64Data);
-        const byteNumbers = new Array(byteChars.length);
-        for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
-        const blob = new Blob([new Uint8Array(byteNumbers)], { type: mimeType });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = filename;
-        document.body.appendChild(a); a.click();
-        document.body.removeChild(a); URL.revokeObjectURL(url);
-    }
+    function dashTriggerBase64Download(base64, filename, mimeType) {\n        ApiClient.downloadBase64(base64, filename, mimeType);\n    }
 
     // ====================
     // Upgrade All Classes (Secure 6-digit code) on Dashboard
@@ -499,15 +473,14 @@ document.addEventListener('DOMContentLoaded', function() {
         if (dashUpgradeCodeInput) dashUpgradeCodeInput.value = '';
         if (dashUpgradeConfirmBtn) { dashUpgradeConfirmBtn.disabled = true; dashUpgradeConfirmBtn.style.opacity = '0.5'; dashUpgradeConfirmBtn.textContent = 'Upgrade All Classes'; }
 
-        fetch(`/panel/api/table/${tableId}/cards/generate-upgrade-code/`, { method: 'POST', headers: { 'Content-Type': 'application/json' } })
-          .then(r => r.json())
+        ApiClient.post(`/panel/api/table/${tableId}/cards/generate-upgrade-code/`)
           .then(data => {
             if (data.success) {
               dashUpgradeExpectedCode = data.code;
               if (dashUpgradeCodeDisplay) dashUpgradeCodeDisplay.textContent = data.code;
               if (dashUpgradeTableNameEl) dashUpgradeTableNameEl.textContent = data.table_name;
               if (dashUpgradeCountEl) dashUpgradeCountEl.textContent = data.download_count;
-              if (dashUpgradeModal) dashUpgradeModal.style.display = 'flex';
+              if (dashUpgradeModal) dashUpgradeModal.classList.add('show');
               if (dashUpgradeCodeInput) dashUpgradeCodeInput.focus();
             } else {
               if (typeof showToast === 'function') showToast(data.message || 'Failed to generate code', 'error');
@@ -517,7 +490,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function dashCloseUpgradeAllModal() {
-        if (dashUpgradeModal) dashUpgradeModal.style.display = 'none';
+        if (dashUpgradeModal) dashUpgradeModal.classList.remove('show');
         dashUpgradeTableId = null;
         dashUpgradeExpectedCode = '';
         if (dashUpgradeCodeInput) dashUpgradeCodeInput.value = '';
@@ -538,12 +511,7 @@ document.addEventListener('DOMContentLoaded', function() {
             dashUpgradeConfirmBtn.disabled = true;
             dashUpgradeConfirmBtn.textContent = 'Upgrading...';
 
-            fetch(`/panel/api/table/${dashUpgradeTableId}/cards/upgrade-classes/`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ confirmation_code: dashUpgradeCodeInput.value.trim() })
-            })
-            .then(r => r.json())
+            ApiClient.post(`/panel/api/table/${dashUpgradeTableId}/cards/upgrade-classes/`, { confirmation_code: dashUpgradeCodeInput.value.trim() })
             .then(data => {
                 dashCloseUpgradeAllModal();
                 if (typeof showToast === 'function') showToast(data.message || (data.success ? 'Upgraded!' : 'Failed'), data.success ? 'success' : 'error');
@@ -576,11 +544,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (dashReuploadConfirmBtn) { dashReuploadConfirmBtn.disabled = true; dashReuploadConfirmBtn.style.opacity = '0.5'; dashReuploadConfirmBtn.textContent = 'Upload & Match'; }
         if (dashReuploadProgress) dashReuploadProgress.style.display = 'none';
         if (dashReuploadBar) dashReuploadBar.style.width = '0%';
-        if (dashReuploadModal) dashReuploadModal.style.display = 'flex';
+        if (dashReuploadModal) dashReuploadModal.classList.add('show');
     }
 
     function dashCloseReuploadModal() {
-        if (dashReuploadModal) dashReuploadModal.style.display = 'none';
+        if (dashReuploadModal) dashReuploadModal.classList.remove('show');
         dashReuploadTableId = null;
         if (dashReuploadFileInput) dashReuploadFileInput.value = '';
     }
@@ -625,6 +593,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const xhr = new XMLHttpRequest();
             xhr.open('POST', `/panel/api/table/${dashReuploadTableId}/cards/reupload-images/`);
+            xhr.setRequestHeader('X-CSRFToken', typeof getCSRFToken === 'function' ? getCSRFToken() : '');
 
             xhr.upload.onprogress = function(e) {
                 if (e.lengthComputable) {

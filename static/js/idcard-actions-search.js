@@ -1,6 +1,9 @@
 // ID Card Actions - Search Module
 // Contains: Search input, filter dropdown, sort dropdown, rows per page, search all modal
 
+(function() {
+'use strict';
+
 // ==========================================
 // SEARCH STATE (searchQuery is defined in table module)
 // ==========================================
@@ -392,8 +395,7 @@ function initSearchAllModal() {
             return;
         }
         
-        fetch(`/panel/api/table/${tableId}/cards/search/?q=${encodeURIComponent(query)}`)
-            .then(response => response.json())
+        ApiClient.get(`/panel/api/table/${tableId}/cards/search/?q=${encodeURIComponent(query)}`)
             .then(data => {
                 if (data.success) {
                     displaySearchResults(data.results, query, searchResultsContainer, closeSearchAllModalFn);
@@ -688,3 +690,5 @@ window.IDCardApp = window.IDCardApp || {};
 window.IDCardApp.initSearchModule = initSearchModule;
 window.IDCardApp.initSearchAllModal = initSearchAllModal;
 window.IDCardApp.initImageSortModal = initImageSortModal;
+
+})();

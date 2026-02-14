@@ -1,0 +1,63 @@
+{% comment %}
+Status Change Confirmation Modal (Tailwind)
+=============================================
+Pre-built center modal for toggling active/inactive status.
+
+Usage:
+  {% include 'components/status-modal.html' with
+     modal_id="status-modal"
+     item_name="staff member"
+  %}
+
+JS contract:
+  Show:  document.getElementById('status-modal').classList.remove('hidden')
+  Hide:  document.getElementById('status-modal').classList.add('hidden')
+  Name:  document.getElementById('statusItemName').textContent = 'Jane Doe'
+  Note:  document.getElementById('statusNote').textContent = '...'
+  Confirm: #confirmStatusBtn
+  Cancel:  #cancelStatusBtn
+{% endcomment %}
+
+<div id="{{ modal_id|default:'status-modal' }}" class="modal-backdrop"
+     onclick="if(event.target===this) this.classList.remove('show')">
+  <div class="modal-center modal-warning" onclick="event.stopPropagation()">
+
+    <!-- Header -->
+    <div class="modal-header">
+      <h3><i class="fa-solid fa-toggle-on"></i> Confirm Status Change</h3>
+      <button type="button" class="modal-close" id="closeStatusModal"
+              onclick="document.getElementById('{{ modal_id|default:'status-modal' }}').classList.remove('show')"
+              aria-label="Close">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="modal-body">
+      <div class="flex flex-col items-center text-center py-2">
+        <div class="w-10 h-10 rounded-sm bg-warning-bg flex items-center justify-center mb-2">
+          <i class="fa-solid fa-toggle-on text-warning" style="font-size:14px"></i>
+        </div>
+        <p class="text-gray-700" style="font-size:8px">
+          Are you sure you want to change the status of
+          <strong id="statusItemName">this {{ item_name|default:'item' }}</strong>?
+        </p>
+        <p class="text-gray-400 mt-1 flex items-center gap-1" id="statusNote" style="font-size:7px">
+          <i class="fa-solid fa-info-circle"></i> This will affect {{ item_name|default:'item' }}'s access.
+        </p>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="modal-footer">
+      <button type="button" class="btn btn-md btn-neutral" id="cancelStatusBtn"
+              onclick="document.getElementById('{{ modal_id|default:'status-modal' }}').classList.remove('show')">
+        <i class="fa-solid fa-xmark"></i> Cancel
+      </button>
+      <button type="button" class="btn btn-md btn-warning" id="confirmStatusBtn">
+        <i class="fa-solid fa-check"></i> Confirm
+      </button>
+    </div>
+
+  </div>
+</div>

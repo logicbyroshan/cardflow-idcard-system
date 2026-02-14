@@ -5,104 +5,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Manage Panel - Adarsh ID Cards</title>
-  {% include 'partials/common/head.html' %}
-  <link rel="stylesheet" href="{% static 'css/common.css' %}?v=50">
-  <style>
-    .coming-soon-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: calc(100vh - 120px);
-      padding: 40px 20px;
-      text-align: center;
-    }
-    
-    .coming-soon-icon {
-      width: 120px;
-      height: 120px;
-      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-      border-radius: 30px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 32px;
-      box-shadow: 0 20px 40px rgba(99, 102, 241, 0.3);
-      animation: float 3s ease-in-out infinite;
-    }
-    
-    .coming-soon-icon i {
-      font-size: 48px;
-      color: white;
-    }
-    
-    @keyframes float {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-10px); }
-    }
-    
-    .coming-soon-title {
-      font-size: 32px;
-      font-weight: 700;
-      color: #1f2937;
-      margin-bottom: 12px;
-    }
-    
-    .coming-soon-subtitle {
-      font-size: 18px;
-      color: #6b7280;
-      margin-bottom: 24px;
-      max-width: 500px;
-    }
-    
-    .coming-soon-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 20px;
-      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-      border: 1px solid #f59e0b;
-      border-radius: 50px;
-      color: #92400e;
-      font-weight: 600;
-      font-size: 14px;
-    }
-    
-    .coming-soon-badge i {
-      font-size: 16px;
-    }
-    
-    .coming-soon-features {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 16px;
-      justify-content: center;
-      margin-top: 40px;
-      max-width: 600px;
-    }
-    
-    .feature-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 12px 20px;
-      background: #f9fafb;
-      border: 1px solid #e5e7eb;
-      border-radius: 10px;
-      color: #4b5563;
-      font-size: 14px;
-    }
-    
-    .feature-item i {
-      color: #6366f1;
-    }
-  </style>
+  <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=2">
+  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=2">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="{% static 'js/alpine-state.js' %}?v=1"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
 </head>
-<body>
+<body x-data="layoutState()" x-init="init()">
   {% include 'partials/sidebar.html' %}
 
   <main class="main">
-    <!-- Top Navbar -->
     <header class="topbar">
       <div class="nav-left">
         <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
@@ -116,46 +32,41 @@
       </div>
     </header>
 
-    <!-- Coming Soon Content -->
-    <div class="coming-soon-container">
-      <div class="coming-soon-icon">
-        <i class="fa-solid fa-sliders"></i>
-      </div>
-      
-      <h1 class="coming-soon-title">Manage Panel</h1>
-      <p class="coming-soon-subtitle">
-        We're building something amazing! This feature will allow you to customize and manage your panel settings.
-      </p>
-      
-      <div class="coming-soon-badge">
-        <i class="fa-solid fa-clock"></i>
-        Coming Soon
-      </div>
-      
-      <div class="coming-soon-features">
-        <div class="feature-item">
-          <i class="fa-solid fa-palette"></i>
-          Theme Customization
+    <div class="main-content">
+      <div class="flex flex-col items-center justify-center min-h-[calc(100vh-120px)] text-center px-3 py-6">
+        <div class="w-16 h-16 bg-primary flex items-center justify-center mb-3" style="border-radius:2px">
+          <i class="fa-solid fa-sliders text-white" style="font-size:24px"></i>
         </div>
-        <div class="feature-item">
-          <i class="fa-solid fa-bell"></i>
-          Notification Settings
-        </div>
-        <div class="feature-item">
-          <i class="fa-solid fa-shield-halved"></i>
-          Security Options
-        </div>
-        <div class="feature-item">
-          <i class="fa-solid fa-database"></i>
-          Backup & Restore
+        <h1 class="text-gray-800 mb-1" style="font-size:14px;font-weight:700">Manage Panel</h1>
+        <p class="text-gray-500 max-w-[400px] mb-3" style="font-size:8px">
+          We're building something amazing! This feature will allow you to customize and manage your panel settings.
+        </p>
+        <span class="inline-flex items-center gap-1 bg-warning-bg border border-warning text-warning-dark font-semibold" style="padding:3px 10px;font-size:8px;border-radius:2px">
+          <i class="fa-solid fa-clock" style="font-size:9px"></i> Coming Soon
+        </span>
+        <div class="flex flex-wrap gap-2 justify-center mt-4 max-w-[500px]">
+          <div class="flex items-center gap-1 bg-gray-50 border border-gray-200 text-gray-600" style="padding:4px 10px;font-size:8px;border-radius:2px">
+            <i class="fa-solid fa-palette text-primary" style="font-size:9px"></i> Theme Customization
+          </div>
+          <div class="flex items-center gap-1 bg-gray-50 border border-gray-200 text-gray-600" style="padding:4px 10px;font-size:8px;border-radius:2px">
+            <i class="fa-solid fa-bell text-primary" style="font-size:9px"></i> Notification Settings
+          </div>
+          <div class="flex items-center gap-1 bg-gray-50 border border-gray-200 text-gray-600" style="padding:4px 10px;font-size:8px;border-radius:2px">
+            <i class="fa-solid fa-shield-halved text-primary" style="font-size:9px"></i> Security Options
+          </div>
+          <div class="flex items-center gap-1 bg-gray-50 border border-gray-200 text-gray-600" style="padding:4px 10px;font-size:8px;border-radius:2px">
+            <i class="fa-solid fa-database text-primary" style="font-size:9px"></i> Backup & Restore
+          </div>
         </div>
       </div>
     </div>
   </main>
 
-  {% include 'partials/components/toast.html' %}
-  
-  <script src="{% static 'js/common/sidebar.js' %}?v=2"></script>
-  <script src="{% static 'js/init.js' %}?v=2"></script>
+  {% include 'components/toast.html' %}
+  <script src="{% static 'js/core/api.js' %}?v=1"></script>
+  <script src="{% static 'js/core/toast.js' %}?v=1"></script>
+  <script src="{% static 'js/core/modal.js' %}?v=1"></script>
+  <script src="{% static 'js/core/utils.js' %}?v=1"></script>
+  <script src="{% static 'js/init.js' %}?v=3"></script>
 </body>
 </html>

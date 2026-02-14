@@ -191,7 +191,15 @@ def process_export_zip(task):
         logger.info("ZIP export completed: %d images in %d files", total_images, len(zip_files_created))
         
     except Exception as e:
-        # Cleanup any partially created ZIPs
+        # Cleanup current partial ZIP being written
+        if 'zip_path' in locals():
+            try:
+                full_zip = os.path.join(settings.MEDIA_ROOT, zip_path)
+                if os.path.exists(full_zip):
+                    os.remove(full_zip)
+            except Exception:
+                pass
+        # Cleanup any fully created ZIPs
         for zip_info in zip_files_created:
             try:
                 full_path = os.path.join(settings.MEDIA_ROOT, zip_info['path'])
@@ -285,6 +293,12 @@ def process_export_pdf(task):
         logger.info("PDF export completed: %d cards", result.card_count)
         
     except Exception as e:
+        # Cleanup partial PDF file on failure (e.g. disk-full)
+        if 'pdf_path' in locals() and os.path.exists(pdf_path):
+            try:
+                os.remove(pdf_path)
+            except Exception:
+                pass
         logger.exception("PDF export failed: %s", e)
         task.mark_failed(str(e))
 
@@ -368,6 +382,12 @@ def process_export_docx(task):
         logger.info("DOCX export completed: %d cards", result.card_count)
         
     except Exception as e:
+        # Cleanup partial DOCX file on failure (e.g. disk-full)
+        if 'docx_path' in locals() and os.path.exists(docx_path):
+            try:
+                os.remove(docx_path)
+            except Exception:
+                pass
         logger.exception("DOCX export failed: %s", e)
         task.mark_failed(str(e))
 
@@ -451,5 +471,11 @@ def process_export_excel(task):
         logger.info("Excel export completed: %d rows", result.row_count)
         
     except Exception as e:
+        # Cleanup partial Excel file on failure (e.g. disk-full)
+        if 'excel_path' in locals() and os.path.exists(excel_path):
+            try:
+                os.remove(excel_path)
+            except Exception:
+                pass
         logger.exception("Excel export failed: %s", e)
         task.mark_failed(str(e))

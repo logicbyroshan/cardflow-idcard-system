@@ -29,6 +29,9 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
+# Maximum time a single task may run before being marked as failed (seconds)
+TASK_TIMEOUT_SECONDS = 30 * 60  # 30 minutes
+
 
 class BackgroundWorker:
     """
@@ -81,8 +84,11 @@ class BackgroundWorker:
         
         Routes to appropriate handler based on task_type.
         Handles all exceptions and updates task status accordingly.
+        Includes a failsafe timeout of TASK_TIMEOUT_SECONDS.
         """
         from core.models import BackgroundTask
+        from django.utils import timezone
+        from datetime import timedelta
         
         try:
             task = BackgroundTask.objects.get(id=task_id)
@@ -114,12 +120,33 @@ class BackgroundWorker:
                 handler(task)
             else:
                 task.mark_failed(f"Unknown task type: {task.task_type}")
+            
+            # ── Failsafe timeout check ──
+            # If the handler completed but took too long AND didn't mark itself
+            # as completed/failed, force-fail it. Also catches tasks that
+            # silently returned without calling mark_completed.
+            task.refresh_from_db()
+            if task.status == 'processing' and task.started_at:
+                elapsed = (timezone.now() - task.started_at).total_seconds()
+                if elapsed > TASK_TIMEOUT_SECONDS:
+                    task.mark_failed(
+                        f"Task exceeded maximum timeout of {TASK_TIMEOUT_SECONDS // 60} minutes"
+                    )
+                    logger.warning("Task %d force-failed: exceeded %ds timeout", task_id, TASK_TIMEOUT_SECONDS)
                 
         except Exception as e:
             logger.exception("Task %d failed with exception", task_id)
             try:
                 task.refresh_from_db()
                 task.mark_failed(str(e))
+            except Exception:
+                pass
+        finally:
+            # Periodic cleanup of orphaned temp/export files after every task
+            try:
+                from core.services.task_cleanup import cleanup_orphaned_temp_files, cleanup_old_exports
+                cleanup_orphaned_temp_files(hours=24)
+                cleanup_old_exports(days=3)
             except Exception:
                 pass
     
@@ -251,6 +278,35 @@ def save_uploaded_file_to_disk(uploaded_file, filename=None):
     relative_path = os.path.relpath(full_path, settings.MEDIA_ROOT)
     logger.info("Saved uploaded file to: %s", relative_path)
     return relative_path
+
+
+def cancel_task(task_id: int, user=None) -> dict:
+    """Cancel a pending or processing background task.
+
+    Returns dict with 'success' and 'message' keys.
+    """
+    from core.models import BackgroundTask
+    from django.utils import timezone
+
+    try:
+        if user and getattr(user, 'role', None) == 'super_admin':
+            task = BackgroundTask.objects.get(id=task_id)
+        elif user:
+            task = BackgroundTask.objects.get(id=task_id, user=user)
+        else:
+            task = BackgroundTask.objects.get(id=task_id)
+    except BackgroundTask.DoesNotExist:
+        return {'success': False, 'message': 'Task not found'}
+
+    if task.status in ('completed', 'failed', 'cancelled'):
+        return {'success': False, 'message': f'Task is already {task.status}'}
+
+    task.status = 'cancelled'
+    task.completed_at = timezone.now()
+    task.save(update_fields=['status', 'completed_at', 'updated_at'])
+    task.cleanup_files()
+
+    return {'success': True, 'message': 'Task cancelled'}
 
 
 def cleanup_temp_file(file_path):

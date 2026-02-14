@@ -1,6 +1,9 @@
 // ID Card Actions - Core Utilities Module
-// Contains: Sidebar toggle, checkbox functionality, API helpers
-// Note: CSRF token and toast functions are now in utils.js
+// Contains: Active link highlight, checkbox functionality, API helpers
+// Depends on: core/api.js (ApiClient), core/toast.js (Toast), core/utils.js
+
+(function() {
+'use strict';
 
 // ==========================================
 // GLOBAL STATE
@@ -39,10 +42,15 @@ if (typeof hideToast === 'function') {
 }
 
 // ==========================================
-// API CALL HELPER
+// API CALL HELPER (delegates to core/api.js ApiClient)
 // ==========================================
 
 function apiCall(url, method, data = null) {
+    // Delegate to centralized ApiClient from core/api.js
+    if (typeof ApiClient !== 'undefined') {
+        return ApiClient.request(url, { method, body: data });
+    }
+    // Fallback if ApiClient not loaded yet
     const options = {
         method: method,
         headers: {
@@ -51,24 +59,7 @@ function apiCall(url, method, data = null) {
         }
     };
     if (data) options.body = JSON.stringify(data);
-    
-    return fetch(url, options)
-        .then(response => {
-            if (!response.ok) {
-                return response.json().catch(() => ({})).then(errData => {
-                    const msg = (response.status === 403)
-                        ? (errData.message || 'Permission denied')
-                        : (errData.message || 'Request failed (' + response.status + ')');
-                    throw new Error(msg);
-                });
-            }
-            return response.json();
-        })
-        .catch(error => {
-            console.error('API Error:', error);
-            if (typeof showToast === 'function') showToast(error.message || 'Network error', false);
-            throw error;
-        });
+    return fetch(url, options).then(r => r.ok ? r.json() : r.json().catch(() => ({})).then(d => { throw new Error(d.message || 'Request failed'); }));
 }
 
 // Expose globally
@@ -80,8 +71,8 @@ window.IDCardApp.apiCall = apiCall;
 // ==========================================
 
 function initSidebar() {
-    // Sidebar toggle is handled by common/sidebar.js (auto-initialized on DOMContentLoaded).
-    // Only set the active sidebar link here to avoid duplicate click handlers.
+    // Sidebar toggle is handled by Alpine.js layoutState() in alpine-state.js.
+    // Only set the active sidebar link here — no toggle logic.
     const activeClientsLink = document.getElementById('activeClientsLink');
     const allClientsLink = document.getElementById('allClientsLink');
     if (activeClientsLink) activeClientsLink.classList.add('active');
@@ -296,8 +287,7 @@ function initSelectAllDbButton() {
         this.disabled = true;
         
         try {
-            const response = await fetch(`/panel/api/table/${tableId}/cards/all-ids/?status=${currentStatus}`);
-            const data = await response.json();
+            const data = await ApiClient.get(`/panel/api/table/${tableId}/cards/all-ids/?status=${currentStatus}`);
             
             if (data.success && data.card_ids) {
                 // Store all card IDs globally
@@ -382,8 +372,7 @@ async function getAllCardIdsForAction() {
     }
 
     try {
-        const response = await fetch(`/panel/api/table/${tableId}/cards/all-ids/?status=${currentStatus}`);
-        const data = await response.json();
+        const data = await ApiClient.get(`/panel/api/table/${tableId}/cards/all-ids/?status=${currentStatus}`);
         if (data.success && data.card_ids) {
             return data.card_ids;
         }
@@ -586,3 +575,5 @@ function initCoreModule() {
 
 // Expose globally
 window.IDCardApp.initCoreModule = initCoreModule;
+
+})();

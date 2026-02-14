@@ -140,7 +140,9 @@ class CardMedia(models.Model):
         indexes = [
             models.Index(fields=['client', 'media_type']),
             models.Index(fields=['card', 'media_type']),
+            models.Index(fields=['card', 'field_name']),
             models.Index(fields=['original_filename']),
+            models.Index(fields=['created_at']),
         ]
     
     def _get_media_type_label(self) -> str:
