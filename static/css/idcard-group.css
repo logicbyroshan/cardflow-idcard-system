@@ -16,7 +16,7 @@
 
 /* Editable cell input style */
 .idcard-table td input[type="text"] {
-    font-size: 8px;
+    font-size: 14px;
     border: 1px solid #d1d5db;
     padding: 1px 3px;
     border-radius: 2px;
@@ -48,7 +48,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     font-weight: 500;
-    font-size: 8px;
+    font-size: 14px;
     text-align: left;
     padding-left: 10px;
 }
@@ -91,7 +91,7 @@
     padding: 3px 5px;
     border: none;
     border-radius: 2px;
-    font-size: 7px;
+    font-size: 13px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.15s ease;
@@ -113,7 +113,7 @@
     height: 12px;
     padding: 0 2px;
     border-radius: 6px;
-    font-size: 7px;
+    font-size: 13px;
     font-weight: 700;
     margin-left: 2px;
     text-align: center;
@@ -237,7 +237,7 @@
     padding: 3px 6px;
     border: none;
     border-radius: 2px;
-    font-size: 7px;
+    font-size: 13px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.15s ease;
@@ -324,7 +324,7 @@
     .idcard-table td:nth-child(1) {
         width: 90px;
         min-width: 90px;
-        font-size: 7px;
+        font-size: 13px;
     }
     
     .idcard-table th:nth-child(2),
@@ -341,7 +341,7 @@
     
     .list-btn {
         padding: 2px 4px;
-        font-size: 7px;
+        font-size: 13px;
         min-width: 60px;
     }
     
@@ -354,26 +354,26 @@
     
     .bulk-btn {
         padding: 2px 4px;
-        font-size: 7px;
+        font-size: 13px;
     }
 }
 
 @media (min-width: 1201px) and (max-width: 1400px) {
     .list-btn {
         padding: 3px 4px;
-        font-size: 7px;
+        font-size: 13px;
         min-width: 65px;
     }
     
     .count-badge {
         min-width: 26px;
         height: 11px;
-        font-size: 7px;
+        font-size: 13px;
     }
     
     .bulk-btn {
         padding: 3px 5px;
-        font-size: 7px;
+        font-size: 13px;
     }
 }
 
@@ -426,7 +426,7 @@
     align-items: center;
     justify-content: center;
     color: #fff;
-    font-size: 12px;
+    font-size: 15px;
 }
 
 .group-card-body {
@@ -434,7 +434,7 @@
 }
 
 .group-name {
-    font-size: 9px;
+    font-size: 15px;
     font-weight: 700;
     color: #1f2937;
     margin: 0 0 4px 0;
@@ -453,7 +453,7 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    font-size: 8px;
+    font-size: 14px;
     color: #6b7280;
 }
 

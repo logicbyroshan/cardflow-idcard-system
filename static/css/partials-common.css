@@ -58,50 +58,7 @@
     overflow: hidden;
 }
 
-.data-table {
-    width: 100%;
-    border-collapse: collapse;
-    table-layout: fixed;
-}
-
-.data-table thead {
-    background: var(--primary-gradient);
-}
-
-.data-table th {
-    padding: var(--space-md) var(--space-sm);
-    text-align: center;
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-bold);
-    color: var(--text-white);
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-    border-bottom: 1px solid var(--border-color);
-    border-right: 1px solid var(--border-color);
-}
-
-.data-table td {
-    padding: var(--space-md) var(--space-sm);
-    font-size: var(--font-size-base);
-    color: var(--text-primary);
-    border-bottom: 1px solid var(--border-color);
-    border-right: 1px solid var(--border-color);
-    text-align: center;
-}
-
-.data-table tbody tr {
-    cursor: pointer;
-    transition: all var(--transition-base);
-    user-select: none;
-}
-
-.data-table tbody tr:hover {
-    background: var(--gray-50);
-}
-
-.data-table tbody tr.selected {
-    background: var(--bg-selected);
-}
+/* Removed: handled by tailwind-input.css */
 
 .data-table tbody tr.selected td:first-child {
     box-shadow: inset 5px 0 0 0 var(--blue);
@@ -253,17 +210,7 @@
    .pagination-left/center/right, .rows-dropdown all in common.css
    ==================== */
 
-/* Legacy per-page-dropdown (native <select> style) */
-.pagination-controls {
-    display: flex;
-    align-items: center;
-    gap: var(--space-md);
-}
-
-.pagination-controls label {
-    font-size: 13px;
-    color: #666;
-}
+/* Removed: handled by tailwind-input.css */
 
 /* Page indicator text */
 /* ==================== 
@@ -274,156 +221,9 @@
    
    These aliases support older markup that uses .drawer-overlay + .side-drawer
    ==================== */
-.drawer-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
-    z-index: 2000;
-    opacity: 0;
-    visibility: hidden;
-    transition: all var(--transition-slow);
-    overflow: hidden;
-}
+/* Removed: handled by tailwind-input.css */
 
-.drawer-overlay.active {
-    opacity: 1;
-    visibility: visible;
-}
-
-.side-drawer {
-    position: fixed;
-    top: 0;
-    right: -650px;
-    width: 650px;
-    max-width: 98vw;
-    height: 100vh;
-    background: var(--bg-white);
-    z-index: 2001;
-    display: flex;
-    flex-direction: column;
-    box-shadow: -10px 0 40px rgba(0, 0, 0, 0.2);
-    transition: right var(--transition-slow);
-}
-
-.side-drawer.open {
-    right: 0;
-}
-
-/* Form inside side-drawer needs to be flex container */
-.side-drawer form,
-.side-drawer .drawer-form {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
-}
-
-/* .drawer-header, .drawer-close, .drawer-body, .drawer-footer
-   are all defined in common.css — do NOT redefine here */
-
-/* ===========================================
-   DRAWER FORM STYLES
-   =========================================== */
-
-/* Drawer Form Container */
-.drawer-form {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    overflow: hidden;
-    min-height: 0;
-}
-
-/* Form Sections in Drawer */
-.form-section {
-    margin-bottom: 24px;
-    padding: 20px;
-    background: var(--bg-white);
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--gray-200);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-.form-section:last-child {
-    margin-bottom: 0;
-}
-
-.section-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--primary);
-    margin: 0 0 16px;
-    padding-bottom: 12px;
-    border-bottom: 2px solid var(--gray-100);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.section-title i {
-    font-size: 16px;
-    color: var(--primary);
-}
-
-/* Form Elements */
-.form-group {
-    margin-bottom: 16px;
-}
-
-.form-group:last-child {
-    margin-bottom: 0;
-}
-
-.form-group label {
-    display: block;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--gray-700);
-    margin-bottom: 8px;
-}
-
-.form-group label .required {
-    color: var(--danger);
-    margin-left: 2px;
-}
-
-.form-group input,
-.form-group select,
-.form-group textarea {
-    width: 100%;
-    padding: var(--space-sm) var(--space-md);
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-md);
-    font-size: var(--font-size-md);
-    color: var(--text-primary);
-    background: var(--bg-white);
-    transition: all var(--transition-base);
-    min-height: 36px;
-}
-
-.form-group input::placeholder,
-.form-group textarea::placeholder {
-    color: var(--gray-400);
-}
-
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.1);
-}
-
-.form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-}
+/* Removed: handled by tailwind-input.css */
 
 /* Profile Upload Section (avatar area at top of drawers) */
 .profile-upload-section {
@@ -487,7 +287,7 @@
 }
 
 .upload-hint {
-    font-size: 12px;
+    font-size: 15px;
     color: var(--gray-500);
     margin: 0;
 }
@@ -495,7 +295,7 @@
 /* Photo/Profile Path Display */
 .profile-path-display {
     margin-top: 6px;
-    font-size: 10px;
+    font-size: 14px;
     color: var(--text-secondary);
     max-width: 250px;
     overflow: hidden;
@@ -667,7 +467,7 @@
 
 .center-modal .modal-header h3 {
     margin: 0;
-    font-size: 18px;
+    font-size: 15px;
     font-weight: 600;
     color: var(--text-white);
     display: flex;
@@ -690,7 +490,7 @@
     align-items: center;
     justify-content: center;
     color: var(--text-white);
-    font-size: 16px;
+    font-size: 14px;
     transition: all 0.2s;
 }
 
@@ -752,103 +552,7 @@
     color: var(--text-white);
 }
 
-/* ==================== 
-   Modal Styles (Legacy - for side drawers)
-   ==================== */
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 3000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    opacity: 0;
-    visibility: hidden;
-    transition: all var(--transition-slow);
-}
-
-.modal-overlay.open,
-.modal-overlay.show {
-    opacity: 1;
-    visibility: visible;
-}
-
-.modal {
-    background: #fff;
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-lg);
-    width: 100%;
-    max-width: 500px;
-    max-height: 90vh;
-    overflow: hidden;
-    transform: scale(0.9) translateY(20px);
-    transition: all var(--transition-slow);
-}
-
-.modal-overlay.open .modal,
-.modal-overlay.show .modal {
-    transform: scale(1) translateY(0);
-}
-
-.modal-header {
-    padding: 20px 24px;
-    background: linear-gradient(135deg, var(--gray-50) 0%, var(--gray-100) 100%);
-    border-bottom: 1px solid var(--gray-200);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.modal-header h3 {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--gray-800);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.modal-close {
-    width: 32px;
-    height: 32px;
-    border: none;
-    background: transparent;
-    border-radius: var(--radius);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--gray-500);
-    transition: all var(--transition);
-}
-
-.modal-close:hover {
-    background: var(--gray-200);
-    color: var(--gray-700);
-}
-
-.modal-body {
-    padding: 24px;
-    overflow-y: auto;
-    overflow-x: hidden;
-    flex: 1;
-    min-height: 0;
-}
-
-.modal-footer {
-    padding: 16px 24px;
-    background: var(--gray-50);
-    border-top: 1px solid var(--gray-200);
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-}
+/* Removed: handled by tailwind-input.css */
 
 /* Delete Modal Warning Content */
 .delete-modal .modal-header h3 {
@@ -1012,7 +716,7 @@
 
 .view-info .status-badge {
     padding: 6px 14px;
-    font-size: 12px;
+    font-size: 15px;
     font-weight: 600;
 }
 
@@ -1077,7 +781,7 @@
     align-items: center;
     justify-content: center;
     color: var(--text-white);
-    font-size: 16px;
+    font-size: 14px;
     flex-shrink: 0;
     box-shadow: 0 3px 8px rgba(102, 126, 234, 0.25);
 }
@@ -1091,7 +795,7 @@
 
 .detail-content label,
 .detail-label {
-    font-size: 11px;
+    font-size: 15px;
     text-transform: uppercase;
     color: var(--gray-500);
     letter-spacing: 0.8px;
@@ -1128,7 +832,7 @@
     background: var(--primary-bg);
     color: var(--primary-dark);
     border-radius: var(--radius-full);
-    font-size: 11px;
+    font-size: 15px;
     font-weight: 500;
 }
 

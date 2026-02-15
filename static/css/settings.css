@@ -87,7 +87,7 @@
 }
 
 .avatar-edit-btn i {
-    font-size: 12px;
+    font-size: 15px;
     color: #667eea;
 }
 
@@ -102,7 +102,7 @@
 }
 
 .profile-name {
-    font-size: 18px;
+    font-size: 15px;
     font-weight: 700;
     color: #2c3e50;
     margin-bottom: 6px;
@@ -114,7 +114,7 @@
     color: #fff;
     padding: 4px 12px;
     border-radius: 2px;
-    font-size: 10px;
+    font-size: 14px;
     font-weight: 600;
     margin-bottom: 12px;
 }
@@ -125,7 +125,7 @@
     justify-content: center;
     gap: 6px;
     color: #666;
-    font-size: 12px;
+    font-size: 15px;
 }
 
 .profile-email i {
@@ -150,13 +150,13 @@
 
 .stat-value {
     display: block;
-    font-size: 18px;
+    font-size: 15px;
     font-weight: 700;
     color: #2c3e50;
 }
 
 .stat-label {
-    font-size: 11px;
+    font-size: 15px;
     color: #888;
 }
 
@@ -226,7 +226,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 18px;
+    font-size: 15px;
     background: #e0e7ff;
     color: var(--primary);
 }
@@ -252,14 +252,14 @@
 }
 
 .section-title h3 {
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 600;
     color: #2c3e50;
     margin-bottom: 2px;
 }
 
 .section-title p {
-    font-size: 12px;
+    font-size: 15px;
     color: #888;
 }
 
@@ -282,7 +282,7 @@
 
 .form-group label {
     display: block;
-    font-size: 12px;
+    font-size: 15px;
     font-weight: 600;
     color: #555;
     margin-bottom: 6px;
@@ -386,7 +386,7 @@
 }
 
 .setting-info p {
-    font-size: 11px;
+    font-size: 15px;
     color: #888;
 }
 
@@ -473,7 +473,7 @@
     border: none;
     color: #fff;
     border-radius: 4px;
-    font-size: 12px;
+    font-size: 15px;
     font-weight: 600;
     cursor: pointer;
     display: flex;
@@ -527,7 +527,7 @@
 }
 
 .modal-content h3 {
-    font-size: 18px;
+    font-size: 15px;
     font-weight: 700;
     color: #2c3e50;
     margin-bottom: 6px;

@@ -409,7 +409,7 @@ th:nth-child(6), td:nth-child(6):not(.no-data) {
 /* Photo/Profile Path Display */
 .profile-path-display {
     margin-top: 6px;
-    font-size: 10px;
+    font-size: 14px;
     color: var(--text-secondary);
     max-width: 250px;
     overflow: hidden;
@@ -565,7 +565,7 @@ th:nth-child(6), td:nth-child(6):not(.no-data) {
 
 .view-info .status-badge {
     padding: 6px 14px;
-    font-size: 12px;
+    font-size: 15px;
     font-weight: 600;
 }
 
@@ -620,7 +620,7 @@ th:nth-child(6), td:nth-child(6):not(.no-data) {
     align-items: center;
     justify-content: center;
     color: var(--text-white);
-    font-size: 16px;
+    font-size: 14px;
     flex-shrink: 0;
     box-shadow: 0 3px 8px rgba(102, 126, 234, 0.25);
 }
@@ -632,7 +632,7 @@ th:nth-child(6), td:nth-child(6):not(.no-data) {
 
 .detail-content label {
     display: block;
-    font-size: 11px;
+    font-size: 15px;
     color: var(--gray-500);
     margin-bottom: 2px;
     text-transform: uppercase;

@@ -101,11 +101,11 @@
 }
 
 .stat-change {
-    font-size: 11px;
-    padding: 3px 8px;
-    border-radius: 12px;
+    font-size: 13px;
+    padding: 2px 6px;
+    border-radius: 2px;
     font-weight: 600;
-    margin-top: 6px;
+    margin-top: 4px;
     display: inline-block;
 }
 
@@ -174,7 +174,7 @@
 }
 
 .dashboard-card-header .view-all {
-    font-size: 12px;
+    font-size: 15px;
     color: #667eea;
     text-decoration: none;
     font-weight: 500;
@@ -341,7 +341,7 @@
 }
 
 .activity-time {
-    font-size: 11px;
+    font-size: 15px;
     color: #999;
 }
 
@@ -411,7 +411,7 @@
     min-width: 28px;
     height: 24px;
     padding: 0 8px;
-    font-size: 12px;
+    font-size: 15px;
     font-weight: 600;
     border-radius: 4px;
     text-decoration: none;
@@ -478,7 +478,7 @@ a.count-badge.downloaded:hover {
     align-items: center;
     justify-content: center;
     color: #fff;
-    font-size: 12px;
+    font-size: 15px;
     font-weight: 600;
 }
 
@@ -528,7 +528,7 @@ a.count-badge.downloaded:hover {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 16px;
+    font-size: 14px;
 }
 
 .card-overview-icon.pending {
@@ -578,7 +578,7 @@ a.count-badge.downloaded:hover {
 }
 
 .card-overview-value {
-    font-size: 18px;
+    font-size: 15px;
     font-weight: 700;
     color: #2c3e50;
 }
@@ -605,7 +605,7 @@ a.count-badge.downloaded:hover {
 }
 
 .bulk-select-group label {
-    font-size: 11px;
+    font-size: 15px;
     font-weight: 600;
     color: #6b7280;
     text-transform: uppercase;

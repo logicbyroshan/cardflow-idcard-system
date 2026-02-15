@@ -29,7 +29,7 @@
     align-items: center;
     gap: 3px;
     padding: 4px 8px;
-    font-size: 8px;
+    font-size: 14px;
     font-weight: 600;
     border-radius: 2px;
     cursor: pointer;
@@ -54,7 +54,7 @@
 }
 
 .action-buttons-group .btn.action-btn i {
-    font-size: 8px;
+    font-size: 14px;
 }
 
 /* Blue buttons - improved gradient */
@@ -165,7 +165,7 @@
     position: absolute;
     left: 8px;
     color: var(--gray-400);
-    font-size: 8px;
+    font-size: 14px;
     pointer-events: none;
     transition: color 0.2s ease;
 }
@@ -175,7 +175,7 @@
     padding: 4px 28px 4px 24px;
     border: none;
     border-radius: 2px;
-    font-size: 8px;
+    font-size: 14px;
     transition: all 0.2s ease;
     background: transparent;
 }
@@ -185,70 +185,17 @@
     box-shadow: 0 0 0 1px rgba(var(--primary-rgb), 0.1);
 }
 
-.search-box .search-input:focus {
-    outline: none;
-}
+/* Removed: handled by tailwind-input.css */
 
 .search-box:focus-within .search-icon {
     color: var(--primary);
 }
 
-.search-box .search-input::placeholder {
-    color: var(--gray-400);
-}
+/* Removed: handled by tailwind-input.css */
 
-.search-clear-btn {
-    position: absolute;
-    right: 4px;
-    background: #e5e7eb;
-    border: none;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #6b7280;
-    font-size: 7px;
-    transition: all 0.2s ease;
-}
+/* Removed: handled by tailwind-input.css */
 
-.search-clear-btn:hover {
-    background: #d1d5db;
-    color: #374151;
-}
-
-/* Image Sort and Search All Buttons */
-/* Select All Database Button */
-.btn-select-all {
-    background: #8b5cf6;
-    color: #ffffff;
-    border: none;
-    padding: 4px 8px;
-    border-radius: 2px;
-    font-size: 8px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    white-space: nowrap;
-}
-
-.btn-select-all:hover {
-    background: #7c3aed;
-}
-
-.btn-select-all.active {
-    background: #22c55e;
-}
-
-.btn-select-all i {
-    font-size: 8px;
-}
+/* Removed: handled by tailwind-input.css */
 
 /* ==========================================
    TABLE IMPROVEMENTS
@@ -301,7 +248,7 @@
 
 .idcard-table thead th {
     padding: 5px 4px;
-    font-size: 7px;
+    font-size: 13px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -334,7 +281,7 @@
 
 .idcard-table tbody td {
     padding: 2px 4px;
-    font-size: 8px;
+    font-size: 14px;
     color: #374151;
     vertical-align: middle;
 }
@@ -357,7 +304,7 @@
     right: 2px;
     top: 50%;
     transform: translateY(-50%);
-    font-size: 7px;
+    font-size: 13px;
     color: #3b82f6;
     opacity: 0;
     transition: opacity 0.15s ease;
@@ -373,7 +320,7 @@
     align-items: center;
     gap: 2px;
     padding: 2px 6px;
-    font-size: 7px;
+    font-size: 13px;
     font-weight: 500;
     border-radius: 2px;
     border: none;
@@ -464,7 +411,7 @@
     color: #ffffff;
     border: 1px solid #ffffff;
     border-radius: 50%;
-    font-size: 7px;
+    font-size: 13px;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -503,7 +450,7 @@
    Only page-specific overrides below */
 
 .pagination-selected {
-    font-size: 8px;
+    font-size: 14px;
     color: #3b82f6;
     background: #eff6ff;
     padding: 2px 6px;
@@ -519,7 +466,7 @@
     padding: 10px;
     text-align: center;
     color: #64748b;
-    font-size: 8px;
+    font-size: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -530,7 +477,7 @@
 
 .lazy-load-indicator i {
     color: #3b82f6;
-    font-size: 10px;
+    font-size: 14px;
 }
 
 /* Empty State → defined in common.css (single source of truth) */
@@ -544,7 +491,7 @@
     align-items: center;
     gap: 2px;
     padding: 2px 6px;
-    font-size: 7px;
+    font-size: 13px;
     font-weight: 500;
     border-radius: 2px;
     text-transform: capitalize;

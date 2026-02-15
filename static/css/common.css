@@ -57,25 +57,7 @@ body.modal-open {
   height: 100vh;
 }
 
-/* ===========================================
-   ACTION BAR
-   =========================================== */
-.action-bar {
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-sm) var(--space-md);
-  font-family: var(--font-family);
-  color: var(--text-primary);
-  background: var(--bg-card);
-  border: 1px solid var(--border-default);
-  border-bottom: 2px solid var(--border-default);
-  border-radius: var(--radius-none);
-  margin-bottom: 0;
-  gap: var(--space-lg);
-  flex-wrap: wrap;
-}
+/* Removed: handled by tailwind-input.css */
 
 .action-left {
   display: flex;
@@ -92,179 +74,9 @@ body.modal-open {
   flex-wrap: wrap;
 }
 
-/* ===========================================
-   SEARCH BOX
-   =========================================== */
-.search-box {
-  display: flex;
-  align-items: center;
-  background: var(--bg-white);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
-  padding: 0 var(--space-md);
-  flex: 1;
-  height: 36px;
-  box-sizing: border-box;
-  transition: all var(--transition-base);
-  position: relative;
-}
+/* Removed: handled by tailwind-input.css */
 
-.search-box:focus-within {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.1);
-}
-
-/* Search clear button - universal */
-.search-clear-btn {
-  position: absolute;
-  right: 8px;
-  background: #e5e7eb;
-  border: none;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  cursor: pointer;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  color: #6b7280;
-  transition: all 0.2s ease;
-  z-index: 1;
-}
-
-.search-clear-btn:hover {
-  background: #d1d5db;
-  color: #374151;
-}
-
-.search-icon {
-  color: var(--text-muted);
-  margin-right: var(--space-sm);
-  font-size: var(--font-size-md);
-}
-
-.search-input {
-  border: none;
-  background: transparent;
-  outline: none;
-  font-size: var(--font-size-md);
-  width: 100%;
-  color: var(--text-primary);
-  padding: var(--space-sm) 0;
-}
-
-/* Clean focus style - no blue square border */
-.search-input:focus,
-.search-input:focus-visible {
-  outline: none;
-  box-shadow: none;
-}
-
-.search-input::placeholder {
-  color: var(--text-light);
-}
-
-/* ===========================================
-   FILTER & DROPDOWN
-   =========================================== */
-.filter-group {
-  display: flex;
-  gap: var(--space-sm);
-}
-
-.custom-dropdown {
-  position: relative;
-  min-width: 100px;
-}
-
-.dropdown-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-md);
-  border: 1px solid var(--border-default);
-  background: var(--bg-white);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-medium);
-  color: var(--text-primary);
-  cursor: pointer;
-  outline: none;
-  min-height: 36px;
-  width: 100%;
-  transition: all var(--transition-base);
-}
-
-.dropdown-toggle:focus-visible {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.15);
-}
-
-.dropdown-toggle:hover {
-  background-color: var(--bg-hover);
-  border-color: var(--primary);
-}
-
-.dropdown-toggle i {
-  font-size: var(--font-size-xs);
-  transition: transform var(--transition-base);
-}
-
-.custom-dropdown.open .dropdown-toggle i {
-  transform: rotate(180deg);
-}
-
-.custom-dropdown.open .dropdown-toggle {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.1);
-}
-
-.dropdown-options {
-  display: none;
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  background: var(--bg-white);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
-  z-index: var(--z-dropdown);
-  overflow: hidden;
-  padding: var(--space-xs);
-}
-
-.custom-dropdown.open .dropdown-options {
-  display: block;
-}
-
-.dropdown-option {
-  padding: var(--space-sm) var(--space-md);
-  font-size: var(--font-size-md);
-  color: var(--text-primary);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition: background var(--transition-base);
-  margin: 2px 0;
-}
-
-.dropdown-option:hover {
-  background: var(--bg-hover);
-  color: var(--primary);
-}
-
-.dropdown-option.selected {
-  background: rgba(var(--primary-rgb), 0.12);
-  color: var(--primary);
-  font-weight: var(--font-weight-medium);
-}
-
-.dropdown {
-  position: relative;
-}
-
-
+/* Removed: handled by tailwind-input.css */
 
 /* ===========================================
    BREADCRUMB
@@ -401,7 +213,7 @@ body.modal-open {
   height: 28px;
 }
 
-.action-right .btn i { font-size: 8px; }
+.action-right .btn i { font-size: 14px; }
 
 /* Standard Navigation Button (Group Setting, ID Card Group) */
 .action-right .btn-group-setting,
@@ -444,7 +256,7 @@ body.modal-open {
 }
 
 .btn-settings i {
-  font-size: 8px;
+  font-size: 14px;
 }
 
 /* Select All Database Button */
@@ -484,7 +296,7 @@ body.modal-open {
 }
 
 .btn-select-all i {
-  font-size: 8px;
+  font-size: 14px;
 }
 
 .action-right .btn-idcard-group i {
@@ -639,69 +451,7 @@ tbody tr.selected { background-color: var(--bg-selected); }
 tbody tr.selected td:first-child { box-shadow: inset 5px 0 0 0 var(--blue); }
 tbody tr.selected:hover { background-color: var(--bg-selected-hover); }
 
-/* ===========================================
-   EMPTY STATE / NO DATA — Single Source of Truth
-   All empty-state patterns consolidated here.
-   Page-specific CSS should ONLY add true overrides.
-   =========================================== */
-
-/* --- Base: Full-size empty states --- */
-.empty-state,
-.loading-state,
-.no-staff,
-.no-groups,
-.no-tables,
-.search-placeholder,
-.search-no-results,
-.global-search-no-results {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-  color: var(--gray-400);
-  text-align: center;
-}
-
-.empty-state i,
-.loading-state i,
-.no-staff i,
-.no-groups i,
-.no-tables i,
-.search-placeholder i,
-.search-no-results i,
-.global-search-no-results i {
-  font-size: 48px;
-  margin-bottom: var(--space-lg);
-  opacity: 0.5;
-  color: var(--gray-300);
-  display: block;
-}
-
-.empty-state h3,
-.no-groups h3,
-.no-tables h3 {
-  margin: 0 0 var(--space-sm);
-  font-size: var(--font-size-2xl);
-  color: var(--gray-600);
-  font-weight: 600;
-}
-
-.empty-state p,
-.no-staff p,
-.no-groups p,
-.no-tables p,
-.search-placeholder p,
-.search-no-results p,
-.global-search-no-results p {
-  margin: 0;
-  font-size: var(--font-size-lg);
-  color: var(--gray-400);
-}
-
-.empty-state .empty-state-action {
-  margin-top: var(--space-md);
-}
+/* Removed: handled by tailwind-input.css */
 
 /* --- Compact empty states (smaller contexts) --- */
 .no-fields-message,
@@ -791,81 +541,7 @@ tbody tr.selected:hover { background-color: var(--bg-selected-hover); }
 .status-badge.deleted { background-color: var(--red-bg); color: var(--red-dark); }
 .status-badge.not-deleted { background-color: var(--gray-200); color: var(--gray-700); }
 
-/* ===========================================
-   MODAL (Center Modal)
-   =========================================== */
-.modal {
-  position: fixed;
-  z-index: var(--z-modal);
-  inset: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0,0,0,0.18);
-  display: none !important;
-  align-items: center !important;
-  justify-content: center !important;
-  transition: background var(--transition-base);
-}
-
-.modal.show { display: flex !important; }
-
-.modal-content {
-  background: var(--bg-card);
-  margin: 0 auto;
-  padding: var(--space-2xl) 22px var(--space-xl) 22px;
-  border-radius: var(--radius-xl);
-  width: 300px;
-  box-shadow: var(--shadow-lg), var(--shadow-sm);
-  position: relative;
-  text-align: center;
-  border: 1.5px solid var(--secondary);
-  font-family: var(--font-family);
-}
-
-.modal-content p {
-  font-size: var(--font-size-lg);
-  color: var(--text-primary);
-  margin-bottom: var(--space-lg);
-}
-
-.modal-close {
-  position: absolute;
-  top: var(--space-sm);
-  right: var(--space-lg);
-  font-size: var(--font-size-2xl);
-  color: var(--secondary);
-  cursor: pointer;
-  transition: color var(--transition-base);
-}
-
-.modal-close:hover { color: var(--primary); }
-
-.modal-actions {
-  margin-top: var(--space-lg);
-  margin-bottom: var(--space-sm);
-  display: flex;
-  justify-content: center;
-  gap: var(--space-lg);
-}
-
-.modal-actions .btn {
-  min-width: 60px;
-  padding: 4px 0;
-  border-radius: 2px;
-  background: #3b82f6;
-  color: var(--text-white);
-  border: none;
-  font-weight: var(--font-weight-medium);
-  font-size: var(--font-size-base);
-  transition: background var(--transition-base);
-}
-
-.modal-actions .btn:hover { background: #2563eb; }
-.modal-actions .btn::after { display: none; }
-
-/* ===========================================
-   SIDE MODAL / DRAWER (Right Side)
-   =========================================== */
+/* Removed: handled by tailwind-input.css */
 
 /* ===========================================
    CENTER CONFIRM MODAL (Bulk Actions)
@@ -908,34 +584,34 @@ tbody tr.selected:hover { background-color: var(--bg-selected-hover); }
 .center-modal-title {
   margin: 0 0 4px;
   color: #111827;
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 700;
 }
 
 .center-modal-subtitle {
   color: #6b7280;
   margin: 0 0 4px;
-  font-size: 9px;
+  font-size: 15px;
   line-height: 1.5;
 }
 
 .center-modal-warning {
   font-weight: 600;
   margin: 6px 0 10px;
-  font-size: 8px;
+  font-size: 14px;
 }
 
 .center-modal-label {
   color: #374151;
   margin: 0 0 6px;
-  font-size: 9px;
+  font-size: 15px;
 }
 
 .center-modal-code {
   border-radius: 2px;
   padding: 8px;
   margin: 0 0 8px;
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: 6px;
   border-width: 2px;
@@ -945,7 +621,7 @@ tbody tr.selected:hover { background-color: var(--bg-selected-hover); }
 .center-modal-input {
   width: 100%;
   padding: 8px;
-  font-size: 12px;
+  font-size: 15px;
   text-align: center;
   border: 1px solid #d1d5db;
   border-radius: 2px;
@@ -980,7 +656,7 @@ tbody tr.selected:hover { background-color: var(--bg-selected-hover); }
 .center-modal-dropzone p {
   margin: 0;
   color: #6b7280;
-  font-size: 8px;
+  font-size: 14px;
 }
 
 .center-modal-actions {
@@ -994,7 +670,7 @@ tbody tr.selected:hover { background-color: var(--bg-selected-hover); }
   padding: 5px 14px;
   border-radius: 2px;
   cursor: pointer;
-  font-size: 8px;
+  font-size: 14px;
   font-weight: 500;
   transition: opacity 0.15s, background 0.15s;
 }
@@ -1035,7 +711,7 @@ tbody tr.selected:hover { background-color: var(--bg-selected-hover); }
 }
 .center-modal-progress-text {
   color: #6b7280;
-  font-size: 8px;
+  font-size: 14px;
   margin: 6px 0 0;
 }
 
@@ -1099,211 +775,12 @@ tbody tr.selected:hover { background-color: var(--bg-selected-hover); }
 
 .center-modal-note {
   color: #9ca3af;
-  font-size: 12px;
+  font-size: 15px;
   margin: 8px 0 16px;
   font-style: italic;
 }
 
-/* ===========================================
-   SIDE MODAL / DRAWER (Right Side) - original
-   =========================================== */
-.modal-overlay,
-.drawer-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: 2000;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: stretch;
-  justify-content: flex-end;
-  opacity: 0;
-  visibility: hidden;
-  transition: all var(--transition-slow);
-  overflow: hidden;
-}
-
-.modal-overlay.active,
-.drawer-modal.open {
-  opacity: 1;
-  visibility: visible;
-}
-
-.modal-overlay .modal,
-.drawer-content {
-  background: var(--bg-white);
-  width: 650px;
-  max-width: 98vw;
-  height: 100vh;
-  max-height: 100vh;
-  box-shadow: -10px 0 40px rgba(0, 0, 0, 0.2);
-  transform: translateX(100%);
-  transition: transform var(--transition-slow);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.modal-overlay.active .modal,
-.drawer-modal.open .drawer-content {
-  transform: translateX(0);
-}
-
-.modal-header,
-.drawer-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 16px;
-  background: #1e1e2e;
-  color: var(--text-white);
-  flex-shrink: 0;
-}
-
-.modal-header h3,
-.drawer-header h3 {
-  font-size: 9px;
-  color: var(--text-white);
-  font-weight: var(--font-weight-semibold);
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
-}
-
-.modal-overlay .modal-close,
-.drawer-close {
-  width: 24px;
-  height: 24px;
-  border: none;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 2px;
-  color: var(--text-white);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 8px;
-  transition: background var(--transition-base);
-  position: static;
-}
-
-.modal-overlay .modal-close:hover,
-.drawer-close:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-/* Form inside drawer needs to be flex container */
-.drawer-content form,
-.drawer-content .drawer-form {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.modal-body,
-.drawer-body {
-  padding: 12px;
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  min-height: 0;
-}
-
-/* ===========================================
-   DRAWER FOOTER
-   =========================================== */
-.drawer-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-md);
-  padding: 8px 12px;
-  border-top: 1px solid var(--gray-200);
-  background: var(--gray-50);
-  flex-shrink: 0;
-}
-
-.drawer-footer .btn {
-  padding: 4px 10px;
-  font-size: 8px;
-  font-weight: var(--font-weight-medium);
-  border-radius: 2px;
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  cursor: pointer;
-  transition: all var(--transition-base);
-}
-
-/* Cancel Button */
-.drawer-footer .btn-cancel,
-.modal-actions .btn-cancel {
-  background: var(--gray-200);
-  color: var(--gray-800);
-  border: 1px solid var(--gray-400);
-}
-
-.drawer-footer .btn-cancel:hover,
-.modal-actions .btn-cancel:hover {
-  background: var(--gray-300);
-  color: var(--gray-900);
-  border-color: var(--gray-500);
-}
-
-/* Secondary Button - uses variables.css definition */
-/* .btn-secondary has dark gray bg with white text */
-
-/* Save/Create Button (Primary Gradient) */
-.drawer-footer .btn-save,
-.drawer-footer .drawer-footer .modal-actions .btn-save,
-.modal-actions .btn-confirm {
-  background: #3b82f6;
-  color: var(--text-white);
-  border: none;
-}
-
-.drawer-footer .btn-save:hover,
-.drawer-footer .drawer-footer .modal-actions .btn-save:hover,
-.modal-actions .btn-confirm:hover {
-  background: #2563eb;
-}
-
-/* Update Button (Green) */
-.drawer-footer .btn-update {
-  background: var(--green);
-  color: var(--text-white);
-  border: none;
-}
-
-.drawer-footer .btn-update:hover {
-  background: var(--green-dark);
-}
-
-/* Delete/Danger Button */
-.drawer-footer .btn-delete,
-.drawer-footer .btn-danger,
-.modal-actions .btn-delete,
-.modal-actions .btn-danger {
-  background: var(--red);
-  color: var(--text-white);
-  border: none;
-}
-
-.drawer-footer .btn-delete:hover,
-.drawer-footer .btn-danger:hover,
-.modal-actions .btn-delete:hover,
-.modal-actions .btn-danger:hover {
-  background: var(--red-dark);
-}
-
-
+/* Removed: handled by tailwind-input.css */
 
 /* ===========================================
    TOAST NOTIFICATION
@@ -1643,7 +1120,7 @@ body.sidebar-collapsed .pagination-bar { left: var(--sidebar-collapsed); }
 .user-avatar-placeholder--medium {
   width: 40px;
   height: 48px;
-  font-size: 18px;
+  font-size: 15px;
 }
 
 .user-avatar-placeholder--large {
@@ -1684,7 +1161,7 @@ body.sidebar-collapsed .pagination-bar { left: var(--sidebar-collapsed); }
 /* Label styling */
 .user-avatar-label {
   display: block;
-  font-size: 11px;
+  font-size: 15px;
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -1809,7 +1286,7 @@ body.sidebar-collapsed .pagination-bar { left: var(--sidebar-collapsed); }
 }
 
 .alpine-toast i {
-  font-size: 18px;
+  font-size: 15px;
 }
 
 .alpine-toast.toast-success {
