@@ -22,7 +22,7 @@ Parameters:
   - action_id: Button ID for JavaScript binding (default: "empty-state-action")
   - hidden: Whether initially hidden (default: True)
 
-CSS: Styles defined in common.css (single source of truth for all empty states)
+CSS: Styles defined in tailwind-input.css (single source of truth for all empty states)
 {% endcomment %}
 
 <div class="empty-state" id="{{ id|default:'empty-state' }}" {% if hidden|default:True %}style="display: none;"{% endif %}>
@@ -30,7 +30,7 @@ CSS: Styles defined in common.css (single source of truth for all empty states)
     <h3>{{ title|default:"No Data Found" }}</h3>
     <p>{{ message|default:"Try adjusting your search or filter criteria" }}</p>
     {% if show_action %}
-    <button class="btn btn-primary btn-sm empty-state-action" id="{{ action_id|default:'empty-state-action' }}" style="margin-top: 12px;">
+    <button class="btn btn-primary btn-sm empty-state-action mt-3" id="{{ action_id|default:'empty-state-action' }}">
         <i class="fa-solid fa-plus"></i> {{ action_text|default:"Add New" }}
     </button>
     {% endif %}

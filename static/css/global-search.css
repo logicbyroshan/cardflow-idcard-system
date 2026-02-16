@@ -2,46 +2,6 @@
    GLOBAL SEARCH STYLES
    ========================================== */
 
-/* Search Button in Topbar */
-.global-search-btn {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 16px;
-    background: #f3f4f6;
-    border: 1px solid rgba(0, 0, 0, 0.15);
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-size: 13px;
-    color: #6b7280;
-}
-
-.global-search-btn:hover {
-    background: #e5e7eb;
-    border-color: #d1d5db;
-    color: #374151;
-}
-
-.global-search-btn i {
-    font-size: 14px;
-}
-
-.global-search-btn span {
-    font-weight: 400;
-}
-
-.global-search-btn kbd {
-    background: #fff;
-    border: 1px solid #d1d5db;
-    border-radius: 4px;
-    padding: 2px 6px;
-    font-size: 14px;
-    font-family: inherit;
-    color: #9ca3af;
-    margin-left: 5px;
-}
-
 /* Global Search Modal Overlay */
 .global-search-overlay {
     position: fixed;
@@ -153,67 +113,6 @@
     color: #374151;
 }
 
-/* Search Filter Dropdown */
-.search-filter-group {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.search-filter-group label {
-    font-size: 15px;
-    font-weight: 600;
-    color: rgba(255, 255, 255, 0.9);
-}
-
-.search-filter-group select {
-    padding: var(--space-sm) var(--space-md);
-    font-size: var(--font-size-md);
-    border: none;
-    border-radius: var(--radius-md);
-    background: rgba(255, 255, 255, 0.95);
-    color: var(--text-primary);
-    cursor: pointer;
-    outline: none;
-    font-weight: 500;
-    min-height: 36px;
-}
-
-.search-filter-group select:focus {
-    box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.2);
-}
-
-/* Close Button */
-.close-global-search {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 10px 14px;
-    background: rgba(255, 255, 255, 0.2);
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    color: #fff;
-    font-size: 15px;
-    transition: all 0.2s ease;
-}
-
-.close-global-search:hover {
-    background: rgba(255, 255, 255, 0.3);
-}
-
-.close-global-search span {
-    font-weight: 600;
-}
-
-/* Search Results Body */
-.global-search-body {
-    flex: 1;
-    max-height: 500px;
-    overflow-y: auto;
-    background: #f9fafb;
-}
-
 /* Global search placeholder — base styles in common.css.
    Only context-specific overrides below. */
 .global-search-body .search-placeholder {
@@ -237,27 +136,6 @@
 .global-search-body .search-placeholder span {
     font-size: var(--font-size-lg);
     color: var(--gray-500);
-}
-
-/* Search Loading */
-.global-search-loading {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 60px 20px;
-    color: #6b7280;
-}
-
-.global-search-loading i {
-    font-size: 40px;
-    margin-bottom: 16px;
-    color: #3b82f6;
-}
-
-.global-search-loading p {
-    font-size: 15px;
-    font-weight: 500;
 }
 
 /* Search Results List */

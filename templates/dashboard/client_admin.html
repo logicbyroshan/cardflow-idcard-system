@@ -12,9 +12,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- Tailwind CSS (primary) -->
   <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=2">
-  <!-- Legacy (backward compat for unmigrated classes) -->
-  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=38">
-  <link rel="stylesheet" href="{% static 'css/common.css' %}?v=49">
   <!-- Page-specific: dashboard -->
   <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=38">
   <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=2">
@@ -26,7 +23,7 @@
 </head>
 <body x-data="layoutState()">
 
-  {% include 'partials/client-sidebar.html' %}
+  {% include 'partials/sidebar.html' %}
 
   <!-- Main -->
   <main class="main">
@@ -112,7 +109,7 @@
         </div>
         
         <div class="stat-card">
-          <div class="stat-icon" style="background:rgba(99,102,241,.12); color:var(--accent-primary,#6366f1);">
+          <div class="stat-icon bg-primary/10 text-primary">
             <i class="fa-solid fa-layer-group"></i>
           </div>
           <div class="stat-info">
@@ -134,7 +131,7 @@
             <a href="{% url 'client_dashboard' %}" class="view-all">View All <i class="fa-solid fa-arrow-right"></i></a>
             {% endif %}
           </div>
-          <div class="dashboard-card-body" style="padding: 0;">
+          <div class="dashboard-card-body p-0">
             <table class="recent-table">
               <thead>
                 <tr>
@@ -148,7 +145,7 @@
               <tbody id="recentClientUpdatesBody">
                 <!-- Will be populated dynamically -->
                 <tr>
-                  <td colspan="5" class="text-center" style="padding: 40px; color: #888;">
+                  <td colspan="5" class="text-center p-8 text-gray-400">
                     <i class="fa-solid fa-spinner fa-spin"></i> Loading...
                   </td>
                 </tr>
@@ -306,7 +303,7 @@
         <div class="search-input-group">
           <i class="fa-solid fa-magnifying-glass"></i>
           <input type="text" id="globalSearchInput" placeholder="Search ID cards by name, address, mobile..." autocomplete="off">
-          <button class="clear-global-search" id="clearGlobalSearch" style="display: none;">
+          <button class="clear-global-search hidden" id="clearGlobalSearch">
             <i class="fa-solid fa-xmark"></i>
           </button>
         </div>

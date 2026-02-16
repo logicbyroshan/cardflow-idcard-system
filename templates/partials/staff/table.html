@@ -6,12 +6,9 @@ Uses Tailwind CSS component classes.
 
 <!-- Staff Table Start -->
 <div class="table-wrapper">
-    <table class="data-table" id="staff-table" style="min-width: 800px;">
+    <table class="data-table min-w-[800px]" id="staff-table">
         <thead>
             <tr>
-                <th class="col-checkbox">
-                    <input type="checkbox" id="select-all-checkbox" title="Select All" class="cursor-pointer">
-                </th>
                 <th>Name</th>
                 <th>Email</th>
                 <th>Phone</th>
@@ -23,9 +20,6 @@ Uses Tailwind CSS component classes.
         <tbody id="staff-table-body">
             {% for staff in staff_list %}
             <tr data-staff-id="{{ staff.id }}" data-staff-status="{% if staff.user.is_active %}active{% else %}inactive{% endif %}">
-                <td class="col-checkbox">
-                    <input type="checkbox" class="row-checkbox cursor-pointer" data-id="{{ staff.id }}">
-                </td>
                 <td class="font-medium text-gray-800">{{ staff.user.get_full_name|default:staff.user.username }}</td>
                 <td>{{ staff.user.email }}</td>
                 <td>{{ staff.user.phone|default:"-" }}</td>
@@ -39,7 +33,7 @@ Uses Tailwind CSS component classes.
             </tr>
             {% empty %}
             <tr class="no-data-row">
-                <td colspan="7">
+                <td colspan="6">
                     <div class="no-data">
                         <i class="fa-solid fa-user-slash"></i>
                         <span>No staff found</span>

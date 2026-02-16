@@ -10,14 +10,14 @@
     ================================================================ */
     window.toggleMediaFields = function () {
         const type = document.getElementById('pf_item_type').value;
-        document.getElementById('videoFields').style.display = (type === 'video' || type === 'reel') ? '' : 'none';
+        document.getElementById('videoFields').classList.toggle('hidden', !(type === 'video' || type === 'reel'));
     };
 
     window.openPortfolioModal = function (id) {
         document.getElementById('portfolioModalTitle').textContent = id ? 'Edit Portfolio Item' : 'Add Portfolio Item';
         document.getElementById('portfolioForm').reset();
         document.getElementById('portfolioId').value = id || '';
-        document.getElementById('videoFields').style.display = 'none';
+        document.getElementById('videoFields').classList.add('hidden');
         if (id) {
             ApiClient.get(`${BASE}/portfolio/${id}/`)
                 .then(d => {

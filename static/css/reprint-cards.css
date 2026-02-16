@@ -4,32 +4,6 @@
    ============================================ */
 
 /* ===========================================
-   STEP ARROW BETWEEN TABS
-   =========================================== */
-.tab-arrow {
-  font-size: 14px;
-  color: #9ca3af;
-  margin: 0 2px;
-}
-
-/* ===========================================
-   STEP NUMBER BADGE (inside each tab)
-   =========================================== */
-.tab-step-num {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  font-size: 14px;
-  font-weight: 700;
-  background: rgba(0,0,0,0.1);
-  color: inherit;
-  flex-shrink: 0;
-}
-
-/* ===========================================
    TAB 1 — REPRINT REQUESTS (Purple)
    =========================================== */
 .reprint-requests-tab {
@@ -144,19 +118,6 @@
 }
 
 /* ===========================================
-   REPRINT PAGE OVERRIDES
-   =========================================== */
-.reprint-cards-page .no-data {
-  text-align: center;
-  padding: 0;
-}
-
-/* ===========================================
-   REPRINT ACTION BAR OVERRIDES
-   (Button colors are defined in variables.css)
-   =========================================== */
-
-/* ===========================================
    REPRINT ROW — ALREADY REQUESTED HIGHLIGHT
    =========================================== */
 tr.reprint-requested {
@@ -205,15 +166,6 @@ tr.reprint-requested:hover {
   background: #8b5cf6;
   color: #fff;
   border-color: #7c3aed;
-}
-
-/* ===========================================
-   SELECTION INDICATOR
-   =========================================== */
-.pagination-selected {
-  margin-left: 8px;
-  color: #7c3aed;
-  font-size: 15px;
 }
 
 /* ===========================================
@@ -331,8 +283,6 @@ tr.reprint-requested:hover {
    STEP 2: CONFIRM REPRINT STYLES
    =========================================== */
 
-/* Amber button — action-bar scoped override (color in variables.css) */
-
 /* Inline confirm/reject action buttons */
 .confirm-action-btns {
   display: flex;
@@ -374,21 +324,9 @@ tr.reprint-requested:hover {
   border-color: #dc2626;
 }
 
-/* Reason cell truncation */
-.reason-cell {
-  max-width: 180px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 15px;
-  color: #6b7280;
-}
-
 /* ===========================================
    STEP 3: DOWNLOAD REPRINTS STYLES
    =========================================== */
-
-/* Green button — action-bar scoped override (color in variables.css) */
 
 /* Single download button per row */
 .btn-download-single {

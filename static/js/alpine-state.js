@@ -28,6 +28,12 @@ function layoutState() {
             // Listen for keyboard shortcuts
             this.initKeyboardShortcuts();
             
+            // Bind sidebar toggle button (for pages using id="sidebarToggle" instead of @click)
+            this.bindSidebarToggle();
+            
+            // Start sidebar clock
+            this.initSidebarClock();
+            
             // Expose showToast globally for legacy JS compatibility
             window.alpineShowToast = (message, type) => this.showToast(message, type);
         },
@@ -53,6 +59,37 @@ function layoutState() {
             }
         },
         
+        // Bind click handler for #sidebarToggle button (works on all pages)
+        bindSidebarToggle() {
+            const btn = document.getElementById('sidebarToggle');
+            if (btn && !btn.hasAttribute('@click')) {
+                btn.addEventListener('click', () => this.toggleSidebar());
+            }
+        },
+
+        // Sidebar date/time clock
+        initSidebarClock() {
+            const dateEl = document.getElementById('date');
+            const timeEl = document.getElementById('time');
+            if (!dateEl && !timeEl) return;
+
+            const update = () => {
+                const now = new Date();
+                if (dateEl) {
+                    dateEl.textContent = now.toLocaleDateString('en-IN', {
+                        day: '2-digit', month: 'short', year: 'numeric'
+                    });
+                }
+                if (timeEl) {
+                    timeEl.textContent = now.toLocaleTimeString('en-IN', {
+                        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+                    });
+                }
+            };
+            update();
+            setInterval(update, 1000);
+        },
+
         // Keyboard shortcuts for sidebar
         initKeyboardShortcuts() {
             document.addEventListener('keydown', (e) => {

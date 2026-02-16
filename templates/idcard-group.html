@@ -12,9 +12,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- Tailwind CSS (primary) -->
   <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=2">
-  <!-- Legacy (backward compat for unmigrated classes) -->
-  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=38">
-  <link rel="stylesheet" href="{% static 'css/common.css' %}?v=50">
   <!-- Page-specific: ID card group UI -->
   <link rel="stylesheet" href="{% static 'css/idcard-group.css' %}?v=40">
   <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=2">
@@ -275,7 +272,7 @@
         ondragleave="this.style.borderColor='#d1d5db'; this.style.backgroundColor='';">
         <i class="fa-solid fa-file-zipper"></i>
         <p id="reuploadFileName">Click or drag & drop a ZIP file</p>
-        <input type="file" id="reuploadFileInput" accept=".zip" style="display:none;">
+        <input type="file" id="reuploadFileInput" accept=".zip" class="hidden">
       </div>
       <div class="center-modal-actions">
         <button id="reuploadCancel" class="center-modal-btn center-modal-btn-cancel">Cancel</button>

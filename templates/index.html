@@ -12,9 +12,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- Tailwind CSS (primary) -->
   <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=2">
-  <!-- Legacy (backward compat for unmigrated classes) -->
-  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=38">
-  <link rel="stylesheet" href="{% static 'css/common.css' %}?v=50">
   <!-- Page-specific: dashboard cards, stats, activity -->
   <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=40">
   <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=2">
@@ -112,7 +109,7 @@
         </div>
         
         <div class="stat-card">
-          <div class="stat-icon" style="background:rgba(99,102,241,.12); color:var(--accent-primary,#6366f1);">
+          <div class="stat-icon bg-primary/10 text-primary">
             <i class="fa-solid fa-layer-group"></i>
           </div>
           <div class="stat-info">
@@ -134,7 +131,7 @@
             <a href="{% url 'manage_clients' %}" class="view-all">View All <i class="fa-solid fa-arrow-right"></i></a>
             {% endif %}
           </div>
-          <div class="dashboard-card-body tall-body" style="padding: 0;">
+          <div class="dashboard-card-body tall-body p-0">
             <div class="recent-table-wrapper">
             <table class="recent-table">
               <thead>
@@ -149,7 +146,7 @@
               <tbody id="recentClientUpdatesBody">
                 <!-- Will be populated dynamically -->
                 <tr>
-                  <td colspan="5" class="text-center" style="padding: 40px; color: #888;">
+                  <td colspan="5" class="text-center p-8 text-gray-400">
                     <i class="fa-solid fa-spinner fa-spin"></i> Loading...
                   </td>
                 </tr>
@@ -405,14 +402,14 @@
       <div class="modal-body">
         <div class="flex flex-col items-center text-center py-2">
           <div class="w-10 h-10 rounded-sm bg-danger-bg flex items-center justify-center mb-2">
-            <i class="fa-solid fa-triangle-exclamation text-danger" style="font-size:14px"></i>
+            <i class="fa-solid fa-triangle-exclamation text-danger text-sm"></i>
           </div>
-          <p style="font-size:8px" class="text-gray-600 mb-1">Table: <strong id="dashDeleteTableName"></strong></p>
-          <p style="font-size:8px" class="text-gray-600 mb-1">This will permanently delete <strong id="dashDeleteCount"></strong> cards from <strong>ALL lists</strong>.</p>
-          <p style="font-size:7px" class="text-danger font-semibold mb-2">This action CANNOT be undone.</p>
-          <p style="font-size:8px" class="text-gray-700 mb-1">Enter the 6-digit code below to confirm:</p>
-          <div class="bg-danger-bg border-2 border-danger-light text-danger font-bold mb-2" style="padding:6px 10px;font-size:18px;letter-spacing:6px;border-radius:2px" id="dashDeleteCode"></div>
-          <input type="text" id="dashDeleteCodeInput" maxlength="6" placeholder="Enter code here" class="form-input text-center font-semibold mb-2" style="letter-spacing:4px;font-size:12px;width:180px">
+          <p class="text-sm text-gray-600 mb-1">Table: <strong id="dashDeleteTableName"></strong></p>
+          <p class="text-sm text-gray-600 mb-1">This will permanently delete <strong id="dashDeleteCount"></strong> cards from <strong>ALL lists</strong>.</p>
+          <p class="text-xs text-danger font-semibold mb-2">This action CANNOT be undone.</p>
+          <p class="text-sm text-gray-700 mb-1">Enter the 6-digit code below to confirm:</p>
+          <div class="bg-danger-bg border-2 border-danger-light text-danger font-bold mb-2 px-2 py-1 text-lg tracking-widest rounded-sm" id="dashDeleteCode"></div>
+          <input type="text" id="dashDeleteCodeInput" maxlength="6" placeholder="Enter code here" class="form-input text-center font-semibold mb-2 w-44 tracking-wider text-xs">
         </div>
       </div>
       <div class="modal-footer">
@@ -436,14 +433,14 @@
       <div class="modal-body">
         <div class="flex flex-col items-center text-center py-2">
           <div class="w-10 h-10 rounded-sm bg-warning-bg flex items-center justify-center mb-2">
-            <i class="fa-solid fa-arrow-up text-warning" style="font-size:14px"></i>
+            <i class="fa-solid fa-arrow-up text-warning text-sm"></i>
           </div>
-          <p style="font-size:8px" class="text-gray-600 mb-1">Table: <strong id="dashUpgradeTableName"></strong></p>
-          <p style="font-size:8px" class="text-gray-600 mb-1">This will upgrade the class value of <strong id="dashUpgradeCount"></strong> cards in the <strong>Download list</strong> to the next level (e.g. V &rarr; VI).</p>
-          <p style="font-size:7px" class="text-warning-dark font-semibold mb-2">This action CANNOT be undone.</p>
-          <p style="font-size:8px" class="text-gray-700 mb-1">Enter the 6-digit code below to confirm:</p>
-          <div class="bg-warning-bg border-2 border-warning-light text-warning-dark font-bold mb-2" style="padding:6px 10px;font-size:18px;letter-spacing:6px;border-radius:2px" id="dashUpgradeCode"></div>
-          <input type="text" id="dashUpgradeCodeInput" maxlength="6" placeholder="Enter code here" class="form-input text-center font-semibold mb-2" style="letter-spacing:4px;font-size:12px;width:180px">
+          <p class="text-sm text-gray-600 mb-1">Table: <strong id="dashUpgradeTableName"></strong></p>
+          <p class="text-sm text-gray-600 mb-1">This will upgrade the class value of <strong id="dashUpgradeCount"></strong> cards in the <strong>Download list</strong> to the next level (e.g. V &rarr; VI).</p>
+          <p class="text-xs text-warning-dark font-semibold mb-2">This action CANNOT be undone.</p>
+          <p class="text-sm text-gray-700 mb-1">Enter the 6-digit code below to confirm:</p>
+          <div class="bg-warning-bg border-2 border-warning-light text-warning-dark font-bold mb-2 px-2 py-1 text-lg tracking-widest rounded-sm" id="dashUpgradeCode"></div>
+          <input type="text" id="dashUpgradeCodeInput" maxlength="6" placeholder="Enter code here" class="form-input text-center font-semibold mb-2 w-44 tracking-wider text-xs">
         </div>
       </div>
       <div class="modal-footer">
@@ -466,17 +463,17 @@
       </div>
       <div class="modal-body">
         <div class="flex flex-col items-center text-center py-2">
-          <p style="font-size:7px" class="text-gray-500 mb-2">Upload a ZIP file. Filenames will be matched against ALL cards in this table.</p>
-          <div id="dashReuploadDropZone" class="w-full border-2 border-dashed border-gray-300 bg-gray-50 cursor-pointer mb-2 flex flex-col items-center justify-center" style="padding:12px;border-radius:2px;transition:border-color 0.2s"
-            ondragover="event.preventDefault(); this.style.borderColor='#667eea'; this.style.backgroundColor='#f0f0ff';"
-            ondragleave="this.style.borderColor='#d1d5db'; this.style.backgroundColor='#f9fafb';">
-            <i class="fa-solid fa-file-zipper text-gray-400 mb-1" style="font-size:20px"></i>
-            <p style="font-size:8px" class="text-gray-500 m-0" id="dashReuploadFileName">Click or drag & drop a ZIP file</p>
-            <input type="file" id="dashReuploadFileInput" accept=".zip" style="display:none;">
+          <p class="text-xs text-gray-500 mb-2">Upload a ZIP file. Filenames will be matched against ALL cards in this table.</p>
+          <div id="dashReuploadDropZone" class="w-full border-2 border-dashed border-gray-300 bg-gray-50 cursor-pointer mb-2 flex flex-col items-center justify-center p-3 rounded-sm transition-colors"
+            ondragover="event.preventDefault(); this.classList.add('border-primary','bg-primary/5');"
+            ondragleave="this.classList.remove('border-primary','bg-primary/5');">
+            <i class="fa-solid fa-file-zipper text-gray-400 mb-1 text-lg"></i>
+            <p class="text-sm text-gray-500 m-0" id="dashReuploadFileName">Click or drag & drop a ZIP file</p>
+            <input type="file" id="dashReuploadFileInput" accept=".zip" class="hidden">
           </div>
-          <div id="dashReuploadProgress" style="display:none;width:100%">
-            <div class="bg-gray-200 overflow-hidden" style="height:6px;border-radius:9999px"><div id="dashReuploadBar" class="bg-primary" style="height:100%;width:0%;transition:width 0.3s"></div></div>
-            <p style="font-size:7px" class="text-gray-500 mt-1" id="dashReuploadStatus">Uploading...</p>
+          <div id="dashReuploadProgress" class="hidden w-full">
+            <div class="bg-gray-200 overflow-hidden h-1.5 rounded-full"><div id="dashReuploadBar" class="bg-primary h-full w-0 transition-all duration-300"></div></div>
+            <p class="text-xs text-gray-500 mt-1" id="dashReuploadStatus">Uploading...</p>
           </div>
         </div>
       </div>

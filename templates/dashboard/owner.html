@@ -12,9 +12,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- Tailwind CSS (primary) -->
   <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=2">
-  <!-- Legacy (backward compat for unmigrated classes) -->
-  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=38">
-  <link rel="stylesheet" href="{% static 'css/common.css' %}?v=49">
   <!-- Page-specific: dashboard -->
   <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=38">
   <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=2">
@@ -132,7 +129,7 @@
             <h3><i class="fa-solid fa-users"></i> Recent Client Updates</h3>
             <a href="{% url 'active_clients' %}" class="view-all">View All <i class="fa-solid fa-arrow-right"></i></a>
           </div>
-          <div class="dashboard-card-body tall-body" style="padding: 0;">
+          <div class="dashboard-card-body tall-body p-0">
             <table class="recent-table">
               <thead>
                 <tr>
@@ -145,7 +142,7 @@
               </thead>
               <tbody id="recentClientUpdatesBody">
                 <tr>
-                  <td colspan="5" class="text-center" style="padding: 40px; color: #888;">
+                  <td colspan="5" class="text-center p-8 text-gray-400">
                     <i class="fa-solid fa-spinner fa-spin"></i> Loading...
                   </td>
                 </tr>
@@ -282,7 +279,7 @@
         <div class="search-input-group">
           <i class="fa-solid fa-magnifying-glass"></i>
           <input type="text" id="globalSearchInput" placeholder="Search ID cards by name, address, mobile..." autocomplete="off">
-          <button class="clear-global-search" id="clearGlobalSearch" style="display: none;">
+          <button class="clear-global-search hidden" id="clearGlobalSearch">
             <i class="fa-solid fa-xmark"></i>
           </button>
         </div>

@@ -38,14 +38,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (tbody) {
             tbody.querySelectorAll('tr').forEach(r => {
                 r.classList.remove('selected');
-                const cb = r.querySelector('.row-checkbox');
-                if (cb) cb.checked = false;
             });
         }
         
         row.classList.add('selected');
-        const checkbox = row.querySelector('.row-checkbox');
-        if (checkbox) checkbox.checked = true;
         
         selectedRow = row;
         selectedStaffId = row.dataset.staffId;
@@ -57,8 +53,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (tbody) {
             tbody.querySelectorAll('tr').forEach(r => {
                 r.classList.remove('selected');
-                const cb = r.querySelector('.row-checkbox');
-                if (cb) cb.checked = false;
             });
         }
         selectedRow = null;
@@ -68,23 +62,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (tbody) {
         tbody.addEventListener('click', function(e) {
-            if (e.target.type === 'checkbox') return;
             const row = e.target.closest('tr');
             if (row && row.dataset.staffId && !row.classList.contains('no-data-row')) {
                 selectStaffRow(row);
-            }
-        });
-        
-        tbody.addEventListener('change', function(e) {
-            if (e.target.type === 'checkbox' && e.target.classList.contains('row-checkbox')) {
-                const row = e.target.closest('tr');
-                if (row && row.dataset.staffId) {
-                    if (e.target.checked) {
-                        selectStaffRow(row);
-                    } else {
-                        clearStaffSelection();
-                    }
-                }
             }
         });
     }
@@ -574,25 +554,6 @@ document.addEventListener('DOMContentLoaded', function() {
         staffDrawerOverlay.addEventListener('click', closeDrawer);
     }
 
-    // ==================== SELECT ALL CHECKBOX ====================
-    const selectAllCheckbox = document.getElementById('select-all-checkbox');
-    
-    if (selectAllCheckbox && tbody) {
-        selectAllCheckbox.addEventListener('change', function() {
-            const checkboxes = tbody.querySelectorAll('.row-checkbox');
-            checkboxes.forEach(cb => {
-                cb.checked = this.checked;
-            });
-            
-            if (this.checked) {
-                const firstRow = tbody.querySelector('tr[data-staff-id]');
-                if (firstRow) selectStaffRow(firstRow);
-            } else {
-                clearStaffSelection();
-            }
-        });
-    }
-
     // Phase 1: Profile picture upload removed - using avatar placeholder
 
     // ==================== FILTER & SEARCH ====================
@@ -600,7 +561,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const dropdownOptions = document.getElementById('statusOptions');
     const filterDropdown = document.getElementById('status-dropdown');
     const selectedText = document.getElementById('statusSelectedText');
-    const searchInput = document.getElementById('search-input');
+    const searchInput = document.getElementById('searchInput');
     
     let currentFilter = '';
     

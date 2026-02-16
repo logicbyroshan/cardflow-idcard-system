@@ -13,7 +13,7 @@
 
     <!-- Category Management -->
     <div class="wa-dashboard-section">
-        <div class="wa-action-bar" style="margin-bottom: var(--space-lg);">
+        <div class="wa-action-bar mb-6">
             <div class="wa-action-left">
                 <h3 class="wa-dashboard-section-title"><i class="fa-solid fa-layer-group"></i> Categories</h3>
                 <span class="wa-count-badge">{{ categories|length }} categories</span>
@@ -46,7 +46,7 @@
 
     <!-- Portfolio Items -->
     <div class="wa-dashboard-section">
-        <div class="wa-action-bar" style="margin-bottom: var(--space-lg);">
+        <div class="wa-action-bar mb-6">
             <div class="wa-action-left">
                 <h3 class="wa-dashboard-section-title"><i class="fa-solid fa-images"></i> Portfolio Items</h3>
                 <span class="wa-count-badge">{{ items|length }} items</span>
@@ -227,7 +227,7 @@
                 <small class="form-hint">For videos/reels, this serves as the thumbnail/cover.</small>
             </div>
             <!-- Video fields (shown for video/reel types) -->
-            <div id="videoFields" style="display:none;">
+            <div id="videoFields" class="hidden">
                 <div class="wa-form-group">
                     <label for="pf_video_url">Video URL</label>
                     <input type="url" id="pf_video_url" name="video_url" placeholder="https://...">

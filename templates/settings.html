@@ -13,9 +13,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- Tailwind CSS (primary) -->
   <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=2">
-  <!-- Legacy (backward compat for unmigrated classes) -->
-  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=38">
-  <link rel="stylesheet" href="{% static 'css/common.css' %}?v=50">
   <!-- Page-specific: settings panels -->
   <link rel="stylesheet" href="{% static 'css/settings.css' %}?v=39">
   <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=2">
@@ -247,7 +244,7 @@
         <!-- Export Document Settings -->
         <div class="settings-section">
           <div class="section-header">
-            <div class="section-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+            <div class="section-icon bg-gradient-to-br from-amber-500 to-amber-600">
               <i class="fa-solid fa-file-export"></i>
             </div>
             <div class="section-title">
@@ -257,21 +254,21 @@
           </div>
           <div class="section-body">
             <form id="exportSettingsForm">
-              <div class="form-group" style="margin-bottom: 1rem;">
-                <label for="exportNoteLine" style="font-weight: 600; margin-bottom: 0.4rem; display: block; font-size: 0.9rem;">Note Line</label>
-                <p style="color: #94a3b8; font-size: 0.8rem; margin: 0 0 0.5rem 0;">Appears as the first line in the document footer (e.g. disclaimer or instruction)</p>
-                <textarea id="exportNoteLine" rows="2" class="form-input" style="width: 100%; resize: vertical; padding: 0.6rem; border-radius: 8px; border: 1px solid #334155; background: #1e293b; color: #fff; font-size: 0.9rem;">{{ export_settings.export_note_line }}</textarea>
+              <div class="form-group mb-4">
+                <label for="exportNoteLine" class="form-label">Note Line</label>
+                <p class="text-gray-400 text-xs mb-2">Appears as the first line in the document footer (e.g. disclaimer or instruction)</p>
+                <textarea id="exportNoteLine" rows="2" class="form-input form-textarea">{{ export_settings.export_note_line }}</textarea>
               </div>
-              <div class="form-group" style="margin-bottom: 1rem;">
-                <label for="exportCopyrightLine" style="font-weight: 600; margin-bottom: 0.4rem; display: block; font-size: 0.9rem;">Copyright / Branding Line</label>
-                <p style="color: #94a3b8; font-size: 0.8rem; margin: 0 0 0.5rem 0;">Appears alongside the timestamp in the second footer line</p>
-                <textarea id="exportCopyrightLine" rows="2" class="form-input" style="width: 100%; resize: vertical; padding: 0.6rem; border-radius: 8px; border: 1px solid #334155; background: #1e293b; color: #fff; font-size: 0.9rem;">{{ export_settings.export_copyright_line }}</textarea>
+              <div class="form-group mb-4">
+                <label for="exportCopyrightLine" class="form-label">Copyright / Branding Line</label>
+                <p class="text-gray-400 text-xs mb-2">Appears alongside the timestamp in the second footer line</p>
+                <textarea id="exportCopyrightLine" rows="2" class="form-input form-textarea">{{ export_settings.export_copyright_line }}</textarea>
               </div>
-              <div class="form-group" style="display: flex; align-items: center; gap: 1rem;">
-                <button type="submit" class="btn btn-save" id="saveExportSettingsBtn" style="padding: 0.6rem 1.5rem; border-radius: 8px; background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; border: none; font-weight: 600; cursor: pointer; font-size: 0.9rem;">
+              <div class="form-group flex items-center gap-4">
+                <button type="submit" class="btn btn-save" id="saveExportSettingsBtn">
                   <i class="fa-solid fa-save"></i> Save Export Settings
                 </button>
-                <span id="exportSettingsStatus" style="font-size: 0.85rem; color: #94a3b8;"></span>
+                <span id="exportSettingsStatus" class="text-sm text-gray-400"></span>
               </div>
             </form>
           </div>

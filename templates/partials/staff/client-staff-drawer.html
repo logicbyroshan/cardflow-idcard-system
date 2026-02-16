@@ -22,9 +22,9 @@ Mirrors admin staff-drawer.html but with Group Assignment instead of Client Assi
         
         <div class="drawer-body">
             <!-- Profile Avatar Placeholder -->
-            <div class="profile-upload-section" style="flex-direction: row; align-items: center; gap: 16px;">
+            <div class="profile-upload-section flex-row items-center gap-4">
                 {% include 'partials/components/user-avatar.html' with role='client_staff' size='large' %}
-                <span style="color: #6b7280; font-size: 13px;">Staff avatar</span>
+                <span class="text-gray-500 text-sm">Staff avatar</span>
             </div>
 
             <!-- Group Assignment Section (Client Staff Only) -->
@@ -75,7 +75,7 @@ Mirrors admin staff-drawer.html but with Group Assignment instead of Client Assi
                     <div class="form-group">
                         <label for="staff-phone">Phone <span class="required">*</span></label>
                         <input type="tel" id="staff-phone" name="phone" placeholder="Enter phone number" required>
-                        <small class="field-hint" style="color: #6b7280; font-size: 11px;">This will be used as password</small>
+                        <small class="field-hint text-gray-500 text-xs">This will be used as password</small>
                     </div>
                 </div>
                 

@@ -36,13 +36,13 @@ JS contract:
     <div class="modal-body">
       <div class="flex flex-col items-center text-center py-2">
         <div class="w-10 h-10 rounded-sm bg-warning-bg flex items-center justify-center mb-2">
-          <i class="fa-solid fa-toggle-on text-warning" style="font-size:14px"></i>
+          <i class="fa-solid fa-toggle-on text-warning text-sm"></i>
         </div>
-        <p class="text-gray-700" style="font-size:8px">
+        <p class="text-gray-700 text-sm">
           Are you sure you want to change the status of
           <strong id="statusItemName">this {{ item_name|default:'item' }}</strong>?
         </p>
-        <p class="text-gray-400 mt-1 flex items-center gap-1" id="statusNote" style="font-size:7px">
+        <p class="text-gray-400 mt-1 flex items-center gap-1 text-xs" id="statusNote">
           <i class="fa-solid fa-info-circle"></i> This will affect {{ item_name|default:'item' }}'s access.
         </p>
       </div>

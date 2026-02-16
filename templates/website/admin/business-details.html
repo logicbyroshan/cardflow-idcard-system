@@ -12,7 +12,7 @@
 {% block content %}
 <div class="wa-page-container">
     <div class="wa-dashboard-section">
-        <div class="wa-dashboard-section-header" style="display: flex; align-items: center; justify-content: space-between;">
+        <div class="wa-dashboard-section-header flex items-center justify-between">
             <h3 class="wa-dashboard-section-title"><i class="fa-solid fa-building"></i> Business Details</h3>
             {% if business and business.is_active %}
             <span class="badge badge-success">Active</span>
@@ -101,16 +101,16 @@
         </div>
 
         <!-- Dynamic Hero Images Manager -->
-        <div class="wa-form-group-title" style="margin-top: 12px;">
+        <div class="wa-form-group-title mt-3">
             <i class="fa-solid fa-images"></i> Hero Slider Images
-            <button type="button" class="btn btn-primary btn-sm" id="addHeroImageBtn" style="margin-left:auto; font-size:0.8rem; padding:5px 12px;">
+            <button type="button" class="btn btn-primary btn-sm ml-auto text-sm px-3 py-1" id="addHeroImageBtn">
                 <i class="fa-solid fa-plus"></i> Add Image
             </button>
         </div>
         <div id="heroImagesGrid" class="wa-form-row wa-form-images">
             {% for hero in hero_images %}
             <div class="wa-form-group hero-image-card" data-id="{{ hero.pk }}">
-                <div class="wa-img-preview" style="position:relative;">
+                <div class="wa-img-preview relative">
                     <img src="{{ hero.image.url }}" alt="{{ hero.title|default:'Hero' }}">
                     <span class="hero-order-badge" title="Display order">{{ hero.order }}</span>
                     {% if not hero.is_active %}
@@ -121,12 +121,12 @@
             </div>
             {% empty %}
             <div class="wa-form-group" id="noHeroImagesMsg">
-                <p style="color:#888;">No hero images yet. Click "Add Image" to upload one.</p>
+                <p class="text-gray-400">No hero images yet. Click "Add Image" to upload one.</p>
             </div>
             {% endfor %}
         </div>
         <!-- Hidden file input for new hero image uploads -->
-        <input type="file" id="heroImageFileInput" accept="image/*" style="display:none;">
+        <input type="file" id="heroImageFileInput" accept="image/*" class="hidden">
 
         <!-- Footer & SEO -->
         <div class="wa-form-group-title"><i class="fa-solid fa-paragraph"></i> Footer & SEO</div>

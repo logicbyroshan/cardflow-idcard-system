@@ -7,20 +7,6 @@
    ACTION BAR IMPROVEMENTS
    ========================================== */
 
-.action-buttons-bar {
-    background: #fff;
-    border: 1px solid #e5e7eb;
-    border-bottom: none;
-    padding: 5px 10px;
-}
-
-.action-buttons-group {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px;
-}
-
 /* Note: .action-divider styles are now in common.css */
 
 /* Enhanced Button Styles - Small consistent size */
@@ -111,43 +97,7 @@
    SEARCH AND FILTER BAR IMPROVEMENTS
    ========================================== */
 
-.search-filter-bar {
-    background: #ffffff;
-    border: 1px solid #e5e7eb;
-    border-top: none;
-    padding: 5px 10px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
-.search-filter-bar .action-left {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex: 1;
-}
-
-.search-filter-bar .action-right {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-shrink: 0;
-}
-
-.search-filter-bar .filter-group {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.search-filter-bar .search-box {
-    flex: 1;
-    max-width: 450px;
-    min-width: 280px;
-}
+/* Removed: .search-filter-bar — handled by tailwind-input.css */
 
 /* Search Box Enhancement - Override for idcard page */
 .idcard-actions-page .search-box {
@@ -172,10 +122,10 @@
 
 .idcard-actions-page .search-box .search-input {
     width: 100%;
-    padding: 4px 28px 4px 24px;
+    padding: 3px 28px 3px 24px;
     border: none;
     border-radius: 2px;
-    font-size: 14px;
+    font-size: 13px;
     transition: all 0.2s ease;
     background: transparent;
 }
@@ -201,13 +151,7 @@
    TABLE IMPROVEMENTS
    ========================================== */
 
-.table-wrapper {
-    background: #ffffff;
-    border: 1px solid #e5e7eb;
-    border-top: none;
-    overflow-x: auto;
-    overflow-y: visible;
-}
+/* Removed: .table-wrapper — handled by tailwind-input.css */
 
 .idcard-table {
     overflow-x: auto;
@@ -456,7 +400,6 @@
     padding: 2px 6px;
     border-radius: 2px;
 }
-}
 
 /* ==========================================
    LAZY LOAD INDICATOR
@@ -482,45 +425,7 @@
 
 /* Empty State → defined in common.css (single source of truth) */
 
-/* ==========================================
-   STATUS BADGES
-   ========================================== */
-
-.status-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 2px;
-    padding: 2px 6px;
-    font-size: 13px;
-    font-weight: 500;
-    border-radius: 2px;
-    text-transform: capitalize;
-}
-
-.status-badge.download {
-    background: #dcfce7;
-    color: #166534;
-}
-
-.status-badge.pending {
-    background: #fef3c7;
-    color: #92400e;
-}
-
-.status-badge.verified {
-    background: #dbeafe;
-    color: #1e40af;
-}
-
-.status-badge.approved {
-    background: #d1fae5;
-    color: #065f46;
-}
-
-.status-badge.pool {
-    background: #fee2e2;
-    color: #991b1b;
-}
+/* Removed: .status-badge — handled by tailwind-input.css */
 
 /* ==========================================
    RESPONSIVE ADJUSTMENTS

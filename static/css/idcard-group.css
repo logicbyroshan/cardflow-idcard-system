@@ -1,5 +1,32 @@
 /* ID Card Group Page Specific Styles */
 
+/* Base table head styling */
+.idcard-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #3b82f6;
+}
+
+.idcard-table th {
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 6px 10px;
+    white-space: nowrap;
+    text-align: left;
+}
+
+.idcard-table td {
+    padding: 8px 10px;
+    font-size: 13px;
+    color: #374151;
+    border-bottom: 1px solid #e5e7eb;
+    vertical-align: middle;
+}
+
 /* Override generic row selection cursor — this page doesn't use row selection */
 .idcard-table tbody tr {
     cursor: default;
@@ -31,6 +58,7 @@
     border-color: var(--primary);
     box-shadow: 0 0 0 1px rgba(var(--primary-rgb), 0.15);
 }
+
 /* Override table layout for ID Card Group page */
 .idcard-table table {
     table-layout: fixed;
@@ -67,19 +95,6 @@
     width: 360px;
     min-width: 360px;
     text-align: center;
-}
-
-/* Action Cell Styling */
-.action-cell {
-    padding: 4px 6px !important;
-}
-
-.action-buttons {
-    display: flex;
-    flex-wrap: nowrap;
-    gap: 3px;
-    justify-content: center;
-    align-items: center;
 }
 
 /* List Buttons - Compact */
@@ -213,20 +228,6 @@
 .reprint-btn .count-badge {
     background: #06b6d4;
     color: #fff;
-}
-
-/* Bulk Action Cell Styling */
-.bulk-action-cell {
-    padding: 4px 6px !important;
-}
-
-.bulk-action-buttons {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    gap: 3px;
-    align-items: center;
-    justify-content: center;
 }
 
 /* Bulk Buttons - Compact */
@@ -382,84 +383,249 @@
     transition: all 0.15s ease;
 }
 
-/* ==================== 
-   Groups Grid Styles
-   ==================== */
-.groups-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 12px;
-    padding: 12px;
-}
+/* ===========================================
+   CLIENT GROUPS PAGE STYLES
+   (moved from inline <style> in client/groups.html)
+   =========================================== */
 
-.group-card {
-    background: #fff;
-    border-radius: 2px;
-    overflow: hidden;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    border: 1px solid #e5e7eb;
-}
-
-.group-card:hover {
-    border-color: #d1d5db;
-}
-
-.group-card.selected {
-    border-color: #3b82f6;
-}
-
-.group-card-header {
+.page-content {
+    padding: 24px;
+  }
+  
+  .page-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px;
-    background: #1e1e2e;
-}
-
-.group-icon {
-    width: 28px;
-    height: 28px;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 2px;
+    margin-bottom: 24px;
+  }
+  
+  .page-header h1 {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-primary, #f8fafc);
+  }
+  
+  .groups-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+  }
+  
+  .group-card {
+    background: var(--card-bg, #1e2030);
+    border-radius: 12px;
+    border: 1px solid var(--border-color, rgba(255,255,255,0.1));
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  
+  .group-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    border-color: rgba(72, 187, 120, 0.3);
+  }
+  
+  .group-card-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.05));
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  
+  .group-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: rgba(72, 187, 120, 0.15);
+    color: #48bb78;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
-    font-size: 15px;
-}
-
-.group-card-body {
-    padding: 10px;
-}
-
-.group-name {
-    font-size: 15px;
+    font-size: 20px;
+  }
+  
+  .group-info {
+    flex: 1;
+  }
+  
+  .group-info h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary, #f8fafc);
+    margin-bottom: 4px;
+  }
+  
+  .group-info .group-meta {
+    font-size: 13px;
+    color: var(--text-secondary, #a0aec0);
+  }
+  
+  .group-card-body {
+    padding: 16px 20px;
+  }
+  
+  .group-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  
+  .group-stat {
+    text-align: center;
+    padding: 12px;
+    background: rgba(255,255,255,0.02);
+    border-radius: 8px;
+  }
+  
+  .group-stat .value {
+    font-size: 20px;
     font-weight: 700;
-    color: #1f2937;
-    margin: 0 0 4px 0;
-}
-
-.group-card-footer {
+    color: var(--text-primary, #f8fafc);
+  }
+  
+  .group-stat .label {
+    font-size: 11px;
+    color: var(--text-secondary, #a0aec0);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .group-card-footer {
+    padding: 12px 20px;
+    border-top: 1px solid var(--border-color, rgba(255,255,255,0.05));
+    display: flex;
+    gap: 12px;
+  }
+  
+  .group-card-footer .btn {
+    flex: 1;
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+  
+  .group-card-footer .btn-primary {
+    background: linear-gradient(135deg, #48bb78, #38a169);
+    color: white;
+  }
+  
+  .group-card-footer .btn-primary:hover {
+    background: linear-gradient(135deg, #38a169, #2f855a);
+  }
+  
+  .group-card-footer .btn-secondary {
+    background: rgba(255,255,255,0.05);
+    color: var(--text-secondary, #a0aec0);
+    border: 1px solid var(--border-color, rgba(255,255,255,0.1));
+  }
+  
+  .group-card-footer .btn-secondary:hover {
+    background: rgba(255,255,255,0.1);
+    color: var(--text-primary, #f8fafc);
+  }
+  
+  .tables-accordion {
+    margin-top: 12px;
+    border-top: 1px solid var(--border-color, rgba(255,255,255,0.05));
+    padding-top: 12px;
+  }
+  
+  .tables-toggle {
+    width: 100%;
+    padding: 10px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border-color, rgba(255,255,255,0.1));
+    border-radius: 8px;
+    color: var(--text-secondary, #a0aec0);
+    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 6px 10px;
-    background: #f9fafb;
-    border-top: 1px solid #e5e7eb;
-}
-
-.group-stat {
+    font-size: 13px;
+    transition: all 0.2s;
+  }
+  
+  .tables-toggle:hover {
+    background: rgba(255,255,255,0.05);
+    color: var(--text-primary, #f8fafc);
+  }
+  
+  .tables-toggle i.chevron {
+    transition: transform 0.2s;
+  }
+  
+  .tables-toggle.expanded i.chevron {
+    transform: rotate(180deg);
+  }
+  
+  .tables-list {
+    display: none;
+    padding: 12px 0 0 0;
+  }
+  
+  .tables-list.show {
+    display: block;
+  }
+  
+  .table-item {
     display: flex;
     align-items: center;
-    gap: 4px;
-    font-size: 14px;
-    color: #6b7280;
-}
+    justify-content: space-between;
+    padding: 10px 12px;
+    background: rgba(255,255,255,0.02);
+    border-radius: 6px;
+    margin-bottom: 8px;
+    transition: all 0.2s;
+  }
+  
+  .table-item:last-child {
+    margin-bottom: 0;
+  }
+  
+  .table-item:hover {
+    background: rgba(255,255,255,0.05);
+  }
+  
+  .table-item .table-name {
+    font-size: 13px;
+    color: var(--text-primary, #f8fafc);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .table-item .table-count {
+    font-size: 12px;
+    color: var(--text-secondary, #a0aec0);
+    background: rgba(72, 187, 120, 0.1);
+    padding: 4px 10px;
+    border-radius: 12px;
+  }
+  
+  .table-item .view-btn {
+    padding: 6px 12px;
+    background: rgba(72, 187, 120, 0.1);
+    border: none;
+    border-radius: 6px;
+    color: #48bb78;
+    cursor: pointer;
+    font-size: 12px;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+  
+  .table-item .view-btn:hover {
+    background: rgba(72, 187, 120, 0.2);
+  }
 
-.group-stat i {
-    color: #3b82f6;
-}
-
-/* .no-groups base styles in common.css (single source of truth).
-   grid-column override is also in common.css. */
