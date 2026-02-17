@@ -11,13 +11,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- Tailwind CSS (primary) -->
-  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=2">
+  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=100">
   <!-- Page-specific: dashboard cards, stats, activity -->
-  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=40">
-  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=2">
+  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=100">
+  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=100">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <!-- Alpine.js State Module (MUST load before Alpine) -->
-  <script src="{% static 'js/alpine-state.js' %}?v=1"></script>
+  <script src="{% static 'js/alpine-state.js' %}?v=100"></script>
   <!-- Alpine.js -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
 </head>
@@ -71,7 +71,6 @@
           <div class="stat-info">
             <div class="stat-value" id="pendingCards">{{ pending_cards|default:0 }}</div>
             <div class="stat-label">Pending Cards</div>
-            <span class="stat-change negative"><i class="fa-solid fa-arrow-down"></i> In process</span>
           </div>
         </div>
         
@@ -82,7 +81,6 @@
           <div class="stat-info">
             <div class="stat-value" id="verifiedCards">{{ verified_cards|default:0 }}</div>
             <div class="stat-label">Verified Cards</div>
-            <span class="stat-change positive"><i class="fa-solid fa-arrow-up"></i> Ready for approval</span>
           </div>
         </div>
         
@@ -93,7 +91,6 @@
           <div class="stat-info">
             <div class="stat-value" id="approvedCards">{{ approved_cards|default:0 }}</div>
             <div class="stat-label">Approved Cards</div>
-            <span class="stat-change positive"><i class="fa-solid fa-arrow-up"></i> Ready to download</span>
           </div>
         </div>
         
@@ -104,7 +101,6 @@
           <div class="stat-info">
             <div class="stat-value" id="downloadedCards">{{ downloaded_cards|default:0 }}</div>
             <div class="stat-label">Downloaded Cards</div>
-            <span class="stat-change positive"><i class="fa-solid fa-arrow-up"></i> Completed</span>
           </div>
         </div>
         
@@ -115,7 +111,6 @@
           <div class="stat-info">
             <div class="stat-value" id="totalCards">{{ total_id_cards|default:0 }}</div>
             <div class="stat-label">Total ID Cards</div>
-            <span class="stat-change positive"><i class="fa-solid fa-arrow-up"></i> All cards</span>
           </div>
         </div>
       </div>
@@ -315,13 +310,11 @@
             <div class="bulk-actions-panel">
               <div class="bulk-actions-selectors">
                 <div class="bulk-select-group">
-                  <label for="bulkClientSelect">Client</label>
                   <select id="bulkClientSelect">
                     <option value="">Select Client</option>
                   </select>
                 </div>
                 <div class="bulk-select-group">
-                  <label for="bulkTableSelect">Table</label>
                   <select id="bulkTableSelect" disabled>
                     <option value="">Select Table</option>
                   </select>
@@ -391,11 +384,13 @@
 
   <!-- Delete All Confirmation Modal (Dashboard) -->
   <div id="dashDeleteAllModal" class="modal-backdrop"
-       onclick="if(event.target===this) this.classList.remove('show')">
-    <div class="modal-center modal-danger" onclick="event.stopPropagation()">
+       x-show="activeModal === 'dashDelete'" x-transition.opacity
+       @click.self="closeModal()" style="display:none">
+    <div class="modal-center modal-danger" @click.stop
+         x-show="activeModal === 'dashDelete'" x-transition.scale.origin.center>
       <div class="modal-header">
         <h3><i class="fa-solid fa-triangle-exclamation"></i> Delete All ID Cards</h3>
-        <button type="button" class="modal-close" onclick="document.getElementById('dashDeleteAllModal').classList.remove('show')" aria-label="Close">
+        <button type="button" class="modal-close" @click="closeModal()" aria-label="Close">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
@@ -414,7 +409,7 @@
       </div>
       <div class="modal-footer">
         <button id="dashDeleteCancel" class="btn btn-md btn-neutral" type="button"
-                onclick="document.getElementById('dashDeleteAllModal').classList.remove('show')">Cancel</button>
+                @click="closeModal()">Cancel</button>
         <button id="dashDeleteConfirm" class="btn btn-md btn-danger" type="button" disabled>Delete All Cards</button>
       </div>
     </div>
@@ -422,11 +417,13 @@
 
   <!-- Upgrade All Classes Confirmation Modal (Dashboard) -->
   <div id="dashUpgradeAllModal" class="modal-backdrop"
-       onclick="if(event.target===this) this.classList.remove('show')">
-    <div class="modal-center modal-warning" onclick="event.stopPropagation()">
+       x-show="activeModal === 'dashUpgrade'" x-transition.opacity
+       @click.self="closeModal()" style="display:none">
+    <div class="modal-center modal-warning" @click.stop
+         x-show="activeModal === 'dashUpgrade'" x-transition.scale.origin.center>
       <div class="modal-header">
         <h3><i class="fa-solid fa-arrow-up"></i> Upgrade All Classes</h3>
-        <button type="button" class="modal-close" onclick="document.getElementById('dashUpgradeAllModal').classList.remove('show')" aria-label="Close">
+        <button type="button" class="modal-close" @click="closeModal()" aria-label="Close">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
@@ -445,7 +442,7 @@
       </div>
       <div class="modal-footer">
         <button id="dashUpgradeCancel" class="btn btn-md btn-neutral" type="button"
-                onclick="document.getElementById('dashUpgradeAllModal').classList.remove('show')">Cancel</button>
+                @click="closeModal()">Cancel</button>
         <button id="dashUpgradeConfirm" class="btn btn-md btn-warning" type="button" disabled>Upgrade All Classes</button>
       </div>
     </div>
@@ -453,11 +450,13 @@
 
   <!-- Reupload Image Modal (Dashboard) -->
   <div id="dashReuploadModal" class="modal-backdrop"
-       onclick="if(event.target===this) this.classList.remove('show')">
-    <div class="modal-center" onclick="event.stopPropagation()">
+       x-show="activeModal === 'dashReupload'" x-transition.opacity
+       @click.self="closeModal()" style="display:none">
+    <div class="modal-center" @click.stop
+         x-show="activeModal === 'dashReupload'" x-transition.scale.origin.center>
       <div class="modal-header">
         <h3><i class="fa-solid fa-upload"></i> Reupload Images</h3>
-        <button type="button" class="modal-close" onclick="document.getElementById('dashReuploadModal').classList.remove('show')" aria-label="Close">
+        <button type="button" class="modal-close" @click="closeModal()" aria-label="Close">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
@@ -479,19 +478,20 @@
       </div>
       <div class="modal-footer">
         <button id="dashReuploadCancel" class="btn btn-md btn-neutral" type="button"
-                onclick="document.getElementById('dashReuploadModal').classList.remove('show')">Cancel</button>
+                @click="closeModal()">Cancel</button>
         <button id="dashReuploadConfirm" class="btn btn-md btn-primary" type="button" disabled>Upload &amp; Match</button>
       </div>
     </div>
   </div>
 
   <!-- Core Modules (Load Order: api → toast → modal → utils → init) -->
-  <script src="{% static 'js/core/api.js' %}?v=1"></script>
-  <script src="{% static 'js/core/toast.js' %}?v=1"></script>
-  <script src="{% static 'js/core/modal.js' %}?v=1"></script>
-  <script src="{% static 'js/core/utils.js' %}?v=1"></script>
-  <script src="{% static 'js/init.js' %}?v=3"></script>
-  <script src="{% static 'js/dashboard.js' %}?v=7"></script>
-  <script src="{% static 'js/global-search.js' %}?v=2"></script>
+  <script src="{% static 'js/core/api.js' %}?v=100"></script>
+  <script src="{% static 'js/core/toast.js' %}?v=100"></script>
+  <script src="{% static 'js/core/modal.js' %}?v=100"></script>
+  <script src="{% static 'js/core/utils.js' %}?v=100"></script>
+  <script src="{% static 'js/init.js' %}?v=100"></script>
+  <script src="{% static 'js/dashboard.js' %}?v=100"></script>
+  <script src="{% static 'js/global-search.js' %}?v=100"></script>
+  {% include 'partials/htmx-config.html' %}
 </body>
 </html>

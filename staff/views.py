@@ -16,6 +16,7 @@ Page Views:
 - GET /staff/manage/                         - Staff management page
 """
 import json
+import logging
 
 from django.shortcuts import render
 from django.http import JsonResponse
@@ -33,6 +34,7 @@ from .services import (
     require_admin_staff_or_owner,
     check_client_access,
     check_permission,
+
     ADMIN_STAFF_PERMISSIONS,
 )
 
@@ -169,21 +171,25 @@ def api_admin_staff_detail(request, staff_id):
 @require_http_methods(['POST'])
 def api_admin_staff_toggle_status(request, staff_id):
     """Toggle admin staff active/inactive status."""
-    result = AdminStaffCreationService.toggle_status(request.user, staff_id)
-    if result.get('success'):
-        new_status = result.get('data', {}).get('is_active', '')
-        name = result.get('data', {}).get('name', 'staff member')
-        label = 'active' if new_status else 'inactive'
-        ActivityService.log(
-            'staff_status',
-            f'Admin staff "{name}" marked as {label}',
-            request=request,
-            target_model='Staff',
-            target_id=staff_id,
-            target_name=name,
-        )
-    status = 200 if result.get('success') else 400
-    return JsonResponse(result, status=status)
+    try:
+        result = AdminStaffCreationService.toggle_status(request.user, staff_id)
+        if result.get('success'):
+            new_status = result.get('data', {}).get('is_active', '')
+            name = result.get('data', {}).get('name', 'staff member')
+            label = 'active' if new_status else 'inactive'
+            ActivityService.log(
+                'staff_status',
+                f'Admin staff "{name}" marked as {label}',
+                request=request,
+                target_model='Staff',
+                target_id=staff_id,
+                target_name=name,
+            )
+        status = 200 if result.get('success') else 400
+        return JsonResponse(result, status=status)
+    except Exception as e:
+        logging.getLogger(__name__).exception("Staff toggle status error: %s", e)
+        return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 
 
 @login_required
@@ -191,9 +197,13 @@ def api_admin_staff_toggle_status(request, staff_id):
 @require_http_methods(['POST'])
 def api_admin_staff_reset_password(request, staff_id):
     """Reset admin staff password and send email."""
-    result = AdminStaffCreationService.reset_password(request.user, staff_id)
-    status = 200 if result.get('success') else 400
-    return JsonResponse(result, status=status)
+    try:
+        result = AdminStaffCreationService.reset_password(request.user, staff_id)
+        status = 200 if result.get('success') else 400
+        return JsonResponse(result, status=status)
+    except Exception as e:
+        logging.getLogger(__name__).exception("Staff reset password error: %s", e)
+        return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 
 
 # =============================================================================

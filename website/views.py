@@ -7,6 +7,8 @@ from django.core.cache import cache
 from django.db.models import Avg
 import logging
 
+from accounts.rate_limit import rate_limit
+
 logger = logging.getLogger(__name__)
 
 from .models import (
@@ -50,21 +52,25 @@ def home(request):
     """Homepage: Displays a summary of all sections"""
     context = get_common_context()
     
-    # Dynamic hero images (ordered, active only)
-    hero_images = HeroImage.objects.filter(is_active=True).order_by('order', 'pk')
+    # Dynamic hero images (cached 60s)
+    hero_images = cache.get('home_hero_images')
+    if hero_images is None:
+        hero_images = list(HeroImage.objects.filter(is_active=True).order_by('order', 'pk'))
+        cache.set('home_hero_images', hero_images, 60)
     context['hero_images'] = hero_images
     
-    # We fetch featured items specifically for the home page
-    context.update({
-        'features': Feature.objects.filter(is_active=True).order_by('order')[:6],
-        'trusted_clients': TrustedClient.objects.filter(is_active=True).order_by('order'),
-        
-        # We split portfolio by orientation or feature status for layout variety
-        'featured_portfolio': PortfolioItem.objects.filter(is_active=True, is_featured=True).order_by('order'),
-        'recent_portfolio': PortfolioItem.objects.filter(is_active=True).order_by('-created_at')[:8],
-        
-        'testimonials': Testimonial.objects.filter(is_active=True).order_by('-review_date')[:5],
-    })
+    # Website section data (cached 60s)
+    home_sections = cache.get('home_sections')
+    if home_sections is None:
+        home_sections = {
+            'features': list(Feature.objects.filter(is_active=True).order_by('order')[:6]),
+            'trusted_clients': list(TrustedClient.objects.filter(is_active=True).order_by('order')),
+            'featured_portfolio': list(PortfolioItem.objects.filter(is_active=True, is_featured=True).order_by('order')),
+            'recent_portfolio': list(PortfolioItem.objects.filter(is_active=True).order_by('-created_at')[:8]),
+            'testimonials': list(Testimonial.objects.filter(is_active=True).order_by('-review_date')[:5]),
+        }
+        cache.set('home_sections', home_sections, 60)
+    context.update(home_sections)
     return render(request, 'website/index.html', context)
 
 
@@ -193,6 +199,7 @@ def privacy_policy(request):
 # ==========================================
 
 @require_POST
+@rate_limit(max_requests=3, window_seconds=300, key_prefix='public_review')
 def submit_testimonial(request):
     """Handles AJAX submission of a new review (Public)"""
     try:
@@ -223,6 +230,7 @@ def submit_testimonial(request):
 
 
 @require_POST
+@rate_limit(max_requests=5, window_seconds=300, key_prefix='public_contact')
 def submit_contact(request):
     """Handles AJAX submission of the contact form"""
     try:

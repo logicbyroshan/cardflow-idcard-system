@@ -1,0 +1,122 @@
+{% comment %}
+ID Card Table Container — HTMX swappable partial.
+Contains: Table + Pagination. Used as the swap target for HTMX requests.
+
+This partial is returned standalone for HX-Request, or included in the
+full page template for the initial server render.
+
+Required context:
+  - table, id_cards, current_status, total_count, has_more
+  - page_obj (Paginator page), page_range (visible page numbers)
+  - perm_* (permission flags from context processor)
+  - is_client, is_client_staff
+{% endcomment %}
+{% load static %}
+{% load custom_filters %}
+
+<!-- Data Table -->
+{% include 'partials/idcard/table.html' %}
+
+<!-- HTMX Pagination -->
+<div class="pagination-bar" id="paginationBar"
+     data-total-count="{{ total_count }}"
+     data-initial-loaded="{{ id_cards|length }}"
+     data-has-more="{{ has_more|yesno:'true,false' }}"
+     data-table-id="{{ table.id }}"
+     data-status="{{ current_status|default:'pending' }}">
+
+    <!-- Left - Info -->
+    <div class="pagination-left">
+        <span class="pagination-info">
+            Showing <strong id="showingRange">
+            {% if page_obj %}{{ page_obj.start_index }}-{{ page_obj.end_index }}{% else %}1-{{ id_cards|length }}{% endif %}
+            </strong> of <strong id="totalCount">{{ total_count }}</strong> results
+        </span>
+        <span class="pagination-selected" id="selectionInfo" style="display: none;">
+            (<strong id="selectedCount">0</strong> selected)
+        </span>
+    </div>
+
+    <!-- Center - Page Navigation -->
+    <div class="pagination-center">
+        {% if page_obj and page_obj.paginator.num_pages > 1 %}
+        <button class="pagination-btn {% if not page_obj.has_previous %}disabled{% endif %}"
+                {% if page_obj.has_previous %}
+                hx-get="?page=1&status={{ current_status|default:'pending' }}{% if search_query %}&search={{ search_query }}{% endif %}{% if class_filter %}&class={{ class_filter }}{% endif %}{% if section_filter %}&section={{ section_filter }}{% endif %}&per_page={{ per_page }}"
+                hx-target="#card-table-container"
+                hx-swap="innerHTML"
+                {% endif %}
+                title="First page">
+            <i class="fa-solid fa-angles-left"></i>
+        </button>
+        <button class="pagination-btn {% if not page_obj.has_previous %}disabled{% endif %}"
+                {% if page_obj.has_previous %}
+                hx-get="?page={{ page_obj.previous_page_number }}&status={{ current_status|default:'pending' }}{% if search_query %}&search={{ search_query }}{% endif %}{% if class_filter %}&class={{ class_filter }}{% endif %}{% if section_filter %}&section={{ section_filter }}{% endif %}&per_page={{ per_page }}"
+                hx-target="#card-table-container"
+                hx-swap="innerHTML"
+                {% endif %}
+                title="Previous page">
+            <i class="fa-solid fa-chevron-left"></i>
+        </button>
+        <span class="page-numbers" id="pageNumbers">
+            {% for p in page_range %}
+                {% if p == page_obj.number %}
+                <button class="page-num active">{{ p }}</button>
+                {% elif p == '...' %}
+                <span class="page-ellipsis">…</span>
+                {% else %}
+                <button class="page-num"
+                        hx-get="?page={{ p }}&status={{ current_status|default:'pending' }}{% if search_query %}&search={{ search_query }}{% endif %}{% if class_filter %}&class={{ class_filter }}{% endif %}{% if section_filter %}&section={{ section_filter }}{% endif %}&per_page={{ per_page }}"
+                        hx-target="#card-table-container"
+                        hx-swap="innerHTML">{{ p }}</button>
+                {% endif %}
+            {% endfor %}
+        </span>
+        <button class="pagination-btn {% if not page_obj.has_next %}disabled{% endif %}"
+                {% if page_obj.has_next %}
+                hx-get="?page={{ page_obj.next_page_number }}&status={{ current_status|default:'pending' }}{% if search_query %}&search={{ search_query }}{% endif %}{% if class_filter %}&class={{ class_filter }}{% endif %}{% if section_filter %}&section={{ section_filter }}{% endif %}&per_page={{ per_page }}"
+                hx-target="#card-table-container"
+                hx-swap="innerHTML"
+                {% endif %}
+                title="Next page">
+            <i class="fa-solid fa-chevron-right"></i>
+        </button>
+        <button class="pagination-btn {% if not page_obj.has_next %}disabled{% endif %}"
+                {% if page_obj.has_next %}
+                hx-get="?page={{ page_obj.paginator.num_pages }}&status={{ current_status|default:'pending' }}{% if search_query %}&search={{ search_query }}{% endif %}{% if class_filter %}&class={{ class_filter }}{% endif %}{% if section_filter %}&section={{ section_filter }}{% endif %}&per_page={{ per_page }}"
+                hx-target="#card-table-container"
+                hx-swap="innerHTML"
+                {% endif %}
+                title="Last page">
+            <i class="fa-solid fa-angles-right"></i>
+        </button>
+        {% else %}
+        <!-- Single page — no navigation needed -->
+        <button class="pagination-btn disabled"><i class="fa-solid fa-angles-left"></i></button>
+        <button class="pagination-btn disabled"><i class="fa-solid fa-chevron-left"></i></button>
+        <span class="page-numbers" id="pageNumbers"><button class="page-num active">1</button></span>
+        <button class="pagination-btn disabled"><i class="fa-solid fa-chevron-right"></i></button>
+        <button class="pagination-btn disabled"><i class="fa-solid fa-angles-right"></i></button>
+        {% endif %}
+    </div>
+
+    <!-- Right - Rows Per Page -->
+    <div class="pagination-right">
+        <label>Rows per page:</label>
+        <div class="custom-dropdown rows-dropdown" id="rowsDropdown">
+            <button class="dropdown-toggle" id="rowsToggle" type="button">
+                <span id="rowsSelectedText">{{ per_page }}</span>
+                <i class="fa-solid fa-chevron-down"></i>
+            </button>
+            <div class="dropdown-options" id="rowsOptions">
+                {% for opt in per_page_options %}
+                <div class="dropdown-option {% if opt == per_page %}selected{% endif %}"
+                     data-value="{{ opt }}"
+                     hx-get="?page=1&status={{ current_status|default:'pending' }}{% if search_query %}&search={{ search_query }}{% endif %}{% if class_filter %}&class={{ class_filter }}{% endif %}{% if section_filter %}&section={{ section_filter }}{% endif %}&per_page={{ opt }}"
+                     hx-target="#card-table-container"
+                     hx-swap="innerHTML">{{ opt }}</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>

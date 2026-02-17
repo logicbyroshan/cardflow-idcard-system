@@ -251,20 +251,23 @@ class IDCardService(BaseService):
     
     @classmethod
     def toggle_table_status(cls, table_id: int) -> ServiceResult:
-        """Toggle ID Card Table active/inactive status"""
+        """Toggle ID Card Table active/inactive status (atomic to prevent lost toggles)"""
         try:
-            table = get_object_or_404(IDCardTable, id=table_id)
-            
-            table.is_active = not table.is_active
-            status = 'active' if table.is_active else 'inactive'
-            status_display = 'Active' if table.is_active else 'Inactive'
-            table.save()
+            from django.db import transaction
+            with transaction.atomic():
+                table = IDCardTable.objects.select_for_update().get(id=table_id)
+                table.is_active = not table.is_active
+                status = 'active' if table.is_active else 'inactive'
+                status_display = 'Active' if table.is_active else 'Inactive'
+                table.save(update_fields=['is_active', 'updated_at'])
             
             return ServiceResult(
                 success=True,
                 message=f'Table status changed to {status_display}!',
                 data={'status': status, 'status_display': status_display}
             )
+        except IDCardTable.DoesNotExist:
+            return ServiceResult(success=False, message='Table not found')
         except Exception as e:
             return ServiceResult(success=False, message=str(e))
     
@@ -308,6 +311,7 @@ class IDCardService(BaseService):
             'status_display': card.get_status_display(),
             'created_at': card.created_at.strftime('%d-%b-%Y %I:%M %p'),
             'updated_at': card.updated_at.strftime('%d-%b-%Y %I:%M %p'),
+            'updated_at_iso': card.updated_at.isoformat() if card.updated_at else None,
         }
         
         if sr_no is not None:
@@ -420,7 +424,7 @@ class IDCardService(BaseService):
     @classmethod
     def get_all_card_ids(cls, table_id: int, status_filter: str = None) -> ServiceResult:
         """Get all card IDs for a table (for Select All). Capped at 50,000."""
-        MAX_CARD_IDS = 50000
+        MAX_CARD_IDS = 10000
         try:
             table = get_object_or_404(IDCardTable, id=table_id)
             
@@ -457,6 +461,7 @@ class IDCardService(BaseService):
                                key (pre-field-config tables).
         """
         try:
+            from django.db import transaction
             table = get_object_or_404(IDCardTable, id=table_id)
             client = table.group.client
             
@@ -466,7 +471,7 @@ class IDCardService(BaseService):
             # Track saved images for dual-write (Phase 2)
             saved_images = []
             
-            # Handle image uploads if provided
+            # Handle image uploads if provided (outside transaction — disk I/O)
             image_counter = 0
             if image_files:
                 for field in table.fields:
@@ -503,56 +508,58 @@ class IDCardService(BaseService):
                                     'original_filename': getattr(uploaded_file, 'name', None)
                                 })
             
-            from .workflow_service import WorkflowService
-            card = IDCard.objects.create(
-                table=table,
-                field_data=field_data,
-                status=WorkflowService.INITIAL_STATUS
-            )
-            
-            # DUAL-WRITE: Create CardMedia records for saved images
-            for img_info in saved_images:
-                try:
-                    ImageService.create_media_record(
-                        saved_path=img_info['path'],
-                        client=client,
-                        card=card,
-                        field_name=img_info['field_name'],
-                        media_type=img_info['field_type'],
-                        original_filename=img_info['original_filename'],
-                        uploaded_by=uploaded_by
-                    )
-                except Exception as media_err:
-                    logger.warning("Failed to create CardMedia for %s: %s", img_info['field_name'], media_err)
-            
-            # Legacy 'photo' key — old clients may send a separate photo file
-            if legacy_photo_file:
-                try:
-                    original_ext = '.jpg'
-                    if hasattr(legacy_photo_file, 'name') and legacy_photo_file.name:
-                        _, _ext = __import__('os').path.splitext(legacy_photo_file.name)
-                        if _ext:
-                            original_ext = _ext.lower()
-                    img_bytes = legacy_photo_file.read()
-                    legacy_photo_file.seek(0)
-                    image_counter += 1
-                    result = ImageService.save_new_image(
-                        image_bytes=img_bytes,
-                        client=client,
-                        field_name='PHOTO',
-                        card=card,
-                        batch_counter=image_counter,
-                        original_ext=original_ext,
-                        original_filename=getattr(legacy_photo_file, 'name', None),
-                        uploaded_by=uploaded_by,
-                    )
-                    if result.success and result.data.get('final_value'):
-                        fd = card.field_data or {}
-                        fd['PHOTO'] = result.data['final_value']
-                        card.field_data = fd
-                        card.save()
-                except Exception as photo_err:
-                    logger.error("Error saving legacy photo during create: %s", photo_err)
+            # Atomic block: card creation + media records together
+            with transaction.atomic():
+                from .workflow_service import WorkflowService
+                card = IDCard.objects.create(
+                    table=table,
+                    field_data=field_data,
+                    status=WorkflowService.INITIAL_STATUS
+                )
+                
+                # DUAL-WRITE: Create CardMedia records for saved images
+                for img_info in saved_images:
+                    try:
+                        ImageService.create_media_record(
+                            saved_path=img_info['path'],
+                            client=client,
+                            card=card,
+                            field_name=img_info['field_name'],
+                            media_type=img_info['field_type'],
+                            original_filename=img_info['original_filename'],
+                            uploaded_by=uploaded_by
+                        )
+                    except Exception as media_err:
+                        logger.warning("Failed to create CardMedia for %s: %s", img_info['field_name'], media_err)
+                
+                # Legacy 'photo' key — old clients may send a separate photo file
+                if legacy_photo_file:
+                    try:
+                        original_ext = '.jpg'
+                        if hasattr(legacy_photo_file, 'name') and legacy_photo_file.name:
+                            _, _ext = __import__('os').path.splitext(legacy_photo_file.name)
+                            if _ext:
+                                original_ext = _ext.lower()
+                        img_bytes = legacy_photo_file.read()
+                        legacy_photo_file.seek(0)
+                        image_counter += 1
+                        result = ImageService.save_new_image(
+                            image_bytes=img_bytes,
+                            client=client,
+                            field_name='PHOTO',
+                            card=card,
+                            batch_counter=image_counter,
+                            original_ext=original_ext,
+                            original_filename=getattr(legacy_photo_file, 'name', None),
+                            uploaded_by=uploaded_by,
+                        )
+                        if result.success and result.data.get('final_value'):
+                            fd = card.field_data or {}
+                            fd['PHOTO'] = result.data['final_value']
+                            card.field_data = fd
+                            card.save(update_fields=['field_data'])
+                    except Exception as photo_err:
+                        logger.error("Error saving legacy photo during create: %s", photo_err)
             
             return ServiceResult(
                 success=True,
@@ -825,17 +832,18 @@ class IDCardService(BaseService):
             
             from django.db import transaction
             with transaction.atomic():
+                # Lock rows to prevent concurrent modifications during delete
+                if delete_all:
+                    locked_qs = IDCard.objects.select_for_update().filter(table=table)
+                else:
+                    locked_qs = IDCard.objects.select_for_update().filter(table=table, id__in=card_ids or [])
+                
                 # Collect image cleanup before deleting
-                for card in list(cards_qs):
+                for card in list(locked_qs):
                     card.delete_images()
                 
-                if delete_all:
-                    deleted_count, _ = IDCard.objects.filter(table=table).delete()
-                else:
-                    deleted_count, _ = IDCard.objects.filter(
-                        table=table, 
-                        id__in=card_ids or []
-                    ).delete()
+                deleted_count = locked_qs.count()
+                locked_qs.delete()
             
             return ServiceResult(
                 success=True,
@@ -946,9 +954,10 @@ class IDCardService(BaseService):
 
             upgraded = 0
             skipped = 0
-            cards_to_update = []
             with transaction.atomic():
-                for card in cards:
+                BATCH_SIZE = 500
+                cards_to_update = []
+                for card in cards.iterator(chunk_size=BATCH_SIZE):
                     field_data = card.field_data or {}
                     current_val = str(field_data.get(class_field_name, '')).strip().upper()
                     if current_val in CLASS_UPGRADE_MAP:
@@ -958,8 +967,12 @@ class IDCardService(BaseService):
                         upgraded += 1
                     else:
                         skipped += 1
+                    # Flush batch to DB periodically to limit memory
+                    if len(cards_to_update) >= BATCH_SIZE:
+                        IDCard.objects.bulk_update(cards_to_update, ['field_data', 'updated_at'], batch_size=BATCH_SIZE)
+                        cards_to_update = []
                 if cards_to_update:
-                    IDCard.objects.bulk_update(cards_to_update, ['field_data', 'updated_at'], batch_size=500)
+                    IDCard.objects.bulk_update(cards_to_update, ['field_data', 'updated_at'], batch_size=BATCH_SIZE)
 
             return ServiceResult(
                 success=True,

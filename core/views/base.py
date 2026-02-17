@@ -11,15 +11,19 @@ ARCHITECTURE RULES (enforced):
 """
 from functools import wraps
 import json
+import logging
 from django.conf import settings as django_settings
+from django.core.cache import cache
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.db.models import Count, Q
 from ..models import Client, Staff, IDCardGroup, IDCard, IDCardTable, ReprintRequest, User, SystemSettings
 from ..services import IDCardService
 from ..services.activity_service import ActivityService
+from ..utils.htmx import is_htmx, render_partial
 from ..services.permission_service import (
     PermissionService,
     require_any_admin,
@@ -29,9 +33,65 @@ from ..services.permission_service import (
     api_require_super_admin as _api_require_super_admin,
 )
 
+logger = logging.getLogger(__name__)
+
 def get_user_role(user):
     """Helper function to get user role display name"""
     return user.get_role_display()
+
+
+def get_page_range(page_obj, window=2):
+    """
+    Return a list of page numbers (and '...' for gaps) for the paginator.
+    e.g. [1, '...', 4, 5, 6, '...', 10] for page 5 of 10 with window=2.
+    """
+    num_pages = page_obj.paginator.num_pages
+    current = page_obj.number
+    pages = []
+    if num_pages <= (2 * window + 5):
+        return list(range(1, num_pages + 1))
+    # Always show first page
+    pages.append(1)
+    if current - window > 2:
+        pages.append('...')
+    for p in range(max(2, current - window), min(num_pages, current + window + 1)):
+        pages.append(p)
+    if current + window < num_pages - 1:
+        pages.append('...')
+    if num_pages not in pages:
+        pages.append(num_pages)
+    return pages
+
+
+def enrich_cards(cards, table_fields, start_index=0):
+    """
+    Enrich a list/queryset of IDCard objects with ordered field values.
+    Returns a list of dicts ready for template rendering.
+    """
+    enriched = []
+    for idx, card in enumerate(cards):
+        ordered_fields = []
+        field_data = card.field_data or {}
+        field_data_normalized = {k.upper(): v for k, v in field_data.items()}
+        for field in table_fields:
+            field_name = field['name']
+            field_type = field['type']
+            field_value = field_data.get(field_name, '') or field_data_normalized.get(field_name.upper(), '')
+            ordered_fields.append({
+                'name': field_name,
+                'type': field_type,
+                'value': field_value,
+            })
+        enriched.append({
+            'id': card.id,
+            'sr_no': start_index + idx + 1,
+            'photo': card.photo,
+            'status': card.status,
+            'get_status_display': card.get_status_display(),
+            'updated_at': card.updated_at,
+            'ordered_fields': ordered_fields,
+        })
+    return enriched
 
 
 def super_admin_required(view_func):
@@ -47,15 +107,19 @@ def super_admin_required(view_func):
 @require_any_admin
 def dashboard(request):
     """Main dashboard view - Super Admin & Admin Staff"""
-    # Combine card status counts into a single aggregate query
+    # Combine card status counts into a single aggregate query (cached 30s)
     # Exclude 'pool' status from total count
-    card_stats = IDCard.objects.aggregate(
-        total=Count('id', filter=Q(status__in=['pending', 'verified', 'approved', 'download'])),
-        pending=Count('id', filter=Q(status='pending')),
-        verified=Count('id', filter=Q(status='verified')),
-        approved=Count('id', filter=Q(status='approved')),
-        downloaded=Count('id', filter=Q(status='download')),
-    )
+    card_stats = cache.get('dashboard_card_stats')
+    if card_stats is None:
+        card_stats = IDCard.objects.aggregate(
+            total=Count('id', filter=Q(status__in=['pending', 'verified', 'approved', 'download'])),
+            pending=Count('id', filter=Q(status='pending')),
+            verified=Count('id', filter=Q(status='verified')),
+            approved=Count('id', filter=Q(status='approved')),
+            downloaded=Count('id', filter=Q(status='download')),
+        )
+        cache.set('dashboard_card_stats', card_stats, 30)
+
     context = {
         'active_page': 'dashboard',
         'user_role': get_user_role(request.user),
@@ -65,19 +129,30 @@ def dashboard(request):
         'approved_cards': card_stats['approved'],
         'downloaded_cards': card_stats['downloaded'],
     }
-    # Consolidate count queries with aggregate (6→3 queries)
-    client_stats = Client.objects.aggregate(
-        total=Count('id'),
-        active=Count('id', filter=Q(status='active')),
-    )
-    staff_stats = Staff.objects.aggregate(
-        total=Count('id'),
-        active=Count('id', filter=Q(user__is_active=True)),
-    )
-    cs_stats = User.objects.filter(role='client_staff').aggregate(
-        total=Count('id'),
-        active=Count('id', filter=Q(is_active=True)),
-    )
+    # Consolidate count queries with aggregate (cached 60s)
+    client_stats = cache.get('dashboard_client_stats')
+    if client_stats is None:
+        client_stats = Client.objects.aggregate(
+            total=Count('id'),
+            active=Count('id', filter=Q(status='active')),
+        )
+        cache.set('dashboard_client_stats', client_stats, 60)
+
+    staff_stats = cache.get('dashboard_staff_stats')
+    if staff_stats is None:
+        staff_stats = Staff.objects.aggregate(
+            total=Count('id'),
+            active=Count('id', filter=Q(user__is_active=True)),
+        )
+        cache.set('dashboard_staff_stats', staff_stats, 60)
+
+    cs_stats = cache.get('dashboard_cs_stats')
+    if cs_stats is None:
+        cs_stats = User.objects.filter(role='client_staff').aggregate(
+            total=Count('id'),
+            active=Count('id', filter=Q(is_active=True)),
+        )
+        cache.set('dashboard_cs_stats', cs_stats, 60)
     context.update({
         'total_clients': client_stats['total'],
         'active_clients': client_stats['active'],
@@ -142,9 +217,10 @@ def api_recent_client_updates(request):
             'clients': results
         })
     except Exception as e:
+        logger.exception('api_recent_client_updates error: %s', e)
         return JsonResponse({
             'success': False,
-            'error': str(e)
+            'error': 'An error occurred. Please try again.'
         }, status=500)
 
 
@@ -159,7 +235,8 @@ def api_recent_activity(request):
         activities = ActivityService.get_recent(limit=limit, user=request.user)
         return JsonResponse({'success': True, 'activities': activities})
     except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        logger.exception('api_recent_activity error: %s', e)
+        return JsonResponse({'success': False, 'error': 'An error occurred. Please try again.'}, status=500)
 
 
 @require_http_methods(["GET"])
@@ -280,19 +357,64 @@ def api_global_search(request):
             'query': query
         })
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+        logger.exception('api_global_search error: %s', e)
+        return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 
 
 # Staff Management
 @super_admin_required
 def manage_staff(request):
-    """View to manage admin staff"""
-    staff_list = Staff.objects.filter(staff_type='admin_staff').select_related('user')
+    """View to manage admin staff — supports HTMX partial responses."""
+    DEFAULT_PER_PAGE = 10
+    PER_PAGE_OPTIONS = [5, 10, 25, 50, 100]
+    
+    try:
+        per_page = int(request.GET.get('per_page', DEFAULT_PER_PAGE))
+        if per_page not in PER_PAGE_OPTIONS:
+            per_page = DEFAULT_PER_PAGE
+    except (ValueError, TypeError):
+        per_page = DEFAULT_PER_PAGE
+    
+    page_number = request.GET.get('page', 1)
+    search_query = request.GET.get('search', '').strip()
+    status_filter = request.GET.get('status', '').strip()
+    
+    staff_qs = Staff.objects.filter(staff_type='admin_staff').select_related('user')
+    
+    # Server-side search
+    if search_query:
+        staff_qs = staff_qs.filter(
+            Q(user__first_name__icontains=search_query) |
+            Q(user__last_name__icontains=search_query) |
+            Q(user__email__icontains=search_query) |
+            Q(user__phone__icontains=search_query) |
+            Q(user__username__icontains=search_query)
+        )
+    
+    # Server-side status filter
+    if status_filter == 'active':
+        staff_qs = staff_qs.filter(user__is_active=True)
+    elif status_filter == 'inactive':
+        staff_qs = staff_qs.filter(user__is_active=False)
+    
+    paginator = Paginator(staff_qs, per_page)
+    page_obj = paginator.get_page(page_number)
+    
     context = {
         'active_page': 'manage_staff',
         'user_role': get_user_role(request.user),
-        'staff_list': staff_list,
+        'staff_list': page_obj.object_list,
+        'page_obj': page_obj,
+        'page_range': get_page_range(page_obj),
+        'per_page': per_page,
+        'per_page_options': PER_PAGE_OPTIONS,
+        'search_query': search_query,
+        'status_filter': status_filter,
     }
+    
+    if is_htmx(request):
+        return render(request, 'partials/staff/table-container.html', context)
+    
     return render(request, 'manage-staff.html', context)
 
 
@@ -300,16 +422,53 @@ def manage_staff(request):
 @login_required
 @require_any_admin
 def manage_clients(request):
-    """View to manage all clients - Super Admin sees all, Admin Staff sees assigned only"""
+    """View to manage all clients — supports HTMX partial responses."""
     user = request.user
-    clients = PermissionService.get_accessible_clients(
+    DEFAULT_PER_PAGE = 10
+    PER_PAGE_OPTIONS = [5, 10, 25, 50, 100]
+    
+    try:
+        per_page = int(request.GET.get('per_page', DEFAULT_PER_PAGE))
+        if per_page not in PER_PAGE_OPTIONS:
+            per_page = DEFAULT_PER_PAGE
+    except (ValueError, TypeError):
+        per_page = DEFAULT_PER_PAGE
+    
+    page_number = request.GET.get('page', 1)
+    search_query = request.GET.get('search', '').strip()
+    status_filter = request.GET.get('status', '').strip()
+    
+    clients_qs = PermissionService.get_accessible_clients(
         user, Client.objects.all().select_related('user')
     )
+    
+    if search_query:
+        clients_qs = clients_qs.filter(
+            Q(name__icontains=search_query) |
+            Q(user__email__icontains=search_query) |
+            Q(user__phone__icontains=search_query)
+        )
+    if status_filter and status_filter in ('active', 'inactive', 'suspended'):
+        clients_qs = clients_qs.filter(status=status_filter)
+    
+    paginator = Paginator(clients_qs, per_page)
+    page_obj = paginator.get_page(page_number)
+    
     context = {
         'active_page': 'manage_clients',
         'user_role': get_user_role(request.user),
-        'clients': clients,
+        'clients': page_obj.object_list,
+        'page_obj': page_obj,
+        'page_range': get_page_range(page_obj),
+        'per_page': per_page,
+        'per_page_options': PER_PAGE_OPTIONS,
+        'search_query': search_query,
+        'status_filter': status_filter,
     }
+    
+    if is_htmx(request):
+        return render(request, 'partials/client/table-container.html', context)
+    
     return render(request, 'manage-client.html', context)
 
 
@@ -317,19 +476,49 @@ def manage_clients(request):
 @login_required
 @require_any_admin
 def active_clients(request):
-    """View active clients for ID card management - Super Admin and Admin Staff"""
+    """View active clients for ID card management — supports HTMX partial responses."""
     user = request.user
-    
-    # Scoped by PermissionService
-    clients = PermissionService.get_accessible_clients(
+    search_query = request.GET.get('search', '').strip()
+
+    DEFAULT_PER_PAGE = 25
+    PER_PAGE_OPTIONS = [10, 25, 50, 100]
+    try:
+        per_page = int(request.GET.get('per_page', DEFAULT_PER_PAGE))
+        if per_page not in PER_PAGE_OPTIONS:
+            per_page = DEFAULT_PER_PAGE
+    except (ValueError, TypeError):
+        per_page = DEFAULT_PER_PAGE
+
+    clients_qs = PermissionService.get_accessible_clients(
         user, Client.objects.filter(status='active').select_related('user')
+    ).prefetch_related('id_card_groups').annotate(
+        group_count=Count('id_card_groups')
     )
     
+    if search_query:
+        clients_qs = clients_qs.filter(
+            Q(name__icontains=search_query) |
+            Q(user__email__icontains=search_query) |
+            Q(user__phone__icontains=search_query)
+        )
+
+    paginator = Paginator(clients_qs, per_page)
+    page_obj = paginator.get_page(request.GET.get('page', 1))
+
     context = {
         'active_page': 'active_clients',
         'user_role': get_user_role(request.user),
-        'clients': clients,
+        'clients': page_obj.object_list,
+        'search_query': search_query,
+        'page_obj': page_obj,
+        'page_range': get_page_range(page_obj),
+        'per_page': per_page,
+        'per_page_options': PER_PAGE_OPTIONS,
     }
+    
+    if is_htmx(request):
+        return render(request, 'partials/active-client/table-container.html', context)
+    
     return render(request, 'active-client.html', context)
 
 
@@ -346,7 +535,7 @@ def idcard_group(request, client_id):
         return redirect('active_clients')
     
     # Get all tables for this client's groups with status counts
-    tables = IDCardTable.objects.filter(group__client=client).select_related('group').annotate(
+    tables = IDCardTable.objects.filter(group__client=client).select_related('group', 'group__client').annotate(
         pending_count=Count('id_cards', filter=Q(id_cards__status='pending')),
         verified_count=Count('id_cards', filter=Q(id_cards__status='verified')),
         pool_count=Count('id_cards', filter=Q(id_cards__status='pool')),
@@ -369,7 +558,11 @@ def idcard_group(request, client_id):
 @login_required
 @require_any_admin
 def idcard_actions(request, table_id):
-    """View and manage ID cards in a table, optionally filtered by status"""
+    """View and manage ID cards in a table, optionally filtered by status.
+    
+    Supports HTMX partial responses for pagination, filtering, and status tabs.
+    Query params: status, page, per_page, search, class, section
+    """
     table = get_object_or_404(IDCardTable.objects.select_related('group__client'), id=table_id)
     
     # Check if user has access to this table's client
@@ -393,61 +586,47 @@ def idcard_actions(request, table_id):
         if required_perm and not PermissionService.has_permission(user, required_perm):
             return redirect('active_clients')  # No permission for this status list
     
-    # Initial load limit for lazy loading (first 100 records)
-    INITIAL_LOAD_LIMIT = 100
+    # ── Server-side pagination parameters ──
+    DEFAULT_PER_PAGE = 50
+    PER_PAGE_OPTIONS = [50, 100, 150, 200]
+    try:
+        per_page = int(request.GET.get('per_page', DEFAULT_PER_PAGE))
+        if per_page not in PER_PAGE_OPTIONS:
+            per_page = DEFAULT_PER_PAGE
+    except (ValueError, TypeError):
+        per_page = DEFAULT_PER_PAGE
+    
+    page_number = request.GET.get('page', 1)
+    search_query = request.GET.get('search', '').strip()
+    class_filter = request.GET.get('class', '').strip()
+    section_filter = request.GET.get('section', '').strip()
     
     # Order by id descending so newest records appear first
     id_cards_query = IDCard.objects.filter(table=table).order_by('-id')
     if status_filter and status_filter in ['pending', 'verified', 'pool', 'approved', 'download', 'reprint']:
         id_cards_query = id_cards_query.filter(status=status_filter)
     
-    # Get total count for this status
-    total_count = id_cards_query.count()
+    # ── Server-side search filtering ──
+    if search_query:
+        id_cards_query = id_cards_query.filter(field_data__icontains=search_query)
+    if class_filter:
+        id_cards_query = id_cards_query.filter(field_data__icontains=class_filter)
+    if section_filter:
+        id_cards_query = id_cards_query.filter(field_data__icontains=section_filter)
     
-    # Only load first batch for initial page render
-    id_cards = id_cards_query[:INITIAL_LOAD_LIMIT]
+    # Get total count for this status (before pagination)
+    total_count = id_cards_query.count()
     
     # Get counts for all statuses (single aggregate query)
     status_counts = IDCardService.get_status_counts(table)
     
-    # Create a field type lookup from table.fields
-    field_types = {field['name']: field['type'] for field in table.fields}
+    # ── Paginate ──
+    paginator = Paginator(id_cards_query, per_page)
+    page_obj = paginator.get_page(page_number)
     
-    # Enrich each card with ordered field values matching table.fields
-    enriched_cards = []
-    for idx, card in enumerate(id_cards):
-        ordered_fields = []
-        field_data = card.field_data or {}
-        
-        # Create case-insensitive lookup for field_data
-        # This handles cases where table fields might have different case than stored data
-        field_data_normalized = {}
-        for key, value in field_data.items():
-            # Store with uppercase key for case-insensitive lookup
-            field_data_normalized[key.upper()] = value
-        
-        for field in table.fields:
-            field_name = field['name']
-            field_type = field['type']
-            # Try exact match first, then case-insensitive match
-            field_value = field_data.get(field_name, '')
-            if not field_value:
-                # Try case-insensitive lookup
-                field_value = field_data_normalized.get(field_name.upper(), '')
-            ordered_fields.append({
-                'name': field_name,
-                'type': field_type,
-                'value': field_value,
-            })
-        enriched_cards.append({
-            'id': card.id,
-            'sr_no': idx + 1,
-            'photo': card.photo,
-            'status': card.status,
-            'get_status_display': card.get_status_display(),
-            'updated_at': card.updated_at,
-            'ordered_fields': ordered_fields,
-        })
+    # Enrich cards with ordered field data
+    start_index = (page_obj.number - 1) * per_page
+    enriched_cards = enrich_cards(page_obj.object_list, table.fields, start_index)
     
     context = {
         'active_page': 'active_clients',
@@ -459,9 +638,22 @@ def idcard_actions(request, table_id):
         'current_status': status_filter,
         'status_counts': status_counts,
         'total_count': total_count,
-        'initial_load_limit': INITIAL_LOAD_LIMIT,
-        'has_more': total_count > INITIAL_LOAD_LIMIT,
+        'has_more': False,  # Legacy compat — HTMX pagination replaces lazy loading
+        'initial_load_limit': per_page,
+        # Pagination context
+        'page_obj': page_obj,
+        'page_range': get_page_range(page_obj),
+        'per_page': per_page,
+        'per_page_options': PER_PAGE_OPTIONS,
+        'search_query': search_query,
+        'class_filter': class_filter,
+        'section_filter': section_filter,
     }
+    
+    # HTMX partial response — return only the table container
+    if is_htmx(request):
+        return render(request, 'partials/idcard/table-container.html', context)
+    
     return render(request, 'idcard-actions.html', context)
 
 
@@ -469,24 +661,51 @@ def idcard_actions(request, table_id):
 @login_required
 @require_any_admin
 def group_settings(request, client_id):
-    """Settings for a specific client - manage their groups and tables"""
+    """Settings for a specific client — manage their groups and tables.
+    Supports HTMX partial responses for table refresh after CRUD."""
     client = get_object_or_404(Client, id=client_id)
-    # Check if user has access to this client
     user = request.user
     if not PermissionService.can_access_client(user, client_id):
         return redirect('active_clients')
-    # Get the first group for client, or create one if none exists
+    
+    search_query = request.GET.get('search', '').strip()
+    
     group = IDCardService.ensure_default_group(client)
-    tables = IDCardTable.objects.filter(group=group).annotate(
+    tables_qs = IDCardTable.objects.filter(group=group).annotate(
         total_cards=Count('id_cards')
     )
+    
+    if search_query:
+        tables_qs = tables_qs.filter(name__icontains=search_query)
+    
+    DEFAULT_PER_PAGE = 10
+    PER_PAGE_OPTIONS = [5, 10, 25, 50]
+    try:
+        per_page = int(request.GET.get('per_page', DEFAULT_PER_PAGE))
+        if per_page not in PER_PAGE_OPTIONS:
+            per_page = DEFAULT_PER_PAGE
+    except (ValueError, TypeError):
+        per_page = DEFAULT_PER_PAGE
+    
+    paginator = Paginator(tables_qs, per_page)
+    page_obj = paginator.get_page(request.GET.get('page', 1))
+    
     context = {
         'active_page': 'active_clients',
         'user_role': get_user_role(request.user),
         'client': client,
         'group': group,
-        'tables': tables,
+        'tables': page_obj.object_list,
+        'page_obj': page_obj,
+        'page_range': get_page_range(page_obj),
+        'per_page': per_page,
+        'per_page_options': PER_PAGE_OPTIONS,
+        'search_query': search_query,
     }
+    
+    if is_htmx(request):
+        return render(request, 'partials/group-setting/table-container.html', context)
+    
     return render(request, 'group-setting.html', context)
 
 
@@ -529,11 +748,16 @@ def reprint_cards(request, table_id):
     if current_step not in ('requests', 'confirm', 'download'):
         current_step = 'requests'
 
-    # Real step counts from ReprintRequest table
+    # Real step counts from ReprintRequest table (single aggregate query)
+    step_counts_raw = ReprintRequest.objects.filter(table=table).aggregate(
+        req=Count('id', filter=Q(status='requested')),
+        conf=Count('id', filter=Q(status='confirmed')),
+        dl=Count('id', filter=Q(status='downloaded')),
+    )
     step_counts = {
-        'requests': ReprintRequest.objects.filter(table=table, status='requested').count(),
-        'confirm': ReprintRequest.objects.filter(table=table, status='confirmed').count(),
-        'download': ReprintRequest.objects.filter(table=table, status='downloaded').count(),
+        'requests': step_counts_raw['req'],
+        'confirm': step_counts_raw['conf'],
+        'download': step_counts_raw['dl'],
     }
 
     # For step 1 (Requests): load initial cards from the table for browsing
@@ -817,6 +1041,11 @@ def api_card_allowed_transitions(request, card_id):
     try:
         card = get_object_or_404(IDCard, id=card_id)
     except Exception:
+        return JsonResponse({'success': False, 'message': 'Card not found'}, status=404)
+
+    # IDOR protection: scope card to requesting user's client
+    client_id = card.table.group.client_id
+    if not PermissionService.can_access_client(request.user, client_id):
         return JsonResponse({'success': False, 'message': 'Card not found'}, status=404)
 
     allowed = WorkflowService.get_allowed_transitions(card, user=request.user)

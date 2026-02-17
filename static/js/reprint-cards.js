@@ -228,6 +228,11 @@ function createReprintPaginator(opts) {
       selectAllCb.checked = allChecked;
       selectAllCb.indeterminate = someChecked && !allChecked;
     }
+
+    // Bridge to Alpine reactive state
+    if (typeof window.alpineUpdateSelection === 'function') {
+      window.alpineUpdateSelection(checked.map(String));
+    }
   }
 
   // ── Select All ──
@@ -435,7 +440,7 @@ function createReprintPaginator(opts) {
       if (card.ordered_fields) {
         card.ordered_fields.forEach(f => {
           if (!isImageField(f.type, f.name)) {
-            html += `<td class="dynamic-col" data-field="${f.name}">${escapeHtml(f.value || '-')}</td>`;
+            html += `<td class="dynamic-col" data-field="${escapeHtml(f.name)}">${escapeHtml(f.value || '-')}</td>`;
           }
         });
       }
@@ -444,11 +449,11 @@ function createReprintPaginator(opts) {
       if (card.ordered_fields) {
         card.ordered_fields.forEach(f => {
           if (isImageField(f.type, f.name)) {
-            html += `<td class="image-field image-cell" data-field="${f.name}" data-field-type="image">`;
+            html += `<td class="image-field image-cell" data-field="${escapeHtml(f.name)}" data-field-type="image">`;
             html += `<div class="image-with-edit">`;
             if (f.value && f.value !== '' && f.value !== 'NOT_FOUND' && !f.value.startsWith('PENDING:')) {
               const thumbPath = f.value.replace(/\/([^\/]+)$/, '/thumbnails/$1');
-              html += `<img src="/media/${thumbPath}" alt="${f.name}" class="table-image" loading="lazy" onerror="this.onerror=null; this.src='/media/${f.value}'">`;
+              html += `<img src="/media/${thumbPath}" alt="${escapeHtml(f.name)}" class="table-image" loading="lazy" onerror="this.onerror=null; this.src='/media/${f.value}'">`;
             } else if (f.value && f.value.startsWith('PENDING:')) {
               html += `<div class="no-image pending-placeholder" title="Waiting for upload"><i class="fa-solid fa-clock"></i></div>`;
             } else {
@@ -658,7 +663,8 @@ function createReprintPaginator(opts) {
   }
 
   function updateSelectionUI() {
-    const count = getSelectedRrIds().length;
+    const ids = getSelectedRrIds();
+    const count = ids.length;
     if (confirmBtn) confirmBtn.disabled = count === 0;
     if (rejectBtn) rejectBtn.disabled = count === 0;
     if (viewBtn) viewBtn.disabled = count !== 1;
@@ -672,6 +678,11 @@ function createReprintPaginator(opts) {
       const someChecked = allCbs.some(cb => cb.checked);
       selectAllCb.checked = allChecked;
       selectAllCb.indeterminate = someChecked && !allChecked;
+    }
+
+    // Bridge to Alpine reactive state
+    if (typeof window.alpineUpdateSelection === 'function') {
+      window.alpineUpdateSelection(ids.map(String));
     }
   }
 
@@ -857,7 +868,7 @@ function createReprintPaginator(opts) {
       if (item.ordered_fields) {
         item.ordered_fields.forEach(f => {
           if (!isImageField(f.type, f.name)) {
-            html += `<td class="dynamic-col" data-field="${f.name}">${escapeHtml(f.value || '-')}</td>`;
+            html += `<td class="dynamic-col" data-field="${escapeHtml(f.name)}">${escapeHtml(f.value || '-')}</td>`;
           }
         });
       }
@@ -866,11 +877,11 @@ function createReprintPaginator(opts) {
       if (item.ordered_fields) {
         item.ordered_fields.forEach(f => {
           if (isImageField(f.type, f.name)) {
-            html += `<td class="image-field image-cell" data-field="${f.name}" data-field-type="image">`;
+            html += `<td class="image-field image-cell" data-field="${escapeHtml(f.name)}" data-field-type="image">`;
             html += `<div class="image-with-edit">`;
             if (f.value && f.value !== '' && f.value !== 'NOT_FOUND' && !f.value.startsWith('PENDING:')) {
               const thumbPath = f.value.replace(/\/([^\/]+)$/, '/thumbnails/$1');
-              html += `<img src="/media/${thumbPath}" alt="${f.name}" class="table-image" loading="lazy" onerror="this.onerror=null; this.src='/media/${f.value}'">`;
+              html += `<img src="/media/${thumbPath}" alt="${escapeHtml(f.name)}" class="table-image" loading="lazy" onerror="this.onerror=null; this.src='/media/${f.value}'">`;
             } else if (f.value && f.value.startsWith('PENDING:')) {
               html += `<div class="no-image pending-placeholder" title="Waiting for upload"><i class="fa-solid fa-clock"></i></div>`;
             } else {
@@ -1016,7 +1027,8 @@ function createReprintPaginator(opts) {
   }
 
   function updateSelectionUI() {
-    const count = getSelectedRrIds().length;
+    const ids = getSelectedRrIds();
+    const count = ids.length;
     if (downloadBtn) downloadBtn.disabled = count === 0;
     if (viewBtn) viewBtn.disabled = count !== 1;
 
@@ -1029,6 +1041,11 @@ function createReprintPaginator(opts) {
       const someChecked = allCbs.some(cb => cb.checked);
       selectAllCb.checked = allChecked;
       selectAllCb.indeterminate = someChecked && !allChecked;
+    }
+
+    // Bridge to Alpine reactive state
+    if (typeof window.alpineUpdateSelection === 'function') {
+      window.alpineUpdateSelection(ids.map(String));
     }
   }
 
@@ -1172,7 +1189,7 @@ function createReprintPaginator(opts) {
       if (item.ordered_fields) {
         item.ordered_fields.forEach(f => {
           if (!isImageField(f.type, f.name)) {
-            html += `<td class="dynamic-col" data-field="${f.name}">${escapeHtml(f.value || '-')}</td>`;
+            html += `<td class="dynamic-col" data-field="${escapeHtml(f.name)}">${escapeHtml(f.value || '-')}</td>`;
           }
         });
       }
@@ -1181,11 +1198,11 @@ function createReprintPaginator(opts) {
       if (item.ordered_fields) {
         item.ordered_fields.forEach(f => {
           if (isImageField(f.type, f.name)) {
-            html += `<td class="image-field image-cell" data-field="${f.name}" data-field-type="image">`;
+            html += `<td class="image-field image-cell" data-field="${escapeHtml(f.name)}" data-field-type="image">`;
             html += `<div class="image-with-edit">`;
             if (f.value && f.value !== '' && f.value !== 'NOT_FOUND' && !f.value.startsWith('PENDING:')) {
               const thumbPath = f.value.replace(/\/([^\/]+)$/, '/thumbnails/$1');
-              html += `<img src="/media/${thumbPath}" alt="${f.name}" class="table-image" loading="lazy" onerror="this.onerror=null; this.src='/media/${f.value}'">`;
+              html += `<img src="/media/${thumbPath}" alt="${escapeHtml(f.name)}" class="table-image" loading="lazy" onerror="this.onerror=null; this.src='/media/${f.value}'">`;
             } else if (f.value && f.value.startsWith('PENDING:')) {
               html += `<div class="no-image pending-placeholder" title="Waiting for upload"><i class="fa-solid fa-clock"></i></div>`;
             } else {

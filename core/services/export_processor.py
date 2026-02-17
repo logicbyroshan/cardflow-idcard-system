@@ -18,6 +18,7 @@ Usage:
 import os
 import logging
 import tempfile
+import time
 import zipfile
 from datetime import datetime
 
@@ -188,7 +189,19 @@ def process_export_zip(task):
         
         # Set result path to first ZIP (or could be a combined ZIP)
         task.mark_completed(result_path=zip_files_created[0]['path'])
-        logger.info("ZIP export completed: %d images in %d files", total_images, len(zip_files_created))
+
+        # Determine total file size on disk
+        total_bytes = 0
+        for zi in zip_files_created:
+            full = os.path.join(settings.MEDIA_ROOT, zi['path'])
+            if os.path.exists(full):
+                total_bytes += os.path.getsize(full)
+
+        logger.info(
+            "EXPORT_DONE type=zip task_id=%d cards=%d images=%d zips=%d size_mb=%.2f",
+            task.id, total_cards, total_images, len(zip_files_created),
+            total_bytes / (1024 * 1024),
+        )
         
     except Exception as e:
         # Cleanup current partial ZIP being written
@@ -290,7 +303,12 @@ def process_export_pdf(task):
         
         task.update_progress(total_cards)
         task.mark_completed(result_path=relative_path)
-        logger.info("PDF export completed: %d cards", result.card_count)
+
+        size_bytes = os.path.getsize(pdf_path) if os.path.exists(pdf_path) else 0
+        logger.info(
+            "EXPORT_DONE type=pdf task_id=%d cards=%d size_mb=%.2f",
+            task.id, result.card_count, size_bytes / (1024 * 1024),
+        )
         
     except Exception as e:
         # Cleanup partial PDF file on failure (e.g. disk-full)
@@ -379,7 +397,12 @@ def process_export_docx(task):
         
         task.update_progress(total_cards)
         task.mark_completed(result_path=relative_path)
-        logger.info("DOCX export completed: %d cards", result.card_count)
+
+        size_bytes = os.path.getsize(docx_path) if os.path.exists(docx_path) else 0
+        logger.info(
+            "EXPORT_DONE type=docx task_id=%d cards=%d size_mb=%.2f",
+            task.id, result.card_count, size_bytes / (1024 * 1024),
+        )
         
     except Exception as e:
         # Cleanup partial DOCX file on failure (e.g. disk-full)
@@ -468,7 +491,12 @@ def process_export_excel(task):
         
         task.update_progress(total_cards)
         task.mark_completed(result_path=relative_path)
-        logger.info("Excel export completed: %d rows", result.row_count)
+
+        size_bytes = os.path.getsize(excel_path) if os.path.exists(excel_path) else 0
+        logger.info(
+            "EXPORT_DONE type=xlsx task_id=%d rows=%d size_mb=%.2f",
+            task.id, result.row_count, size_bytes / (1024 * 1024),
+        )
         
     except Exception as e:
         # Cleanup partial Excel file on failure (e.g. disk-full)

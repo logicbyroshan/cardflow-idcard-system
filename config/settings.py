@@ -81,6 +81,8 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # Request timing — logs duration, slow-request warnings (>1.5 s)
+    'core.middleware.RequestTimingMiddleware',
     # Permission Validation Middleware - re-checks permissions on every request
     # CRITICAL: Must come after AuthenticationMiddleware
     'core.middleware.PermissionValidationMiddleware',
@@ -178,6 +180,16 @@ if not DEBUG:
     # Other security
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = 'DENY'
+    SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
+    SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin'
+
+# ── Cookie hardening (always applied, both dev and prod) ──
+SESSION_COOKIE_HTTPONLY = True          # JS cannot read session cookie
+SESSION_COOKIE_SAMESITE = 'Lax'        # CSRF mitigation
+SESSION_COOKIE_AGE = 60 * 60 * 12      # 12-hour sessions
+CSRF_COOKIE_SAMESITE = 'Lax'           # CSRF cookie SameSite
+# Note: CSRF_COOKIE_HTTPONLY left False (Django default) because JS reads
+# the csrftoken cookie via getCSRFToken() for AJAX requests.
 
 
 # =============================================================================
@@ -243,11 +255,14 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # FILE UPLOAD LIMITS
 # =============================================================================
 
-# Max size for request body (100 MB — covers bulk XLSX + ZIP uploads)
-DATA_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024  # 100 MB
+# Max size for request body (1 GB — covers bulk XLSX + ZIP uploads)
+DATA_UPLOAD_MAX_MEMORY_SIZE = 1 * 1024 * 1024 * 1024  # 1 GB
 
 # Max size for a single uploaded file kept in memory before spilling to disk (10 MB)
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10 MB
+
+# Max number of files per upload request (ZIP + XLSX + unified ZIPs)
+DATA_UPLOAD_MAX_NUMBER_FILES = 30
 
 
 # =============================================================================
@@ -257,6 +272,10 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10 MB
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'TIMEOUT': 300,  # 5-minute default TTL
+        'OPTIONS': {
+            'MAX_ENTRIES': 1000,
+        },
     }
 }
 
@@ -340,13 +359,16 @@ LOGGING = {
         'require_debug_false': {
             '()': 'django.utils.log.RequireDebugFalse',
         },
+        'require_debug_true': {
+            '()': 'django.utils.log.RequireDebugTrue',
+        },
     },
 
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'verbose' if not DEBUG else 'simple',
-            'level': 'INFO',
+            'level': 'DEBUG' if DEBUG else 'INFO',
         },
         'file_app': {
             'class': 'logging.handlers.RotatingFileHandler',
@@ -372,11 +394,19 @@ LOGGING = {
             'formatter': 'verbose',
             'level': 'INFO',
         },
+        'file_tasks': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(LOG_DIR, 'tasks.log'),
+            'maxBytes': 10 * 1024 * 1024,  # 10 MB
+            'backupCount': 5,
+            'formatter': 'verbose',
+            'level': 'INFO',
+        },
     },
 
     'root': {
         'handlers': ['console', 'file_app', 'file_error'],
-        'level': 'INFO',
+        'level': 'DEBUG' if DEBUG else 'INFO',
     },
 
     'loggers': {
@@ -390,29 +420,60 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
+        # Slow-query awareness: enable in dev to spot N+1 queries
+        'django.db.backends': {
+            'handlers': ['console'],
+            'level': 'DEBUG' if DEBUG else 'WARNING',
+            'propagate': False,
+        },
         'accounts': {
             'handlers': ['console', 'file_security', 'file_app'],
-            'level': 'INFO',
+            'level': 'DEBUG' if DEBUG else 'INFO',
             'propagate': False,
         },
         'core.middleware': {
             'handlers': ['console', 'file_security', 'file_app'],
-            'level': 'INFO',
+            'level': 'DEBUG' if DEBUG else 'INFO',
             'propagate': False,
         },
         'core.services': {
+            'handlers': ['console', 'file_app', 'file_error', 'file_tasks'],
+            'level': 'DEBUG' if DEBUG else 'INFO',
+            'propagate': False,
+        },
+        'core.views': {
             'handlers': ['console', 'file_app', 'file_error'],
-            'level': 'INFO',
+            'level': 'DEBUG' if DEBUG else 'INFO',
             'propagate': False,
         },
         'exports': {
-            'handlers': ['console', 'file_app', 'file_error'],
-            'level': 'INFO',
+            'handlers': ['console', 'file_app', 'file_error', 'file_tasks'],
+            'level': 'DEBUG' if DEBUG else 'INFO',
             'propagate': False,
         },
         'mediafiles': {
             'handlers': ['console', 'file_app'],
-            'level': 'INFO',
+            'level': 'DEBUG' if DEBUG else 'INFO',
+            'propagate': False,
+        },
+        'staff': {
+            'handlers': ['console', 'file_app'],
+            'level': 'DEBUG' if DEBUG else 'INFO',
+            'propagate': False,
+        },
+        'client': {
+            'handlers': ['console', 'file_app'],
+            'level': 'DEBUG' if DEBUG else 'INFO',
+            'propagate': False,
+        },
+        'workflows': {
+            'handlers': ['console', 'file_app'],
+            'level': 'DEBUG' if DEBUG else 'INFO',
+            'propagate': False,
+        },
+        'website': {
+            'handlers': ['console', 'file_app'],
+            'level': 'DEBUG' if DEBUG else 'INFO',
             'propagate': False,
         },
     },

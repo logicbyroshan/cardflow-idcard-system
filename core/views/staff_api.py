@@ -2,16 +2,21 @@
 Staff API Views
 Contains: All staff-related API endpoints (CRUD, toggle status, active clients list)
 """
+import json
+import logging
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
-import json
 from ..services.permission_service import api_require_super_admin
 from ..services import StaffService
 from ..models import Client
+from accounts.rate_limit import rate_limit
+
+logger = logging.getLogger(__name__)
 
 
 @require_http_methods(["POST"])
 @api_require_super_admin
+@rate_limit(max_requests=10, window_seconds=60, key_prefix='staff_create')
 def api_staff_create(request):
     """API endpoint to create a new admin staff"""
     try:
@@ -41,7 +46,8 @@ def api_staff_create(request):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+        logger.exception("Staff API error: %s", e)
+        return JsonResponse({'success': False, 'message': 'An error occurred'}, status=400)
 
 
 @require_http_methods(["GET"])
@@ -72,11 +78,13 @@ def api_staff_update(request, staff_id):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+        logger.exception("Staff API error: %s", e)
+        return JsonResponse({'success': False, 'message': 'An error occurred'}, status=400)
 
 
 @require_http_methods(["DELETE", "POST"])
 @api_require_super_admin
+@rate_limit(max_requests=5, window_seconds=60, key_prefix='staff_delete')
 def api_staff_delete(request, staff_id):
     """API endpoint to delete a staff"""
     result = StaffService.delete(staff_id)

@@ -39,6 +39,13 @@ class CoreConfig(AppConfig):
         import os
         import sys
 
+        # ── Pillow decompression-bomb guard (set once, process-wide) ──
+        try:
+            from PIL import Image
+            Image.MAX_IMAGE_PIXELS = 25_000_000  # ~25 MP
+        except ImportError:
+            pass
+
         # SQLite WAL mode for concurrent access (dev env; production uses PostgreSQL)
         from django.db.backends.signals import connection_created
         connection_created.connect(_set_sqlite_pragmas)

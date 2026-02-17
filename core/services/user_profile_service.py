@@ -96,6 +96,16 @@ class UserProfileService:
         if image_file.size > MAX_IMAGE_SIZE:
             return False, 'File too large. Maximum 5MB.', None
 
+        # Verify file is a valid image using Pillow
+        try:
+            from PIL import Image
+            image_file.seek(0)
+            img = Image.open(image_file)
+            img.verify()
+            image_file.seek(0)
+        except Exception:
+            return False, 'Uploaded file is not a valid image.', None
+
         with transaction.atomic():
             # Delete old image file
             if user.profile_image:

@@ -1,6 +1,110 @@
 /* Group Setting Page Specific Styles */
 
 /* ==================== 
+   Confirmation Modals (Status / Delete)
+   ==================== */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Legacy .show toggle — kept for backward compat, Alpine uses x-show instead */
+.modal .modal-content {
+  position: relative;
+  background: #fff;
+  border-radius: 6px;
+  padding: 28px 24px 20px;
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  animation: modalFadeIn 0.15s ease;
+}
+@keyframes modalFadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+.modal .modal-content .modal-close {
+  position: absolute;
+  right: 10px;
+  top: 8px;
+  font-size: 20px;
+  color: #9ca3af;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  line-height: 1;
+}
+.modal .modal-content .modal-close:hover { color: #374151; }
+.modal .modal-content p {
+  font-size: 15px;
+  font-weight: 500;
+  color: #374151;
+  margin: 0;
+}
+.modal .modal-content .warning-text {
+  color: #9ca3af;
+  font-size: 13px;
+  font-weight: 400;
+  margin-top: 4px;
+}
+.modal .modal-content .status-icon,
+.modal .modal-content .delete-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  margin: 0 auto 12px;
+}
+.modal .modal-content .status-icon {
+  background: #eef2ff;
+  color: #4338ca;
+}
+.modal .modal-content .delete-icon {
+  background: #fef2f2;
+  color: #dc2626;
+}
+.modal .modal-content .status-icon i,
+.modal .modal-content .delete-icon i { font-size: 22px; }
+.modal .modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 18px;
+}
+.modal .modal-actions .btn {
+  padding: 6px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+.modal .modal-actions .btn-cancel {
+  background: #eef2ff;
+  color: #4338ca;
+  border-color: #c7d2fe;
+}
+.modal .modal-actions .btn-cancel:hover { background: #e0e7ff; }
+.modal .modal-actions .btn-confirm {
+  background: #4338ca;
+  color: #fff;
+}
+.modal .modal-actions .btn-confirm:hover { background: #3730a3; }
+.modal .modal-actions .btn-danger {
+  background: #dc2626;
+  color: #fff;
+}
+.modal .modal-actions .btn-danger:hover { background: #b91c1c; }
+
+/* ==================== 
    Table Layout Styles (Primary)
    ==================== */
 

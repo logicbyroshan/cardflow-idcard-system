@@ -282,6 +282,7 @@ class ActivityLog(models.Model):
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['-created_at', 'action'], name='actlog_time_action_idx'),
+            models.Index(fields=['user', '-created_at'], name='actlog_user_time_idx'),
         ]
 
     def __str__(self):
@@ -372,6 +373,8 @@ class BackgroundTask(models.Model):
         indexes = [
             models.Index(fields=['user', 'status']),
             models.Index(fields=['task_type', 'status']),
+            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['status', '-created_at']),
             models.Index(fields=['created_at']),
             models.Index(fields=['completed_at']),
         ]
@@ -447,11 +450,20 @@ class BackgroundTask(models.Model):
             safe_delete(zip_path)
     
     def mark_started(self):
-        """Mark task as started processing"""
+        """Mark task as started processing.
+        Uses atomic conditional update to prevent double-start races.
+        """
         from django.utils import timezone
-        self.status = "processing"
-        self.started_at = timezone.now()
-        self.save(update_fields=["status", "started_at", "updated_at"])
+        from django.db import transaction
+        with transaction.atomic():
+            updated = type(self).objects.filter(
+                pk=self.pk, status='pending'
+            ).update(status='processing', started_at=timezone.now())
+            if updated == 0:
+                raise RuntimeError(
+                    f'Task {self.pk} is no longer pending (current status may have changed)'
+                )
+        self.refresh_from_db(fields=['status', 'started_at'])
     
     def mark_completed(self, result_path=None):
         """Mark task as successfully completed"""

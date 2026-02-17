@@ -382,7 +382,7 @@ document.addEventListener('DOMContentLoaded', function() {
               if (dashDeleteCodeDisplay) dashDeleteCodeDisplay.textContent = data.code;
               if (dashDeleteTableNameEl) dashDeleteTableNameEl.textContent = data.table_name;
               if (dashDeleteCountEl) dashDeleteCountEl.textContent = data.total_cards;
-              if (dashDeleteModal) dashDeleteModal.classList.add('show');
+              if (window.alpineOpenModal) window.alpineOpenModal('dashDelete');
               if (dashDeleteCodeInput) dashDeleteCodeInput.focus();
             } else {
               if (typeof showToast === 'function') showToast(data.message || 'Failed to generate code', 'error');
@@ -392,7 +392,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function dashCloseDeleteAllModal() {
-        if (dashDeleteModal) dashDeleteModal.classList.remove('show');
+        if (window.alpineCloseModal) window.alpineCloseModal();
         dashDeleteTableId = null;
         dashDeleteExpectedCode = '';
         if (dashDeleteCodeInput) dashDeleteCodeInput.value = '';
@@ -405,7 +405,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     if (dashDeleteCancelBtn) dashDeleteCancelBtn.addEventListener('click', dashCloseDeleteAllModal);
-    if (dashDeleteModal) dashDeleteModal.addEventListener('click', function(e) { if (e.target === dashDeleteModal) dashCloseDeleteAllModal(); });
+    // Overlay click-to-close now handled by Alpine @click.self in template
 
     if (dashDeleteConfirmBtn) {
         dashDeleteConfirmBtn.addEventListener('click', function() {
@@ -452,7 +452,9 @@ document.addEventListener('DOMContentLoaded', function() {
         .finally(() => { btn.disabled = false; btn.innerHTML = origHtml; });
     }
 
-    function dashTriggerBase64Download(base64, filename, mimeType) {\n        ApiClient.downloadBase64(base64, filename, mimeType);\n    }
+    function dashTriggerBase64Download(base64, filename, mimeType) {
+        ApiClient.downloadBase64(base64, filename, mimeType);
+    }
 
     // ====================
     // Upgrade All Classes (Secure 6-digit code) on Dashboard
@@ -480,7 +482,7 @@ document.addEventListener('DOMContentLoaded', function() {
               if (dashUpgradeCodeDisplay) dashUpgradeCodeDisplay.textContent = data.code;
               if (dashUpgradeTableNameEl) dashUpgradeTableNameEl.textContent = data.table_name;
               if (dashUpgradeCountEl) dashUpgradeCountEl.textContent = data.download_count;
-              if (dashUpgradeModal) dashUpgradeModal.classList.add('show');
+              if (window.alpineOpenModal) window.alpineOpenModal('dashUpgrade');
               if (dashUpgradeCodeInput) dashUpgradeCodeInput.focus();
             } else {
               if (typeof showToast === 'function') showToast(data.message || 'Failed to generate code', 'error');
@@ -490,7 +492,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function dashCloseUpgradeAllModal() {
-        if (dashUpgradeModal) dashUpgradeModal.classList.remove('show');
+        if (window.alpineCloseModal) window.alpineCloseModal();
         dashUpgradeTableId = null;
         dashUpgradeExpectedCode = '';
         if (dashUpgradeCodeInput) dashUpgradeCodeInput.value = '';
@@ -503,7 +505,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     if (dashUpgradeCancelBtn) dashUpgradeCancelBtn.addEventListener('click', dashCloseUpgradeAllModal);
-    if (dashUpgradeModal) dashUpgradeModal.addEventListener('click', function(e) { if (e.target === dashUpgradeModal) dashCloseUpgradeAllModal(); });
+    // Overlay click-to-close now handled by Alpine @click.self in template
 
     if (dashUpgradeConfirmBtn) {
         dashUpgradeConfirmBtn.addEventListener('click', function() {
@@ -544,11 +546,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (dashReuploadConfirmBtn) { dashReuploadConfirmBtn.disabled = true; dashReuploadConfirmBtn.style.opacity = '0.5'; dashReuploadConfirmBtn.textContent = 'Upload & Match'; }
         if (dashReuploadProgress) dashReuploadProgress.style.display = 'none';
         if (dashReuploadBar) dashReuploadBar.style.width = '0%';
-        if (dashReuploadModal) dashReuploadModal.classList.add('show');
+        if (window.alpineOpenModal) window.alpineOpenModal('dashReupload');
     }
 
     function dashCloseReuploadModal() {
-        if (dashReuploadModal) dashReuploadModal.classList.remove('show');
+        if (window.alpineCloseModal) window.alpineCloseModal();
         dashReuploadTableId = null;
         if (dashReuploadFileInput) dashReuploadFileInput.value = '';
     }

@@ -11,7 +11,9 @@ Architecture rule: Views are ULTRA-THIN.
   - NO .save(), .create(), .delete(), .update() on any model
 """
 import json
+import logging
 
+from django.core.exceptions import ValidationError
 from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
@@ -220,9 +222,13 @@ def portfolio_page(request):
 @website_publish_required
 def api_toggle_website_status(request):
     """Toggle website between Live and Draft."""
-    new_status = WebsiteStatusService.toggle_status()
-    ActivityService.log_website_update(request, f'status changed to {new_status}')
-    return JsonResponse({'success': True, 'status': new_status})
+    try:
+        new_status = WebsiteStatusService.toggle_status()
+        ActivityService.log_website_update(request, f'status changed to {new_status}')
+        return JsonResponse({'success': True, 'status': new_status})
+    except Exception as e:
+        logging.getLogger(__name__).exception("Toggle website status error: %s", e)
+        return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 
 
 # =============================================================================
@@ -233,24 +239,32 @@ def api_toggle_website_status(request):
 @website_edit_required
 def api_business_update(request):
     """Create or update business details (singleton)."""
-    data = {}
-    for f in BusinessDetailsService.EDITABLE_FIELDS + ['is_active']:
-        val = request.POST.get(f)
-        if val is not None:
-            data[f] = val
-    BusinessDetailsService.update(data)
-    ActivityService.log_website_update(request, 'business details')
-    return JsonResponse({'success': True, 'message': 'Business details updated'})
+    try:
+        data = {}
+        for f in BusinessDetailsService.EDITABLE_FIELDS + ['is_active']:
+            val = request.POST.get(f)
+            if val is not None:
+                data[f] = val
+        BusinessDetailsService.update(data)
+        ActivityService.log_website_update(request, 'business details')
+        return JsonResponse({'success': True, 'message': 'Business details updated'})
+    except Exception as e:
+        logging.getLogger(__name__).exception("Business update error: %s", e)
+        return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 
 
 @require_POST
 @website_edit_required
 def api_business_toggle_status(request):
     """Toggle business details active/inactive."""
-    success, is_active = BusinessDetailsService.toggle_status()
-    if not success:
-        return JsonResponse({'success': False, 'message': 'No business details found'}, status=404)
-    return JsonResponse({'success': True, 'is_active': is_active})
+    try:
+        success, is_active = BusinessDetailsService.toggle_status()
+        if not success:
+            return JsonResponse({'success': False, 'message': 'No business details found'}, status=404)
+        return JsonResponse({'success': True, 'is_active': is_active})
+    except Exception as e:
+        logging.getLogger(__name__).exception("Business toggle status error: %s", e)
+        return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 
 
 # =============================================================================
@@ -275,12 +289,15 @@ def api_client_list(request):
 @website_add_required
 def api_client_create(request):
     """Create a trusted client."""
-    client = TrustedClientService.create(
-        name=request.POST.get('name', ''),
-        order=int(request.POST.get('order', 0)),
-        is_active=_parse_bool(request.POST.get('is_active', 'true')),
-        logo=request.FILES.get('logo'),
-    )
+    try:
+        client = TrustedClientService.create(
+            name=request.POST.get('name', ''),
+            order=int(request.POST.get('order', 0)),
+            is_active=_parse_bool(request.POST.get('is_active', 'true')),
+            logo=request.FILES.get('logo'),
+        )
+    except ValidationError as e:
+        return JsonResponse({'success': False, 'message': e.message}, status=400)
     return JsonResponse({'success': True, 'message': 'Client created', 'id': client.id})
 
 
@@ -304,13 +321,16 @@ def api_client_get(request, pk):
 @website_edit_required
 def api_client_update(request, pk):
     """Update a trusted client."""
-    TrustedClientService.update(
-        pk,
-        name=request.POST.get('name'),
-        order=request.POST.get('order'),
-        is_active=request.POST.get('is_active'),
-        logo=request.FILES.get('logo'),
-    )
+    try:
+        TrustedClientService.update(
+            pk,
+            name=request.POST.get('name'),
+            order=request.POST.get('order'),
+            is_active=request.POST.get('is_active'),
+            logo=request.FILES.get('logo'),
+        )
+    except ValidationError as e:
+        return JsonResponse({'success': False, 'message': e.message}, status=400)
     return JsonResponse({'success': True, 'message': 'Client updated'})
 
 
@@ -318,16 +338,24 @@ def api_client_update(request, pk):
 @website_delete_required
 def api_client_delete(request, pk):
     """Delete a trusted client."""
-    TrustedClientService.delete(pk)
-    return JsonResponse({'success': True, 'message': 'Client deleted'})
+    try:
+        TrustedClientService.delete(pk)
+        return JsonResponse({'success': True, 'message': 'Client deleted'})
+    except Exception as e:
+        logging.getLogger(__name__).exception("Client delete error: %s", e)
+        return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 
 
 @require_POST
 @website_edit_required
 def api_client_toggle(request, pk):
     """Toggle trusted client active/inactive."""
-    is_active = TrustedClientService.toggle(pk)
-    return JsonResponse({'success': True, 'is_active': is_active})
+    try:
+        is_active = TrustedClientService.toggle(pk)
+        return JsonResponse({'success': True, 'is_active': is_active})
+    except Exception as e:
+        logging.getLogger(__name__).exception("Client toggle error: %s", e)
+        return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 
 
 # =============================================================================
@@ -357,16 +385,19 @@ def api_review_list(request):
 @website_add_required
 def api_review_create(request):
     """Create a testimonial."""
-    review = TestimonialService.create(
-        reviewer_name=request.POST.get('reviewer_name', ''),
-        reviewer_title=request.POST.get('reviewer_title', ''),
-        reviewer_school=request.POST.get('reviewer_school', ''),
-        text=request.POST.get('text', ''),
-        tag=request.POST.get('tag', ''),
-        rating=int(request.POST.get('rating', 5)),
-        is_active=_parse_bool(request.POST.get('is_active', 'false')),
-        reviewer_avatar=request.FILES.get('reviewer_avatar'),
-    )
+    try:
+        review = TestimonialService.create(
+            reviewer_name=request.POST.get('reviewer_name', ''),
+            reviewer_title=request.POST.get('reviewer_title', ''),
+            reviewer_school=request.POST.get('reviewer_school', ''),
+            text=request.POST.get('text', ''),
+            tag=request.POST.get('tag', ''),
+            rating=int(request.POST.get('rating', 5)),
+            is_active=_parse_bool(request.POST.get('is_active', 'false')),
+            reviewer_avatar=request.FILES.get('reviewer_avatar'),
+        )
+    except ValidationError as e:
+        return JsonResponse({'success': False, 'message': e.message}, status=400)
     return JsonResponse({'success': True, 'message': 'Review created', 'id': review.id})
 
 
@@ -394,17 +425,20 @@ def api_review_get(request, pk):
 @website_edit_required
 def api_review_update(request, pk):
     """Update a testimonial."""
-    TestimonialService.update(
-        pk,
-        reviewer_name=request.POST.get('reviewer_name'),
-        reviewer_title=request.POST.get('reviewer_title'),
-        reviewer_school=request.POST.get('reviewer_school'),
-        text=request.POST.get('text'),
-        tag=request.POST.get('tag'),
-        rating=request.POST.get('rating'),
-        is_active=request.POST.get('is_active'),
-        reviewer_avatar=request.FILES.get('reviewer_avatar'),
-    )
+    try:
+        TestimonialService.update(
+            pk,
+            reviewer_name=request.POST.get('reviewer_name'),
+            reviewer_title=request.POST.get('reviewer_title'),
+            reviewer_school=request.POST.get('reviewer_school'),
+            text=request.POST.get('text'),
+            tag=request.POST.get('tag'),
+            rating=request.POST.get('rating'),
+            is_active=request.POST.get('is_active'),
+            reviewer_avatar=request.FILES.get('reviewer_avatar'),
+        )
+    except ValidationError as e:
+        return JsonResponse({'success': False, 'message': e.message}, status=400)
     return JsonResponse({'success': True, 'message': 'Review updated'})
 
 
@@ -412,16 +446,24 @@ def api_review_update(request, pk):
 @website_delete_required
 def api_review_delete(request, pk):
     """Delete a testimonial."""
-    TestimonialService.delete(pk)
-    return JsonResponse({'success': True, 'message': 'Review deleted'})
+    try:
+        TestimonialService.delete(pk)
+        return JsonResponse({'success': True, 'message': 'Review deleted'})
+    except Exception as e:
+        logging.getLogger(__name__).exception("Review delete error: %s", e)
+        return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 
 
 @require_POST
 @website_edit_required
 def api_review_toggle(request, pk):
     """Toggle review active/inactive (approval)."""
-    is_active = TestimonialService.toggle(pk)
-    return JsonResponse({'success': True, 'is_active': is_active})
+    try:
+        is_active = TestimonialService.toggle(pk)
+        return JsonResponse({'success': True, 'is_active': is_active})
+    except Exception as e:
+        logging.getLogger(__name__).exception("Review toggle error: %s", e)
+        return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 
 
 # =============================================================================
@@ -452,17 +494,20 @@ def api_portfolio_list(request):
 @website_add_required
 def api_portfolio_create(request):
     """Create a portfolio item."""
-    item = PortfolioItemService.create(
-        category_id=request.POST.get('category'),
-        orientation=request.POST.get('orientation', ''),
-        item_type=request.POST.get('item_type', 'image'),
-        video_url=request.POST.get('video_url', ''),
-        order=int(request.POST.get('order', 0)),
-        is_active=_parse_bool(request.POST.get('is_active', 'true')),
-        is_featured=_parse_bool(request.POST.get('is_featured', 'false')),
-        image=request.FILES.get('image'),
-        video_file=request.FILES.get('video_file'),
-    )
+    try:
+        item = PortfolioItemService.create(
+            category_id=request.POST.get('category'),
+            orientation=request.POST.get('orientation', ''),
+            item_type=request.POST.get('item_type', 'image'),
+            video_url=request.POST.get('video_url', ''),
+            order=int(request.POST.get('order', 0)),
+            is_active=_parse_bool(request.POST.get('is_active', 'true')),
+            is_featured=_parse_bool(request.POST.get('is_featured', 'false')),
+            image=request.FILES.get('image'),
+            video_file=request.FILES.get('video_file'),
+        )
+    except ValidationError as e:
+        return JsonResponse({'success': False, 'message': e.message}, status=400)
     return JsonResponse({'success': True, 'message': 'Portfolio item created', 'id': item.id})
 
 
@@ -491,18 +536,21 @@ def api_portfolio_get(request, pk):
 @website_edit_required
 def api_portfolio_update(request, pk):
     """Update a portfolio item."""
-    PortfolioItemService.update(
-        pk,
-        orientation=request.POST.get('orientation'),
-        item_type=request.POST.get('item_type'),
-        video_url=request.POST.get('video_url'),
-        category_id=request.POST.get('category'),
-        order=request.POST.get('order'),
-        is_active=request.POST.get('is_active'),
-        is_featured=request.POST.get('is_featured'),
-        image=request.FILES.get('image'),
-        video_file=request.FILES.get('video_file'),
-    )
+    try:
+        PortfolioItemService.update(
+            pk,
+            orientation=request.POST.get('orientation'),
+            item_type=request.POST.get('item_type'),
+            video_url=request.POST.get('video_url'),
+            category_id=request.POST.get('category'),
+            order=request.POST.get('order'),
+            is_active=request.POST.get('is_active'),
+            is_featured=request.POST.get('is_featured'),
+            image=request.FILES.get('image'),
+            video_file=request.FILES.get('video_file'),
+        )
+    except ValidationError as e:
+        return JsonResponse({'success': False, 'message': e.message}, status=400)
     return JsonResponse({'success': True, 'message': 'Portfolio item updated'})
 
 
@@ -510,16 +558,24 @@ def api_portfolio_update(request, pk):
 @website_delete_required
 def api_portfolio_delete(request, pk):
     """Delete a portfolio item."""
-    PortfolioItemService.delete(pk)
-    return JsonResponse({'success': True, 'message': 'Portfolio item deleted'})
+    try:
+        PortfolioItemService.delete(pk)
+        return JsonResponse({'success': True, 'message': 'Portfolio item deleted'})
+    except Exception as e:
+        logging.getLogger(__name__).exception("Portfolio delete error: %s", e)
+        return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 
 
 @require_POST
 @website_edit_required
 def api_portfolio_toggle(request, pk):
     """Toggle portfolio item active/inactive."""
-    is_active = PortfolioItemService.toggle(pk)
-    return JsonResponse({'success': True, 'is_active': is_active})
+    try:
+        is_active = PortfolioItemService.toggle(pk)
+        return JsonResponse({'success': True, 'is_active': is_active})
+    except Exception as e:
+        logging.getLogger(__name__).exception("Portfolio toggle error: %s", e)
+        return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 
 
 # =============================================================================
@@ -550,7 +606,10 @@ def api_portfolio_category_list(request):
 @website_add_required
 def api_portfolio_category_create(request):
     """Create a portfolio category."""
-    body = json.loads(request.body) if request.content_type == 'application/json' else request.POST
+    try:
+        body = json.loads(request.body) if request.content_type == 'application/json' else request.POST
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'success': False, 'message': 'Invalid request data'}, status=400)
     cat = PortfolioCategoryService.create(
         name=body.get('name', ''),
         icon=body.get('icon', 'fas fa-folder'),
@@ -566,7 +625,10 @@ def api_portfolio_category_create(request):
 @website_edit_required
 def api_portfolio_category_update(request, pk):
     """Update a portfolio category."""
-    body = json.loads(request.body) if request.content_type == 'application/json' else request.POST
+    try:
+        body = json.loads(request.body) if request.content_type == 'application/json' else request.POST
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'success': False, 'message': 'Invalid request data'}, status=400)
     PortfolioCategoryService.update(
         pk,
         name=body.get('name'),
@@ -621,12 +683,15 @@ def api_hero_image_create(request):
     if not image_file:
         return JsonResponse({'success': False, 'message': 'Image file is required'}, status=400)
 
-    hero = HeroImageService.create(
-        image=image_file,
-        title=request.POST.get('title', ''),
-        subtitle=request.POST.get('subtitle', ''),
-        order=int(request.POST.get('order', 0)),
-    )
+    try:
+        hero = HeroImageService.create(
+            image=image_file,
+            title=request.POST.get('title', ''),
+            subtitle=request.POST.get('subtitle', ''),
+            order=int(request.POST.get('order', 0)),
+        )
+    except ValidationError as e:
+        return JsonResponse({'success': False, 'message': e.message}, status=400)
     ActivityService.log_website_update(request, 'hero image added')
     return JsonResponse({
         'success': True,
@@ -640,14 +705,17 @@ def api_hero_image_create(request):
 @website_edit_required
 def api_hero_image_update(request, pk):
     """POST: update hero image details (replace image optional)."""
-    HeroImageService.update(
-        pk,
-        title=request.POST.get('title'),
-        subtitle=request.POST.get('subtitle'),
-        order=request.POST.get('order'),
-        is_active=request.POST.get('is_active'),
-        image=request.FILES.get('image'),
-    )
+    try:
+        HeroImageService.update(
+            pk,
+            title=request.POST.get('title'),
+            subtitle=request.POST.get('subtitle'),
+            order=request.POST.get('order'),
+            is_active=request.POST.get('is_active'),
+            image=request.FILES.get('image'),
+        )
+    except ValidationError as e:
+        return JsonResponse({'success': False, 'message': e.message}, status=400)
     ActivityService.log_website_update(request, 'hero image updated')
     return JsonResponse({'success': True, 'message': 'Hero image updated'})
 
@@ -656,9 +724,13 @@ def api_hero_image_update(request, pk):
 @website_delete_required
 def api_hero_image_delete(request, pk):
     """POST: delete a hero image."""
-    HeroImageService.delete(pk)
-    ActivityService.log_website_update(request, 'hero image deleted')
-    return JsonResponse({'success': True, 'message': 'Hero image deleted'})
+    try:
+        HeroImageService.delete(pk)
+        ActivityService.log_website_update(request, 'hero image deleted')
+        return JsonResponse({'success': True, 'message': 'Hero image deleted'})
+    except Exception as e:
+        logging.getLogger(__name__).exception("Hero image delete error: %s", e)
+        return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 
 
 @require_POST

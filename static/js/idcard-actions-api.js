@@ -5,6 +5,27 @@
 'use strict';
 
 // ==========================================
+// HTMX TABLE REFRESH HELPER
+// ==========================================
+
+var _refreshPending = false;
+/** Refresh the card table via HTMX (no full page reload). Falls back to reload.
+ *  Throttled: ignores rapid-fire calls within 300ms. */
+function refreshCardTable() {
+    if (_refreshPending) return;         // de-dup rapid calls
+    _refreshPending = true;
+    setTimeout(function() { _refreshPending = false; }, 300);
+
+    if (typeof htmx !== 'undefined' && document.getElementById('card-table-container')) {
+        htmx.trigger(document.body, 'refreshTable');
+        // Clear selection after table swap
+        if (typeof window.alpineClearSelection === 'function') window.alpineClearSelection();
+    } else {
+        location.reload();
+    }
+}
+
+// ==========================================
 // SINGLE CARD STATUS OPERATIONS
 // ==========================================
 
@@ -17,7 +38,7 @@ function verifyCard(cardId) {
                     return;
                 }
                 if (typeof showToast === 'function') showToast('Card verified successfully');
-                location.reload();
+                refreshCardTable();
             });
     }
 }
@@ -31,7 +52,7 @@ function approveCard(cardId) {
                     return;
                 }
                 if (typeof showToast === 'function') showToast('Card approved successfully');
-                location.reload();
+                refreshCardTable();
             });
     }
 }
@@ -45,7 +66,7 @@ function unapproveCard(cardId) {
                     return;
                 }
                 if (typeof showToast === 'function') showToast('Card moved back to verified');
-                location.reload();
+                refreshCardTable();
             });
     }
 }
@@ -59,7 +80,7 @@ function unverifyCard(cardId) {
                     return;
                 }
                 if (typeof showToast === 'function') showToast('Card moved back to pending');
-                location.reload();
+                refreshCardTable();
             });
     }
 }
@@ -73,7 +94,7 @@ function downloadCard(cardId) {
                     return;
                 }
                 if (typeof showToast === 'function') showToast('Card moved to download list');
-                location.reload();
+                refreshCardTable();
             });
     }
 }
@@ -87,7 +108,7 @@ function retrieveCard(cardId) {
                     return;
                 }
                 if (typeof showToast === 'function') showToast('Card retrieved to pending list');
-                location.reload();
+                refreshCardTable();
             });
     }
 }
@@ -127,7 +148,7 @@ function backToApprovedCard(cardId) {
                     return;
                 }
                 if (typeof showToast === 'function') showToast('Card moved back to approved');
-                location.reload();
+                refreshCardTable();
             });
     }
 }
@@ -152,7 +173,7 @@ function bulkVerify(cardIds) {
                 if (typeof showToast === 'function') {
                     showToast(data.message || `${data.updated_count} card(s) verified`, !data.skipped_count);
                 }
-                location.reload();
+                refreshCardTable();
             });
     }
 }
@@ -173,7 +194,7 @@ function bulkApprove(cardIds) {
                 if (typeof showToast === 'function') {
                     showToast(data.message || `${data.updated_count} card(s) approved`, !data.skipped_count);
                 }
-                location.reload();
+                refreshCardTable();
             });
     }
 }
@@ -231,7 +252,7 @@ function bulkDelete(cardIds) {
             apiCall(`/panel/api/table/${tableId}/cards/bulk-status/`, 'POST', { card_ids: cardIds, status: 'pool' })
                 .then(data => {
                     if (typeof showToast === 'function') showToast(`${data.updated_count} card(s) moved to pool`);
-                    location.reload();
+                    refreshCardTable();
                 });
         }
     }
@@ -251,7 +272,7 @@ function bulkRetrieve(cardIds) {
                     return;
                 }
                 if (typeof showToast === 'function') showToast(data.message || `${data.updated_count} card(s) retrieved to pending`);
-                location.reload();
+                refreshCardTable();
             });
     }
 }
@@ -283,7 +304,8 @@ function bulkDeletePermanent(cardIds) {
     }
 }
 
-// ==========================================\n// ROW ACTION BUTTON HANDLERS
+// ==========================================
+// ROW ACTION BUTTON HANDLERS
 // ==========================================
 
 function initRowActionHandlers() {

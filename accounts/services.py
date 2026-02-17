@@ -243,7 +243,7 @@ class OTPService:
             
             # Send email (or just log in development)
             if settings.DEBUG:
-                print(f"[DEV] OTP for {email}: {otp}")
+                logger.info("[DEV] OTP for %s: %s", email, otp)
                 return {
                     'success': True,
                     'message': f'OTP sent to {email}',

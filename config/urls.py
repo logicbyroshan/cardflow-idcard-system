@@ -2,7 +2,18 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.http import HttpResponseForbidden
 from website.seo import robots_txt, sitemap_xml
+
+
+def _protected_media_serve(request, path, document_root=None):
+    """Serve media files with protection for sensitive directories in dev mode."""
+    from django.views.static import serve
+    PROTECTED_PREFIXES = ('exports/', 'clients_imgs/', 'staff_imgs/', 'temp/')
+    if any(path.startswith(p) for p in PROTECTED_PREFIXES):
+        if not request.user.is_authenticated:
+            return HttpResponseForbidden('Access denied')
+    return serve(request, path, document_root=document_root)
 
 urlpatterns = [
     # SEO — served at root, only for public website
@@ -30,6 +41,9 @@ urlpatterns = [
 ]
 
 if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    import re
+    urlpatterns += [
+        path('media/<path:path>', _protected_media_serve, {'document_root': settings.MEDIA_ROOT}),
+    ]
 
 

@@ -21,6 +21,8 @@ from django.shortcuts import get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.db import transaction
+from django.conf import settings
+from django.core.cache import cache as django_cache
 
 from ..models import IDCardGroup, IDCard, IDCardTable
 from ..services import IDCardService
@@ -33,9 +35,16 @@ from ..services.permission_service import (
     api_require_permission,
 )
 from ..services.workflow_service import WorkflowService
+from ..utils.upload_security import validate_zip_safety
 
 # Logger for this module
 logger = logging.getLogger(__name__)
+
+
+def _safe_error(e, fallback='An error occurred. Please try again.'):
+    """Return a safe error message for API responses. Logs the real exception."""
+    logger.exception("API error: %s", e)
+    return fallback
 
 
 # ==================== ADMIN STAFF CLIENT SCOPING ====================
@@ -123,7 +132,7 @@ def api_idcard_table_create(request, group_id):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON data!'}, status=400)
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+        return JsonResponse({'success': False, 'message': _safe_error(e)}, status=500)
 
 
 @require_http_methods(["GET"])
@@ -149,7 +158,7 @@ def api_idcard_table_update(request, table_id):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON data!'}, status=400)
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+        return JsonResponse({'success': False, 'message': _safe_error(e)}, status=500)
 
 
 @require_http_methods(["DELETE", "POST"])
@@ -158,8 +167,12 @@ def api_idcard_table_delete(request, table_id):
     """API endpoint to delete an ID Card Table"""
     table, err = _check_client_scope_by_table(request.user, table_id)
     if err: return err
-    result = IDCardService.delete_table(table_id)
-    return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
+    try:
+        result = IDCardService.delete_table(table_id)
+        return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
+    except Exception as e:
+        logger.exception("Table delete error: %s", e)
+        return JsonResponse({'success': False, 'message': _safe_error(e)}, status=500)
 
 
 @require_http_methods(["POST"])
@@ -168,8 +181,12 @@ def api_idcard_table_toggle_status(request, table_id):
     """API endpoint to toggle ID Card Table active/inactive status"""
     table, err = _check_client_scope_by_table(request.user, table_id)
     if err: return err
-    result = IDCardService.toggle_table_status(table_id)
-    return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
+    try:
+        result = IDCardService.toggle_table_status(table_id)
+        return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
+    except Exception as e:
+        logger.exception("Table toggle status error: %s", e)
+        return JsonResponse({'success': False, 'message': _safe_error(e)}, status=500)
 
 
 @require_http_methods(["GET"])
@@ -265,7 +282,7 @@ def api_idcard_create(request, table_id):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON data!'}, status=400)
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+        return JsonResponse({'success': False, 'message': _safe_error(e)}, status=500)
 
 
 @require_http_methods(["GET"])
@@ -344,7 +361,7 @@ def api_idcard_update(request, card_id):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON data!'}, status=400)
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+        return JsonResponse({'success': False, 'message': _safe_error(e)}, status=500)
 
 
 @require_http_methods(["DELETE", "POST"])
@@ -356,11 +373,15 @@ def api_idcard_delete(request, card_id):
     # Client/client_staff cannot delete cards in approved/download/reprint
     if _is_client_readonly(request.user, _card.status):
         return _client_readonly_response()
-    result = IDCardService.delete_card(card_id)
-    return JsonResponse(
-        {'success': result.success, 'message': result.message},
-        status=200 if result.success else 400
-    )
+    try:
+        result = IDCardService.delete_card(card_id)
+        return JsonResponse(
+            {'success': result.success, 'message': result.message},
+            status=200 if result.success else 400
+        )
+    except Exception as e:
+        logger.exception("Card delete error: %s", e)
+        return JsonResponse({'success': False, 'message': _safe_error(e)}, status=500)
 
 
 @require_http_methods(["POST"])
@@ -382,7 +403,7 @@ def api_idcard_update_field(request, card_id):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON data!'}, status=400)
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+        return JsonResponse({'success': False, 'message': _safe_error(e)}, status=500)
 
 
 @require_http_methods(["POST"])
@@ -405,7 +426,7 @@ def api_idcard_change_status(request, card_id):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON data!'}, status=400)
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+        return JsonResponse({'success': False, 'message': _safe_error(e)}, status=500)
 
 
 @require_http_methods(["POST"])
@@ -436,7 +457,7 @@ def api_idcard_bulk_status(request, table_id):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON data!'}, status=400)
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+        return JsonResponse({'success': False, 'message': _safe_error(e)}, status=500)
 
 
 @require_http_methods(["POST"])
@@ -495,7 +516,7 @@ def api_idcard_bulk_delete(request, table_id):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON data!'}, status=400)
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+        return JsonResponse({'success': False, 'message': _safe_error(e)}, status=500)
 
 
 @require_http_methods(["POST"])
@@ -520,7 +541,7 @@ def api_generate_delete_code(request, table_id):
             'total_cards': total,
         })
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+        return JsonResponse({'success': False, 'message': _safe_error(e)}, status=500)
 
 
 @require_http_methods(["POST"])
@@ -545,7 +566,7 @@ def api_generate_upgrade_code(request, table_id):
             'download_count': download_count,
         })
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+        return JsonResponse({'success': False, 'message': _safe_error(e)}, status=500)
 
 
 @require_http_methods(["POST"])
@@ -594,7 +615,7 @@ def api_upgrade_all_classes(request, table_id):
             'total': result.data['total'],
         })
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+        return JsonResponse({'success': False, 'message': _safe_error(e)}, status=500)
 
 
 @require_http_methods(["GET"])
@@ -623,7 +644,7 @@ def api_table_status_counts(request, table_id):
             'status_counts': status_counts
         })
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+        return JsonResponse({'success': False, 'message': _safe_error(e)}, status=500)
 
 
 @require_http_methods(["POST"])
@@ -632,14 +653,30 @@ def api_idcard_bulk_upload(request, table_id):
     """API endpoint to bulk upload ID Cards from XLSX/CSV file with fuzzy matching and optional ZIP photo upload"""
     _tbl, err = _check_client_scope_by_table(request.user, table_id)
     if err: return err
+    # Double-click guard: prevent duplicate uploads from rapid form submissions
+    lock_key = f'bulk_upload_lock:{request.user.id}:{table_id}'
+    if not django_cache.add(lock_key, 1, 15):
+        return JsonResponse({'success': False, 'message': 'Upload already in progress. Please wait.'}, status=429)
     try:
         import openpyxl
         from io import BytesIO
         import re
         import zipfile
         import os
+        import shutil
         from django.core.files.storage import default_storage
         from django.core.files.base import ContentFile
+
+        # Pre-flight disk space check: require at least 500 MB free
+        try:
+            disk = shutil.disk_usage(settings.MEDIA_ROOT)
+            if disk.free < 500 * 1024 * 1024:  # 500 MB
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Insufficient disk space. Please contact your administrator.'
+                }, status=507)
+        except Exception:
+            pass  # Non-critical — proceed if check fails
         
         table = get_object_or_404(IDCardTable, id=table_id)
         
@@ -668,18 +705,47 @@ def api_idcard_bulk_upload(request, table_id):
         logger.debug("request.FILES keys = %s", list(request.FILES.keys()))
         
         # Process each ZIP file for each image field
+        # Safety limits for per-field ZIPs (match unified ZIP limits)
+        PER_FIELD_MAX_IMAGES = 5000
+        PER_FIELD_MAX_BYTES = 500 * 1024 * 1024  # 500 MB total extracted
+        
         for field_name in zip_field_names:
             zip_key = f'photos_zip_{field_name}'
             if zip_key in request.FILES:
                 photos_zip_file = request.FILES[zip_key]
+                
+                # Guard: reject oversized ZIP files before reading into memory
+                if hasattr(photos_zip_file, 'size') and photos_zip_file.size > PER_FIELD_MAX_BYTES:
+                    continue  # Skip this ZIP — too large
+                
+                # ZIP bomb / nested archive check
+                zok, _zerr = validate_zip_safety(photos_zip_file)
+                if not zok:
+                    continue  # Skip unsafe ZIP
+                
                 zip_photos_by_field[field_name] = {}
+                field_extracted_bytes = 0
+                field_extracted_images = 0
                 
                 try:
-                    zip_content = photos_zip_file.read()
-                    with zipfile.ZipFile(BytesIO(zip_content), 'r') as zf:
+                    # Use disk path if available (>10MB files), else read from handle
+                    if hasattr(photos_zip_file, 'temporary_file_path'):
+                        _zip_src = photos_zip_file.temporary_file_path()
+                    else:
+                        photos_zip_file.seek(0)
+                        _zip_src = photos_zip_file
+                    with zipfile.ZipFile(_zip_src, 'r') as zf:
                         for zip_info in zf.infolist():
                             if zip_info.is_dir():
                                 continue
+                            
+                            # Per-file and aggregate limits
+                            if zip_info.file_size > 20 * 1024 * 1024:  # Skip files > 20MB
+                                continue
+                            if field_extracted_images >= PER_FIELD_MAX_IMAGES:
+                                break
+                            if field_extracted_bytes + zip_info.file_size > PER_FIELD_MAX_BYTES:
+                                break
                             
                             file_in_zip = zip_info.filename
                             base_name = os.path.basename(file_in_zip)
@@ -702,6 +768,8 @@ def api_idcard_bulk_upload(request, table_id):
                                                     'ext': ext,
                                                     'original_name': base_name
                                                 }
+                                                field_extracted_bytes += len(image_bytes)
+                                                field_extracted_images += 1
                                 except Exception as img_read_err:
                                     continue
                 except Exception as zip_error:
@@ -714,42 +782,51 @@ def api_idcard_bulk_upload(request, table_id):
         # Legacy: Also check for single photos_zip (backward compatibility)
         if not zip_photos_by_field and 'photos_zip' in request.FILES:
             photos_zip_file = request.FILES['photos_zip']
-            # Assign to first image field
-            first_image_field = image_field_names[0] if image_field_names else 'PHOTO'
-            zip_photos_by_field[first_image_field] = {}
             
-            try:
-                zip_content = photos_zip_file.read()
-                with zipfile.ZipFile(BytesIO(zip_content), 'r') as zf:
-                    for zip_info in zf.infolist():
-                        if zip_info.is_dir():
-                            continue
-                        
-                        file_in_zip = zip_info.filename
-                        base_name = os.path.basename(file_in_zip)
-                        name_without_ext = os.path.splitext(base_name)[0]
-                        ext = os.path.splitext(base_name)[1].lower()
-                        
-                        if ext in ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']:
-                            try:
-                                image_bytes = zf.read(zip_info.filename)
-                                is_valid, error_msg = validate_image_bytes(image_bytes)
-                                if is_valid:
-                                    # Use normalized key for robust matching
-                                    normalized_key = BaseService.normalize_image_identifier(name_without_ext)
-                                    if normalized_key:
-                                        # Deterministic: if duplicate key, keep alphabetically-first filename
-                                        existing = zip_photos_by_field[first_image_field].get(normalized_key)
-                                        if existing is None or base_name < existing['original_name']:
-                                            zip_photos_by_field[first_image_field][normalized_key] = {
-                                                'bytes': image_bytes,
-                                                'ext': ext,
-                                                'original_name': base_name
-                                            }
-                            except Exception as img_read_err:
+            # ZIP bomb / nested archive check
+            zok, _zerr = validate_zip_safety(photos_zip_file)
+            if zok:
+                # Assign to first image field
+                first_image_field = image_field_names[0] if image_field_names else 'PHOTO'
+                zip_photos_by_field[first_image_field] = {}
+            
+                try:
+                    # Use disk path if available (>10MB files), else read from handle
+                    if hasattr(photos_zip_file, 'temporary_file_path'):
+                        _zip_src_legacy = photos_zip_file.temporary_file_path()
+                    else:
+                        photos_zip_file.seek(0)
+                        _zip_src_legacy = photos_zip_file
+                    with zipfile.ZipFile(_zip_src_legacy, 'r') as zf:
+                        for zip_info in zf.infolist():
+                            if zip_info.is_dir():
                                 continue
-            except Exception as zip_error:
-                pass
+                            
+                            file_in_zip = zip_info.filename
+                            base_name = os.path.basename(file_in_zip)
+                            name_without_ext = os.path.splitext(base_name)[0]
+                            ext = os.path.splitext(base_name)[1].lower()
+                            
+                            if ext in ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']:
+                                try:
+                                    image_bytes = zf.read(zip_info.filename)
+                                    is_valid, error_msg = validate_image_bytes(image_bytes)
+                                    if is_valid:
+                                        # Use normalized key for robust matching
+                                        normalized_key = BaseService.normalize_image_identifier(name_without_ext)
+                                        if normalized_key:
+                                            # Deterministic: if duplicate key, keep alphabetically-first filename
+                                            existing = zip_photos_by_field[first_image_field].get(normalized_key)
+                                            if existing is None or base_name < existing['original_name']:
+                                                zip_photos_by_field[first_image_field][normalized_key] = {
+                                                    'bytes': image_bytes,
+                                                    'ext': ext,
+                                                    'original_name': base_name
+                                                }
+                                except Exception as img_read_err:
+                                    continue
+                except Exception as zip_error:
+                    pass
         
         # NEW: Process unified ZIP files (images auto-matched to all columns)
         # This allows users to upload one or more ZIPs containing ALL images
@@ -776,10 +853,21 @@ def api_idcard_bulk_upload(request, table_id):
             if zip_key in request.FILES:
                 try:
                     zip_file = request.FILES[zip_key]
-                    zip_content = zip_file.read()
                     logger.debug("Processing unified ZIP %d: %s", i, zip_file.name)
                     
-                    with zipfile.ZipFile(BytesIO(zip_content), 'r') as zf:
+                    # ZIP bomb / nested archive check
+                    zok, _zerr = validate_zip_safety(zip_file)
+                    if not zok:
+                        logger.warning("Unified ZIP %d failed safety: %s", i, _zerr)
+                        continue
+                    
+                    # Use disk path if available (>10MB files), else read from handle
+                    if hasattr(zip_file, 'temporary_file_path'):
+                        _zip_src_unified = zip_file.temporary_file_path()
+                    else:
+                        zip_file.seek(0)
+                        _zip_src_unified = zip_file
+                    with zipfile.ZipFile(_zip_src_unified, 'r') as zf:
                         for zip_info in zf.infolist():
                             if zip_info.is_dir():
                                 continue
@@ -1422,7 +1510,9 @@ def api_idcard_bulk_upload(request, table_id):
             'message': 'openpyxl library not installed. Run: pip install openpyxl'
         }, status=500)
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+        return JsonResponse({'success': False, 'message': _safe_error(e)}, status=500)
+    finally:
+        django_cache.delete(lock_key)
 
 
 @require_http_methods(["POST"])
@@ -1450,6 +1540,10 @@ def api_idcard_reupload_images(request, table_id):
                 'success': False,
                 'message': 'This table contains cards in approved/download status. Client users cannot reupload images.'
             }, status=403)
+    # Double-click guard: prevent duplicate reupload from rapid form submissions
+    lock_key = f'reupload_lock:{request.user.id}:{table_id}'
+    if not django_cache.add(lock_key, 1, 30):
+        return JsonResponse({'success': False, 'message': 'Reupload already in progress. Please wait.'}, status=429)
     try:
         import zipfile
         from django.db import transaction
@@ -1475,6 +1569,15 @@ def api_idcard_reupload_images(request, table_id):
         
         try:
             zip_file = request.FILES['photos_zip']
+
+            # ZIP size guard
+            if hasattr(zip_file, 'size') and zip_file.size > 600 * 1024 * 1024:
+                return JsonResponse({'success': False, 'message': 'ZIP file exceeds 600 MB limit.'}, status=400)
+            
+            # ZIP bomb / nested archive check
+            zok, zerr = validate_zip_safety(zip_file)
+            if not zok:
+                return JsonResponse({'success': False, 'message': zerr}, status=400)
 
             # Open ZIP directly from file handle (Django spills >10MB to /tmp)
             if hasattr(zip_file, 'temporary_file_path'):
@@ -1530,20 +1633,22 @@ def api_idcard_reupload_images(request, table_id):
         card_ids = [int(cid) for cid in card_ids if cid and str(cid).strip().isdigit()] if card_ids else []
         
         if card_ids:
-            cards = IDCard.objects.filter(table=table, id__in=card_ids).order_by('id')
+            cards_qs = IDCard.objects.filter(table=table, id__in=card_ids).order_by('id')
         else:
             # No specific IDs — reupload to ALL cards in this table (filtered by status if provided)
             status_filter = request.POST.get('status', '')
             if status_filter and status_filter in BaseService.VALID_STATUSES:
-                cards = IDCard.objects.filter(table=table, status=status_filter).order_by('id')
+                cards_qs = IDCard.objects.filter(table=table, status=status_filter).order_by('id')
             else:
-                cards = IDCard.objects.filter(table=table).order_by('id')
+                cards_qs = IDCard.objects.filter(table=table).order_by('id')
         
         updated_count = 0
         matched_count = 0
         errors = []
         
         with transaction.atomic():
+            # Lock rows to prevent concurrent modifications during reupload
+            cards = cards_qs.select_for_update()
             batch_counter = 0
             
             for card in cards:
@@ -1634,6 +1739,6 @@ def api_idcard_reupload_images(request, table_id):
         return JsonResponse(response)
         
     except Exception as e:
-        logger.error("Reupload error: %s", e)
-        return JsonResponse({'success': False, 'message': str(e)}, status=400)
-
+        return JsonResponse({'success': False, 'message': _safe_error(e)}, status=500)
+    finally:
+        django_cache.delete(lock_key)

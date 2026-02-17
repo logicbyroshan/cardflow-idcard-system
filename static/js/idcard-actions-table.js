@@ -700,10 +700,13 @@ function createRowFromCard(card, index) {
     html += `<td class="sr-no-cell">${card.sr_no}</td>`;
     
     if (card.ordered_fields) {
+        const _esc = window.escapeHtml || function(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); };
         card.ordered_fields.forEach(field => {
             const fieldName = field.name;
             const fieldType = field.type;
             const fieldValue = field.value || '';
+            const safeFieldName = _esc(fieldName);
+            const safeFieldValue = _esc(fieldValue);
             
             if (isImageField(fieldType, fieldName)) {
                 let imageHtml = '';
@@ -739,7 +742,7 @@ function createRowFromCard(card, index) {
                     // Use onError fallback to original if thumbnail doesn't exist
                     const fallbackAttr = thumbPath ? `onerror="this.onerror=null; this.src='${originalSrc}';"` : '';
                     const imageSrc = thumbPath ? thumbSrc : originalSrc;
-                    imageHtml = `<img src="${imageSrc}" alt="${fieldName}" class="table-image ${imageTypeClass}" loading="lazy" ${fallbackAttr}>`;
+                    imageHtml = `<img src="${imageSrc}" alt="${safeFieldName}" class="table-image ${imageTypeClass}" loading="lazy" ${fallbackAttr}>`;
                 } else {
                     // Empty/null - Colorful placeholder (no image)
                     imageHtml = `<div class="no-image colorful-placeholder"><i class="fa-solid fa-user-astronaut"></i></div>`;
@@ -748,10 +751,10 @@ function createRowFromCard(card, index) {
                 // IMPORTANT: Store raw fieldValue (including PENDING:xxx) for Image Sort filter to work
                 // This matches what template table.html stores
                 html += `<td class="image-field image-cell ${imageTypeClass}" 
-                    data-field="${fieldName}"
-                    data-field-name="${fieldName}" 
+                    data-field="${safeFieldName}"
+                    data-field-name="${safeFieldName}" 
                     data-field-type="image"
-                    data-original-value="${fieldValue}">
+                    data-original-value="${safeFieldValue}">
                     <div class="image-with-edit">
                         ${imageHtml}
                         ${(typeof PERMS !== 'undefined' && PERMS.idcard_edit && !(typeof IS_CLIENT_USER !== 'undefined' && IS_CLIENT_USER && typeof CLIENT_READONLY_STATUSES !== 'undefined' && CLIENT_READONLY_STATUSES.indexOf(lazyLoadState.currentStatus) !== -1)) ? `<button class="edit-photo-btn" data-card-id="${card.id}" title="Edit Card"><i class="fa-solid fa-pen"></i></button>` : ''}
@@ -771,12 +774,12 @@ function createRowFromCard(card, index) {
                 const editTitle = isLockedForClient ? '' : 'title="Double-click to edit"';
                 
                 html += `<td class="${editableClass} ${textClass}" 
-                    data-field="${fieldName}"
-                    data-field-name="${fieldName}" 
+                    data-field="${safeFieldName}"
+                    data-field-name="${safeFieldName}" 
                     data-field-type="${fieldType}"
-                    data-original-value="${fieldValue}"
+                    data-original-value="${safeFieldValue}"
                     ${editTitle}>
-                    <span class="cell-value">${fieldValue}</span>
+                    <span class="cell-value">${safeFieldValue}</span>
                 </td>`;
             }
         });

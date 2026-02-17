@@ -49,6 +49,7 @@ function isImageFieldModal(fieldType, fieldName) {
 
 let currentModalMode = 'add';
 let currentEditCardId = null;
+let currentEditUpdatedAt = null;  // ISO timestamp for optimistic concurrency
 
 // ==========================================
 // SIDE MODAL FUNCTIONS
@@ -68,6 +69,7 @@ function openSideModal(mode, cardData = null) {
     
     currentModalMode = mode;
     currentEditCardId = cardData?.id || null;
+    currentEditUpdatedAt = cardData?.updated_at_iso || null;
     
     // Reset form
     const form = document.getElementById('cardForm');
@@ -717,6 +719,11 @@ function updateExistingCard(cardId, fieldData, imageFiles, mainPhoto) {
     const formData = new FormData();
     formData.append('field_data', JSON.stringify(fieldData));
     
+    // Optimistic concurrency: send the timestamp from when we loaded the card
+    if (currentEditUpdatedAt) {
+        formData.append('expected_updated_at', currentEditUpdatedAt);
+    }
+    
     if (mainPhoto) {
         formData.append('photo', mainPhoto);
     }
@@ -733,7 +740,12 @@ function updateExistingCard(cardId, fieldData, imageFiles, mainPhoto) {
             // Force reload without cache
             window.location.href = window.location.href.split('?')[0] + '?status=' + (typeof CURRENT_STATUS !== 'undefined' ? CURRENT_STATUS : 'pending') + '&t=' + Date.now();
         } else {
-            if (typeof showToast === 'function') showToast(data.message || 'Error updating card', false);
+            // Check for concurrency conflict
+            if (data.conflict) {
+                if (typeof showToast === 'function') showToast('This card was modified by another user. Please close and reopen to see latest data.', false);
+            } else {
+                if (typeof showToast === 'function') showToast(data.message || 'Error updating card', false);
+            }
             if (window._restoreSaveBtn) window._restoreSaveBtn();
         }
     })

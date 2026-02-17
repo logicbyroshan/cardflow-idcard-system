@@ -11,13 +11,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- Tailwind CSS (primary) -->
-  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=2">
+  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=100">
   <!-- Page-specific: ID card group UI -->
-  <link rel="stylesheet" href="{% static 'css/idcard-group.css' %}?v=40">
-  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=2">
+  <link rel="stylesheet" href="{% static 'css/idcard-group.css' %}?v=100">
+  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=100">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <!-- Alpine.js State Module (MUST load before Alpine) -->
-  <script src="{% static 'js/alpine-state.js' %}?v=1"></script>
+  <script src="{% static 'js/alpine-state.js' %}?v=100"></script>
   <!-- Alpine.js -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
 </head>
@@ -75,15 +75,8 @@
     <!-- Action Bar -->
     <div class="action-bar">
         
-        <!-- Search and Filter -->
+        <!-- Filter and Search -->
         <div class="action-left">
-            <div class="search-box">
-                <i class="fa-solid fa-search search-icon"></i>
-                <input type="text" class="search-input" id="searchInput" placeholder="Search..." autocomplete="off">
-                <button class="search-clear-btn" id="searchClearBtn" type="button" title="Clear search">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
             <div class="filter-group">
                 <div class="custom-dropdown" id="filterDropdown">
                     <button class="dropdown-toggle" id="dropdownToggle">
@@ -98,6 +91,13 @@
                         <div class="dropdown-option" data-value="approved">Approved</div>
                     </div>
                 </div>
+            </div>
+            <div class="search-box">
+                <i class="fa-solid fa-search search-icon"></i>
+                <input type="text" class="search-input" id="searchInput" placeholder="Search..." autocomplete="off">
+                <button class="search-clear-btn" id="searchClearBtn" type="button" title="Clear search">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
             </div>
         </div>
 
@@ -211,8 +211,11 @@
   {% include 'partials/components/toast.html' %}
 
   <!-- Delete All Confirmation Modal -->
-  <div id="deleteAllModal" class="center-modal-overlay center-modal-theme-red">
-    <div class="center-modal-card">
+  <div id="deleteAllModal" class="center-modal-overlay center-modal-theme-red"
+       x-show="activeModal === 'deleteAll'" x-transition.opacity
+       @click.self="closeModal()" style="display:none">
+    <div class="center-modal-card" @click.stop
+         x-show="activeModal === 'deleteAll'" x-transition.scale.origin.center>
       <div class="center-modal-icon">
         <i class="fa-solid fa-triangle-exclamation"></i>
       </div>
@@ -228,15 +231,18 @@
       <div class="center-modal-code" id="deleteAllCode"></div>
       <input type="text" id="deleteAllCodeInput" class="center-modal-input" maxlength="6" placeholder="Enter code here">
       <div class="center-modal-actions">
-        <button id="deleteAllCancel" class="center-modal-btn center-modal-btn-cancel">Cancel</button>
+        <button id="deleteAllCancel" class="center-modal-btn center-modal-btn-cancel" @click="closeModal()">Cancel</button>
         <button id="deleteAllConfirm" class="center-modal-btn center-modal-btn-confirm" disabled>Delete All Cards</button>
       </div>
     </div>
   </div>
 
   <!-- Upgrade All Classes Confirmation Modal -->
-  <div id="upgradeAllModal" class="center-modal-overlay center-modal-theme-amber">
-    <div class="center-modal-card">
+  <div id="upgradeAllModal" class="center-modal-overlay center-modal-theme-amber"
+       x-show="activeModal === 'upgradeAll'" x-transition.opacity
+       @click.self="closeModal()" style="display:none">
+    <div class="center-modal-card" @click.stop
+         x-show="activeModal === 'upgradeAll'" x-transition.scale.origin.center>
       <div class="center-modal-icon">
         <i class="fa-solid fa-arrow-up"></i>
       </div>
@@ -252,15 +258,18 @@
       <div class="center-modal-code" id="upgradeAllCode"></div>
       <input type="text" id="upgradeAllCodeInput" class="center-modal-input" maxlength="6" placeholder="Enter code here">
       <div class="center-modal-actions">
-        <button id="upgradeAllCancel" class="center-modal-btn center-modal-btn-cancel">Cancel</button>
+        <button id="upgradeAllCancel" class="center-modal-btn center-modal-btn-cancel" @click="closeModal()">Cancel</button>
         <button id="upgradeAllConfirm" class="center-modal-btn center-modal-btn-confirm" disabled>Upgrade All Classes</button>
       </div>
     </div>
   </div>
 
   <!-- Reupload Image Modal -->
-  <div id="reuploadModal" class="center-modal-overlay center-modal-theme-blue">
-    <div class="center-modal-card">
+  <div id="reuploadModal" class="center-modal-overlay center-modal-theme-blue"
+       x-show="activeModal === 'reupload'" x-transition.opacity
+       @click.self="closeModal()" style="display:none">
+    <div class="center-modal-card" @click.stop
+         x-show="activeModal === 'reupload'" x-transition.scale.origin.center>
       <div class="center-modal-icon">
         <i class="fa-solid fa-upload"></i>
       </div>
@@ -275,7 +284,7 @@
         <input type="file" id="reuploadFileInput" accept=".zip" class="hidden">
       </div>
       <div class="center-modal-actions">
-        <button id="reuploadCancel" class="center-modal-btn center-modal-btn-cancel">Cancel</button>
+        <button id="reuploadCancel" class="center-modal-btn center-modal-btn-cancel" @click="closeModal()">Cancel</button>
         <button id="reuploadConfirm" class="center-modal-btn center-modal-btn-confirm" disabled>Upload &amp; Match</button>
       </div>
       <div id="reuploadProgress" class="center-modal-progress">
@@ -288,11 +297,11 @@
   </div>
 
   <!-- Core Modules (Load Order: api → toast → modal → utils → init) -->
-  <script src="{% static 'js/core/api.js' %}?v=1"></script>
-  <script src="{% static 'js/core/toast.js' %}?v=1"></script>
-  <script src="{% static 'js/core/modal.js' %}?v=1"></script>
-  <script src="{% static 'js/core/utils.js' %}?v=1"></script>
-  <script src="{% static 'js/init.js' %}?v=3"></script>
+  <script src="{% static 'js/core/api.js' %}?v=100"></script>
+  <script src="{% static 'js/core/toast.js' %}?v=100"></script>
+  <script src="{% static 'js/core/modal.js' %}?v=100"></script>
+  <script src="{% static 'js/core/utils.js' %}?v=100"></script>
+  <script src="{% static 'js/init.js' %}?v=100"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       const clientId = {{ client.id }};
@@ -382,7 +391,7 @@
               deleteAllCodeDisplay.textContent = data.code;
               deleteAllTableNameEl.textContent = data.table_name;
               deleteAllCountEl.textContent = data.total_cards;
-              deleteAllModal.classList.add('show');
+              if (window.alpineOpenModal) window.alpineOpenModal('deleteAll');
               deleteAllCodeInput.focus();
             } else {
               window.showToast(data.message || 'Failed to generate code', 'error');
@@ -392,7 +401,7 @@
       }
 
       function closeDeleteAllModal() {
-        deleteAllModal.classList.remove('show');
+        if (window.alpineCloseModal) window.alpineCloseModal();
         deleteAllTableId = null;
         deleteAllExpectedCode = '';
         deleteAllCodeInput.value = '';
@@ -407,8 +416,7 @@
       }
 
       if (deleteAllCancelBtn) deleteAllCancelBtn.addEventListener('click', closeDeleteAllModal);
-      if (deleteAllModal) deleteAllModal.addEventListener('click', function(e) { if (e.target === deleteAllModal) closeDeleteAllModal(); });
-      document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && deleteAllModal && deleteAllModal.classList.contains('show')) closeDeleteAllModal(); });
+      // Overlay click + Escape now handled by Alpine
 
       if (deleteAllConfirmBtn) {
         deleteAllConfirmBtn.addEventListener('click', function() {
@@ -530,11 +538,11 @@
         reuploadProgress.style.display = 'none';
         reuploadBar.style.width = '0%';
         reuploadConfirmBtn.textContent = 'Upload & Match';
-        reuploadModal.classList.add('show');
+        if (window.alpineOpenModal) window.alpineOpenModal('reupload');
       }
 
       function closeReuploadModal() {
-        reuploadModal.classList.remove('show');
+        if (window.alpineCloseModal) window.alpineCloseModal();
         reuploadTableId = null;
         reuploadFileInput.value = '';
       }
@@ -573,8 +581,7 @@
       }
 
       if (reuploadCancelBtn) reuploadCancelBtn.addEventListener('click', closeReuploadModal);
-      if (reuploadModal) reuploadModal.addEventListener('click', function(e) { if (e.target === reuploadModal) closeReuploadModal(); });
-      document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && reuploadModal && reuploadModal.classList.contains('show')) closeReuploadModal(); });
+      // Overlay click + Escape now handled by Alpine
 
       if (reuploadConfirmBtn) {
         reuploadConfirmBtn.addEventListener('click', function() {
@@ -663,7 +670,7 @@
               upgradeAllCodeDisplay.textContent = data.code;
               upgradeAllTableNameEl.textContent = data.table_name;
               upgradeAllCountEl.textContent = data.download_count;
-              upgradeAllModal.classList.add('show');
+              if (window.alpineOpenModal) window.alpineOpenModal('upgradeAll');
               upgradeAllCodeInput.focus();
             } else {
               window.showToast(data.message || 'Failed to generate code', 'error');
@@ -673,7 +680,7 @@
       }
 
       function closeUpgradeAllModal() {
-        upgradeAllModal.classList.remove('show');
+        if (window.alpineCloseModal) window.alpineCloseModal();
         upgradeAllTableId = null;
         upgradeAllExpectedCode = '';
         upgradeAllCodeInput.value = '';
@@ -687,8 +694,7 @@
       }
 
       if (upgradeAllCancelBtn) upgradeAllCancelBtn.addEventListener('click', closeUpgradeAllModal);
-      if (upgradeAllModal) upgradeAllModal.addEventListener('click', function(e) { if (e.target === upgradeAllModal) closeUpgradeAllModal(); });
-      document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && upgradeAllModal && upgradeAllModal.classList.contains('show')) closeUpgradeAllModal(); });
+      // Overlay click + Escape now handled by Alpine
 
       if (upgradeAllConfirmBtn) {
         upgradeAllConfirmBtn.addEventListener('click', function() {
@@ -751,6 +757,7 @@
       });
     });
   </script>
-  <script src="{% static 'js/global-search.js' %}?v=2"></script>
+  <script src="{% static 'js/global-search.js' %}?v=100"></script>
+  {% include 'partials/htmx-config.html' %}
 </body>
 </html>

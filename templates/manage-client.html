@@ -11,11 +11,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- Tailwind CSS (single stylesheet) -->
-  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=2">
-  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=2">
+  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=100">
+  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=100">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <!-- Alpine.js State Module (MUST load before Alpine) -->
-  <script src="{% static 'js/alpine-state.js' %}?v=1"></script>
+  <script src="{% static 'js/alpine-state.js' %}?v=100"></script>
   <!-- Alpine.js -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
 </head>
@@ -415,12 +415,14 @@
 
     <!-- Delete Confirmation Modal (Center Modal) -->
     <div id="delete-modal" class="modal-backdrop"
-         onclick="if(event.target===this) this.classList.remove('show')">
-      <div class="modal-center modal-danger" onclick="event.stopPropagation()">
+         x-show="activeModal === 'delete'" x-transition.opacity
+         @click.self="closeModal()" style="display:none">
+      <div class="modal-center modal-danger" @click.stop
+           x-show="activeModal === 'delete'" x-transition.scale.origin.center>
         <div class="modal-header">
           <h3><i class="fa-solid fa-triangle-exclamation"></i> Confirm Delete</h3>
-          <button class="modal-close" id="closeDeleteModal" type="button" aria-label="Close delete modal"
-                  onclick="document.getElementById('delete-modal').classList.remove('show')">
+          <button class="modal-close" type="button" aria-label="Close delete modal"
+                  @click="closeModal()">
             <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
@@ -434,8 +436,8 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-md btn-neutral" id="cancelDeleteBtn" type="button"
-                  onclick="document.getElementById('delete-modal').classList.remove('show')">
+          <button class="btn btn-md btn-neutral" type="button"
+                  @click="closeModal()">
             <i class="fa-solid fa-xmark"></i> Cancel
           </button>
           <button class="btn btn-md btn-danger" id="confirmDeleteBtn" type="button">
@@ -447,12 +449,14 @@
 
     <!-- Status Change Confirmation Modal (Center Modal) -->
     <div id="status-modal" class="modal-backdrop"
-         onclick="if(event.target===this) this.classList.remove('show')">
-      <div class="modal-center modal-warning" onclick="event.stopPropagation()">
+         x-show="activeModal === 'status'" x-transition.opacity
+         @click.self="closeModal()" style="display:none">
+      <div class="modal-center modal-warning" @click.stop
+           x-show="activeModal === 'status'" x-transition.scale.origin.center>
         <div class="modal-header" id="statusModalHeader">
           <h3><i class="fa-solid fa-toggle-on"></i> Confirm Status Change</h3>
-          <button class="modal-close" id="closeStatusModal" type="button" aria-label="Close status modal"
-                  onclick="document.getElementById('status-modal').classList.remove('show')">
+          <button class="modal-close" type="button" aria-label="Close status modal"
+                  @click="closeModal()">
             <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
@@ -466,8 +470,8 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-md btn-neutral" id="cancelStatusBtn" type="button"
-                  onclick="document.getElementById('status-modal').classList.remove('show')">
+          <button class="btn btn-md btn-neutral" type="button"
+                  @click="closeModal()">
             <i class="fa-solid fa-xmark"></i> Cancel
           </button>
           <button class="btn btn-md btn-warning" id="confirmStatusBtn" type="button">
@@ -589,6 +593,12 @@
         </div>
     </div>
 
+    <!-- HTMX Table Container -->
+    <div id="client-table-container"
+         hx-trigger="refreshTable from:body"
+         hx-get="{% url 'manage_clients' %}"
+         hx-target="#client-table-container"
+         hx-swap="innerHTML">
     <!-- Table -->
     <div class="table-wrapper">
         <table class="data-table" id="clientsTable">
@@ -656,17 +666,18 @@
             </div>
         </div>
     </div>
+    </div><!-- /client-table-container -->
 
     </div>
 
   </main>
 
   <!-- Core Modules (Load Order: api → toast → modal → utils → init) -->
-  <script src="{% static 'js/core/api.js' %}?v=1"></script>
-  <script src="{% static 'js/core/toast.js' %}?v=1"></script>
-  <script src="{% static 'js/core/modal.js' %}?v=1"></script>
-  <script src="{% static 'js/core/utils.js' %}?v=1"></script>
-  <script src="{% static 'js/init.js' %}?v=3"></script>
+  <script src="{% static 'js/core/api.js' %}?v=100"></script>
+  <script src="{% static 'js/core/toast.js' %}?v=100"></script>
+  <script src="{% static 'js/core/modal.js' %}?v=100"></script>
+  <script src="{% static 'js/core/utils.js' %}?v=100"></script>
+  <script src="{% static 'js/init.js' %}?v=100"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       // ==================== ELEMENTS ====================
@@ -785,18 +796,22 @@
       highlightSearchResult();
 
       // ==================== ROW SELECTION ====================
-      tbody.addEventListener('click', function(e) {
-        const row = e.target.closest('tr');
-        selectRow(row);
-      });
+      // Delegate from stable container to survive HTMX swaps
+      var clientTableContainer = document.getElementById('client-table-container');
+      if (clientTableContainer) {
+        clientTableContainer.addEventListener('click', function(e) {
+          const row = e.target.closest('tr');
+          selectRow(row);
+        });
 
         // ==================== ROW DOUBLE-CLICK NAVIGATION ====================
-        tbody.addEventListener('dblclick', function(e) {
+        clientTableContainer.addEventListener('dblclick', function(e) {
           const row = e.target.closest('tr');
           if (row && row.dataset.clientId) {
             window.location.href = `/panel/client/${row.dataset.clientId}/settings/`;
           }
         });
+      }
 
       // ==================== PERMISSIONS LIST ====================
       const permissionFields = [
@@ -889,13 +904,11 @@
       
       function openDeleteModalFn(clientName) {
         document.getElementById('deleteClientName').textContent = clientName;
-        deleteModal.classList.add('show');
-        document.body.style.overflow = 'hidden';
+        if (window.alpineOpenModal) window.alpineOpenModal('delete');
       }
       
       function closeDeleteModalFn() {
-        deleteModal.classList.remove('show');
-        document.body.style.overflow = '';
+        if (window.alpineCloseModal) window.alpineCloseModal();
       }
       
       // Status modal open/close functions
@@ -925,13 +938,11 @@
           confirmStatusBtn.innerHTML = '<i class="fa-solid fa-check"></i> Activate';
         }
         
-        statusModal.classList.add('show');
-        document.body.style.overflow = 'hidden';
+        if (window.alpineOpenModal) window.alpineOpenModal('status');
       }
       
       function closeStatusModalFn() {
-        statusModal.classList.remove('show');
-        document.body.style.overflow = '';
+        if (window.alpineCloseModal) window.alpineCloseModal();
         pendingStatusClientId = null;
         pendingStatusCurrentStatus = null;
       }
@@ -1081,7 +1092,12 @@
             showToast(result.message, 'success');
             selectedProfileFile = null; // Reset after successful upload
             closeDrawerFn();
-            setTimeout(() => location.reload(), 500);
+            // Refresh table via HTMX instead of full page reload
+            if (typeof htmx !== 'undefined' && document.getElementById('client-table-container')) {
+              setTimeout(() => htmx.trigger(document.body, 'refreshTable'), 300);
+            } else {
+              setTimeout(() => location.reload(), 500);
+            }
           } else {
             // Check if it's an email duplicate error
             if (result.message && result.message.toLowerCase().includes('email already exists')) {
@@ -1167,16 +1183,11 @@
       cancelClientDrawer.addEventListener('click', closeDrawerFn);
       closeViewModal.addEventListener('click', closeViewModalFn);
       closeViewModalBtn.addEventListener('click', closeViewModalFn);
-      closeDeleteModal.addEventListener('click', closeDeleteModalFn);
-      cancelDeleteBtn.addEventListener('click', closeDeleteModalFn);
-      closeStatusModal.addEventListener('click', closeStatusModalFn);
-      cancelStatusBtn.addEventListener('click', closeStatusModalFn);
+      // Close handlers for delete/status modals now managed by Alpine @click in template
       
       // Close modals on overlay click
       viewModal.addEventListener('click', (e) => { if (e.target === viewModal) closeViewModalFn(); });
       clientDrawer.addEventListener('click', (e) => { if (e.target === clientDrawer) closeDrawerFn(); });
-      deleteModal.addEventListener('click', (e) => { if (e.target === deleteModal) closeDeleteModalFn(); });
-      statusModal.addEventListener('click', (e) => { if (e.target === statusModal) closeStatusModalFn(); });
 
       // ==================== SEARCH & FILTER ====================
       const searchInput = document.getElementById('searchInput');
@@ -1220,7 +1231,10 @@
         });
       }
       
-      searchInput.addEventListener('input', performSearch);
+      searchInput.addEventListener('input', function() {
+        performSearch();
+        if (typeof window.alpineUpdateSearch === 'function') window.alpineUpdateSearch(searchInput.value);
+      });
 
       dropdownToggle.addEventListener('click', function(e) {
         e.stopPropagation();
@@ -1235,6 +1249,7 @@
           currentFilter = this.dataset.value;
           filterDropdown.classList.remove('open');
           searchInput.placeholder = 'Search ' + this.textContent + '...';
+          if (typeof window.alpineUpdateFilter === 'function') window.alpineUpdateFilter(currentFilter);
           performSearch();
         });
       });
@@ -1592,6 +1607,17 @@
       staffDrawer.addEventListener('click', (e) => { if (e.target === staffDrawer) closeStaffDrawerFn(); });
     });
   </script>
-  <script src="{% static 'js/global-search.js' %}?v=2"></script>
+  <script src="{% static 'js/global-search.js' %}?v=100"></script>
+  {% include 'partials/htmx-config.html' %}
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      initHTMXFilters({
+        baseUrl: '{% url "manage_clients" %}',
+        target:  '#client-table-container',
+        searchInputId: 'searchInput',
+        filters: []
+      });
+    });
+  </script>
 </body>
 </html>

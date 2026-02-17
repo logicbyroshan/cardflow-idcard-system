@@ -186,58 +186,66 @@ class WorkflowService:
         if target_status not in cls.VALID_STATUSES:
             return ServiceResult(success=False, message=f'Invalid status: {target_status}')
 
-        current = card.status
+        # ── Atomic block with row lock to prevent race conditions ───
+        with transaction.atomic():
+            # Re-fetch with row lock to get fresh status
+            try:
+                card = IDCard.objects.select_for_update().get(pk=card.pk)
+            except IDCard.DoesNotExist:
+                return ServiceResult(success=False, message='Card not found')
 
-        # ── 2. Transition allowed ───────────────────────────────────
-        allowed = cls.ALLOWED_TRANSITIONS.get(current, [])
-        if target_status not in allowed:
-            return ServiceResult(
-                success=False,
-                message=f'Cannot change status from {card.get_status_display()} to {target_status}.'
-            )
+            current = card.status
 
-        # ── 3. Client-readonly guard ────────────────────────────────
-        if user and not skip_permission:
-            if user.role in ('client', 'client_staff') and current in cls.CLIENT_READONLY_STATUSES:
+            # ── 2. Transition allowed ───────────────────────────────────
+            allowed = cls.ALLOWED_TRANSITIONS.get(current, [])
+            if target_status not in allowed:
                 return ServiceResult(
                     success=False,
-                    message='Cards in approved / download status cannot be modified by client users.'
+                    message=f'Cannot change status from {card.get_status_display()} to {target_status}.'
                 )
 
-        # ── 4. Permission check ─────────────────────────────────────
-        if user and not skip_permission:
-            required_perm = cls._get_required_perm(current, target_status)
-            if not PermissionService.has(user, required_perm):
-                return ServiceResult(success=False, message='Permission denied')
+            # ── 3. Client-readonly guard ────────────────────────────────
+            if user and not skip_permission:
+                if user.role in ('client', 'client_staff') and current in cls.CLIENT_READONLY_STATUSES:
+                    return ServiceResult(
+                        success=False,
+                        message='Cards in approved / download status cannot be modified by client users.'
+                    )
 
-        # ── 5. Mandatory field check ────────────────────────────────
-        table = card.table
-        if (target_status, current) in cls.MANDATORY_FIELD_TRIGGERS:
-            missing = cls._get_missing_mandatory_fields(card, table.fields or [])
-            if missing:
-                return ServiceResult(
-                    success=False,
-                    message=f'Cannot verify card: required fields are empty: {", ".join(missing)}',
-                    data={'missing_fields': missing, 'blocked': True}
-                )
+            # ── 4. Permission check ─────────────────────────────────────
+            if user and not skip_permission:
+                required_perm = cls._get_required_perm(current, target_status)
+                if not PermissionService.has(user, required_perm):
+                    return ServiceResult(success=False, message='Permission denied')
 
-        # ── 6. Image gate ───────────────────────────────────────────
-        if target_status in cls.FORWARD_IMAGE_CHECK:
-            allowed_from = cls.FORWARD_IMAGE_CHECK[target_status]
-            if current in allowed_from:
-                img_names = cls._get_image_field_names(table.fields)
-                if img_names:
-                    missing = cls._get_missing_image_fields(card, img_names)
-                    if missing:
-                        return ServiceResult(
-                            success=False,
-                            message=f'Cannot move card: images missing for {", ".join(missing)}. Upload all images first.',
-                            data={'missing_fields': missing, 'blocked': True}
-                        )
+            # ── 5. Mandatory field check ────────────────────────────────
+            table = card.table
+            if (target_status, current) in cls.MANDATORY_FIELD_TRIGGERS:
+                missing = cls._get_missing_mandatory_fields(card, table.fields or [])
+                if missing:
+                    return ServiceResult(
+                        success=False,
+                        message=f'Cannot verify card: required fields are empty: {", ".join(missing)}',
+                        data={'missing_fields': missing, 'blocked': True}
+                    )
 
-        # ── 7. Commit ───────────────────────────────────────────────
-        card.status = target_status
-        card.save(update_fields=['status', 'updated_at'])
+            # ── 6. Image gate ───────────────────────────────────────────
+            if target_status in cls.FORWARD_IMAGE_CHECK:
+                allowed_from = cls.FORWARD_IMAGE_CHECK[target_status]
+                if current in allowed_from:
+                    img_names = cls._get_image_field_names(table.fields)
+                    if img_names:
+                        missing = cls._get_missing_image_fields(card, img_names)
+                        if missing:
+                            return ServiceResult(
+                                success=False,
+                                message=f'Cannot move card: images missing for {", ".join(missing)}. Upload all images first.',
+                                data={'missing_fields': missing, 'blocked': True}
+                            )
+
+            # ── 7. Commit ───────────────────────────────────────────────
+            card.status = target_status
+            card.save(update_fields=['status', 'updated_at'])
         logger.info("Card %d: %s → %s by user %d", card.pk, current, target_status, user.pk)
 
         # ── 8. Activity log ─────────────────────────────────────────
@@ -304,73 +312,77 @@ class WorkflowService:
 
         # ── 3. Filter to cards with valid source status ─────────────
         valid_from = [s for s, targets in cls.ALLOWED_TRANSITIONS.items() if target_status in targets]
-        eligible_ids = list(
-            IDCard.objects.filter(table=table, id__in=card_ids, status__in=valid_from)
-            .values_list('id', flat=True)
-        )
-        if not eligible_ids:
-            return ServiceResult(
-                success=False,
-                message=f'No cards eligible for transition to {target_status}.'
+
+        with transaction.atomic():
+            # Lock eligible cards to prevent concurrent modifications
+            eligible_ids = list(
+                IDCard.objects.select_for_update()
+                .filter(table=table, id__in=card_ids, status__in=valid_from)
+                .values_list('id', flat=True)
             )
-
-        skipped_mandatory_ids: List[int] = []
-        skipped_image_ids: List[int] = []
-
-        # ── 4. Mandatory field check (→ verified from pending) ──────
-        if (target_status, 'pending') in cls.MANDATORY_FIELD_TRIGGERS:
-            pending_cards = list(IDCard.objects.filter(table=table, id__in=eligible_ids, status='pending'))
-            valid_ids = []
-            for card in pending_cards:
-                missing = cls._get_missing_mandatory_fields(card, table.fields or [])
-                if missing:
-                    skipped_mandatory_ids.append(card.id)
-                else:
-                    valid_ids.append(card.id)
-            # Non-pending cards skip mandatory check
-            non_pending_ids = [cid for cid in eligible_ids if cid not in [c.id for c in pending_cards]]
-            eligible_ids = valid_ids + non_pending_ids
-
-            if not eligible_ids and skipped_mandatory_ids:
+            if not eligible_ids:
                 return ServiceResult(
                     success=False,
-                    message=f'All {len(skipped_mandatory_ids)} card(s) have missing required fields and cannot be verified.',
-                    data={'skipped_count': len(skipped_mandatory_ids), 'skipped_ids': skipped_mandatory_ids}
+                    message=f'No cards eligible for transition to {target_status}.'
                 )
 
-        # ── 5. Image gate (forward moves) ───────────────────────────
-        if target_status in cls.FORWARD_IMAGE_CHECK:
-            img_names = cls._get_image_field_names(table.fields)
-            if img_names:
-                allowed_from_statuses = cls.FORWARD_IMAGE_CHECK[target_status]
-                cards = list(IDCard.objects.filter(table=table, id__in=eligible_ids))
+            skipped_mandatory_ids: List[int] = []
+            skipped_image_ids: List[int] = []
+
+            # ── 4. Mandatory field check (→ verified from pending) ──────
+            if (target_status, 'pending') in cls.MANDATORY_FIELD_TRIGGERS:
+                pending_cards = list(IDCard.objects.filter(table=table, id__in=eligible_ids, status='pending'))
                 valid_ids = []
-                for card in cards:
-                    if card.status in allowed_from_statuses:
-                        missing = cls._get_missing_image_fields(card, img_names)
-                        if missing:
-                            skipped_image_ids.append(card.id)
-                        else:
-                            valid_ids.append(card.id)
+                for card in pending_cards:
+                    missing = cls._get_missing_mandatory_fields(card, table.fields or [])
+                    if missing:
+                        skipped_mandatory_ids.append(card.id)
                     else:
                         valid_ids.append(card.id)
-                eligible_ids = valid_ids
+                # Non-pending cards skip mandatory check
+                non_pending_ids = [cid for cid in eligible_ids if cid not in [c.id for c in pending_cards]]
+                eligible_ids = valid_ids + non_pending_ids
 
-                if not eligible_ids and skipped_image_ids:
+                if not eligible_ids and skipped_mandatory_ids:
                     return ServiceResult(
                         success=False,
-                        message=f'All {len(skipped_image_ids)} card(s) have missing images and cannot be moved forward.',
-                        data={'skipped_count': len(skipped_image_ids), 'skipped_ids': skipped_image_ids}
+                        message=f'All {len(skipped_mandatory_ids)} card(s) have missing required fields and cannot be verified.',
+                        data={'skipped_count': len(skipped_mandatory_ids), 'skipped_ids': skipped_mandatory_ids}
                     )
 
-        # ── 6. Commit (single queryset update) ─────────────────────
-        if not eligible_ids:
-            return ServiceResult(
-                success=False,
-                message=f'No cards eligible for transition to {target_status}.'
-            )
+            # ── 5. Image gate (forward moves) ───────────────────────────
+            if target_status in cls.FORWARD_IMAGE_CHECK:
+                img_names = cls._get_image_field_names(table.fields)
+                if img_names:
+                    allowed_from_statuses = cls.FORWARD_IMAGE_CHECK[target_status]
+                    cards = list(IDCard.objects.filter(table=table, id__in=eligible_ids))
+                    valid_ids = []
+                    for card in cards:
+                        if card.status in allowed_from_statuses:
+                            missing = cls._get_missing_image_fields(card, img_names)
+                            if missing:
+                                skipped_image_ids.append(card.id)
+                            else:
+                                valid_ids.append(card.id)
+                        else:
+                            valid_ids.append(card.id)
+                    eligible_ids = valid_ids
 
-        updated_count = IDCard.objects.filter(table=table, id__in=eligible_ids).update(status=target_status)
+                    if not eligible_ids and skipped_image_ids:
+                        return ServiceResult(
+                            success=False,
+                            message=f'All {len(skipped_image_ids)} card(s) have missing images and cannot be moved forward.',
+                            data={'skipped_count': len(skipped_image_ids), 'skipped_ids': skipped_image_ids}
+                        )
+
+            # ── 6. Commit (single queryset update) ─────────────────────
+            if not eligible_ids:
+                return ServiceResult(
+                    success=False,
+                    message=f'No cards eligible for transition to {target_status}.'
+                )
+
+            updated_count = IDCard.objects.filter(table=table, id__in=eligible_ids).update(status=target_status)
         logger.info("Bulk transition: %d cards → %s in table %d by user %d", updated_count, target_status, table.pk, user.pk)
 
         # ── 7. Activity log ─────────────────────────────────────────
@@ -503,16 +515,22 @@ class ReprintWorkflowService:
         if target_status not in cls.VALID_STATUSES:
             return ServiceResult(success=False, message=f'Invalid reprint status: {target_status}')
 
-        current = reprint_req.status
-        allowed = cls.ALLOWED_TRANSITIONS.get(current, [])
-        if target_status not in allowed:
-            return ServiceResult(
-                success=False,
-                message=f'Cannot change reprint status from {current} to {target_status}.'
-            )
+        with transaction.atomic():
+            try:
+                reprint_req = ReprintRequest.objects.select_for_update().get(pk=reprint_req.pk)
+            except ReprintRequest.DoesNotExist:
+                return ServiceResult(success=False, message='Reprint request not found')
 
-        reprint_req.status = target_status
-        reprint_req.save(update_fields=['status', 'updated_at'])
+            current = reprint_req.status
+            allowed = cls.ALLOWED_TRANSITIONS.get(current, [])
+            if target_status not in allowed:
+                return ServiceResult(
+                    success=False,
+                    message=f'Cannot change reprint status from {current} to {target_status}.'
+                )
+
+            reprint_req.status = target_status
+            reprint_req.save(update_fields=['status', 'updated_at'])
 
         return ServiceResult(
             success=True,

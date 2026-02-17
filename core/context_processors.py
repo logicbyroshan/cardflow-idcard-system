@@ -22,6 +22,9 @@ def permissions(request):
         - All individual permissions: perm_idcard_client_list, perm_idcard_setting_list, etc.
     
     For unauthenticated users, returns empty dict with all values as False.
+    
+    Performance: caches the result on request._cached_permissions so that
+    repeated calls within the same request are free.
     """
     if not request.user.is_authenticated:
         return {
@@ -33,6 +36,11 @@ def permissions(request):
             'user_role': None,
         }
     
+    # Return cached result if already computed this request
+    cached = getattr(request, '_cached_permissions', None)
+    if cached is not None:
+        return cached
+    
     # Get all permissions from the centralized PermissionService
     context = PermissionService.get_permission_context(request.user)
     
@@ -41,5 +49,8 @@ def permissions(request):
     
     # Add app version
     context['APP_VERSION'] = getattr(settings, 'APP_VERSION', 'v1.0.0')
+    
+    # Cache on request for this request lifecycle
+    request._cached_permissions = context
     
     return context

@@ -5,7 +5,7 @@
     position: sticky;
     top: 0;
     z-index: 10;
-    background: #3b82f6;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
 .idcard-table th {
@@ -17,13 +17,14 @@
     padding: 6px 10px;
     white-space: nowrap;
     text-align: left;
+    border: 1px solid rgba(255,255,255,0.15);
 }
 
 .idcard-table td {
     padding: 8px 10px;
     font-size: 13px;
     color: #374151;
-    border-bottom: 1px solid #e5e7eb;
+    border: 1px solid #e5e7eb;
     vertical-align: middle;
 }
 
@@ -31,6 +32,15 @@
 .idcard-table tbody tr {
     cursor: default;
     user-select: auto;
+}
+.idcard-table tbody tr:nth-child(odd) {
+    background: #f9fafb;
+}
+.idcard-table tbody tr:nth-child(even) {
+    background: #ffffff;
+}
+.idcard-table tbody tr:hover {
+    background: #f3f4f6;
 }
 
 /* Ensure bulk/action buttons always show pointer cursor */
@@ -101,17 +111,18 @@
 .list-btn {
     display: inline-flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 2px;
-    padding: 3px 5px;
+    justify-content: center;
+    gap: 4px;
+    padding: 3px 8px;
     border: none;
-    border-radius: 2px;
-    font-size: 13px;
-    font-weight: 600;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
     cursor: pointer;
     transition: all 0.15s ease;
     white-space: nowrap;
-    min-width: 70px;
+    min-width: 100px;
+    text-decoration: none;
 }
 
 /* Hide icons in list buttons */
@@ -119,19 +130,21 @@
     display: none;
 }
 
-/* Count Badge */
+/* Count Badge - fits up to 4 digits */
 .count-badge {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 28px;
-    height: 12px;
-    padding: 0 2px;
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: 700;
-    margin-left: 2px;
+    min-width: 34px;
+    height: 16px;
+    padding: 0 5px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 500;
+    margin-left: 4px;
     text-align: center;
+    line-height: 1;
+    box-sizing: border-box;
 }
 
 /* Pending Button - Yellow/Amber (waiting status) */
@@ -234,16 +247,17 @@
 .bulk-btn {
     display: inline-flex;
     align-items: center;
-    gap: 2px;
-    padding: 3px 6px;
+    gap: 4px;
+    padding: 3px 8px;
     border: none;
-    border-radius: 2px;
-    font-size: 13px;
-    font-weight: 600;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
     cursor: pointer;
     transition: all 0.15s ease;
     white-space: nowrap;
     justify-content: center;
+    min-width: 120px;
 }
 
 /* Hide icons in bulk buttons */

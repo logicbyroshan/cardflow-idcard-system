@@ -2,6 +2,11 @@
  * Core Toast Module
  * Single authority for all toast / notification display.
  *
+ * Simple toasts delegate to Alpine's toast queue when available,
+ * falling back to DOM-based toast when Alpine has not initialised.
+ * Progress / download-complete toasts always use the DOM toast
+ * because Alpine does not support a progress-bar variant.
+ *
  * Public API:
  *   Toast.success(msg, duration?)
  *   Toast.error(msg, duration?)
@@ -12,7 +17,7 @@
  *   Toast.hide()
  *
  * @module core/toast
- * @version 3.0.0
+ * @version 4.0.0
  */
 
 (function () {
@@ -35,7 +40,7 @@
     };
 
     // ------------------------------------------
-    // ENSURE DOM ELEMENT EXISTS
+    // ENSURE DOM ELEMENT EXISTS (for progress toasts & fallback)
     // ------------------------------------------
     function _ensureEl() {
         var toast = document.getElementById('toast');
@@ -56,11 +61,20 @@
 
     // ------------------------------------------
     // LOW-LEVEL: showToast
+    // Delegates to Alpine when available; falls back to DOM toast
     // ------------------------------------------
     function showToast(message, type, duration) {
         // Normalise type (boolean → string)
         if (typeof type === 'boolean') type = type ? 'success' : 'error';
-        type     = type || 'success';
+        type = type || 'success';
+
+        // ---- Alpine bridge (preferred) ----
+        if (typeof window.alpineShowToast === 'function') {
+            window.alpineShowToast(message, type);
+            return;
+        }
+
+        // ---- DOM fallback ----
         duration = (duration !== undefined) ? duration : 3000;
 
         if (_toastTimeout) { clearTimeout(_toastTimeout); _toastTimeout = null; }

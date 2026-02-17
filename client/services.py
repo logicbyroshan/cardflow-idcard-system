@@ -578,15 +578,11 @@ class ClientStaffService(BaseService):
             if not PermissionService.has_permission(user, 'perm_idcard_client_list'):
                 return ServiceResult(success=False, message='Permission denied')
             
-            # Get staff and verify ownership
-            try:
-                staff = Staff.objects.get(id=staff_id, client=client, staff_type='client_staff')
-            except Staff.DoesNotExist:
-                return ServiceResult(success=False, message='Staff not found')
-            
-            staff_user = staff.user
-            staff_user.is_active = not staff_user.is_active
-            staff_user.save()
+            with transaction.atomic():
+                staff = Staff.objects.select_for_update().get(id=staff_id, client=client, staff_type='client_staff')
+                staff_user = staff.user
+                staff_user.is_active = not staff_user.is_active
+                staff_user.save(update_fields=['is_active'])
             
             status = 'active' if staff_user.is_active else 'inactive'
             

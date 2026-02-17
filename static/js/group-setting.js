@@ -28,16 +28,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const newFieldMandatory = document.getElementById('new-field-mandatory');
     const addFieldBtn = document.getElementById('add-field-btn');
     
-    const statusModal = document.getElementById('status-modal');
-    const modalClose = document.getElementById('modal-close');
-    const modalCancel = document.getElementById('modal-cancel');
+    // Modal content elements (modals themselves are Alpine x-show managed)
     const modalConfirm = document.getElementById('modal-confirm');
     const modalMessage = document.getElementById('modal-message');
     const modalIcon = document.getElementById('modalIcon');
     
-    const deleteModal = document.getElementById('delete-modal');
-    const closeDeleteModal = document.getElementById('closeDeleteModal');
-    const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
     const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
     const deleteTableName = document.getElementById('deleteTableName');
     
@@ -86,8 +81,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ==================== ROW SELECTION ====================
-    if (tablesBody) {
-        tablesBody.addEventListener('click', function(e) {
+    // Delegate from stable container to survive HTMX swaps
+    var gsTableContainer = document.getElementById('gs-table-container') || tablesBody;
+    if (gsTableContainer) {
+        gsTableContainer.addEventListener('click', function(e) {
             // Handle download button click
             if (e.target.closest('.download-btn')) {
                 e.stopPropagation();
@@ -272,10 +269,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 `<option value="${t.value}" ${field.type === t.value ? 'selected' : ''}>${t.label}</option>`
             ).join('');
             
+            const _esc = window.escapeHtml || function(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); };
             // In add/edit mode, field name is an editable input; in view mode it's plain text
             const fieldNameHtml = currentMode !== 'view'
-                ? `<span class="field-name"><input type="text" class="field-name-input" data-idx="${idx}" value="${field.name}" placeholder="Field name">${field.mandatory ? '<span class="mandatory-indicator" title="Required field">*</span>' : ''}</span>`
-                : `<span class="field-name">${field.name}${field.mandatory ? '<span class="mandatory-indicator" title="Required field">*</span>' : ''}</span>`;
+                ? `<span class="field-name"><input type="text" class="field-name-input" data-idx="${idx}" value="${_esc(field.name)}" placeholder="Field name">${field.mandatory ? '<span class="mandatory-indicator" title="Required field">*</span>' : ''}</span>`
+                : `<span class="field-name">${_esc(field.name)}${field.mandatory ? '<span class="mandatory-indicator" title="Required field">*</span>' : ''}</span>`;
             
             // Mandatory checkbox for edit mode
             const mandatoryHtml = currentMode !== 'view'
@@ -535,7 +533,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     modalIcon.innerHTML = '<i class="fa-solid fa-toggle-on"></i>';
                 }
             }
-            if (statusModal) statusModal.classList.add('show');
+            if (window.alpineOpenModal) window.alpineOpenModal('status');
         });
     }
 
@@ -545,16 +543,15 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!selectedRow) return;
             const name = selectedRow.dataset.tableName;
             if (deleteTableName) deleteTableName.textContent = name;
-            if (deleteModal) deleteModal.classList.add('show');
+            if (window.alpineOpenModal) window.alpineOpenModal('delete');
         });
     }
 
     // Delete modal handlers
-    if (closeDeleteModal) closeDeleteModal.addEventListener('click', () => deleteModal.classList.remove('show'));
-    if (cancelDeleteBtn) cancelDeleteBtn.addEventListener('click', () => deleteModal.classList.remove('show'));
+    // Close handlers now managed by Alpine x-show + @click in template
     if (confirmDeleteBtn) {
         confirmDeleteBtn.addEventListener('click', async () => {
-            deleteModal.classList.remove('show');
+            if (window.alpineCloseModal) window.alpineCloseModal();
             if (!selectedTableId) return;
             
             // Prevent double-click
@@ -580,31 +577,24 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-    if (deleteModal) deleteModal.addEventListener('click', (e) => { if (e.target === deleteModal) deleteModal.classList.remove('show'); });
-
-    if (modalClose) modalClose.addEventListener('click', () => statusModal.classList.remove('show'));
-    if (modalCancel) modalCancel.addEventListener('click', () => statusModal.classList.remove('show'));
+    // Overlay click-to-close + cancel/close buttons now handled by Alpine @click in template
     if (modalConfirm) modalConfirm.addEventListener('click', () => {
-        statusModal.classList.remove('show');
+        if (window.alpineCloseModal) window.alpineCloseModal();
         toggleStatus();
     });
-    if (statusModal) statusModal.addEventListener('click', (e) => { if (e.target === statusModal) statusModal.classList.remove('show'); });
 
     if (closeDrawer) closeDrawer.addEventListener('click', closeDrawerModal);
     if (cancelDrawer) cancelDrawer.addEventListener('click', closeDrawerModal);
     if (saveDrawer) saveDrawer.addEventListener('click', saveTable);
     if (addDrawer) addDrawer.addEventListener('click', (e) => { if (e.target === addDrawer) closeDrawerModal(); });
 
-    // Escape key closes drawer and modals
+    // Escape key closes drawer (modals now handled by Alpine layoutState)
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             if (addDrawer && addDrawer.classList.contains('open')) {
                 closeDrawerModal();
-            } else if (deleteModal && deleteModal.classList.contains('show')) {
-                deleteModal.classList.remove('show');
-            } else if (statusModal && statusModal.classList.contains('show')) {
-                statusModal.classList.remove('show');
             }
+            // Alpine handles Escape for activeModal in layoutState()
         }
     });
 

@@ -309,7 +309,7 @@ class ClientService(BaseService):
     
     @classmethod
     def delete(cls, client_id: int) -> ServiceResult:
-        """Delete a client and associated user"""
+        """Delete a client and associated user (including client_staff users)"""
         try:
             client = get_object_or_404(Client, id=client_id)
             user = client.user
@@ -317,9 +317,21 @@ class ClientService(BaseService):
             
             # Phase 1: Photo and profile_image fields removed - using avatar placeholder
             
+            # Collect client_staff User IDs before cascade deletes their Staff records
+            from staff.models import Staff as StaffModel
+            staff_user_ids = list(
+                StaffModel.objects.filter(
+                    client=client, staff_type='client_staff'
+                ).values_list('user_id', flat=True)
+            )
+            
             with transaction.atomic():
-                client.delete()
-                user.delete()
+                client.delete()   # Cascades Staff records
+                user.delete()     # Delete client's own User
+                # Clean up orphaned client_staff User records
+                if staff_user_ids:
+                    from django.contrib.auth import get_user_model
+                    get_user_model().objects.filter(id__in=staff_user_ids).delete()
             
             return ServiceResult(
                 success=True,
@@ -330,29 +342,29 @@ class ClientService(BaseService):
     
     @classmethod
     def toggle_status(cls, client_id: int) -> ServiceResult:
-        """Toggle client active/inactive status"""
+        """Toggle client active/inactive status (atomic to prevent lost toggles)"""
         try:
             import logging
             logger = logging.getLogger(__name__)
             
-            client = get_object_or_404(Client, id=client_id)
-            user = client.user
-            
-            if client.status == 'active':
-                client.status = 'inactive'
-                user.is_active = False
-                status_display = 'Inactive'
-                # CRITICAL: Deactivate all client staff when client is deactivated
-                deactivated_staff_count = cls._cascade_deactivate_staff(client)
-            else:
-                client.status = 'active'
-                user.is_active = True
-                status_display = 'Active'
-                deactivated_staff_count = 0
-            
             with transaction.atomic():
-                client.save()
-                user.save()
+                client = Client.objects.select_related('user').select_for_update().get(id=client_id)
+                user = client.user
+                
+                if client.status == 'active':
+                    client.status = 'inactive'
+                    user.is_active = False
+                    status_display = 'Inactive'
+                    # CRITICAL: Deactivate all client staff when client is deactivated
+                    deactivated_staff_count = cls._cascade_deactivate_staff(client)
+                else:
+                    client.status = 'active'
+                    user.is_active = True
+                    status_display = 'Active'
+                    deactivated_staff_count = 0
+                
+                client.save(update_fields=['status', 'updated_at'])
+                user.save(update_fields=['is_active'])
             
             message = f'Client status changed to {status_display}!'
             if deactivated_staff_count > 0:
@@ -469,24 +481,25 @@ class ClientService(BaseService):
 
     @classmethod
     def toggle_client_staff_status(cls, client_id: int, staff_id: int) -> ServiceResult:
-        """Toggle a client staff member's active/inactive status (Super Admin only)"""
+        """Toggle a client staff member's active/inactive status (atomic, Super Admin only)"""
         try:
             client = get_object_or_404(Client, id=client_id)
-            staff = Staff.objects.filter(
-                id=staff_id,
-                client=client,
-                staff_type='client_staff'
-            ).select_related('user').first()
-            
-            if not staff:
-                return ServiceResult(
-                    success=False,
-                    message='Staff member not found or does not belong to this client'
-                )
-            
-            user = staff.user
-            user.is_active = not user.is_active
-            user.save()
+            with transaction.atomic():
+                staff = Staff.objects.select_for_update().select_related('user').filter(
+                    id=staff_id,
+                    client=client,
+                    staff_type='client_staff'
+                ).first()
+                
+                if not staff:
+                    return ServiceResult(
+                        success=False,
+                        message='Staff member not found or does not belong to this client'
+                    )
+                
+                user = staff.user
+                user.is_active = not user.is_active
+                user.save(update_fields=['is_active'])
             
             is_active = user.is_active
             return ServiceResult(
@@ -535,24 +548,27 @@ class ClientService(BaseService):
             updated_perms = []
             rejected_perms = []
             
-            for perm_name, value in permissions.items():
-                if perm_name not in STAFF_TO_CLIENT_PERMS:
-                    continue  # Ignore unknown permissions
-                
-                client_perm = STAFF_TO_CLIENT_PERMS.get(perm_name)
-                
-                # If trying to grant a permission, verify client has it
-                if value and client_perm:
-                    client_has_perm = getattr(client, client_perm, False)
-                    if not client_has_perm:
-                        rejected_perms.append(perm_name)
-                        continue  # Skip - client doesn't have this permission
-                
-                # Update staff permission
-                setattr(staff, perm_name, bool(value))
-                updated_perms.append(perm_name)
-            
             with transaction.atomic():
+                # Re-fetch with row lock to prevent concurrent permission updates
+                staff = Staff.objects.select_for_update().get(pk=staff.pk)
+                
+                for perm_name, value in permissions.items():
+                    if perm_name not in STAFF_TO_CLIENT_PERMS:
+                        continue  # Ignore unknown permissions
+                    
+                    client_perm = STAFF_TO_CLIENT_PERMS.get(perm_name)
+                    
+                    # If trying to grant a permission, verify client has it
+                    if value and client_perm:
+                        client_has_perm = getattr(client, client_perm, False)
+                        if not client_has_perm:
+                            rejected_perms.append(perm_name)
+                            continue  # Skip - client doesn't have this permission
+                    
+                    # Update staff permission
+                    setattr(staff, perm_name, bool(value))
+                    updated_perms.append(perm_name)
+                
                 staff.save()
             
             # Refresh to confirm persistence

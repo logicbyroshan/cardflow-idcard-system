@@ -69,8 +69,8 @@ class WordExporter:
     IMAGE_HEIGHT_CM = 2.5
     ROW_HEIGHT_CM = 2.5
     PAGE_WIDTH_CM = 27.5  # Landscape A4 with margins
-    # Phase 4: Thumbnails are used for smaller export file size.
-    # Use get_image_path_for_export with prefer_thumbnail=True.
+    # Phase 3: DOCX always uses ORIGINAL images for full quality print.
+    # PDF uses thumbnails. ZIP uses originals.
     
     def export_cards(
         self,
@@ -394,10 +394,10 @@ class WordExporter:
         try:
             from PIL import Image as PILImage
             for card in cards_list[:10]:
-                # Phase 4: Use thumbnail if available for consistent sizing
+                # Phase 3: DOCX uses original images for sizing reference
                 img_path = ImageService.get_image_path_for_export(
                     card=card, field_name=field_name, 
-                    prefer_thumbnail=True, fallback_to_field_data=True
+                    prefer_thumbnail=False, fallback_to_field_data=True
                 )
                 if img_path and is_valid_image_path(img_path):
                     if default_storage.exists(img_path):
@@ -589,11 +589,11 @@ class WordExporter:
             cell.width = Cm(column_widths[col_idx])
             
             if field['is_image']:
-                # Phase 4: Use thumbnail for smaller export file size
+                # Phase 3: DOCX always uses ORIGINAL images for print quality
                 image_path = ImageService.get_image_path_for_export(
                     card=card,
                     field_name=field['name'],
-                    prefer_thumbnail=True,
+                    prefer_thumbnail=False,
                     fallback_to_field_data=True
                 )
                 self._add_image_to_cell(

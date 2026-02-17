@@ -178,7 +178,8 @@ class PdfExporter:
                 )
 
             # Sort cards for export (Class → Name, or Name only)
-            cards_list = sort_cards_for_export(list(cards), table.fields)
+            MAX_PDF_CARDS = 2000
+            cards_list = sort_cards_for_export(list(cards[:MAX_PDF_CARDS]), table.fields)
             column_configs = self._build_column_configs(ordered_fields, cards_list)
 
             # Build row data (with placeholder images for missing photos)

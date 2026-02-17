@@ -1,7 +1,8 @@
 {% comment %}
-Delete Confirmation Modal (Tailwind)
+Delete Confirmation Modal (Alpine.js)
 =====================================
 Pre-built center modal for delete confirmations.
+Now driven by Alpine x-show via layoutState().activeModal.
 
 Usage:
   {% include 'components/delete-modal.html' with
@@ -9,23 +10,25 @@ Usage:
      item_name="client"
   %}
 
-JS contract:
-  Show:  document.getElementById('delete-modal').classList.remove('hidden')
-  Hide:  document.getElementById('delete-modal').classList.add('hidden')
-  Name:  document.getElementById('deleteItemName').textContent = 'John Doe'
+JS contract (Alpine bridge):
+  Show:  window.alpineOpenModal('delete')
+  Hide:  window.alpineCloseModal()
+  Name:  document.getElementById('deleteStaffName').textContent = 'John Doe'
   Confirm button: #confirmDeleteBtn
   Cancel button:  #cancelDeleteBtn
 {% endcomment %}
 
 <div id="{{ modal_id|default:'delete-modal' }}" class="modal-backdrop"
-     onclick="if(event.target===this) this.classList.remove('show')">
-  <div class="modal-center modal-danger" onclick="event.stopPropagation()">
+     x-show="activeModal === 'delete'" x-transition.opacity
+     @click.self="closeModal()" style="display:none">
+  <div class="modal-center modal-danger" @click.stop
+       x-show="activeModal === 'delete'" x-transition.scale.origin.center>
 
     <!-- Header -->
     <div class="modal-header">
       <h3><i class="fa-solid fa-triangle-exclamation"></i> Confirm Delete</h3>
-      <button type="button" class="modal-close" id="closeDeleteModal"
-              onclick="document.getElementById('{{ modal_id|default:'delete-modal' }}').classList.remove('show')"
+      <button type="button" class="modal-close"
+              @click="closeModal()"
               aria-label="Close">
         <i class="fa-solid fa-xmark"></i>
       </button>
@@ -50,7 +53,7 @@ JS contract:
     <!-- Footer -->
     <div class="modal-footer">
       <button type="button" class="btn btn-md btn-neutral" id="cancelDeleteBtn"
-              onclick="document.getElementById('{{ modal_id|default:'delete-modal' }}').classList.remove('show')">
+              @click="closeModal()">
         <i class="fa-solid fa-xmark"></i> Cancel
       </button>
       <button type="button" class="btn btn-md btn-danger" id="confirmDeleteBtn">

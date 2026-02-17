@@ -51,12 +51,17 @@
             if (this.classList.contains("selected")) {
                 this.classList.remove("selected");
                 selectedRow = null;
+                // Bridge to Alpine reactive state
+                if (typeof window.alpineClearSelection === 'function') window.alpineClearSelection();
             } else {
                 if (selectedRow) {
                     selectedRow.classList.remove("selected");
                 }
                 this.classList.add("selected");
                 selectedRow = this;
+                // Bridge to Alpine reactive state
+                var rowId = this.dataset.groupId || this.dataset.id || '';
+                if (typeof window.alpineUpdateSelection === 'function') window.alpineUpdateSelection([rowId]);
             }
         });
 

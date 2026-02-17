@@ -111,5 +111,6 @@ class Staff(models.Model):
         verbose_name_plural = "Staff"
         ordering = ['-created_at']
         indexes = [
+            models.Index(fields=['staff_type', 'created_at']),
             models.Index(fields=['created_at']),
         ]

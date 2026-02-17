@@ -30,6 +30,8 @@ function initSearchHandlers() {
             clearTimeout(searchTimeout);
             searchTimeout = setTimeout(() => {
                 const query = this.value.trim();
+                // Bridge to Alpine reactive state
+                if (typeof window.alpineUpdateSearch === 'function') window.alpineUpdateSearch(query);
                 // Use table module's searchRows function
                 if (typeof searchRows === 'function') {
                     searchRows(query);
@@ -66,6 +68,8 @@ function initSearchHandlers() {
             searchClearBtn.addEventListener('click', function() {
                 searchInput.value = '';
                 updateClearButton();
+                // Bridge to Alpine reactive state
+                if (typeof window.alpineUpdateSearch === 'function') window.alpineUpdateSearch('');
                 if (typeof searchRows === 'function') {
                     searchRows('');
                 } else if (typeof window.searchRows === 'function') {
@@ -496,12 +500,13 @@ function initSearchAllModal() {
 
 function displaySearchResults(results, query, container, closeModalFn) {
     if (!container) return;
+    const _esc = window.escapeHtml || function(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); };
     
     if (results.length === 0) {
         container.innerHTML = `
             <div class="search-no-results">
                 <i class="fa-solid fa-search"></i>
-                <p>No results found for "${query}"</p>
+                <p>No results found for "${_esc(query)}"</p>
             </div>
         `;
         return;
@@ -512,16 +517,16 @@ function displaySearchResults(results, query, container, closeModalFn) {
     
     results.forEach(result => {
         const photoHtml = result.photo 
-            ? `<img src="${result.photo}" class="search-result-photo" alt="Photo">`
+            ? `<img src="${_esc(result.photo)}" class="search-result-photo" alt="Photo">`
             : `<div class="search-result-photo-placeholder"><i class="fa-solid fa-user"></i></div>`;
         
         html += `
-            <div class="search-result-item" data-card-id="${result.id}" data-status="${result.status}">
+            <div class="search-result-item" data-card-id="${result.id}" data-status="${_esc(result.status)}">
                 ${photoHtml}
                 <div class="search-result-info">
-                    <div class="search-result-name">${result.display_name}</div>
-                    <div class="search-result-match">Match: <strong>${result.matched_field}</strong> = "${result.matched_value}"</div>
-                    <span class="search-result-status ${result.status}">${result.status_display}</span>
+                    <div class="search-result-name">${_esc(result.display_name)}</div>
+                    <div class="search-result-match">Match: <strong>${_esc(result.matched_field)}</strong> = "${_esc(result.matched_value)}"</div>
+                    <span class="search-result-status ${_esc(result.status)}">${_esc(result.status_display)}</span>
                 </div>
             </div>
         `;

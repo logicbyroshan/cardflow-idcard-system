@@ -70,7 +70,7 @@ Slots are injected via:
 <script>
 /* Side Modal open/close helpers — auto-register for {{ modal_id }} */
 (function() {
-  var id = '{{ modal_id }}';
+  var id = '{{ modal_id|escapejs }}';
   window.openSideModal = window.openSideModal || function(modalId) {
     var backdrop = document.getElementById(modalId + '-backdrop');
     var panel = document.getElementById(modalId);

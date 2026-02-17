@@ -326,18 +326,59 @@ class PermissionService:
         """
         Build dict of all permission flags + role booleans for template injection.
         Called by context_processors.permissions().
+
+        Performance: fetches the permission-bearing profile ONCE and reads all
+        boolean fields directly instead of calling has() N times.
         """
+        is_sa = cls.is_super_admin(user)
+        is_as = cls.is_admin_staff(user)
+        is_cl = cls.is_client(user)
+        is_cs = cls.is_client_staff(user)
+
         context: Dict[str, bool] = {
-            'is_super_admin': cls.is_super_admin(user),
-            'is_admin_staff': cls.is_admin_staff(user),
-            'is_client': cls.is_client(user),
-            'is_client_staff': cls.is_client_staff(user),
+            'is_super_admin': is_sa,
+            'is_admin_staff': is_as,
+            'is_client': is_cl,
+            'is_client_staff': is_cs,
             'user_role': user.role if user.is_authenticated else None,
         }
 
-        # Populate individual permissions via has()
-        for perm in cls.ALL_PERMISSION_KEYS:
-            context[perm] = cls.has(user, perm)
+        # Super admin gets all permissions True — no profile lookup needed
+        if is_sa:
+            for perm in cls.ALL_PERMISSION_KEYS:
+                context[perm] = True
+        elif is_as:
+            # Admin staff: read booleans from staff_profile in one shot
+            staff = getattr(user, 'staff_profile', None)
+            for perm in cls.ALL_PERMISSION_KEYS:
+                if staff and hasattr(staff, perm):
+                    context[perm] = bool(getattr(staff, perm, False))
+                else:
+                    context[perm] = False
+        elif is_cl:
+            # Client: read from client_profile
+            profile = getattr(user, 'client_profile', None)
+            active = profile.status == 'active' if profile else False
+            for perm in cls.ALL_PERMISSION_KEYS:
+                if active and profile and hasattr(profile, perm):
+                    context[perm] = bool(getattr(profile, perm, False))
+                else:
+                    context[perm] = False
+        elif is_cs:
+            # Client staff: staff perm AND client perm (double-gated)
+            staff = getattr(user, 'staff_profile', None)
+            client_obj = staff.client if staff else None
+            active = client_obj and client_obj.status == 'active'
+            for perm in cls.ALL_PERMISSION_KEYS:
+                if not active:
+                    context[perm] = False
+                    continue
+                staff_val = bool(getattr(staff, perm, True)) if hasattr(staff, perm) else True
+                client_val = bool(getattr(client_obj, perm, False)) if hasattr(client_obj, perm) else False
+                context[perm] = staff_val and client_val
+        else:
+            for perm in cls.ALL_PERMISSION_KEYS:
+                context[perm] = False
 
         # Convenience composite key used by templates
         context['user_permissions'] = {
@@ -527,6 +568,11 @@ def api_require_permission(permission_name: str):
             if not request.user.is_authenticated:
                 return JsonResponse({'success': False, 'message': 'Authentication required'}, status=401)
             if not PermissionService.has(request.user, permission_name):
+                logger.warning(
+                    "PERMISSION_DENIED user=%s role=%s perm=%s path=%s",
+                    request.user.username, getattr(request.user, 'role', '-'),
+                    permission_name, request.path,
+                )
                 return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
             return view_func(request, *args, **kwargs)
         return wrapper
@@ -550,6 +596,10 @@ def api_require_any_admin(view_func):
         if not request.user.is_authenticated:
             return JsonResponse({'success': False, 'message': 'Authentication required'}, status=401)
         if not PermissionService.is_any_admin(request.user):
+            logger.warning(
+                "PERMISSION_DENIED user=%s role=%s required=any_admin path=%s",
+                request.user.username, getattr(request.user, 'role', '-'), request.path,
+            )
             return JsonResponse({'success': False, 'message': 'Admin access required'}, status=403)
         return view_func(request, *args, **kwargs)
     return wrapper
@@ -562,6 +612,10 @@ def api_require_super_admin(view_func):
         if not request.user.is_authenticated:
             return JsonResponse({'success': False, 'message': 'Authentication required'}, status=401)
         if not PermissionService.is_super_admin(request.user):
+            logger.warning(
+                "PERMISSION_DENIED user=%s role=%s required=super_admin path=%s",
+                request.user.username, getattr(request.user, 'role', '-'), request.path,
+            )
             return JsonResponse({'success': False, 'message': 'Super admin access required'}, status=403)
         return view_func(request, *args, **kwargs)
     return wrapper

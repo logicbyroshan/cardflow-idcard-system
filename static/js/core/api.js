@@ -20,15 +20,29 @@
  */
 
 /* ================================================
-   GLOBAL 403 FETCH INTERCEPTOR
-   Catches permission-denied responses from ALL fetch() calls
-   and shows a user-friendly "Permission Denied" toast.
+   GLOBAL 403/401 FETCH INTERCEPTOR
+   Catches permission-denied and expired-session responses
+   from ALL fetch() calls and handles them appropriately.
    ================================================ */
 (function () {
     'use strict';
     var _originalFetch = window.fetch;
     window.fetch = function () {
         return _originalFetch.apply(this, arguments).then(function (response) {
+            if (response.status === 401) {
+                // Session expired (e.g., logged out in another tab)
+                response.clone().json()
+                    .then(function (data) {
+                        if (data && data.redirect) {
+                            window.location.href = data.redirect;
+                        } else {
+                            window.location.href = '/panel/auth/login/';
+                        }
+                    })
+                    .catch(function () {
+                        window.location.href = '/panel/auth/login/';
+                    });
+            }
             if (response.status === 403) {
                 response.clone().json()
                     .then(function (data) {

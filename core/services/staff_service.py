@@ -166,6 +166,13 @@ class StaffService(BaseService):
                     if perm in data:
                         staff_kwargs[perm] = cls.parse_bool(data[perm])
                 
+                # Clamp client_staff permissions to parent client's permissions
+                if staff_type == 'client_staff' and client:
+                    for perm in cls.PERMISSION_FIELDS:
+                        if perm in staff_kwargs and staff_kwargs[perm]:
+                            if hasattr(client, perm) and not getattr(client, perm, False):
+                                staff_kwargs[perm] = False
+                
                 staff = Staff.objects.create(**staff_kwargs)
                 
                 # Assign clients (M2M)
@@ -271,6 +278,13 @@ class StaffService(BaseService):
                 if perm in data:
                     setattr(staff, perm, cls.parse_bool(data[perm]))
             
+            # Clamp client_staff permissions to parent client's permissions
+            if staff.staff_type == 'client_staff' and staff.client:
+                for perm in cls.PERMISSION_FIELDS:
+                    if getattr(staff, perm, False):
+                        if hasattr(staff.client, perm) and not getattr(staff.client, perm, False):
+                            setattr(staff, perm, False)
+            
             staff.save()
             
             # Update assigned clients (M2M)
@@ -320,22 +334,15 @@ class StaffService(BaseService):
     
     @classmethod
     def toggle_status(cls, staff_id: int) -> ServiceResult:
-        """Toggle staff active/inactive status"""
+        """Toggle staff active/inactive status (atomic to prevent lost toggles)"""
         try:
-            staff = get_object_or_404(Staff, id=staff_id)
-            user = staff.user
-            
-            if user.is_active:
-                user.is_active = False
-                status = 'inactive'
-                status_display = 'Inactive'
-            else:
-                user.is_active = True
-                status = 'active'
-                status_display = 'Active'
-            
             with transaction.atomic():
-                user.save()
+                staff = Staff.objects.select_related('user').select_for_update().get(id=staff_id)
+                user = staff.user
+                user.is_active = not user.is_active
+                status = 'active' if user.is_active else 'inactive'
+                status_display = 'Active' if user.is_active else 'Inactive'
+                user.save(update_fields=['is_active'])
             
             return ServiceResult(
                 success=True,
@@ -345,6 +352,8 @@ class StaffService(BaseService):
                     'status_display': status_display
                 }
             )
+        except Staff.DoesNotExist:
+            return ServiceResult(success=False, message='Staff not found')
         except Exception as e:
             return ServiceResult(success=False, message=str(e))
     

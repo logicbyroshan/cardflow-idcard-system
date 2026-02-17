@@ -14,16 +14,16 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   
   <!-- Tailwind CSS (primary) -->
-  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=2">
+  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=100">
   <!-- Page-specific: reprint cards + ID card actions UI -->
-  <link rel="stylesheet" href="{% static 'css/idcard-actions.css' %}?v=61">
-  <link rel="stylesheet" href="{% static 'css/idcard-actions-enhanced.css' %}?v=7">
-  <link rel="stylesheet" href="{% static 'css/reprint-cards.css' %}?v=6">
-  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=2">
+  <link rel="stylesheet" href="{% static 'css/idcard-actions.css' %}?v=100">
+  <link rel="stylesheet" href="{% static 'css/idcard-actions-enhanced.css' %}?v=100">
+  <link rel="stylesheet" href="{% static 'css/reprint-cards.css' %}?v=100">
+  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=100">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   
   <!-- Alpine.js State Module (MUST load before Alpine) -->
-  <script src="{% static 'js/alpine-state.js' %}?v=1"></script>
+  <script src="{% static 'js/alpine-state.js' %}?v=100"></script>
   <!-- Alpine.js -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
   
@@ -33,7 +33,7 @@
     var CLIENT_ID = {{ client.id }};
     var CLIENT_NAME = '{{ client.name|escapejs }}';
     var TABLE_NAME = '{{ table.name|escapejs }}';
-    var CURRENT_STEP = '{{ current_step|default:"requests" }}';
+    var CURRENT_STEP = '{{ current_step|default:"requests"|escapejs }}';
     var CURRENT_STATUS = 'pending';
   </script>
 </head>
@@ -59,20 +59,21 @@
   {% include 'partials/components/toast.html' %}
 
   <!-- Core Modules (Load Order: api → toast → modal → utils → init) -->
-  <script src="{% static 'js/core/api.js' %}?v=1"></script>
-  <script src="{% static 'js/core/toast.js' %}?v=1"></script>
-  <script src="{% static 'js/core/modal.js' %}?v=1"></script>
-  <script src="{% static 'js/core/utils.js' %}?v=1"></script>
-  <script src="{% static 'js/init.js' %}?v=3"></script>
-  <script src="{% static 'js/global-search.js' %}?v=2"></script>
+  <script src="{% static 'js/core/api.js' %}?v=100"></script>
+  <script src="{% static 'js/core/toast.js' %}?v=100"></script>
+  <script src="{% static 'js/core/modal.js' %}?v=100"></script>
+  <script src="{% static 'js/core/utils.js' %}?v=100"></script>
+  <script src="{% static 'js/init.js' %}?v=100"></script>
+  <script src="{% static 'js/global-search.js' %}?v=100"></script>
 
   <!-- Reprint Page Script -->
-  <script src="{% static 'js/idcard-actions-upload.js' %}?v=11"></script>
-  <script src="{% static 'js/idcard-actions-modal.js' %}?v=25"></script>
-  <script src="{% static 'js/reprint-cards.js' %}?v=11"></script>
+  <script src="{% static 'js/idcard-actions-upload.js' %}?v=100"></script>
+  <script src="{% static 'js/idcard-actions-modal.js' %}?v=100"></script>
+  <script src="{% static 'js/reprint-cards.js' %}?v=100"></script>
   <script>
     // Initialize the modal module for the reprint page
     if (typeof initModalModule === 'function') initModalModule();
   </script>
+  {% include 'partials/htmx-config.html' %}
 </body>
 </html>

@@ -1,5 +1,41 @@
 /* ID Card Table Styles */
 
+/* Form Control (side modal text inputs) */
+.form-control {
+    width: 100%;
+    padding: 6px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    color: #374151;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.form-control:focus {
+    border-color: var(--color-primary, #667eea);
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.15);
+}
+.form-control::placeholder { color: #9ca3af; }
+textarea.form-control { resize: vertical; min-height: 60px; }
+
+/* Form fields grid inside side modal */
+.form-fields-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+.form-fields-grid .form-group { margin-bottom: 0; }
+.form-fields-grid .form-group.full-width { grid-column: 1 / -1; }
+.form-fields-grid .form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: #4b5563;
+    margin-bottom: 3px;
+}
+
 /* Photo Section in Form */
 .btn.btn-upload {
     display: inline-flex;
@@ -728,7 +764,7 @@
     padding: 3px 8px;
     font-size: 13px;
     font-weight: 400;
-    border-radius: 2px;
+    border-radius: 6px;
     cursor: pointer;
     border: none;
     transition: all 0.15s ease;
@@ -795,14 +831,15 @@
     padding: 0;
 }
 
-/* ==========================================\n   ACTION BUTTON STYLES
+/* ==========================================
+   ACTION BUTTON STYLES
    ========================================== */
 
 .action-bar .btn.action-btn {
     padding: 3px 8px !important;
     font-size: 13px !important;
     font-weight: 400 !important;
-    border-radius: 2px !important;
+    border-radius: 6px !important;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
@@ -1136,17 +1173,30 @@
 .idcard-actions-page .action-bar {
     border-top: none;
     border-bottom: 1px solid #e5e7eb;
+    position: sticky;
+    top: var(--topbar-height, 44px);
+    z-index: 15;
+    background: #fff;
 }
 
-/* Sticky header */
+/* Search-filter bar sticky below action-bar */
+.idcard-actions-page .search-filter-bar {
+    position: sticky;
+    top: calc(var(--topbar-height, 44px) + 38px);
+    z-index: 14;
+    background: #fff;
+    justify-content: space-between !important;
+}
+
+/* Sticky header below the action bars */
 .idcard-table thead {
     position: sticky;
-    top: 0;
+    top: calc(var(--topbar-height, 44px) + 76px);
     z-index: 10;
 }
 
 .idcard-table thead th {
-    background: #1e1e2e;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
 /* Action Bar Button Styles - Compact */
@@ -1154,7 +1204,7 @@
     padding: 3px 8px;
     font-size: 13px;
     gap: 4px;
-    border-radius: 2px;
+    border-radius: 6px;
     height: 28px;
 }
 
@@ -1183,7 +1233,7 @@
     word-wrap: break-word;
     overflow-wrap: break-word;
     text-align: left;
-    border-bottom: 1px solid #f3f4f6;
+    border: 1px solid #e5e7eb;
     vertical-align: middle;
     text-transform: uppercase;
 }
@@ -1579,9 +1629,15 @@
     min-width: 40px;
 }
 
-/* Row hover */
-.idcard-table tbody tr:hover {
+/* Zebra striping + Row hover */
+.idcard-table tbody tr:nth-child(odd) {
     background-color: #f9fafb;
+}
+.idcard-table tbody tr:nth-child(even) {
+    background-color: #ffffff;
+}
+.idcard-table tbody tr:hover {
+    background-color: #f3f4f6;
 }
 
 /* Row action buttons — unified compact style */
@@ -3632,8 +3688,8 @@
    Used by bulk actions modals (reupload, download PDF/Excel/Word/Image, delete, etc.)
    =========================================== */
 .center-modal-card {
-  background: #fff; border-radius: 2px; padding: 20px 18px 18px;
-  max-width: 400px; width: 92%; text-align: center;
+  background: #fff; border-radius: 6px; padding: 20px 18px 18px;
+  max-width: 500px; width: 92%; text-align: center;
   box-shadow: 0 8px 24px rgba(0,0,0,0.15);
   animation: centerModalIn 0.22s ease-out;
 }
@@ -3656,14 +3712,14 @@
 
 .center-modal-input {
   width: 100%; padding: 8px; font-size: 15px; text-align: center;
-  border: 1px solid #d1d5db; border-radius: 2px; letter-spacing: 4px;
+  border: 1px solid #d1d5db; border-radius: 6px; letter-spacing: 4px;
   font-weight: 600; margin-bottom: 10px; outline: none;
   transition: border-color 0.2s; box-sizing: border-box;
 }
 .center-modal-input:focus { border-color: #6366f1; }
 
 .center-modal-dropzone {
-  border: 2px dashed #d1d5db; border-radius: 2px; padding: 16px 10px;
+  border: 2px dashed #d1d5db; border-radius: 6px; padding: 16px 10px;
   margin-bottom: 10px; cursor: pointer; transition: border-color 0.2s, background-color 0.2s;
 }
 .center-modal-dropzone:hover { border-color: #9ca3af; background: #f9fafb; }
@@ -3673,13 +3729,13 @@
 .center-modal-actions { display: flex; gap: 8px; justify-content: center; margin-top: 4px; }
 
 .center-modal-btn {
-  padding: 5px 14px; border-radius: 2px; cursor: pointer;
+  padding: 5px 14px; border-radius: 6px; cursor: pointer;
   font-size: 14px; font-weight: 500; transition: opacity 0.15s, background 0.15s;
 }
 .center-modal-btn-cancel {
-  border: 1px solid #9ca3af; background: #e5e7eb; color: #1f2937;
+  border: 1px solid #c7d2fe; background: #eef2ff; color: #4338ca;
 }
-.center-modal-btn-cancel:hover { background: #d1d5db; border-color: #6b7280; }
+.center-modal-btn-cancel:hover { background: #e0e7ff; border-color: #a5b4fc; }
 .center-modal-btn-confirm { border: none; color: #fff; font-weight: 600; }
 .center-modal-btn-confirm:disabled { opacity: 0.45; cursor: not-allowed; }
 

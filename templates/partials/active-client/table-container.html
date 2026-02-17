@@ -1,0 +1,92 @@
+{% comment %}
+Active Client Table Container — HTMX swappable partial.
+Contains: Active clients table + pagination. Returned for HX-Request.
+
+Required context:
+  - clients (paginated queryset of active clients)
+  - search_query (optional)
+  - page_obj, page_range, per_page, per_page_options
+{% endcomment %}
+
+{% include 'partials/active-client/table.html' %}
+
+<!-- HTMX Pagination -->
+{% if page_obj %}
+<div class="pagination-bar">
+    <div class="pagination-left">
+        <span class="pagination-info">
+            Showing <strong>{{ page_obj.start_index }}-{{ page_obj.end_index }}</strong> of <strong>{{ page_obj.paginator.count }}</strong> results
+        </span>
+    </div>
+    <div class="pagination-center">
+        {% if page_obj.paginator.num_pages > 1 %}
+        <button class="pagination-btn {% if not page_obj.has_previous %}disabled{% endif %}"
+                {% if page_obj.has_previous %}
+                hx-get="?page=1{% if search_query %}&search={{ search_query }}{% endif %}&per_page={{ per_page }}"
+                hx-target="#active-client-table-container"
+                hx-swap="innerHTML"
+                {% endif %}
+                title="First page"><i class="fa-solid fa-angles-left"></i></button>
+        <button class="pagination-btn {% if not page_obj.has_previous %}disabled{% endif %}"
+                {% if page_obj.has_previous %}
+                hx-get="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}&per_page={{ per_page }}"
+                hx-target="#active-client-table-container"
+                hx-swap="innerHTML"
+                {% endif %}
+                title="Previous page"><i class="fa-solid fa-chevron-left"></i></button>
+        <span class="page-numbers">
+            {% for p in page_range %}
+                {% if p == page_obj.number %}
+                <button class="page-num active">{{ p }}</button>
+                {% elif p == '...' %}
+                <span class="page-ellipsis">…</span>
+                {% else %}
+                <button class="page-num"
+                        hx-get="?page={{ p }}{% if search_query %}&search={{ search_query }}{% endif %}&per_page={{ per_page }}"
+                        hx-target="#active-client-table-container"
+                        hx-swap="innerHTML">{{ p }}</button>
+                {% endif %}
+            {% endfor %}
+        </span>
+        <button class="pagination-btn {% if not page_obj.has_next %}disabled{% endif %}"
+                {% if page_obj.has_next %}
+                hx-get="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}&per_page={{ per_page }}"
+                hx-target="#active-client-table-container"
+                hx-swap="innerHTML"
+                {% endif %}
+                title="Next page"><i class="fa-solid fa-chevron-right"></i></button>
+        <button class="pagination-btn {% if not page_obj.has_next %}disabled{% endif %}"
+                {% if page_obj.has_next %}
+                hx-get="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}&per_page={{ per_page }}"
+                hx-target="#active-client-table-container"
+                hx-swap="innerHTML"
+                {% endif %}
+                title="Last page"><i class="fa-solid fa-angles-right"></i></button>
+        {% else %}
+        <button class="pagination-btn disabled"><i class="fa-solid fa-angles-left"></i></button>
+        <button class="pagination-btn disabled"><i class="fa-solid fa-chevron-left"></i></button>
+        <span class="page-numbers"><button class="page-num active">1</button></span>
+        <button class="pagination-btn disabled"><i class="fa-solid fa-chevron-right"></i></button>
+        <button class="pagination-btn disabled"><i class="fa-solid fa-angles-right"></i></button>
+        {% endif %}
+    </div>
+    <div class="pagination-right">
+        <label>Rows per page:</label>
+        <div class="custom-dropdown rows-dropdown" id="rowsDropdown">
+            <button class="dropdown-toggle" id="rowsToggle" type="button">
+                <span id="rowsSelectedText">{{ per_page }}</span>
+                <i class="fa-solid fa-chevron-down"></i>
+            </button>
+            <div class="dropdown-options" id="rowsOptions">
+                {% for opt in per_page_options %}
+                <div class="dropdown-option {% if opt == per_page %}selected{% endif %}"
+                     data-value="{{ opt }}"
+                     hx-get="?page=1{% if search_query %}&search={{ search_query }}{% endif %}&per_page={{ opt }}"
+                     hx-target="#active-client-table-container"
+                     hx-swap="innerHTML">{{ opt }}</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}

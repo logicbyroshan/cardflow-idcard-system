@@ -69,6 +69,7 @@ class IDCardGroup(models.Model):
         app_label = 'core'  # Keep migration compatibility - model stays in core migrations
         ordering = ['-created_at']
         indexes = [
+            models.Index(fields=['client', 'is_active']),
             models.Index(fields=['is_active']),
             models.Index(fields=['created_at']),
         ]
@@ -247,7 +248,10 @@ class IDCard(models.Model):
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['table', 'status']),
+            models.Index(fields=['status', 'created_at']),
+            models.Index(fields=['table', 'created_at']),
             models.Index(fields=['created_at']),
+            models.Index(fields=['updated_at']),
         ]
 
 

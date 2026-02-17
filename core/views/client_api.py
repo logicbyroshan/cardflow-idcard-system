@@ -2,9 +2,10 @@
 Client API Views
 Contains: All client-related API endpoints (CRUD, toggle status, get staff)
 """
+import json
+import logging
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
-import json
 from ..services import ClientService
 from ..services.activity_service import ActivityService
 from ..services.permission_service import (
@@ -12,6 +13,9 @@ from ..services.permission_service import (
     api_require_any_admin,
     api_require_super_admin,
 )
+from accounts.rate_limit import rate_limit
+
+logger = logging.getLogger(__name__)
 
 
 def _check_admin_staff_client_access(user, client_id):
@@ -21,6 +25,7 @@ def _check_admin_staff_client_access(user, client_id):
 
 @require_http_methods(["POST"])
 @api_require_super_admin
+@rate_limit(max_requests=10, window_seconds=60, key_prefix='client_create')
 def api_client_create(request):
     """API endpoint to create a new client"""
     try:
@@ -50,7 +55,8 @@ def api_client_create(request):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+        logger.exception("Client API error (create): %s", e)
+        return JsonResponse({'success': False, 'message': 'An error occurred'}, status=400)
 
 
 @require_http_methods(["GET"])
@@ -94,11 +100,13 @@ def api_client_update(request, client_id):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+        logger.exception("Client API error (update): %s", e)
+        return JsonResponse({'success': False, 'message': 'An error occurred'}, status=400)
 
 
 @require_http_methods(["DELETE", "POST"])
 @api_require_super_admin
+@rate_limit(max_requests=5, window_seconds=60, key_prefix='client_delete')
 def api_client_delete(request, client_id):
     """API endpoint to delete a client (Super Admin only)"""
     # Get client name before deletion for the activity log
@@ -153,6 +161,7 @@ def api_client_staff_toggle_status(request, client_id, staff_id):
 
 @require_http_methods(["PUT", "POST"])
 @api_require_super_admin
+@rate_limit(max_requests=10, window_seconds=60, key_prefix='staff_perm')
 def api_client_staff_permissions(request, client_id, staff_id):
     """
     API endpoint for Super Admin to update client staff permissions.

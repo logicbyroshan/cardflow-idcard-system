@@ -283,9 +283,9 @@ class AdminStaffCreationService:
                     department=department,
                 )
                 
-                # Assign clients
+                # Assign clients (only active ones)
                 if assigned_client_ids:
-                    clients = Client.objects.filter(id__in=assigned_client_ids)
+                    clients = Client.objects.filter(id__in=assigned_client_ids, status='active')
                     staff.assigned_clients.set(clients)
                 
                 # Add to admin staff group
@@ -375,9 +375,9 @@ class AdminStaffCreationService:
                     staff.department = department
                 staff.save()
                 
-                # Update assigned clients
+                # Update assigned clients (only active ones)
                 if assigned_client_ids is not None:
-                    clients = Client.objects.filter(id__in=assigned_client_ids)
+                    clients = Client.objects.filter(id__in=assigned_client_ids, status='active')
                     staff.assigned_clients.set(clients)
                 
                 # Update permissions
@@ -417,9 +417,10 @@ class AdminStaffCreationService:
             name = staff.user.get_full_name()
             user = staff.user
             
-            # Delete staff profile first, then user
-            staff.delete()
-            user.delete()
+            # Delete staff profile and user atomically
+            with transaction.atomic():
+                staff.delete()
+                user.delete()
             
             return {
                 'success': True,
@@ -441,17 +442,18 @@ class AdminStaffCreationService:
                     'error': 'Only Super Admin can toggle staff status'
                 }
             
-            staff = Staff.objects.filter(
-                id=staff_id,
-                staff_type='admin_staff'
-            ).select_related('user').first()
-            
-            if not staff:
-                return {'success': False, 'error': 'Admin staff not found'}
-            
-            user = staff.user
-            user.is_active = not user.is_active
-            user.save(update_fields=['is_active'])
+            with transaction.atomic():
+                staff = Staff.objects.select_for_update().select_related('user').filter(
+                    id=staff_id,
+                    staff_type='admin_staff'
+                ).first()
+                
+                if not staff:
+                    return {'success': False, 'error': 'Admin staff not found'}
+                
+                user = staff.user
+                user.is_active = not user.is_active
+                user.save(update_fields=['is_active'])
             
             status = 'activated' if user.is_active else 'deactivated'
             return {

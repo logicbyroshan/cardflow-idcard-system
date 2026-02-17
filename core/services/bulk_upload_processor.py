@@ -16,15 +16,11 @@ Usage:
     process_bulk_upload(task)
 """
 import os
-import json
 import logging
 import zipfile
-from io import BytesIO
 
 from django.conf import settings
 from django.db import transaction
-from django.shortcuts import get_object_or_404
-from django.core.files.storage import default_storage
 
 logger = logging.getLogger(__name__)
 
@@ -216,7 +212,10 @@ def process_bulk_upload(task):
         
         # Mark completed
         task.mark_completed()
-        logger.info("Bulk upload completed: %s", result_msg)
+        logger.info(
+            "UPLOAD_DONE task_id=%d cards=%d photos=%d errors=%d",
+            task.id, cards_created, photos_matched, len(errors),
+        )
         
     except Exception as e:
         logger.exception("Bulk upload failed: %s", e)
@@ -488,7 +487,7 @@ def _find_image_in_zip(zip_path, normalized_key):
                     continue
                 
                 # Skip large files
-                if zip_info.file_size > 20 * 1024 * 1024:  # 20MB
+                if zip_info.file_size > 30 * 1024 * 1024:  # 30MB (matches upload limit)
                     continue
                 
                 base_name = os.path.basename(zip_info.filename)

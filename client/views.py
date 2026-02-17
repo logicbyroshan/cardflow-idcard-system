@@ -21,11 +21,14 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.db.models import Count, Q
 
 from core.models import Client, Staff, IDCardGroup, IDCardTable, IDCard
 from core.services import IDCardService
 from core.services.permission_service import PermissionService
+from core.utils.htmx import is_htmx
+from core.views.base import enrich_cards, get_page_range
 
 from .services import (
     ClientAccessService,
@@ -441,22 +444,27 @@ def api_staff_toggle_status(request, staff_id):
     """
     API: Toggle staff member active/inactive status.
     """
-    result = ClientStaffService.toggle_staff_status(request.user, staff_id)
-    
-    if result.success:
-        is_active = result.data.get('is_active', False)
+    try:
+        result = ClientStaffService.toggle_staff_status(request.user, staff_id)
+        
+        if result.success:
+            is_active = result.data.get('is_active', False)
+            return JsonResponse({
+                'success': True,
+                'message': result.message,
+                'status': 'active' if is_active else 'inactive',
+                'status_display': 'Active' if is_active else 'Inactive',
+            })
+        
+        status_code = 403 if 'Permission' in result.message else 400
         return JsonResponse({
-            'success': True,
-            'message': result.message,
-            'status': 'active' if is_active else 'inactive',
-            'status_display': 'Active' if is_active else 'Inactive',
-        })
-    
-    status_code = 403 if 'Permission' in result.message else 400
-    return JsonResponse({
-        'success': False,
-        'message': result.message
-    }, status=status_code)
+            'success': False,
+            'message': result.message
+        }, status=status_code)
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception("Staff toggle status error")
+        return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 
 
 @require_client_admin
@@ -668,20 +676,25 @@ def api_upload_images(request, table_id):
             'message': 'No images provided'
         }, status=400)
     
-    result = ClientImageService.upload_images(request.user, table_id, images)
-    
-    if result.success:
+    try:
+        result = ClientImageService.upload_images(request.user, table_id, images)
+        
+        if result.success:
+            return JsonResponse({
+                'success': True,
+                'message': result.message,
+                **result.data
+            })
+        
+        status_code = 403 if 'permission' in result.message.lower() or 'Access' in result.message else 400
         return JsonResponse({
-            'success': True,
-            'message': result.message,
-            **result.data
-        })
-    
-    status_code = 403 if 'permission' in result.message.lower() or 'Access' in result.message else 400
-    return JsonResponse({
-        'success': False,
-        'message': result.message
-    }, status=status_code)
+            'success': False,
+            'message': result.message
+        }, status=status_code)
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception("Image upload error")
+        return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 
 
 # =============================================================================
@@ -715,7 +728,7 @@ def client_idcard_group(request):
         return redirect('/panel/client/dashboard/')
     
     # Get all tables for this client's groups with status counts
-    tables = IDCardTable.objects.filter(group__client=client).select_related('group').annotate(
+    tables = IDCardTable.objects.filter(group__client=client).select_related('group', 'group__client').annotate(
         pending_count=Count('id_cards', filter=Q(id_cards__status='pending')),
         verified_count=Count('id_cards', filter=Q(id_cards__status='verified')),
         pool_count=Count('id_cards', filter=Q(id_cards__status='pool')),
@@ -775,45 +788,43 @@ def client_idcard_actions(request, table_id):
         if required_perm and not PermissionService.has_permission(user, required_perm):
             return redirect('/panel/client/idcard-group/')
     
-    INITIAL_LOAD_LIMIT = 100
+    # ── Server-side pagination parameters ──
+    DEFAULT_PER_PAGE = 50
+    PER_PAGE_OPTIONS = [50, 100, 150, 200]
+    try:
+        per_page = int(request.GET.get('per_page', DEFAULT_PER_PAGE))
+        if per_page not in PER_PAGE_OPTIONS:
+            per_page = DEFAULT_PER_PAGE
+    except (ValueError, TypeError):
+        per_page = DEFAULT_PER_PAGE
+    
+    page_number = request.GET.get('page', 1)
+    search_query = request.GET.get('search', '').strip()
+    class_filter = request.GET.get('class', '').strip()
+    section_filter = request.GET.get('section', '').strip()
     
     id_cards_query = IDCard.objects.filter(table=table).order_by('-id')
     if status_filter and status_filter in ['pending', 'verified', 'pool', 'approved', 'download', 'reprint']:
         id_cards_query = id_cards_query.filter(status=status_filter)
     
+    # ── Server-side search filtering ──
+    if search_query:
+        id_cards_query = id_cards_query.filter(field_data__icontains=search_query)
+    if class_filter:
+        id_cards_query = id_cards_query.filter(field_data__icontains=class_filter)
+    if section_filter:
+        id_cards_query = id_cards_query.filter(field_data__icontains=section_filter)
+    
     total_count = id_cards_query.count()
-    id_cards = id_cards_query[:INITIAL_LOAD_LIMIT]
     
     status_counts = IDCardService.get_status_counts(table)
     
-    field_types = {field['name']: field['type'] for field in table.fields}
+    # ── Paginate ──
+    paginator = Paginator(id_cards_query, per_page)
+    page_obj = paginator.get_page(page_number)
     
-    enriched_cards = []
-    for idx, card in enumerate(id_cards):
-        ordered_fields = []
-        field_data = card.field_data or {}
-        field_data_normalized = {k.upper(): v for k, v in field_data.items()}
-        
-        for field in table.fields:
-            field_name = field['name']
-            field_type = field['type']
-            field_value = field_data.get(field_name, '')
-            if not field_value:
-                field_value = field_data_normalized.get(field_name.upper(), '')
-            ordered_fields.append({
-                'name': field_name,
-                'type': field_type,
-                'value': field_value,
-            })
-        enriched_cards.append({
-            'id': card.id,
-            'sr_no': idx + 1,
-            'photo': card.photo,
-            'status': card.status,
-            'get_status_display': card.get_status_display(),
-            'updated_at': card.updated_at,
-            'ordered_fields': ordered_fields,
-        })
+    start_index = (page_obj.number - 1) * per_page
+    enriched_cards = enrich_cards(page_obj.object_list, table.fields, start_index)
     
     context = {
         'active_page': 'idcard_group',
@@ -825,9 +836,22 @@ def client_idcard_actions(request, table_id):
         'current_status': status_filter,
         'status_counts': status_counts,
         'total_count': total_count,
-        'initial_load_limit': INITIAL_LOAD_LIMIT,
-        'has_more': total_count > INITIAL_LOAD_LIMIT,
+        'has_more': False,
+        'initial_load_limit': per_page,
+        # Pagination context
+        'page_obj': page_obj,
+        'page_range': get_page_range(page_obj),
+        'per_page': per_page,
+        'per_page_options': PER_PAGE_OPTIONS,
+        'search_query': search_query,
+        'class_filter': class_filter,
+        'section_filter': section_filter,
     }
+    
+    # HTMX partial response
+    if is_htmx(request):
+        return render(request, 'partials/idcard/table-container.html', context)
+    
     return render(request, 'idcard-actions.html', context)
 
 
@@ -888,10 +912,17 @@ def client_reprint_cards(request, table_id):
     if current_step not in ('requests', 'confirm', 'download'):
         current_step = 'requests'
     
+    # Real step counts from ReprintRequest table (single aggregate query)
+    from django.db.models import Q, Count as AggCount
+    step_counts_raw = ReprintRequest.objects.filter(table=table).aggregate(
+        req=AggCount('id', filter=Q(status='requested')),
+        conf=AggCount('id', filter=Q(status='confirmed')),
+        dl=AggCount('id', filter=Q(status='downloaded')),
+    )
     step_counts = {
-        'requests': ReprintRequest.objects.filter(table=table, status='requested').count(),
-        'confirm': ReprintRequest.objects.filter(table=table, status='confirmed').count(),
-        'download': ReprintRequest.objects.filter(table=table, status='downloaded').count(),
+        'requests': step_counts_raw['req'],
+        'confirm': step_counts_raw['conf'],
+        'download': step_counts_raw['dl'],
     }
     
     INITIAL_LOAD_LIMIT = 100

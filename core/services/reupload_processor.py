@@ -19,7 +19,6 @@ import logging
 import zipfile
 
 from django.conf import settings
-from django.db import transaction
 
 logger = logging.getLogger(__name__)
 
@@ -227,7 +226,10 @@ def process_reupload_images(task):
 
         # Mark completed
         task.mark_completed()
-        logger.info("Reupload completed: %s", result_msg)
+        logger.info(
+            "REUPLOAD_DONE task_id=%d matched=%d updated=%d zip_images=%d errors=%d",
+            task.id, matched_count, updated_count, len(zip_image_index), len(errors),
+        )
 
     except Exception as e:
         logger.exception("Reupload processing failed: %s", e)

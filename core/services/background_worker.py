@@ -21,9 +21,9 @@ Usage:
 """
 import os
 import logging
+import time
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from functools import wraps
 
 from django.conf import settings
 
@@ -101,9 +101,14 @@ class BackgroundWorker:
             logger.warning("Task %d is not pending (status=%s), skipping", task_id, task.status)
             return
         
+        task_start = time.monotonic()
         try:
             task.mark_started()
-            logger.info("Processing task %d: %s", task_id, task.task_type)
+            logger.info(
+                "TASK_START task_id=%d type=%s user=%s",
+                task_id, task.task_type,
+                getattr(task, 'user', None) or '-',
+            )
             
             # Route to appropriate handler
             handlers = {
@@ -126,16 +131,32 @@ class BackgroundWorker:
             # as completed/failed, force-fail it. Also catches tasks that
             # silently returned without calling mark_completed.
             task.refresh_from_db()
+
+            elapsed = time.monotonic() - task_start
+
             if task.status == 'processing' and task.started_at:
-                elapsed = (timezone.now() - task.started_at).total_seconds()
-                if elapsed > TASK_TIMEOUT_SECONDS:
+                wall = (timezone.now() - task.started_at).total_seconds()
+                if wall > TASK_TIMEOUT_SECONDS:
                     task.mark_failed(
                         f"Task exceeded maximum timeout of {TASK_TIMEOUT_SECONDS // 60} minutes"
                     )
-                    logger.warning("Task %d force-failed: exceeded %ds timeout", task_id, TASK_TIMEOUT_SECONDS)
+                    logger.warning(
+                        "TASK_TIMEOUT task_id=%d type=%s wall=%.1fs",
+                        task_id, task.task_type, wall,
+                    )
+
+            # Log final outcome
+            logger.info(
+                "TASK_END task_id=%d type=%s status=%s duration=%.2fs",
+                task_id, task.task_type, task.status, elapsed,
+            )
                 
         except Exception as e:
-            logger.exception("Task %d failed with exception", task_id)
+            elapsed = time.monotonic() - task_start
+            logger.exception(
+                "TASK_FAIL task_id=%d type=%s duration=%.2fs error=%s",
+                task_id, task.task_type, elapsed, e,
+            )
             try:
                 task.refresh_from_db()
                 task.mark_failed(str(e))
@@ -283,30 +304,37 @@ def save_uploaded_file_to_disk(uploaded_file, filename=None):
 def cancel_task(task_id: int, user=None) -> dict:
     """Cancel a pending or processing background task.
 
+    Uses select_for_update() to prevent race with concurrent task
+    completion or duplicate cancel requests.
+
     Returns dict with 'success' and 'message' keys.
     """
     from core.models import BackgroundTask
+    from django.db import transaction
     from django.utils import timezone
 
     try:
-        if user and getattr(user, 'role', None) == 'super_admin':
-            task = BackgroundTask.objects.get(id=task_id)
-        elif user:
-            task = BackgroundTask.objects.get(id=task_id, user=user)
-        else:
-            task = BackgroundTask.objects.get(id=task_id)
+        with transaction.atomic():
+            qs = BackgroundTask.objects.select_for_update()
+            if user and getattr(user, 'role', None) == 'super_admin':
+                task = qs.get(id=task_id)
+            elif user:
+                task = qs.get(id=task_id, user=user)
+            else:
+                task = qs.get(id=task_id)
+
+            if task.status in ('completed', 'failed', 'cancelled'):
+                return {'success': False, 'message': f'Task is already {task.status}'}
+
+            task.status = 'cancelled'
+            task.completed_at = timezone.now()
+            task.save(update_fields=['status', 'completed_at', 'updated_at'])
+
+        # Cleanup files outside the transaction (I/O)
+        task.cleanup_files()
+        return {'success': True, 'message': 'Task cancelled'}
     except BackgroundTask.DoesNotExist:
         return {'success': False, 'message': 'Task not found'}
-
-    if task.status in ('completed', 'failed', 'cancelled'):
-        return {'success': False, 'message': f'Task is already {task.status}'}
-
-    task.status = 'cancelled'
-    task.completed_at = timezone.now()
-    task.save(update_fields=['status', 'completed_at', 'updated_at'])
-    task.cleanup_files()
-
-    return {'success': True, 'message': 'Task cancelled'}
 
 
 def cleanup_temp_file(file_path):

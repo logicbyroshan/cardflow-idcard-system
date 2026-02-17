@@ -21,6 +21,9 @@ from django.shortcuts import get_object_or_404
 
 from core.models import IDCardTable
 from core.services.permission_service import PermissionService
+from accounts.rate_limit import rate_limit
+
+from django.core.cache import cache as django_cache
 
 from .services import ExportService
 from .excel import ExcelExporter
@@ -144,12 +147,23 @@ def _check_export_client_scope(request, table_id):
     return None
 
 
+def _acquire_export_lock(user_id, table_id, ttl=120):
+    """Prevent concurrent exports by the same user on the same table."""
+    lock_key = f'export_lock:{user_id}:{table_id}'
+    return django_cache.add(lock_key, 1, ttl), lock_key
+
+def _release_export_lock(lock_key):
+    """Release export lock."""
+    django_cache.delete(lock_key)
+
+
 # =============================================================================
 # EXCEL EXPORT
 # =============================================================================
 
 @login_required
 @require_POST
+@rate_limit(max_requests=10, window_seconds=60, key_prefix='export')
 def api_export_xlsx(request, table_id: int) -> HttpResponse:
     """
     Export cards to Excel format.
@@ -182,17 +196,27 @@ def api_export_xlsx(request, table_id: int) -> HttpResponse:
             'message': 'No cards selected for export'
         }, status=400)
     
-    service = ExportService(request.user)
-    result = service.export_excel(table_id, card_ids, status=_get_status_from_request(request))
-    
-    if not result.success:
-        return JsonResponse({
-            'success': False,
-            'message': result.message
-        }, status=400)
-    
-    logger.info("Export XLSX: user=%s table=%d cards=%d", request.user.id, table_id, len(card_ids))
-    return result.response
+    # Concurrent export guard
+    acquired, lock_key = _acquire_export_lock(request.user.id, table_id)
+    if not acquired:
+        return JsonResponse({'success': False, 'message': 'An export is already in progress. Please wait.'}, status=429)
+    try:
+        service = ExportService(request.user)
+        result = service.export_excel(table_id, card_ids, status=_get_status_from_request(request))
+        
+        if not result.success:
+            return JsonResponse({
+                'success': False,
+                'message': result.message
+            }, status=400)
+        
+        logger.info("Export XLSX: user=%s table=%d cards=%d", request.user.id, table_id, len(card_ids))
+        return result.response
+    except Exception as e:
+        logger.exception("Export XLSX failed: %s", e)
+        return JsonResponse({'success': False, 'message': 'Export failed. Please try again or reduce the number of cards.'}, status=500)
+    finally:
+        _release_export_lock(lock_key)
 
 
 # =============================================================================
@@ -201,6 +225,7 @@ def api_export_xlsx(request, table_id: int) -> HttpResponse:
 
 @login_required
 @require_POST
+@rate_limit(max_requests=10, window_seconds=60, key_prefix='export')
 def api_export_docx(request, table_id: int) -> HttpResponse:
     """
     Export cards to Word format.
@@ -248,17 +273,27 @@ def api_export_docx(request, table_id: int) -> HttpResponse:
     if doc_format not in ('docx', 'doc'):
         doc_format = 'docx'
     
-    service = ExportService(request.user)
-    result = service.export_word(table_id, card_ids, doc_format=doc_format, status=_get_status_from_request(request))
-    
-    if not result.success:
-        return JsonResponse({
-            'success': False,
-            'message': result.message
-        }, status=400)
-    
-    logger.info("Export %s: user=%s table=%d cards=%d", doc_format.upper(), request.user.id, table_id, len(card_ids))
-    return result.response
+    # Concurrent export guard
+    acquired, lock_key = _acquire_export_lock(request.user.id, table_id)
+    if not acquired:
+        return JsonResponse({'success': False, 'message': 'An export is already in progress. Please wait.'}, status=429)
+    try:
+        service = ExportService(request.user)
+        result = service.export_word(table_id, card_ids, doc_format=doc_format, status=_get_status_from_request(request))
+        
+        if not result.success:
+            return JsonResponse({
+                'success': False,
+                'message': result.message
+            }, status=400)
+        
+        logger.info("Export %s: user=%s table=%d cards=%d", doc_format.upper(), request.user.id, table_id, len(card_ids))
+        return result.response
+    except Exception as e:
+        logger.exception("Export DOCX failed: %s", e)
+        return JsonResponse({'success': False, 'message': 'Export failed. Please try again or reduce the number of cards.'}, status=500)
+    finally:
+        _release_export_lock(lock_key)
 
 
 # =============================================================================
@@ -270,6 +305,7 @@ MAX_PDF_EXPORT_CARD_IDS = 2000
 
 @login_required
 @require_POST
+@rate_limit(max_requests=10, window_seconds=60, key_prefix='export')
 def api_export_pdf(request, table_id: int) -> HttpResponse:
     """
     Export cards to PDF format.
@@ -305,17 +341,27 @@ def api_export_pdf(request, table_id: int) -> HttpResponse:
     if len(card_ids) > MAX_PDF_EXPORT_CARD_IDS:
         card_ids = card_ids[:MAX_PDF_EXPORT_CARD_IDS]
     
-    service = ExportService(request.user)
-    result = service.export_pdf(table_id, card_ids, status=_get_status_from_request(request))
-    
-    if not result.success:
-        return JsonResponse({
-            'success': False,
-            'message': result.message
-        }, status=400)
-    
-    logger.info("Export PDF: user=%s table=%d cards=%d", request.user.id, table_id, len(card_ids))
-    return result.response
+    # Concurrent export guard
+    acquired, lock_key = _acquire_export_lock(request.user.id, table_id)
+    if not acquired:
+        return JsonResponse({'success': False, 'message': 'An export is already in progress. Please wait.'}, status=429)
+    try:
+        service = ExportService(request.user)
+        result = service.export_pdf(table_id, card_ids, status=_get_status_from_request(request))
+        
+        if not result.success:
+            return JsonResponse({
+                'success': False,
+                'message': result.message
+            }, status=400)
+        
+        logger.info("Export PDF: user=%s table=%d cards=%d", request.user.id, table_id, len(card_ids))
+        return result.response
+    except Exception as e:
+        logger.exception("Export PDF failed: %s", e)
+        return JsonResponse({'success': False, 'message': 'Export failed. Please try again or reduce the number of cards.'}, status=500)
+    finally:
+        _release_export_lock(lock_key)
 
 
 # =============================================================================
@@ -327,6 +373,7 @@ MAX_ZIP_EXPORT_CARD_IDS = 3000
 
 @login_required
 @require_POST
+@rate_limit(max_requests=10, window_seconds=60, key_prefix='export')
 def api_export_images(request, table_id: int) -> JsonResponse:
     """
     Export images as ZIP files.
@@ -376,11 +423,21 @@ def api_export_images(request, table_id: int) -> JsonResponse:
     if len(card_ids) > MAX_ZIP_EXPORT_CARD_IDS:
         card_ids = card_ids[:MAX_ZIP_EXPORT_CARD_IDS]
     
-    service = ExportService(request.user)
-    result = service.export_images(table_id, card_ids, status=_get_status_from_request(request))
-    
-    logger.info("Export ZIP: user=%s table=%d cards=%d", request.user.id, table_id, len(card_ids))
-    return JsonResponse(zip_result_to_dict(result))
+    # Concurrent export guard
+    acquired, lock_key = _acquire_export_lock(request.user.id, table_id)
+    if not acquired:
+        return JsonResponse({'success': False, 'message': 'An export is already in progress. Please wait.'}, status=429)
+    try:
+        service = ExportService(request.user)
+        result = service.export_images(table_id, card_ids, status=_get_status_from_request(request))
+        
+        logger.info("Export ZIP: user=%s table=%d cards=%d", request.user.id, table_id, len(card_ids))
+        return JsonResponse(zip_result_to_dict(result))
+    except Exception as e:
+        logger.exception("Export ZIP failed: %s", e)
+        return JsonResponse({'success': False, 'message': 'Export failed. Please try again or reduce the number of cards.'}, status=500)
+    finally:
+        _release_export_lock(lock_key)
 
 
 # =============================================================================
@@ -453,6 +510,7 @@ _DOWNLOAD_ALL_STATUSES = {
 
 @login_required
 @require_POST
+@rate_limit(max_requests=3, window_seconds=60, key_prefix='export_all')
 def api_download_all_cards(request, table_id: int) -> JsonResponse:
     """
     Download all ID cards for a table, grouped by status list.
@@ -503,106 +561,116 @@ def api_download_all_cards(request, table_id: int) -> JsonResponse:
     except Exception:
         return JsonResponse({'success': False, 'message': 'Table not found'}, status=404)
     
-    service = ExportService(request.user)
-    excel_exporter = ExcelExporter()
-    zip_exporter = ZipExporter()
-    
-    # Get client name for filenames
-    client_name = ''
-    if table.group and table.group.client:
-        client_name = table.group.client.name
-    
-    from .utils import clean_filename
-    clean_client = clean_filename(client_name) if client_name else ''
-    clean_table = clean_filename(table.name)
-    
-    files = []
-    counter = 0
-    
-    # Memory-efficient limits
-    MAX_CARDS_PER_STATUS = 1000  # Reduced from 2000
-    MAX_TOTAL_CARDS = 3000  # Total card limit across all statuses
-    total_cards_processed = 0
-    
-    for status_key, status_label in _DOWNLOAD_ALL_STATUSES.items():
-        # Get cards for this status, scoped by user permissions
-        cards_qs = service.get_scoped_cards(table).filter(status=status_key)
+    # Concurrent export guard
+    acquired, lock_key = _acquire_export_lock(request.user.id, table_id)
+    if not acquired:
+        return JsonResponse({'success': False, 'message': 'An export is already in progress. Please wait.'}, status=429)
+    try:
+        service = ExportService(request.user)
+        excel_exporter = ExcelExporter()
+        zip_exporter = ZipExporter()
         
-        card_count = cards_qs.count()
-        if card_count == 0:
-            continue
+        # Get client name for filenames
+        client_name = ''
+        if table.group and table.group.client:
+            client_name = table.group.client.name
         
-        # Check total limit
-        remaining_capacity = MAX_TOTAL_CARDS - total_cards_processed
-        if remaining_capacity <= 0:
-            logger.warning("Download-all reached total card limit for table %d", table_id)
-            break
+        from .utils import clean_filename
+        clean_client = clean_filename(client_name) if client_name else ''
+        clean_table = clean_filename(table.name)
         
-        # Apply per-status and remaining capacity limits
-        effective_limit = min(MAX_CARDS_PER_STATUS, remaining_capacity, card_count)
-        cards = cards_qs[:effective_limit]
+        files = []
+        counter = 0
         
-        total_cards_processed += effective_limit
+        # Memory-efficient limits
+        MAX_CARDS_PER_STATUS = 1000  # Reduced from 2000
+        MAX_TOTAL_CARDS = 3000  # Total card limit across all statuses
+        total_cards_processed = 0
         
-        counter += 1
-        if clean_client:
-            base_name = f"{clean_client}_{clean_table}_{status_label}"
-        else:
-            base_name = f"{clean_table}_{status_label}"
-        
-        # Generate XLSX (base64) - XLSX is generally small
-        try:
-            xlsx_result = excel_exporter.export_cards(table, cards, status=status_key)
-            if xlsx_result.success and xlsx_result.response:
-                xlsx_base64 = base64.b64encode(xlsx_result.response.content).decode('utf-8')
-                files.append({
-                    'type': 'xlsx',
-                    'status': status_key,
-                    'filename': f"{base_name}.xlsx",
-                    'data': xlsx_base64,
-                })
-                # Clean up XLSX response to free memory
-                del xlsx_result
-        except Exception as e:
-            logger.error("XLSX export failed for status %s: %s", status_key, e)
-        
-        # Force garbage collection after XLSX
-        gc.collect()
-        
-        # Generate ZIP(s) for image fields (base64) - use batched processing
-        try:
-            zip_result = zip_exporter.export_images(table, cards, status=status_key)
-            if zip_result.success and zip_result.zip_files:
-                for zf in zip_result.zip_files:
-                    field_label = zf.field_name.upper().replace(' ', '_')
+        for status_key, status_label in _DOWNLOAD_ALL_STATUSES.items():
+            # Get cards for this status, scoped by user permissions
+            cards_qs = service.get_scoped_cards(table).filter(status=status_key)
+            
+            card_count = cards_qs.count()
+            if card_count == 0:
+                continue
+            
+            # Check total limit
+            remaining_capacity = MAX_TOTAL_CARDS - total_cards_processed
+            if remaining_capacity <= 0:
+                logger.warning("Download-all reached total card limit for table %d", table_id)
+                break
+            
+            # Apply per-status and remaining capacity limits
+            effective_limit = min(MAX_CARDS_PER_STATUS, remaining_capacity, card_count)
+            cards = cards_qs[:effective_limit]
+            
+            total_cards_processed += effective_limit
+            
+            counter += 1
+            if clean_client:
+                base_name = f"{clean_client}_{clean_table}_{status_label}"
+            else:
+                base_name = f"{clean_table}_{status_label}"
+            
+            # Generate XLSX (base64) - XLSX is generally small
+            try:
+                xlsx_result = excel_exporter.export_cards(table, cards, status=status_key)
+                if xlsx_result.success and xlsx_result.response:
+                    xlsx_base64 = base64.b64encode(xlsx_result.response.content).decode('utf-8')
                     files.append({
-                        'type': 'zip',
+                        'type': 'xlsx',
                         'status': status_key,
-                        'filename': f"{base_name}_{field_label}.zip",
-                        'data': zf.data,
-                        'image_count': zf.image_count,
+                        'filename': f"{base_name}.xlsx",
+                        'data': xlsx_base64,
                     })
-            # Clean up ZIP result to free memory
-            del zip_result
-        except Exception as e:
-            logger.error("ZIP export failed for status %s: %s", status_key, e)
+                    # Clean up XLSX response to free memory
+                    del xlsx_result
+            except Exception as e:
+                logger.error("XLSX export failed for status %s: %s", status_key, e)
+            
+            # Force garbage collection after XLSX
+            gc.collect()
+            
+            # Generate ZIP(s) for image fields (base64) - use batched processing
+            try:
+                zip_result = zip_exporter.export_images(table, cards, status=status_key)
+                if zip_result.success and zip_result.zip_files:
+                    for zf in zip_result.zip_files:
+                        field_label = zf.field_name.upper().replace(' ', '_')
+                        files.append({
+                            'type': 'zip',
+                            'status': status_key,
+                            'filename': f"{base_name}_{field_label}.zip",
+                            'data': zf.data,
+                            'image_count': zf.image_count,
+                        })
+                # Clean up ZIP result to free memory
+                del zip_result
+            except Exception as e:
+                logger.error("ZIP export failed for status %s: %s", status_key, e)
+            
+            # Force garbage collection after each status to prevent memory buildup
+            gc.collect()
         
-        # Force garbage collection after each status to prevent memory buildup
-        gc.collect()
-    
-    if not files:
+        if not files:
+            return JsonResponse({
+                'success': False,
+                'message': 'No cards found in any list to export'
+            }, status=400)
+        
+        logger.info("Export DOWNLOAD-ALL: user=%s table=%d files=%d cards=%d", 
+                    request.user.id, table_id, len(files), total_cards_processed)
+        
         return JsonResponse({
-            'success': False,
-            'message': 'No cards found in any list to export'
-        }, status=400)
-    
-    logger.info("Export DOWNLOAD-ALL: user=%s table=%d files=%d cards=%d", 
-                request.user.id, table_id, len(files), total_cards_processed)
-    
-    return JsonResponse({
-        'success': True,
-        'files': files,
-        'total_files': len(files),
-        'total_cards': total_cards_processed,
-        'note': f"Limited to {MAX_TOTAL_CARDS} total cards" if total_cards_processed >= MAX_TOTAL_CARDS else None
-    })
+            'success': True,
+            'files': files,
+            'total_files': len(files),
+            'total_cards': total_cards_processed,
+            'note': f"Limited to {MAX_TOTAL_CARDS} total cards" if total_cards_processed >= MAX_TOTAL_CARDS else None
+        })
+    except Exception as e:
+        logger.exception("Export DOWNLOAD-ALL failed: %s", e)
+        return JsonResponse({'success': False, 'message': 'Export failed. Please try again or reduce the number of cards.'}, status=500)
+    finally:
+        _release_export_lock(lock_key)

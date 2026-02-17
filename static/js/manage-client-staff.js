@@ -47,6 +47,11 @@ document.addEventListener('DOMContentLoaded', function() {
         selectedStaffId = row.dataset.staffId;
         enableActionButtons(true);
         updateActiveButtonState();
+
+        // Bridge to Alpine reactive state
+        if (typeof window.alpineUpdateSelection === 'function') {
+            window.alpineUpdateSelection([selectedStaffId]);
+        }
     }
     
     function clearStaffSelection() {
@@ -58,6 +63,11 @@ document.addEventListener('DOMContentLoaded', function() {
         selectedRow = null;
         selectedStaffId = null;
         enableActionButtons(false);
+
+        // Bridge to Alpine reactive state
+        if (typeof window.alpineClearSelection === 'function') {
+            window.alpineClearSelection();
+        }
     }
     
     if (tbody) {
@@ -147,11 +157,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (groupMultiselectEmpty) groupMultiselectEmpty.style.display = 'none';
 
         filtered.forEach(group => {
+            const _esc = window.escapeHtml || function(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); };
             const item = document.createElement('div');
             item.className = 'client-multiselect-item' + (selectedGroupIds.has(group.id) ? ' selected' : '');
             item.innerHTML = `
                 <input type="checkbox" ${selectedGroupIds.has(group.id) ? 'checked' : ''} data-group-id="${group.id}">
-                <span class="client-name">${group.name}</span>
+                <span class="client-name">${_esc(group.name)}</span>
             `;
             item.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -596,7 +607,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     if (searchInput) {
-        searchInput.addEventListener('input', performSearch);
+        searchInput.addEventListener('input', function() {
+            performSearch();
+            if (typeof window.alpineUpdateSearch === 'function') window.alpineUpdateSearch(searchInput.value);
+        });
     }
     
     // Search clear button
@@ -605,6 +619,7 @@ document.addEventListener('DOMContentLoaded', function() {
         searchClearBtn.addEventListener('click', function() {
             searchInput.value = '';
             performSearch();
+            if (typeof window.alpineUpdateSearch === 'function') window.alpineUpdateSearch('');
         });
     }
     
@@ -632,6 +647,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 filterDropdown.classList.remove('open');
+
+                // Bridge to Alpine reactive state
+                if (typeof window.alpineUpdateFilter === 'function') window.alpineUpdateFilter(value);
+
                 performSearch();
             });
         });

@@ -134,10 +134,11 @@
                 if (data.success) {
                     displayResults(data.results, query);
                 } else if (results) {
+                    const _esc = typeof escapeHtml === 'function' ? escapeHtml : (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
                     results.innerHTML = `
                         <div class="global-search-no-results">
                             <i class="fa-solid fa-exclamation-circle"></i>
-                            <p>Error: ${data.message}</p>
+                            <p>Error: ${_esc(data.message)}</p>
                         </div>
                     `;
                 }

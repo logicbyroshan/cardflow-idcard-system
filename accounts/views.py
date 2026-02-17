@@ -183,9 +183,10 @@ class CheckEmailAPIView(View):
                 'message': 'Invalid JSON data'
             }, status=400)
         except Exception as e:
+            logger.exception("Auth API error: %s", e)
             return JsonResponse({
                 'success': False,
-                'message': str(e)
+                'message': 'An error occurred. Please try again.'
             }, status=500)
 
 
@@ -288,9 +289,10 @@ class ForgotPasswordAPIView(View):
                 'message': 'Invalid JSON data'
             }, status=400)
         except Exception as e:
+            logger.exception("Auth API error: %s", e)
             return JsonResponse({
                 'success': False,
-                'message': str(e)
+                'message': 'An error occurred. Please try again.'
             }, status=500)
 
 
@@ -332,9 +334,10 @@ class VerifyOTPAPIView(View):
                 'message': 'Invalid JSON data'
             }, status=400)
         except Exception as e:
+            logger.exception("Auth API error: %s", e)
             return JsonResponse({
                 'success': False,
-                'message': str(e)
+                'message': 'An error occurred. Please try again.'
             }, status=500)
 
 
@@ -385,9 +388,10 @@ class ResetPasswordAPIView(View):
                 'message': 'Invalid JSON data'
             }, status=400)
         except Exception as e:
+            logger.exception("Auth API error: %s", e)
             return JsonResponse({
                 'success': False,
-                'message': str(e)
+                'message': 'An error occurred. Please try again.'
             }, status=500)
 
 
@@ -402,13 +406,14 @@ def redirect_to_dashboard(request):
     return redirect(redirect_url)
 
 
+@login_required(login_url='/panel/auth/login/')
 def setup_groups_view(request):
     """
     Utility view to setup Django Groups.
     Should be called once during initial setup.
     Only accessible by superusers.
     """
-    if not request.user.is_authenticated or not request.user.is_superuser:
+    if not request.user.is_superuser:
         return JsonResponse({
             'success': False,
             'message': 'Unauthorized'

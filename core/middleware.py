@@ -2,11 +2,13 @@
 Core Middleware Module
 
 Contains middleware for:
+- Request timing and slow-request detection
 - Permission validation on every request
 - Session invalidation when permissions are revoked
 - Active status enforcement
 """
 import logging
+import time
 from django.contrib.auth import logout
 from django.shortcuts import redirect
 from django.http import JsonResponse
@@ -14,6 +16,81 @@ from django.utils.functional import SimpleLazyObject
 from django.urls import reverse
 
 logger = logging.getLogger(__name__)
+
+# Threshold in seconds — requests slower than this are logged as WARNING
+SLOW_REQUEST_THRESHOLD = getattr(
+    __import__('django.conf', fromlist=['settings']).settings,
+    'SLOW_REQUEST_THRESHOLD', 1.5
+)
+
+# Threshold for excessive query count warning
+QUERY_COUNT_THRESHOLD = getattr(
+    __import__('django.conf', fromlist=['settings']).settings,
+    'QUERY_COUNT_THRESHOLD', 50
+)
+
+
+class RequestTimingMiddleware:
+    """
+    Logs every request with duration, path, user, role, and status code.
+    
+    - Requests slower than SLOW_REQUEST_THRESHOLD seconds → WARNING
+    - All others → DEBUG (so they only appear when DEBUG=True)
+    
+    MUST be placed early in MIDDLEWARE (after AuthenticationMiddleware)
+    so that request.user is available.
+    """
+
+    # Skip timing for static/media assets to reduce noise
+    SKIP_PREFIXES = ('/static/', '/media/', '/favicon.ico')
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        # Skip static/media
+        if any(request.path.startswith(p) for p in self.SKIP_PREFIXES):
+            return self.get_response(request)
+
+        start = time.monotonic()
+
+        # Query-count tracking — detect N+1 patterns
+        # In DEBUG mode: always count. In production: count only to detect excessive queries.
+        from django.conf import settings as _settings
+        count_queries = _settings.DEBUG
+        if count_queries:
+            from django.db import connection
+            initial_queries = len(connection.queries)
+
+        response = self.get_response(request)
+        duration = time.monotonic() - start
+
+        user = getattr(request, 'user', None)
+        username = getattr(user, 'username', 'anonymous') if user and getattr(user, 'is_authenticated', False) else 'anonymous'
+        role = getattr(user, 'role', '-') if user and getattr(user, 'is_authenticated', False) else '-'
+        status = response.status_code
+
+        # Build base log message
+        msg = "method=%s path=%s status=%d duration=%.3fs user=%s role=%s"
+        args = (request.method, request.path, status, duration, username, role)
+
+        if count_queries:
+            num_queries = len(connection.queries) - initial_queries
+            msg += " queries=%d"
+            args = args + (num_queries,)
+            if num_queries > QUERY_COUNT_THRESHOLD:
+                logger.warning("EXCESSIVE QUERIES " + msg, *args)
+            elif duration >= SLOW_REQUEST_THRESHOLD:
+                logger.warning("SLOW REQUEST " + msg, *args)
+            else:
+                logger.debug(msg, *args)
+        else:
+            if duration >= SLOW_REQUEST_THRESHOLD:
+                logger.warning("SLOW REQUEST " + msg, *args)
+            else:
+                logger.debug(msg, *args)
+
+        return response
 
 
 class PermissionValidationMiddleware:
@@ -62,8 +139,11 @@ class PermissionValidationMiddleware:
         if self._is_exempt_url(request.path):
             return self.get_response(request)
         
-        # Skip if user not authenticated
+        # Safety net: redirect unauthenticated users away from /panel/ routes
         if not request.user.is_authenticated:
+            if request.path.startswith('/panel/'):
+                from django.shortcuts import redirect
+                return redirect('/panel/auth/login/')
             return self.get_response(request)
         
         # Re-fetch user from database to get latest state

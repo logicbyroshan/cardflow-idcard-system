@@ -119,15 +119,14 @@ class ImageService:
         if len(image_bytes) < 100:
             return False, "Image data is too small"
         
-        MAX_IMAGE_SIZE = 25 * 1024 * 1024  # 25MB per image
+        MAX_IMAGE_SIZE = 30 * 1024 * 1024  # 30MB per image
         if len(image_bytes) > MAX_IMAGE_SIZE:
-            return False, f"Image too large ({len(image_bytes) // 1024 // 1024}MB). Maximum is 25MB."
+            return False, f"Image too large ({len(image_bytes) // 1024 // 1024}MB). Maximum is 30MB."
         
         try:
             from PIL import Image
             
-            # Protect against decompression bombs
-            Image.MAX_IMAGE_PIXELS = 25_000_000  # ~25MP, reasonable for ID cards
+            # MAX_IMAGE_PIXELS is set once at app startup (core/apps.py)
             
             # Try to open and verify the image
             with Image.open(BytesIO(image_bytes)) as img:
@@ -370,6 +369,102 @@ class ImageService:
             data={'final_value': '', 'action': 'removal'},
         )
 
+    # ==================== IMAGE COMPRESSION ====================
+
+    # Target size for stored images (5 MB)
+    MAX_STORED_IMAGE_SIZE = 5 * 1024 * 1024
+
+    @classmethod
+    def compress_to_target_size(
+        cls,
+        image_bytes: bytes,
+        target_size: int = None,
+        min_quality: int = 10,
+    ) -> bytes:
+        """
+        Compress image to *target_size* bytes by reducing JPEG quality only.
+
+        RULES:
+          - Dimensions are NEVER reduced.
+          - Only JPEG quality is adjusted.
+          - If already <= target_size, returns original bytes unchanged.
+          - Uses a temporary file to avoid memory spikes on very large images.
+
+        Returns:
+            Compressed (or original) image bytes.
+        """
+        import tempfile
+        from PIL import Image
+
+        target_size = target_size or cls.MAX_STORED_IMAGE_SIZE
+
+        if len(image_bytes) <= target_size:
+            return image_bytes
+
+        try:
+            img = Image.open(BytesIO(image_bytes))
+            try:
+                # Preserve original dimensions — never resize
+                if img.mode in ('RGBA', 'LA', 'P'):
+                    bg = Image.new('RGB', img.size, (255, 255, 255))
+                    if img.mode == 'P':
+                        img = img.convert('RGBA')
+                    bg.paste(img, mask=img.split()[-1] if 'A' in img.mode else None)
+                    img.close()
+                    img = bg
+                elif img.mode != 'RGB':
+                    img_c = img.convert('RGB')
+                    img.close()
+                    img = img_c
+
+                # Handle EXIF orientation
+                try:
+                    from PIL import ImageOps
+                    img = ImageOps.exif_transpose(img)
+                except Exception:
+                    pass
+
+                # Binary-search for best quality that meets target
+                lo, hi = min_quality, 95
+                best_bytes = None
+
+                while lo <= hi:
+                    mid = (lo + hi) // 2
+                    tmp = tempfile.SpooledTemporaryFile(max_size=target_size)
+                    try:
+                        img.save(tmp, format='JPEG', quality=mid, optimize=True)
+                        size = tmp.tell()
+                        tmp.seek(0)
+                        if size <= target_size:
+                            best_bytes = tmp.read()
+                            lo = mid + 1  # try higher quality
+                        else:
+                            hi = mid - 1  # need lower quality
+                    finally:
+                        tmp.close()
+
+                if best_bytes is not None:
+                    logger.info(
+                        "Compressed image from %d KB to %d KB (quality binary-search)",
+                        len(image_bytes) // 1024, len(best_bytes) // 1024,
+                    )
+                    return best_bytes
+
+                # Fallback: save at min_quality
+                buf = BytesIO()
+                img.save(buf, format='JPEG', quality=min_quality, optimize=True)
+                result = buf.getvalue()
+                logger.warning(
+                    "Image compressed to %d KB at minimum quality %d (target was %d KB)",
+                    len(result) // 1024, min_quality, target_size // 1024,
+                )
+                return result
+            finally:
+                img.close()
+        except Exception as e:
+            logger.error("compress_to_target_size failed: %s", e)
+            return image_bytes  # return original on error
+
     # ==================== IMAGE SAVING (internal) ====================
     
     @classmethod
@@ -480,17 +575,16 @@ class ImageService:
     ) -> 'MediaResult':
         """
         Save an image and generate its thumbnail.
-        
-        Args:
-            image_bytes: Raw image data
-            client: Client model instance
-            existing_path: Path of existing image (for updates)
-            batch_counter: Counter for unique filename generation
-            original_ext: Original file extension
-            
-        Returns:
-            MediaResult with saved paths in data
+
+        Phase 1 rule: If the image exceeds 5 MB it is quality-compressed
+        (dimensions preserved) before saving.
         """
+        # Phase 1: compress large images to <= 5 MB (quality only, no resize)
+        if len(image_bytes) > cls.MAX_STORED_IMAGE_SIZE:
+            image_bytes = cls.compress_to_target_size(image_bytes)
+            # After compression the effective extension is always JPEG
+            original_ext = '.jpg'
+
         # First save the original
         result = cls.save_image(
             ContentFile(image_bytes),
@@ -776,6 +870,22 @@ class ImageService:
                         "Blocked thumbnail path from get_image_path_for_card: %s", path
                     )
                     return None
+
+                # Phase 2: If original missing on disk, fall back to thumbnail
+                try:
+                    if default_storage.exists(path):
+                        return path
+                    # Original missing — check thumbnail as fallback
+                    thumb_path = ThumbnailService.get_thumbnail_path(path)
+                    if thumb_path and default_storage.exists(thumb_path):
+                        logger.info(
+                            "Original missing, falling back to thumbnail: %s -> %s",
+                            path, thumb_path,
+                        )
+                        return thumb_path
+                except Exception:
+                    pass
+                # Return path anyway for backward compat (callers check existence)
                 return path
         
         return None
@@ -814,15 +924,18 @@ class ImageService:
         if not prefer_thumbnail:
             return original_path
         
-        # Try to get thumbnail path
+        # Try to get/create thumbnail
         thumb_path = ThumbnailService.get_thumbnail_path(original_path)
         if thumb_path:
-            # Check if thumbnail exists on disk
             try:
                 if default_storage.exists(thumb_path):
                     return thumb_path
+                # Thumbnail missing — regenerate automatically (Phase 2)
+                created = ThumbnailService.create_thumbnail(original_path)
+                if created and default_storage.exists(created):
+                    return created
             except Exception as e:
-                logger.debug("Thumbnail not found for %s: %s", original_path, e)
+                logger.debug("Thumbnail not available for %s: %s", original_path, e)
         
         # Fall back to original
         return original_path

@@ -16,7 +16,7 @@ import re
 import base64
 import logging
 import zipfile
-from io import BytesIO
+import tempfile
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, field
 
@@ -184,84 +184,96 @@ class ZipExporter:
         Returns:
             ZipFileInfo if images were found, None otherwise
         """
-        zip_buffer = BytesIO()
+        zip_tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.zip')
+        zip_tmp_path = zip_tmp.name
+        zip_tmp.close()
         images_count = 0
         used_names = {}
         
         # Maximum images per ZIP to prevent memory issues
         MAX_IMAGES_PER_ZIP = 1000
         
-        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
-            # Use iterator() for memory-efficient QuerySet iteration
-            for card in cards.iterator(chunk_size=100):
-                if images_count >= MAX_IMAGES_PER_ZIP:
-                    logger.warning("ZIP export reached image limit for field %s", field_name)
-                    break
-                
-                # Phase 3: Use ImageService with CardMedia + fallback
-                img_path = ImageService.get_image_path_for_card(
-                    card=card,
-                    field_name=field_name,
-                    fallback_to_field_data=True
-                )
-                
-                if not is_valid_image_path(img_path):
-                    continue
-                
-                try:
-                    if default_storage.exists(img_path):
-                        with default_storage.open(img_path, 'rb') as img_file:
-                            img_data = img_file.read()
-                            
-                            # Minimum valid image size check
-                            if img_data and len(img_data) >= 100:
-                                base = os.path.basename(img_path)
-                                # Sanitize filename for ZIP entry
-                                base = re.sub(r'[\x00-\x1f\x7f<>:"/\\|?*]', '_', base)
-                                if not base or base == '.':
-                                    base = 'image.jpg'
-                                if base in used_names:
-                                    used_names[base] += 1
-                                    name, ext = os.path.splitext(base)
-                                    download_filename = f"{name}_{used_names[base]}{ext}"
-                                else:
-                                    used_names[base] = 0
-                                    download_filename = base
-                                zf.writestr(download_filename, img_data)
-                                images_count += 1
+        try:
+            with zipfile.ZipFile(zip_tmp_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+                # Use iterator() for memory-efficient QuerySet iteration
+                for card in cards.iterator(chunk_size=100):
+                    if images_count >= MAX_IMAGES_PER_ZIP:
+                        logger.warning("ZIP export reached image limit for field %s", field_name)
+                        break
+                    
+                    # Phase 3: Use ImageService with CardMedia + fallback
+                    img_path = ImageService.get_image_path_for_card(
+                        card=card,
+                        field_name=field_name,
+                        fallback_to_field_data=True
+                    )
+                    
+                    if not is_valid_image_path(img_path):
+                        continue
+                    
+                    try:
+                        if default_storage.exists(img_path):
+                            with default_storage.open(img_path, 'rb') as img_file:
+                                img_data = img_file.read()
                                 
-                                # Free memory for large images
-                                del img_data
-                except Exception:
-                    # Skip problematic images silently
-                    continue
+                                # Minimum valid image size check
+                                if img_data and len(img_data) >= 100:
+                                    base = os.path.basename(img_path)
+                                    # Sanitize filename for ZIP entry
+                                    base = re.sub(r'[\x00-\x1f\x7f<>:"/\\|?*]', '_', base)
+                                    if not base or base == '.':
+                                        base = 'image.jpg'
+                                    if base in used_names:
+                                        used_names[base] += 1
+                                        name, ext = os.path.splitext(base)
+                                        download_filename = f"{name}_{used_names[base]}{ext}"
+                                    else:
+                                        used_names[base] = 0
+                                        download_filename = base
+                                    zf.writestr(download_filename, img_data)
+                                    images_count += 1
+                                    
+                                    # Free memory for large images
+                                    del img_data
+                    except Exception:
+                        # Skip problematic images silently
+                        continue
         
-        if images_count == 0:
-            return None
+            if images_count == 0:
+                os.unlink(zip_tmp_path)
+                return None
+            
+            # Read from disk and base64-encode (avoids double-buffering of BytesIO)
+            with open(zip_tmp_path, 'rb') as f:
+                zip_data = f.read()
         
-        zip_buffer.seek(0)
-        zip_data = zip_buffer.getvalue()
-        
-        # Generate clean filename: ClientName_ListName_Field_Status.zip
-        clean_field_name = self._get_readable_field_name(field_name)
-        parts = []
-        if client_name:
-            parts.append(client_name)
-        parts.append(table_name)
-        parts.append(clean_field_name)
-        if status:
-            parts.append(clean_filename(status.capitalize()))
-        zip_filename = '_'.join(parts) + '.zip'
-        
-        # Encode as base64 for JavaScript download
-        zip_base64 = base64.b64encode(zip_data).decode('utf-8')
-        
-        return ZipFileInfo(
-            field_name=field_name,
-            filename=zip_filename,
-            data=zip_base64,
-            image_count=images_count
-        )
+            # Generate clean filename: ClientName_ListName_Field_Status.zip
+            clean_field_name = self._get_readable_field_name(field_name)
+            parts = []
+            if client_name:
+                parts.append(client_name)
+            parts.append(table_name)
+            parts.append(clean_field_name)
+            if status:
+                parts.append(clean_filename(status.capitalize()))
+            zip_filename = '_'.join(parts) + '.zip'
+            
+            # Encode as base64 for JavaScript download
+            zip_base64 = base64.b64encode(zip_data).decode('utf-8')
+            del zip_data  # Free the raw bytes immediately
+            
+            return ZipFileInfo(
+                field_name=field_name,
+                filename=zip_filename,
+                data=zip_base64,
+                image_count=images_count
+            )
+        finally:
+            # Always clean up temp file
+            try:
+                os.unlink(zip_tmp_path)
+            except OSError:
+                pass
     
     def _get_readable_field_name(self, field_name: str) -> str:
         """
@@ -335,8 +347,12 @@ def zip_result_to_dict(result: ZipExportResult) -> Dict[str, Any]:
 
 
 # =============================================================================
-# MEMORY-SAFE DISK-BASED EXPORT (for large exports)
+# MEMORY-SAFE DISK-BASED EXPORT (for large exports) — with 1 GB split
 # =============================================================================
+
+# Maximum uncompressed size per ZIP part before splitting
+ZIP_SPLIT_THRESHOLD = 1 * 1024 * 1024 * 1024  # 1 GB
+
 
 @dataclass
 class DiskZipInfo:
@@ -366,152 +382,177 @@ def export_images_to_disk(
 ) -> DiskZipResult:
     """
     Export images to ZIP files saved directly on disk.
-    
+
     CRITICAL: Memory-safe implementation for large exports.
     - Uses ZIP_STORED (no compression) for memory efficiency
     - Writes directly to disk, not BytesIO
     - Processes one image at a time
-    
+    - Phase 4: Automatically splits when a single ZIP exceeds 1 GB
+
     Args:
         table: IDCardTable instance
         cards: QuerySet of IDCard instances
         output_dir: Directory to save ZIP files
         status: Status label for filename
         progress_callback: Optional callback(current, total) for progress updates
-        
+
     Returns:
         DiskZipResult with file paths
     """
     from datetime import datetime
-    from django.conf import settings
-    
+
     if not cards.exists():
-        return DiskZipResult(
-            success=False,
-            message='No cards to export!'
-        )
-    
+        return DiskZipResult(success=False, message='No cards to export!')
+
     try:
-        # Get image fields from table
         image_fields = get_image_fields(table.fields or [])
-        
         if not image_fields:
-            return DiskZipResult(
-                success=False,
-                message='No image fields found in this table!'
-            )
-        
-        # Get client name for filename
+            return DiskZipResult(success=False, message='No image fields found in this table!')
+
         client_name = ''
         if table.group and table.group.client:
             client_name = table.group.client.name
         clean_client_name = clean_filename(client_name) if client_name else ''
         clean_table_name = clean_filename(table.name)
-        
-        # Ensure output directory exists
+
         os.makedirs(output_dir, exist_ok=True)
-        
-        zip_files = []
+
+        zip_files: List[DiskZipInfo] = []
         total_images = 0
         total_cards = cards.count()
         current_progress = 0
-        
+
         for field_info in image_fields:
             field_name = field_info['name']
             clean_field_name = _get_readable_field_name(field_name)
-            
-            # Generate filename with timestamp
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            parts = []
-            if clean_client_name:
-                parts.append(clean_client_name)
-            parts.append(clean_table_name)
-            parts.append(clean_field_name)
-            if status:
-                parts.append(clean_filename(status.capitalize()))
-            parts.append(timestamp)
-            zip_filename = '_'.join(parts) + '.zip'
-            zip_path = os.path.join(output_dir, zip_filename)
-            
-            images_count = 0
-            used_names = {}
-            
-            # Create ZIP file on disk with ZIP_STORED (no compression)
-            with zipfile.ZipFile(zip_path, 'w', compression=zipfile.ZIP_STORED) as zf:
+
+            # ── helpers for building part filenames ──
+            def _make_zip_path(part_num: int = 0) -> tuple:
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                parts_list = []
+                if clean_client_name:
+                    parts_list.append(clean_client_name)
+                parts_list.append(clean_table_name)
+                parts_list.append(clean_field_name)
+                if status:
+                    parts_list.append(clean_filename(status.capitalize()))
+                if part_num > 0:
+                    parts_list.append(f'part{part_num}')
+                parts_list.append(timestamp)
+                fn = '_'.join(parts_list) + '.zip'
+                return os.path.join(output_dir, fn), fn
+
+            # ── Phase 4: write images with auto-split at 1 GB ──
+            part_num = 1
+            part_path, part_fn = _make_zip_path(0)  # first part has no partN suffix
+            zf = zipfile.ZipFile(part_path, 'w', compression=zipfile.ZIP_STORED)
+            part_size = 0
+            part_images = 0
+            used_names: Dict[str, int] = {}
+            all_parts: List[tuple] = []  # (path, fn, count)
+
+            try:
                 for card in cards.iterator(chunk_size=100):
-                    # Get image path using ImageService
                     img_path = ImageService.get_image_path_for_card(
                         card=card,
                         field_name=field_name,
-                        fallback_to_field_data=True
+                        fallback_to_field_data=True,
                     )
-                    
                     if not is_valid_image_path(img_path):
                         current_progress += 1
                         if progress_callback:
                             progress_callback(current_progress, total_cards * len(image_fields))
                         continue
-                    
+
                     try:
-                        if default_storage.exists(img_path):
-                            with default_storage.open(img_path, 'rb') as img_file:
-                                img_data = img_file.read()
-                                
-                                # Minimum valid image size check
-                                if img_data and len(img_data) >= 100:
-                                    base = os.path.basename(img_path)
-                                    if base in used_names:
-                                        used_names[base] += 1
-                                        name, ext = os.path.splitext(base)
-                                        download_filename = f"{name}_{used_names[base]}{ext}"
-                                    else:
-                                        used_names[base] = 0
-                                        download_filename = base
-                                    
-                                    zf.writestr(download_filename, img_data)
-                                    images_count += 1
+                        if not default_storage.exists(img_path):
+                            continue
+                        with default_storage.open(img_path, 'rb') as img_file:
+                            img_data = img_file.read()
+
+                        if not img_data or len(img_data) < 100:
+                            continue
+
+                        # Build unique name inside ZIP
+                        base = os.path.basename(img_path)
+                        if base in used_names:
+                            used_names[base] += 1
+                            name_stem, ext = os.path.splitext(base)
+                            download_filename = f"{name_stem}_{used_names[base]}{ext}"
+                        else:
+                            used_names[base] = 0
+                            download_filename = base
+
+                        # Check if adding this image would exceed the split threshold
+                        if part_size + len(img_data) > ZIP_SPLIT_THRESHOLD and part_images > 0:
+                            # Close current part and start a new one
+                            zf.close()
+                            all_parts.append((part_path, part_fn, part_images))
+                            part_num += 1
+                            part_path, part_fn = _make_zip_path(part_num)
+                            zf = zipfile.ZipFile(part_path, 'w', compression=zipfile.ZIP_STORED)
+                            part_size = 0
+                            part_images = 0
+
+                        zf.writestr(download_filename, img_data)
+                        part_size += len(img_data)
+                        part_images += 1
+
+                        del img_data
                     except Exception:
-                        # Skip problematic images silently
                         pass
-                    
+
                     current_progress += 1
                     if progress_callback:
                         progress_callback(current_progress, total_cards * len(image_fields))
-            
-            # Only keep ZIP if it has images
-            if images_count > 0:
-                zip_files.append(DiskZipInfo(
-                    field_name=field_name,
-                    filename=zip_filename,
-                    path=zip_path,
-                    image_count=images_count
-                ))
-                total_images += images_count
+            finally:
+                zf.close()
+
+            # Append the last (or only) part
+            if part_images > 0:
+                all_parts.append((part_path, part_fn, part_images))
             else:
-                # Remove empty ZIP
+                # Remove empty file
                 try:
-                    os.remove(zip_path)
+                    os.remove(part_path)
                 except Exception:
                     pass
-        
+
+            # If we ended up with multiple parts, rename the first part to include 'part1'
+            if len(all_parts) > 1:
+                old_path, old_fn, cnt = all_parts[0]
+                new_path, new_fn = _make_zip_path(1)
+                # The file already exists at old_path; rename it
+                try:
+                    os.rename(old_path, new_path)
+                    all_parts[0] = (new_path, new_fn, cnt)
+                except Exception:
+                    pass  # keep old name on failure
+
+            for p_path, p_fn, p_cnt in all_parts:
+                zip_files.append(DiskZipInfo(
+                    field_name=field_name,
+                    filename=p_fn,
+                    path=p_path,
+                    image_count=p_cnt,
+                ))
+                total_images += p_cnt
+
         if not zip_files:
-            return DiskZipResult(
-                success=False,
-                message='No images found for selected cards!'
-            )
-        
+            return DiskZipResult(success=False, message='No images found for selected cards!')
+
         return DiskZipResult(
             success=True,
             zip_files=zip_files,
             total_images=total_images,
-            total_zips=len(zip_files)
+            total_zips=len(zip_files),
         )
-        
+
     except Exception as e:
         logger.error("Disk-based ZIP export failed: %s", e, exc_info=True)
         return DiskZipResult(
             success=False,
-            message='ZIP export failed. Please try again or contact support.'
+            message='ZIP export failed. Please try again or contact support.',
         )
 
 

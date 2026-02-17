@@ -655,7 +655,6 @@ class StreamingZipIndex:
             zip_file: Django uploaded file, file-like object, or path string
         """
         import zipfile
-        from io import BytesIO
         
         self._zip_file = zip_file
         self._zf = None
@@ -664,13 +663,15 @@ class StreamingZipIndex:
         
     def __enter__(self):
         import zipfile
-        from io import BytesIO
         
         # Handle different input types
-        if hasattr(self._zip_file, 'read'):
-            # File-like object - need to read into BytesIO for ZipFile
-            content = self._zip_file.read()
-            self._zf = zipfile.ZipFile(BytesIO(content), 'r')
+        if hasattr(self._zip_file, 'temporary_file_path'):
+            # Django TemporaryUploadedFile — use disk path directly
+            self._zf = zipfile.ZipFile(self._zip_file.temporary_file_path(), 'r')
+        elif hasattr(self._zip_file, 'read'):
+            # File-like object — read from handle directly (avoids BytesIO copy)
+            self._zip_file.seek(0)
+            self._zf = zipfile.ZipFile(self._zip_file, 'r')
         else:
             # Assume path string
             self._zf = zipfile.ZipFile(self._zip_file, 'r')

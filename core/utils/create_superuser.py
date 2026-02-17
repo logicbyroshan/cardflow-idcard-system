@@ -6,9 +6,12 @@ For Render deployment, use the start command:
     python startup.py && gunicorn config.wsgi
 """
 
+import logging
 import os
 from django.contrib.auth import get_user_model
 from django.db.utils import OperationalError
+
+logger = logging.getLogger(__name__)
 
 
 def create_superuser_if_needed():
@@ -32,7 +35,7 @@ def create_superuser_if_needed():
 
         # Check if superuser already exists
         if User.objects.filter(is_superuser=True).exists():
-            print("✅ Superuser already exists")
+            logger.info("Superuser already exists")
             return True
 
         # Create new superuser (role='super_admin' is now set automatically by CustomUserManager)
@@ -42,12 +45,12 @@ def create_superuser_if_needed():
             password=password,
         )
         
-        print(f"✅ Superuser created: {username}")
+        logger.info("Superuser created: %s", username)
         return True
 
     except OperationalError:
-        print("⚠️ Database not ready, skipping superuser creation")
+        logger.warning("Database not ready, skipping superuser creation")
         return False
     except Exception as e:
-        print(f"❌ Error creating superuser: {e}")
+        logger.error("Error creating superuser: %s", e)
         return False

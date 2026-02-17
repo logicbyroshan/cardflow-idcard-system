@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const cancelStaffDrawer = document.getElementById('drawer-cancel-btn');
     
     const table = document.getElementById('staff-table');
-    const tbody = document.getElementById('staff-table-body');
+    const tableContainer = document.getElementById('staff-table-container');
     
     // Phase 1: Profile image upload removed - using avatar placeholder
     
@@ -36,9 +36,10 @@ document.addEventListener('DOMContentLoaded', function() {
     function selectStaffRow(row) {
         if (!row || !row.dataset.staffId) return;
         
-        // Remove selection from all rows
-        if (tbody) {
-            tbody.querySelectorAll('tr').forEach(r => {
+        // Remove selection from all rows (re-query to handle swapped content)
+        const currentTbody = document.getElementById('staff-table-body');
+        if (currentTbody) {
+            currentTbody.querySelectorAll('tr').forEach(r => {
                 r.classList.remove('selected');
             });
         }
@@ -50,23 +51,34 @@ document.addEventListener('DOMContentLoaded', function() {
         selectedStaffId = row.dataset.staffId;
         enableActionButtons(true);
         updateActiveButtonState();
+
+        // Bridge to Alpine reactive state
+        if (typeof window.alpineUpdateSelection === 'function') {
+            window.alpineUpdateSelection([selectedStaffId]);
+        }
     }
     
     function clearStaffSelection() {
-        if (tbody) {
-            tbody.querySelectorAll('tr').forEach(r => {
+        const currentTbody = document.getElementById('staff-table-body');
+        if (currentTbody) {
+            currentTbody.querySelectorAll('tr').forEach(r => {
                 r.classList.remove('selected');
             });
         }
         selectedRow = null;
         selectedStaffId = null;
         enableActionButtons(false);
+
+        // Bridge to Alpine reactive state
+        if (typeof window.alpineClearSelection === 'function') {
+            window.alpineClearSelection();
+        }
     }
     
-    // Set up row click handlers
-    if (tbody) {
-        // Row click - select row
-        tbody.addEventListener('click', function(e) {
+    // Set up row click handlers — delegate from stable container to survive HTMX swaps
+    if (tableContainer) {
+        // Row click - select row (delegated from stable parent)
+        tableContainer.addEventListener('click', function(e) {
             const row = e.target.closest('tr');
             if (row && row.dataset.staffId && !row.classList.contains('no-data-row')) {
                 selectStaffRow(row);
@@ -166,11 +178,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (clientMultiselectEmpty) clientMultiselectEmpty.style.display = 'none';
 
         filtered.forEach(client => {
+            const _esc = window.escapeHtml || function(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); };
             const item = document.createElement('div');
             item.className = 'client-multiselect-item' + (selectedClientIds.has(client.id) ? ' selected' : '');
             item.innerHTML = `
                 <input type="checkbox" ${selectedClientIds.has(client.id) ? 'checked' : ''} data-client-id="${client.id}">
-                <span class="client-name">${client.name}</span>
+                <span class="client-name">${_esc(client.name)}</span>
             `;
             item.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -557,7 +570,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (result.success) {
                     showToast(result.message, 'success');
                     closeDrawer();
-                    setTimeout(() => location.reload(), 500);
+                    // Refresh table via HTMX instead of full page reload
+                    if (typeof htmx !== 'undefined' && document.getElementById('staff-table-container')) {
+                        setTimeout(() => htmx.trigger(document.body, 'refreshTable'), 300);
+                    } else {
+                        setTimeout(() => location.reload(), 500);
+                    }
                 } else {
                     showToast(result.message || 'Operation failed', 'error');
                     // Re-enable button on error
@@ -598,7 +616,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const selectedText = document.getElementById('statusSelectedText');
     const searchInput = document.getElementById('searchInput');
     
-    let currentFilter = '';\n    \n    function performSearch() {
+    let currentFilter = '';
+    
+    function performSearch() {
         const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
         const rows = document.querySelectorAll('.data-table tbody tr');
         
@@ -631,7 +651,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     if (searchInput) {
-        searchInput.addEventListener('input', performSearch);
+        searchInput.addEventListener('input', function() {
+            performSearch();
+            // Bridge to Alpine reactive state
+            if (typeof window.alpineUpdateSearch === 'function') {
+                window.alpineUpdateSearch(searchInput.value);
+            }
+        });
     }
     
     if (dropdownToggle && dropdownOptions && filterDropdown) {
@@ -658,6 +684,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 filterDropdown.classList.remove('open');
+
+                // Bridge to Alpine reactive state
+                if (typeof window.alpineUpdateFilter === 'function') {
+                    window.alpineUpdateFilter(value);
+                }
+
                 // Will be overridden by performSearchWithPagination later
                 performSearch();
             });
@@ -676,9 +708,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ==================== DELETE MODAL ====================
-    const deleteModal = document.getElementById('delete-modal');
-    const closeDeleteModal = document.getElementById('closeDeleteModal');
-    const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
     const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
     const deleteStaffNameEl = document.getElementById('deleteStaffName');
 
@@ -686,26 +715,14 @@ document.addEventListener('DOMContentLoaded', function() {
         if (deleteStaffNameEl) {
             deleteStaffNameEl.textContent = staffName;
         }
-        if (deleteModal) {
-            deleteModal.classList.add('show');
-            document.body.style.overflow = 'hidden';
-        }
+        if (window.alpineOpenModal) window.alpineOpenModal('delete');
     }
 
     function closeDeleteModalFn() {
-        if (deleteModal) {
-            deleteModal.classList.remove('show');
-            document.body.style.overflow = '';
-        }
+        if (window.alpineCloseModal) window.alpineCloseModal();
     }
 
-    if (closeDeleteModal) {
-        closeDeleteModal.addEventListener('click', closeDeleteModalFn);
-    }
-
-    if (cancelDeleteBtn) {
-        cancelDeleteBtn.addEventListener('click', closeDeleteModalFn);
-    }
+    // Close handlers now managed by Alpine @click in template
 
     if (confirmDeleteBtn) {
         confirmDeleteBtn.addEventListener('click', async () => {
@@ -725,19 +742,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Close modal on overlay click
-    if (deleteModal) {
-        deleteModal.addEventListener('click', (e) => {
-            if (e.target === deleteModal) {
-                closeDeleteModalFn();
-            }
-        });
-    }
-
     // ==================== STATUS MODAL ====================
-    const statusModal = document.getElementById('status-modal');
-    const closeStatusModal = document.getElementById('closeStatusModal');
-    const cancelStatusBtn = document.getElementById('cancelStatusBtn');
     const confirmStatusBtn = document.getElementById('confirmStatusBtn');
     const statusStaffNameEl = document.getElementById('statusStaffName');
     const statusModalHeader = document.getElementById('statusModalHeader');
@@ -774,28 +779,16 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         
-        if (statusModal) {
-            statusModal.classList.add('show');
-            document.body.style.overflow = 'hidden';
-        }
+        if (window.alpineOpenModal) window.alpineOpenModal('status');
     }
 
     function closeStatusModalFn() {
-        if (statusModal) {
-            statusModal.classList.remove('show');
-            document.body.style.overflow = '';
-        }
+        if (window.alpineCloseModal) window.alpineCloseModal();
         pendingStatusStaffId = null;
         pendingStatusCurrentStatus = null;
     }
 
-    if (closeStatusModal) {
-        closeStatusModal.addEventListener('click', closeStatusModalFn);
-    }
-
-    if (cancelStatusBtn) {
-        cancelStatusBtn.addEventListener('click', closeStatusModalFn);
-    }
+    // Close handlers now managed by Alpine @click in template
 
     if (confirmStatusBtn) {
         confirmStatusBtn.addEventListener('click', async () => {
@@ -817,15 +810,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             } else {
                 showToast(result.message || 'Failed to update status', 'error');
-            }
-        });
-    }
-
-    // Close status modal on overlay click
-    if (statusModal) {
-        statusModal.addEventListener('click', (e) => {
-            if (e.target === statusModal) {
-                closeStatusModalFn();
             }
         });
     }

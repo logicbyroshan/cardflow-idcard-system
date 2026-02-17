@@ -50,6 +50,11 @@
         
         // Enable buttons
         updateActionButtons();
+
+        // Bridge to Alpine reactive state
+        if (typeof window.alpineUpdateSelection === 'function') {
+            window.alpineUpdateSelection([selectedClientId]);
+        }
     }
 
     function clearSelection() {
@@ -60,6 +65,11 @@
         selectedFirstGroupId = null;
         selectedRow = null;
         updateActionButtons();
+
+        // Bridge to Alpine reactive state
+        if (typeof window.alpineClearSelection === 'function') {
+            window.alpineClearSelection();
+        }
     }
 
     function updateActionButtons() {
@@ -158,6 +168,9 @@
                 
                 // Close dropdown
                 elements.filterDropdown.classList.remove('open');
+
+                // Bridge to Alpine reactive state
+                if (typeof window.alpineUpdateFilter === 'function') window.alpineUpdateFilter(currentFilter);
                 
                 // Re-run search with new filter
                 performSearch();
@@ -203,18 +216,19 @@
 
     // ==================== EVENT LISTENERS ====================
     function setupEventListeners() {
-        // Table row selection
-        if (elements.tbody) {
-            // Row click handler
-            elements.tbody.addEventListener('click', function(e) {
+        // Table row selection — delegate from stable container to survive HTMX swaps
+        var tableContainer = document.getElementById('active-client-table-container');
+        if (tableContainer) {
+            // Row click handler (delegated)
+            tableContainer.addEventListener('click', function(e) {
                 const row = e.target.closest('tr');
                 if (row && !row.classList.contains('no-data-row')) {
                     selectRow(row);
                 }
             });
             
-            // Double-click to go to ID Card Groups
-            elements.tbody.addEventListener('dblclick', function(e) {
+            // Double-click to go to ID Card Groups (delegated)
+            tableContainer.addEventListener('dblclick', function(e) {
                 const row = e.target.closest('tr');
                 if (row && row.dataset.clientId) {
                     window.location.href = `/panel/client/${row.dataset.clientId}/groups/`;
@@ -242,7 +256,10 @@
         
         // Search input
         if (elements.searchInput) {
-            elements.searchInput.addEventListener('input', performSearch);
+            elements.searchInput.addEventListener('input', function() {
+                performSearch();
+                if (typeof window.alpineUpdateSearch === 'function') window.alpineUpdateSearch(elements.searchInput.value);
+            });
         }
         
         // Search clear button
@@ -251,6 +268,7 @@
                 elements.searchInput.value = '';
                 performSearch();
                 elements.searchInput.focus();
+                if (typeof window.alpineUpdateSearch === 'function') window.alpineUpdateSearch('');
             });
         }
         

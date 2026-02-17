@@ -1,4 +1,4 @@
-{% load static %}
+{% load static custom_filters %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -11,13 +11,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- Tailwind CSS (primary) -->
-  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=2">
+  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=100">
   <!-- Page-specific: group settings UI -->
-  <link rel="stylesheet" href="{% static 'css/group-setting.css' %}?v=41">
-  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=2">
+  <link rel="stylesheet" href="{% static 'css/group-setting.css' %}?v=100">
+  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=100">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <!-- Alpine.js State Module (MUST load before Alpine) -->
-  <script src="{% static 'js/alpine-state.js' %}?v=1"></script>
+  <script src="{% static 'js/alpine-state.js' %}?v=100"></script>
   <!-- Alpine.js -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
   <!-- SheetJS for Excel export -->
@@ -138,32 +138,32 @@
       </div>
 
       <!-- Status Confirmation Modal -->
-      <div id="status-modal" class="modal">
-        <div class="modal-content">
-          <span class="modal-close" id="modal-close">&times;</span>
+      <div id="status-modal" class="modal" x-show="activeModal === 'status'" x-transition.opacity @click.self="closeModal()" style="display:none">
+        <div class="modal-content" x-show="activeModal === 'status'" x-transition.scale.origin.center>
+          <span class="modal-close" @click="closeModal()">&times;</span>
           <div class="status-icon" id="modalIcon">
             <i class="fa-solid fa-toggle-on"></i>
           </div>
           <p id="modal-message">Are you sure you want to change the status?</p>
           <p class="warning-text">This action will update the table status.</p>
           <div class="modal-actions">
-            <button id="modal-cancel" class="btn btn-cancel">Cancel</button>
+            <button @click="closeModal()" class="btn btn-cancel">Cancel</button>
             <button id="modal-confirm" class="btn btn-confirm">Yes, Change</button>
           </div>
         </div>
       </div>
 
       <!-- Delete Confirmation Modal -->
-      <div id="delete-modal" class="modal">
-        <div class="modal-content">
-          <span class="modal-close" id="closeDeleteModal">&times;</span>
+      <div id="delete-modal" class="modal" x-show="activeModal === 'delete'" x-transition.opacity @click.self="closeModal()" style="display:none">
+        <div class="modal-content" x-show="activeModal === 'delete'" x-transition.scale.origin.center>
+          <span class="modal-close" @click="closeModal()">&times;</span>
           <div class="delete-icon">
             <i class="fa-solid fa-trash"></i>
           </div>
           <p>Are you sure you want to delete <strong id="deleteTableName">this table</strong>?</p>
           <p class="warning-text">This action cannot be undone.</p>
           <div class="modal-actions">
-            <button id="cancelDeleteBtn" class="btn btn-cancel">Cancel</button>
+            <button @click="closeModal()" class="btn btn-cancel">Cancel</button>
             <button id="confirmDeleteBtn" class="btn btn-danger">Delete</button>
           </div>
         </div>
@@ -224,69 +224,13 @@
         </div>
       </div>
 
-      <!-- Table -->
-      <div class="table-wrapper">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Status</th>
-              <th>Created At</th>
-              <th>Updated At</th>
-              <th>Download Sample</th>
-            </tr>
-          </thead>
-          <tbody id="tablesBody">
-            {% for table in tables %}
-            <tr data-table-id="{{ table.id }}" data-table-status="{% if table.is_active %}active{% else %}inactive{% endif %}" data-table-name="{{ table.name }}" data-table-fields="{{ table.fields|json_encode }}">
-              <td>{{ table.name }}</td>
-              <td><span class="status-badge {% if table.is_active %}active{% else %}inactive{% endif %}">{% if table.is_active %}Active{% else %}Inactive{% endif %}</span></td>
-              <td>{{ table.created_at|date:"d-M-Y h:i A" }}</td>
-              <td>{{ table.updated_at|date:"d-M-Y h:i A" }}</td>
-              <td><button class="download-btn" data-table-id="{{ table.id }}"><i class="fa-solid fa-download"></i> Download</button></td>
-            </tr>
-            {% empty %}
-            <tr class="no-data-row">
-              <td colspan="5" class="text-center">
-                <div class="no-tables">
-                  <i class="fa-solid fa-table-list"></i>
-                  <h3>No Tables Found</h3>
-                  <p>Create your first ID card table to get started</p>
-                </div>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Pagination Bar -->
-      <div class="pagination-bar">
-          <div class="pagination-left">
-              <span class="pagination-info" id="paginationInfo">Showing <strong>0</strong> of <strong>0</strong> tables</span>
-          </div>
-          <div class="pagination-center">
-              <button class="pagination-btn" id="gsFirstPage" title="First Page"><i class="fa-solid fa-angles-left"></i></button>
-              <button class="pagination-btn" id="gsPrevPage" title="Previous"><i class="fa-solid fa-chevron-left"></i></button>
-              <div class="page-numbers" id="gsPageNumbers"></div>
-              <button class="pagination-btn" id="gsNextPage" title="Next"><i class="fa-solid fa-chevron-right"></i></button>
-              <button class="pagination-btn" id="gsLastPage" title="Last Page"><i class="fa-solid fa-angles-right"></i></button>
-          </div>
-          <div class="pagination-right">
-              <label>Rows per page:</label>
-              <div class="custom-dropdown rows-dropdown" id="rowsDropdown">
-                  <button class="dropdown-toggle" type="button" id="rowsToggle">
-                      <span id="rowsLabel">10</span>
-                      <i class="fa-solid fa-chevron-down"></i>
-                  </button>
-                  <div class="dropdown-options" id="rowsOptions">
-                      <div class="dropdown-option selected" data-value="10">10</div>
-                      <div class="dropdown-option" data-value="25">25</div>
-                      <div class="dropdown-option" data-value="50">50</div>
-                      <div class="dropdown-option" data-value="100">100</div>
-                  </div>
-              </div>
-          </div>
+      <!-- HTMX Table Container -->
+      <div id="gs-table-container"
+           hx-trigger="refreshTable from:body"
+           hx-get="{% url 'group_settings' client.id %}"
+           hx-target="#gs-table-container"
+           hx-swap="innerHTML">
+        {% include 'partials/group-setting/table-container.html' %}
       </div>
 
     </div>
@@ -297,12 +241,23 @@
   </script>
   
   <!-- Core Modules (Load Order: api → toast → modal → utils → init) -->
-  <script src="{% static 'js/core/api.js' %}?v=1"></script>
-  <script src="{% static 'js/core/toast.js' %}?v=1"></script>
-  <script src="{% static 'js/core/modal.js' %}?v=1"></script>
-  <script src="{% static 'js/core/utils.js' %}?v=1"></script>
-  <script src="{% static 'js/init.js' %}?v=3"></script>
-  <script src="{% static 'js/group-setting.js' %}?v=17"></script>
-  <script src="{% static 'js/global-search.js' %}?v=2"></script>
+  <script src="{% static 'js/core/api.js' %}?v=100"></script>
+  <script src="{% static 'js/core/toast.js' %}?v=100"></script>
+  <script src="{% static 'js/core/modal.js' %}?v=100"></script>
+  <script src="{% static 'js/core/utils.js' %}?v=100"></script>
+  <script src="{% static 'js/init.js' %}?v=100"></script>
+  <script src="{% static 'js/group-setting.js' %}?v=100"></script>
+  <script src="{% static 'js/global-search.js' %}?v=100"></script>
+  {% include 'partials/htmx-config.html' %}
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      initHTMXFilters({
+        baseUrl: '{% url "group_settings" client.id %}',
+        target:  '#gs-table-container',
+        searchInputId: 'searchInput',
+        filters: []
+      });
+    });
+  </script>
 </body>
 </html>

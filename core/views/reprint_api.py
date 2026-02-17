@@ -60,8 +60,11 @@ def api_reprint_list_cards(request, table_id):
     table, err = _check_reprint_table_scope(request.user, table_id)
     if err: return err
     query = request.GET.get('q', '').strip()
-    offset = int(request.GET.get('offset', 0))
-    limit = int(request.GET.get('limit', 100))
+    try:
+        offset = int(request.GET.get('offset', 0))
+        limit = int(request.GET.get('limit', 100))
+    except (ValueError, TypeError):
+        offset, limit = 0, 100
 
     cards_qs = IDCard.objects.filter(table=table).order_by('-id')
 
@@ -186,8 +189,11 @@ def api_reprint_confirm_list(request, table_id):
     table, err = _check_reprint_table_scope(request.user, table_id)
     if err: return err
     query = request.GET.get('q', '').strip()
-    offset = int(request.GET.get('offset', 0))
-    limit = int(request.GET.get('limit', 100))
+    try:
+        offset = int(request.GET.get('offset', 0))
+        limit = int(request.GET.get('limit', 100))
+    except (ValueError, TypeError):
+        offset, limit = 0, 100
 
     rr_qs = ReprintRequest.objects.filter(
         table=table, status='requested'
@@ -315,8 +321,11 @@ def api_reprint_download_list(request, table_id):
     if err:
         return err
     query = request.GET.get('q', '').strip()
-    offset = int(request.GET.get('offset', 0))
-    limit = int(request.GET.get('limit', 100))
+    try:
+        offset = int(request.GET.get('offset', 0))
+        limit = int(request.GET.get('limit', 100))
+    except (ValueError, TypeError):
+        offset, limit = 0, 100
 
     rr_qs = ReprintRequest.objects.filter(
         table=table, status='confirmed'

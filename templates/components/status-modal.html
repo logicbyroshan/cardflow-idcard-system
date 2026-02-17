@@ -1,7 +1,8 @@
 {% comment %}
-Status Change Confirmation Modal (Tailwind)
+Status Change Confirmation Modal (Alpine.js)
 =============================================
 Pre-built center modal for toggling active/inactive status.
+Now driven by Alpine x-show via layoutState().activeModal.
 
 Usage:
   {% include 'components/status-modal.html' with
@@ -9,9 +10,9 @@ Usage:
      item_name="staff member"
   %}
 
-JS contract:
-  Show:  document.getElementById('status-modal').classList.remove('hidden')
-  Hide:  document.getElementById('status-modal').classList.add('hidden')
+JS contract (Alpine bridge):
+  Show:  window.alpineOpenModal('status')
+  Hide:  window.alpineCloseModal()
   Name:  document.getElementById('statusItemName').textContent = 'Jane Doe'
   Note:  document.getElementById('statusNote').textContent = '...'
   Confirm: #confirmStatusBtn
@@ -19,14 +20,16 @@ JS contract:
 {% endcomment %}
 
 <div id="{{ modal_id|default:'status-modal' }}" class="modal-backdrop"
-     onclick="if(event.target===this) this.classList.remove('show')">
-  <div class="modal-center modal-warning" onclick="event.stopPropagation()">
+     x-show="activeModal === 'status'" x-transition.opacity
+     @click.self="closeModal()" style="display:none">
+  <div class="modal-center modal-warning" @click.stop
+       x-show="activeModal === 'status'" x-transition.scale.origin.center>
 
     <!-- Header -->
     <div class="modal-header">
       <h3><i class="fa-solid fa-toggle-on"></i> Confirm Status Change</h3>
-      <button type="button" class="modal-close" id="closeStatusModal"
-              onclick="document.getElementById('{{ modal_id|default:'status-modal' }}').classList.remove('show')"
+      <button type="button" class="modal-close"
+              @click="closeModal()"
               aria-label="Close">
         <i class="fa-solid fa-xmark"></i>
       </button>
@@ -51,7 +54,7 @@ JS contract:
     <!-- Footer -->
     <div class="modal-footer">
       <button type="button" class="btn btn-md btn-neutral" id="cancelStatusBtn"
-              onclick="document.getElementById('{{ modal_id|default:'status-modal' }}').classList.remove('show')">
+              @click="closeModal()">
         <i class="fa-solid fa-xmark"></i> Cancel
       </button>
       <button type="button" class="btn btn-md btn-warning" id="confirmStatusBtn">

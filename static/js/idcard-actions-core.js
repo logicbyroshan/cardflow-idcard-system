@@ -139,6 +139,11 @@ function updateButtonStates() {
     // Delete Permanent button (Pool list only)
     const deletePermanentBtn = document.getElementById('deletePermanentBtnP');
     if (deletePermanentBtn) deletePermanentBtn.disabled = !anySelected;
+
+    // Bridge selection state to Alpine for reactive UI bindings
+    if (typeof window.alpineUpdateSelection === 'function') {
+        window.alpineUpdateSelection(getSelectedCardIds());
+    }
 }
 
 function initCheckboxes() {
@@ -526,40 +531,12 @@ function initHorizontalScroll() {
 window.IDCardApp.initHorizontalScroll = initHorizontalScroll;
 
 // ==========================================
-// TOAST STYLES (inline CSS)
+// TOAST STYLES — REMOVED
 // ==========================================
-
-const toastStyle = document.createElement('style');
-toastStyle.textContent = `
-    .toast {
-        position: fixed;
-        bottom: 80px;
-        right: 20px;
-        padding: 12px 20px;
-        border-radius: 8px;
-        background: #333;
-        color: #fff;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        font-size: 14px;
-        z-index: 9999;
-        transform: translateY(100px);
-        opacity: 0;
-        transition: all 0.3s ease;
-    }
-    .toast.show {
-        transform: translateY(0);
-        opacity: 1;
-    }
-    .toast.success {
-        background: #22c55e;
-    }
-    .toast.error {
-        background: #ef4444;
-    }
-`;
-document.head.appendChild(toastStyle);
+// Previously injected inline <style> for .toast positioning (bottom-right).
+// This conflicted with the core toast CSS (top-right) in tailwind-input.css.
+// All toast styling is now handled by the compiled CSS and Alpine toast queue.
+// See: static/css/tailwind-input.css, static/css/common.css
 
 // ==========================================
 // CORE MODULE INITIALIZATION

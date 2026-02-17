@@ -416,6 +416,36 @@ window.cancelCellEdit = cancelCellEdit;
 window.saveCellEdit = saveCellEdit;
 window.openImagePreview = openImagePreview;
 
+/**
+ * Alpine inlineEditState() bridge.
+ * Called by the Alpine component's saveEdit() method.
+ * Uses the same API endpoint as the vanilla JS production code.
+ *
+ * @param {string|number} cardId
+ * @param {string} fieldName
+ * @param {string} value
+ * @returns {Promise<boolean>} true on success
+ */
+window.saveInlineEdit = async function (cardId, fieldName, value) {
+    try {
+        // Uppercase non-image text fields (same logic as saveCellEdit)
+        var IMAGE_TYPES = ['photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature', 'image'];
+        var finalValue = (!IMAGE_TYPES.includes(fieldName) && typeof value === 'string') ? value.toUpperCase() : value;
+
+        var data = await ApiClient.post('/panel/api/card/' + cardId + '/update-field/', {
+            field: fieldName,
+            value: finalValue
+        });
+
+        if (typeof showToast === 'function') showToast('Field updated', 'success');
+        return true;
+    } catch (err) {
+        console.error('saveInlineEdit error:', err);
+        if (typeof showToast === 'function') showToast('Failed to save', 'error');
+        return false;
+    }
+};
+
 window.IDCardApp = window.IDCardApp || {};
 window.IDCardApp.initEditModule = initEditModule;
 window.IDCardApp.startCellEdit = startCellEdit;

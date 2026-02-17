@@ -130,8 +130,7 @@ class ThumbnailService:
         try:
             from PIL import Image, ImageOps
             
-            # Protect against decompression bombs
-            Image.MAX_IMAGE_PIXELS = 25_000_000  # ~25MP
+            # MAX_IMAGE_PIXELS is set once at app startup (core/apps.py)
             
             size = max_size or cls.DEFAULT_SIZE
             

@@ -12,6 +12,7 @@ Architecture rule:
 import logging
 import uuid
 
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 
@@ -22,6 +23,53 @@ from .models import (
 )
 
 logger = logging.getLogger(__name__)
+
+# ── Upload validation constants ──────────────────────────────────────────
+ALLOWED_IMAGE_EXTENSIONS = ('.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg')
+ALLOWED_VIDEO_EXTENSIONS = ('.mp4', '.webm', '.mov', '.avi')
+MAX_IMAGE_UPLOAD_SIZE = 10 * 1024 * 1024   # 10 MB
+MAX_VIDEO_UPLOAD_SIZE = 100 * 1024 * 1024  # 100 MB
+
+
+def _validate_upload(file_obj, allowed_extensions, max_size, label='file'):
+    """
+    Validate an uploaded file's extension and size.
+    Raises ValidationError on failure.
+    """
+    if file_obj is None:
+        return
+    name = (file_obj.name or '').lower()
+    if not any(name.endswith(ext) for ext in allowed_extensions):
+        raise ValidationError(
+            f"Invalid {label} type. Allowed: {', '.join(allowed_extensions)}"
+        )
+    if file_obj.size and file_obj.size > max_size:
+        raise ValidationError(
+            f"{label.capitalize()} too large ({file_obj.size // (1024*1024)}MB). "
+            f"Maximum is {max_size // (1024*1024)}MB."
+        )
+    # For images, verify with Pillow
+    if allowed_extensions == ALLOWED_IMAGE_EXTENSIONS and name.endswith(('.svg',)) is False:
+        try:
+            from PIL import Image
+            from io import BytesIO
+            file_obj.seek(0)
+            data = file_obj.read()
+            file_obj.seek(0)
+            img = Image.open(BytesIO(data))
+            img.verify()
+        except Exception:
+            raise ValidationError(f"Uploaded {label} is not a valid image.")
+
+
+def _validate_image_upload(file_obj, label='image'):
+    """Convenience wrapper for image validation."""
+    _validate_upload(file_obj, ALLOWED_IMAGE_EXTENSIONS, MAX_IMAGE_UPLOAD_SIZE, label)
+
+
+def _validate_video_upload(file_obj, label='video'):
+    """Convenience wrapper for video validation."""
+    _validate_upload(file_obj, ALLOWED_VIDEO_EXTENSIONS, MAX_VIDEO_UPLOAD_SIZE, label)
 
 
 def _parse_bool(value, default=False):
@@ -113,6 +161,7 @@ class TrustedClientService:
     @staticmethod
     def create(*, name, order=0, is_active=True, logo=None):
         """Create a new TrustedClient. Returns the created instance."""
+        _validate_image_upload(logo, 'logo')
         with transaction.atomic():
             client = TrustedClient(
                 name=name,
@@ -127,6 +176,7 @@ class TrustedClientService:
     @staticmethod
     def update(pk, *, name=None, order=None, is_active=None, logo=None):
         """Update a TrustedClient. Only non-None fields are changed."""
+        _validate_image_upload(logo, 'logo')
         with transaction.atomic():
             client = get_object_or_404(TrustedClient, pk=pk)
             if name is not None:
@@ -145,6 +195,12 @@ class TrustedClientService:
         """Delete a TrustedClient by pk."""
         with transaction.atomic():
             client = get_object_or_404(TrustedClient, pk=pk)
+            # Clean up logo file from disk
+            if client.logo:
+                try:
+                    client.logo.delete(save=False)
+                except Exception:
+                    logger.warning("Failed to delete logo file for TrustedClient %d", pk)
             client.delete()
 
     @staticmethod
@@ -178,6 +234,7 @@ class TestimonialService:
     def create(*, reviewer_name='', reviewer_title='', reviewer_school='',
                text='', tag='', rating=5, is_active=False, reviewer_avatar=None):
         """Create a Testimonial. Returns the created instance."""
+        _validate_image_upload(reviewer_avatar, 'reviewer avatar')
         with transaction.atomic():
             review = Testimonial(
                 reviewer_name=reviewer_name,
@@ -215,6 +272,7 @@ class TestimonialService:
                reviewer_school=None, text=None, tag=None,
                rating=None, is_active=None, reviewer_avatar=None):
         """Update a Testimonial. Only non-None fields are changed."""
+        _validate_image_upload(reviewer_avatar, 'reviewer avatar')
         with transaction.atomic():
             review = get_object_or_404(Testimonial, pk=pk)
             for field, value in [
@@ -240,6 +298,12 @@ class TestimonialService:
         """Delete a Testimonial by pk."""
         with transaction.atomic():
             review = get_object_or_404(Testimonial, pk=pk)
+            # Clean up avatar file from disk
+            if review.reviewer_avatar:
+                try:
+                    review.reviewer_avatar.delete(save=False)
+                except Exception:
+                    logger.warning("Failed to delete avatar file for Testimonial %d", pk)
             review.delete()
 
     @staticmethod
@@ -274,6 +338,8 @@ class PortfolioItemService:
                video_url='', order=0, is_active=True, is_featured=False,
                image=None, video_file=None):
         """Create a PortfolioItem with auto-generated title. Returns the instance."""
+        _validate_image_upload(image, 'portfolio image')
+        _validate_video_upload(video_file, 'portfolio video')
         title = 'Portfolio Item'
         if category_id:
             try:
@@ -309,6 +375,8 @@ class PortfolioItemService:
                category_id=None, order=None, is_active=None, is_featured=None,
                image=None, video_file=None):
         """Update a PortfolioItem. Only non-None fields are changed."""
+        _validate_image_upload(image, 'portfolio image')
+        _validate_video_upload(video_file, 'portfolio video')
         with transaction.atomic():
             item = get_object_or_404(PortfolioItem, pk=pk)
             for field, value in [
@@ -338,6 +406,14 @@ class PortfolioItemService:
         """Delete a PortfolioItem by pk."""
         with transaction.atomic():
             item = get_object_or_404(PortfolioItem, pk=pk)
+            # Clean up image and video files from disk
+            for field in ('image', 'video_file'):
+                file_field = getattr(item, field, None)
+                if file_field:
+                    try:
+                        file_field.delete(save=False)
+                    except Exception:
+                        logger.warning("Failed to delete %s file for PortfolioItem %d", field, pk)
             item.delete()
 
     @staticmethod
@@ -435,6 +511,7 @@ class HeroImageService:
     @staticmethod
     def create(*, image, title='', subtitle='', order=0):
         """Create a HeroImage. Returns the created instance."""
+        _validate_image_upload(image, 'hero image')
         with transaction.atomic():
             hero = HeroImage.objects.create(
                 image=image,
@@ -449,6 +526,7 @@ class HeroImageService:
     def update(pk, *, title=None, subtitle=None, order=None,
                is_active=None, image=None):
         """Update a HeroImage. Only non-None fields are changed."""
+        _validate_image_upload(image, 'hero image')
         with transaction.atomic():
             hero = get_object_or_404(HeroImage, pk=pk)
             if title is not None:
@@ -469,6 +547,12 @@ class HeroImageService:
         """Delete a HeroImage by pk."""
         with transaction.atomic():
             hero = get_object_or_404(HeroImage, pk=pk)
+            # Clean up image file from disk
+            if hero.image:
+                try:
+                    hero.image.delete(save=False)
+                except Exception:
+                    logger.warning("Failed to delete image file for HeroImage %d", pk)
             hero.delete()
 
     @staticmethod
