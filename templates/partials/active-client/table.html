@@ -11,6 +11,7 @@ Contains: Table displaying active clients with groups info
                 <th class="name-col">Client Name</th>
                 <th class="email-col">Email</th>
                 <th class="phone-col">Phone</th>
+                <th class="status-col">Status</th>
                 <th class="updates-col">ID Card Groups</th>
             </tr>
         </thead>
@@ -20,6 +21,9 @@ Contains: Table displaying active clients with groups info
                 <td class="name-col">{{ client.name }}</td>
                 <td class="email-col">{{ client.user.email }}</td>
                 <td class="phone-col">{{ client.user.phone|default:"-" }}</td>
+                <td class="status-col">
+                    <span class="status-badge {% if client.status == 'active' %}active{% else %}inactive{% endif %}">{{ client.get_status_display }}</span>
+                </td>
                 <td class="updates-col">
                     <div class="group-badges">
                         <span class="group-badge">
@@ -31,9 +35,11 @@ Contains: Table displaying active clients with groups info
             </tr>
             {% empty %}
             <tr class="no-data-row">
-                <td colspan="4" class="no-data">
-                    <i class="fa-solid fa-building-slash"></i>
-                    <span>No clients found</span>
+                <td colspan="5" class="no-data-cell">
+                    <div class="no-data">
+                        <i class="fa-solid fa-building-slash"></i>
+                        <span>No clients found</span>
+                    </div>
                 </td>
             </tr>
             {% endfor %}

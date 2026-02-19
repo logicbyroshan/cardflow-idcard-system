@@ -1,12 +1,19 @@
 {% comment %}
 Active Client Action Bar Partial
-Contains: Filter dropdown, search input, and navigation buttons
+Contains: Status filter tabs, search filter dropdown, search input, and navigation buttons
 {% endcomment %}
 
 <!-- Action Bar Start -->
 <div class="action-bar">
-    <!-- Left Section - Filter and Search -->
+    <!-- Left Section - Status Tabs, Filter and Search -->
     <div class="action-bar-left">
+        <!-- Status Filter Tabs -->
+        <div class="status-tabs" id="status-tabs">
+            <button class="status-tab {% if not status_filter %}active{% endif %}" data-status="">All</button>
+            <button class="status-tab {% if status_filter == 'active' %}active{% endif %}" data-status="active">Active</button>
+            <button class="status-tab {% if status_filter == 'inactive' %}active{% endif %}" data-status="inactive">Inactive</button>
+        </div>
+
         <div class="filter-group">
             <div class="custom-dropdown" id="filter-dropdown">
                 <button class="dropdown-toggle" id="dropdown-toggle" type="button">

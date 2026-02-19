@@ -28,6 +28,45 @@ document.addEventListener('DOMContentLoaded', function() {
     let selectedRow = null;
     let currentMode = 'add';
 
+    // ==================== FORM STATUS DROPDOWN ====================
+    const statusDropdown = document.getElementById('staffStatusDropdown');
+    const statusHiddenInput = document.getElementById('staff-status');
+
+    function setStatusDropdown(val) {
+        if (!statusHiddenInput) return;
+        statusHiddenInput.value = val;
+        if (!statusDropdown) return;
+        const toggle = statusDropdown.querySelector('.dropdown-toggle span');
+        const options = statusDropdown.querySelectorAll('.dropdown-option');
+        options.forEach(o => o.classList.remove('selected'));
+        const match = statusDropdown.querySelector(`.dropdown-option[data-value="${val}"]`);
+        if (match) {
+            match.classList.add('selected');
+            if (toggle) toggle.textContent = match.textContent;
+        }
+    }
+
+    if (statusDropdown && statusHiddenInput) {
+        const toggleBtn = statusDropdown.querySelector('.dropdown-toggle');
+        const options = statusDropdown.querySelectorAll('.dropdown-option');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                document.querySelectorAll('.custom-dropdown.open').forEach(d => { if (d !== statusDropdown) d.classList.remove('open'); });
+                statusDropdown.classList.toggle('open');
+            });
+        }
+        options.forEach(option => {
+            option.addEventListener('click', function() {
+                setStatusDropdown(this.dataset.value);
+                statusDropdown.classList.remove('open');
+            });
+        });
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.custom-dropdown')) statusDropdown.classList.remove('open');
+        });
+    }
+
     // ==================== TOAST FUNCTIONS ====================
     // Using shared showToast from utils.js
 
@@ -117,6 +156,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Settings
         'perm-idcard-setting-list', 'perm-idcard-setting-add', 'perm-idcard-setting-edit',
         'perm-idcard-setting-delete', 'perm-idcard-setting-status',
+        // Group/Table Management
+        'perm-idcard-group-create', 'perm-idcard-group-delete',
         // Status Lists
         'perm-idcard-pending-list', 'perm-idcard-verified-list', 'perm-idcard-pool-list',
         'perm-idcard-approved-list', 'perm-idcard-download-list', 'perm-idcard-reprint-list',
@@ -124,6 +165,7 @@ document.addEventListener('DOMContentLoaded', function() {
         'perm-idcard-add', 'perm-idcard-edit', 'perm-idcard-delete', 'perm-idcard-info',
         'perm-idcard-approve', 'perm-idcard-verify',
         'perm-idcard-bulk-upload', 'perm-idcard-bulk-download',
+        'perm-idcard-bulk-reupload', 'perm-idcard-upgrade-all',
         'perm-idcard-created-at', 'perm-idcard-updated-at',
         'perm-idcard-delete-from-pool', 'perm-delete-all-idcard',
         'perm-reupload-idcard-image', 'perm-idcard-retrieve'
@@ -303,6 +345,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function openDrawer(mode = 'add', staffData = null) {
         currentMode = mode;
         staffForm.reset();
+        setStatusDropdown('true'); // Reset dropdown UI after form reset
         
         // Phase 1: Profile image upload removed - using avatar placeholder
         
@@ -315,6 +358,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // Reset client assignment
         resetClientAssignment();
         
+        // Always restore submit button to non-loading state when opening drawer
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<span id="submit-btn-text">Add Staff</span>';
         const submitBtnText = document.getElementById('submit-btn-text');
         
         if (mode === 'add') {
@@ -331,6 +377,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 'perm-idcard-pending-list', 'perm-idcard-verified-list',
                 'perm-idcard-pool-list', 'perm-idcard-approved-list',
                 'perm-idcard-download-list',
+                'perm-idcard-group-create', 'perm-idcard-group-delete',
                 'perm-idcard-add', 'perm-idcard-edit', 'perm-idcard-delete',
                 'perm-idcard-info', 'perm-idcard-approve', 'perm-idcard-verify',
                 'perm-idcard-bulk-upload', 'perm-idcard-bulk-download',
@@ -352,7 +399,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('staff-email').value = staffData.email || '';
                 document.getElementById('staff-phone').value = staffData.phone || '';
                 document.getElementById('staff-address').value = staffData.address || '';
-                document.getElementById('staff-status').value = staffData.status === 'active' ? 'true' : 'false';
+                setStatusDropdown(staffData.status === 'active' ? 'true' : 'false');
                 
                 // Phase 1: Profile image loading removed - using avatar placeholder
                 
@@ -377,7 +424,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('staff-email').value = staffData.email || '';
                 document.getElementById('staff-phone').value = staffData.phone || '';
                 document.getElementById('staff-address').value = staffData.address || '';
-                document.getElementById('staff-status').value = staffData.status === 'active' ? 'true' : 'false';
+                setStatusDropdown(staffData.status === 'active' ? 'true' : 'false');
                 
                 // Phase 1: Profile image loading removed - using avatar placeholder
                 
@@ -407,6 +454,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function enableFormInputs(enable) {
         const inputs = staffDrawer.querySelectorAll('input, select, textarea');
         inputs.forEach(input => {
+            if (input.type === 'hidden') return; // Skip hidden inputs
             input.disabled = !enable;
             if (!enable) {
                 input.style.backgroundColor = '#f5f5f5';
@@ -416,6 +464,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 input.style.cursor = '';
             }
         });
+        
+        // Enable/disable custom status dropdown
+        if (statusDropdown) {
+            const toggleBtn = statusDropdown.querySelector('.dropdown-toggle');
+            if (toggleBtn) {
+                if (!enable) {
+                    toggleBtn.style.pointerEvents = 'none';
+                    toggleBtn.style.opacity = '0.6';
+                    toggleBtn.style.backgroundColor = '#f5f5f5';
+                    toggleBtn.style.cursor = 'not-allowed';
+                    statusDropdown.classList.remove('open');
+                } else {
+                    toggleBtn.style.pointerEvents = '';
+                    toggleBtn.style.opacity = '';
+                    toggleBtn.style.backgroundColor = '';
+                    toggleBtn.style.cursor = '';
+                }
+            }
+        }
         
         // Enable/disable custom client multiselect
         if (clientMultiselectToggle) {
@@ -511,8 +578,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            // Name is in the 2nd column (index 1), not first (checkbox is first)
-            const staffName = selectedRow.querySelector('td:nth-child(2)').textContent;
+            // Name is in the 1st column
+            const staffName = selectedRow.querySelector('td:nth-child(1)').textContent;
             openDeleteModal(staffName);
         });
     }
@@ -521,8 +588,8 @@ document.addEventListener('DOMContentLoaded', function() {
         activeStaffBtn.addEventListener('click', () => {
             if (!selectedStaffId || !selectedRow) return;
             
-            // Name is in the 2nd column (index 1), checkbox is first
-            const staffName = selectedRow.querySelector('td:nth-child(2)').textContent;
+            // Name is in the 1st column
+            const staffName = selectedRow.querySelector('td:nth-child(1)').textContent;
             const currentStatus = selectedRow.dataset.staffStatus;
             pendingStatusStaffId = selectedStaffId;
             openStatusModal(staffName, currentStatus);

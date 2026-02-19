@@ -8,6 +8,7 @@ from typing import Dict, Any
 
 from django.shortcuts import get_object_or_404
 from django.db import transaction
+from django.utils.timezone import localtime
 
 from ..models import Staff, User, Client
 from ..utils import send_welcome_email
@@ -62,8 +63,8 @@ class StaffService(BaseService):
             'staff_type': staff.staff_type,
             'status': 'active' if user.is_active else 'inactive',
             'profile_image_url': None,  # Phase 1: profile_image removed - using avatar placeholder
-            'created_at': staff.created_at.strftime('%d-%m-%Y %I:%M %p'),
-            'updated_at': staff.updated_at.strftime('%d-%m-%Y %I:%M %p'),
+            'created_at': localtime(staff.created_at).strftime('%d-%m-%Y %H:%M'),
+            'updated_at': localtime(staff.updated_at).strftime('%d-%m-%Y %H:%M'),
         }
         
         if include_permissions:
@@ -273,10 +274,13 @@ class StaffService(BaseService):
                 if field in data:
                     setattr(staff, field, data[field])
             
-            # Update permissions
-            for perm in cls.PERMISSION_FIELDS:
-                if perm in data:
-                    setattr(staff, perm, cls.parse_bool(data[perm]))
+            # Update permissions — when ANY perm key is present, set ALL perms
+            # (missing keys default to False to prevent stale ON states)
+            has_any_perm = any(perm in data for perm in cls.PERMISSION_FIELDS)
+            if has_any_perm:
+                for perm in cls.PERMISSION_FIELDS:
+                    new_val = cls.parse_bool(data[perm]) if perm in data else False
+                    setattr(staff, perm, new_val)
             
             # Clamp client_staff permissions to parent client's permissions
             if staff.staff_type == 'client_staff' and staff.client:

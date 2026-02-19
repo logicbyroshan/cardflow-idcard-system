@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Website Offline | {{ site_name|default:"Adarsh ID Cards" }}</title>
+    <link rel="icon" type="image/x-icon" href="/static/website/images/favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Saira Semi Condensed', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+            color: #e2e8f0;
+            overflow: hidden;
+            position: relative;
+        }
+        /* Animated background circles */
+        body::before, body::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+            opacity: 0.08;
+            animation: float 8s ease-in-out infinite;
+        }
+        body::before {
+            width: 500px; height: 500px;
+            background: #6366f1;
+            top: -150px; right: -100px;
+            animation-delay: 0s;
+        }
+        body::after {
+            width: 400px; height: 400px;
+            background: #8b5cf6;
+            bottom: -120px; left: -80px;
+            animation-delay: -4s;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-30px) scale(1.05); }
+        }
+
+        .offline-card {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            max-width: 480px;
+            width: 90%;
+            padding: 50px 40px;
+            background: rgba(30, 27, 75, 0.5);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 20px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+        }
+
+        .offline-icon {
+            width: 90px;
+            height: 90px;
+            margin: 0 auto 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.2));
+            border-radius: 50%;
+            border: 2px solid rgba(99,102,241,0.3);
+            animation: pulse-ring 2s ease-in-out infinite;
+        }
+        .offline-icon i {
+            font-size: 36px;
+            background: linear-gradient(135deg, #818cf8, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        @keyframes pulse-ring {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(99,102,241,0.3); }
+            50% { box-shadow: 0 0 0 15px rgba(99,102,241,0); }
+        }
+
+        .offline-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 10px;
+            letter-spacing: -0.5px;
+        }
+        .offline-name {
+            font-size: 15px;
+            color: #a5b4fc;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .offline-text {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #94a3b8;
+            margin-bottom: 32px;
+        }
+
+        .offline-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 32px;
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            color: #fff;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+        }
+        .offline-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4);
+            background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%);
+        }
+        .offline-btn:active {
+            transform: translateY(0);
+        }
+
+        .offline-footer {
+            margin-top: 28px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(99, 102, 241, 0.15);
+            font-size: 12px;
+            color: #64748b;
+        }
+        .offline-footer i { margin-right: 4px; }
+
+        @media (max-width: 480px) {
+            .offline-card { padding: 36px 24px; }
+            .offline-title { font-size: 24px; }
+            .offline-icon { width: 72px; height: 72px; }
+            .offline-icon i { font-size: 28px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-card">
+        <div class="offline-icon">
+            <i class="fa-solid fa-plug-circle-xmark"></i>
+        </div>
+        <div class="offline-name">{{ site_name|default:"Adarsh ID Cards" }}</div>
+        <h1 class="offline-title">Website is Offline</h1>
+        <p class="offline-text">
+            This website is currently under maintenance and not available to the public.
+            If you are an administrator, you can log in to the management panel below.
+        </p>
+        <a href="/panel/auth/login/" class="offline-btn">
+            <i class="fa-solid fa-right-to-bracket"></i>
+            Go to Admin Panel
+        </a>
+        <div class="offline-footer">
+            <i class="fa-solid fa-shield-halved"></i>
+            This site is managed by the admin panel
+        </div>
+    </div>
+</body>
+</html>

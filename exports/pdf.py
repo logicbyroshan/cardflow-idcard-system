@@ -23,6 +23,7 @@ from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 from datetime import datetime
 
+from django.utils import timezone as django_tz
 from django.conf import settings
 from django.http import HttpResponse
 from django.template.loader import render_to_string
@@ -206,8 +207,8 @@ class PdfExporter:
                 'pages': pages,
                 'institution_name': institution_name,
                 'table_name': table.name,
-                'current_date': datetime.now().strftime('%d-%m-%Y'),
-                'generated_at': datetime.now().strftime('%d-%b-%Y %I:%M %p'),
+                'current_date': django_tz.localtime(django_tz.now()).strftime('%d-%m-%Y'),
+                'generated_at': django_tz.localtime(django_tz.now()).strftime('%d-%b-%Y %H:%M'),
                 'export_note_line': export_settings.get('export_note_line', 'Note: This document is computer generated. Please verify all details before printing ID cards.'),
                 'export_copyright_line': export_settings.get('export_copyright_line', '© Adarsh ID Cards Management System'),
             }

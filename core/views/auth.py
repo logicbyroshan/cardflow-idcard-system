@@ -29,6 +29,14 @@ admin_staff_dashboard = StaffDashboardView.as_view()
 client_dashboard = ClientAdminDashboardView.as_view()
 client_staff_dashboard = ClientStaffDashboardView.as_view()
 
+
+def inactive_view(request):
+    """Display inactive account page — shown after forced logout."""
+    from django.shortcuts import render
+    reason = request.GET.get('reason', '')
+    return render(request, 'auth/inactive.html', {'reason': reason})
+
+
 __all__ = [
     'login_view',
     'logout_view',
@@ -40,5 +48,6 @@ __all__ = [
     'admin_staff_dashboard',
     'client_dashboard',
     'client_staff_dashboard',
+    'inactive_view',
 ]
 

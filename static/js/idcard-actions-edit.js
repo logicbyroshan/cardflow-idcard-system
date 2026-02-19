@@ -46,53 +46,120 @@ function startCellEdit(cell) {
     const currentValue = valueSpan ? valueSpan.textContent.trim() : cell.textContent.trim();
     const originalWidth = cell.offsetWidth;
     const originalHeight = cell.offsetHeight;
+
+    // Lock cell dimensions to prevent column/row shrinking when content is replaced
+    cell.style.minWidth = originalWidth + 'px';
+    cell.style.minHeight = originalHeight + 'px';
+    cell.style.width = originalWidth + 'px';
+    cell.style.height = originalHeight + 'px';
     
     let editElement;
     
-    // Phase 4: Class and section now use text inputs instead of dropdowns
-    // All field types use text input for maximum flexibility
-    editElement = document.createElement('input');
-    editElement.type = 'text';
-    editElement.value = currentValue;
-    
-    editElement.className = 'inline-edit-input';
-    
-    editElement.style.cssText = `
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        width: 100%;
-        height: 100%;
-        box-sizing: border-box;
-        padding: 4px 8px;
-        border: 2px solid #007bff;
-        border-radius: 0;
-        font-size: inherit;
-        font-family: inherit;
-        background: white;
-        outline: none;
-        box-shadow: inset 0 0 5px rgba(0, 123, 255, 0.3);
-        text-transform: uppercase;
-        text-align: left;
-        display: block;
-        margin: 0;
-        z-index: 5;
-    `;
-    
-    // Position cell so absolute input stays within it
-    cell.style.position = 'relative';
-    cell.style.overflow = 'hidden';
+    // Detect multi-line based on actual cell rendering height (not char count)
+    const computedStyle = getComputedStyle(cell);
+    const cellLineHeight = parseFloat(computedStyle.lineHeight) || 18;
+    const vertPad = parseFloat(computedStyle.paddingTop) + parseFloat(computedStyle.paddingBottom);
+    const contentHeight = originalHeight - vertPad;
+    const isMultiLine = contentHeight > (cellLineHeight * 1.5) || currentValue.includes('\n');
     
     // Store original value
     cell.setAttribute('data-original-value', currentValue);
     
-    // Clear cell and add element
-    cell.innerHTML = '';
-    cell.appendChild(editElement);
-    editElement.focus();
-    if (editElement.select) editElement.select();
+    if (isMultiLine) {
+        // Flex wrapper fills cell and vertically centers the textarea
+        const wrapper = document.createElement('div');
+        wrapper.className = 'inline-edit-wrapper';
+        wrapper.style.cssText = `
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            display: flex;
+            align-items: center;
+            z-index: 5;
+            background: white;
+            border: 2px solid #007bff;
+            box-shadow: inset 0 0 5px rgba(0, 123, 255, 0.3);
+            padding: 2px;
+        `;
+        
+        editElement = document.createElement('textarea');
+        editElement.value = currentValue;
+        editElement.className = 'inline-edit-textarea';
+        editElement.style.cssText = `
+            width: 100%;
+            max-height: 100%;
+            box-sizing: border-box;
+            padding: 1px 4px;
+            border: none !important;
+            box-shadow: none !important;
+            font-size: inherit;
+            font-family: inherit;
+            background: transparent;
+            outline: none;
+            text-transform: uppercase;
+            text-align: left;
+            resize: none;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            line-height: 1.3;
+        `;
+        
+        cell.style.position = 'relative';
+        cell.style.overflow = 'hidden';
+        cell.innerHTML = '';
+        wrapper.appendChild(editElement);
+        cell.appendChild(wrapper);
+        
+        // Auto-size textarea height to fit content
+        editElement.style.height = 'auto';
+        editElement.style.height = editElement.scrollHeight + 'px';
+        
+        // Re-size on input so textarea grows/shrinks with content
+        editElement.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = this.scrollHeight + 'px';
+        });
+        
+        editElement.focus();
+        var len = editElement.value.length;
+        editElement.setSelectionRange(len, len);
+    } else {
+        editElement = document.createElement('input');
+        editElement.type = 'text';
+        editElement.value = currentValue;
+        editElement.className = 'inline-edit-input';
+        editElement.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            box-sizing: border-box;
+            padding: 2px 6px;
+            border: 2px solid #007bff;
+            border-radius: 0;
+            font-size: inherit;
+            font-family: inherit;
+            background: white;
+            outline: none;
+            box-shadow: inset 0 0 5px rgba(0, 123, 255, 0.3);
+            text-transform: uppercase;
+            text-align: left;
+            display: block;
+            margin: 0;
+            z-index: 5;
+        `;
+        
+        cell.style.position = 'relative';
+        cell.style.overflow = 'hidden';
+        cell.innerHTML = '';
+        cell.appendChild(editElement);
+        editElement.focus();
+        var len = editElement.value.length;
+        editElement.setSelectionRange(len, len);
+    }
     
     // Handle blur - save on focus out
     editElement.addEventListener('blur', function() {
@@ -103,6 +170,7 @@ function startCellEdit(cell) {
     // Handle keydown
     editElement.addEventListener('keydown', function(e) {
         if (e.key === 'Enter') {
+            // Always save on Enter (no newline needed for inline cell edit)
             e.preventDefault();
             editElement.blur();
         } else if (e.key === 'Escape') {
@@ -126,6 +194,11 @@ function cancelCellEdit(cell) {
     cell.style.position = '';
     cell.style.overflow = '';
     cell.style.padding = '';
+    // Unlock cell dimensions
+    cell.style.minWidth = '';
+    cell.style.minHeight = '';
+    cell.style.width = '';
+    cell.style.height = '';
     cell.removeAttribute('data-original-value');
     cell.classList.remove('editing'); // Phase 5: Remove editing class
 }
@@ -148,6 +221,10 @@ function saveCellEdit(cell, newValue, cardId, field) {
         cell.style.position = '';
         cell.style.overflow = '';
         cell.style.padding = '';
+        cell.style.minWidth = '';
+        cell.style.minHeight = '';
+        cell.style.width = '';
+        cell.style.height = '';
         cell.removeAttribute('data-original-value');
         cell.classList.remove('editing'); // Phase 5: Remove editing class
         return;
@@ -171,6 +248,10 @@ function saveCellEdit(cell, newValue, cardId, field) {
         cell.style.position = '';
         cell.style.overflow = '';
         cell.style.padding = '';
+        cell.style.minWidth = '';
+        cell.style.minHeight = '';
+        cell.style.width = '';
+        cell.style.height = '';
         cell.classList.remove('editing'); // Phase 5: Remove editing class
         // Update data-original-value so next edit reads the new value
         cell.setAttribute('data-original-value', finalValue);
@@ -207,6 +288,10 @@ function saveCellEdit(cell, newValue, cardId, field) {
         cell.style.position = '';
         cell.style.overflow = '';
         cell.style.padding = '';
+        cell.style.minWidth = '';
+        cell.style.minHeight = '';
+        cell.style.width = '';
+        cell.style.height = '';
         cell.classList.remove('editing'); // Phase 5: Remove editing class
         cell.removeAttribute('data-original-value');
         

@@ -200,7 +200,8 @@
     if (!toggleBtn) return;
 
     toggleBtn.addEventListener('click', async function() {
-        if (!confirm('Are you sure you want to change the website status?')) return;
+        const ok = await waConfirm({ title: 'Change Website Status?', text: 'This will toggle your website between live and draft mode.', icon: 'fa-solid fa-globe', confirmLabel: 'Yes, Change', btnClass: 'btn-primary' });
+        if (!ok) return;
         try {
             const res = await fetch('{% url "website_admin:api_status_toggle" %}', {
                 method: 'POST',

@@ -143,21 +143,29 @@ class SystemSettings(models.Model):
 
     @classmethod
     def get_value(cls, key, default=None):
-        """Get a setting value by key, returning default if not found."""
+        """Get a setting value by key, returning default if not found. Cached 5 min."""
+        from django.core.cache import cache
+        cache_key = f'sys_setting:{key}'
+        value = cache.get(cache_key)
+        if value is not None:
+            return value
         try:
-            return cls.objects.get(key=key).value
+            value = cls.objects.get(key=key).value
+            cache.set(cache_key, value, 300)
+            return value
         except cls.DoesNotExist:
-            if default is None:
-                return cls.EXPORT_DEFAULTS.get(key, '')
-            return default
+            fallback = default if default is not None else cls.EXPORT_DEFAULTS.get(key, '')
+            return fallback
 
     @classmethod
     def set_value(cls, key, value, description=None):
-        """Set a setting value, creating or updating."""
+        """Set a setting value, creating or updating. Invalidates cache."""
+        from django.core.cache import cache
         obj, created = cls.objects.update_or_create(
             key=key,
             defaults={'value': value}
         )
+        cache.delete(f'sys_setting:{key}')
         if description and (created or not obj.description):
             obj.description = description
             obj.save(update_fields=['description'])

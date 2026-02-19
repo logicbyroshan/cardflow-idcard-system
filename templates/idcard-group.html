@@ -9,15 +9,16 @@
   <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- Tailwind CSS (primary) -->
-  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=100">
+  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=130">
   <!-- Page-specific: ID card group UI -->
-  <link rel="stylesheet" href="{% static 'css/idcard-group.css' %}?v=100">
-  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=100">
+  <link rel="stylesheet" href="{% static 'css/idcard-group.css' %}?v=130">
+  <link rel="stylesheet" href="{% static 'css/common.css' %}?v=130">
+  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=130">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <!-- Alpine.js State Module (MUST load before Alpine) -->
-  <script src="{% static 'js/alpine-state.js' %}?v=100"></script>
+  <script src="{% static 'js/alpine-state.js' %}?v=130"></script>
   <!-- Alpine.js -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
 </head>
@@ -48,7 +49,7 @@
             {% else %}
             <a href="{% url 'active_clients' %}" class="breadcrumb-item">Clients</a>
             <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
-            <span class="breadcrumb-item">{{ client.name }}</span>
+            <span class="breadcrumb-item">{{ client.name }}{% if client.status != 'active' %} <span class="status-badge inactive" style="font-size:11px;margin-left:4px;">{{ client.get_status_display }}</span>{% endif %}</span>
             <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
             <span class="breadcrumb-item active">ID Card Group</span>
             {% endif %}
@@ -118,7 +119,7 @@
                 {% with total_count=table.pending_count|add:table.verified_count|add:table.approved_count|add:table.download_count|add:table.pool_count %}
                 <tr data-table-id="{{ table.id }}" data-total-count="{{ total_count }}">
                     <td>
-                        <strong>{{ table.name }}</strong>
+                        {{ table.name }}
                     </td>
                     <td class="action-cell">
                         <div class="action-buttons">
@@ -210,6 +211,31 @@
   <!-- Toast notification -->
   {% include 'partials/components/toast.html' %}
 
+  <!-- Download All Progress Modal -->
+  <div id="downloadAllModal" class="center-modal-overlay center-modal-theme-blue"
+       x-show="activeModal === 'downloadAll'" x-transition.opacity
+       style="display:none">
+    <div class="center-modal-card" @click.stop
+         x-show="activeModal === 'downloadAll'" x-transition.scale.origin.center>
+      <div class="center-modal-icon">
+        <i class="fa-solid fa-download"></i>
+      </div>
+      <h3 class="center-modal-title">Downloading ID Cards</h3>
+      <p class="center-modal-subtitle" id="downloadAllTableLabel">
+        Preparing your files...
+      </p>
+      <div id="downloadAllProgress" class="center-modal-progress" style="display:block">
+        <div class="center-modal-progress-track">
+          <div id="downloadAllBar" class="center-modal-progress-bar" style="width:0%"></div>
+        </div>
+        <p class="center-modal-progress-text" id="downloadAllStatus">Connecting to server...</p>
+      </div>
+      <div class="center-modal-actions" id="downloadAllActions" style="display:none">
+        <button class="center-modal-btn center-modal-btn-cancel" @click="closeModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Delete All Confirmation Modal -->
   <div id="deleteAllModal" class="center-modal-overlay center-modal-theme-red"
        x-show="activeModal === 'deleteAll'" x-transition.opacity
@@ -297,11 +323,11 @@
   </div>
 
   <!-- Core Modules (Load Order: api → toast → modal → utils → init) -->
-  <script src="{% static 'js/core/api.js' %}?v=100"></script>
-  <script src="{% static 'js/core/toast.js' %}?v=100"></script>
-  <script src="{% static 'js/core/modal.js' %}?v=100"></script>
-  <script src="{% static 'js/core/utils.js' %}?v=100"></script>
-  <script src="{% static 'js/init.js' %}?v=100"></script>
+  <script src="{% static 'js/core/api.js' %}?v=130"></script>
+  <script src="{% static 'js/core/toast.js' %}?v=130"></script>
+  <script src="{% static 'js/core/modal.js' %}?v=130"></script>
+  <script src="{% static 'js/core/utils.js' %}?v=130"></script>
+  <script src="{% static 'js/init.js' %}?v=130"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       const clientId = {{ client.id }};
@@ -453,10 +479,39 @@
       // ==================== DOWNLOAD ALL ID CARDS ====================
       function downloadAllCards(tableId) {
         const btn = document.querySelector(`.download-all-btn[data-table="${tableId}"]`);
+        const dlBar = document.getElementById('downloadAllBar');
+        const dlStatus = document.getElementById('downloadAllStatus');
+        const dlLabel = document.getElementById('downloadAllTableLabel');
+        const dlActions = document.getElementById('downloadAllActions');
+
+        // Get table name from row
+        const row = document.querySelector(`.bulk-btn[data-table="${tableId}"]`);
+        const tableName = row ? (row.closest('tr')?.querySelector('td:first-child')?.textContent?.trim() || 'Table') : 'Table';
+
+        // Open progress modal
+        dlLabel.textContent = `Table: ${tableName}`;
+        dlBar.style.width = '0%';
+        dlStatus.textContent = 'Connecting to server...';
+        dlActions.style.display = 'none';
+        if (window.alpineOpenModal) window.alpineOpenModal('downloadAll');
+
         if (btn) {
           btn.disabled = true;
           btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Preparing...';
         }
+
+        // Animate progress bar while waiting
+        dlBar.style.width = '15%';
+        dlStatus.textContent = 'Generating ID Cards...';
+
+        const progressSteps = [
+          { pct: '30%', text: 'Processing cards...', delay: 2000 },
+          { pct: '50%', text: 'Building files...', delay: 5000 },
+          { pct: '65%', text: 'Almost ready...', delay: 9000 },
+        ];
+        const progressTimers = progressSteps.map(step =>
+          setTimeout(() => { dlBar.style.width = step.pct; dlStatus.textContent = step.text; }, step.delay)
+        );
 
         fetch(`/panel/api/table/${tableId}/cards/download-all/`, {
           method: 'POST',
@@ -468,8 +523,11 @@
         })
         .then(res => { if (!res.ok) console.error('download-all status:', res.status); return res.json(); })
         .then(data => {
+          progressTimers.forEach(t => clearTimeout(t));
           if (data.success && data.files && data.files.length > 0) {
-            window.showToast(`Downloading ${data.total_files} file(s)...`, 'success');
+            dlBar.style.width = '85%';
+            dlStatus.textContent = `Downloading ${data.total_files} file(s)...`;
+
             // Trigger sequential downloads with small delay
             data.files.forEach((file, index) => {
               setTimeout(() => {
@@ -477,14 +535,33 @@
                   ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
                   : 'application/zip'
                 );
+                // Update progress per file
+                const filePct = 85 + ((index + 1) / data.files.length) * 15;
+                dlBar.style.width = filePct + '%';
+                if (index === data.files.length - 1) {
+                  dlBar.style.width = '100%';
+                  dlStatus.textContent = 'Download complete!';
+                  dlActions.style.display = '';
+                }
               }, index * 500);
             });
+
+            window.showToast(`Downloading ${data.total_files} file(s)...`, 'success');
           } else {
+            dlBar.style.width = '100%';
+            dlBar.style.background = '#ef4444';
+            dlStatus.textContent = data.message || 'No files to download';
+            dlActions.style.display = '';
             window.showToast(data.message || 'No files to download', 'error');
           }
         })
         .catch(err => {
+          progressTimers.forEach(t => clearTimeout(t));
           console.error('Download all error:', err);
+          dlBar.style.width = '100%';
+          dlBar.style.background = '#ef4444';
+          dlStatus.textContent = 'Error downloading files';
+          dlActions.style.display = '';
           window.showToast('Error downloading files', 'error');
         })
         .finally(() => {
@@ -757,7 +834,7 @@
       });
     });
   </script>
-  <script src="{% static 'js/global-search.js' %}?v=100"></script>
+  <script src="{% static 'js/global-search.js' %}?v=130"></script>
   {% include 'partials/htmx-config.html' %}
 </body>
 </html>

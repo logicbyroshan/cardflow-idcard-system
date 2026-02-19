@@ -16,6 +16,8 @@ from typing import Dict, Any, List
 from django.shortcuts import get_object_or_404
 from django.db.models import Count
 
+from django.utils.timezone import localtime
+
 from ..models import IDCardGroup, IDCardTable, IDCard
 from .base import BaseService, ServiceResult
 from .image_service import ImageService
@@ -113,8 +115,8 @@ class IDCardService(BaseService):
             'fields': table.fields,
             'field_count': len(table.fields) if table.fields else 0,
             'is_active': table.is_active,
-            'created_at': table.created_at.strftime('%d-%b-%Y %I:%M %p'),
-            'updated_at': table.updated_at.strftime('%d-%b-%Y %I:%M %p'),
+            'created_at': localtime(table.created_at).strftime('%d-%b-%Y %H:%M'),
+            'updated_at': localtime(table.updated_at).strftime('%d-%b-%Y %H:%M'),
         }
     
     @classmethod
@@ -309,9 +311,11 @@ class IDCardService(BaseService):
             'photo': (card.field_data or {}).get('PHOTO') or (card.photo.url if card.photo else None),
             'status': card.status,
             'status_display': card.get_status_display(),
-            'created_at': card.created_at.strftime('%d-%b-%Y %I:%M %p'),
-            'updated_at': card.updated_at.strftime('%d-%b-%Y %I:%M %p'),
+            'created_at': localtime(card.created_at).strftime('%d-%b-%Y %H:%M'),
+            'updated_at': localtime(card.updated_at).strftime('%d-%b-%Y %H:%M'),
             'updated_at_iso': card.updated_at.isoformat() if card.updated_at else None,
+            'downloaded_at': localtime(card.downloaded_at).strftime('%d-%b-%Y %H:%M') if card.downloaded_at else None,
+            'deleted_at': localtime(card.deleted_at).strftime('%d-%b-%Y %H:%M') if card.deleted_at else None,
         }
         
         if sr_no is not None:
@@ -369,8 +373,12 @@ class IDCardService(BaseService):
         try:
             table = get_object_or_404(IDCardTable, id=table_id)
             
-            # Base queryset - newest first
-            cards_query = IDCard.objects.filter(table=table).order_by('-id')
+            # Base queryset - newest first, defer heavy unused fields
+            cards_query = (
+                IDCard.objects.filter(table=table)
+                .defer('photo')
+                .order_by('-id')
+            )
             
             if status_filter and status_filter in cls.VALID_STATUSES:
                 cards_query = cards_query.filter(status=status_filter)
@@ -422,7 +430,9 @@ class IDCardService(BaseService):
         return counts
     
     @classmethod
-    def get_all_card_ids(cls, table_id: int, status_filter: str = None) -> ServiceResult:
+    def get_all_card_ids(cls, table_id: int, status_filter: str = None,
+                         search: str = '', class_filter: str = '', section_filter: str = '',
+                         from_date: str = '', to_date: str = '') -> ServiceResult:
         """Get all card IDs for a table (for Select All). Capped at 50,000."""
         MAX_CARD_IDS = 10000
         try:
@@ -432,7 +442,33 @@ class IDCardService(BaseService):
             if status_filter and status_filter in cls.VALID_STATUSES:
                 cards_query = cards_query.filter(status=status_filter)
             
-            card_ids = list(cards_query.values_list('id', flat=True)[:MAX_CARD_IDS])
+            # Apply search/filter exactly like the main view
+            if search:
+                cards_query = cards_query.filter(field_data__icontains=search)
+            if class_filter:
+                cards_query = cards_query.filter(field_data__icontains=class_filter)
+            if section_filter:
+                cards_query = cards_query.filter(field_data__icontains=section_filter)
+            
+            # DateTime range filter (download list)
+            if from_date:
+                try:
+                    from django.utils.dateparse import parse_datetime
+                    dt = parse_datetime(from_date)
+                    if dt:
+                        cards_query = cards_query.filter(downloaded_at__gte=dt)
+                except (ValueError, TypeError):
+                    pass
+            if to_date:
+                try:
+                    from django.utils.dateparse import parse_datetime
+                    dt = parse_datetime(to_date)
+                    if dt:
+                        cards_query = cards_query.filter(downloaded_at__lte=dt)
+                except (ValueError, TypeError):
+                    pass
+            
+            card_ids = list(cards_query.order_by('-id').values_list('id', flat=True)[:MAX_CARD_IDS])
             
             return ServiceResult(
                 success=True,

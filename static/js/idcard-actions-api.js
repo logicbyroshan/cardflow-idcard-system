@@ -23,6 +23,147 @@ function refreshCardTable() {
     } else {
         location.reload();
     }
+
+    // Update navbar status counts in real-time
+    refreshStatusCounts();
+}
+
+/** Fetch latest status counts from API and update the topbar tab badges */
+function refreshStatusCounts() {
+    if (typeof TABLE_ID === 'undefined') return;
+    if (typeof apiCall !== 'function') return;
+    apiCall('/panel/api/table/' + TABLE_ID + '/status-counts/', 'GET')
+        .then(function(data) {
+            if (!data.success || !data.status_counts) return;
+            var counts = data.status_counts;
+            var tabs = document.querySelectorAll('.action-tabs .action-tab');
+            tabs.forEach(function(tab) {
+                var countEl = tab.querySelector('.tab-count');
+                if (!countEl) return;
+                // Determine which status this tab represents from its class
+                var status = '';
+                if (tab.classList.contains('pending-tab')) status = 'pending';
+                else if (tab.classList.contains('verified-tab')) status = 'verified';
+                else if (tab.classList.contains('approved-tab')) status = 'approved';
+                else if (tab.classList.contains('download-tab')) status = 'download';
+                else if (tab.classList.contains('pool-tab')) status = 'pool';
+                else if (tab.classList.contains('reprint-tab')) status = 'reprint';
+                if (status && counts[status] !== undefined) {
+                    countEl.textContent = counts[status];
+                }
+            });
+        })
+        .catch(function() { /* silent fail */ });
+}
+
+// ==========================================
+// CONFIRMATION MODAL UTILITY
+// ==========================================
+
+/* Action theme config — icon, colors, labels, status flow */
+var _actionThemes = {
+    verify:      { icon: 'fa-shield-check',     color: '#10b981', bg: '#ecfdf5', label: 'Verify',      confirmLabel: 'Verify',      from: 'Pending',   to: 'Verified',  fromColor: '#f59e0b', toColor: '#10b981' },
+    approve:     { icon: 'fa-circle-check',      color: '#3b82f6', bg: '#eff6ff', label: 'Approve',     confirmLabel: 'Approve',     from: 'Verified',  to: 'Approved',  fromColor: '#10b981', toColor: '#3b82f6' },
+    unverify:    { icon: 'fa-rotate-left',       color: '#f59e0b', bg: '#fffbeb', label: 'Unverify',    confirmLabel: 'Move Back',   from: 'Verified',  to: 'Pending',   fromColor: '#10b981', toColor: '#f59e0b' },
+    disapprove:  { icon: 'fa-rotate-left',       color: '#f59e0b', bg: '#fffbeb', label: 'Disapprove',  confirmLabel: 'Move Back',   from: 'Approved',  to: 'Pending',   fromColor: '#3b82f6', toColor: '#f59e0b' },
+    retrieve:    { icon: 'fa-arrow-rotate-left', color: '#6366f1', bg: '#eef2ff', label: 'Retrieve',    confirmLabel: 'Retrieve',    from: 'Pool',      to: 'Pending',   fromColor: '#ef4444', toColor: '#f59e0b' },
+    'default':   { icon: 'fa-circle-question',   color: '#6366f1', bg: '#eef2ff', label: 'Confirm',     confirmLabel: 'Confirm',     from: '',          to: '',          fromColor: '#6b7280', toColor: '#6b7280' }
+};
+
+/**
+ * Show a beautifully designed workflow confirmation modal.
+ * @param {string} message  - The confirmation question
+ * @param {Function} onConfirm - Callback on confirm
+ * @param {Object} [options]   - { actionType: 'verify'|'approve'|etc., count: N }
+ */
+function showWorkflowConfirm(message, onConfirm, options) {
+    options = options || {};
+    var actionType = options.actionType || 'default';
+    var count = options.count || 1;
+    var theme = _actionThemes[actionType] || _actionThemes['default'];
+
+    // Remove old overlay if exists
+    var old = document.getElementById('workflowConfirmOverlay');
+    if (old) old.remove();
+
+    var overlay = document.createElement('div');
+    overlay.id = 'workflowConfirmOverlay';
+    overlay.className = 'wf-confirm-overlay';
+
+    // Build status flow HTML
+    var flowHTML = '';
+    if (theme.from && theme.to) {
+        flowHTML = `
+            <div class="wf-status-flow">
+                <span class="wf-status-badge" style="background:${theme.fromColor}15;color:${theme.fromColor};border:1px solid ${theme.fromColor}30">${theme.from}</span>
+                <i class="fa-solid fa-arrow-right wf-flow-arrow" style="color:${theme.color}"></i>
+                <span class="wf-status-badge" style="background:${theme.toColor}15;color:${theme.toColor};border:1px solid ${theme.toColor}30">${theme.to}</span>
+            </div>`;
+    }
+
+    // Build count info for bulk
+    var countHTML = '';
+    if (count > 1) {
+        countHTML = `<div class="wf-count-badge" style="background:${theme.color}10;color:${theme.color};border:1px solid ${theme.color}25"><i class="fa-solid fa-layer-group"></i> ${count} record(s) selected</div>`;
+    }
+
+    overlay.innerHTML = `
+        <div class="wf-confirm-card">
+            <div class="wf-confirm-header" style="background:${theme.bg}">
+                <div class="wf-confirm-icon-wrap" style="background:${theme.color}">
+                    <i class="fa-solid ${theme.icon}"></i>
+                </div>
+                <div class="wf-confirm-title">${theme.label} Confirmation</div>
+                <button class="wf-confirm-close" id="workflowConfirmClose" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="wf-confirm-body">
+                <p class="wf-confirm-msg">${message}</p>
+                ${flowHTML}
+                ${countHTML}
+                <div class="wf-confirm-note">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <span>${count > 1 ? 'This will update all selected records.' : 'This will update the record status.'}</span>
+                </div>
+            </div>
+            <div class="wf-confirm-footer">
+                <button class="wf-btn wf-btn-cancel" id="workflowConfirmCancel"><i class="fa-solid fa-xmark"></i> Cancel</button>
+                <button class="wf-btn wf-btn-confirm" id="workflowConfirmOk" style="background:${theme.color}"><i class="fa-solid fa-check"></i> ${theme.confirmLabel}</button>
+            </div>
+        </div>`;
+
+    document.body.appendChild(overlay);
+
+    // Trigger entrance animation
+    requestAnimationFrame(function() {
+        overlay.classList.add('wf-active');
+    });
+
+    document.body.style.overflow = 'hidden';
+
+    function cleanup() {
+        overlay.classList.remove('wf-active');
+        overlay.classList.add('wf-closing');
+        setTimeout(function() {
+            overlay.remove();
+            document.body.style.overflow = '';
+        }, 200);
+    }
+
+    // Escape key
+    function onKeyDown(e) {
+        if (e.key === 'Escape') { cleanup(); document.removeEventListener('keydown', onKeyDown); }
+    }
+    document.addEventListener('keydown', onKeyDown);
+
+    // Click handlers
+    document.getElementById('workflowConfirmClose').onclick = function() { cleanup(); document.removeEventListener('keydown', onKeyDown); };
+    document.getElementById('workflowConfirmCancel').onclick = function() { cleanup(); document.removeEventListener('keydown', onKeyDown); };
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) { cleanup(); document.removeEventListener('keydown', onKeyDown); } });
+    document.getElementById('workflowConfirmOk').onclick = function() {
+        cleanup();
+        document.removeEventListener('keydown', onKeyDown);
+        onConfirm();
+    };
 }
 
 // ==========================================
@@ -30,127 +171,79 @@ function refreshCardTable() {
 // ==========================================
 
 function verifyCard(cardId) {
-    if (typeof apiCall === 'function') {
-        apiCall(`/panel/api/card/${cardId}/status/`, 'POST', { status: 'verified' })
-            .then(data => {
-                if (data.success === false) {
-                    if (typeof showToast === 'function') showToast(data.message || 'Cannot verify card', false);
-                    return;
-                }
-                if (typeof showToast === 'function') showToast('Card verified successfully');
-                refreshCardTable();
-            });
-    }
+    showWorkflowConfirm('Are you sure you want to verify this record?', function() {
+        if (typeof apiCall === 'function') {
+            apiCall(`/panel/api/card/${cardId}/status/`, 'POST', { status: 'verified' })
+                .then(data => {
+                    if (data.success === false) {
+                        if (typeof showToast === 'function') showToast(data.message || 'Cannot verify card', false);
+                        return;
+                    }
+                    if (typeof showToast === 'function') showToast('Card verified successfully');
+                    refreshCardTable();
+                })
+                .catch(err => {
+                    if (typeof showToast === 'function') showToast(err.message || 'Failed to verify card', false);
+                });
+        }
+    }, { actionType: 'verify' });
 }
 
 function approveCard(cardId) {
-    if (typeof apiCall === 'function') {
-        apiCall(`/panel/api/card/${cardId}/status/`, 'POST', { status: 'approved' })
-            .then(data => {
-                if (data.success === false) {
-                    if (typeof showToast === 'function') showToast(data.message || 'Cannot approve card', false);
-                    return;
-                }
-                if (typeof showToast === 'function') showToast('Card approved successfully');
-                refreshCardTable();
-            });
-    }
-}
-
-function unapproveCard(cardId) {
-    if (typeof apiCall === 'function') {
-        apiCall(`/panel/api/card/${cardId}/status/`, 'POST', { status: 'verified' })
-            .then(data => {
-                if (data.success === false) {
-                    if (typeof showToast === 'function') showToast(data.message || 'Error', false);
-                    return;
-                }
-                if (typeof showToast === 'function') showToast('Card moved back to verified');
-                refreshCardTable();
-            });
-    }
+    showWorkflowConfirm('Are you sure you want to approve this record?', function() {
+        if (typeof apiCall === 'function') {
+            apiCall(`/panel/api/card/${cardId}/status/`, 'POST', { status: 'approved' })
+                .then(data => {
+                    if (data.success === false) {
+                        if (typeof showToast === 'function') showToast(data.message || 'Cannot approve card', false);
+                        return;
+                    }
+                    if (typeof showToast === 'function') showToast('Card approved successfully');
+                    refreshCardTable();
+                })
+                .catch(err => {
+                    if (typeof showToast === 'function') showToast(err.message || 'Failed to approve card', false);
+                });
+        }
+    }, { actionType: 'approve' });
 }
 
 function unverifyCard(cardId) {
-    if (typeof apiCall === 'function') {
-        apiCall(`/panel/api/card/${cardId}/status/`, 'POST', { status: 'pending' })
-            .then(data => {
-                if (data.success === false) {
-                    if (typeof showToast === 'function') showToast(data.message || 'Error', false);
-                    return;
-                }
-                if (typeof showToast === 'function') showToast('Card moved back to pending');
-                refreshCardTable();
-            });
-    }
-}
-
-function downloadCard(cardId) {
-    if (typeof apiCall === 'function') {
-        apiCall(`/panel/api/card/${cardId}/status/`, 'POST', { status: 'download' })
-            .then(data => {
-                if (data.success === false) {
-                    if (typeof showToast === 'function') showToast(data.message || 'Error', false);
-                    return;
-                }
-                if (typeof showToast === 'function') showToast('Card moved to download list');
-                refreshCardTable();
-            });
-    }
+    showWorkflowConfirm('Are you sure you want to move this record back to pending?', function() {
+        if (typeof apiCall === 'function') {
+            apiCall(`/panel/api/card/${cardId}/status/`, 'POST', { status: 'pending' })
+                .then(data => {
+                    if (data.success === false) {
+                        if (typeof showToast === 'function') showToast(data.message || 'Error', false);
+                        return;
+                    }
+                    if (typeof showToast === 'function') showToast('Card moved back to pending');
+                    refreshCardTable();
+                })
+                .catch(err => {
+                    if (typeof showToast === 'function') showToast(err.message || 'Failed to unverify card', false);
+                });
+        }
+    }, { actionType: 'unverify' });
 }
 
 function retrieveCard(cardId) {
-    if (typeof apiCall === 'function') {
-        apiCall(`/panel/api/card/${cardId}/status/`, 'POST', { status: 'pending' })
-            .then(data => {
-                if (data.success === false) {
-                    if (typeof showToast === 'function') showToast(data.message || 'Error', false);
-                    return;
-                }
-                if (typeof showToast === 'function') showToast('Card retrieved to pending list');
-                refreshCardTable();
-            });
-    }
-}
-
-// Single card download (download the actual image/card)
-function downloadSingleCard(cardId) {
-    // Get the row to find image data
-    const row = document.querySelector(`tr[data-card-id="${cardId}"]`);
-    if (!row) {
-        if (typeof showToast === 'function') showToast('Card not found', false);
-        return;
-    }
-    
-    // Find the image in the row
-    const img = row.querySelector('.table-image');
-    if (img && img.src) {
-        // Create download link
-        const link = document.createElement('a');
-        link.href = img.src;
-        link.download = `card_${cardId}.jpg`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        if (typeof showToast === 'function') showToast('Card image downloaded');
-    } else {
-        if (typeof showToast === 'function') showToast('No image found for this card', false);
-    }
-}
-
-// Move single card back to approved
-function backToApprovedCard(cardId) {
-    if (typeof apiCall === 'function') {
-        apiCall(`/panel/api/card/${cardId}/status/`, 'POST', { status: 'approved' })
-            .then(data => {
-                if (data.success === false) {
-                    if (typeof showToast === 'function') showToast(data.message || 'Error', false);
-                    return;
-                }
-                if (typeof showToast === 'function') showToast('Card moved back to approved');
-                refreshCardTable();
-            });
-    }
+    showWorkflowConfirm('Are you sure you want to retrieve this record to pending?', function() {
+        if (typeof apiCall === 'function') {
+            apiCall(`/panel/api/card/${cardId}/status/`, 'POST', { status: 'pending' })
+                .then(data => {
+                    if (data.success === false) {
+                        if (typeof showToast === 'function') showToast(data.message || 'Error', false);
+                        return;
+                    }
+                    if (typeof showToast === 'function') showToast('Card retrieved to pending list');
+                    refreshCardTable();
+                })
+                .catch(err => {
+                    if (typeof showToast === 'function') showToast(err.message || 'Failed to retrieve card', false);
+                });
+        }
+    }, { actionType: 'retrieve' });
 }
 
 // ==========================================
@@ -158,83 +251,103 @@ function backToApprovedCard(cardId) {
 // ==========================================
 
 function bulkVerify(cardIds) {
-    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
-    if (!tableId) {
-        if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
-        return;
-    }
-    if (typeof apiCall === 'function') {
-        apiCall(`/panel/api/table/${tableId}/cards/bulk-status/`, 'POST', { card_ids: cardIds, status: 'verified' })
-            .then(data => {
-                if (data.success === false) {
-                    if (typeof showToast === 'function') showToast(data.message || 'Cannot verify cards', false);
-                    return;
-                }
-                if (typeof showToast === 'function') {
-                    showToast(data.message || `${data.updated_count} card(s) verified`, !data.skipped_count);
-                }
-                refreshCardTable();
-            });
-    }
+    showWorkflowConfirm(`Are you sure you want to verify ${cardIds.length} selected record(s)?`, function() {
+        const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
+        if (!tableId) {
+            if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
+            return;
+        }
+        if (typeof apiCall === 'function') {
+            apiCall(`/panel/api/table/${tableId}/cards/bulk-status/`, 'POST', { card_ids: cardIds, status: 'verified' })
+                .then(data => {
+                    if (data.success === false) {
+                        if (typeof showToast === 'function') showToast(data.message || 'Cannot verify cards', false);
+                        return;
+                    }
+                    if (typeof showToast === 'function') {
+                        showToast(data.message || `${data.updated_count} card(s) verified`, !data.skipped_count);
+                    }
+                    refreshCardTable();
+                })
+                .catch(err => {
+                    if (typeof showToast === 'function') showToast(err.message || 'Bulk verify failed', false);
+                });
+        }
+    }, { actionType: 'verify', count: cardIds.length });
 }
 
 function bulkApprove(cardIds) {
-    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
-    if (!tableId) {
-        if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
-        return;
-    }
-    if (typeof apiCall === 'function') {
-        apiCall(`/panel/api/table/${tableId}/cards/bulk-status/`, 'POST', { card_ids: cardIds, status: 'approved' })
-            .then(data => {
-                if (data.success === false) {
-                    if (typeof showToast === 'function') showToast(data.message || 'Cannot approve cards', false);
-                    return;
-                }
-                if (typeof showToast === 'function') {
-                    showToast(data.message || `${data.updated_count} card(s) approved`, !data.skipped_count);
-                }
-                refreshCardTable();
-            });
-    }
-}
-
-function bulkUnapprove(cardIds) {
-    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
-    if (!tableId) {
-        if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
-        return;
-    }
-    if (typeof apiCall === 'function') {
-        apiCall(`/panel/api/table/${tableId}/cards/bulk-status/`, 'POST', { card_ids: cardIds, status: 'verified' })
-            .then(data => {
-                if (data.success === false) {
-                    if (typeof showToast === 'function') showToast(data.message || 'Cannot unapprove cards', false);
-                    return;
-                }
-                if (typeof showToast === 'function') showToast(data.message || `${data.updated_count} card(s) moved to verified`);
-                location.href = location.pathname + '?status=verified';
-            });
-    }
+    showWorkflowConfirm(`Are you sure you want to approve ${cardIds.length} selected record(s)?`, function() {
+        const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
+        if (!tableId) {
+            if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
+            return;
+        }
+        if (typeof apiCall === 'function') {
+            apiCall(`/panel/api/table/${tableId}/cards/bulk-status/`, 'POST', { card_ids: cardIds, status: 'approved' })
+                .then(data => {
+                    if (data.success === false) {
+                        if (typeof showToast === 'function') showToast(data.message || 'Cannot approve cards', false);
+                        return;
+                    }
+                    if (typeof showToast === 'function') {
+                        showToast(data.message || `${data.updated_count} card(s) approved`, !data.skipped_count);
+                    }
+                    refreshCardTable();
+                })
+                .catch(err => {
+                    if (typeof showToast === 'function') showToast(err.message || 'Bulk approve failed', false);
+                });
+        }
+    }, { actionType: 'approve', count: cardIds.length });
 }
 
 function bulkUnverify(cardIds) {
-    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
-    if (!tableId) {
-        if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
-        return;
-    }
-    if (typeof apiCall === 'function') {
-        apiCall(`/panel/api/table/${tableId}/cards/bulk-status/`, 'POST', { card_ids: cardIds, status: 'pending' })
-            .then(data => {
-                if (data.success === false) {
-                    if (typeof showToast === 'function') showToast(data.message || 'Cannot unverify cards', false);
-                    return;
-                }
-                if (typeof showToast === 'function') showToast(data.message || `${data.updated_count} card(s) moved to pending`);
-                location.href = location.pathname + '?status=pending';
-            });
-    }
+    showWorkflowConfirm(`Are you sure you want to move ${cardIds.length} selected record(s) back to pending?`, function() {
+        const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
+        if (!tableId) {
+            if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
+            return;
+        }
+        if (typeof apiCall === 'function') {
+            apiCall(`/panel/api/table/${tableId}/cards/bulk-status/`, 'POST', { card_ids: cardIds, status: 'pending' })
+                .then(data => {
+                    if (data.success === false) {
+                        if (typeof showToast === 'function') showToast(data.message || 'Cannot unverify cards', false);
+                        return;
+                    }
+                    if (typeof showToast === 'function') showToast(data.message || `${data.updated_count} card(s) moved to pending`);
+                    refreshCardTable();
+                })
+                .catch(err => {
+                    if (typeof showToast === 'function') showToast(err.message || 'Bulk unverify failed', false);
+                });
+        }
+    }, { actionType: 'unverify', count: cardIds.length });
+}
+
+function bulkDisapprove(cardIds) {
+    showWorkflowConfirm(`Are you sure you want to disapprove ${cardIds.length} selected record(s) and move them back to pending?`, function() {
+        const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
+        if (!tableId) {
+            if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
+            return;
+        }
+        if (typeof apiCall === 'function') {
+            apiCall(`/panel/api/table/${tableId}/cards/bulk-status/`, 'POST', { card_ids: cardIds, status: 'pending' })
+                .then(data => {
+                    if (data.success === false) {
+                        if (typeof showToast === 'function') showToast(data.message || 'Cannot disapprove cards', false);
+                        return;
+                    }
+                    if (typeof showToast === 'function') showToast(data.message || `${data.updated_count} card(s) moved to pending`);
+                    refreshCardTable();
+                })
+                .catch(err => {
+                    if (typeof showToast === 'function') showToast(err.message || 'Bulk disapprove failed', false);
+                });
+        }
+    }, { actionType: 'disapprove', count: cardIds.length });
 }
 
 function bulkDelete(cardIds) {
@@ -259,22 +372,27 @@ function bulkDelete(cardIds) {
 }
 
 function bulkRetrieve(cardIds) {
-    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
-    if (!tableId) {
-        if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
-        return;
-    }
-    if (typeof apiCall === 'function') {
-        apiCall(`/panel/api/table/${tableId}/cards/bulk-status/`, 'POST', { card_ids: cardIds, status: 'pending' })
-            .then(data => {
-                if (data.success === false) {
-                    if (typeof showToast === 'function') showToast(data.message || 'Cannot retrieve cards', false);
-                    return;
-                }
-                if (typeof showToast === 'function') showToast(data.message || `${data.updated_count} card(s) retrieved to pending`);
-                refreshCardTable();
-            });
-    }
+    showWorkflowConfirm(`Are you sure you want to retrieve ${cardIds.length} selected record(s) back to pending?`, function() {
+        const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
+        if (!tableId) {
+            if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
+            return;
+        }
+        if (typeof apiCall === 'function') {
+            apiCall(`/panel/api/table/${tableId}/cards/bulk-status/`, 'POST', { card_ids: cardIds, status: 'pending' })
+                .then(data => {
+                    if (data.success === false) {
+                        if (typeof showToast === 'function') showToast(data.message || 'Cannot retrieve cards', false);
+                        return;
+                    }
+                    if (typeof showToast === 'function') showToast(data.message || `${data.updated_count} card(s) retrieved to pending`);
+                    refreshCardTable();
+                })
+                .catch(err => {
+                    if (typeof showToast === 'function') showToast(err.message || 'Bulk retrieve failed', false);
+                });
+        }
+    }, { actionType: 'retrieve', count: cardIds.length });
 }
 
 function bulkDeletePermanent(cardIds) {
@@ -327,82 +445,16 @@ function initRowActionHandlers() {
                 verifyCard(cardId);
             } else if (btn.classList.contains('approve-row-btn')) {
                 approveCard(cardId);
-            } else if (btn.classList.contains('unapprove-row-btn')) {
-                unapproveCard(cardId);
             } else if (btn.classList.contains('unverify-row-btn')) {
                 unverifyCard(cardId);
-            } else if (btn.classList.contains('download-row-btn')) {
-                downloadCard(cardId);
             } else if (btn.classList.contains('retrieve-row-btn')) {
                 retrieveCard(cardId);
-            } else if (btn.classList.contains('download-single-row-btn')) {
-                downloadSingleCard(cardId);
             }
         });
     }
 }
 
-// ==========================================
-// BULK DOWNLOAD (Move to download status)
-// ==========================================
 
-function bulkDownload(cardIds) {
-    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
-    if (!tableId) {
-        if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
-        return;
-    }
-    
-    const csrfToken = typeof getCSRFToken === 'function' ? getCSRFToken() : '';
-    
-    ApiClient.post(`/panel/api/table/${tableId}/cards/bulk-status/`, {
-        card_ids: cardIds,
-        status: 'download'
-    })
-    .then(data => {
-        if (data.success) {
-            if (typeof showToast === 'function') showToast(`${data.updated_count} card(s) moved to download list`);
-            window.location.href = `?status=download`;
-        } else {
-            if (typeof showToast === 'function') showToast(data.message || 'Error updating cards', false);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        if (typeof showToast === 'function') showToast('Error moving to download', false);
-    });
-}
-
-// ==========================================
-// BULK BACK TO APPROVED (Move from download back to approved)
-// ==========================================
-
-function bulkBackToApproved(cardIds) {
-    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
-    if (!tableId) {
-        if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
-        return;
-    }
-    
-    const csrfToken = typeof getCSRFToken === 'function' ? getCSRFToken() : '';
-    
-    ApiClient.post(`/panel/api/table/${tableId}/cards/bulk-status/`, {
-        card_ids: cardIds,
-        status: 'approved'
-    })
-    .then(data => {
-        if (data.success) {
-            if (typeof showToast === 'function') showToast(`${data.updated_count} card(s) moved back to approved`);
-            window.location.href = `?status=approved`;
-        } else {
-            if (typeof showToast === 'function') showToast(data.message || 'Error updating cards', false);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        if (typeof showToast === 'function') showToast('Error moving to approved', false);
-    });
-}
 
 // ==========================================
 // BULK ACTION BUTTON HANDLERS
@@ -425,14 +477,6 @@ function initBulkActionHandlers() {
         }
     });
     
-    // Delete button in Verified list
-    document.getElementById('deleteBtnV')?.addEventListener('click', function() {
-        const selectedIds = typeof getSelectedCardIds === 'function' ? getSelectedCardIds() : [];
-        if (selectedIds.length > 0) {
-            bulkDelete(selectedIds);
-        }
-    });
-    
     // Approve Selected button
     document.getElementById('approveBtn')?.addEventListener('click', function() {
         const selectedIds = typeof getSelectedCardIds === 'function' ? getSelectedCardIds() : [];
@@ -441,18 +485,7 @@ function initBulkActionHandlers() {
         }
     });
     
-    // Unapproved Selected button (works for verified and approved lists)
-    const unapprovedBtnIds = ['unapprovedBtn', 'unapprovedBtnA'];
-    unapprovedBtnIds.forEach(btnId => {
-        document.getElementById(btnId)?.addEventListener('click', function() {
-            const selectedIds = typeof getSelectedCardIds === 'function' ? getSelectedCardIds() : [];
-            if (selectedIds.length > 0) {
-                bulkUnapprove(selectedIds);
-            }
-        });
-    });
-    
-    // Unverified Selected button
+    // Unverify Selected button (move back to pending)
     document.getElementById('unverifyBtn')?.addEventListener('click', function() {
         const selectedIds = typeof getSelectedCardIds === 'function' ? getSelectedCardIds() : [];
         if (selectedIds.length > 0) {
@@ -460,15 +493,20 @@ function initBulkActionHandlers() {
         }
     });
     
-    // Retrieve buttons
-    const retrieveBtnIds = ['retrieveBtn', 'retrieveBtnP', 'retrieveBtnA', 'retrieveBtnD'];
-    retrieveBtnIds.forEach(btnId => {
-        document.getElementById(btnId)?.addEventListener('click', function() {
-            const selectedIds = typeof getSelectedCardIds === 'function' ? getSelectedCardIds() : [];
-            if (selectedIds.length > 0) {
-                bulkRetrieve(selectedIds);
-            }
-        });
+    // Disapprove Selected button (Approved list → move to pending)
+    document.getElementById('disapproveBtn')?.addEventListener('click', function() {
+        const selectedIds = typeof getSelectedCardIds === 'function' ? getSelectedCardIds() : [];
+        if (selectedIds.length > 0) {
+            bulkDisapprove(selectedIds);
+        }
+    });
+    
+    // Retrieve button (Pool list only)
+    document.getElementById('retrieveBtnP')?.addEventListener('click', function() {
+        const selectedIds = typeof getSelectedCardIds === 'function' ? getSelectedCardIds() : [];
+        if (selectedIds.length > 0) {
+            bulkRetrieve(selectedIds);
+        }
     });
     
     // Delete Permanent button (Pool list only)
@@ -476,22 +514,6 @@ function initBulkActionHandlers() {
         const selectedIds = typeof getSelectedCardIds === 'function' ? getSelectedCardIds() : [];
         if (selectedIds.length > 0) {
             bulkDeletePermanent(selectedIds);
-        }
-    });
-    
-    // Download Card button (move to download status from Approved)
-    document.getElementById('downloadCardBtn')?.addEventListener('click', function() {
-        const selectedIds = typeof getSelectedCardIds === 'function' ? getSelectedCardIds() : [];
-        if (selectedIds.length > 0) {
-            bulkDownload(selectedIds);
-        }
-    });
-    
-    // Back to Approved button (move from download back to approved)
-    document.getElementById('unapprovedBtnD')?.addEventListener('click', function() {
-        const selectedIds = typeof getSelectedCardIds === 'function' ? getSelectedCardIds() : [];
-        if (selectedIds.length > 0) {
-            bulkBackToApproved(selectedIds);
         }
     });
 }
@@ -508,21 +530,15 @@ function initApiModule() {
 // Expose globally
 window.verifyCard = verifyCard;
 window.approveCard = approveCard;
-window.unapproveCard = unapproveCard;
 window.unverifyCard = unverifyCard;
-window.downloadCard = downloadCard;
 window.retrieveCard = retrieveCard;
-window.downloadSingleCard = downloadSingleCard;
-window.backToApprovedCard = backToApprovedCard;
 window.bulkVerify = bulkVerify;
 window.bulkApprove = bulkApprove;
-window.bulkUnapprove = bulkUnapprove;
 window.bulkUnverify = bulkUnverify;
+window.bulkDisapprove = bulkDisapprove;
 window.bulkDelete = bulkDelete;
 window.bulkRetrieve = bulkRetrieve;
 window.bulkDeletePermanent = bulkDeletePermanent;
-window.bulkDownload = bulkDownload;
-window.bulkBackToApproved = bulkBackToApproved;
 
 window.IDCardApp = window.IDCardApp || {};
 window.IDCardApp.initApiModule = initApiModule;

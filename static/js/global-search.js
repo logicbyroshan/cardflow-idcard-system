@@ -186,9 +186,13 @@
                 }
             }
             
-            const iconHtml = result.photo
-                ? `<img src="${thumbSrc ? esc(thumbSrc) : esc(photoSrc)}" class="result-photo" alt="Photo" ${thumbSrc ? `onerror="this.onerror=null; this.src='${esc(photoSrc)}';"` : ''}>`
-                : `<div class="result-icon ${esc(result.type)}"><i class="fa-solid ${esc(result.icon)}"></i></div>`;
+            let iconHtml;
+            if (result.photo) {
+                iconHtml = `<img src="${thumbSrc ? esc(thumbSrc) : esc(photoSrc)}" class="result-photo" alt="Photo" onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='flex';" ${thumbSrc ? `data-full="${esc(photoSrc)}"` : ''}>` +
+                    `<div class="result-icon idcard" style="display:none"><i class="fa-solid fa-user"></i></div>`;
+            } else {
+                iconHtml = `<div class="result-icon idcard"><i class="fa-solid fa-user"></i></div>`;
+            }
 
             html += `
                 <div class="global-search-result-item" data-url="${esc(result.url)}">

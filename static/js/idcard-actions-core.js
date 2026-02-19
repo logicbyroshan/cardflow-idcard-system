@@ -48,7 +48,7 @@ if (typeof hideToast === 'function') {
 function apiCall(url, method, data = null) {
     // Delegate to centralized ApiClient from core/api.js
     if (typeof ApiClient !== 'undefined') {
-        return ApiClient.request(url, { method, body: data });
+        return ApiClient.request(url, method, data);
     }
     // Fallback if ApiClient not loaded yet
     const options = {
@@ -131,8 +131,8 @@ function updateButtonStates() {
         if (btn) btn.disabled = !singleSelected;
     });
     
-    // Multi select buttons (Delete, Verify, Approve, Unapproved, Retrieve, Unverify, Download Card, Back to Approved)
-    document.querySelectorAll('[id^="deleteBtn"], [id^="verifyBtn"], [id^="approveBtn"], [id^="unapprovedBtn"], [id^="retrieveBtn"], [id^="unverifyBtn"], #downloadCardBtn').forEach(btn => {
+    // Multi select buttons (Delete, Verify, Approve, Disapprove, Unapproved, Retrieve, Unverify, Download Card, Back to Approved)
+    document.querySelectorAll('[id^="deleteBtn"], [id^="verifyBtn"], [id^="approveBtn"], [id^="disapproveBtn"], [id^="unapprovedBtn"], [id^="retrieveBtn"], [id^="unverifyBtn"], #downloadCardBtn').forEach(btn => {
         if (btn) btn.disabled = !anySelected;
     });
     
@@ -257,6 +257,26 @@ function initCheckboxes() {
     updateButtonStates();
 }
 
+// Helper: build filter query string from current active filters
+function _buildFilterQS() {
+    const params = new URLSearchParams();
+    const currentStatus = window.IDCardApp.currentStatus || new URLSearchParams(window.location.search).get('status') || 'pending';
+    params.set('status', currentStatus);
+    // Search
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput && searchInput.value.trim()) params.set('search', searchInput.value.trim());
+    // Class
+    if (window.currentClassFilter) params.set('class', window.currentClassFilter);
+    // Section
+    if (window.currentSectionFilter) params.set('section', window.currentSectionFilter);
+    // DateTime range (download list)
+    const fromDate = document.getElementById('fromDateFilter');
+    const toDate = document.getElementById('toDateFilter');
+    if (fromDate && fromDate.value) params.set('from', fromDate.value);
+    if (toDate && toDate.value) params.set('to', toDate.value);
+    return params.toString();
+}
+
 // Select All Database functionality
 function initSelectAllDbButton() {
     const selectAllDbBtn = document.getElementById('selectAllDbBtn');
@@ -264,7 +284,6 @@ function initSelectAllDbButton() {
     
     selectAllDbBtn.addEventListener('click', async function() {
         const tableId = window.IDCardApp.tableId;
-        const currentStatus = window.IDCardApp.currentStatus || new URLSearchParams(window.location.search).get('status') || 'pending';
         
         if (!tableId) {
             showToast('Table ID not found', false);
@@ -292,7 +311,8 @@ function initSelectAllDbButton() {
         this.disabled = true;
         
         try {
-            const data = await ApiClient.get(`/panel/api/table/${tableId}/cards/all-ids/?status=${currentStatus}`);
+            const qs = _buildFilterQS();
+            const data = await ApiClient.get(`/panel/api/table/${tableId}/cards/all-ids/?${qs}`);
             
             if (data.success && data.card_ids) {
                 // Store all card IDs globally
@@ -357,7 +377,8 @@ window.IDCardApp.initSelectAllDbButton = initSelectAllDbButton;
 /**
  * Get ALL card IDs for bulk operations (download, reupload).
  * If specific rows are checked, returns those IDs (sync).
- * Otherwise, fetches ALL card IDs from the database for the current status.
+ * Otherwise, fetches ALL card IDs from the database for the current status,
+ * respecting any active search/class/section filters.
  * Always returns a Promise.
  */
 async function getAllCardIdsForAction() {
@@ -367,9 +388,8 @@ async function getAllCardIdsForAction() {
         return selectedIds;
     }
 
-    // No explicit selection — fetch ALL card IDs from database
+    // No explicit selection — fetch ALL card IDs from database (filter-aware)
     const tableId = window.IDCardApp.tableId || (typeof TABLE_ID !== 'undefined' ? TABLE_ID : null);
-    const currentStatus = window.IDCardApp.currentStatus || new URLSearchParams(window.location.search).get('status') || 'pending';
 
     if (!tableId) {
         console.error('getAllCardIdsForAction: TABLE_ID not found');
@@ -377,7 +397,8 @@ async function getAllCardIdsForAction() {
     }
 
     try {
-        const data = await ApiClient.get(`/panel/api/table/${tableId}/cards/all-ids/?status=${currentStatus}`);
+        const qs = _buildFilterQS();
+        const data = await ApiClient.get(`/panel/api/table/${tableId}/cards/all-ids/?${qs}`);
         if (data.success && data.card_ids) {
             return data.card_ids;
         }
@@ -488,14 +509,14 @@ function applyDynamicAlignment() {
             }
         });
         
-        // If any cell has long text, all cells in column should be left aligned
-        columnAlignments[colIndex] = hasLongText ? 'left' : 'left'; // Always left for consistency
+        // Alignment determined by CSS classes from get_td_width_class filter
+        columnAlignments[colIndex] = null; // Don't override CSS
     });
     
-    // Second pass: apply alignment to all cells in each column
+    // Second pass: remove any stale inline textAlign so CSS classes take effect
     rows.forEach(row => {
         row.querySelectorAll('td.dynamic-field').forEach(cell => {
-            cell.style.textAlign = 'left';
+            cell.style.textAlign = '';
         });
     });
     

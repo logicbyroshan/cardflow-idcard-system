@@ -5,57 +5,73 @@
 <div class="table-wrapper">
     <div class="table-container idcard-table">
         <table id="data-table">
-            <thead>
+            <thead class="sticky top-0 z-20">
                 <tr>
-                    <th class="checkbox-col">
+                    <!-- Checkbox — 24px -->
+                    <th class="w-[24px] min-w-[24px] text-center px-[1px]">
                         <input type="checkbox" id="selectAll" title="Select all">
                     </th>
-                    <th class="sr-col">Sr No.</th>
+                    <!-- SR NO — 36px, 2-line -->
+                    <th class="w-[36px] min-w-[36px] px-[1px] py-1 text-center align-middle">
+                        <div class="leading-tight">
+                            <div>SR</div>
+                            <div>NO</div>
+                        </div>
+                    </th>
                     {% for field in table.fields|reorder_fields_for_display %}
                     {% check_image_field field.type field.name as is_img %}
                     {% if is_img %}
-                    <th class="image-col" data-field-name="{{ field.name }}" data-field-type="image">{{ field.name|wrap_header }}</th>
+                    <!-- Image columns — 30px fixed -->
+                    <th class="w-[30px] min-w-[30px] px-[1px] py-1 text-center align-middle" data-field-name="{{ field.name }}" data-field-type="image">{{ field.name|wrap_header }}</th>
                     {% else %}
-                    <th class="dynamic-col" data-field-name="{{ field.name }}" data-field-type="{{ field.type }}">{{ field.name }}</th>
+                    <!-- Dynamic columns — intelligent width -->
+                    <th class="{{ field|get_column_width_class }} px-[1px] py-1 {{ field|get_column_align_class }} align-middle" data-field-name="{{ field.name }}" data-field-type="{{ field.type }}">{{ field.name }}</th>
                     {% endif %}
                     {% endfor %}
-                    <th class="action-col">Action</th>
+                    {% if current_status == 'approved' %}
+                    {# Approved list: no action column #}
+                    {% elif current_status == 'download' %}
+                    <th class="w-[90px] min-w-[90px] px-[1px] py-1 text-center align-middle">Downloaded At</th>
+                    {% elif current_status == 'pool' %}
+                    <th class="w-[90px] min-w-[90px] px-[1px] py-1 text-center align-middle">Deleted At</th>
+                    {% else %}
+                    <!-- Action — fit buttons -->
+                    <th class="w-[60px] min-w-[60px] px-[1px] py-1 text-center align-middle">Action</th>
+                    {% endif %}
                     {% if perm_idcard_updated_at %}
-                    <th class="fixed-col">Last Updated</th>
-                    <th class="fixed-col">Updated By</th>
+                    <!-- Updated At / Updated By -->
+                    <th class="w-[90px] min-w-[90px] px-[1px] py-1 text-center align-middle">Last Updated</th>
+                    <th class="w-[65px] min-w-[65px] px-[1px] py-1 text-center align-middle">Updated By</th>
                     {% endif %}
                 </tr>
             </thead>
-            <tbody id="cardsTableBody">
+            <tbody id="cardsTableBody" class="divide-y divide-gray-200">
                 {% for card in id_cards %}
                 <tr data-card-id="{{ card.id }}" data-sr-no="{{ card.sr_no }}">
-                    <td class="checkbox-cell">
+                    <td class="w-[24px] px-[1px] py-1 text-center align-middle checkbox-cell">
                         <input type="checkbox" class="rowCheckbox">
                     </td>
-                    <td class="sr-no-cell">{{ card.sr_no }}</td>
+                    <td class="w-[36px] px-[1px] py-1 text-center align-middle sr-no-cell">{{ card.sr_no }}</td>
                     {% for field in card.ordered_fields|reorder_card_fields_for_display %}
                         {% check_image_field field.type field.name as is_img %}
                         {% if is_img %}
-                        <td class="image-field image-cell {{ field.name|get_image_class }}" 
+                        <td class="w-[28px] px-[1px] py-1 text-center align-middle image-field image-cell {{ field.name|get_image_class }}" 
                             data-field="{{ field.name }}"
                             data-field-name="{{ field.name }}" 
                             data-field-type="image"
                             data-original-value="{{ field.value }}">
                             <div class="image-with-edit">
                                 {% if field.value and field.value != '' and field.value != 'NOT_FOUND' and not field.value|slice:":8" == "PENDING:" %}
-                                <!-- Image exists - use thumbnail with original fallback -->
                                 <img src="/media/{{ field.value|get_thumbnail_path }}" 
                                      alt="{{ field.name }}" 
                                      class="table-image {{ field.name|get_image_class }}" 
                                      loading="lazy"
                                      onerror="this.onerror=null; this.src='/media/{{ field.value }}'">
                                 {% elif field.value|slice:":8" == "PENDING:" %}
-                                <!-- PENDING image - show waiting placeholder -->
                                 <div class="no-image pending-placeholder" title="Waiting for upload: {{ field.value|slice:'8:' }}">
                                     <i class="fa-solid fa-clock"></i>
                                 </div>
                                 {% else %}
-                                <!-- No image - show placeholder -->
                                 <div class="no-image colorful-placeholder" title="No image uploaded">
                                     <i class="fa-solid fa-user-astronaut"></i>
                                 </div>
@@ -63,14 +79,10 @@
                                 {% if perm_idcard_edit %}
                                 {% if is_client or is_client_staff %}
                                     {% if current_status != 'approved' and current_status != 'download' and current_status != 'reprint' %}
-                                    <button class="edit-photo-btn" data-card-id="{{ card.id }}" title="Edit Card">
-                                        <i class="fa-solid fa-pen"></i>
-                                    </button>
+                                    <button class="edit-photo-btn" data-card-id="{{ card.id }}" title="Edit Card">Edit</button>
                                     {% endif %}
                                 {% else %}
-                                <button class="edit-photo-btn" data-card-id="{{ card.id }}" title="Edit Card">
-                                    <i class="fa-solid fa-pen"></i>
-                                </button>
+                                <button class="edit-photo-btn" data-card-id="{{ card.id }}" title="Edit Card">Edit</button>
                                 {% endif %}
                                 {% endif %}
                             </div>
@@ -78,7 +90,7 @@
                         {% else %}
                         {% if is_client or is_client_staff %}
                             {% if current_status == 'approved' or current_status == 'download' or current_status == 'reprint' %}
-                        <td class="dynamic-field {% if field.type == 'textarea' %}long-text{% elif field.type == 'date' or field.type == 'number' %}short-text{% elif field.value|length <= 10 %}short-text{% elif field.value|length > 40 %}long-text{% else %}medium-text{% endif %}" 
+                        <td class="dynamic-field {{ field|get_td_width_class }} px-[1px] py-1 align-middle" 
                             data-field="{{ field.name }}"
                             data-field-name="{{ field.name }}" 
                             data-field-type="{{ field.type }}"
@@ -86,7 +98,7 @@
                             <span class="cell-value">{{ field.value }}</span>
                         </td>
                             {% else %}
-                        <td class="dynamic-field editable-cell {% if field.type == 'textarea' %}long-text{% elif field.type == 'date' or field.type == 'number' %}short-text{% elif field.value|length <= 10 %}short-text{% elif field.value|length > 40 %}long-text{% else %}medium-text{% endif %}" 
+                        <td class="dynamic-field editable-cell {{ field|get_td_width_class }} px-[1px] py-1 align-middle" 
                             data-field="{{ field.name }}"
                             data-field-name="{{ field.name }}" 
                             data-field-type="{{ field.type }}"
@@ -96,7 +108,7 @@
                         </td>
                             {% endif %}
                         {% else %}
-                        <td class="dynamic-field editable-cell {% if field.type == 'textarea' %}long-text{% elif field.type == 'date' or field.type == 'number' %}short-text{% elif field.value|length <= 10 %}short-text{% elif field.value|length > 40 %}long-text{% else %}medium-text{% endif %}" 
+                        <td class="dynamic-field editable-cell {{ field|get_td_width_class }} px-[1px] py-1 align-middle" 
                             data-field="{{ field.name }}"
                             data-field-name="{{ field.name }}" 
                             data-field-type="{{ field.type }}"
@@ -107,56 +119,30 @@
                         {% endif %}
                         {% endif %}
                     {% endfor %}
-                    <td class="action-cell">
-                        <div class="action-buttons">
+                    {% if current_status == 'approved' %}
+                    {# Approved list: no action column — read-only #}
+                    {% elif current_status == 'download' %}
+                    <td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">{{ card.downloaded_at|date:"d-M-Y H:i"|default:"-" }}</td>
+                    {% elif current_status == 'pool' %}
+                    <td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">{{ card.deleted_at|date:"d-M-Y H:i"|default:"-" }}</td>
+                    {% else %}
+                    <td class="w-[60px] px-[1px] py-1 text-center align-middle action-cell">
+                        <div class="action-buttons inline-flex flex-col gap-[2px]">
                         {% if current_status == 'pending' or not current_status %}
                         {% if perm_idcard_verify %}
                         <button class="row-action-btn verify-row-btn" data-card-id="{{ card.id }}" title="Verify this card">
-                            <i class="fa-solid fa-check"></i>
                             <span>Verify</span>
                         </button>
                         {% endif %}
                         {% elif current_status == 'verified' %}
                         {% if perm_idcard_approve %}
                         <button class="row-action-btn approve-row-btn" data-card-id="{{ card.id }}" title="Approve this card">
-                            <i class="fa-solid fa-check-double"></i>
                             <span>Approve</span>
                         </button>
                         {% endif %}
                         {% if perm_idcard_verify %}
                         <button class="row-action-btn unverify-row-btn" data-card-id="{{ card.id }}" title="Move back to pending">
-                            <i class="fa-solid fa-rotate-left"></i>
                             <span>Unverify</span>
-                        </button>
-                        {% endif %}
-                        {% elif current_status == 'approved' %}
-                        {% if not is_client and not is_client_staff %}
-                        {% if perm_idcard_approve %}
-                        <button class="row-action-btn download-row-btn" data-card-id="{{ card.id }}" title="Move to download list">
-                            <i class="fa-solid fa-download"></i>
-                            <span>Download</span>
-                        </button>
-                        {% endif %}
-                        {% if perm_idcard_verify %}
-                        <button class="row-action-btn unapprove-row-btn" data-card-id="{{ card.id }}" title="Move back to verified">
-                            <i class="fa-solid fa-rotate-left"></i>
-                            <span>Unapprove</span>
-                        </button>
-                        {% endif %}
-                        {% endif %}
-                        {% elif current_status == 'pool' %}
-                        {% if perm_idcard_retrieve %}
-                        <button class="row-action-btn retrieve-row-btn" data-card-id="{{ card.id }}" title="Retrieve to pending">
-                            <i class="fa-solid fa-rotate-left"></i>
-                            <span>Retrieve</span>
-                        </button>
-                        {% endif %}
-                        {% elif current_status == 'download' %}
-                        <!-- Download list - Download single card image -->
-                        {% if perm_idcard_bulk_download %}
-                        <button class="row-action-btn download-single-row-btn" data-card-id="{{ card.id }}" title="Download this card's image">
-                            <i class="fa-solid fa-download"></i>
-                            <span>Download</span>
                         </button>
                         {% endif %}
                         {% else %}
@@ -164,16 +150,19 @@
                         {% endif %}
                         </div>
                     </td>
+                    {% endif %}
                     {% if perm_idcard_updated_at %}
-                    <td class="date-cell">{{ card.updated_at|date:"d-M-Y h:i A" }}</td>
-                    <td class="user-cell">Admin</td>
+                    <td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">{{ card.updated_at|date:"d-M-Y H:i" }}</td>
+                    <td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center">Admin</td>
                     {% endif %}
                 </tr>
                 {% empty %}
                 <tr class="no-data-row">
-                    <td colspan="50" class="no-data">
-                        <i class="fa-solid fa-id-card"></i>
-                        <span>No ID cards found</span>
+                    <td colspan="50" class="no-data-cell">
+                        <div class="no-data">
+                            <i class="fa-solid fa-id-card"></i>
+                            <span>No ID cards found</span>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
@@ -186,17 +175,3 @@
         <span>Loading more records...</span>
     </div>
 </div>
-
-<script>
-// Auto-detect compact mode: if 16+ columns or headers touch each other, enable word-wrap
-(function() {
-    var table = document.getElementById('data-table');
-    if (!table) return;
-    var container = table.closest('.idcard-table');
-    if (!container) return;
-    var cols = table.querySelectorAll('thead th');
-    if (cols.length >= 16 || table.scrollWidth > container.clientWidth) {
-        container.classList.add('compact-mode');
-    }
-})();
-</script>

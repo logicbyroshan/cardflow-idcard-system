@@ -1,0 +1,251 @@
+{% load static %}
+{% comment %}
+Phase 9: Shared action bar partial for all status lists.
+Renders buttons conditionally based on current_status — no hidden buttons in DOM.
+Phase 2: Reupload button always in left group, justify-between layout.
+
+Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_admin_staff, client, table
+{% endcomment %}
+
+<!-- Unified Action Bar -->
+<div class="action-bar action-buttons-bar" id="actionBar">
+    <!-- Left Buttons -->
+    <div class="flex items-center gap-[2px] flex-wrap">
+        <!-- Go Back Button -->
+        <button class="btn action-btn btn-back" id="goBackBtn" title="Go back (Ctrl+B)">
+            <i class="fa-solid fa-arrow-left"></i>
+            <span class="btn-text">Back</span>
+        </button>
+        <div class="action-divider"></div>
+        {% if current_status == 'pending' or not current_status %}
+            {# === PENDING LIST === #}
+            {% if perm_idcard_bulk_upload %}
+            <button class="btn action-btn btn-blue" id="uploadXlsxBtn" title="Upload Excel file">
+                <i class="fa-solid fa-upload"></i>
+                <span class="btn-text">Upload XLSX</span>
+            </button>
+            {% endif %}
+            {% if perm_idcard_add %}
+            <button class="btn action-btn btn-blue" id="addBtn" title="Add new card">
+                <i class="fa-solid fa-plus"></i>
+                <span class="btn-text">Add</span>
+            </button>
+            {% endif %}
+            {% if perm_idcard_edit %}
+            <button class="btn action-btn btn-blue" id="editBtn" disabled title="Edit selected card">
+                <i class="fa-solid fa-pen-to-square"></i>
+                <span class="btn-text">Edit</span>
+            </button>
+            {% endif %}
+            {% if perm_idcard_info %}
+            <button class="btn action-btn btn-gray" id="viewBtn" disabled title="View selected card">
+                <i class="fa-solid fa-eye"></i>
+                <span class="btn-text">View</span>
+            </button>
+            {% endif %}
+            {% if perm_idcard_delete %}
+            <button class="btn action-btn btn-red" id="deleteBtn" disabled title="Move to pool">
+                <i class="fa-solid fa-trash"></i>
+                <span class="btn-text">Delete</span>
+            </button>
+            {% endif %}
+            {% if perm_idcard_verify %}
+            <button class="btn action-btn btn-green" id="verifyBtn" disabled title="Verify selected cards">
+                <i class="fa-solid fa-check-circle"></i>
+                <span class="btn-text">Verify Selected</span>
+            </button>
+            {% endif %}
+            {% if perm_reupload_idcard_image %}
+            <button class="btn action-btn btn-red" id="reuploadImageBtn" title="Reupload images from ZIP">
+                <i class="fa-solid fa-rotate"></i>
+                <span class="btn-text">Reupload Image</span>
+            </button>
+            {% endif %}
+            {% if perm_idcard_bulk_download %}
+            <div class="action-divider"></div>
+            <button class="btn action-btn btn-purple" id="downloadImgBtn" title="Download images as ZIP">
+                <i class="fa-solid fa-image"></i>
+                <span class="btn-text">Download Img</span>
+            </button>
+            <button class="btn action-btn btn-purple" id="downloadDocxBtn" title="Download as Word document">
+                <i class="fa-solid fa-file-word"></i>
+                <span class="btn-text">Download Docx</span>
+            </button>
+            <button class="btn action-btn btn-purple" id="downloadXlsxBtn" title="Download as Excel file">
+                <i class="fa-solid fa-file-excel"></i>
+                <span class="btn-text">Download XLSX</span>
+            </button>
+            <button class="btn action-btn btn-purple" id="downloadPdfBtn" title="Download as PDF">
+                <i class="fa-solid fa-file-pdf"></i>
+                <span class="btn-text">Download PDF</span>
+            </button>
+            {% endif %}
+
+        {% elif current_status == 'verified' %}
+            {# === VERIFIED LIST === #}
+            {% if perm_idcard_edit %}
+            <button class="btn action-btn btn-blue" id="editBtnV" disabled title="Edit selected card">
+                <i class="fa-solid fa-pen-to-square"></i>
+                <span class="btn-text">Edit</span>
+            </button>
+            {% endif %}
+            {% if perm_idcard_info %}
+            <button class="btn action-btn btn-gray" id="viewBtnV" disabled title="View selected card">
+                <i class="fa-solid fa-eye"></i>
+                <span class="btn-text">View</span>
+            </button>
+            {% endif %}
+            {% if perm_idcard_verify %}
+            <button class="btn action-btn btn-red" id="unverifyBtn" disabled title="Move back to pending">
+                <i class="fa-solid fa-circle-xmark"></i>
+                <span class="btn-text">Unverified</span>
+            </button>
+            {% endif %}
+            {% if perm_idcard_approve %}
+            <button class="btn action-btn btn-green" id="approveBtn" disabled title="Approve selected cards">
+                <i class="fa-solid fa-circle-check"></i>
+                <span class="btn-text">Approve Selected</span>
+            </button>
+            {% endif %}
+            {% if perm_reupload_idcard_image %}
+            <button class="btn action-btn btn-red" id="reuploadImageBtnV" title="Reupload images from ZIP">
+                <i class="fa-solid fa-rotate"></i>
+                <span class="btn-text">Reupload Image</span>
+            </button>
+            {% endif %}
+            {% if perm_idcard_bulk_download %}
+            <div class="action-divider"></div>
+            <button class="btn action-btn btn-purple" id="downloadImgBtnV" title="Download images as ZIP">
+                <i class="fa-solid fa-image"></i>
+                <span class="btn-text">Download Img</span>
+            </button>
+            <button class="btn action-btn btn-purple" id="downloadDocxBtnV" title="Download as Word document">
+                <i class="fa-solid fa-file-word"></i>
+                <span class="btn-text">Download Docx</span>
+            </button>
+            <button class="btn action-btn btn-purple" id="downloadXlsxBtnV" title="Download as Excel file">
+                <i class="fa-solid fa-file-excel"></i>
+                <span class="btn-text">Download XLSX</span>
+            </button>
+            <button class="btn action-btn btn-purple" id="downloadPdfBtnV" title="Download as PDF">
+                <i class="fa-solid fa-file-pdf"></i>
+                <span class="btn-text">Download PDF</span>
+            </button>
+            {% endif %}
+
+        {% elif current_status == 'approved' %}
+            {# === APPROVED LIST === #}
+            {% if perm_idcard_info %}
+            <button class="btn action-btn btn-gray" id="viewBtnA" disabled title="View selected card">
+                <i class="fa-solid fa-eye"></i>
+                <span class="btn-text">View</span>
+            </button>
+            {% endif %}
+            {% if perm_idcard_approve %}
+            <button class="btn action-btn btn-red" id="disapproveBtn" disabled title="Move selected back to pending">
+                <i class="fa-solid fa-circle-xmark"></i>
+                <span class="btn-text">Disapprove Selected</span>
+            </button>
+            {% endif %}
+            {% if perm_idcard_bulk_download %}
+            <div class="action-divider"></div>
+            <button class="btn action-btn btn-purple" id="downloadImgBtnA" title="Download images as ZIP">
+                <i class="fa-solid fa-image"></i>
+                <span class="btn-text">Download Img</span>
+            </button>
+            <button class="btn action-btn btn-purple" id="downloadDocxBtnA" title="Download as Word document">
+                <i class="fa-solid fa-file-word"></i>
+                <span class="btn-text">Download Docx</span>
+            </button>
+            <button class="btn action-btn btn-purple" id="downloadXlsxBtnA" title="Download as Excel file">
+                <i class="fa-solid fa-file-excel"></i>
+                <span class="btn-text">Download XLSX</span>
+            </button>
+            <button class="btn action-btn btn-purple" id="downloadPdfBtnA" title="Download as PDF">
+                <i class="fa-solid fa-file-pdf"></i>
+                <span class="btn-text">Download PDF</span>
+            </button>
+            {% endif %}
+
+        {% elif current_status == 'download' %}
+            {# === DOWNLOAD LIST — read-only, export only === #}
+            {% if perm_idcard_info %}
+            <button class="btn action-btn btn-gray" id="viewBtnD" disabled title="View selected card">
+                <i class="fa-solid fa-eye"></i>
+                <span class="btn-text">View</span>
+            </button>
+            {% endif %}
+            {% if perm_idcard_bulk_download %}
+            <div class="action-divider"></div>
+            <button class="btn action-btn btn-purple" id="downloadImgBtnD" title="Download images as ZIP">
+                <i class="fa-solid fa-images"></i>
+                <span class="btn-text">Export Images</span>
+            </button>
+            <button class="btn action-btn btn-purple" id="downloadDocxBtnD" title="Download as Word document">
+                <i class="fa-solid fa-file-word"></i>
+                <span class="btn-text">Export Word</span>
+            </button>
+            <button class="btn action-btn btn-purple" id="downloadXlsxBtnD" title="Download as Excel file">
+                <i class="fa-solid fa-file-excel"></i>
+                <span class="btn-text">Export Excel</span>
+            </button>
+            <button class="btn action-btn btn-purple" id="downloadPdfBtnD" title="Download as PDF">
+                <i class="fa-solid fa-file-pdf"></i>
+                <span class="btn-text">Export PDF</span>
+            </button>
+            {% endif %}
+
+        {% elif current_status == 'pool' %}
+            {# === POOL LIST === #}
+            {% if perm_idcard_info %}
+            <button class="btn action-btn btn-gray" id="viewBtnP" disabled title="View selected card">
+                <i class="fa-solid fa-eye"></i>
+                <span class="btn-text">View</span>
+            </button>
+            {% endif %}
+            {% if perm_idcard_retrieve %}
+            <button class="btn action-btn btn-green" id="retrieveBtnP" disabled title="Retrieve to pending">
+                <i class="fa-solid fa-rotate-left"></i>
+                <span class="btn-text">Retrieve</span>
+            </button>
+            {% endif %}
+            {% if perm_reupload_idcard_image %}
+            <button class="btn action-btn btn-red" id="reuploadImageBtnP" title="Reupload images from ZIP">
+                <i class="fa-solid fa-rotate"></i>
+                <span class="btn-text">Reupload Image</span>
+            </button>
+            {% endif %}
+            {% if perm_idcard_bulk_download %}
+            <div class="action-divider"></div>
+            <button class="btn action-btn btn-purple" id="downloadImgBtnP" title="Download images as ZIP">
+                <i class="fa-solid fa-image"></i>
+                <span class="btn-text">Download Img</span>
+            </button>
+            <button class="btn action-btn btn-purple" id="downloadDocxBtnP" title="Download as Word document">
+                <i class="fa-solid fa-file-word"></i>
+                <span class="btn-text">Download Docx</span>
+            </button>
+            <button class="btn action-btn btn-purple" id="downloadXlsxBtnP" title="Download as Excel file">
+                <i class="fa-solid fa-file-excel"></i>
+                <span class="btn-text">Download XLSX</span>
+            </button>
+            <button class="btn action-btn btn-purple" id="downloadPdfBtnP" title="Download as PDF">
+                <i class="fa-solid fa-file-pdf"></i>
+                <span class="btn-text">Download PDF</span>
+            </button>
+            {% endif %}
+        {% endif %}
+    </div>
+
+    <!-- Right Buttons (Pool Danger Zone only) -->
+    <div class="flex items-center gap-[2px]">
+        {% if current_status == 'pool' and perm_idcard_delete_from_pool %}
+        <div class="pool-danger-zone">
+            <button class="btn action-btn btn-danger-zone" id="deletePermanentBtnP" disabled title="DANGER: Permanently delete - Cannot be undone!">
+                <i class="fa-solid fa-skull-crossbones"></i>
+                <span class="btn-text">Delete Permanent</span>
+            </button>
+        </div>
+        {% endif %}
+    </div>
+</div>

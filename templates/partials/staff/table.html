@@ -28,8 +28,8 @@ Uses Tailwind CSS component classes.
                         {% if staff.user.is_active %}Active{% else %}Inactive{% endif %}
                     </span>
                 </td>
-                <td class="text-gray-500">{{ staff.created_at|date:"d-m-Y h:i a" }}</td>
-                <td class="text-gray-500">{{ staff.updated_at|date:"d-m-Y h:i a" }}</td>
+                <td class="text-gray-500">{{ staff.created_at|date:"d-m-Y H:i" }}</td>
+                <td class="text-gray-500">{{ staff.updated_at|date:"d-m-Y H:i" }}</td>
             </tr>
             {% empty %}
             <tr class="no-data-row">

@@ -224,6 +224,9 @@ def api_toggle_website_status(request):
     """Toggle website between Live and Draft."""
     try:
         new_status = WebsiteStatusService.toggle_status()
+        # Clear middleware cache so the change takes effect immediately
+        from django.core.cache import cache
+        cache.delete('website_status_cache')
         ActivityService.log_website_update(request, f'status changed to {new_status}')
         return JsonResponse({'success': True, 'status': new_status})
     except Exception as e:

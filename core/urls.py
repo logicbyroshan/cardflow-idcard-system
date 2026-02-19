@@ -6,6 +6,7 @@ urlpatterns = [
     # ==================== AUTHENTICATION ====================
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
+    path('inactive/', views.inactive_view, name='inactive'),
     path('api/auth/check-email/', views.api_check_email, name='api_check_email'),
     path('api/auth/login/', views.api_login, name='api_login'),
     path('api/auth/forgot-password/', views.api_forgot_password, name='api_forgot_password'),

@@ -5,6 +5,7 @@ API views and page views for authentication flow.
 """
 import json
 import logging
+import os
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views import View
@@ -199,6 +200,7 @@ class LoginAPIView(View):
     """
     
     def post(self, request):
+        email = None
         try:
             data = json.loads(request.body)
             email = data.get('email', '').strip()
@@ -242,7 +244,7 @@ class LoginAPIView(View):
                 'message': 'Invalid JSON data'
             }, status=400)
         except Exception as e:
-            logger.exception("Login error for email=%s", email if 'email' in dir() else 'unknown')
+            logger.exception("Login error for email=%s", email or 'unknown')
             return JsonResponse({
                 'success': False,
                 'message': 'An unexpected error occurred. Please try again.'
@@ -276,9 +278,9 @@ class ForgotPasswordAPIView(View):
                 'message': result['message']
             }
             
-            # Include dev OTP in debug mode only
+            # Include dev OTP in debug mode only — gated behind dedicated flag
             from django.conf import settings as django_settings
-            if django_settings.DEBUG and result.get('dev_otp'):
+            if django_settings.DEBUG and os.getenv('DEV_EXPOSE_OTP', '').lower() in ('true', '1', 'yes') and result.get('dev_otp'):
                 response_data['dev_otp'] = result['dev_otp']
             
             return JsonResponse(response_data)
@@ -369,10 +371,10 @@ class ResetPasswordAPIView(View):
                     'message': 'Passwords do not match'
                 }, status=400)
             
-            if len(new_password) < 6:
+            if len(new_password) < 8:
                 return JsonResponse({
                     'success': False,
-                    'message': 'Password must be at least 6 characters'
+                    'message': 'Password must be at least 8 characters'
                 }, status=400)
             
             result = OTPService.reset_password(email, reset_token, new_password)

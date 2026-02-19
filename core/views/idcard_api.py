@@ -228,7 +228,8 @@ def api_idcard_list(request, table_id):
 @require_http_methods(["GET"])
 @api_require_any_authenticated
 def api_idcard_all_ids(request, table_id):
-    """API endpoint to get all card IDs for a table (for Select All functionality)"""
+    """API endpoint to get all card IDs for a table (for Select All functionality).
+    Supports search, class, and section filter params so Select All respects active filters."""
     table, err = _check_client_scope_by_table(request.user, table_id)
     if err: return err
     status_filter = request.GET.get('status', None)
@@ -239,7 +240,18 @@ def api_idcard_all_ids(request, table_id):
         if required_perm and not PermissionService.has(request.user, required_perm):
             return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
     
-    result = IDCardService.get_all_card_ids(table_id, status_filter)
+    # Pass through the same filters the main view uses
+    search = request.GET.get('search', '').strip()
+    class_filter = request.GET.get('class', '').strip()
+    section_filter = request.GET.get('section', '').strip()
+    from_date = request.GET.get('from', '').strip()
+    to_date = request.GET.get('to', '').strip()
+    
+    result = IDCardService.get_all_card_ids(
+        table_id, status_filter,
+        search=search, class_filter=class_filter, section_filter=section_filter,
+        from_date=from_date, to_date=to_date,
+    )
     return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
 
 
@@ -256,7 +268,9 @@ def api_idcard_create(request, table_id):
         # Parse field_data and image_files from either multipart or JSON
         if request.content_type and 'multipart/form-data' in request.content_type:
             field_data = json.loads(request.POST.get('field_data', '{}'))
-            image_files = dict(request.FILES)
+            # CRITICAL: dict(request.FILES) returns lists (MultiValueDict internals).
+            # Use dict comprehension with [] access to get actual file objects.
+            image_files = {key: request.FILES[key] for key in request.FILES}
             legacy_photo_file = request.FILES.get('photo')
         else:
             data = json.loads(request.body)
@@ -315,7 +329,9 @@ def api_idcard_update(request, card_id):
         if request.content_type and 'multipart/form-data' in request.content_type:
             field_data = json.loads(request.POST.get('field_data', '{}'))
             expected_updated_at = request.POST.get('expected_updated_at', None)
-            image_files = dict(request.FILES)
+            # CRITICAL: dict(request.FILES) returns lists (MultiValueDict internals).
+            # Use dict comprehension with [] access to get actual file objects.
+            image_files = {key: request.FILES[key] for key in request.FILES}
             legacy_photo_file = request.FILES.get('photo')
         else:
             data = json.loads(request.body)
@@ -986,9 +1002,10 @@ def api_idcard_bulk_upload(request, table_id):
                             'message': 'xlrd library not installed. Please install it to support .xls files.'
                         }, status=400)
                     except Exception as xls_error:
+                        logger.exception('Error reading .xls file: %s', xls_error)
                         return JsonResponse({
                             'success': False, 
-                            'message': f'Error reading .xls file: {str(xls_error)}'
+                            'message': 'Error reading .xls file. Please check the file format and try again.'
                         }, status=400)
                 
                 if not headers:
@@ -998,9 +1015,10 @@ def api_idcard_bulk_upload(request, table_id):
                     }, status=400)
                     
             except Exception as excel_error:
+                logger.exception('Error reading Excel file: %s', excel_error)
                 return JsonResponse({
                     'success': False, 
-                    'message': f'Error reading Excel file: {str(excel_error)}'
+                    'message': 'Error reading Excel file. Please check the file format and try again.'
                 }, status=400)
             
             # Map headers to table fields using fuzzy matching
@@ -1614,7 +1632,8 @@ def api_idcard_reupload_images(request, table_id):
                         except Exception:
                             continue
         except Exception as zip_error:
-            return JsonResponse({'success': False, 'message': f'Error reading ZIP file: {str(zip_error)}'}, status=400)
+            logger.exception('Error reading ZIP file: %s', zip_error)
+            return JsonResponse({'success': False, 'message': 'Error reading ZIP file. Please check the file and try again.'}, status=400)
         
         if not zip_photos:
             return JsonResponse({'success': False, 'message': 'No valid images found in ZIP file!'}, status=400)

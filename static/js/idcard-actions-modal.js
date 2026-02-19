@@ -151,8 +151,13 @@ function openSideModal(mode, cardData = null) {
         sideModal.classList.toggle('view-mode', mode === 'view');
         const inputs = sideModal.querySelectorAll('.form-control');
         inputs.forEach(input => {
-            input.readOnly = mode === 'view';
-            input.disabled = mode === 'view';
+            if (input.type === 'file') {
+                // File inputs: only toggle disabled (readOnly not supported)
+                input.disabled = mode === 'view';
+            } else {
+                input.readOnly = mode === 'view';
+                input.disabled = mode === 'view';
+            }
         });
     }
     
@@ -169,7 +174,11 @@ function openSideModal(mode, cardData = null) {
     
     // Populate form fields
     if ((mode === 'edit' || mode === 'view') && cardData) {
-        populateFormFields(cardData);
+        try {
+            populateFormFields(cardData);
+        } catch (e) {
+            console.error('openSideModal: populateFormFields error', e);
+        }
     }
     
     // Show modal - Update Alpine state if available, else fallback to class toggle
@@ -452,6 +461,10 @@ function populateFormFields(cardData) {
                 const removeBtn = input.closest('.image-field-card')?.querySelector('.btn-remove-field') ||
                                   document.getElementById(`remove_${fieldName.toLowerCase().replace(/\s+/g, '-')}`);
                 
+                // Find download button
+                const downloadBtn = input.closest('.image-field-card')?.querySelector('.btn-download-field') ||
+                                    document.getElementById(`download_${fieldName.toLowerCase().replace(/\s+/g, '-')}`);
+                
                 if (previewContainer) {
                     previewContainer.classList.remove('no-path', 'path-not-found', 'has-image', 'pending-image');
                 }
@@ -502,6 +515,15 @@ function populateFormFields(cardData) {
                     }
                     // Show remove button when image exists
                     if (removeBtn) removeBtn.style.display = '';
+                    // Show download button and set href for direct download
+                    if (downloadBtn) {
+                        downloadBtn.style.display = '';
+                        const cleanUrl = originalSrc.split('?')[0];
+                        downloadBtn.href = cleanUrl;
+                        // Set download attribute with filename for browser download
+                        const fileName = cleanUrl.split('/').pop() || fieldName;
+                        downloadBtn.setAttribute('download', fileName);
+                    }
                 } else if (isPendingImg) {
                     // PENDING - waiting for image upload
                     if (previewContainer) {
@@ -523,6 +545,7 @@ function populateFormFields(cardData) {
                     }
                     // Hide remove button for pending
                     if (removeBtn) removeBtn.style.display = 'none';
+                    if (downloadBtn) downloadBtn.style.display = 'none';
                 } else if (imgPath === 'NOT_FOUND') {
                     // Legacy NOT_FOUND
                     if (previewContainer) {
@@ -542,6 +565,7 @@ function populateFormFields(cardData) {
                         }
                     }
                     if (removeBtn) removeBtn.style.display = 'none';
+                    if (downloadBtn) downloadBtn.style.display = 'none';
                 } else {
                     // Empty - no image given
                     if (previewContainer) {
@@ -561,6 +585,7 @@ function populateFormFields(cardData) {
                         }
                     }
                     if (removeBtn) removeBtn.style.display = 'none';
+                    if (downloadBtn) downloadBtn.style.display = 'none';
                 }
                 return;
             }
@@ -610,7 +635,10 @@ function getFormData() {
             // (formPhotoInput element no longer exists — all images go through image_<fieldName>)
             
             if (isImageFieldModal(fieldType, fieldName) || input.type === 'file') {
-                if (input.files && input.files[0]) {
+                if (input._croppedFile) {
+                    // Use cropped file if DataTransfer fallback was used
+                    imageFiles[fieldName] = input._croppedFile;
+                } else if (input.files && input.files[0]) {
                     // New file selected - add to imageFiles
                     imageFiles[fieldName] = input.files[0];
                 } else {
@@ -1098,47 +1126,94 @@ function initModalModule() {
         });
     }
     
-    // Image field upload previews
-    document.querySelectorAll('.image-input').forEach(input => {
-        input.addEventListener('change', function() {
-            if (this.files && this.files[0]) {
-                const previewId = this.getAttribute('data-preview-id');
-                const previewEl = document.getElementById(previewId);
-                const fieldName = this.getAttribute('data-field-name');
-                
-                // Find path input and remove button
-                const fieldCard = this.closest('.image-field-card');
-                const pathInput = fieldCard?.querySelector('.image-path-input');
-                const removeBtn = fieldCard?.querySelector('.btn-remove-field');
-                
-                if (previewEl) {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        previewEl.classList.remove('no-path', 'pending-image', 'path-not-found');
-                        previewEl.classList.add('has-image');
-                        previewEl.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
-                    };
-                    reader.readAsDataURL(this.files[0]);
-                }
-                
-                // Update path input to show new file name
-                if (pathInput) {
-                    pathInput.value = this.files[0].name;
-                    pathInput.classList.remove('no-path', 'pending', 'not-found');
-                    pathInput.classList.add('has-image');
-                    // Clear directory since new file will be uploaded
-                    pathInput.dataset.directory = '';
-                    pathInput.dataset.originalPath = '';
-                    pathInput.dataset.hasNewFile = 'true';
-                }
-                
-                // Show remove button
-                if (removeBtn) {
-                    removeBtn.style.display = '';
-                }
+    // Image field upload previews — use event delegation on cardForm
+    // so it works even if inputs are re-rendered or initially disabled
+    // Integrates with ImageCropper when available
+    const cardFormEl = document.getElementById('cardForm');
+    if (cardFormEl) {
+        cardFormEl.addEventListener('change', function(e) {
+            const input = e.target;
+            if (!input.classList.contains('image-input')) return;
+            if (!input.files || !input.files[0]) return;
+            
+            const originalFile = input.files[0];
+
+            // Only offer crop for actual image files (not for path/reference changes)
+            const isImage = originalFile.type && originalFile.type.startsWith('image/');
+            
+            if (isImage && window.ImageCropper) {
+                // Open crop modal — use result to populate preview & file input
+                window.ImageCropper.open(originalFile).then(function(result) {
+                    if (result === null) {
+                        // User cancelled — clear the file input
+                        input.value = '';
+                        return;
+                    }
+                    
+                    // result is 'skip' (use original) or a cropped File
+                    const fileToUse = (result === 'skip') ? originalFile : result;
+                    
+                    // If cropped, replace the file input's files with the cropped version
+                    if (result !== 'skip') {
+                        try {
+                            const dt = new DataTransfer();
+                            dt.items.add(fileToUse);
+                            input.files = dt.files;
+                        } catch(err) {
+                            // Fallback: store on input as custom property
+                            input._croppedFile = fileToUse;
+                        }
+                    }
+
+                    applyImageToField(input, fileToUse);
+                });
+            } else {
+                // Not an image or no cropper — apply directly
+                applyImageToField(input, originalFile);
             }
         });
-    });
+    }
+
+    /**
+     * Helper: Apply an image File to the field's preview, path input, and buttons.
+     */
+    function applyImageToField(input, file) {
+        const previewId = input.getAttribute('data-preview-id');
+        const previewEl = document.getElementById(previewId);
+        const fieldCard = input.closest('.image-field-card');
+        const pathInput = fieldCard?.querySelector('.image-path-input');
+        const removeBtn = fieldCard?.querySelector('.btn-remove-field');
+        const downloadBtn = fieldCard?.querySelector('.btn-download-field');
+        
+        if (previewEl) {
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                previewEl.classList.remove('no-path', 'pending-image', 'path-not-found');
+                previewEl.classList.add('has-image');
+                previewEl.innerHTML = `<img src="${ev.target.result}" alt="Preview">`;
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        // Update path input to show new file name
+        if (pathInput) {
+            pathInput.value = file.name;
+            pathInput.classList.remove('no-path', 'pending', 'not-found');
+            pathInput.classList.add('has-image');
+            pathInput.dataset.directory = '';
+            pathInput.dataset.originalPath = '';
+            pathInput.dataset.hasNewFile = 'true';
+        }
+        
+        // Show remove button
+        if (removeBtn) {
+            removeBtn.style.display = '';
+        }
+        // Hide download button (new file not yet saved)
+        if (downloadBtn) {
+            downloadBtn.style.display = 'none';
+        }
+    }
     
     // Remove button handlers for image fields
     document.querySelectorAll('.btn-remove-field').forEach(btn => {
@@ -1178,6 +1253,14 @@ function initModalModule() {
             
             // Hide remove button
             this.style.display = 'none';
+            
+            // Hide download button
+            const downloadBtn = fieldCard?.querySelector('.btn-download-field');
+            if (downloadBtn) {
+                downloadBtn.style.display = 'none';
+                downloadBtn.href = '#';
+                downloadBtn.removeAttribute('download');
+            }
         });
     });
     

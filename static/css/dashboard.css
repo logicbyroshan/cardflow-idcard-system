@@ -71,7 +71,7 @@
    ==================== */
 .dashboard-grid {
     display: grid;
-    grid-template-columns: 3fr 1fr;
+    grid-template-columns: 2fr 1fr;
     gap: 0;
 }
 
@@ -95,12 +95,68 @@
 }
 
 .dashboard-card-body.tall-body {
+    height: 340px;
     max-height: 340px;
     overflow-y: auto;
 }
 
 .dashboard-card-body.p-0 {
     padding: 0;
+}
+
+/* Expandable client sub-rows (per-table) */
+.client-sub-row td {
+    background: #f8f9ff !important;
+    border-top: 1px solid #e8ecf4 !important;
+    padding: 6px 10px !important;
+    font-size: 12px;
+}
+.client-sub-row td:first-child {
+    padding-left: 32px !important;
+}
+.client-sub-row .sub-row-name {
+    color: #4b5563;
+    text-decoration: none;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: color 0.15s;
+}
+.client-sub-row .sub-row-name:hover {
+    color: #667eea;
+}
+.client-sub-row .sub-row-name i {
+    font-size: 10px;
+    color: #9ca3af;
+}
+.client-sub-row .count-badge {
+    font-size: 12px;
+    font-weight: 500;
+}
+/* Clickable client rows */
+.recent-table tbody tr.client-row {
+    cursor: pointer;
+}
+.recent-table tbody tr.client-row td:first-child {
+    position: relative;
+    padding-left: 24px;
+}
+.recent-table tbody tr.client-row td:first-child::before {
+    content: '\f054';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    font-size: 9px;
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+    transition: transform 0.2s;
+}
+.recent-table tbody tr.client-row.expanded td:first-child::before {
+    transform: translateY(-50%) rotate(90deg);
+    color: #667eea;
 }
 
 .view-all {
@@ -125,7 +181,20 @@
     width: 100%;
     font-size: 13px;
     border-collapse: collapse;
+    table-layout: fixed;
 }
+
+/* Fixed column widths: Client gets remaining space, status cols are equal */
+.recent-table th:nth-child(1),
+.recent-table td:nth-child(1) { width: 28%; }
+.recent-table th:nth-child(2),
+.recent-table td:nth-child(2),
+.recent-table th:nth-child(3),
+.recent-table td:nth-child(3),
+.recent-table th:nth-child(4),
+.recent-table td:nth-child(4),
+.recent-table th:nth-child(5),
+.recent-table td:nth-child(5) { width: 18%; }
 
 .recent-table thead {
     position: sticky;
@@ -162,6 +231,13 @@
 }
 .recent-table tbody tr:hover {
     background: #f3f4f6;
+}
+/* Sub-rows keep same background as parent group */
+.recent-table tbody tr.client-sub-row {
+    background: #f8f9ff !important;
+}
+.recent-table tbody tr.client-sub-row:hover {
+    background: #eef1ff !important;
 }
 
 /* ====================

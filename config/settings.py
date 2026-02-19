@@ -16,9 +16,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # CORE SETTINGS
 # =============================================================================
 
-# Application Version — bumped on each deploy
-APP_VERSION = os.getenv('APP_VERSION', '1.0.0')
-
 # SECURITY WARNING: keep the secret key used in production secret!
 # In production, set SECRET_KEY in .env file
 _default_secret = 'django-insecure-dev-key-change-in-production-*m$!x7r9vt=%9aqv1nnaav'
@@ -87,6 +84,8 @@ MIDDLEWARE = [
     # CRITICAL: Must come after AuthenticationMiddleware
     'core.middleware.PermissionValidationMiddleware',
     'core.middleware.RoleScopingMiddleware',
+    # Website Offline Middleware — blocks public site when status is 'draft'
+    'core.middleware.WebsiteOfflineMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -256,6 +255,8 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # =============================================================================
 
 # Max size for request body (1 GB — covers bulk XLSX + ZIP uploads)
+# Files >10 MB are spilled to disk by Django (FILE_UPLOAD_MAX_MEMORY_SIZE),
+# so a 1 GB ZIP is streamed to a temp file, NOT held in RAM.
 DATA_UPLOAD_MAX_MEMORY_SIZE = 1 * 1024 * 1024 * 1024  # 1 GB
 
 # Max size for a single uploaded file kept in memory before spilling to disk (10 MB)
@@ -269,6 +270,12 @@ DATA_UPLOAD_MAX_NUMBER_FILES = 30
 # CACHING
 # =============================================================================
 
+# NOTE: LocMemCache is per-process — rate limiting and cache-based locks
+# are scoped to each Gunicorn worker. With 2 workers, effective rate limits
+# are doubled (e.g., 5 req/min becomes 10 across workers).
+# For stricter rate limiting, switch to Redis:
+#   CACHES = {'default': {'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+#                          'LOCATION': 'redis://127.0.0.1:6379/1'}}
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
@@ -329,7 +336,7 @@ SITE_URL = os.getenv('SITE_URL', 'http://localhost:8000')
 # APP VERSION
 # =============================================================================
 
-APP_VERSION = os.getenv('APP_VERSION', 'v1.2.0')
+APP_VERSION = os.getenv('APP_VERSION', 'v1.1.0')
 
 
 # =============================================================================

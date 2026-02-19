@@ -15,6 +15,7 @@ from django.shortcuts import get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.db.models import Q
+from django.utils.timezone import localtime
 
 from ..models import IDCard, IDCardTable, ReprintRequest
 from ..services.permission_service import (
@@ -110,7 +111,7 @@ def api_reprint_list_cards(request, table_id):
             'status_display': card.get_status_display(),
             'has_reprint': card.id in existing_reprint_ids,
             'ordered_fields': ordered_fields,
-            'updated_at': card.updated_at.strftime('%d-%b-%Y %I:%M %p'),
+            'updated_at': localtime(card.updated_at).strftime('%d-%b-%Y %H:%M'),
         })
 
     return JsonResponse({
@@ -231,9 +232,9 @@ def api_reprint_confirm_list(request, table_id):
             'status_display': card.get_status_display(),
             'reason': rr.reason,
             'requested_by_name': (req_by.get_full_name() or req_by.username) if req_by else 'System',
-            'requested_at': rr.created_at.strftime('%d-%b-%Y %I:%M %p'),
+            'requested_at': localtime(rr.created_at).strftime('%d-%b-%Y %H:%M'),
             'ordered_fields': ordered_fields,
-            'updated_at': card.updated_at.strftime('%d-%b-%Y %I:%M %p'),
+            'updated_at': localtime(card.updated_at).strftime('%d-%b-%Y %H:%M'),
         })
 
     return JsonResponse({
@@ -362,9 +363,9 @@ def api_reprint_download_list(request, table_id):
             'status_display': card.get_status_display(),
             'reason': rr.reason,
             'requested_by_name': (req_by.get_full_name() or req_by.username) if req_by else 'System',
-            'confirmed_at': rr.updated_at.strftime('%d-%b-%Y %I:%M %p'),
+            'confirmed_at': localtime(rr.updated_at).strftime('%d-%b-%Y %H:%M'),
             'ordered_fields': ordered_fields,
-            'updated_at': card.updated_at.strftime('%d-%b-%Y %I:%M %p'),
+            'updated_at': localtime(card.updated_at).strftime('%d-%b-%Y %H:%M'),
         })
 
     return JsonResponse({

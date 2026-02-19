@@ -38,6 +38,7 @@ from .auth import (
     admin_staff_dashboard,
     client_dashboard,
     client_staff_dashboard,
+    inactive_view,
 )
 
 from .client_api import (

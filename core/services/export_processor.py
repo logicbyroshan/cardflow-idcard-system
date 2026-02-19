@@ -23,6 +23,7 @@ import zipfile
 from datetime import datetime
 
 from django.conf import settings
+from django.utils import timezone as django_tz
 from django.core.files.storage import default_storage
 
 logger = logging.getLogger(__name__)
@@ -104,7 +105,7 @@ def process_export_zip(task):
             field_name = field_info['name']
             
             # Generate ZIP filename
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            timestamp = django_tz.localtime(django_tz.now()).strftime('%Y%m%d_%H%M%S')
             clean_field = clean_filename(field_name)
             zip_filename = f"{clean_client}_{clean_table}_{clean_field}_{timestamp}.zip"
             zip_path = os.path.join(exports_dir, zip_filename)

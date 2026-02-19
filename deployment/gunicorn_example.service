@@ -34,10 +34,10 @@ PrivateTmp=true
 Restart=on-failure
 RestartSec=5
 
-# CRITICAL: Resource limits for 1GB RAM server
+# Resource limits for 2GB RAM server
 # Prevent memory exhaustion from killing system
-MemoryMax=512M
-MemoryHigh=400M
+MemoryMax=1400M
+MemoryHigh=1200M
 
 # Environment variables
 Environment="DJANGO_SETTINGS_MODULE=config.settings"

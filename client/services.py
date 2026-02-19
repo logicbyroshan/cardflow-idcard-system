@@ -13,6 +13,7 @@ ARCHITECTURE RULES:
 - Status transitions delegate to WorkflowService.
 """
 from typing import Dict, Any, Optional, List
+from django.utils.timezone import localtime
 from django.db import transaction
 from django.db.models import Count, Q
 
@@ -152,7 +153,7 @@ class ClientDashboardService(BaseService):
                     'status': card.status,
                     'status_display': card.get_status_display(),
                     'table_name': card.table.name,
-                    'updated_at': card.updated_at.strftime('%d %b %Y, %I:%M %p'),
+                    'updated_at': localtime(card.updated_at).strftime('%d %b %Y, %H:%M'),
                 })
             
             return ServiceResult(
@@ -797,8 +798,8 @@ class ClientCardService(BaseService):
                     'field_data': card.field_data,
                     'status': card.status,
                     'status_display': card.get_status_display(),
-                    'created_at': card.created_at.strftime('%d %b %Y, %I:%M %p'),
-                    'updated_at': card.updated_at.strftime('%d %b %Y, %I:%M %p'),
+                    'created_at': localtime(card.created_at).strftime('%d %b %Y, %H:%M'),
+                    'updated_at': localtime(card.updated_at).strftime('%d %b %Y, %H:%M'),
                 }
                 card_list.append(card_data)
             
@@ -931,8 +932,8 @@ class ClientCardService(BaseService):
                     'status_display': card.get_status_display(),
                     'table_name': card.table.name,
                     'group_name': card.table.group.name,
-                    'created_at': card.created_at.strftime('%d %b %Y, %I:%M %p'),
-                    'updated_at': card.updated_at.strftime('%d %b %Y, %I:%M %p'),
+                    'created_at': localtime(card.created_at).strftime('%d %b %Y, %H:%M'),
+                    'updated_at': localtime(card.updated_at).strftime('%d %b %Y, %H:%M'),
                 }
             )
             

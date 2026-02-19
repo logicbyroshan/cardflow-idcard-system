@@ -66,6 +66,9 @@ id="sideModalOverlay"
                       <button type="button" class="btn btn-remove-field" id="remove_{{ field.name|slugify }}" style="display: none;" data-field-name="{{ field.name }}">
                         <i class="fa-solid fa-trash"></i> Remove
                       </button>
+                      <a href="#" class="btn btn-download-field" id="download_{{ field.name|slugify }}" style="display: none;" data-field-name="{{ field.name }}" download>
+                        <i class="fa-solid fa-download"></i> Download
+                      </a>
                       <span class="upload-hint-text">JPG, PNG (Max 2MB)</span>
                     </div>
                   </div>
@@ -165,6 +168,41 @@ id="sideModalOverlay"
         <i class="fa-solid fa-check"></i>
         <span>Save</span>
       </button>
+    </div>
+  </div>
+</div>
+
+<!-- Image Crop Modal -->
+<div class="crop-modal-overlay" id="cropModalOverlay">
+  <div class="crop-modal-card">
+    <div class="crop-modal-header">
+      <h3><i class="fa-solid fa-crop-simple"></i> Crop Image</h3>
+      <button class="crop-modal-close" id="cropModalClose" type="button" aria-label="Close crop modal">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div class="crop-modal-body">
+      <div class="crop-container" id="cropContainer">
+        <img id="cropImage" src="" alt="Image to crop">
+      </div>
+    </div>
+    <div class="crop-modal-footer">
+      <div class="crop-aspect-btns">
+        <button type="button" class="crop-aspect-btn active" data-aspect="free" title="Free crop">
+          <i class="fa-solid fa-expand"></i> Free
+        </button>
+        <button type="button" class="crop-aspect-btn" data-aspect="2:3" title="Passport Size 2:3">
+          <i class="fa-solid fa-id-badge"></i> Passport
+        </button>
+      </div>
+      <div class="crop-action-btns">
+        <button type="button" class="btn btn-secondary" id="cropCancelBtn">
+          <i class="fa-solid fa-xmark"></i> Skip
+        </button>
+        <button type="button" class="btn btn-primary" id="cropApplyBtn">
+          <i class="fa-solid fa-crop-simple"></i> Crop & Apply
+        </button>
+      </div>
     </div>
   </div>
 </div>

@@ -10,15 +10,15 @@
   <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- Tailwind CSS (primary) -->
-  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=100">
+  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=130">
   <!-- Page-specific: settings panels -->
-  <link rel="stylesheet" href="{% static 'css/settings.css' %}?v=100">
-  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=100">
+  <link rel="stylesheet" href="{% static 'css/settings.css' %}?v=130">
+  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=130">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <!-- Alpine.js State Module (MUST load before Alpine) -->
-  <script src="{% static 'js/alpine-state.js' %}?v=100"></script>
+  <script src="{% static 'js/alpine-state.js' %}?v=130"></script>
   <!-- Alpine.js -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
 </head>
@@ -27,7 +27,7 @@
   {% include 'partials/sidebar.html' %}
 
   <!-- Main -->
-  <main class="main">
+  <main class="main settings-page">
 
     <!-- Top Navbar -->
     <header class="topbar">
@@ -244,7 +244,7 @@
         <!-- Export Document Settings -->
         <div class="settings-section">
           <div class="section-header">
-            <div class="section-icon bg-gradient-to-br from-amber-500 to-amber-600">
+            <div class="section-icon" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);">
               <i class="fa-solid fa-file-export"></i>
             </div>
             <div class="section-title">
@@ -254,21 +254,21 @@
           </div>
           <div class="section-body">
             <form id="exportSettingsForm">
-              <div class="form-group mb-4">
-                <label for="exportNoteLine" class="form-label">Note Line</label>
-                <p class="text-gray-400 text-xs mb-2">Appears as the first line in the document footer (e.g. disclaimer or instruction)</p>
-                <textarea id="exportNoteLine" rows="2" class="form-input form-textarea">{{ export_settings.export_note_line }}</textarea>
+              <div class="form-group">
+                <label for="exportNoteLine">Note Line</label>
+                <p class="form-hint">Appears as the first line in the document footer (e.g. disclaimer or instruction)</p>
+                <textarea id="exportNoteLine" rows="2">{{ export_settings.export_note_line }}</textarea>
               </div>
-              <div class="form-group mb-4">
-                <label for="exportCopyrightLine" class="form-label">Copyright / Branding Line</label>
-                <p class="text-gray-400 text-xs mb-2">Appears alongside the timestamp in the second footer line</p>
-                <textarea id="exportCopyrightLine" rows="2" class="form-input form-textarea">{{ export_settings.export_copyright_line }}</textarea>
+              <div class="form-group">
+                <label for="exportCopyrightLine">Copyright / Branding Line</label>
+                <p class="form-hint">Appears alongside the timestamp in the second footer line</p>
+                <textarea id="exportCopyrightLine" rows="2">{{ export_settings.export_copyright_line }}</textarea>
               </div>
-              <div class="form-group flex items-center gap-4">
-                <button type="submit" class="btn btn-save" id="saveExportSettingsBtn">
+              <div class="form-actions" style="display:flex;align-items:center;gap:12px;">
+                <button type="submit" class="btn-save" id="saveExportSettingsBtn">
                   <i class="fa-solid fa-save"></i> Save Export Settings
                 </button>
-                <span id="exportSettingsStatus" class="text-sm text-gray-400"></span>
+                <span id="exportSettingsStatus" style="font-size:13px;color:#64748b;"></span>
               </div>
             </form>
           </div>
@@ -283,13 +283,13 @@
   {% include 'partials/components/toast.html' %}
 
   <!-- Core Modules (Load Order: api → toast → modal → utils → init) -->
-  <script src="{% static 'js/core/api.js' %}?v=100"></script>
-  <script src="{% static 'js/core/toast.js' %}?v=100"></script>
-  <script src="{% static 'js/core/modal.js' %}?v=100"></script>
-  <script src="{% static 'js/core/utils.js' %}?v=100"></script>
-  <script src="{% static 'js/init.js' %}?v=100"></script>
-  <script src="{% static 'js/settings.js' %}?v=100"></script>
-  <script src="{% static 'js/global-search.js' %}?v=100"></script>
+  <script src="{% static 'js/core/api.js' %}?v=130"></script>
+  <script src="{% static 'js/core/toast.js' %}?v=130"></script>
+  <script src="{% static 'js/core/modal.js' %}?v=130"></script>
+  <script src="{% static 'js/core/utils.js' %}?v=130"></script>
+  <script src="{% static 'js/init.js' %}?v=130"></script>
+  <script src="{% static 'js/settings.js' %}?v=130"></script>
+  <script src="{% static 'js/global-search.js' %}?v=130"></script>
   {% include 'partials/htmx-config.html' %}
 </body>
 </html>

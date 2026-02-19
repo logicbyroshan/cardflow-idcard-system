@@ -3,8 +3,8 @@ Active Client Table Container — HTMX swappable partial.
 Contains: Active clients table + pagination. Returned for HX-Request.
 
 Required context:
-  - clients (paginated queryset of active clients)
-  - search_query (optional)
+  - clients (paginated queryset of clients)
+  - search_query, status_filter (optional)
   - page_obj, page_range, per_page, per_page_options
 {% endcomment %}
 
@@ -22,14 +22,14 @@ Required context:
         {% if page_obj.paginator.num_pages > 1 %}
         <button class="pagination-btn {% if not page_obj.has_previous %}disabled{% endif %}"
                 {% if page_obj.has_previous %}
-                hx-get="?page=1{% if search_query %}&search={{ search_query }}{% endif %}&per_page={{ per_page }}"
+                hx-get="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}&per_page={{ per_page }}"
                 hx-target="#active-client-table-container"
                 hx-swap="innerHTML"
                 {% endif %}
                 title="First page"><i class="fa-solid fa-angles-left"></i></button>
         <button class="pagination-btn {% if not page_obj.has_previous %}disabled{% endif %}"
                 {% if page_obj.has_previous %}
-                hx-get="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}&per_page={{ per_page }}"
+                hx-get="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}&per_page={{ per_page }}"
                 hx-target="#active-client-table-container"
                 hx-swap="innerHTML"
                 {% endif %}
@@ -42,7 +42,7 @@ Required context:
                 <span class="page-ellipsis">…</span>
                 {% else %}
                 <button class="page-num"
-                        hx-get="?page={{ p }}{% if search_query %}&search={{ search_query }}{% endif %}&per_page={{ per_page }}"
+                        hx-get="?page={{ p }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}&per_page={{ per_page }}"
                         hx-target="#active-client-table-container"
                         hx-swap="innerHTML">{{ p }}</button>
                 {% endif %}
@@ -50,14 +50,14 @@ Required context:
         </span>
         <button class="pagination-btn {% if not page_obj.has_next %}disabled{% endif %}"
                 {% if page_obj.has_next %}
-                hx-get="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}&per_page={{ per_page }}"
+                hx-get="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}&per_page={{ per_page }}"
                 hx-target="#active-client-table-container"
                 hx-swap="innerHTML"
                 {% endif %}
                 title="Next page"><i class="fa-solid fa-chevron-right"></i></button>
         <button class="pagination-btn {% if not page_obj.has_next %}disabled{% endif %}"
                 {% if page_obj.has_next %}
-                hx-get="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}&per_page={{ per_page }}"
+                hx-get="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}&per_page={{ per_page }}"
                 hx-target="#active-client-table-container"
                 hx-swap="innerHTML"
                 {% endif %}
@@ -81,7 +81,7 @@ Required context:
                 {% for opt in per_page_options %}
                 <div class="dropdown-option {% if opt == per_page %}selected{% endif %}"
                      data-value="{{ opt }}"
-                     hx-get="?page=1{% if search_query %}&search={{ search_query }}{% endif %}&per_page={{ opt }}"
+                     hx-get="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}&per_page={{ opt }}"
                      hx-target="#active-client-table-container"
                      hx-swap="innerHTML">{{ opt }}</div>
                 {% endfor %}

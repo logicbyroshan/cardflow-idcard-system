@@ -1,5 +1,20 @@
 // Dashboard Page JavaScript
 
+// Global: toggle expandable client row
+function toggleClientExpandRow(tr) {
+    var idx = tr.getAttribute('data-idx');
+    var subRows = document.querySelectorAll('.expand-group-' + idx);
+    if (!subRows.length) return;
+    var isOpen = tr.classList.contains('expanded');
+    // Close all other expand groups
+    document.querySelectorAll('.client-sub-row').forEach(function(r) { r.style.display = 'none'; });
+    document.querySelectorAll('.client-row.expanded').forEach(function(r) { r.classList.remove('expanded'); });
+    if (!isOpen) {
+        subRows.forEach(function(r) { r.style.display = ''; });
+        tr.classList.add('expanded');
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     
     // ====================
@@ -206,40 +221,49 @@ document.addEventListener('DOMContentLoaded', function() {
         ApiClient.get('/panel/api/recent-client-updates/?limit=5')
             .then(data => {
                 if (data.success && data.clients.length > 0) {
-                    tbody.innerHTML = data.clients.map(client => `
-                        <tr>
+                    tbody.innerHTML = data.clients.map((client, i) => {
+                        const tables = client.tables || [];
+                        // Build sub-rows for each table (same column structure)
+                        const tableSubRows = tables.map(t => `
+                            <tr class="client-sub-row expand-group-${i}" style="display:none">
+                                <td>
+                                    <a href="/panel/table/${t.id}/cards/" class="sub-row-name"><i class="fa-solid fa-table"></i> ${esc(t.name)}</a>
+                                </td>
+                                <td class="text-center">
+                                    <a href="/panel/table/${t.id}/cards/?status=pending" class="count-badge pending">${t.pending}</a>
+                                </td>
+                                <td class="text-center">
+                                    <a href="/panel/table/${t.id}/cards/?status=verified" class="count-badge verified">${t.verified}</a>
+                                </td>
+                                <td class="text-center">
+                                    <a href="/panel/table/${t.id}/cards/?status=approved" class="count-badge approved">${t.approved}</a>
+                                </td>
+                                <td class="text-center">
+                                    <a href="/panel/table/${t.id}/cards/?status=download" class="count-badge downloaded">${t.downloaded}</a>
+                                </td>
+                            </tr>
+                        `).join('');
+
+                        return `
+                        <tr class="client-row" data-idx="${i}" onclick="toggleClientExpandRow(this)">
                             <td>
-                                <div class="client-info">
-                                    <div class="client-avatar">${esc(client.initial)}</div>
-                                    <span class="client-name">${esc(client.name)}</span>
-                                </div>
+                                <span class="client-name">${esc(client.name)}</span>
                             </td>
                             <td class="text-center">
-                                ${client.first_table_id 
-                                    ? `<a href="/panel/table/${client.first_table_id}/cards/?status=pending" class="count-badge pending">${client.pending}</a>`
-                                    : `<span class="count-badge pending">${client.pending}</span>`
-                                }
+                                <span class="count-badge pending">${client.pending}</span>
                             </td>
                             <td class="text-center">
-                                ${client.first_table_id 
-                                    ? `<a href="/panel/table/${client.first_table_id}/cards/?status=verified" class="count-badge verified">${client.verified}</a>`
-                                    : `<span class="count-badge verified">${client.verified}</span>`
-                                }
+                                <span class="count-badge verified">${client.verified}</span>
                             </td>
                             <td class="text-center">
-                                ${client.first_table_id 
-                                    ? `<a href="/panel/table/${client.first_table_id}/cards/?status=approved" class="count-badge approved">${client.approved}</a>`
-                                    : `<span class="count-badge approved">${client.approved}</span>`
-                                }
+                                <span class="count-badge approved">${client.approved}</span>
                             </td>
                             <td class="text-center">
-                                ${client.first_table_id 
-                                    ? `<a href="/panel/table/${client.first_table_id}/cards/?status=downloaded" class="count-badge downloaded">${client.downloaded}</a>`
-                                    : `<span class="count-badge downloaded">${client.downloaded}</span>`
-                                }
+                                <span class="count-badge downloaded">${client.downloaded}</span>
                             </td>
                         </tr>
-                    `).join('');
+                        ${tableSubRows}
+                    `}).join('');
                 } else {
                     tbody.innerHTML = `
                         <tr>

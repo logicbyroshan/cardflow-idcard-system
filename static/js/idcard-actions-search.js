@@ -100,8 +100,57 @@ window.currentSectionFilter = '';
 function initFilterHandlers() {
     initClassFilterDropdown();
     initSectionFilterDropdown();
+    initClearFiltersButton();
     // Populate options from table data after a short delay to let table render
     setTimeout(populateFilterOptions, 500);
+}
+
+/** Show/hide the clear-filters button based on whether any filter is active */
+function updateClearFiltersVisibility() {
+    const btn = document.getElementById('clearFiltersBtn');
+    if (!btn) return;
+    const hasFilter = currentClassFilter || currentSectionFilter || window._activeImageSort;
+    if (hasFilter) {
+        btn.classList.add('visible');
+    } else {
+        btn.classList.remove('visible');
+    }
+}
+
+/** Clear all class/section filters and refresh */
+function initClearFiltersButton() {
+    const btn = document.getElementById('clearFiltersBtn');
+    if (!btn) return;
+    btn.addEventListener('click', function() {
+        // Reset class filter
+        currentClassFilter = '';
+        window.currentClassFilter = '';
+        const classText = document.getElementById('classFilterText');
+        if (classText) classText.textContent = 'All Classes';
+        const classOptions = document.getElementById('classFilterOptions');
+        if (classOptions) {
+            classOptions.querySelectorAll('.dropdown-option').forEach(function(o) { o.classList.remove('selected'); });
+            var first = classOptions.querySelector('.dropdown-option[data-value=""]');
+            if (first) first.classList.add('selected');
+        }
+        // Reset section filter
+        currentSectionFilter = '';
+        window.currentSectionFilter = '';
+        const sectionText = document.getElementById('sectionFilterText');
+        if (sectionText) sectionText.textContent = 'All Sections';
+        const sectionOptions = document.getElementById('sectionFilterOptions');
+        if (sectionOptions) {
+            sectionOptions.querySelectorAll('.dropdown-option').forEach(function(o) { o.classList.remove('selected'); });
+            var first = sectionOptions.querySelector('.dropdown-option[data-value=""]');
+            if (first) first.classList.add('selected');
+        }
+        // Reset image sort filter
+        clearImageSortFilter();
+        // Hide clear button
+        updateClearFiltersVisibility();
+        // Refresh table
+        applyClassSectionFilters();
+    });
 }
 
 function initClassFilterDropdown() {
@@ -129,6 +178,7 @@ function initClassFilterDropdown() {
         window.currentClassFilter = val;
         text.textContent = opt.textContent.trim();
         dropdown.classList.remove('open');
+        updateClearFiltersVisibility();
         applyClassSectionFilters();
     });
 
@@ -162,6 +212,7 @@ function initSectionFilterDropdown() {
         window.currentSectionFilter = val;
         text.textContent = opt.textContent.trim();
         dropdown.classList.remove('open');
+        updateClearFiltersVisibility();
         applyClassSectionFilters();
     });
 
@@ -268,34 +319,66 @@ function getClassSectionColumnIndices() {
 }
 
 function applyClassSectionFilters() {
-    // When a class/section filter is active, we must load ALL rows from the
+    // When any filter is active, we must load ALL rows from the
     // server first — otherwise we'd only filter the ~200 rows in the DOM
     // while thousands more remain unloaded.
-    const hasFilter = currentClassFilter || currentSectionFilter;
+    const hasFilter = currentClassFilter || currentSectionFilter || window._activeImageSort;
     const hasMore = window.lazyLoadState && window.lazyLoadState.hasMore;
     
-    if (hasFilter && hasMore && typeof window.loadAllData === 'function') {
-        // loadAllData is async — load everything then apply filters
-        window.loadAllData().then(() => {
-            // Re-read allRows after all data is loaded
-            if (typeof initializeRows === 'function') initializeRows();
-            else if (typeof window.initializeRows === 'function') window.initializeRows();
-            // Now apply the main filter pipeline
-            if (typeof applyFiltersAndSort === 'function') {
-                applyFiltersAndSort();
-            } else if (typeof window.applyFiltersAndSort === 'function') {
-                window.applyFiltersAndSort();
-            }
-            // Re-populate filter options with all data now loaded
-            populateFilterOptions();
-        });
-    } else {
-        // All data already loaded or no filter — apply directly
+    // Helper to run the main filter pipeline
+    function runFilters() {
         if (typeof applyFiltersAndSort === 'function') {
             applyFiltersAndSort();
         } else if (typeof window.applyFiltersAndSort === 'function') {
             window.applyFiltersAndSort();
         }
+    }
+    
+    if (hasFilter && hasMore && typeof window.loadAllData === 'function') {
+        // PROGRESSIVE: Apply filters on already-loaded rows FIRST for instant feedback
+        runFilters();
+
+        // Show a non-blocking inline indicator instead of the full overlay
+        const loadingBtn = document.getElementById('selectAllDbBtn') || document.querySelector('.image-sort-btn');
+        const paginationInfo = document.querySelector('.pagination-info');
+        if (paginationInfo) {
+            paginationInfo.dataset.originalHtml = paginationInfo.innerHTML;
+            paginationInfo.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:4px;"></i> Loading all data...';
+        }
+
+        // Load remaining data WITHOUT blocking overlay (loadMoreData in batches)
+        (async function backgroundLoad() {
+            let batchCount = 0;
+            try {
+                while (window.lazyLoadState && window.lazyLoadState.hasMore) {
+                    await window.loadMoreData();
+                    batchCount++;
+                    // Re-apply filters every 3 batches to show progressive results without excessive reflows
+                    if (batchCount % 3 === 0) {
+                        if (typeof initializeRows === 'function') initializeRows();
+                        else if (typeof window.initializeRows === 'function') window.initializeRows();
+                        runFilters();
+                    }
+                }
+            } finally {
+                // Restore pagination info
+                if (paginationInfo && paginationInfo.dataset.originalHtml) {
+                    delete paginationInfo.dataset.originalHtml;
+                }
+                // Final re-apply with all data
+                if (typeof initializeRows === 'function') initializeRows();
+                else if (typeof window.initializeRows === 'function') window.initializeRows();
+                runFilters();
+                populateFilterOptions();
+                // Hide any loading overlay that loadMoreData might have shown
+                if (typeof window.showTableLoadingOverlay === 'function') {
+                    window.showTableLoadingOverlay(false);
+                }
+            }
+        })();
+    } else {
+        // All data already loaded or no filter — apply directly
+        runFilters();
     }
 }
 
@@ -551,6 +634,36 @@ function displaySearchResults(results, query, container, closeModalFn) {
 }
 
 // ==========================================
+// IMAGE SORT HELPERS
+// ==========================================
+
+/** Update the image sort button text to show the active filter */
+function updateImageSortBtnText(columnName, conditionText) {
+    var btn = document.getElementById('imageSortBtn');
+    if (!btn) return;
+    if (columnName && conditionText) {
+        btn.innerHTML = '<i class="fa-solid fa-image"></i> ' + conditionText;
+        btn.classList.add('filter-active');
+        btn.title = 'Image filter: ' + columnName.toUpperCase() + ' — ' + conditionText;
+    } else {
+        btn.innerHTML = '<i class="fa-solid fa-image"></i> Image Sort';
+        btn.classList.remove('filter-active');
+        btn.title = 'Filter by image status';
+    }
+}
+
+/** Clear image sort filter — resets rows, button text, and state */
+function clearImageSortFilter() {
+    var imageSortColumn = document.getElementById('imageSortColumn');
+    var imageSortCondition = document.getElementById('imageSortCondition');
+    if (imageSortColumn) imageSortColumn.value = '';
+    if (imageSortCondition) imageSortCondition.value = '';
+    window._activeImageSort = null;
+    updateImageSortBtnText(null, null);
+    updateClearFiltersVisibility();
+}
+
+// ==========================================
 // IMAGE SORT MODAL
 // ==========================================
 
@@ -600,15 +713,10 @@ function initImageSortModal() {
     
     if (clearImageSort) {
         clearImageSort.addEventListener('click', function() {
-            if (imageSortColumn) imageSortColumn.value = '';
-            if (imageSortCondition) imageSortCondition.value = '';
-            
-            const rows = document.querySelectorAll('#cardsTableBody tr[data-card-id]');
-            rows.forEach(row => {
-                row.style.display = '';
-            });
-            
+            clearImageSortFilter();
             closeImageSortModalFn();
+            // Re-apply filters pipeline to restore correct row visibility
+            applyClassSectionFilters();
             if (typeof showToast === 'function') showToast('Image filter cleared');
         });
     }
@@ -628,50 +736,21 @@ function initImageSortModal() {
                 return;
             }
             
-            const rows = document.querySelectorAll('#cardsTableBody tr[data-card-id]');
-            let visibleCount = 0;
-            
-            rows.forEach(row => {
-                const imageCell = row.querySelector(`td.image-cell[data-field-name="${columnName}"]`);
-                
-                if (!imageCell) {
-                    row.style.display = '';
-                    return;
-                }
-                
-                const hasImage = imageCell.querySelector('img.table-image') !== null;
-                const originalValue = imageCell.getAttribute('data-original-value') || '';
-                const isPending = originalValue.startsWith('PENDING:');
-                const hasColorfulPlaceholder = imageCell.querySelector('.no-image.colorful-placeholder') !== null;
-                const hasPendingPlaceholder = imageCell.querySelector('.no-image.pending-placeholder') !== null;
-                
-                let showRow = false;
-                
-                switch (condition) {
-                    case 'complete':
-                        // Has actual image uploaded (not pending, not placeholder)
-                        showRow = hasImage && originalValue.trim() !== '' && !isPending;
-                        break;
-                    case 'pending':
-                        // Has PENDING: prefix OR has pending placeholder
-                        showRow = isPending || hasPendingPlaceholder;
-                        break;
-                    case 'incomplete':
-                        // No image path at all (colorful placeholder)
-                        showRow = hasColorfulPlaceholder || (!hasImage && !isPending && originalValue.trim() === '');
-                        break;
-                }
-                
-                row.style.display = showRow ? '' : 'none';
-                if (showRow) visibleCount++;
-            });
-            
-            closeImageSortModalFn();
-            
             const conditionText = condition === 'complete' ? 'Complete' : 
                                   condition === 'pending' ? 'Pending' : 'Incomplete';
+
+            // Track active image sort state and update button text
+            window._activeImageSort = { column: columnName, condition: condition };
+            updateImageSortBtnText(columnName, conditionText);
+            updateClearFiltersVisibility();
+            
+            closeImageSortModalFn();
+
+            // Use central filter pipeline so image sort works WITH other filters
+            applyClassSectionFilters();
+
             if (typeof showToast === 'function') {
-                showToast(`Showing ${visibleCount} cards with ${conditionText} images in "${columnName.toUpperCase()}"`);
+                showToast(`Filtering by ${conditionText} images in "${columnName.toUpperCase()}"`);
             }
         });
     }

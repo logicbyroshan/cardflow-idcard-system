@@ -28,14 +28,16 @@ Required context:
                 <td>{{ client.user.email }}</td>
                 <td>{{ client.user.phone|default:"-" }}</td>
                 <td><span class="status-badge {% if client.status == 'active' %}active{% else %}inactive{% endif %}">{{ client.get_status_display }}</span></td>
-                <td>{{ client.created_at|date:"d-m-Y h:i a" }}</td>
-                <td>{{ client.updated_at|date:"d-m-Y h:i a" }}</td>
+                <td>{{ client.created_at|date:"d-m-Y H:i" }}</td>
+                <td>{{ client.updated_at|date:"d-m-Y H:i" }}</td>
             </tr>
             {% empty %}
             <tr class="no-data-row">
-                <td colspan="6" class="no-data">
-                    <i class="fa-solid fa-building-slash"></i>
-                    <span>No clients found</span>
+                <td colspan="6" class="no-data-cell">
+                    <div class="no-data">
+                        <i class="fa-solid fa-building-slash"></i>
+                        <span>No clients found</span>
+                    </div>
                 </td>
             </tr>
             {% endfor %}

@@ -9,15 +9,15 @@
   <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- Tailwind CSS (primary) -->
-  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=100">
+  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=130">
   <!-- Page-specific: group settings UI -->
-  <link rel="stylesheet" href="{% static 'css/group-setting.css' %}?v=100">
-  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=100">
+  <link rel="stylesheet" href="{% static 'css/group-setting.css' %}?v=130">
+  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=130">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <!-- Alpine.js State Module (MUST load before Alpine) -->
-  <script src="{% static 'js/alpine-state.js' %}?v=100"></script>
+  <script src="{% static 'js/alpine-state.js' %}?v=130"></script>
   <!-- Alpine.js -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
   <!-- SheetJS for Excel export -->
@@ -48,10 +48,10 @@
             {% if is_client or is_client_staff %}
             <span class="breadcrumb-item active">Group Settings</span>
             {% else %}
-            <a href="{% url 'active_clients' %}" class="breadcrumb-item">Active Clients</a>
+            <a href="{% url 'active_clients' %}" class="breadcrumb-item">Clients</a>
             <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
             {% if client %}
-            <span class="breadcrumb-item active">{{ client.name }} - Group Settings</span>
+            <span class="breadcrumb-item active">{{ client.name }}{% if client.status != 'active' %} <span class="status-badge inactive" style="font-size:11px;margin-left:4px;">{{ client.get_status_display }}</span>{% endif %} - Group Settings</span>
             {% else %}
             <span class="breadcrumb-item active">Group Settings</span>
             {% endif %}
@@ -84,90 +84,84 @@
             <button class="drawer-close" id="closeDrawer"><i class="fa-solid fa-xmark"></i></button>
           </div>
           <div class="drawer-body">
-            <div class="form-group">
-              <label for="tableName">Table Name <span class="required">*</span></label>
-              <input type="text" id="tableName" class="form-input" placeholder="Enter table name" required>
+
+            <!-- Table Name Section -->
+            <div class="form-section">
+              <div class="section-title"><i class="fa-solid fa-pen-to-square"></i> Table Details</div>
+              <div class="form-group">
+                <label class="form-label" for="tableName">Table Name <span class="required">*</span></label>
+                <input type="text" id="tableName" class="form-input" placeholder="Enter table name" required>
+              </div>
             </div>
-            <div class="add-field-section">
-              <label>Add New Field</label>
+
+            <!-- Add New Field Section -->
+            <div class="form-section add-field-section">
+              <div class="section-title"><i class="fa-solid fa-plus-circle"></i> Add New Field</div>
               <div class="add-field-form">
-                <div class="add-field-row">
-                  <div class="custom-dropdown field-type-dropdown" id="fieldTypeDropdown">
-                    <button type="button" class="dropdown-toggle" id="fieldTypeToggle">
-                      <span>Text</span>
-                      <i class="fa-solid fa-chevron-down"></i>
-                    </button>
-                    <div class="dropdown-options">
-                      <div class="dropdown-option selected" data-value="text">Text</div>
-                      <div class="dropdown-option" data-value="email">Email</div>
-                      <div class="dropdown-option" data-value="class_section">Class & Section</div>
-                      <div class="dropdown-option" data-value="photo">Photo</div>
-                      <div class="dropdown-option" data-value="mother_photo">Mother Photo</div>
-                      <div class="dropdown-option" data-value="father_photo">Father Photo</div>
-                      <div class="dropdown-option" data-value="barcode">Barcode</div>
-                      <div class="dropdown-option" data-value="qr_code">QR Code</div>
-                      <div class="dropdown-option" data-value="signature">Signature</div>
+                  <div class="gs-field-row">
+                    <div class="gs-field-col gs-field-col-type">
+                      <label class="form-label">Field Type</label>
+                      <div class="custom-dropdown field-type-dropdown" id="fieldTypeDropdown">
+                        <button type="button" class="dropdown-toggle gs-dropdown-toggle" id="fieldTypeToggle">
+                          <span>Text</span>
+                          <i class="fa-solid fa-chevron-down"></i>
+                        </button>
+                        <div class="dropdown-options">
+                          <div class="dropdown-option selected" data-value="text">Text</div>
+                          <div class="dropdown-option" data-value="email">Email</div>
+                          <div class="dropdown-option" data-value="class_section">Class & Section</div>
+                          <div class="dropdown-option" data-value="photo">Photo</div>
+                          <div class="dropdown-option" data-value="mother_photo">Mother Photo</div>
+                          <div class="dropdown-option" data-value="father_photo">Father Photo</div>
+                          <div class="dropdown-option" data-value="barcode">Barcode</div>
+                          <div class="dropdown-option" data-value="qr_code">QR Code</div>
+                          <div class="dropdown-option" data-value="signature">Signature</div>
+                        </div>
+                      </div>
+                      <input type="hidden" id="new-field-type" value="text">
+                    </div>
+                    <div class="gs-field-col gs-field-col-name">
+                      <label class="form-label">Field Name</label>
+                      <input type="text" id="new-field-name" class="form-input" placeholder="e.g., Student Name">
                     </div>
                   </div>
-                  <input type="hidden" id="new-field-type" value="text">
-                  <input type="text" id="new-field-name" class="form-input" placeholder="Field Name (e.g., Student Name)">
-                  <label class="mandatory-checkbox" title="Mark field as mandatory">
-                    <input type="checkbox" id="new-field-mandatory">
-                    <span class="mandatory-label">Required</span>
-                  </label>
-                  <button id="add-field-btn" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Add</button>
+                  <div class="gs-field-actions">
+                    <label class="gs-required-toggle" title="Mark field as mandatory">
+                      <input type="checkbox" id="new-field-mandatory">
+                      <span class="gs-required-label"><i class="fa-solid fa-asterisk"></i> Required</span>
+                    </label>
+                    <button id="add-field-btn" class="btn btn-md btn-primary"><i class="fa-solid fa-plus"></i> Add Field</button>
+                  </div>
+                </div>
+            </div>
+
+            <!-- Field List Section -->
+            <div class="form-section">
+              <div class="section-title"><i class="fa-solid fa-list-check"></i> Table Fields <span class="gs-field-badge"><span id="fieldCount">0</span>/20</span></div>
+              <p class="gs-field-hint"><i class="fa-solid fa-grip-vertical"></i> Drag to reorder &bull; Click remove to delete</p>
+              <div class="field-list-section">
+                <ul id="field-list" class="field-list">
+                  <!-- Fields will be dynamically added here -->
+                </ul>
+                <div id="no-fields-message" class="no-fields-message">
+                  <i class="fa-solid fa-info-circle"></i> No fields added yet. Use the form above to add fields.
                 </div>
               </div>
             </div>
-            <div class="field-list-section">
-              <label class="field-list-label">Table Fields <span class="field-count">(<span id="fieldCount">0</span>/20)</span></label>
-              <div class="field-list-hint">Add up to 20 fields. Drag to reorder. Click remove to delete.</div>
-              <ul id="field-list" class="field-list">
-                <!-- Fields will be dynamically added here -->
-              </ul>
-              <div id="no-fields-message" class="no-fields-message">
-                <i class="fa-solid fa-info-circle"></i> No fields added yet. Use the form above to add fields.
-              </div>
-            </div>
+
           </div>
           <div class="drawer-footer">
-            <button type="button" class="btn btn-cancel" id="cancelDrawer"><i class="fa-solid fa-xmark"></i> Cancel</button>
-            <button type="button" class="btn btn-save" id="saveDrawer"><i class="fa-solid fa-plus"></i> Create</button>
+            <button type="button" class="btn btn-md btn-neutral" id="cancelDrawer"><i class="fa-solid fa-xmark"></i> Cancel</button>
+            <button type="button" class="btn btn-md btn-primary" id="saveDrawer"><i class="fa-solid fa-plus"></i> Create</button>
           </div>
         </div>
       </div>
 
       <!-- Status Confirmation Modal -->
-      <div id="status-modal" class="modal" x-show="activeModal === 'status'" x-transition.opacity @click.self="closeModal()" style="display:none">
-        <div class="modal-content" x-show="activeModal === 'status'" x-transition.scale.origin.center>
-          <span class="modal-close" @click="closeModal()">&times;</span>
-          <div class="status-icon" id="modalIcon">
-            <i class="fa-solid fa-toggle-on"></i>
-          </div>
-          <p id="modal-message">Are you sure you want to change the status?</p>
-          <p class="warning-text">This action will update the table status.</p>
-          <div class="modal-actions">
-            <button @click="closeModal()" class="btn btn-cancel">Cancel</button>
-            <button id="modal-confirm" class="btn btn-confirm">Yes, Change</button>
-          </div>
-        </div>
-      </div>
+      {% include 'components/status-modal.html' with modal_id="status-modal" item_name="table" %}
 
       <!-- Delete Confirmation Modal -->
-      <div id="delete-modal" class="modal" x-show="activeModal === 'delete'" x-transition.opacity @click.self="closeModal()" style="display:none">
-        <div class="modal-content" x-show="activeModal === 'delete'" x-transition.scale.origin.center>
-          <span class="modal-close" @click="closeModal()">&times;</span>
-          <div class="delete-icon">
-            <i class="fa-solid fa-trash"></i>
-          </div>
-          <p>Are you sure you want to delete <strong id="deleteTableName">this table</strong>?</p>
-          <p class="warning-text">This action cannot be undone.</p>
-          <div class="modal-actions">
-            <button @click="closeModal()" class="btn btn-cancel">Cancel</button>
-            <button id="confirmDeleteBtn" class="btn btn-danger">Delete</button>
-          </div>
-        </div>
-      </div>
+      {% include 'components/delete-modal.html' with modal_id="delete-modal" item_name="table" %}
 
       <!-- Toast notification -->
       {% include 'partials/components/toast.html' %}
@@ -241,13 +235,13 @@
   </script>
   
   <!-- Core Modules (Load Order: api → toast → modal → utils → init) -->
-  <script src="{% static 'js/core/api.js' %}?v=100"></script>
-  <script src="{% static 'js/core/toast.js' %}?v=100"></script>
-  <script src="{% static 'js/core/modal.js' %}?v=100"></script>
-  <script src="{% static 'js/core/utils.js' %}?v=100"></script>
-  <script src="{% static 'js/init.js' %}?v=100"></script>
-  <script src="{% static 'js/group-setting.js' %}?v=100"></script>
-  <script src="{% static 'js/global-search.js' %}?v=100"></script>
+  <script src="{% static 'js/core/api.js' %}?v=130"></script>
+  <script src="{% static 'js/core/toast.js' %}?v=130"></script>
+  <script src="{% static 'js/core/modal.js' %}?v=130"></script>
+  <script src="{% static 'js/core/utils.js' %}?v=130"></script>
+  <script src="{% static 'js/init.js' %}?v=130"></script>
+  <script src="{% static 'js/group-setting.js' %}?v=130"></script>
+  <script src="{% static 'js/global-search.js' %}?v=130"></script>
   {% include 'partials/htmx-config.html' %}
   <script>
     document.addEventListener('DOMContentLoaded', function() {

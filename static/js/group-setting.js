@@ -28,13 +28,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const newFieldMandatory = document.getElementById('new-field-mandatory');
     const addFieldBtn = document.getElementById('add-field-btn');
     
-    // Modal content elements (modals themselves are Alpine x-show managed)
-    const modalConfirm = document.getElementById('modal-confirm');
-    const modalMessage = document.getElementById('modal-message');
-    const modalIcon = document.getElementById('modalIcon');
+    // Modal content elements (standard component IDs from includes)
+    const modalConfirm = document.getElementById('confirmStatusBtn');
+    const statusItemName = document.getElementById('statusItemName');
+    const statusNote = document.getElementById('statusNote');
     
     const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
-    const deleteTableName = document.getElementById('deleteTableName');
+    const deleteStaffName = document.getElementById('deleteStaffName');
     
     const toast = document.getElementById('toast');
     const toastMessage = document.getElementById('toastMessage');
@@ -187,53 +187,63 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ==================== DRAWER FUNCTIONS ====================
     
-    // Auto-detect field type from name using strict exact-match only.
-    // Prevents misdetection (e.g. "Designation" will NOT match "Signature").
+    // Auto-detect field type from name using fuzzy keyword matching.
+    // Uses priority-ordered rules: longer/more-specific patterns matched first.
+    // Avoids false positives (e.g. "Designation" will NOT match "Signature")
+    // by requiring word-boundary matches for short keywords.
     function detectFieldTypeFromName(name) {
-        const n = name.toLowerCase().trim();
-        const typeMap = {
-            // Class variants
-            'class': 'class',
-            'std': 'class',
-            'standard': 'class',
-            'grade': 'class',
-            // Section variants
-            'section': 'section',
-            'sec': 'section',
-            'division': 'section',
-            'div': 'section',
-            // Email variants
-            'email': 'email',
-            'e-mail': 'email',
-            'e mail': 'email',
-            'mail': 'email',
-            'email id': 'email',
-            'mail id': 'email',
-            'email address': 'email',
-            // Photo variants
-            'photo': 'photo',
-            'photograph': 'photo',
-            'student photo': 'photo',
-            'student image': 'photo',
-            // Mother Photo variants
-            'mother photo': 'mother_photo',
-            "mother's photo": 'mother_photo',
-            'mother image': 'mother_photo',
-            // Father Photo variants
-            'father photo': 'father_photo',
-            "father's photo": 'father_photo',
-            'father image': 'father_photo',
-            // Barcode variants
-            'barcode': 'barcode',
-            'bar code': 'barcode',
-            // QR Code variants
-            'qr code': 'qr_code',
-            'qrcode': 'qr_code',
-            'qr': 'qr_code',
-            // Signature
-            'signature': 'signature',
-        };
-        return typeMap[n] || null;
+        const n = name.toLowerCase().trim().replace(/[_\-]+/g, ' ');
+        if (!n) return null;
+
+        // Priority-ordered rules (most specific first)
+        // Each rule: [patterns[], fieldType, mode]
+        // mode: 'exact' = full string match, 'keyword' = word-boundary match, 'includes' = substring
+        const rules = [
+            // Mother photo — must match before generic 'photo'
+            { type: 'mother_photo', exact: ['mother photo', "mother's photo", 'mother image', 'mother pic', 'mother photograph', 'mom photo', 'maa photo', 'm photo'],
+              keywords: ['mother photo', 'mother image', 'mother pic'] },
+            // Father photo — must match before generic 'photo'
+            { type: 'father_photo', exact: ['father photo', "father's photo", 'father image', 'father pic', 'father photograph', 'dad photo', 'papa photo', 'f photo'],
+              keywords: ['father photo', 'father image', 'father pic'] },
+            // Signature — word-boundary to avoid "designation"
+            { type: 'signature', exact: ['signature', 'sign', 'student signature', 'child signature', 'student sign'],
+              keywords: ['signature'] },
+            // QR Code
+            { type: 'qr_code', exact: ['qr code', 'qrcode', 'qr', 'qr image'],
+              keywords: ['qr code', 'qrcode'] },
+            // Barcode
+            { type: 'barcode', exact: ['barcode', 'bar code', 'bar image'],
+              keywords: ['barcode', 'bar code'] },
+            // Generic photo (after mother/father)
+            { type: 'photo', exact: ['photo', 'photograph', 'student photo', 'student image', 'student pic', 'child photo', 'pic', 'image', 'student photograph', 'passport photo'],
+              keywords: ['photo', 'photograph', 'student image', 'student pic'] },
+            // Class
+            { type: 'class', exact: ['class', 'std', 'standard', 'grade', 'cls'],
+              keywords: [] },
+            // Section
+            { type: 'section', exact: ['section', 'sec', 'division', 'div'],
+              keywords: [] },
+            // Email
+            { type: 'email', exact: ['email', 'e-mail', 'e mail', 'mail', 'email id', 'mail id', 'email address'],
+              keywords: ['email', 'e mail'] },
+        ];
+
+        // Pass 1: exact match (highest confidence)
+        for (const rule of rules) {
+            if (rule.exact && rule.exact.indexOf(n) !== -1) return rule.type;
+        }
+
+        // Pass 2: word-boundary keyword match (fuzzy but safe)
+        for (const rule of rules) {
+            for (const kw of (rule.keywords || [])) {
+                try {
+                    const re = new RegExp('\\b' + kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
+                    if (re.test(n)) return rule.type;
+                } catch(e) {}
+            }
+        }
+
+        return null;
     }
 
     // Field type options with display labels
@@ -371,7 +381,7 @@ document.addEventListener('DOMContentLoaded', function() {
             currentFields = [];
             saveDrawer.style.display = 'inline-flex';
             saveDrawer.innerHTML = '<i class="fa-solid fa-plus"></i> Create';
-            saveDrawer.className = 'btn btn-save';
+            saveDrawer.className = 'btn btn-md btn-primary';
             if (addFieldSection) addFieldSection.style.display = 'block';
         } else if (mode === 'edit') {
             drawerTitle.textContent = 'Edit Table';
@@ -381,7 +391,7 @@ document.addEventListener('DOMContentLoaded', function() {
             currentFields = data.fields || [];
             saveDrawer.style.display = 'inline-flex';
             saveDrawer.innerHTML = '<i class="fa-solid fa-check"></i> Update';
-            saveDrawer.className = 'btn btn-update';
+            saveDrawer.className = 'btn btn-md btn-primary';
             if (addFieldSection) addFieldSection.style.display = 'block';
         } else if (mode === 'view') {
             drawerTitle.textContent = 'View Table';
@@ -525,14 +535,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const currentStatus = selectedRow.dataset.tableStatus;
             const newStatus = currentStatus === 'active' ? 'Inactive' : 'Active';
             
-            if (modalMessage) modalMessage.textContent = `Are you sure you want to set "${name}" to ${newStatus}?`;
-            if (modalIcon) {
-                if (currentStatus === 'active') {
-                    modalIcon.innerHTML = '<i class="fa-solid fa-toggle-off"></i>';
-                } else {
-                    modalIcon.innerHTML = '<i class="fa-solid fa-toggle-on"></i>';
-                }
-            }
+            if (statusItemName) statusItemName.textContent = `"${name}"`;
+            if (statusNote) statusNote.innerHTML = `<i class="fa-solid fa-info-circle"></i> Table will be set to ${newStatus}.`;
             if (window.alpineOpenModal) window.alpineOpenModal('status');
         });
     }
@@ -542,7 +546,7 @@ document.addEventListener('DOMContentLoaded', function() {
         deleteBtn.addEventListener('click', () => {
             if (!selectedRow) return;
             const name = selectedRow.dataset.tableName;
-            if (deleteTableName) deleteTableName.textContent = name;
+            if (deleteStaffName) deleteStaffName.textContent = name;
             if (window.alpineOpenModal) window.alpineOpenModal('delete');
         });
     }

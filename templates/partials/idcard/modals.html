@@ -107,11 +107,11 @@
 </div>
 
 <!-- Image Sort Modal -->
-<div class="upload-modal-overlay" id="imageSortModalOverlay" onclick="if(event.target===this)this.classList.remove('active')">
+<div class="upload-modal-overlay" id="imageSortModalOverlay">
   <div class="upload-modal image-sort-modal">
     <div class="upload-modal-header">
       <h3><i class="fa-solid fa-image"></i> Image Sort</h3>
-      <button class="upload-modal-close" id="closeImageSortModal" onclick="document.getElementById('imageSortModalOverlay').classList.remove('active')" aria-label="Close image sort modal"><i class="fa-solid fa-xmark"></i></button>
+      <button class="upload-modal-close" id="closeImageSortModal" aria-label="Close image sort modal"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div class="upload-modal-body">
       <div class="image-sort-form">
@@ -139,74 +139,11 @@
       </div>
     </div>
     <div class="upload-modal-footer">
-      <button class="btn btn-secondary" id="clearImageSort" onclick="document.getElementById('imageSortColumn').value='';document.getElementById('imageSortCondition').value='';document.querySelectorAll('#cardsTableBody tr').forEach(r=>r.style.display='');document.getElementById('imageSortModalOverlay').classList.remove('active');if(typeof showToast==='function')showToast('Image filter cleared');">Clear Filter</button>
-      <button class="btn btn-primary" id="applyImageSort" onclick="window.applyImageSortFilter()"><i class="fa-solid fa-check"></i> Apply Sort</button>
+      <button class="btn btn-secondary" id="clearImageSort">Clear Filter</button>
+      <button class="btn btn-primary" id="applyImageSort"><i class="fa-solid fa-check"></i> Apply Sort</button>
     </div>
   </div>
 </div>
-
-<script>
-window.applyImageSortFilter = function() {
-    var columnName = document.getElementById('imageSortColumn').value;
-    var condition = document.getElementById('imageSortCondition').value;
-    
-    if (!columnName) {
-        if (typeof showToast === 'function') showToast('Please select an image column', 'error');
-        return;
-    }
-    
-    if (!condition) {
-        if (typeof showToast === 'function') showToast('Please select a condition', 'error');
-        return;
-    }
-    
-    var rows = document.querySelectorAll('#cardsTableBody tr[data-card-id]');
-    var visibleCount = 0;
-    
-    rows.forEach(function(row) {
-        var imageCell = row.querySelector('td.image-cell[data-field-name="' + columnName + '"]');
-        
-        if (!imageCell) {
-            row.style.display = '';
-            return;
-        }
-        
-        var hasImage = imageCell.querySelector('img.table-image') !== null;
-        var originalValue = imageCell.getAttribute('data-original-value') || '';
-        var isPending = originalValue.startsWith('PENDING:');
-        var hasColorfulPlaceholder = imageCell.querySelector('.no-image.colorful-placeholder') !== null;
-        var hasPendingPlaceholder = imageCell.querySelector('.no-image.pending-placeholder') !== null;
-        
-        var showRow = false;
-        
-        switch (condition) {
-            case 'complete':
-                // Has actual image uploaded (not pending, not placeholder)
-                showRow = hasImage && originalValue.trim() !== '' && !isPending;
-                break;
-            case 'pending':
-                // Has PENDING: prefix OR has pending placeholder
-                showRow = isPending || hasPendingPlaceholder;
-                break;
-            case 'incomplete':
-                // No image path at all (colorful placeholder)
-                showRow = hasColorfulPlaceholder || (!hasImage && !isPending && originalValue.trim() === '');
-                break;
-        }
-        
-        row.style.display = showRow ? '' : 'none';
-        if (showRow) visibleCount++;
-    });
-    
-    document.getElementById('imageSortModalOverlay').classList.remove('active');
-    
-    var conditionText = condition === 'complete' ? 'Complete' : 
-                        condition === 'pending' ? 'Pending' : 'Incomplete';
-    if (typeof showToast === 'function') {
-        showToast('Showing ' + visibleCount + ' cards with ' + conditionText + ' images in "' + columnName.toUpperCase() + '"');
-    }
-};
-</script>
 
 <!-- Search All Modal -->
 <div class="upload-modal-overlay" id="searchAllModalOverlay">

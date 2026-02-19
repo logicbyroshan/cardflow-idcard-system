@@ -52,8 +52,9 @@
 
     /* ===== DELETE / TOGGLE ===== */
 
-    window.deleteReview = function (id) {
-        if (!confirm('Delete this review?')) return;
+    window.deleteReview = async function (id) {
+        const ok = await waConfirm({ title: 'Delete Review?', text: 'This review will be permanently removed.', icon: 'fa-solid fa-trash' });
+        if (!ok) return;
         ApiClient.post(`${BASE}/reviews/${id}/delete/`)
             .then(d => { if (d.success) { showToast(d.message, 'success'); location.reload(); } else showToast(d.message, 'error'); })
             .catch(() => showToast('Network error', 'error'));

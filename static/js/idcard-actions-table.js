@@ -10,7 +10,7 @@
 let allRows = [];
 let filteredRows = [];
 let currentPage = 1;
-let rowsPerPage = 50;
+let rowsPerPage = 100;
 let currentFilter = 'all';
 let currentSort = 'sr-asc';
 let searchQuery = '';
@@ -293,6 +293,45 @@ function applyFiltersAndSort() {
             }
         }
         
+        // Image sort filter — check image cell status (complete/pending/incomplete)
+        if (window._activeImageSort) {
+            const imgSort = window._activeImageSort;
+            // Try exact match first, then case-insensitive fallback
+            let imageCell = row.querySelector('td.image-cell[data-field-name="' + imgSort.column + '"]');
+            if (!imageCell) {
+                // Fallback: case-insensitive search across all image cells
+                const allImageCells = row.querySelectorAll('td.image-cell[data-field-name]');
+                const colLower = imgSort.column.toLowerCase();
+                for (let i = 0; i < allImageCells.length; i++) {
+                    if ((allImageCells[i].getAttribute('data-field-name') || '').toLowerCase() === colLower) {
+                        imageCell = allImageCells[i]; break;
+                    }
+                }
+            }
+            if (!imageCell) {
+                // No matching image column found on this row — exclude it
+                return false;
+            }
+            const hasImage = imageCell.querySelector('img.table-image') !== null;
+            const originalValue = imageCell.getAttribute('data-original-value') || '';
+            const isPending = originalValue.startsWith('PENDING:');
+            const hasColorfulPlaceholder = imageCell.querySelector('.no-image.colorful-placeholder') !== null;
+            const hasPendingPlaceholder = imageCell.querySelector('.no-image.pending-placeholder') !== null;
+            let showRow = false;
+            switch (imgSort.condition) {
+                case 'complete':
+                    showRow = hasImage && originalValue.trim() !== '' && !isPending;
+                    break;
+                case 'pending':
+                    showRow = isPending || hasPendingPlaceholder;
+                    break;
+                case 'incomplete':
+                    showRow = hasColorfulPlaceholder || (!hasImage && !isPending && originalValue.trim() === '');
+                    break;
+            }
+            if (!showRow) return false;
+        }
+        
         return true;
     });
     
@@ -403,16 +442,17 @@ function updatePaginationInfoEndless(totalLoaded) {
 }
 
 function updatePageNumbersForEndless(totalLoaded) {
-    // Use filtered count for pagination when filters are active
-    const hasFilter = window.currentClassFilter || window.currentSectionFilter || searchQuery;
-    const totalCount = (hasFilter ? totalLoaded : lazyLoadState.totalCount) || totalLoaded;
-    const totalPages = Math.ceil(totalCount / rowsPerPage) || 1;
+    // Calculate total pages from visible rows (not server total count)
+    const visibleCount = filteredRows.filter(r => r.style.display !== 'none').length || totalLoaded;
+    const totalPages = Math.ceil(visibleCount / rowsPerPage) || 1;
     
     const tableContainer = document.querySelector('.idcard-table');
     let virtualPage = 1;
-    if (tableContainer) {
-        const scrollPercentage = tableContainer.scrollTop / (tableContainer.scrollHeight - tableContainer.clientHeight || 1);
-        virtualPage = Math.max(1, Math.ceil(scrollPercentage * totalPages));
+    if (tableContainer && visibleCount > 0) {
+        // Calculate virtual page from approximate first visible row index
+        const avgRowHeight = tableContainer.scrollHeight / (visibleCount || 1);
+        const firstVisibleRowIndex = Math.floor(tableContainer.scrollTop / (avgRowHeight || 1));
+        virtualPage = Math.min(totalPages, Math.max(1, Math.floor(firstVisibleRowIndex / rowsPerPage) + 1));
     }
     
     const pageNumbersContainer = document.querySelector('.page-numbers');
@@ -579,7 +619,11 @@ function goToPrevPage() {
     if (endlessScrollMode) {
         const tableContainer = document.querySelector('.idcard-table');
         if (tableContainer) {
-            tableContainer.scrollBy({ top: -tableContainer.clientHeight * 0.8, behavior: 'smooth' });
+            const visibleRows = filteredRows.filter(r => r.style.display !== 'none');
+            const totalRows = visibleRows.length || 1;
+            const avgRowHeight = tableContainer.scrollHeight / totalRows;
+            const jumpPx = avgRowHeight * rowsPerPage;
+            tableContainer.scrollBy({ top: -jumpPx, behavior: 'smooth' });
         }
     } else {
         goToPage(currentPage - 1);
@@ -590,7 +634,11 @@ function goToNextPage() {
     if (endlessScrollMode) {
         const tableContainer = document.querySelector('.idcard-table');
         if (tableContainer) {
-            tableContainer.scrollBy({ top: tableContainer.clientHeight * 0.8, behavior: 'smooth' });
+            const visibleRows = filteredRows.filter(r => r.style.display !== 'none');
+            const totalRows = visibleRows.length || 1;
+            const avgRowHeight = tableContainer.scrollHeight / totalRows;
+            const jumpPx = avgRowHeight * rowsPerPage;
+            tableContainer.scrollBy({ top: jumpPx, behavior: 'smooth' });
         }
     } else {
         goToPage(currentPage + 1);
@@ -648,6 +696,21 @@ function showTableLoadingOverlay(show) {
     }
 }
 
+// Mirror Python get_td_width_class filter for dynamic text fields
+function getTdWidthClass(fieldName, fieldType) {
+    if (!fieldName) return 'min-w-[80px] whitespace-normal break-words';
+    const name = fieldName.toLowerCase().trim();
+    const type = (fieldType || '').toLowerCase();
+    if (/\bphone\b|\bmobile\b|\bcontact\b|\bwhatsapp\b/.test(name)) return 'w-[100px] whitespace-normal text-center';
+    if (type === 'date' || /\bdob\b|\bdate\b/.test(name)) return 'w-[80px] whitespace-nowrap text-center';
+    if (/^class$|^section$|^div$/.test(name)) return 'w-[40px] text-center';
+    if (/\bblood\b|\bgroup\b/.test(name)) return 'w-[45px] text-center';
+    if (/\bname\b/.test(name)) return 'min-w-[100px] text-left';
+    if (/^gender$|^sex$/.test(name)) return 'w-[40px] text-center';
+    if (type === 'textarea' || /\baddress\b/.test(name)) return 'min-w-[100px] max-w-[180px] text-left';
+    return 'min-w-[80px] text-left';
+}
+
 function createRowFromCard(card, index) {
     const tr = document.createElement('tr');
     tr.setAttribute('data-card-id', card.id);
@@ -696,8 +759,8 @@ function createRowFromCard(card, index) {
         return 'photo-type';
     }
     
-    let html = `<td class="checkbox-cell"><input type="checkbox" class="rowCheckbox"></td>`;
-    html += `<td class="sr-no-cell">${card.sr_no}</td>`;
+    let html = `<td class="w-[24px] px-[1px] py-1 text-center align-middle checkbox-cell"><input type="checkbox" class="rowCheckbox"></td>`;
+    html += `<td class="w-[36px] px-[1px] py-1 text-center align-middle sr-no-cell">${card.sr_no}</td>`;
     
     if (card.ordered_fields) {
         const _esc = window.escapeHtml || function(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); };
@@ -750,30 +813,27 @@ function createRowFromCard(card, index) {
                 
                 // IMPORTANT: Store raw fieldValue (including PENDING:xxx) for Image Sort filter to work
                 // This matches what template table.html stores
-                html += `<td class="image-field image-cell ${imageTypeClass}" 
+                html += `<td class="w-[28px] px-[1px] py-1 text-center align-middle image-field image-cell ${imageTypeClass}" 
                     data-field="${safeFieldName}"
                     data-field-name="${safeFieldName}" 
                     data-field-type="image"
                     data-original-value="${safeFieldValue}">
                     <div class="image-with-edit">
                         ${imageHtml}
-                        ${(typeof PERMS !== 'undefined' && PERMS.idcard_edit && !(typeof IS_CLIENT_USER !== 'undefined' && IS_CLIENT_USER && typeof CLIENT_READONLY_STATUSES !== 'undefined' && CLIENT_READONLY_STATUSES.indexOf(lazyLoadState.currentStatus) !== -1)) ? `<button class="edit-photo-btn" data-card-id="${card.id}" title="Edit Card"><i class="fa-solid fa-pen"></i></button>` : ''}
+                        ${(typeof PERMS !== 'undefined' && PERMS.idcard_edit && !(typeof IS_CLIENT_USER !== 'undefined' && IS_CLIENT_USER && typeof CLIENT_READONLY_STATUSES !== 'undefined' && CLIENT_READONLY_STATUSES.indexOf(lazyLoadState.currentStatus) !== -1)) ? `<button class="edit-photo-btn" data-card-id="${card.id}" title="Edit Card">Edit</button>` : ''}
                     </div>
                 </td>`;
             } else {
-                const textClass = fieldType === 'textarea' ? 'long-text' : 
-                                 (fieldType === 'date' || fieldType === 'number') ? 'short-text' :
-                                 fieldValue.length <= 10 ? 'short-text' :
-                                 fieldValue.length > 40 ? 'long-text' : 'medium-text';
+                const widthAlignClass = getTdWidthClass(fieldName, fieldType);
                 
                 // Client users on approved/download/reprint: no inline editing
                 const isLockedForClient = (typeof IS_CLIENT_USER !== 'undefined' && IS_CLIENT_USER
                     && typeof CLIENT_READONLY_STATUSES !== 'undefined'
                     && CLIENT_READONLY_STATUSES.indexOf(lazyLoadState.currentStatus) !== -1);
                 const editableClass = isLockedForClient ? 'dynamic-field' : 'dynamic-field editable-cell';
-                const editTitle = isLockedForClient ? '' : 'title="Double-click to edit"';
+                const editTitle = isLockedForClient ? '' : 'title="Click to edit"';
                 
-                html += `<td class="${editableClass} ${textClass}" 
+                html += `<td class="${editableClass} ${widthAlignClass} px-[1px] py-1 align-middle" 
                     data-field="${safeFieldName}"
                     data-field-name="${safeFieldName}" 
                     data-field-type="${fieldType}"
@@ -785,15 +845,28 @@ function createRowFromCard(card, index) {
         });
     }
     
-    html += `<td class="action-cell">
-        <div class="action-buttons">
-            ${getRowActionButtons(lazyLoadState.currentStatus, card.id)}
-        </div>
-    </td>`;
+    // Status-dependent last column(s)
+    const status = lazyLoadState.currentStatus;
+    if (status === 'approved') {
+        // Approved list: no action column
+    } else if (status === 'download') {
+        // Downloaded list: show downloaded_at timestamp
+        html += `<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">${card.downloaded_at || '-'}</td>`;
+    } else if (status === 'pool') {
+        // Pool list: show deleted_at timestamp
+        html += `<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">${card.deleted_at || '-'}</td>`;
+    } else {
+        // Pending/Verified: show action buttons
+        html += `<td class="w-[60px] px-[1px] py-1 text-center align-middle action-cell">
+            <div class="action-buttons inline-flex flex-col gap-[2px]">
+                ${getRowActionButtons(status, card.id)}
+            </div>
+        </td>`;
+    }
     
     if (typeof PERMS === 'undefined' || PERMS.idcard_updated_at) {
-        html += `<td class="date-cell">${card.updated_at || ''}</td>`;
-        html += `<td class="user-cell">Admin</td>`;
+        html += `<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">${card.updated_at || ''}</td>`;
+        html += `<td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center">Admin</td>`;
     }
     
     tr.innerHTML = html;
@@ -802,32 +875,17 @@ function createRowFromCard(card, index) {
 
 function getRowActionButtons(status, cardId) {
     var p = (typeof PERMS !== 'undefined') ? PERMS : {};
-    // Client/client_staff: no action buttons on approved/download/reprint
-    var isClientReadonly = (typeof IS_CLIENT_USER !== 'undefined' && IS_CLIENT_USER
-        && typeof CLIENT_READONLY_STATUSES !== 'undefined'
-        && CLIENT_READONLY_STATUSES.indexOf(status) !== -1);
     switch(status) {
         case 'pending':
-            return p.idcard_verify ? `<button class="row-action-btn verify-row-btn" data-card-id="${cardId}" title="Verify this card"><i class="fa-solid fa-check"></i><span>Verify</span></button>` : '';
+            return p.idcard_verify ? `<button class="row-action-btn verify-row-btn" data-card-id="${cardId}" title="Verify this card"><span>Verify</span></button>` : '';
         case 'verified': {
             let btns = '';
-            if (p.idcard_approve) btns += `<button class="row-action-btn approve-row-btn" data-card-id="${cardId}" title="Approve this card"><i class="fa-solid fa-check-double"></i><span>Approve</span></button>`;
-            if (p.idcard_verify) btns += `<button class="row-action-btn unverify-row-btn" data-card-id="${cardId}" title="Move back to pending"><i class="fa-solid fa-rotate-left"></i><span>Unverify</span></button>`;
+            if (p.idcard_approve) btns += `<button class="row-action-btn approve-row-btn" data-card-id="${cardId}" title="Approve this card"><span>Approve</span></button>`;
+            if (p.idcard_verify) btns += `<button class="row-action-btn unverify-row-btn" data-card-id="${cardId}" title="Move back to pending"><span>Unverify</span></button>`;
             return btns;
         }
-        case 'approved': {
-            if (isClientReadonly) return '';
-            let btns = '';
-            if (p.idcard_approve) btns += `<button class="row-action-btn download-row-btn" data-card-id="${cardId}" title="Move to download list"><i class="fa-solid fa-download"></i><span>Download</span></button>`;
-            if (p.idcard_verify) btns += `<button class="row-action-btn unapprove-row-btn" data-card-id="${cardId}" title="Move back to verified"><i class="fa-solid fa-rotate-left"></i><span>Unapprove</span></button>`;
-            return btns;
-        }
-        case 'download':
-            return p.idcard_bulk_download ? `<button class="row-action-btn download-single-row-btn" data-card-id="${cardId}" title="Download this card's image"><i class="fa-solid fa-download"></i><span>Download</span></button>` : `<span class="status-badge download">Downloaded</span>`;
-        case 'pool':
-            return p.idcard_retrieve ? `<button class="row-action-btn retrieve-row-btn" data-card-id="${cardId}" title="Retrieve to pending"><i class="fa-solid fa-rotate-left"></i><span>Retrieve</span></button>` : '';
         default:
-            return `<span class="status-badge ${status}">${status}</span>`;
+            return '';
     }
 }
 
@@ -844,39 +902,15 @@ function attachRowEventHandlers(row) {
         });
     });
     
-    row.querySelectorAll('.unapprove-row-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            if (typeof unapproveCard === 'function') unapproveCard(this.getAttribute('data-card-id'));
-        });
-    });
-    
     row.querySelectorAll('.unverify-row-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             if (typeof unverifyCard === 'function') unverifyCard(this.getAttribute('data-card-id'));
         });
     });
     
-    row.querySelectorAll('.download-row-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            if (typeof downloadCard === 'function') downloadCard(this.getAttribute('data-card-id'));
-        });
-    });
-    
     row.querySelectorAll('.retrieve-row-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             if (typeof retrieveCard === 'function') retrieveCard(this.getAttribute('data-card-id'));
-        });
-    });
-    
-    row.querySelectorAll('.download-single-row-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            if (typeof downloadSingleCard === 'function') downloadSingleCard(this.getAttribute('data-card-id'));
-        });
-    });
-    
-    row.querySelectorAll('.back-approved-row-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            if (typeof backToApprovedCard === 'function') backToApprovedCard(this.getAttribute('data-card-id'));
         });
     });
     
@@ -910,6 +944,8 @@ async function loadMoreData() {
             const tableBody = document.getElementById('cardsTableBody');
             
             data.cards.forEach((card, index) => {
+                // Prevent duplicates — skip if card already in DOM
+                if (document.querySelector(`tr[data-card-id="${card.id}"]`)) return;
                 const row = createRowFromCard(card, index);
                 tableBody.appendChild(row);
                 allRows.push(row);
@@ -1002,39 +1038,97 @@ function highlightSearchResult() {
     const urlParams = new URLSearchParams(window.location.search);
     const highlightId = urlParams.get('highlight');
     
-    if (highlightId) {
+    if (!highlightId) return;
+
+    function doHighlight() {
         const targetRow = document.querySelector(`tr[data-card-id="${highlightId}"]`);
-        
-        if (targetRow) {
-            const rowIndex = allRows.indexOf(targetRow);
-            
-            if (rowIndex !== -1) {
-                const targetPage = Math.floor(rowIndex / rowsPerPage) + 1;
-                currentPage = targetPage;
-                renderTable();
-                
-                requestAnimationFrame(() => {
-                    targetRow.classList.add('search-highlight');
-                    targetRow.scrollIntoView({ 
-                        behavior: 'auto',
-                        block: 'center' 
-                    });
-                    
-                    const checkbox = targetRow.querySelector('.rowCheckbox');
-                    if (checkbox) {
-                        checkbox.checked = true;
-                        checkbox.dispatchEvent(new Event('change', { bubbles: true }));
-                    }
-                });
-                
-                setTimeout(() => {
-                    targetRow.classList.remove('search-highlight');
-                    const newUrl = new URL(window.location);
-                    newUrl.searchParams.delete('highlight');
-                    window.history.replaceState({}, '', newUrl);
-                }, 8000);
-            }
+        if (!targetRow) return false;
+
+        // Use filteredRows (current view) for page calculation
+        const rowIndex = filteredRows.indexOf(targetRow);
+        const sourceRows = rowIndex !== -1 ? filteredRows : allRows;
+        const idx = rowIndex !== -1 ? rowIndex : allRows.indexOf(targetRow);
+
+        if (idx === -1) return false;
+
+        // Switch to paginated mode so we can navigate to the correct page
+        if (endlessScrollMode) {
+            endlessScrollMode = false;
         }
+        const targetPage = Math.floor(idx / rowsPerPage) + 1;
+        currentPage = targetPage;
+        renderTable();
+
+        // Small delay to let DOM settle before scrolling
+        setTimeout(() => {
+            // Re-query the row in case renderTable re-rendered it
+            const row = document.querySelector(`tr[data-card-id="${highlightId}"]`);
+            if (!row) return;
+
+            row.classList.add('search-highlight');
+            
+            // Scroll the table container, not the whole page
+            const scrollContainer = row.closest('.idcard-table') || row.closest('.table-container');
+            if (scrollContainer) {
+                const rowTop = row.offsetTop;
+                const containerHeight = scrollContainer.clientHeight;
+                scrollContainer.scrollTop = Math.max(0, rowTop - containerHeight / 3);
+            }
+            // Also use scrollIntoView as fallback
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            // Auto-check the checkbox
+            const checkbox = row.querySelector('.rowCheckbox');
+            if (checkbox) {
+                checkbox.checked = true;
+                checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+
+            // Remove highlight after 10 seconds
+            setTimeout(() => {
+                row.classList.remove('search-highlight');
+                const newUrl = new URL(window.location);
+                newUrl.searchParams.delete('highlight');
+                window.history.replaceState({}, '', newUrl);
+            }, 10000);
+        }, 150);
+        
+        return true;
+    }
+
+    // Try immediately — card may already be in DOM
+    if (doHighlight()) return;
+
+    // Card not in DOM yet — force load all data then highlight
+    if (lazyLoadState.hasMore && lazyLoadState.tableId) {
+        (async function() {
+            try {
+                await loadAllData();
+                // Re-initialize rows after all data loaded
+                const tableBody = document.getElementById('cardsTableBody');
+                if (tableBody) {
+                    allRows = Array.from(tableBody.querySelectorAll('tr[data-card-id]'));
+                    filteredRows = allRows.slice();
+                }
+                // Try highlight again
+                if (!doHighlight()) {
+                    console.warn('Highlight target not found after loading all data:', highlightId);
+                }
+            } catch (err) {
+                console.error('Error loading data for highlight:', err);
+            }
+        })();
+    } else {
+        // No lazy load, but card not found — observe mutations as fallback
+        var tableBody = document.getElementById('cardsTableBody');
+        if (!tableBody) return;
+        var _hlObserver = new MutationObserver(function() {
+            allRows = Array.from(tableBody.querySelectorAll('tr[data-card-id]'));
+            filteredRows = allRows.slice();
+            if (doHighlight()) { _hlObserver.disconnect(); }
+        });
+        _hlObserver.observe(tableBody, { childList: true, subtree: true });
+        setTimeout(function() { _hlObserver.disconnect(); }, 10000);
     }
 }
 
@@ -1088,17 +1182,43 @@ function showImagePlaceholder(img) {
 }
 
 // ==========================================
-// INITIALIZATION
+// INITIALIZATION (supports re-init after HTMX swap)
 // ==========================================
 
+// Track resources for cleanup on re-init
+let _lazyLoadInterval = null;
+let _scrollHandler = null;
+let _scrollTarget = null;
+
 function initTableModule() {
+    // ── Cleanup previous init ──
+    if (_lazyLoadInterval) { clearInterval(_lazyLoadInterval); _lazyLoadInterval = null; }
+    if (_scrollHandler && _scrollTarget) {
+        _scrollTarget.removeEventListener('scroll', _scrollHandler);
+    }
+
+    // Reset state
+    allRows = [];
+    filteredRows = [];
+    currentPage = 1;
+    searchQuery = '';
+    currentFilter = 'all';
+    currentFilterField = 'all';
+    endlessScrollMode = true;
+
+    // Read per_page from pagination bar data attribute
+    const paginationBar = document.getElementById('paginationBar');
+    if (paginationBar && paginationBar.dataset.perPage) {
+        rowsPerPage = parseInt(paginationBar.dataset.perPage) || 100;
+    }
+
     earlyInitLazyLoadState();
     initializeRows();
     lazyLoadState.loadedCount = allRows.length;
     renderTable();
-    highlightSearchResult();
     initLazyLoadState();
     renderTable();
+    highlightSearchResult();
     
     // Handle broken images after table render
     handleBrokenImages();
@@ -1113,31 +1233,30 @@ function initTableModule() {
         checkLoadMore();
     }, 500);
     
-    // Scroll listener
+    // Scroll listener on the new .idcard-table element
     const idcardTable = document.querySelector('.idcard-table');
     if (idcardTable) {
-        idcardTable.addEventListener('scroll', function() {
+        _scrollHandler = function() {
             checkLoadMore();
             if (endlessScrollMode) {
                 updatePageNumbersForEndless(filteredRows.length);
             }
-        });
+        };
+        _scrollTarget = idcardTable;
+        idcardTable.addEventListener('scroll', _scrollHandler);
     }
     
-    window.addEventListener('scroll', function() {
-        checkLoadMore();
-    });
-    
     // Background loading interval
-    const lazyLoadInterval = setInterval(() => {
+    _lazyLoadInterval = setInterval(() => {
         if (lazyLoadState.hasMore && !lazyLoadState.isLoading) {
             checkLoadMore();
         } else if (!lazyLoadState.hasMore) {
-            clearInterval(lazyLoadInterval);
+            clearInterval(_lazyLoadInterval);
+            _lazyLoadInterval = null;
         }
     }, 1000);
     
-    // Pagination button handlers
+    // Pagination button handlers (new elements after HTMX swap)
     document.getElementById('firstPage')?.addEventListener('click', goToFirstPage);
     document.getElementById('prevPage')?.addEventListener('click', goToPrevPage);
     document.getElementById('nextPage')?.addEventListener('click', goToNextPage);
@@ -1160,6 +1279,7 @@ window.setRowsPerPage = setRowsPerPage;
 window.loadMoreData = loadMoreData;
 window.checkLoadMore = checkLoadMore;
 window.loadAllData = loadAllData;
+window.showTableLoadingOverlay = showTableLoadingOverlay;
 window.attachRowEventHandlers = attachRowEventHandlers;
 window.handleBrokenImages = handleBrokenImages;
 window.lazyLoadState = lazyLoadState;

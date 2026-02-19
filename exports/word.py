@@ -20,6 +20,7 @@ from typing import Optional
 from dataclasses import dataclass
 from datetime import datetime
 
+from django.utils import timezone
 from django.http import HttpResponse
 from django.db.models import QuerySet
 from django.core.files.storage import default_storage
@@ -244,7 +245,7 @@ class WordExporter:
         header = section.first_page_header
         header.is_linked_to_previous = False
         
-        current_date = datetime.now().strftime('%d-%m-%Y')
+        current_date = timezone.localtime(timezone.now()).strftime('%d-%m-%Y')
         
         # Create header table (2 cm narrower than page, centered)
         header_width = 25.5  # 27.5 - 2 = 25.5 cm
@@ -325,7 +326,7 @@ class WordExporter:
         
         # Left: Generated timestamp + copyright (dynamic from settings)
         copyright_line = export_settings.get('export_copyright_line', '© Adarsh ID Cards Management System - All Rights Reserved')
-        timestamp = datetime.now().strftime('%d-%b-%Y %I:%M %p')
+        timestamp = timezone.localtime(timezone.now()).strftime('%d-%b-%Y %H:%M')
         left_run = footer_para2.add_run(
             f'Generated on: {timestamp} | {copyright_line}'
         )

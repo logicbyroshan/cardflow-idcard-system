@@ -4,6 +4,9 @@
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-header">
     <div class="sidebar-logo">
+      <div class="profile">
+        <img src="{% static 'assets/logo.png' %}" alt="Logo">
+      </div>
       <h3>Adarsh ID Cards</h3>
     </div>
   </div>
@@ -129,3 +132,13 @@
     </div>
   </div>
 </aside>
+<script>
+// Immediately apply sidebar collapsed state to prevent flicker on page load
+(function(){
+  var c = localStorage.getItem('sidebarCollapsed');
+  if (c === 'true') {
+    document.getElementById('sidebar').classList.add('collapsed');
+    document.body.classList.add('sidebar-collapsed');
+  }
+})();
+</script>

@@ -11,6 +11,7 @@
     let selectedFirstGroupId = null;
     let selectedRow = null;
     let currentFilter = 'all';
+    let currentStatusFilter = new URLSearchParams(window.location.search).get('status') || '';
 
     // ==================== DOM ELEMENTS ====================
     const elements = {
@@ -216,6 +217,39 @@
 
     // ==================== EVENT LISTENERS ====================
     function setupEventListeners() {
+        // Status filter tabs
+        var statusTabs = document.getElementById('status-tabs');
+        if (statusTabs) {
+            statusTabs.querySelectorAll('.status-tab').forEach(function(tab) {
+                tab.addEventListener('click', function() {
+                    // Update active state
+                    statusTabs.querySelectorAll('.status-tab').forEach(function(t) { t.classList.remove('active'); });
+                    this.classList.add('active');
+
+                    currentStatusFilter = this.dataset.status || '';
+
+                    // Build HTMX request URL and swap table container
+                    var params = new URLSearchParams();
+                    if (currentStatusFilter) params.set('status', currentStatusFilter);
+                    var searchVal = elements.searchInput ? elements.searchInput.value.trim() : '';
+                    if (searchVal) params.set('search', searchVal);
+                    params.set('per_page', new URLSearchParams(window.location.search).get('per_page') || '25');
+                    params.set('page', '1');
+
+                    var url = window.location.pathname + '?' + params.toString();
+
+                    // Update browser URL
+                    window.history.replaceState({}, '', url);
+
+                    // HTMX swap
+                    var container = document.getElementById('active-client-table-container');
+                    if (container && window.htmx) {
+                        window.htmx.ajax('GET', url, {target: container, swap: 'innerHTML'});
+                    }
+                });
+            });
+        }
+
         // Table row selection — delegate from stable container to survive HTMX swaps
         var tableContainer = document.getElementById('active-client-table-container');
         if (tableContainer) {

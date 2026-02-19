@@ -11,23 +11,187 @@
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
   
   <!-- Tailwind CSS (primary) -->
-  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=100">
+<link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=130">
   <!-- Page-specific: ID card actions UI -->
-  <link rel="stylesheet" href="{% static 'css/idcard-actions.css' %}?v=100">
-  <link rel="stylesheet" href="{% static 'css/idcard-actions-enhanced.css' %}?v=100">
-  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=100">
+  <link rel="stylesheet" href="{% static 'css/idcard-actions.css' %}?v=130">
+  <link rel="stylesheet" href="{% static 'css/idcard-actions-enhanced.css' %}?v=130">
+  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=130">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   
   <!-- Alpine.js State Module (MUST load before Alpine) -->
-  <script src="{% static 'js/alpine-state.js' %}?v=100"></script>
+  <script src="{% static 'js/alpine-state.js' %}?v=130"></script>
   <!-- Alpine.js - Lightweight reactive UI framework -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
   
   <!-- External Libraries (loaded in head for availability) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
+  <!-- Cropper.js for image crop before upload -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js" defer></script>
+
+  <!-- Flatpickr date/time picker -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <style>
+    /* Flatpickr custom theme — rounded, gap, clean look */
+    .flatpickr-calendar {
+      border-radius: 10px !important;
+      border: 2px solid #667eea !important;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15) !important;
+      margin-top: 6px !important;
+      overflow: visible !important;
+      font-family: var(--font-sans, 'Saira Semi Condensed', sans-serif) !important;
+      padding-bottom: 0 !important;
+    }
+    .flatpickr-calendar.hasTime {
+      overflow: visible !important;
+    }
+    .flatpickr-months {
+      border-radius: 8px 8px 0 0;
+      background: #f8fafc;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 4px 0;
+    }
+    .flatpickr-months .flatpickr-month {
+      height: 32px;
+    }
+    .flatpickr-current-month {
+      font-size: 13px;
+      font-weight: 600;
+      color: #374151;
+    }
+    .flatpickr-months .flatpickr-prev-month,
+    .flatpickr-months .flatpickr-next-month {
+      fill: #6b7280;
+    }
+    .flatpickr-months .flatpickr-prev-month:hover,
+    .flatpickr-months .flatpickr-next-month:hover {
+      fill: #374151;
+    }
+    .flatpickr-weekdays {
+      background: #f8fafc;
+    }
+    span.flatpickr-weekday {
+      color: #9ca3af !important;
+      font-size: 11px;
+      font-weight: 500;
+    }
+    .flatpickr-day {
+      border-radius: 6px;
+      font-size: 13px;
+      color: #374151;
+      line-height: 36px;
+      height: 36px;
+      max-width: 36px;
+    }
+    .flatpickr-day:hover {
+      background: #eff6ff;
+      border-color: #bfdbfe;
+    }
+    .flatpickr-day.today {
+      border-color: #667eea;
+      color: #667eea;
+      font-weight: 600;
+    }
+    .flatpickr-day.today:hover {
+      background: #667eea;
+      border-color: #667eea;
+      color: #fff;
+    }
+    .flatpickr-day.selected,
+    .flatpickr-day.selected:hover {
+      background: #667eea !important;
+      border-color: #667eea !important;
+      color: #fff !important;
+    }
+    .flatpickr-day.prevMonthDay,
+    .flatpickr-day.nextMonthDay {
+      color: #d1d5db;
+    }
+    /* "Select Time" label above time row */
+    .flatpickr-time::before {
+      content: 'Select Time';
+      display: block;
+      width: 100%;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: #667eea;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .flatpickr-time {
+      border-top: 2px solid #667eea;
+      padding: 8px 12px 14px;
+      max-height: none !important;
+      height: auto !important;
+      overflow: visible !important;
+      background: #f0f4ff;
+      border-radius: 0 0 8px 8px;
+      gap: 4px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .flatpickr-time input {
+      font-size: 15px !important;
+      color: #374151 !important;
+      font-weight: 600;
+      background: #fff !important;
+      border: 1.5px solid #cbd5e1 !important;
+      border-radius: 6px !important;
+      height: 32px !important;
+      padding: 0 2px !important;
+      text-align: center;
+    }
+    .flatpickr-time input:hover,
+    .flatpickr-time input:focus {
+      border-color: #667eea !important;
+      box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.15) !important;
+    }
+    .flatpickr-time .flatpickr-am-pm {
+      font-size: 12px;
+      color: #6b7280;
+      background: #fff;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 6px;
+      font-weight: 500;
+      height: 32px;
+      line-height: 32px;
+    }
+    .flatpickr-time .flatpickr-am-pm:hover {
+      background: #eff6ff;
+      border-color: #667eea;
+    }
+    .flatpickr-time .flatpickr-time-separator {
+      color: #667eea;
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 32px;
+    }
+    .numInputWrapper {
+      border-radius: 6px;
+    }
+    .numInputWrapper:hover {
+      background: transparent;
+    }
+    .numInputWrapper span.arrowUp,
+    .numInputWrapper span.arrowDown {
+      border: none;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    .numInputWrapper:hover span.arrowUp,
+    .numInputWrapper:hover span.arrowDown {
+      opacity: 0.5;
+    }
+    .flatpickr-innerContainer {
+      padding: 4px;
+    }
+  </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
   
   <!-- Global Variables -->
@@ -62,13 +226,13 @@
   {% include 'partials/sidebar.html' %}
 
   <!-- Main Content Area -->
-  <main class="main idcard-actions-page">
+  <main class="main idcard-actions-page" data-status="{{ current_status|default:'pending' }}">
     <!-- Top Navigation Bar -->
     {% include 'partials/idcard/topbar.html' %}
 
     <div class="main-content">
-      <!-- Action Bars (Different for each status) -->
-      {% include 'partials/idcard/action-bars.html' %}
+      <!-- Unified Action Bar (Phase 9: one partial for all statuses) -->
+      {% include 'partials/idcard/action-bar.html' %}
 
       <!-- Search and Filter Bar -->
       {% include 'partials/idcard/search-filter-bar.html' %}
@@ -94,27 +258,28 @@
   {% include 'partials/idcard/modals.html' %}
 
   <!-- Core Modules (Load Order: api → toast → modal → utils → init) -->
-  <script src="{% static 'js/core/api.js' %}?v=100"></script>
-  <script src="{% static 'js/core/toast.js' %}?v=100"></script>
-  <script src="{% static 'js/core/modal.js' %}?v=100"></script>
-  <script src="{% static 'js/core/utils.js' %}?v=100"></script>
-  <script src="{% static 'js/init.js' %}?v=100"></script>
+  <script src="{% static 'js/core/api.js' %}?v=130"></script>
+  <script src="{% static 'js/core/toast.js' %}?v=130"></script>
+  <script src="{% static 'js/core/modal.js' %}?v=130"></script>
+  <script src="{% static 'js/core/utils.js' %}?v=130"></script>
+  <script src="{% static 'js/init.js' %}?v=130"></script>
   
   <!-- IDCard Actions Modules - Loaded in order -->
-  <script src="{% static 'js/idcard-actions-core.js' %}?v=100"></script>
-  <script src="{% static 'js/idcard-actions-table.js' %}?v=100"></script>
-  <script src="{% static 'js/idcard-actions-search.js' %}?v=100"></script>
-  <script src="{% static 'js/idcard-actions-upload.js' %}?v=100"></script>
-  <script src="{% static 'js/idcard-actions-download.js' %}?v=100"></script>
-  <script src="{% static 'js/idcard-actions-modal.js' %}?v=100"></script>
-  <script src="{% static 'js/idcard-actions-api.js' %}?v=100"></script>
-  <script src="{% static 'js/idcard-actions-edit.js' %}?v=100"></script>
-  <script src="{% static 'js/idcard-actions.js' %}?v=100"></script>
-  <script src="{% static 'js/global-search.js' %}?v=100"></script>
+  <script src="{% static 'js/idcard-actions-core.js' %}?v=130"></script>
+  <script src="{% static 'js/idcard-actions-table.js' %}?v=130"></script>
+  <script src="{% static 'js/idcard-actions-search.js' %}?v=130"></script>
+  <script src="{% static 'js/idcard-actions-upload.js' %}?v=130"></script>
+  <script src="{% static 'js/idcard-actions-download.js' %}?v=130"></script>
+  <script src="{% static 'js/idcard-actions-modal.js' %}?v=130"></script>
+  <script src="{% static 'js/image-cropper.js' %}?v=130"></script>
+  <script src="{% static 'js/idcard-actions-api.js' %}?v=130"></script>
+  <script src="{% static 'js/idcard-actions-edit.js' %}?v=130"></script>
+  <script src="{% static 'js/idcard-actions.js' %}?v=130"></script>
+  <script src="{% static 'js/global-search.js' %}?v=130"></script>
   {% include 'partials/htmx-config.html' %}
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      initHTMXFilters({
+      var _htmxFilters = initHTMXFilters({
         baseUrl: '{% url "idcard_actions" table.id %}',
         target:  '#card-table-container',
         searchInputId: 'searchInput',
@@ -126,6 +291,160 @@
           status: function() { return typeof CURRENT_STATUS !== 'undefined' ? CURRENT_STATUS : ''; }
         }
       });
+
+      // DateTime filter for download list — auto-apply on change (Flatpickr)
+      var fromDateEl = document.getElementById('fromDateFilter');
+      var toDateEl = document.getElementById('toDateFilter');
+      var clearDateBtn = document.getElementById('clearDateFilterBtn');
+
+      var fpConfig = {
+        enableTime: true,
+        enableSeconds: true,
+        time_24hr: true,
+        dateFormat: 'Y-m-d\\TH:i:S',
+        allowInput: false,
+        disableMobile: true,
+        onChange: function(selectedDates, dateStr, instance) {
+          // Blur time inputs so they don't auto-select after picking a date
+          var timeInputs = instance.calendarContainer.querySelectorAll('.flatpickr-time input');
+          timeInputs.forEach(function(inp) { inp.blur(); });
+          setTimeout(applyDateTimeFilter, 50);
+        }
+      };
+
+      var fpFrom = null, fpTo = null;
+      if (fromDateEl && typeof flatpickr !== 'undefined') {
+        fpFrom = flatpickr(fromDateEl, Object.assign({}, fpConfig, {
+          defaultDate: fromDateEl.value || null
+        }));
+      }
+      if (toDateEl && typeof flatpickr !== 'undefined') {
+        fpTo = flatpickr(toDateEl, Object.assign({}, fpConfig, {
+          defaultDate: toDateEl.value || null
+        }));
+      }
+
+      function applyDateTimeFilter() {
+        if (!fromDateEl || !toDateEl) return;
+        var params = _htmxFilters.getParams();
+        if (fromDateEl.value) params.set('from', fromDateEl.value);
+        else params.delete('from');
+        if (toDateEl.value) params.set('to', toDateEl.value);
+        else params.delete('to');
+        var url = '{% url "idcard_actions" table.id %}?' + params.toString();
+        htmx.ajax('GET', url, { target: '#card-table-container', swap: 'innerHTML' });
+      }
+
+      if (clearDateBtn) {
+        clearDateBtn.addEventListener('click', function() {
+          if (fpFrom) fpFrom.clear();
+          else if (fromDateEl) fromDateEl.value = '';
+          if (fpTo) fpTo.clear();
+          else if (toDateEl) toDateEl.value = '';
+          var params = _htmxFilters.getParams();
+          params.delete('from');
+          params.delete('to');
+          var url = '{% url "idcard_actions" table.id %}?' + params.toString();
+          htmx.ajax('GET', url, { target: '#card-table-container', swap: 'innerHTML' });
+        });
+      }
+
+      // Go Back button — navigates to previous page (referrer or dashboard)
+      var goBackBtn = document.getElementById('goBackBtn');
+      function goBack() {
+        var referrer = document.referrer;
+        if (referrer && new URL(referrer).origin === window.location.origin && referrer !== window.location.href) {
+          window.location.href = referrer;
+        } else {
+          // Fallback: go to ID Card Group page
+          {% if is_client or is_client_staff %}
+          window.location.href = '{% url "client:idcard_group" %}';
+          {% else %}
+          window.location.href = '{% url "idcard_group" client.id %}';
+          {% endif %}
+        }
+      }
+      if (goBackBtn) {
+        goBackBtn.addEventListener('click', goBack);
+      }
+      // Ctrl+B shortcut to go back
+      document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+          // Don't trigger if user is typing in an input/textarea/contenteditable
+          var tag = (e.target.tagName || '').toLowerCase();
+          if (tag === 'input' || tag === 'textarea' || e.target.isContentEditable) return;
+          e.preventDefault();
+          goBack();
+        }
+      });
+    });
+
+    /* Phase 7: Re-initialize handlers after HTMX table swap */
+    document.body.addEventListener('htmx:afterSwap', function(evt) {
+      if (evt.target.id === 'card-table-container') {
+        // Re-init TABLE module (lazy load state, scroll listener, pagination buttons)
+        try {
+          if (window.IDCardApp && typeof window.IDCardApp.initTableModule === 'function') {
+            window.IDCardApp.initTableModule();
+          }
+        } catch (e) { console.error('afterSwap: initTableModule error', e); }
+
+        // Re-init checkboxes (select all, shift+click, button states)
+        try {
+          if (window.IDCardApp && typeof window.IDCardApp.initCoreModule === 'function') {
+            window.IDCardApp.initCoreModule();
+          }
+        } catch (e) { console.error('afterSwap: initCoreModule error', e); }
+
+        // Re-init inline editing on new DOM
+        try {
+          if (window.IDCardApp && typeof window.IDCardApp.initEditModule === 'function') {
+            window.IDCardApp.initEditModule();
+          }
+        } catch (e) { console.error('afterSwap: initEditModule error', e); }
+
+        // Reset shift-click anchor index
+        if (window.IDCardApp && typeof window.IDCardApp.resetShiftClickIndex === 'function') {
+          window.IDCardApp.resetShiftClickIndex();
+        }
+
+        // Re-attach edit-photo-btn delegation on the NEW #data-table
+        // (initModalModule is only called once on page load; #data-table lives
+        //  inside the swap target so its old listener is destroyed on swap)
+        var dataTable = document.getElementById('data-table');
+        if (dataTable && !dataTable._editPhotoBtnInit) {
+          dataTable._editPhotoBtnInit = true;
+          dataTable.addEventListener('click', function(e) {
+            var editBtn = e.target.closest('.edit-photo-btn');
+            if (!editBtn) return;
+            e.stopPropagation();
+            var cardId = editBtn.getAttribute('data-card-id');
+            if (cardId && window.IDCardApp && typeof window.IDCardApp.fetchCardAndOpenModal === 'function') {
+              window.IDCardApp.fetchCardAndOpenModal('edit', cardId);
+            }
+          });
+        }
+
+        // Row action buttons — event delegation on new #cardsTableBody
+        var tableBody = document.getElementById('cardsTableBody');
+        if (tableBody && !tableBody._rowActionHandlersInit) {
+          tableBody._rowActionHandlersInit = true;
+          tableBody.addEventListener('click', function(e) {
+            var btn = e.target.closest('.row-action-btn');
+            if (!btn) return;
+            e.stopPropagation();
+            var cardId = btn.getAttribute('data-card-id');
+            if (!cardId) return;
+            if (btn.classList.contains('verify-row-btn') && typeof verifyCard === 'function') verifyCard(cardId);
+            else if (btn.classList.contains('approve-row-btn') && typeof approveCard === 'function') approveCard(cardId);
+            else if (btn.classList.contains('unapprove-row-btn') && typeof unapproveCard === 'function') unapproveCard(cardId);
+            else if (btn.classList.contains('unverify-row-btn') && typeof unverifyCard === 'function') unverifyCard(cardId);
+            else if (btn.classList.contains('download-row-btn') && typeof downloadCard === 'function') downloadCard(cardId);
+            else if (btn.classList.contains('retrieve-row-btn') && typeof retrieveCard === 'function') retrieveCard(cardId);
+            else if (btn.classList.contains('download-single-row-btn') && typeof downloadSingleCard === 'function') downloadSingleCard(cardId);
+          });
+        }
+      }
     });
   </script>
 </body>

@@ -20,6 +20,7 @@ from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
+from django.utils import timezone
 from ..models import Client, Staff, IDCardGroup, IDCard, IDCardTable, ReprintRequest, User, SystemSettings
 from ..services import IDCardService
 from ..services.activity_service import ActivityService
@@ -89,6 +90,8 @@ def enrich_cards(cards, table_fields, start_index=0):
             'status': card.status,
             'get_status_display': card.get_status_display(),
             'updated_at': card.updated_at,
+            'downloaded_at': card.downloaded_at,
+            'deleted_at': card.deleted_at,
             'ordered_fields': ordered_fields,
         })
     return enriched
@@ -107,18 +110,28 @@ def super_admin_required(view_func):
 @require_any_admin
 def dashboard(request):
     """Main dashboard view - Super Admin & Admin Staff"""
+    # Scope cache keys per user for admin_staff (they only see assigned clients)
+    user = request.user
+    is_scoped = PermissionService.is_admin_staff(user)
+    cache_suffix = f':{user.pk}' if is_scoped else ''
+
     # Combine card status counts into a single aggregate query (cached 30s)
     # Exclude 'pool' status from total count
-    card_stats = cache.get('dashboard_card_stats')
+    card_cache_key = f'dashboard_card_stats{cache_suffix}'
+    card_stats = cache.get(card_cache_key)
     if card_stats is None:
-        card_stats = IDCard.objects.aggregate(
+        card_qs = IDCard.objects.all()
+        if is_scoped:
+            accessible_ids = PermissionService.get_accessible_client_ids(user)
+            card_qs = card_qs.filter(table__group__client_id__in=accessible_ids)
+        card_stats = card_qs.aggregate(
             total=Count('id', filter=Q(status__in=['pending', 'verified', 'approved', 'download'])),
             pending=Count('id', filter=Q(status='pending')),
             verified=Count('id', filter=Q(status='verified')),
             approved=Count('id', filter=Q(status='approved')),
             downloaded=Count('id', filter=Q(status='download')),
         )
-        cache.set('dashboard_card_stats', card_stats, 30)
+        cache.set(card_cache_key, card_stats, 30)
 
     context = {
         'active_page': 'dashboard',
@@ -130,29 +143,41 @@ def dashboard(request):
         'downloaded_cards': card_stats['downloaded'],
     }
     # Consolidate count queries with aggregate (cached 60s)
-    client_stats = cache.get('dashboard_client_stats')
+    client_cache_key = f'dashboard_client_stats{cache_suffix}'
+    client_stats = cache.get(client_cache_key)
     if client_stats is None:
-        client_stats = Client.objects.aggregate(
+        client_qs = Client.objects.all()
+        if is_scoped:
+            client_qs = client_qs.filter(id__in=accessible_ids)
+        client_stats = client_qs.aggregate(
             total=Count('id'),
             active=Count('id', filter=Q(status='active')),
         )
-        cache.set('dashboard_client_stats', client_stats, 60)
+        cache.set(client_cache_key, client_stats, 60)
 
-    staff_stats = cache.get('dashboard_staff_stats')
+    staff_cache_key = f'dashboard_staff_stats{cache_suffix}'
+    staff_stats = cache.get(staff_cache_key)
     if staff_stats is None:
         staff_stats = Staff.objects.aggregate(
             total=Count('id'),
             active=Count('id', filter=Q(user__is_active=True)),
         )
-        cache.set('dashboard_staff_stats', staff_stats, 60)
+        cache.set(staff_cache_key, staff_stats, 60)
 
-    cs_stats = cache.get('dashboard_cs_stats')
+    cs_cache_key = f'dashboard_cs_stats{cache_suffix}'
+    cs_stats = cache.get(cs_cache_key)
     if cs_stats is None:
-        cs_stats = User.objects.filter(role='client_staff').aggregate(
+        cs_qs = User.objects.filter(role='client_staff')
+        if is_scoped:
+            from staff.models import Staff as StaffModel
+            cs_qs = cs_qs.filter(
+                staff_profile__client_id__in=accessible_ids
+            )
+        cs_stats = cs_qs.aggregate(
             total=Count('id'),
             active=Count('id', filter=Q(is_active=True)),
         )
-        cache.set('dashboard_cs_stats', cs_stats, 60)
+        cache.set(cs_cache_key, cs_stats, 60)
     context.update({
         'total_clients': client_stats['total'],
         'active_clients': client_stats['active'],
@@ -199,13 +224,38 @@ def api_recent_client_updates(request):
         ).values('group__client_id').annotate(first_table_id=Min('id'))
         first_table_map = {item['group__client_id']: item['first_table_id'] for item in first_table_qs}
         
+        # Batch-fetch all tables with per-table card counts
+        tables_qs = IDCardTable.objects.filter(
+            group__client__in=clients
+        ).values('id', 'name', 'group__client_id').annotate(
+            pending=Count('id_cards', filter=Q(id_cards__status='pending')),
+            verified=Count('id_cards', filter=Q(id_cards__status='verified')),
+            approved=Count('id_cards', filter=Q(id_cards__status='approved')),
+            downloaded=Count('id_cards', filter=Q(id_cards__status='download')),
+        ).order_by('id')
+        tables_map = {}
+        for t in tables_qs:
+            cid = t['group__client_id']
+            if cid not in tables_map:
+                tables_map[cid] = []
+            tables_map[cid].append({
+                'id': t['id'],
+                'name': t['name'],
+                'pending': t['pending'],
+                'verified': t['verified'],
+                'approved': t['approved'],
+                'downloaded': t['downloaded'],
+            })
+        
         for client in clients:
             cc = counts_map.get(client.id, {})
             results.append({
                 'id': client.id,
+                'client_id': client.id,
                 'name': client.name,
                 'initial': client.name[0].upper() if client.name else 'C',
                 'first_table_id': first_table_map.get(client.id),
+                'tables': tables_map.get(client.id, []),
                 'pending': cc.get('pending', 0),
                 'verified': cc.get('verified', 0),
                 'approved': cc.get('approved', 0),
@@ -328,6 +378,24 @@ def api_global_search(request):
             client_name = card.table.group.client.name if card.table and card.table.group else 'Unknown'
             table_name = card.table.name if card.table else 'Unknown'
             
+            # Find first valid photo from image fields
+            photo_url = None
+            if card.table and card.table.fields:
+                for field in card.table.fields:
+                    fname = field.get('name', '')
+                    ftype = field.get('type', 'text')
+                    if ftype in ('photo', 'mother_photo', 'father_photo', 'image'):
+                        val = field_data.get(fname, '')
+                        if val and not str(val).startswith('PENDING:') and val != 'NOT_FOUND':
+                            photo_url = f'/media/{val}' if not str(val).startswith('/') else val
+                            break
+            # Fallback to legacy photo field
+            if not photo_url and card.photo:
+                try:
+                    photo_url = card.photo.url
+                except Exception:
+                    pass
+            
             results.append({
                 'type': 'idcard',
                 'id': card.id,
@@ -340,7 +408,7 @@ def api_global_search(request):
                         f'/panel/table/{card.table.id}/cards/?status={card.status}&highlight={card.id}') if card.table else '#',
                 'icon': 'fa-id-card',
                 'status': card.status,
-                'photo': (card.field_data or {}).get('PHOTO') or (card.photo.url if card.photo else None)
+                'photo': photo_url,
             })
             
             # Stop after 50 results for speed
@@ -476,9 +544,15 @@ def manage_clients(request):
 @login_required
 @require_any_admin
 def active_clients(request):
-    """View active clients for ID card management — supports HTMX partial responses."""
+    """View clients for ID card management — supports HTMX partial responses.
+    
+    Super-admins and admin-staff see ALL clients (active + inactive) so they
+    can manage groups/tables/cards even for deactivated clients.  An optional
+    ?status= query-param lets them filter by status.
+    """
     user = request.user
     search_query = request.GET.get('search', '').strip()
+    status_filter = request.GET.get('status', '').strip()
 
     DEFAULT_PER_PAGE = 25
     PER_PAGE_OPTIONS = [10, 25, 50, 100]
@@ -489,8 +563,13 @@ def active_clients(request):
     except (ValueError, TypeError):
         per_page = DEFAULT_PER_PAGE
 
+    # Admins see all clients; apply optional status filter
+    base_qs = Client.objects.all().select_related('user')
+    if status_filter and status_filter in ('active', 'inactive', 'suspended'):
+        base_qs = base_qs.filter(status=status_filter)
+
     clients_qs = PermissionService.get_accessible_clients(
-        user, Client.objects.filter(status='active').select_related('user')
+        user, base_qs
     ).prefetch_related('id_card_groups').annotate(
         group_count=Count('id_card_groups')
     )
@@ -510,6 +589,7 @@ def active_clients(request):
         'user_role': get_user_role(request.user),
         'clients': page_obj.object_list,
         'search_query': search_query,
+        'status_filter': status_filter,
         'page_obj': page_obj,
         'page_range': get_page_range(page_obj),
         'per_page': per_page,
@@ -587,8 +667,8 @@ def idcard_actions(request, table_id):
             return redirect('active_clients')  # No permission for this status list
     
     # ── Server-side pagination parameters ──
-    DEFAULT_PER_PAGE = 50
-    PER_PAGE_OPTIONS = [50, 100, 150, 200]
+    DEFAULT_PER_PAGE = 100
+    PER_PAGE_OPTIONS = [100, 200, 300, 400, 500]
     try:
         per_page = int(request.GET.get('per_page', DEFAULT_PER_PAGE))
         if per_page not in PER_PAGE_OPTIONS:
@@ -601,8 +681,8 @@ def idcard_actions(request, table_id):
     class_filter = request.GET.get('class', '').strip()
     section_filter = request.GET.get('section', '').strip()
     
-    # Order by id descending so newest records appear first
-    id_cards_query = IDCard.objects.filter(table=table).order_by('-id')
+    # Order by id descending so newest records appear first; defer heavy photo column
+    id_cards_query = IDCard.objects.filter(table=table).defer('photo').order_by('-id')
     if status_filter and status_filter in ['pending', 'verified', 'pool', 'approved', 'download', 'reprint']:
         id_cards_query = id_cards_query.filter(status=status_filter)
     
@@ -613,6 +693,26 @@ def idcard_actions(request, table_id):
         id_cards_query = id_cards_query.filter(field_data__icontains=class_filter)
     if section_filter:
         id_cards_query = id_cards_query.filter(field_data__icontains=section_filter)
+    
+    # ── DateTime range filter (download list only) ──
+    from_date = request.GET.get('from', '').strip()
+    to_date = request.GET.get('to', '').strip()
+    if status_filter == 'download':
+        from datetime import datetime as dt
+        if from_date:
+            try:
+                from_dt = dt.fromisoformat(from_date)
+                from_dt = timezone.make_aware(from_dt) if timezone.is_naive(from_dt) else from_dt
+                id_cards_query = id_cards_query.filter(downloaded_at__gte=from_dt)
+            except (ValueError, TypeError):
+                pass
+        if to_date:
+            try:
+                to_dt = dt.fromisoformat(to_date)
+                to_dt = timezone.make_aware(to_dt) if timezone.is_naive(to_dt) else to_dt
+                id_cards_query = id_cards_query.filter(downloaded_at__lte=to_dt)
+            except (ValueError, TypeError):
+                pass
     
     # Get total count for this status (before pagination)
     total_count = id_cards_query.count()
@@ -638,7 +738,7 @@ def idcard_actions(request, table_id):
         'current_status': status_filter,
         'status_counts': status_counts,
         'total_count': total_count,
-        'has_more': False,  # Legacy compat — HTMX pagination replaces lazy loading
+        'has_more': total_count > len(enriched_cards),  # Enable lazy loading for remaining records
         'initial_load_limit': per_page,
         # Pagination context
         'page_obj': page_obj,
@@ -648,6 +748,8 @@ def idcard_actions(request, table_id):
         'search_query': search_query,
         'class_filter': class_filter,
         'section_filter': section_filter,
+        'from_date': from_date,
+        'to_date': to_date,
     }
     
     # HTMX partial response — return only the table container
@@ -908,9 +1010,10 @@ def settings(request):
 # =========================================================================
 
 @login_required
+@require_any_admin
 @require_http_methods(['GET'])
 def api_export_settings_get(request):
-    """GET /api/export-settings/ — fetch export footer messages."""
+    """GET /api/export-settings/ — fetch export footer messages (admin only)."""
     data = SystemSettings.get_export_settings()
     return JsonResponse({'success': True, 'data': data})
 

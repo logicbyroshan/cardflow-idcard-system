@@ -14,6 +14,7 @@ import logging
 from typing import Dict, List, Optional, Any
 
 from django.db import transaction
+from django.utils import timezone
 
 from ..models import IDCard, IDCardTable, ReprintRequest
 from .base import BaseService, ServiceResult
@@ -49,7 +50,7 @@ class WorkflowService:
     ALLOWED_TRANSITIONS: Dict[str, List[str]] = {
         'pending':  ['verified', 'pool'],
         'verified': ['approved', 'pending', 'pool'],
-        'approved': ['download', 'verified', 'pool'],
+        'approved': ['download', 'verified', 'pending', 'pool'],
         'download': ['approved', 'reprint'],
         'pool':     ['pending'],
         'reprint':  ['download'],
@@ -90,9 +91,10 @@ class WorkflowService:
     # ── Image field helpers (delegated to BaseService) ──────────────
 
     @staticmethod
-    def _get_image_field_names(table_fields: list) -> List[str]:
-        """Return names of image-type fields in the table schema."""
-        return BaseService.get_image_field_names(table_fields or [])
+    def _get_image_field_names(table_fields: list, mandatory_only: bool = False) -> List[str]:
+        """Return names of image-type fields in the table schema.
+        If mandatory_only=True, only return fields marked as mandatory."""
+        return BaseService.get_image_field_names(table_fields or [], mandatory_only=mandatory_only)
 
     @staticmethod
     def _get_missing_image_fields(card: IDCard, image_field_names: List[str]) -> List[str]:
@@ -229,11 +231,11 @@ class WorkflowService:
                         data={'missing_fields': missing, 'blocked': True}
                     )
 
-            # ── 6. Image gate ───────────────────────────────────────────
+            # ── 6. Image gate (only mandatory image fields) ──────────
             if target_status in cls.FORWARD_IMAGE_CHECK:
                 allowed_from = cls.FORWARD_IMAGE_CHECK[target_status]
                 if current in allowed_from:
-                    img_names = cls._get_image_field_names(table.fields)
+                    img_names = cls._get_image_field_names(table.fields, mandatory_only=True)
                     if img_names:
                         missing = cls._get_missing_image_fields(card, img_names)
                         if missing:
@@ -245,7 +247,24 @@ class WorkflowService:
 
             # ── 7. Commit ───────────────────────────────────────────────
             card.status = target_status
-            card.save(update_fields=['status', 'updated_at'])
+            update_fields = ['status', 'updated_at']
+
+            # Set/clear timestamps for download and pool transitions
+            if target_status == 'download':
+                card.downloaded_at = timezone.now()
+                update_fields.append('downloaded_at')
+            elif current == 'download' and target_status != 'download':
+                card.downloaded_at = None
+                update_fields.append('downloaded_at')
+
+            if target_status == 'pool':
+                card.deleted_at = timezone.now()
+                update_fields.append('deleted_at')
+            elif current == 'pool' and target_status != 'pool':
+                card.deleted_at = None
+                update_fields.append('deleted_at')
+
+            card.save(update_fields=update_fields)
         logger.info("Card %d: %s → %s by user %d", card.pk, current, target_status, user.pk)
 
         # ── 8. Activity log ─────────────────────────────────────────
@@ -350,9 +369,9 @@ class WorkflowService:
                         data={'skipped_count': len(skipped_mandatory_ids), 'skipped_ids': skipped_mandatory_ids}
                     )
 
-            # ── 5. Image gate (forward moves) ───────────────────────────
+            # ── 5. Image gate (only mandatory image fields) ──────────
             if target_status in cls.FORWARD_IMAGE_CHECK:
-                img_names = cls._get_image_field_names(table.fields)
+                img_names = cls._get_image_field_names(table.fields, mandatory_only=True)
                 if img_names:
                     allowed_from_statuses = cls.FORWARD_IMAGE_CHECK[target_status]
                     cards = list(IDCard.objects.filter(table=table, id__in=eligible_ids))
@@ -382,7 +401,20 @@ class WorkflowService:
                     message=f'No cards eligible for transition to {target_status}.'
                 )
 
-            updated_count = IDCard.objects.filter(table=table, id__in=eligible_ids).update(status=target_status)
+            update_kwargs = {'status': target_status}
+
+            # Set/clear timestamps for download and pool transitions
+            if target_status == 'download':
+                update_kwargs['downloaded_at'] = timezone.now()
+            elif target_status in ('approved',):  # back from download
+                update_kwargs['downloaded_at'] = None
+
+            if target_status == 'pool':
+                update_kwargs['deleted_at'] = timezone.now()
+            elif target_status == 'pending':  # back from pool
+                update_kwargs['deleted_at'] = None
+
+            updated_count = IDCard.objects.filter(table=table, id__in=eligible_ids).update(**update_kwargs)
         logger.info("Bulk transition: %d cards → %s in table %d by user %d", updated_count, target_status, table.pk, user.pk)
 
         # ── 7. Activity log ─────────────────────────────────────────
@@ -463,7 +495,7 @@ class WorkflowService:
         all_transitions = list(cls.ALLOWED_TRANSITIONS.get(card.status, []))
 
         mandatory_missing = cls._get_missing_mandatory_fields(card, table.fields or [])
-        img_names = cls._get_image_field_names(table.fields)
+        img_names = cls._get_image_field_names(table.fields, mandatory_only=True)
         images_missing = cls._get_missing_image_fields(card, img_names) if img_names else []
 
         return {

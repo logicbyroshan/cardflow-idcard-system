@@ -9,16 +9,16 @@
     <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Tailwind CSS (primary) -->
-    <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=100">
+    <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=130">
     <!-- Page-specific: website admin -->
-    <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=100">
-    <link rel="stylesheet" href="{% static 'css/website-admin.css' %}?v=100">
+    <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=130">
+    <link rel="stylesheet" href="{% static 'css/website-admin.css' %}?v=130">
     {% block extra_css %}{% endblock %}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <!-- Alpine.js State Module (MUST load before Alpine) -->
-    <script src="{% static 'js/alpine-state.js' %}?v=100"></script>
+    <script src="{% static 'js/alpine-state.js' %}?v=130"></script>
     <!-- Alpine.js -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
 </head>
@@ -76,13 +76,71 @@
     <!-- Toast Notifications -->
     {% include 'partials/common/toast.html' %}
 
+    <!-- Confirm Modal (replaces browser confirm()) -->
+    <div class="wa-confirm-overlay" id="waConfirmOverlay">
+        <div class="wa-confirm-box">
+            <div class="wa-confirm-icon" id="waConfirmIcon">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h4 class="wa-confirm-title" id="waConfirmTitle">Are you sure?</h4>
+            <p class="wa-confirm-text" id="waConfirmText">This action cannot be undone.</p>
+            <div class="wa-confirm-actions">
+                <button type="button" class="btn btn-outline" id="waConfirmCancel">Cancel</button>
+                <button type="button" class="btn btn-danger" id="waConfirmOk">Confirm</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Core Modules -->
-    <script src="{% static 'js/core/api.js' %}?v=100"></script>
-    <script src="{% static 'js/core/toast.js' %}?v=100"></script>
-    <script src="{% static 'js/core/modal.js' %}?v=100"></script>
-    <script src="{% static 'js/core/utils.js' %}?v=100"></script>
-    <script src="{% static 'js/init.js' %}?v=100"></script>
-    <script src="{% static 'js/global-search.js' %}?v=100"></script>
+    <script src="{% static 'js/core/api.js' %}?v=130"></script>
+    <script src="{% static 'js/core/toast.js' %}?v=130"></script>
+    <script src="{% static 'js/core/modal.js' %}?v=130"></script>
+    <script src="{% static 'js/core/utils.js' %}?v=130"></script>
+    <script src="{% static 'js/init.js' %}?v=130"></script>
+    <script src="{% static 'js/global-search.js' %}?v=130"></script>
+
+    <script>
+    /* Reusable confirm modal — returns a Promise<boolean> */
+    window.waConfirm = function(opts = {}) {
+        return new Promise(resolve => {
+            const overlay = document.getElementById('waConfirmOverlay');
+            const iconEl  = document.getElementById('waConfirmIcon');
+            const titleEl = document.getElementById('waConfirmTitle');
+            const textEl  = document.getElementById('waConfirmText');
+            const okBtn   = document.getElementById('waConfirmOk');
+            const cancelBtn = document.getElementById('waConfirmCancel');
+
+            titleEl.textContent = opts.title || 'Are you sure?';
+            textEl.textContent  = opts.text  || 'This action cannot be undone.';
+            okBtn.textContent   = opts.confirmLabel || 'Confirm';
+            okBtn.className     = 'btn ' + (opts.btnClass || 'btn-danger');
+
+            if (opts.icon) {
+                iconEl.innerHTML = '<i class="' + opts.icon + '"></i>';
+            } else {
+                iconEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+            }
+
+            overlay.classList.add('show');
+
+            function cleanup(result) {
+                overlay.classList.remove('show');
+                okBtn.removeEventListener('click', onOk);
+                cancelBtn.removeEventListener('click', onCancel);
+                overlay.removeEventListener('click', onBackdrop);
+                resolve(result);
+            }
+            function onOk()     { cleanup(true);  }
+            function onCancel() { cleanup(false); }
+            function onBackdrop(e) { if (e.target === overlay) cleanup(false); }
+
+            okBtn.addEventListener('click', onOk);
+            cancelBtn.addEventListener('click', onCancel);
+            overlay.addEventListener('click', onBackdrop);
+        });
+    };
+    </script>
+
     {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -19,6 +19,9 @@ import zipfile
 import tempfile
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, field
+from datetime import datetime
+
+from django.utils import timezone as django_tz
 
 logger = logging.getLogger(__name__)
 
@@ -428,7 +431,7 @@ def export_images_to_disk(
 
             # ── helpers for building part filenames ──
             def _make_zip_path(part_num: int = 0) -> tuple:
-                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                timestamp = django_tz.localtime(django_tz.now()).strftime('%Y%m%d_%H%M%S')
                 parts_list = []
                 if clean_client_name:
                     parts_list.append(clean_client_name)

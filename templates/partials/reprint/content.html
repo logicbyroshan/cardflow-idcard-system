@@ -50,45 +50,49 @@
 <div class="table-wrapper">
     <div class="table-container idcard-table">
         <table id="reprint-data-table">
-            <thead>
+            <thead class="sticky top-0 z-20">
                 <tr>
-                    <th class="checkbox-col"><input type="checkbox" id="reprintSelectAll" title="Select all"></th>
-                    <th class="sr-col">Sr No.</th>
-                    {% for field in table.fields %}
-                    {% check_image_field field.type field.name as is_img %}
-                    {% if not is_img %}
-                    <th class="dynamic-col" data-field-name="{{ field.name }}">{{ field.name }}</th>
-                    {% endif %}
-                    {% endfor %}
-                    {% for field in table.fields %}
+                    <!-- Checkbox — 24px -->
+                    <th class="w-[24px] min-w-[24px] text-center px-[1px]">
+                        <input type="checkbox" id="reprintSelectAll" title="Select all">
+                    </th>
+                    <!-- SR NO — 36px, 2-line -->
+                    <th class="w-[36px] min-w-[36px] px-[1px] py-1 text-center align-middle">
+                        <div class="leading-tight">
+                            <div>SR</div>
+                            <div>NO</div>
+                        </div>
+                    </th>
+                    {% for field in table.fields|reorder_fields_for_display %}
                     {% check_image_field field.type field.name as is_img %}
                     {% if is_img %}
-                    <th class="image-col" data-field-name="{{ field.name }}" data-field-type="image">{{ field.name }}</th>
+                    <th class="w-[30px] min-w-[30px] px-[1px] py-1 text-center align-middle" data-field-name="{{ field.name }}" data-field-type="image">{{ field.name|wrap_header }}</th>
+                    {% else %}
+                    <th class="{{ field|get_column_width_class }} px-[1px] py-1 {{ field|get_column_align_class }} align-middle" data-field-name="{{ field.name }}" data-field-type="{{ field.type }}">{{ field.name }}</th>
                     {% endif %}
                     {% endfor %}
-                    <th class="action-col">Action</th>
-                    <th class="fixed-col">Status</th>
-                    <th class="fixed-col">Last Updated</th>
-                    <th class="fixed-col">Updated By</th>
+                    <!-- Action — fit buttons -->
+                    <th class="w-[60px] min-w-[60px] px-[1px] py-1 text-center align-middle">Action</th>
+                    <th class="w-[65px] min-w-[65px] px-[1px] py-1 text-center align-middle">Status</th>
+                    <th class="w-[90px] min-w-[90px] px-[1px] py-1 text-center align-middle">Last Updated</th>
+                    <th class="w-[65px] min-w-[65px] px-[1px] py-1 text-center align-middle">Updated By</th>
                 </tr>
             </thead>
-            <tbody id="reprintTableBody">
+            <tbody id="reprintTableBody" class="divide-y divide-gray-200">
                 {% for card in id_cards %}
-                <tr data-card-id="{{ card.id }}" {% if card.has_reprint %}class="reprint-requested"{% endif %}>
-                    <td class="checkbox-cell">
+                <tr data-card-id="{{ card.id }}" data-sr-no="{{ card.sr_no }}" {% if card.has_reprint %}class="reprint-requested"{% endif %}>
+                    <td class="w-[24px] px-[1px] py-1 text-center align-middle checkbox-cell">
                         <input type="checkbox" class="reprintRowCheckbox" {% if card.has_reprint %}disabled title="Already requested"{% endif %}>
                     </td>
-                    <td class="sr-no-cell">{{ card.sr_no }}</td>
-                    {% for field in card.ordered_fields %}
-                    {% check_image_field field.type field.name as is_img %}
-                    {% if not is_img %}
-                    <td class="dynamic-col" data-field="{{ field.name }}">{{ field.value|default:"-" }}</td>
-                    {% endif %}
-                    {% endfor %}
-                    {% for field in card.ordered_fields %}
+                    <td class="w-[36px] px-[1px] py-1 text-center align-middle sr-no-cell">{{ card.sr_no }}</td>
+                    {% for field in card.ordered_fields|reorder_card_fields_for_display %}
                     {% check_image_field field.type field.name as is_img %}
                     {% if is_img %}
-                    <td class="image-field image-cell {{ field.name|get_image_class }}" data-field="{{ field.name }}" data-field-type="image">
+                    <td class="w-[28px] px-[1px] py-1 text-center align-middle image-field image-cell {{ field.name|get_image_class }}"
+                        data-field="{{ field.name }}"
+                        data-field-name="{{ field.name }}"
+                        data-field-type="image"
+                        data-original-value="{{ field.value }}">
                         <div class="image-with-edit">
                             {% if field.value and field.value != '' and field.value != 'NOT_FOUND' and not field.value|slice:":8" == "PENDING:" %}
                             <img src="/media/{{ field.value|get_thumbnail_path }}" 
@@ -107,9 +111,17 @@
                             {% endif %}
                         </div>
                     </td>
+                    {% else %}
+                    <td class="dynamic-field {{ field|get_td_width_class }} px-[1px] py-1 align-middle"
+                        data-field="{{ field.name }}"
+                        data-field-name="{{ field.name }}"
+                        data-field-type="{{ field.type }}"
+                        data-original-value="{{ field.value }}">
+                        <span class="cell-value">{{ field.value|default:"-" }}</span>
+                    </td>
                     {% endif %}
                     {% endfor %}
-                    <td class="action-col">
+                    <td class="w-[60px] px-[1px] py-1 text-center align-middle action-cell">
                         {% if card.has_reprint %}
                         <span class="reprint-badge-requested" title="Reprint already requested">
                             <i class="fa-solid fa-check-circle"></i> Requested
@@ -120,19 +132,18 @@
                         </button>
                         {% endif %}
                     </td>
-                    <td class="fixed-col">
+                    <td class="w-[65px] px-[1px] py-1 align-middle text-center">
                         <span class="status-badge status-{{ card.status }}">{{ card.get_status_display }}</span>
                     </td>
-                    <td class="date-cell">{{ card.updated_at|date:"d-M-Y h:i A" }}</td>
-                    <td class="user-cell">Admin</td>
+                    <td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">{{ card.updated_at|date:"d-M-Y H:i" }}</td>
+                    <td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center">Admin</td>
                 </tr>
                 {% empty %}
                 <tr class="no-data-row">
-                    <td colspan="20" class="no-data">
-                        <div class="py-12 text-center">
-                            <i class="fa-solid fa-id-card text-5xl text-gray-300 mb-3 block"></i>
-                            <span class="text-sm text-gray-500 font-medium">No cards in this table</span>
-                            <br><span class="text-xs text-gray-400">Upload cards on the ID Card Actions page first</span>
+                    <td colspan="50" class="no-data-cell">
+                        <div class="no-data">
+                            <i class="fa-solid fa-id-card"></i>
+                            <span>No cards in this table</span>
                         </div>
                     </td>
                 </tr>
@@ -228,46 +239,49 @@
 <div class="table-wrapper">
     <div class="table-container idcard-table">
         <table id="confirm-data-table">
-            <thead>
+            <thead class="sticky top-0 z-20">
                 <tr>
-                    <th class="checkbox-col"><input type="checkbox" id="confirmSelectAll" title="Select all"></th>
-                    <th class="sr-col">Sr No.</th>
-                    {% for field in table.fields %}
-                    {% check_image_field field.type field.name as is_img %}
-                    {% if not is_img %}
-                    <th class="dynamic-col" data-field-name="{{ field.name }}">{{ field.name }}</th>
-                    {% endif %}
-                    {% endfor %}
-                    {% for field in table.fields %}
+                    <!-- Checkbox — 24px -->
+                    <th class="w-[24px] min-w-[24px] text-center px-[1px]">
+                        <input type="checkbox" id="confirmSelectAll" title="Select all">
+                    </th>
+                    <!-- SR NO — 36px, 2-line -->
+                    <th class="w-[36px] min-w-[36px] px-[1px] py-1 text-center align-middle">
+                        <div class="leading-tight">
+                            <div>SR</div>
+                            <div>NO</div>
+                        </div>
+                    </th>
+                    {% for field in table.fields|reorder_fields_for_display %}
                     {% check_image_field field.type field.name as is_img %}
                     {% if is_img %}
-                    <th class="image-col" data-field-name="{{ field.name }}" data-field-type="image">{{ field.name }}</th>
+                    <th class="w-[30px] min-w-[30px] px-[1px] py-1 text-center align-middle" data-field-name="{{ field.name }}" data-field-type="image">{{ field.name|wrap_header }}</th>
+                    {% else %}
+                    <th class="{{ field|get_column_width_class }} px-[1px] py-1 {{ field|get_column_align_class }} align-middle" data-field-name="{{ field.name }}" data-field-type="{{ field.type }}">{{ field.name }}</th>
                     {% endif %}
                     {% endfor %}
-                    <th class="fixed-col">Reason</th>
-                    <th class="fixed-col">Requested By</th>
-                    <th class="fixed-col">Requested At</th>
-                    <th class="action-col">Action</th>
-                    <th class="fixed-col">Status</th>
+                    <th class="min-w-[80px] px-[1px] py-1 text-center align-middle">Reason</th>
+                    <th class="w-[65px] min-w-[65px] px-[1px] py-1 text-center align-middle">Requested By</th>
+                    <th class="w-[90px] min-w-[90px] px-[1px] py-1 text-center align-middle">Requested At</th>
+                    <th class="w-[60px] min-w-[60px] px-[1px] py-1 text-center align-middle">Action</th>
+                    <th class="w-[65px] min-w-[65px] px-[1px] py-1 text-center align-middle">Status</th>
                 </tr>
             </thead>
-            <tbody id="confirmTableBody">
+            <tbody id="confirmTableBody" class="divide-y divide-gray-200">
                 {% for item in reprint_items %}
-                <tr data-rr-id="{{ item.rr_id }}" data-card-id="{{ item.card_id }}">
-                    <td class="checkbox-cell">
+                <tr data-rr-id="{{ item.rr_id }}" data-card-id="{{ item.card_id }}" data-sr-no="{{ item.sr_no }}">
+                    <td class="w-[24px] px-[1px] py-1 text-center align-middle checkbox-cell">
                         <input type="checkbox" class="confirmRowCheckbox">
                     </td>
-                    <td class="sr-no-cell">{{ item.sr_no }}</td>
-                    {% for field in item.ordered_fields %}
-                    {% check_image_field field.type field.name as is_img %}
-                    {% if not is_img %}
-                    <td class="dynamic-col" data-field="{{ field.name }}">{{ field.value|default:"-" }}</td>
-                    {% endif %}
-                    {% endfor %}
-                    {% for field in item.ordered_fields %}
+                    <td class="w-[36px] px-[1px] py-1 text-center align-middle sr-no-cell">{{ item.sr_no }}</td>
+                    {% for field in item.ordered_fields|reorder_card_fields_for_display %}
                     {% check_image_field field.type field.name as is_img %}
                     {% if is_img %}
-                    <td class="image-field image-cell {{ field.name|get_image_class }}" data-field="{{ field.name }}" data-field-type="image">
+                    <td class="w-[28px] px-[1px] py-1 text-center align-middle image-field image-cell {{ field.name|get_image_class }}"
+                        data-field="{{ field.name }}"
+                        data-field-name="{{ field.name }}"
+                        data-field-type="image"
+                        data-original-value="{{ field.value }}">
                         <div class="image-with-edit">
                             {% if field.value and field.value != '' and field.value != 'NOT_FOUND' and not field.value|slice:":8" == "PENDING:" %}
                             <img src="/media/{{ field.value|get_thumbnail_path }}" 
@@ -286,12 +300,20 @@
                             {% endif %}
                         </div>
                     </td>
+                    {% else %}
+                    <td class="dynamic-field {{ field|get_td_width_class }} px-[1px] py-1 align-middle"
+                        data-field="{{ field.name }}"
+                        data-field-name="{{ field.name }}"
+                        data-field-type="{{ field.type }}"
+                        data-original-value="{{ field.value }}">
+                        <span class="cell-value">{{ field.value|default:"-" }}</span>
+                    </td>
                     {% endif %}
                     {% endfor %}
-                    <td class="reason-cell" title="{{ item.reason }}">{{ item.reason|truncatewords:8 }}</td>
-                    <td class="user-cell">{{ item.requested_by_name }}</td>
-                    <td class="date-cell">{{ item.requested_at|date:"d-M-Y h:i A" }}</td>
-                    <td class="action-col">
+                    <td class="min-w-[80px] px-[1px] py-1 align-middle reason-cell whitespace-normal break-words text-left" title="{{ item.reason }}">{{ item.reason|truncatewords:8 }}</td>
+                    <td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center">{{ item.requested_by_name }}</td>
+                    <td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">{{ item.requested_at|date:"d-M-Y H:i" }}</td>
+                    <td class="w-[60px] px-[1px] py-1 text-center align-middle action-cell">
                         <div class="confirm-action-btns">
                             <button class="btn-confirm-single" data-rr-id="{{ item.rr_id }}" title="Confirm this reprint">
                                 <i class="fa-solid fa-check"></i>
@@ -301,17 +323,16 @@
                             </button>
                         </div>
                     </td>
-                    <td class="fixed-col">
+                    <td class="w-[65px] px-[1px] py-1 align-middle text-center">
                         <span class="status-badge status-{{ item.status }}">{{ item.get_status_display }}</span>
                     </td>
                 </tr>
                 {% empty %}
                 <tr class="no-data-row">
-                    <td colspan="20" class="no-data">
-                        <div class="py-12 text-center">
-                            <i class="fa-solid fa-clipboard-check text-5xl text-gray-300 mb-3 block"></i>
-                            <span class="text-sm text-gray-500 font-medium">No reprints pending confirmation</span>
-                            <br><span class="text-xs text-gray-400">Request reprints from Step 1 first</span>
+                    <td colspan="50" class="no-data-cell">
+                        <div class="no-data">
+                            <i class="fa-solid fa-clipboard-check"></i>
+                            <span>No reprints pending confirmation</span>
                         </div>
                     </td>
                 </tr>
@@ -403,45 +424,48 @@
 <div class="table-wrapper">
     <div class="table-container idcard-table">
         <table id="download-data-table">
-            <thead>
+            <thead class="sticky top-0 z-20">
                 <tr>
-                    <th class="checkbox-col"><input type="checkbox" id="downloadSelectAll" title="Select all"></th>
-                    <th class="sr-col">Sr No.</th>
-                    {% for field in table.fields %}
-                    {% check_image_field field.type field.name as is_img %}
-                    {% if not is_img %}
-                    <th class="dynamic-col" data-field-name="{{ field.name }}">{{ field.name }}</th>
-                    {% endif %}
-                    {% endfor %}
-                    {% for field in table.fields %}
+                    <!-- Checkbox — 24px -->
+                    <th class="w-[24px] min-w-[24px] text-center px-[1px]">
+                        <input type="checkbox" id="downloadSelectAll" title="Select all">
+                    </th>
+                    <!-- SR NO — 36px, 2-line -->
+                    <th class="w-[36px] min-w-[36px] px-[1px] py-1 text-center align-middle">
+                        <div class="leading-tight">
+                            <div>SR</div>
+                            <div>NO</div>
+                        </div>
+                    </th>
+                    {% for field in table.fields|reorder_fields_for_display %}
                     {% check_image_field field.type field.name as is_img %}
                     {% if is_img %}
-                    <th class="image-col" data-field-name="{{ field.name }}" data-field-type="image">{{ field.name }}</th>
+                    <th class="w-[30px] min-w-[30px] px-[1px] py-1 text-center align-middle" data-field-name="{{ field.name }}" data-field-type="image">{{ field.name|wrap_header }}</th>
+                    {% else %}
+                    <th class="{{ field|get_column_width_class }} px-[1px] py-1 {{ field|get_column_align_class }} align-middle" data-field-name="{{ field.name }}" data-field-type="{{ field.type }}">{{ field.name }}</th>
                     {% endif %}
                     {% endfor %}
-                    <th class="fixed-col">Reason</th>
-                    <th class="fixed-col">Confirmed At</th>
-                    <th class="action-col">Action</th>
-                    <th class="fixed-col">Status</th>
+                    <th class="min-w-[80px] px-[1px] py-1 text-center align-middle">Reason</th>
+                    <th class="w-[90px] min-w-[90px] px-[1px] py-1 text-center align-middle">Confirmed At</th>
+                    <th class="w-[60px] min-w-[60px] px-[1px] py-1 text-center align-middle">Action</th>
+                    <th class="w-[65px] min-w-[65px] px-[1px] py-1 text-center align-middle">Status</th>
                 </tr>
             </thead>
-            <tbody id="downloadTableBody">
+            <tbody id="downloadTableBody" class="divide-y divide-gray-200">
                 {% for item in download_items %}
-                <tr data-rr-id="{{ item.rr_id }}" data-card-id="{{ item.card_id }}">
-                    <td class="checkbox-cell">
+                <tr data-rr-id="{{ item.rr_id }}" data-card-id="{{ item.card_id }}" data-sr-no="{{ item.sr_no }}">
+                    <td class="w-[24px] px-[1px] py-1 text-center align-middle checkbox-cell">
                         <input type="checkbox" class="downloadRowCheckbox">
                     </td>
-                    <td class="sr-no-cell">{{ item.sr_no }}</td>
-                    {% for field in item.ordered_fields %}
-                    {% check_image_field field.type field.name as is_img %}
-                    {% if not is_img %}
-                    <td class="dynamic-col" data-field="{{ field.name }}">{{ field.value|default:"-" }}</td>
-                    {% endif %}
-                    {% endfor %}
-                    {% for field in item.ordered_fields %}
+                    <td class="w-[36px] px-[1px] py-1 text-center align-middle sr-no-cell">{{ item.sr_no }}</td>
+                    {% for field in item.ordered_fields|reorder_card_fields_for_display %}
                     {% check_image_field field.type field.name as is_img %}
                     {% if is_img %}
-                    <td class="image-field image-cell {{ field.name|get_image_class }}" data-field="{{ field.name }}" data-field-type="image">
+                    <td class="w-[28px] px-[1px] py-1 text-center align-middle image-field image-cell {{ field.name|get_image_class }}"
+                        data-field="{{ field.name }}"
+                        data-field-name="{{ field.name }}"
+                        data-field-type="image"
+                        data-original-value="{{ field.value }}">
                         <div class="image-with-edit">
                             {% if field.value and field.value != '' and field.value != 'NOT_FOUND' and not field.value|slice:":8" == "PENDING:" %}
                             <img src="/media/{{ field.value|get_thumbnail_path }}" 
@@ -460,26 +484,33 @@
                             {% endif %}
                         </div>
                     </td>
+                    {% else %}
+                    <td class="dynamic-field {{ field|get_td_width_class }} px-[1px] py-1 align-middle"
+                        data-field="{{ field.name }}"
+                        data-field-name="{{ field.name }}"
+                        data-field-type="{{ field.type }}"
+                        data-original-value="{{ field.value }}">
+                        <span class="cell-value">{{ field.value|default:"-" }}</span>
+                    </td>
                     {% endif %}
                     {% endfor %}
-                    <td class="reason-cell" title="{{ item.reason }}">{{ item.reason|truncatewords:8 }}</td>
-                    <td class="date-cell">{{ item.confirmed_at|date:"d-M-Y h:i A" }}</td>
-                    <td class="action-col">
+                    <td class="min-w-[80px] px-[1px] py-1 align-middle reason-cell whitespace-normal break-words text-left" title="{{ item.reason }}">{{ item.reason|truncatewords:8 }}</td>
+                    <td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">{{ item.confirmed_at|date:"d-M-Y H:i" }}</td>
+                    <td class="w-[60px] px-[1px] py-1 text-center align-middle action-cell">
                         <button class="btn-download-single" data-rr-id="{{ item.rr_id }}" title="Download this reprint">
                             <i class="fa-solid fa-download"></i>
                         </button>
                     </td>
-                    <td class="fixed-col">
+                    <td class="w-[65px] px-[1px] py-1 align-middle text-center">
                         <span class="status-badge status-{{ item.status }}">{{ item.get_status_display }}</span>
                     </td>
                 </tr>
                 {% empty %}
                 <tr class="no-data-row">
-                    <td colspan="20" class="no-data">
-                        <div class="py-12 text-center">
-                            <i class="fa-solid fa-download text-5xl text-gray-300 mb-3 block"></i>
-                            <span class="text-sm text-gray-500 font-medium">No reprints ready for download</span>
-                            <br><span class="text-xs text-gray-400">Confirm reprints in Step 2 first</span>
+                    <td colspan="50" class="no-data-cell">
+                        <div class="no-data">
+                            <i class="fa-solid fa-download"></i>
+                            <span>No reprints ready for download</span>
                         </div>
                     </td>
                 </tr>

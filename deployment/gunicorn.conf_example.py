@@ -1,11 +1,11 @@
 """
-Gunicorn Configuration for 1GB RAM Server
+Gunicorn Configuration for 2GB RAM Server
 =========================================
 
 CRITICAL SETTINGS:
-- workers = 1 (NEVER increase on 1GB RAM)
-- threads = 2 (allows some concurrency)
-- timeout = 600 (for long bulk operations)
+- workers = 2 (safe for 2GB RAM — each worker ~400-600MB)
+- threads = 2 (allows concurrency within each worker)
+- timeout = 600 (for long bulk operations — 1GB uploads + exports)
 
 Usage:
     gunicorn -c deployment/gunicorn.conf.py config.wsgi
@@ -17,15 +17,14 @@ Or with systemd:
 import multiprocessing
 
 # =============================================================================
-# CRITICAL: Memory-Safe Settings for 1GB RAM
+# Memory-Safe Settings for 2GB RAM
 # =============================================================================
 
-# NEVER use more than 1 worker on 1GB RAM!
-# Each worker consumes ~200-400MB with image processing
-workers = 1
+# 2 workers for 2GB RAM — each worker uses ~400-600MB with image processing
+# Keeps one worker available while the other handles a long upload/export
+workers = 2
 
-# Use threads instead of multiple workers for concurrency
-# This allows handling multiple requests with shared memory
+# Use threads for additional concurrency within each worker
 threads = 2
 
 # Process naming

@@ -192,6 +192,8 @@ class IDCard(models.Model):
     # Original photo name from Excel (for matching during image reupload)
     original_photo_name = models.CharField(max_length=255, blank=True, null=True, help_text='Original photo name from Excel for matching')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', db_index=True)
+    downloaded_at = models.DateTimeField(null=True, blank=True, help_text='Timestamp when card was moved to downloaded status')
+    deleted_at = models.DateTimeField(null=True, blank=True, help_text='Timestamp when card was moved to pool')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

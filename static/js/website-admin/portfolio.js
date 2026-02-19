@@ -59,8 +59,9 @@
     });
 
     /* DELETE / TOGGLE */
-    window.deletePortfolio = function (id) {
-        if (!confirm('Delete this portfolio item?')) return;
+    window.deletePortfolio = async function (id) {
+        const ok = await waConfirm({ title: 'Delete Portfolio Item?', text: 'This item will be permanently removed.', icon: 'fa-solid fa-trash' });
+        if (!ok) return;
         ApiClient.post(`${BASE}/portfolio/${id}/delete/`)
             .then(d => { if (d.success) { showToast(d.message, 'success'); location.reload(); } else showToast(d.message, 'error'); })
             .catch(() => showToast('Network error', 'error'));
@@ -118,8 +119,9 @@
         document.getElementById('categoryModal').classList.add('show');
     };
 
-    window.deleteCategory = function (id) {
-        if (!confirm('Delete this category? Items will keep their content but lose category assignment.')) return;
+    window.deleteCategory = async function (id) {
+        const ok = await waConfirm({ title: 'Delete Category?', text: 'Items will keep their content but lose their category assignment.', icon: 'fa-solid fa-trash' });
+        if (!ok) return;
         ApiClient.post(`${BASE}/portfolio-categories/${id}/delete/`)
             .then(d => { if (d.success) { showToast(d.message, 'success'); location.reload(); } else showToast(d.message, 'error'); })
             .catch(() => showToast('Network error', 'error'));

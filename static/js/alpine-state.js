@@ -21,7 +21,7 @@
 function layoutState() {
     return {
         // ---- Sidebar ----
-        sidebarOpen: localStorage.getItem('sidebarCollapsed') === 'false',
+        sidebarOpen: localStorage.getItem('sidebarCollapsed') !== 'true',
 
         // ---- Modal state ----
         activeModal: null,
@@ -84,7 +84,7 @@ function layoutState() {
             const update = () => {
                 const now = new Date();
                 if (dateEl) dateEl.textContent = now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-                if (timeEl) timeEl.textContent = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+                if (timeEl) timeEl.textContent = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
             };
             update();
             setInterval(update, 1000);
@@ -161,6 +161,8 @@ function layoutState() {
             // Normalise boolean → string (matches core/toast.js behaviour)
             if (typeof type === 'boolean') type = type ? 'success' : 'error';
             type = type || 'success';
+            // Deduplicate: skip if same message is already in the queue
+            if (this.toastQueue.some(t => t.message === message)) return;
             const id = Date.now() + Math.random();
             this.toastQueue.push({ id, message, type });
             setTimeout(() => {

@@ -27,8 +27,8 @@ Required context:
             <tr data-table-id="{{ table.id }}" data-table-status="{% if table.is_active %}active{% else %}inactive{% endif %}" data-table-name="{{ table.name }}" data-table-fields="{{ table.fields|json_encode }}">
                 <td>{{ table.name }}</td>
                 <td><span class="status-badge {% if table.is_active %}active{% else %}inactive{% endif %}">{% if table.is_active %}Active{% else %}Inactive{% endif %}</span></td>
-                <td>{{ table.created_at|date:"d-M-Y h:i A" }}</td>
-                <td>{{ table.updated_at|date:"d-M-Y h:i A" }}</td>
+                <td>{{ table.created_at|date:"d-M-Y H:i" }}</td>
+                <td>{{ table.updated_at|date:"d-M-Y H:i" }}</td>
                 <td><button class="download-btn" data-table-id="{{ table.id }}"><i class="fa-solid fa-download"></i> Download</button></td>
             </tr>
             {% empty %}

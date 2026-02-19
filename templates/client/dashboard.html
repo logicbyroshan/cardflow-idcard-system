@@ -4,7 +4,7 @@
 {% block title %}Dashboard - Adarsh ID Cards{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=100">
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=130">
 {% endblock %}
 
 {% block breadcrumb %}
@@ -222,7 +222,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const dateEl = document.getElementById('welcomeDate');
     const timeEl = document.getElementById('welcomeTime');
     if (dateEl) dateEl.textContent = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'short', day: '2-digit' });
-    if (timeEl) timeEl.textContent = now.toLocaleTimeString('en-US', { hour12: true });
+    if (timeEl) timeEl.textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
   }
   updateDateTime();
   setInterval(updateDateTime, 1000);

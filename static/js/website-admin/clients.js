@@ -48,8 +48,9 @@
 
     /* ===== DELETE / TOGGLE ===== */
 
-    window.deleteClient = function (id) {
-        if (!confirm('Delete this client?')) return;
+    window.deleteClient = async function (id) {
+        const ok = await waConfirm({ title: 'Delete Client?', text: 'This client will be permanently removed.', icon: 'fa-solid fa-trash' });
+        if (!ok) return;
         ApiClient.post(`${BASE}/clients/${id}/delete/`)
             .then(d => { if (d.success) { showToast(d.message, 'success'); location.reload(); } else showToast(d.message, 'error'); })
             .catch(() => showToast('Network error', 'error'));

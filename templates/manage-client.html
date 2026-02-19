@@ -9,13 +9,13 @@
   <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- Tailwind CSS (single stylesheet) -->
-  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=100">
-  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=100">
+  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=130">
+  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=130">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <!-- Alpine.js State Module (MUST load before Alpine) -->
-  <script src="{% static 'js/alpine-state.js' %}?v=100"></script>
+  <script src="{% static 'js/alpine-state.js' %}?v=130"></script>
   <!-- Alpine.js -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
 </head>
@@ -90,10 +90,17 @@
                 </div>
                 <div class="form-group">
                   <label class="form-label" for="clientStatus">Status</label>
-                  <select class="form-select" id="clientStatus" name="is_active">
-                    <option value="true">Active</option>
-                    <option value="false">Inactive</option>
-                  </select>
+                  <div class="custom-dropdown form-dropdown" id="clientStatusDropdown">
+                    <button type="button" class="dropdown-toggle">
+                      <span>Active</span>
+                      <i class="fa-solid fa-chevron-down"></i>
+                    </button>
+                    <div class="dropdown-options">
+                      <div class="dropdown-option selected" data-value="true">Active</div>
+                      <div class="dropdown-option" data-value="false">Inactive</div>
+                    </div>
+                  </div>
+                  <input type="hidden" id="clientStatus" name="is_active" value="true">
                 </div>
               </div>
             </div>
@@ -109,7 +116,7 @@
                 <div class="permissions-grid">
                   <div class="permission-row">
                     <label class="toggle-switch">
-                      <input type="checkbox" id="perm_idcard_client_list" name="perm_idcard_client_list" checked>
+                      <input type="checkbox" id="perm_idcard_client_list" name="perm_idcard_client_list">
                       <span class="toggle-slider"></span>
                     </label>
                     <span class="permission-label">Manage Staff</span>
@@ -123,38 +130,59 @@
                 <div class="permissions-grid">
                   <div class="permission-row">
                     <label class="toggle-switch">
-                      <input type="checkbox" id="perm_idcard_setting_list" name="perm_idcard_setting_list" checked>
+                      <input type="checkbox" id="perm_idcard_setting_list" name="perm_idcard_setting_list">
                       <span class="toggle-slider"></span>
                     </label>
                     <span class="permission-label">View Templates</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
-                      <input type="checkbox" id="perm_idcard_setting_add" name="perm_idcard_setting_add" checked>
+                      <input type="checkbox" id="perm_idcard_setting_add" name="perm_idcard_setting_add">
                       <span class="toggle-slider"></span>
                     </label>
                     <span class="permission-label">Add Template</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
-                      <input type="checkbox" id="perm_idcard_setting_edit" name="perm_idcard_setting_edit" checked>
+                      <input type="checkbox" id="perm_idcard_setting_edit" name="perm_idcard_setting_edit">
                       <span class="toggle-slider"></span>
                     </label>
                     <span class="permission-label">Edit Template</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
-                      <input type="checkbox" id="perm_idcard_setting_delete" name="perm_idcard_setting_delete" checked>
+                      <input type="checkbox" id="perm_idcard_setting_delete" name="perm_idcard_setting_delete">
                       <span class="toggle-slider"></span>
                     </label>
                     <span class="permission-label">Delete Template</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
-                      <input type="checkbox" id="perm_idcard_setting_status" name="perm_idcard_setting_status" checked>
+                      <input type="checkbox" id="perm_idcard_setting_status" name="perm_idcard_setting_status">
                       <span class="toggle-slider"></span>
                     </label>
                     <span class="permission-label">Toggle Template Status</span>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Group/Table Management Permissions -->
+              <div class="permission-category">
+                <div class="category-title"><i class="fa-solid fa-table-cells"></i> Group / Table Management</div>
+                <div class="permissions-grid">
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_group_create" name="perm_idcard_group_create">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Create Group / Table</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_group_delete" name="perm_idcard_group_delete">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Delete Group / Table</span>
                   </div>
                 </div>
               </div>
@@ -165,42 +193,42 @@
                 <div class="permissions-grid">
                   <div class="permission-row">
                     <label class="toggle-switch">
-                      <input type="checkbox" id="perm_idcard_pending_list" name="perm_idcard_pending_list" checked>
+                      <input type="checkbox" id="perm_idcard_pending_list" name="perm_idcard_pending_list">
                       <span class="toggle-slider"></span>
                     </label>
                     <span class="permission-label">View Pending Cards</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
-                      <input type="checkbox" id="perm_idcard_verified_list" name="perm_idcard_verified_list" checked>
+                      <input type="checkbox" id="perm_idcard_verified_list" name="perm_idcard_verified_list">
                       <span class="toggle-slider"></span>
                     </label>
                     <span class="permission-label">View Verified Cards</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
-                      <input type="checkbox" id="perm_idcard_pool_list" name="perm_idcard_pool_list" checked>
+                      <input type="checkbox" id="perm_idcard_pool_list" name="perm_idcard_pool_list">
                       <span class="toggle-slider"></span>
                     </label>
                     <span class="permission-label">View Pool Cards</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
-                      <input type="checkbox" id="perm_idcard_approved_list" name="perm_idcard_approved_list" checked>
+                      <input type="checkbox" id="perm_idcard_approved_list" name="perm_idcard_approved_list">
                       <span class="toggle-slider"></span>
                     </label>
                     <span class="permission-label">View Approved Cards</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
-                      <input type="checkbox" id="perm_idcard_download_list" name="perm_idcard_download_list" checked>
+                      <input type="checkbox" id="perm_idcard_download_list" name="perm_idcard_download_list">
                       <span class="toggle-slider"></span>
                     </label>
                     <span class="permission-label">View Download List</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
-                      <input type="checkbox" id="perm_idcard_reprint_list" name="perm_idcard_reprint_list" checked>
+                      <input type="checkbox" id="perm_idcard_reprint_list" name="perm_idcard_reprint_list">
                       <span class="toggle-slider"></span>
                     </label>
                     <span class="permission-label">View Reprint List</span>
@@ -214,77 +242,77 @@
                 <div class="permissions-grid">
                   <div class="permission-row">
                     <label class="toggle-switch">
-                      <input type="checkbox" id="perm_idcard_add" name="perm_idcard_add" checked>
+                      <input type="checkbox" id="perm_idcard_add" name="perm_idcard_add">
                       <span class="toggle-slider"></span>
                     </label>
                     <span class="permission-label">Add Card</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
-                      <input type="checkbox" id="perm_idcard_edit" name="perm_idcard_edit" checked>
+                      <input type="checkbox" id="perm_idcard_edit" name="perm_idcard_edit">
                       <span class="toggle-slider"></span>
                     </label>
                     <span class="permission-label">Edit Card</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
-                      <input type="checkbox" id="perm_idcard_delete" name="perm_idcard_delete" checked>
+                      <input type="checkbox" id="perm_idcard_delete" name="perm_idcard_delete">
                       <span class="toggle-slider"></span>
                     </label>
                     <span class="permission-label">Delete Card</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
-                      <input type="checkbox" id="perm_idcard_info" name="perm_idcard_info" checked>
+                      <input type="checkbox" id="perm_idcard_info" name="perm_idcard_info">
                       <span class="toggle-slider"></span>
                     </label>
                     <span class="permission-label">View Card Info</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
-                      <input type="checkbox" id="perm_idcard_approve" name="perm_idcard_approve" checked>
+                      <input type="checkbox" id="perm_idcard_approve" name="perm_idcard_approve">
                       <span class="toggle-slider"></span>
                     </label>
                     <span class="permission-label">Approve Card</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
-                      <input type="checkbox" id="perm_idcard_verify" name="perm_idcard_verify" checked>
+                      <input type="checkbox" id="perm_idcard_verify" name="perm_idcard_verify">
                       <span class="toggle-slider"></span>
                     </label>
                     <span class="permission-label">Verify Card</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
-                      <input type="checkbox" id="perm_idcard_created_at" name="perm_idcard_created_at" checked>
+                      <input type="checkbox" id="perm_idcard_created_at" name="perm_idcard_created_at">
                       <span class="toggle-slider"></span>
                     </label>
                     <span class="permission-label">View Created Date</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
-                      <input type="checkbox" id="perm_idcard_updated_at" name="perm_idcard_updated_at" checked>
+                      <input type="checkbox" id="perm_idcard_updated_at" name="perm_idcard_updated_at">
                       <span class="toggle-slider"></span>
                     </label>
                     <span class="permission-label">View Updated Date</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
-                      <input type="checkbox" id="perm_idcard_delete_from_pool" name="perm_idcard_delete_from_pool" checked>
+                      <input type="checkbox" id="perm_idcard_delete_from_pool" name="perm_idcard_delete_from_pool">
                       <span class="toggle-slider"></span>
                     </label>
                     <span class="permission-label">Remove From Pool</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
-                      <input type="checkbox" id="perm_reupload_idcard_image" name="perm_reupload_idcard_image" checked>
+                      <input type="checkbox" id="perm_reupload_idcard_image" name="perm_reupload_idcard_image">
                       <span class="toggle-slider"></span>
                     </label>
                     <span class="permission-label">Reupload Card Image</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
-                      <input type="checkbox" id="perm_idcard_retrieve" name="perm_idcard_retrieve" checked>
+                      <input type="checkbox" id="perm_idcard_retrieve" name="perm_idcard_retrieve">
                       <span class="toggle-slider"></span>
                     </label>
                     <span class="permission-label">Retrieve Card</span>
@@ -298,35 +326,35 @@
                 <div class="permissions-grid">
                   <div class="permission-row">
                     <label class="toggle-switch">
-                      <input type="checkbox" id="perm_idcard_bulk_upload" name="perm_idcard_bulk_upload" checked>
+                      <input type="checkbox" id="perm_idcard_bulk_upload" name="perm_idcard_bulk_upload">
                       <span class="toggle-slider"></span>
                     </label>
                     <span class="permission-label">Bulk Upload Cards</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
-                      <input type="checkbox" id="perm_idcard_bulk_download" name="perm_idcard_bulk_download" checked>
+                      <input type="checkbox" id="perm_idcard_bulk_download" name="perm_idcard_bulk_download">
                       <span class="toggle-slider"></span>
                     </label>
                     <span class="permission-label">Bulk Download Cards</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
-                      <input type="checkbox" id="perm_idcard_bulk_reupload" name="perm_idcard_bulk_reupload" checked>
+                      <input type="checkbox" id="perm_idcard_bulk_reupload" name="perm_idcard_bulk_reupload">
                       <span class="toggle-slider"></span>
                     </label>
                     <span class="permission-label">Bulk Reupload Images</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
-                      <input type="checkbox" id="perm_delete_all_idcard" name="perm_delete_all_idcard" checked>
+                      <input type="checkbox" id="perm_delete_all_idcard" name="perm_delete_all_idcard">
                       <span class="toggle-slider"></span>
                     </label>
                     <span class="permission-label">Delete All Cards</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
-                      <input type="checkbox" id="perm_idcard_upgrade_all" name="perm_idcard_upgrade_all" checked>
+                      <input type="checkbox" id="perm_idcard_upgrade_all" name="perm_idcard_upgrade_all">
                       <span class="toggle-slider"></span>
                     </label>
                     <span class="permission-label">Upgrade All Class</span>
@@ -620,14 +648,16 @@
                     <td>{{ client.user.email }}</td>
                     <td>{{ client.user.phone|default:"-" }}</td>
                     <td><span class="status-badge {% if client.status == 'active' %}active{% else %}inactive{% endif %}">{{ client.get_status_display }}</span></td>
-                    <td>{{ client.created_at|date:"d-m-Y h:i a" }}</td>
-                    <td>{{ client.updated_at|date:"d-m-Y h:i a" }}</td>
+                    <td>{{ client.created_at|date:"d-m-Y H:i" }}</td>
+                    <td>{{ client.updated_at|date:"d-m-Y H:i" }}</td>
                 </tr>
                 {% empty %}
                 <tr class="no-data-row">
-                    <td colspan="6" class="no-data">
-                        <i class="fa-solid fa-building-slash"></i>
-                        <span>No clients found</span>
+                    <td colspan="6" class="no-data-cell">
+                        <div class="no-data">
+                            <i class="fa-solid fa-building-slash"></i>
+                            <span>No clients found</span>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
@@ -673,11 +703,11 @@
   </main>
 
   <!-- Core Modules (Load Order: api → toast → modal → utils → init) -->
-  <script src="{% static 'js/core/api.js' %}?v=100"></script>
-  <script src="{% static 'js/core/toast.js' %}?v=100"></script>
-  <script src="{% static 'js/core/modal.js' %}?v=100"></script>
-  <script src="{% static 'js/core/utils.js' %}?v=100"></script>
-  <script src="{% static 'js/init.js' %}?v=100"></script>
+  <script src="{% static 'js/core/api.js' %}?v=130"></script>
+  <script src="{% static 'js/core/toast.js' %}?v=130"></script>
+  <script src="{% static 'js/core/modal.js' %}?v=130"></script>
+  <script src="{% static 'js/core/utils.js' %}?v=130"></script>
+  <script src="{% static 'js/init.js' %}?v=130"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       // ==================== ELEMENTS ====================
@@ -731,6 +761,45 @@
       let selectedClientId = null;
       let selectedRow = null;
 
+      // ==================== FORM STATUS DROPDOWN ====================
+      const clientStatusDropdown = document.getElementById('clientStatusDropdown');
+      const clientStatusInput = document.getElementById('clientStatus');
+
+      function setClientStatusDropdown(val) {
+        if (!clientStatusInput) return;
+        clientStatusInput.value = val;
+        if (!clientStatusDropdown) return;
+        const toggle = clientStatusDropdown.querySelector('.dropdown-toggle span');
+        const options = clientStatusDropdown.querySelectorAll('.dropdown-option');
+        options.forEach(o => o.classList.remove('selected'));
+        const match = clientStatusDropdown.querySelector(`.dropdown-option[data-value="${val}"]`);
+        if (match) {
+          match.classList.add('selected');
+          if (toggle) toggle.textContent = match.textContent;
+        }
+      }
+
+      if (clientStatusDropdown && clientStatusInput) {
+        const toggleBtn = clientStatusDropdown.querySelector('.dropdown-toggle');
+        const options = clientStatusDropdown.querySelectorAll('.dropdown-option');
+        if (toggleBtn) {
+          toggleBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            document.querySelectorAll('.custom-dropdown.open').forEach(d => { if (d !== clientStatusDropdown) d.classList.remove('open'); });
+            clientStatusDropdown.classList.toggle('open');
+          });
+        }
+        options.forEach(option => {
+          option.addEventListener('click', function() {
+            setClientStatusDropdown(this.dataset.value);
+            clientStatusDropdown.classList.remove('open');
+          });
+        });
+        document.addEventListener('click', function(e) {
+          if (!e.target.closest('.custom-dropdown')) clientStatusDropdown.classList.remove('open');
+        });
+      }
+
       // ==================== TOAST FUNCTIONS ====================
       // Using shared showToast from utils.js
 
@@ -742,21 +811,23 @@
           selectedClientId = row.dataset.clientId;
           selectedRow = row;
           
-          editClientBtn.disabled = false;
-          viewClientBtn.disabled = false;
-          viewStaffBtn.disabled = false;
-          deleteClientBtn.disabled = false;
-          activeClientBtn.disabled = false;
+          if (editClientBtn) editClientBtn.disabled = false;
+          if (viewClientBtn) viewClientBtn.disabled = false;
+          if (viewStaffBtn) viewStaffBtn.disabled = false;
+          if (deleteClientBtn) deleteClientBtn.disabled = false;
+          if (activeClientBtn) activeClientBtn.disabled = false;
           
           const status = row.dataset.clientStatus;
-          if (status === 'active') {
-            activeClientBtn.innerHTML = '<i class="fa-solid fa-ban"></i> Inactive';
-            activeClientBtn.classList.remove('btn-active');
-            activeClientBtn.classList.add('btn-inactive');
-          } else {
-            activeClientBtn.innerHTML = '<i class="fa-solid fa-check"></i> Active';
-            activeClientBtn.classList.remove('btn-inactive');
-            activeClientBtn.classList.add('btn-active');
+          if (activeClientBtn) {
+            if (status === 'active') {
+              activeClientBtn.innerHTML = '<i class="fa-solid fa-ban"></i> Inactive';
+              activeClientBtn.classList.remove('btn-active');
+              activeClientBtn.classList.add('btn-inactive');
+            } else {
+              activeClientBtn.innerHTML = '<i class="fa-solid fa-check"></i> Active';
+              activeClientBtn.classList.remove('btn-inactive');
+              activeClientBtn.classList.add('btn-active');
+            }
           }
         }
       }
@@ -817,6 +888,7 @@
       const permissionFields = [
         'perm_idcard_client_list',
         'perm_idcard_setting_list', 'perm_idcard_setting_add', 'perm_idcard_setting_edit', 'perm_idcard_setting_delete', 'perm_idcard_setting_status',
+        'perm_idcard_group_create', 'perm_idcard_group_delete',
         'perm_idcard_pending_list', 'perm_idcard_verified_list', 'perm_idcard_pool_list', 'perm_idcard_approved_list', 'perm_idcard_download_list', 'perm_idcard_reprint_list',
         'perm_idcard_add', 'perm_idcard_edit', 'perm_idcard_delete', 'perm_idcard_info', 'perm_idcard_approve', 'perm_idcard_verify',
         'perm_idcard_created_at', 'perm_idcard_updated_at', 'perm_idcard_delete_from_pool', 'perm_reupload_idcard_image', 'perm_idcard_retrieve',
@@ -827,6 +899,7 @@
       function openDrawer(mode = 'add', clientData = null) {
         clientForm.reset();
         clientIdInput.value = '';
+        setClientStatusDropdown('true'); // Reset dropdown UI after form reset
         
         // Phase 1: Photo upload removed - using avatar placeholder
         
@@ -851,7 +924,7 @@
             document.getElementById('clientEmail').value = clientData.email || '';
             document.getElementById('clientPhone').value = clientData.phone || '';
             document.getElementById('clientAddress').value = clientData.address || '';
-            document.getElementById('clientStatus').value = clientData.is_active !== false ? 'true' : 'false';
+            setClientStatusDropdown(clientData.status === 'active' ? 'true' : 'false');
             
             // Phase 1: Photo upload removed - using avatar placeholder
             
@@ -1018,27 +1091,27 @@
       }
 
       // ==================== EVENT HANDLERS ====================
-      addClientBtn.addEventListener('click', () => openDrawer('add'));
+      if (addClientBtn) addClientBtn.addEventListener('click', () => openDrawer('add'));
       
-      editClientBtn.addEventListener('click', async () => {
+      if (editClientBtn) editClientBtn.addEventListener('click', async () => {
         if (!selectedClientId) return;
         const clientData = await fetchClientDetails(selectedClientId);
         if (clientData) openDrawer('edit', clientData);
       });
       
-      viewClientBtn.addEventListener('click', async () => {
+      if (viewClientBtn) viewClientBtn.addEventListener('click', async () => {
         if (!selectedClientId) return;
         const clientData = await fetchClientDetails(selectedClientId);
         if (clientData) openViewModal(clientData);
       });
       
-      deleteClientBtn.addEventListener('click', () => {
+      if (deleteClientBtn) deleteClientBtn.addEventListener('click', () => {
         if (!selectedClientId || !selectedRow) return;
         const clientName = selectedRow.querySelector('td:first-child').textContent;
         openDeleteModalFn(clientName);
       });
       
-      activeClientBtn.addEventListener('click', () => {
+      if (activeClientBtn) activeClientBtn.addEventListener('click', () => {
         if (!selectedClientId || !selectedRow) return;
         const clientName = selectedRow.querySelector('td:first-child').textContent;
         const currentStatus = selectedRow.dataset.clientStatus;
@@ -1133,11 +1206,11 @@
           selectedRow.remove();
           selectedClientId = null;
           selectedRow = null;
-          editClientBtn.disabled = true;
-          viewClientBtn.disabled = true;
-          viewStaffBtn.disabled = true;
-          deleteClientBtn.disabled = true;
-          activeClientBtn.disabled = true;
+          if (editClientBtn) editClientBtn.disabled = true;
+          if (viewClientBtn) viewClientBtn.disabled = true;
+          if (viewStaffBtn) viewStaffBtn.disabled = true;
+          if (deleteClientBtn) deleteClientBtn.disabled = true;
+          if (activeClientBtn) activeClientBtn.disabled = true;
         } else {
           showToast(result.message || 'Failed to delete client', 'error')
         }
@@ -1343,11 +1416,11 @@
           selectedRow.classList.remove('selected');
           selectedRow = null;
           selectedClientId = null;
-          editClientBtn.disabled = true;
-          viewClientBtn.disabled = true;
-          viewStaffBtn.disabled = true;
-          deleteClientBtn.disabled = true;
-          activeClientBtn.disabled = true;
+          if (editClientBtn) editClientBtn.disabled = true;
+          if (viewClientBtn) viewClientBtn.disabled = true;
+          if (viewStaffBtn) viewStaffBtn.disabled = true;
+          if (deleteClientBtn) deleteClientBtn.disabled = true;
+          if (activeClientBtn) activeClientBtn.disabled = true;
         }
         updatePagination();
       }
@@ -1607,7 +1680,7 @@
       staffDrawer.addEventListener('click', (e) => { if (e.target === staffDrawer) closeStaffDrawerFn(); });
     });
   </script>
-  <script src="{% static 'js/global-search.js' %}?v=100"></script>
+  <script src="{% static 'js/global-search.js' %}?v=130"></script>
   {% include 'partials/htmx-config.html' %}
   <script>
     document.addEventListener('DOMContentLoaded', function() {

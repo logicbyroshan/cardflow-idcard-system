@@ -250,7 +250,8 @@
 
         // Delete
         if (e.target.closest('.hero-delete-btn')) {
-            if (!confirm('Delete this hero image?')) return;
+            const ok = await waConfirm({ title: 'Delete Hero Image?', text: 'This image will be permanently removed.', icon: 'fa-solid fa-trash' });
+            if (!ok) return;
             try {
                 const res = await fetch(`/panel/website/api/hero-images/${id}/delete/`, {
                     method: 'POST',

@@ -114,6 +114,8 @@ class PermissionValidationMiddleware:
         '/panel/auth/login/',
         '/panel/auth/logout/',
         '/panel/auth/password-reset/',
+        '/panel/api/auth/',
+        '/panel/inactive/',
         '/static/',
         '/media/',
         '/admin/',
@@ -289,7 +291,8 @@ class PermissionValidationMiddleware:
         return None
     
     def _force_logout(self, request, message):
-        """Force logout user and redirect appropriately"""
+        """Force logout user and redirect to inactive page"""
+        from urllib.parse import quote
         # Log out the user
         logout(request)
         
@@ -305,13 +308,11 @@ class PermissionValidationMiddleware:
                 'success': False,
                 'message': message,
                 'force_logout': True,
-                'redirect': '/panel/auth/login/'
+                'redirect': f'/panel/inactive/?reason={quote(message)}'
             }, status=401)
         
-        # Regular page request - redirect to login
-        from django.contrib import messages
-        messages.error(request, message)
-        return redirect('/panel/auth/login/')
+        # Regular page request - redirect to inactive page
+        return redirect(f'/panel/inactive/?reason={quote(message)}')
 
 
 class RoleScopingMiddleware:
@@ -356,3 +357,56 @@ class RoleScopingMiddleware:
             staff = getattr(user, 'staff_profile', None)
             if staff and staff.client:
                 request.user_scope['client_id'] = staff.client.id
+
+
+class WebsiteOfflineMiddleware:
+    """
+    Intercepts all PUBLIC website requests when WebsiteStatus is 'draft'.
+    
+    Shows a styled offline page with a link to the admin panel login.
+    Only affects public routes (the 'website' app at /).
+    Admin panel (/panel/), static, media, and API routes are NOT affected.
+    """
+
+    # Paths that should NEVER be blocked (admin panel, static, media, etc.)
+    BYPASS_PREFIXES = (
+        '/panel/',
+        '/admin/',
+        '/static/',
+        '/media/',
+        '/favicon.ico',
+        '/robots.txt',
+        '/sitemap.xml',
+    )
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        # Only intercept public-facing website routes
+        if self._is_public_website_route(request.path):
+            from website.models import WebsiteStatus
+            from django.core.cache import cache
+
+            # Cache status for 10 seconds to avoid DB hit on every request
+            status = cache.get('website_status_cache')
+            if status is None:
+                status = WebsiteStatus.get_status()
+                cache.set('website_status_cache', status, 10)
+
+            if status == 'draft':
+                from django.shortcuts import render
+                from website.models import BusinessDetails
+                business = BusinessDetails.objects.first()
+                return render(request, 'website/offline.html', {
+                    'site_name': business.site_name if business else 'Adarsh ID Cards',
+                }, status=503)
+
+        return self.get_response(request)
+
+    def _is_public_website_route(self, path):
+        """Return True if the path is a public website route (not admin/static/media)."""
+        for prefix in self.BYPASS_PREFIXES:
+            if path.startswith(prefix):
+                return False
+        return True

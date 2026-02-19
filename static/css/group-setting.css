@@ -1,108 +1,7 @@
 /* Group Setting Page Specific Styles */
 
-/* ==================== 
-   Confirmation Modals (Status / Delete)
-   ==================== */
-.modal {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  background: rgba(0,0,0,0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-/* Legacy .show toggle — kept for backward compat, Alpine uses x-show instead */
-.modal .modal-content {
-  position: relative;
-  background: #fff;
-  border-radius: 6px;
-  padding: 28px 24px 20px;
-  max-width: 400px;
-  width: 90%;
-  text-align: center;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-  animation: modalFadeIn 0.15s ease;
-}
-@keyframes modalFadeIn {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
-}
-.modal .modal-content .modal-close {
-  position: absolute;
-  right: 10px;
-  top: 8px;
-  font-size: 20px;
-  color: #9ca3af;
-  cursor: pointer;
-  border: none;
-  background: transparent;
-  line-height: 1;
-}
-.modal .modal-content .modal-close:hover { color: #374151; }
-.modal .modal-content p {
-  font-size: 15px;
-  font-weight: 500;
-  color: #374151;
-  margin: 0;
-}
-.modal .modal-content .warning-text {
-  color: #9ca3af;
-  font-size: 13px;
-  font-weight: 400;
-  margin-top: 4px;
-}
-.modal .modal-content .status-icon,
-.modal .modal-content .delete-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  margin: 0 auto 12px;
-}
-.modal .modal-content .status-icon {
-  background: #eef2ff;
-  color: #4338ca;
-}
-.modal .modal-content .delete-icon {
-  background: #fef2f2;
-  color: #dc2626;
-}
-.modal .modal-content .status-icon i,
-.modal .modal-content .delete-icon i { font-size: 22px; }
-.modal .modal-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-  margin-top: 18px;
-}
-.modal .modal-actions .btn {
-  padding: 6px 18px;
-  font-size: 13px;
-  font-weight: 600;
-  border-radius: 6px;
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition: all 0.15s ease;
-}
-.modal .modal-actions .btn-cancel {
-  background: #eef2ff;
-  color: #4338ca;
-  border-color: #c7d2fe;
-}
-.modal .modal-actions .btn-cancel:hover { background: #e0e7ff; }
-.modal .modal-actions .btn-confirm {
-  background: #4338ca;
-  color: #fff;
-}
-.modal .modal-actions .btn-confirm:hover { background: #3730a3; }
-.modal .modal-actions .btn-danger {
-  background: #dc2626;
-  color: #fff;
-}
-.modal .modal-actions .btn-danger:hover { background: #b91c1c; }
+/* Modals now use standard .modal-backdrop > .modal-center components.
+   Old .modal > .modal-content CSS removed — no longer needed. */
 
 /* ==================== 
    Table Layout Styles (Primary)
@@ -141,6 +40,125 @@
 }
 
 /* ==================== 
+   Group Setting Drawer — Add/Edit Field Form
+   ==================== */
+
+/* Field type + name row layout */
+.gs-field-row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.gs-field-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Make the dropdown toggle match form-input height */
+.gs-dropdown-toggle {
+  width: 100%;
+  justify-content: space-between;
+  height: 32px !important;
+  font-size: 13px !important;
+  border-radius: 4px !important;
+}
+
+/* Actions row (required + add button) */
+.gs-field-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* Required toggle label */
+.gs-required-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.gs-required-toggle input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  accent-color: #ef4444;
+  border-radius: 3px;
+}
+
+.gs-required-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.gs-required-label i {
+  font-size: 8px;
+  color: #ef4444;
+}
+
+.gs-required-toggle input:checked ~ .gs-required-label {
+  color: #ef4444;
+}
+
+/* Field count badge in section title */
+.gs-field-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 8px;
+  border-radius: 10px;
+  margin-left: auto;
+}
+
+/* Hint text below section title */
+.gs-field-hint {
+  font-size: 12px;
+  color: #9ca3af;
+  margin: 0 0 10px 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.gs-field-hint i {
+  font-size: 11px;
+  color: #c4b5fd;
+}
+
+/* No-fields empty state polish */
+.no-fields-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 20px 16px;
+  background: #f9fafb;
+  border: 1px dashed #e5e7eb;
+  border-radius: 8px;
+  color: #9ca3af;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.no-fields-message i {
+  color: #93c5fd;
+  font-size: 14px;
+}
+
+/* ==================== 
    Field List (Drag-and-Drop Table Layout)
    ==================== */
 
@@ -151,111 +169,146 @@
   display: table;
   width: 100%;
   border-collapse: separate;
-  border-spacing: 0 4px;
+  border-spacing: 0 5px;
 }
 
 .field-list-item {
   display: table-row;
-  background: var(--bg-body);
-  font-size: 14px;
+  background: #ffffff;
+  font-size: 13px;
   color: var(--text-primary);
   user-select: none;
   cursor: grab;
+  transition: box-shadow 0.15s ease;
+}
+
+.field-list-item:hover {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
 .field-list-item.dragging {
   cursor: grabbing !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
 }
 
 .field-list-item > * {
   display: table-cell;
   vertical-align: middle;
-  padding: 6px 4px;
-  background: var(--bg-body);
+  padding: 8px 6px;
+  background: #ffffff;
+  border-top: 1px solid #f3f4f6;
+  border-bottom: 1px solid #f3f4f6;
 }
 
 .field-list-item > *:first-child {
-  border-radius: 2px 0 0 2px;
+  border-radius: 6px 0 0 6px;
+  border-left: 3px solid #818cf8;
   padding-left: 8px;
 }
 
 .field-list-item > *:last-child {
-  border-radius: 0 2px 2px 0;
+  border-radius: 0 6px 6px 0;
+  border-right: 1px solid #f3f4f6;
   padding-right: 8px;
 }
 
 .field-drag {
-  color: var(--text-light);
+  color: #c4b5fd;
   cursor: grab;
   width: 24px;
   text-align: center;
+  font-size: 12px;
 }
 
 .field-name {
   min-width: 140px;
-  font-weight: 500;
+  font-weight: 600;
+  font-size: 13px;
+  color: #374151;
 }
 
 .field-name-input {
   width: 100%;
   min-width: 140px;
   box-sizing: border-box;
-  padding: 4px 8px;
-  border: 1px solid var(--border-default, #e5e7eb);
-  border-radius: 2px;
-  font-size: 14px;
-  font-weight: var(--font-weight-medium, 500);
-  color: var(--text-primary, #2c3e50);
-  background-color: var(--bg-white, #fff);
+  padding: 5px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  background-color: #fff;
   outline: none;
-  transition: border-color 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
   line-height: 1.4;
 }
 
 .field-name-input:focus {
-  border-color: var(--primary, #007bff);
-  box-shadow: 0 0 0 1px rgba(0, 123, 255, 0.15);
+  border-color: #818cf8;
+  box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.15);
 }
 
 .field-type-cell {
-  width: 100px;
+  width: 110px;
 }
 
 /* Field Type Select - Custom appearance override + SVG arrow */
 .field-type-select {
-  padding: 4px 24px 4px 8px;
-  border-radius: 2px;
-  border: 1px solid var(--border-default, #e5e7eb);
-  font-size: 14px;
-  font-weight: var(--font-weight-medium, 500);
-  background-color: var(--bg-white, #fff);
-  color: var(--text-primary, #2c3e50);
-  min-width: 100px;
+  padding: 5px 26px 5px 10px;
+  border-radius: 4px;
+  border: 1px solid #e5e7eb;
+  font-size: 13px;
+  font-weight: 500;
+  background-color: #fff;
+  color: #374151;
+  min-width: 110px;
   cursor: pointer !important;
   outline: none;
   transition: all 0.2s ease;
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%232c3e50' d='M2 4l4 4 4-4z'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236366f1' d='M2 4l4 4 4-4z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 8px center;
   background-size: 12px;
 }
 
 .field-type-select:hover {
-  border-color: var(--primary, #3498db);
-  background-color: var(--bg-hover, rgba(52, 152, 219, 0.05));
+  border-color: #818cf8;
+  background-color: #f5f3ff;
 }
 
 .field-type-select:focus {
-  border-color: var(--primary, #3498db);
-  box-shadow: 0 0 0 1px rgba(52, 152, 219, 0.15);
+  border-color: #818cf8;
+  box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.15);
 }
 
 .field-action {
   width: 32px;
   text-align: center;
+}
+
+/* Remove field button */
+.remove-field-btn {
+  background: none;
+  border: none;
+  color: #d1d5db;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
+}
+
+.remove-field-btn:hover {
+  color: #ef4444;
+  background: #fef2f2;
 }
 
 /* ==================== 
@@ -350,7 +403,15 @@
 
 .drawer-modal.view-mode .field-type-select {
   pointer-events: none;
-  background: #f4f4f4;
+  background: #f9fafb;
+  color: #6b7280;
+}
+
+.drawer-modal.view-mode .field-name-input {
+  pointer-events: none;
+  background: #f9fafb;
+  color: #6b7280;
+  border-color: #f3f4f6;
 }
 
 .drawer-modal.view-mode .remove-field-btn {
@@ -359,7 +420,12 @@
 
 .drawer-modal.view-mode .field-drag {
   pointer-events: none;
-  opacity: 0.5;
+  opacity: 0.4;
+}
+
+.drawer-modal.view-mode .mandatory-toggle {
+  pointer-events: none;
+  opacity: 0.6;
 }
 
 /* ==================== 

@@ -155,8 +155,9 @@
             }
         }
 
-        // Show toast on final failure
-        if (typeof window.showToast === 'function') {
+        // Show toast only for true network/timeout errors, NOT for API errors
+        // (API errors like 400/403 are handled by the caller)
+        if (typeof window.showToast === 'function' && !lastError.status) {
             window.showToast(lastError.message || 'Network error', 'error');
         }
         throw lastError;

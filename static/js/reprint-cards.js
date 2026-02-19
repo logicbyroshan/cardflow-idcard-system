@@ -344,12 +344,14 @@ function createReprintPaginator(opts) {
 
     // Update text cells from field_data
     const fd = updatedCard.field_data || {};
-    row.querySelectorAll('td.dynamic-col').forEach(td => {
+    row.querySelectorAll('td[data-field]').forEach(td => {
       const fieldName = td.getAttribute('data-field');
-      if (fieldName) {
+      if (fieldName && !td.classList.contains('image-field')) {
         // Case-insensitive lookup
         const val = fd[fieldName] || fd[fieldName.toUpperCase()] || fd[fieldName.toLowerCase()] || '-';
-        td.textContent = val;
+        const cellValue = td.querySelector('.cell-value');
+        if (cellValue) cellValue.textContent = val;
+        else td.textContent = val;
       }
     });
 
@@ -432,15 +434,15 @@ function createReprintPaginator(opts) {
       const rowClass = hasReprint ? 'class="reprint-requested"' : '';
       const cbDisabled = hasReprint ? 'disabled title="Already requested"' : '';
 
-      html += `<tr data-card-id="${card.id}" ${rowClass}>`;
-      html += `<td class="checkbox-cell"><input type="checkbox" class="reprintRowCheckbox" ${cbDisabled}></td>`;
-      html += `<td class="sr-no-cell">${idx + 1}</td>`;
+      html += `<tr data-card-id="${card.id}" data-sr-no="${idx + 1}" ${rowClass}>`;
+      html += `<td class="w-[24px] px-[1px] py-1 text-center align-middle checkbox-cell"><input type="checkbox" class="reprintRowCheckbox" ${cbDisabled}></td>`;
+      html += `<td class="w-[36px] px-[1px] py-1 text-center align-middle sr-no-cell">${idx + 1}</td>`;
 
       // Dynamic text fields
       if (card.ordered_fields) {
         card.ordered_fields.forEach(f => {
           if (!isImageField(f.type, f.name)) {
-            html += `<td class="dynamic-col" data-field="${escapeHtml(f.name)}">${escapeHtml(f.value || '-')}</td>`;
+            html += `<td class="dynamic-field px-[1px] py-1 align-middle" data-field="${escapeHtml(f.name)}" data-field-name="${escapeHtml(f.name)}" data-field-type="${escapeHtml(f.type || 'text')}" data-original-value="${escapeHtml(f.value || '')}"><span class="cell-value">${escapeHtml(f.value || '-')}</span></td>`;
           }
         });
       }
@@ -449,7 +451,7 @@ function createReprintPaginator(opts) {
       if (card.ordered_fields) {
         card.ordered_fields.forEach(f => {
           if (isImageField(f.type, f.name)) {
-            html += `<td class="image-field image-cell" data-field="${escapeHtml(f.name)}" data-field-type="image">`;
+            html += `<td class="w-[28px] px-[1px] py-1 text-center align-middle image-field image-cell" data-field="${escapeHtml(f.name)}" data-field-name="${escapeHtml(f.name)}" data-field-type="image" data-original-value="${escapeHtml(f.value || '')}">`;
             html += `<div class="image-with-edit">`;
             if (f.value && f.value !== '' && f.value !== 'NOT_FOUND' && !f.value.startsWith('PENDING:')) {
               const thumbPath = f.value.replace(/\/([^\/]+)$/, '/thumbnails/$1');
@@ -466,17 +468,17 @@ function createReprintPaginator(opts) {
 
       // Action
       if (hasReprint) {
-        html += `<td class="action-col"><span class="reprint-badge-requested" title="Reprint already requested"><i class="fa-solid fa-check-circle"></i> Requested</span></td>`;
+        html += `<td class="w-[60px] px-[1px] py-1 text-center align-middle action-cell"><span class="reprint-badge-requested" title="Reprint already requested"><i class="fa-solid fa-check-circle"></i> Requested</span></td>`;
       } else {
-        html += `<td class="action-col"><button class="btn-reprint-single" data-card-id="${card.id}" title="Request reprint"><i class="fa-solid fa-print"></i></button></td>`;
+        html += `<td class="w-[60px] px-[1px] py-1 text-center align-middle action-cell"><button class="btn-reprint-single" data-card-id="${card.id}" title="Request reprint"><i class="fa-solid fa-print"></i></button></td>`;
       }
 
       // Status
-      html += `<td class="fixed-col"><span class="status-badge status-${card.status}">${escapeHtml(card.status_display || card.status)}</span></td>`;
+      html += `<td class="w-[65px] px-[1px] py-1 align-middle text-center"><span class="status-badge status-${card.status}">${escapeHtml(card.status_display || card.status)}</span></td>`;
 
       // Last Updated + Updated By
-      html += `<td class="date-cell">${escapeHtml(card.updated_at || '-')}</td>`;
-      html += `<td class="user-cell">Admin</td>`;
+      html += `<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">${escapeHtml(card.updated_at || '-')}</td>`;
+      html += `<td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center">Admin</td>`;
 
       html += '</tr>';
     });
@@ -567,7 +569,7 @@ function createReprintPaginator(opts) {
             const cb = row.querySelector('.reprintRowCheckbox');
             if (cb) { cb.checked = false; cb.disabled = true; cb.title = 'Already requested'; }
             // Replace action button with badge
-            const actionCell = row.querySelector('.action-col');
+            const actionCell = row.querySelector('.action-cell');
             if (actionCell) {
               actionCell.innerHTML = '<span class="reprint-badge-requested" title="Reprint already requested"><i class="fa-solid fa-check-circle"></i> Requested</span>';
             }
@@ -860,15 +862,15 @@ function createReprintPaginator(opts) {
 
     let html = '';
     items.forEach((item, idx) => {
-      html += `<tr data-rr-id="${item.rr_id}" data-card-id="${item.card_id}">`;
-      html += `<td class="checkbox-cell"><input type="checkbox" class="confirmRowCheckbox"></td>`;
-      html += `<td class="sr-no-cell">${idx + 1}</td>`;
+      html += `<tr data-rr-id="${item.rr_id}" data-card-id="${item.card_id}" data-sr-no="${idx + 1}">`;
+      html += `<td class="w-[24px] px-[1px] py-1 text-center align-middle checkbox-cell"><input type="checkbox" class="confirmRowCheckbox"></td>`;
+      html += `<td class="w-[36px] px-[1px] py-1 text-center align-middle sr-no-cell">${idx + 1}</td>`;
 
       // Dynamic text fields
       if (item.ordered_fields) {
         item.ordered_fields.forEach(f => {
           if (!isImageField(f.type, f.name)) {
-            html += `<td class="dynamic-col" data-field="${escapeHtml(f.name)}">${escapeHtml(f.value || '-')}</td>`;
+            html += `<td class="dynamic-field px-[1px] py-1 align-middle" data-field="${escapeHtml(f.name)}" data-field-name="${escapeHtml(f.name)}" data-field-type="${escapeHtml(f.type || 'text')}" data-original-value="${escapeHtml(f.value || '')}"><span class="cell-value">${escapeHtml(f.value || '-')}</span></td>`;
           }
         });
       }
@@ -877,7 +879,7 @@ function createReprintPaginator(opts) {
       if (item.ordered_fields) {
         item.ordered_fields.forEach(f => {
           if (isImageField(f.type, f.name)) {
-            html += `<td class="image-field image-cell" data-field="${escapeHtml(f.name)}" data-field-type="image">`;
+            html += `<td class="w-[28px] px-[1px] py-1 text-center align-middle image-field image-cell" data-field="${escapeHtml(f.name)}" data-field-name="${escapeHtml(f.name)}" data-field-type="image" data-original-value="${escapeHtml(f.value || '')}">`;
             html += `<div class="image-with-edit">`;
             if (f.value && f.value !== '' && f.value !== 'NOT_FOUND' && !f.value.startsWith('PENDING:')) {
               const thumbPath = f.value.replace(/\/([^\/]+)$/, '/thumbnails/$1');
@@ -895,23 +897,23 @@ function createReprintPaginator(opts) {
       // Reason
       const reason = escapeHtml(item.reason || '-');
       const shortReason = reason.length > 60 ? reason.substring(0, 57) + '...' : reason;
-      html += `<td class="reason-cell" title="${reason}">${shortReason}</td>`;
+      html += `<td class="min-w-[80px] px-[1px] py-1 align-middle reason-cell whitespace-normal break-words text-left" title="${reason}">${shortReason}</td>`;
 
       // Requested By
-      html += `<td class="user-cell">${escapeHtml(item.requested_by_name || '-')}</td>`;
+      html += `<td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center">${escapeHtml(item.requested_by_name || '-')}</td>`;
 
       // Requested At
-      html += `<td class="date-cell">${escapeHtml(item.requested_at || '-')}</td>`;
+      html += `<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">${escapeHtml(item.requested_at || '-')}</td>`;
 
       // Action
-      html += `<td class="action-col">`;
+      html += `<td class="w-[60px] px-[1px] py-1 text-center align-middle action-cell">`;
       html += `<div class="confirm-action-btns">`;
       html += `<button class="btn-confirm-single" data-rr-id="${item.rr_id}" title="Confirm"><i class="fa-solid fa-check"></i></button>`;
       html += `<button class="btn-reject-single" data-rr-id="${item.rr_id}" title="Reject"><i class="fa-solid fa-xmark"></i></button>`;
       html += `</div></td>`;
 
       // Status
-      html += `<td class="fixed-col"><span class="status-badge status-${item.status}">${escapeHtml(item.status_display || item.status)}</span></td>`;
+      html += `<td class="w-[65px] px-[1px] py-1 align-middle text-center"><span class="status-badge status-${item.status}">${escapeHtml(item.status_display || item.status)}</span></td>`;
 
       html += '</tr>';
     });
@@ -1181,15 +1183,15 @@ function createReprintPaginator(opts) {
 
     let html = '';
     items.forEach((item, idx) => {
-      html += `<tr data-rr-id="${item.rr_id}" data-card-id="${item.card_id}">`;
-      html += `<td class="checkbox-cell"><input type="checkbox" class="downloadRowCheckbox"></td>`;
-      html += `<td class="sr-no-cell">${idx + 1}</td>`;
+      html += `<tr data-rr-id="${item.rr_id}" data-card-id="${item.card_id}" data-sr-no="${idx + 1}">`;
+      html += `<td class="w-[24px] px-[1px] py-1 text-center align-middle checkbox-cell"><input type="checkbox" class="downloadRowCheckbox"></td>`;
+      html += `<td class="w-[36px] px-[1px] py-1 text-center align-middle sr-no-cell">${idx + 1}</td>`;
 
       // Dynamic text fields
       if (item.ordered_fields) {
         item.ordered_fields.forEach(f => {
           if (!isImageField(f.type, f.name)) {
-            html += `<td class="dynamic-col" data-field="${escapeHtml(f.name)}">${escapeHtml(f.value || '-')}</td>`;
+            html += `<td class="dynamic-field px-[1px] py-1 align-middle" data-field="${escapeHtml(f.name)}" data-field-name="${escapeHtml(f.name)}" data-field-type="${escapeHtml(f.type || 'text')}" data-original-value="${escapeHtml(f.value || '')}"><span class="cell-value">${escapeHtml(f.value || '-')}</span></td>`;
           }
         });
       }
@@ -1198,7 +1200,7 @@ function createReprintPaginator(opts) {
       if (item.ordered_fields) {
         item.ordered_fields.forEach(f => {
           if (isImageField(f.type, f.name)) {
-            html += `<td class="image-field image-cell" data-field="${escapeHtml(f.name)}" data-field-type="image">`;
+            html += `<td class="w-[28px] px-[1px] py-1 text-center align-middle image-field image-cell" data-field="${escapeHtml(f.name)}" data-field-name="${escapeHtml(f.name)}" data-field-type="image" data-original-value="${escapeHtml(f.value || '')}">`;
             html += `<div class="image-with-edit">`;
             if (f.value && f.value !== '' && f.value !== 'NOT_FOUND' && !f.value.startsWith('PENDING:')) {
               const thumbPath = f.value.replace(/\/([^\/]+)$/, '/thumbnails/$1');
@@ -1216,16 +1218,16 @@ function createReprintPaginator(opts) {
       // Reason
       const reason = escapeHtml(item.reason || '-');
       const shortReason = reason.length > 60 ? reason.substring(0, 57) + '...' : reason;
-      html += `<td class="reason-cell" title="${reason}">${shortReason}</td>`;
+      html += `<td class="min-w-[80px] px-[1px] py-1 align-middle reason-cell whitespace-normal break-words text-left" title="${reason}">${shortReason}</td>`;
 
       // Confirmed At
-      html += `<td class="date-cell">${escapeHtml(item.confirmed_at || '-')}</td>`;
+      html += `<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">${escapeHtml(item.confirmed_at || '-')}</td>`;
 
       // Action
-      html += `<td class="action-col"><button class="btn-download-single" data-rr-id="${item.rr_id}" title="Download"><i class="fa-solid fa-download"></i></button></td>`;
+      html += `<td class="w-[60px] px-[1px] py-1 text-center align-middle action-cell"><button class="btn-download-single" data-rr-id="${item.rr_id}" title="Download"><i class="fa-solid fa-download"></i></button></td>`;
 
       // Status
-      html += `<td class="fixed-col"><span class="status-badge status-${item.status}">${escapeHtml(item.status_display || item.status)}</span></td>`;
+      html += `<td class="w-[65px] px-[1px] py-1 align-middle text-center"><span class="status-badge status-${item.status}">${escapeHtml(item.status_display || item.status)}</span></td>`;
 
       html += '</tr>';
     });

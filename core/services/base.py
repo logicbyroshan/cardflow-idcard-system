@@ -259,9 +259,16 @@ class BaseService:
         return [f for f in table_fields if cls.is_image_field(f)]
     
     @classmethod
-    def get_image_field_names(cls, table_fields: List[dict]) -> List[str]:
-        """Get list of image field names from table fields"""
-        return [f['name'] for f in table_fields if cls.is_image_field(f)]
+    def get_image_field_names(cls, table_fields: List[dict], mandatory_only: bool = False) -> List[str]:
+        """Get list of image field names from table fields.
+        If mandatory_only=True, only returns image fields marked as mandatory."""
+        result = []
+        for f in table_fields:
+            if cls.is_image_field(f):
+                if mandatory_only and not f.get('mandatory', False):
+                    continue
+                result.append(f['name'])
+        return result
     
     @classmethod
     def _get_image_sort_key(cls, field_name: str) -> int:

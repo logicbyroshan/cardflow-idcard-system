@@ -48,7 +48,7 @@ def permissions(request):
     context['is_client_admin'] = context.get('is_client', False)
     
     # Add app version
-    context['APP_VERSION'] = getattr(settings, 'APP_VERSION', 'v1.0.0')
+    context['APP_VERSION'] = getattr(settings, 'APP_VERSION', 'v1.3.0')
     
     # Cache on request for this request lifecycle
     request._cached_permissions = context

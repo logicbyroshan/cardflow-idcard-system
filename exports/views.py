@@ -93,14 +93,54 @@ def _get_card_ids_from_request(request, table_id: int = None) -> Optional[List[i
             card_ids = card_ids[:MAX_EXPORT_CARD_IDS]
     
     # Fallback: if no card_ids provided but table_id is available,
-    # fetch ALL card IDs for the requested status from the database
+    # fetch ALL card IDs for the requested status from the database,
+    # respecting any active search/class/section filters.
     if not card_ids and table_id:
         from core.models import IDCard, IDCardTable
         status = _get_status_from_request(request)
+        # Extract optional filters from JSON body
+        search_q = ''
+        class_f = ''
+        section_f = ''
+        from_date = ''
+        to_date = ''
+        if request.content_type == 'application/json':
+            try:
+                body = json.loads(request.body)
+                search_q = (body.get('search') or '').strip()
+                class_f = (body.get('class') or body.get('class_filter') or '').strip()
+                section_f = (body.get('section') or body.get('section_filter') or '').strip()
+                from_date = (body.get('from') or '').strip()
+                to_date = (body.get('to') or '').strip()
+            except (json.JSONDecodeError, ValueError):
+                pass
         try:
             qs = IDCard.objects.filter(table_id=table_id)
             if status:
                 qs = qs.filter(status=status)
+            if search_q:
+                qs = qs.filter(field_data__icontains=search_q)
+            if class_f:
+                qs = qs.filter(field_data__icontains=class_f)
+            if section_f:
+                qs = qs.filter(field_data__icontains=section_f)
+            # DateTime range filter (download list)
+            if from_date:
+                try:
+                    from django.utils.dateparse import parse_datetime
+                    dt = parse_datetime(from_date)
+                    if dt:
+                        qs = qs.filter(downloaded_at__gte=dt)
+                except (ValueError, TypeError):
+                    pass
+            if to_date:
+                try:
+                    from django.utils.dateparse import parse_datetime
+                    dt = parse_datetime(to_date)
+                    if dt:
+                        qs = qs.filter(downloaded_at__lte=dt)
+                except (ValueError, TypeError):
+                    pass
             card_ids = list(qs.order_by('id').values_list('id', flat=True)[:MAX_EXPORT_CARD_IDS])
         except Exception:
             pass

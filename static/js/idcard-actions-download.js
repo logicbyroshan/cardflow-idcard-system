@@ -31,6 +31,88 @@ function _getCurrentStatus() {
 }
 
 /**
+ * After a successful export from the Approved list, move the exported cards
+ * to 'download' status so they appear in the Download list.
+ * Does nothing if current status is not 'approved'.
+ */
+function _moveCardsToDownloadIfApproved(cardIds) {
+    if (_getCurrentStatus() !== 'approved') return;
+    var tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
+    if (!tableId) return;
+
+    // If cardIds is empty, we exported ALL approved cards — fetch them from backend first
+    if (!cardIds || cardIds.length === 0) {
+        // Use the all-ids endpoint to get every approved card
+        var idsUrl = '/panel/api/table/' + tableId + '/cards/all-ids/?status=approved';
+        var filters = _getActiveFilters();
+        var params = [];
+        if (filters.search) params.push('search=' + encodeURIComponent(filters.search));
+        if (filters['class']) params.push('class=' + encodeURIComponent(filters['class']));
+        if (filters.section) params.push('section=' + encodeURIComponent(filters.section));
+        if (params.length) idsUrl += '&' + params.join('&');
+
+        fetch(idsUrl, {
+            headers: { 'X-CSRFToken': typeof getCSRFToken === 'function' ? getCSRFToken() : '' }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            var allIds = data.card_ids || [];
+            if (allIds.length > 0) _doBulkMoveToDownload(tableId, allIds);
+        })
+        .catch(function(err) { console.error('Failed to fetch all approved IDs:', err); });
+    } else {
+        _doBulkMoveToDownload(tableId, cardIds);
+    }
+}
+
+function _doBulkMoveToDownload(tableId, cardIds) {
+    if (typeof apiCall === 'function') {
+        apiCall('/panel/api/table/' + tableId + '/cards/bulk-status/', 'POST', {
+            card_ids: cardIds,
+            status: 'download'
+        })
+        .then(function(data) {
+            if (data.success === false) {
+                // Permission denied or validation error — silently log, don't interrupt UX
+                console.warn('Move to download skipped:', data.message);
+                return;
+            }
+            var count = data.updated_count || cardIds.length;
+            if (typeof showToast === 'function') showToast(data.message || count + ' card(s) moved to Download list', true);
+            // Refresh table via HTMX (same pattern as refreshCardTable in api module)
+            if (typeof htmx !== 'undefined' && document.getElementById('card-table-container')) {
+                htmx.trigger(document.body, 'refreshTable');
+                if (typeof window.alpineClearSelection === 'function') window.alpineClearSelection();
+            } else {
+                location.reload();
+            }
+        })
+        .catch(function(err) {
+            // Don't show error toast — the export itself succeeded, this is a secondary action
+            console.error('Failed to move cards to download:', err);
+        });
+    }
+}
+
+/**
+ * Build filter params object for download request bodies.
+ * Includes search, class, and section so backend fallback respects active filters.
+ */
+function _getActiveFilters() {
+    const filters = {};
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput && searchInput.value.trim()) filters.search = searchInput.value.trim();
+    if (window.currentClassFilter) filters['class'] = window.currentClassFilter;
+    if (window.currentSectionFilter) filters.section = window.currentSectionFilter;
+    // DateTime range (download list)
+    const fromDate = document.getElementById('fromDateFilter');
+    const toDate = document.getElementById('toDateFilter');
+    if (fromDate && fromDate.value) filters.from = fromDate.value;
+    if (toDate && toDate.value) filters.to = toDate.value;
+    return filters;
+}
+
+/**
  * Get status label for modal display
  */
 function _getStatusLabel() {
@@ -120,6 +202,8 @@ function downloadImages(cardIds) {
                             if (typeof showDownloadComplete === 'function') {
                                 showDownloadComplete(`Downloaded ${totalZips} ZIP file(s) with ${response.total_images} images!`);
                             }
+                            // Move exported cards from approved → download
+                            _moveCardsToDownloadIfApproved(cardIds);
                             return;
                         }
                         
@@ -185,7 +269,7 @@ function downloadImages(cardIds) {
         if (typeof showToast === 'function') showToast('Failed to download images', false);
     };
     
-    xhr.send(JSON.stringify({ card_ids: cardIds, status: _getCurrentStatus() }));
+    xhr.send(JSON.stringify(Object.assign({ card_ids: cardIds, status: _getCurrentStatus() }, _getActiveFilters())));
 }
 
 function initDownloadImagesHandlers() {
@@ -292,6 +376,8 @@ function downloadDocx(cardIds, format) {
             document.body.removeChild(a);
             
             if (typeof showDownloadComplete === 'function') showDownloadComplete('Document downloaded successfully!');
+            // Move exported cards from approved → download
+            _moveCardsToDownloadIfApproved(cardIds);
         } else {
             if (typeof hideProgressToast === 'function') hideProgressToast();
             const reader = new FileReader();
@@ -312,7 +398,7 @@ function downloadDocx(cardIds, format) {
         if (typeof showToast === 'function') showToast('Failed to download document', false);
     };
     
-    xhr.send(JSON.stringify({ card_ids: cardIds, format: format, status: _getCurrentStatus() }));
+    xhr.send(JSON.stringify(Object.assign({ card_ids: cardIds, format: format, status: _getCurrentStatus() }, _getActiveFilters())));
 }
 
 function initDownloadDocxHandlers() {
@@ -429,6 +515,8 @@ function downloadXlsx(cardIds) {
             document.body.removeChild(a);
             
             if (typeof showDownloadComplete === 'function') showDownloadComplete('Excel file downloaded successfully!');
+            // Move exported cards from approved → download
+            _moveCardsToDownloadIfApproved(cardIds);
         } else {
             if (typeof hideProgressToast === 'function') hideProgressToast();
             const reader = new FileReader();
@@ -449,7 +537,7 @@ function downloadXlsx(cardIds) {
         if (typeof showToast === 'function') showToast('Failed to download Excel file', false);
     };
     
-    xhr.send(JSON.stringify({ card_ids: cardIds, status: _getCurrentStatus() }));
+    xhr.send(JSON.stringify(Object.assign({ card_ids: cardIds, status: _getCurrentStatus() }, _getActiveFilters())));
 }
 
 function initDownloadXlsxHandlers() {
@@ -566,6 +654,8 @@ function downloadPdf(cardIds, template) {
             document.body.removeChild(a);
             
             if (typeof showDownloadComplete === 'function') showDownloadComplete('PDF file downloaded successfully!');
+            // Move exported cards from approved → download
+            _moveCardsToDownloadIfApproved(cardIds);
         } else {
             if (typeof hideProgressToast === 'function') hideProgressToast();
             const reader = new FileReader();
@@ -586,7 +676,7 @@ function downloadPdf(cardIds, template) {
         if (typeof showToast === 'function') showToast('Failed to download PDF file', false);
     };
     
-    xhr.send(JSON.stringify({ card_ids: cardIds, status: _getCurrentStatus(), template: template }));
+    xhr.send(JSON.stringify(Object.assign({ card_ids: cardIds, status: _getCurrentStatus(), template: template }, _getActiveFilters())));
 }
 
 function initDownloadPdfHandlers() {

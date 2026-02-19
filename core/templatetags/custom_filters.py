@@ -400,3 +400,126 @@ def wrap_header(value):
     if len(parts) <= 1:
         return escape(value)
     return mark_safe('<br>'.join(escape(p) for p in parts))
+
+
+@register.filter
+def get_column_width_class(field):
+    """
+    Return Tailwind width class for a dynamic column based on field name/type.
+    Phase 5: Smart dynamic column detection.
+    Usage: {{ field|get_column_width_class }}
+    """
+    if not isinstance(field, dict):
+        return 'min-w-[80px]'
+    
+    field_name = (field.get('name', '') or '').lower()
+    field_type = (field.get('type', '') or '').lower()
+    
+    # Phone/mobile/contact → 100px
+    if re.search(r'\bphone\b|\bmobile\b|\bcontact\b|\bwhatsapp\b', field_name):
+        return 'w-[100px] min-w-[100px]'
+    
+    # Date fields → 80px
+    if field_type == 'date' or re.search(r'\bdob\b|\bdate\b', field_name):
+        return 'w-[80px] min-w-[80px]'
+    
+    # Class/Section → 40px
+    if re.search(r'^class$|^section$|^div$', field_name):
+        return 'w-[40px] min-w-[40px]'
+    
+    # Blood group → 45px
+    if re.search(r'\bblood\b|\bgroup\b', field_name):
+        return 'w-[45px] min-w-[45px]'
+    
+    # Name fields → min 100px
+    if re.search(r'\bname\b', field_name):
+        return 'min-w-[100px]'
+    
+    # Gender → 40px
+    if re.search(r'^gender$|^sex$', field_name):
+        return 'w-[40px] min-w-[40px]'
+    
+    # Address/textarea → wider but constrained
+    if field_type == 'textarea' or re.search(r'\baddress\b', field_name):
+        return 'min-w-[100px] max-w-[180px]'
+    
+    # Default text → min 80px
+    return 'min-w-[80px]'
+
+
+@register.filter
+def get_td_width_class(field):
+    """
+    Return the td width/wrap/alignment classes for a dynamic field.
+    Phase 5: Smart cell sizing with word wrap.
+    Usage: {{ field|get_td_width_class }}
+    """
+    if not isinstance(field, dict):
+        return 'min-w-[80px] whitespace-normal break-words'
+    
+    field_name = (field.get('name', '') or '').lower()
+    field_type = (field.get('type', '') or '').lower()
+    
+    # Phone/mobile → center, allow wrap per line
+    if re.search(r'\bphone\b|\bmobile\b|\bcontact\b|\bwhatsapp\b', field_name):
+        return 'w-[100px] whitespace-normal text-center'
+    
+    # Date → center, fixed, no wrap
+    if field_type == 'date' or re.search(r'\bdob\b|\bdate\b', field_name):
+        return 'w-[80px] whitespace-nowrap text-center'
+    
+    # Class/Section → center, compact
+    if re.search(r'^class$|^section$|^div$', field_name):
+        return 'w-[40px] text-center'
+    
+    # Blood group → center
+    if re.search(r'\bblood\b|\bgroup\b', field_name):
+        return 'w-[45px] text-center'
+    
+    # Name → left
+    if re.search(r'\bname\b', field_name):
+        return 'min-w-[100px] text-left'
+    
+    # Gender → center, compact
+    if re.search(r'^gender$|^sex$', field_name):
+        return 'w-[40px] text-center'
+    
+    # Address/textarea → left, wrap at spaces
+    if field_type == 'textarea' or re.search(r'\baddress\b', field_name):
+        return 'min-w-[100px] max-w-[180px] text-left'
+    
+    # Default → left
+    return 'min-w-[80px] text-left'
+
+
+@register.filter
+def get_column_align_class(field):
+    """
+    Return alignment class for <th> headings.
+    Number/date/short fields → center, text fields → left.
+    Usage: {{ field|get_column_align_class }}
+    """
+    if not isinstance(field, dict):
+        return 'text-center'
+    
+    field_name = (field.get('name', '') or '').lower()
+    field_type = (field.get('type', '') or '').lower()
+    
+    # Phone/contact/date/class/section/gender/blood → center
+    if re.search(r'\bphone\b|\bmobile\b|\bcontact\b|\bwhatsapp\b', field_name):
+        return 'text-center'
+    if field_type == 'date' or re.search(r'\bdob\b|\bdate\b', field_name):
+        return 'text-center'
+    if re.search(r'^class$|^section$|^div$|^gender$|^sex$', field_name):
+        return 'text-center'
+    if re.search(r'\bblood\b|\bgroup\b', field_name):
+        return 'text-center'
+    
+    # Name, address, textarea → left
+    if re.search(r'\bname\b', field_name):
+        return 'text-left'
+    if field_type == 'textarea' or re.search(r'\baddress\b', field_name):
+        return 'text-left'
+    
+    # Default → left
+    return 'text-left'

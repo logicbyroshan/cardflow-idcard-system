@@ -1,41 +1,65 @@
 /* ====================
-   Settings Page Styles
-   (Cleaned: layout, forms, toggles, buttons, modals moved to Tailwind)
+   Settings Page — Complete Design
    ==================== */
 
-/* ====================
-   Profile Card (Left)
-   ==================== */
+/* ===== Page Layout ===== */
+.settings-page {
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100vh - var(--spacing-topbar));
+}
+
+.settings-container {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 0;
+    min-height: calc(100vh - var(--spacing-topbar));
+}
+
+/* ===== Profile Card (Left Column) ===== */
+.settings-left {
+    position: sticky;
+    top: var(--spacing-topbar);
+    height: calc(100vh - var(--spacing-topbar));
+    overflow-y: auto;
+}
+
 .profile-card {
-    background: var(--bg-white);
-    border-radius: var(--radius-none);
-    box-shadow: none;
-    overflow: hidden;
-    border-right: 1px solid var(--border-light);
+    background: #0f172a;
+    height: 100%;
+    border-right: 1px solid #1e293b;
+    display: flex;
+    flex-direction: column;
 }
 
 .profile-avatar-section {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    padding: 24px 16px;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 32px 24px 28px;
     display: flex;
     justify-content: center;
+    position: relative;
+    border-bottom: 1px solid #334155;
+}
+
+.profile-avatar-section::after {
+    display: none;
 }
 
 .profile-avatar-wrapper {
     position: relative;
+    z-index: 1;
 }
 
 .profile-avatar {
-    width: 76px;
-    height: 94px;
+    width: 80px;
+    height: 96px;
     border-radius: 12px;
-    border: 3px solid #fff;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-    object-fit: cover;
+    border: 3px solid rgba(99, 102, 241, 0.6);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
-    overflow: hidden;
 }
 
 .profile-avatar .user-avatar-placeholder {
@@ -47,58 +71,30 @@
     font-size: 30px;
 }
 
-.avatar-edit-btn {
-    position: absolute;
-    bottom: 0px;
-    right: 0px;
-    width: 28px;
-    height: 28px;
-    background: #fff;
-    border-radius: var(--radius-full);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-    transition: all 0.2s ease;
-}
-
-.avatar-edit-btn:hover {
-    background: #667eea;
-    color: #fff;
-    transform: scale(1.1);
-}
-
-.avatar-edit-btn i {
-    font-size: 15px;
-    color: #667eea;
-}
-
-.avatar-edit-btn:hover i {
-    color: #fff;
-}
-
+/* Profile Info */
 .profile-info {
     text-align: center;
-    padding: 16px;
-    background: #fff;
+    padding: 20px 20px 16px;
 }
 
 .profile-name {
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 700;
-    color: #2c3e50;
-    margin-bottom: 6px;
+    color: #f1f5f9;
+    margin-bottom: 8px;
+    letter-spacing: -0.01em;
 }
 
 .profile-role {
     display: inline-block;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
     color: #fff;
-    padding: 4px 12px;
-    border-radius: 2px;
-    font-size: 14px;
+    padding: 3px 14px;
+    border-radius: 20px;
+    font-size: 11px;
     font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
     margin-bottom: 12px;
 }
 
@@ -107,173 +103,429 @@
     align-items: center;
     justify-content: center;
     gap: 6px;
-    color: #666;
-    font-size: 15px;
+    color: #94a3b8;
+    font-size: 12.5px;
 }
 
 .profile-email i {
-    color: #667eea;
+    color: #818cf8;
+    font-size: 11px;
 }
 
+/* Profile Stats */
 .profile-stats {
     display: flex;
-    border-top: 1px solid #eee;
-    border-bottom: 1px solid #eee;
+    margin: 0 20px;
+    border-top: 1px solid #1e293b;
+    border-bottom: 1px solid #1e293b;
 }
 
 .profile-stat {
     flex: 1;
     text-align: center;
-    padding: 14px;
-}
-
-.profile-stat:first-child {
-    border-right: 1px solid #eee;
+    padding: 14px 8px;
 }
 
 .stat-value {
     display: block;
-    font-size: 15px;
+    font-size: 13px;
     font-weight: 700;
-    color: #2c3e50;
+    color: #f1f5f9;
+    margin-bottom: 2px;
 }
 
 .stat-label {
-    font-size: 15px;
-    color: #888;
+    font-size: 11px;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    font-weight: 500;
 }
 
+/* Profile Actions */
 .profile-actions {
-    padding: 16px;
+    padding: 16px 20px;
+    margin-top: auto;
 }
 
 .btn-logout {
     width: 100%;
-    padding: 10px;
-    background: var(--bg-white);
-    border: 1px solid var(--danger);
-    color: var(--danger);
-    border-radius: var(--radius-sm);
-    font-size: 13px;
+    padding: 9px 16px;
+    background: transparent;
+    border: 1.5px solid #ef4444;
+    color: #ef4444;
+    border-radius: 8px;
+    font-size: 12.5px;
     font-weight: 600;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: 8px;
     transition: all 0.2s ease;
 }
 
 .btn-logout:hover {
-    background: var(--danger);
-    color: var(--text-white);
+    background: #ef4444;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);
 }
 
-/* ====================
-   Section Header + Icon Variants
-   ==================== */
+.btn-logout i {
+    font-size: 13px;
+}
+
+/* ===== Right Column — Settings Sections ===== */
+.settings-right {
+    padding: 24px;
+    background: #f1f5f9;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+}
+
+/* ===== Settings Section Card ===== */
+.settings-section {
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    overflow: hidden;
+    transition: box-shadow 0.2s ease;
+}
+
+.settings-section:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Section Header */
 .section-header {
     display: flex;
     align-items: center;
     gap: 14px;
-    padding: 16px 20px;
-    border-bottom: 1px solid #eee;
+    padding: 16px 22px;
+    border-bottom: 1px solid #e2e8f0;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
 }
 
 .section-icon {
     width: 42px;
     height: 42px;
-    border-radius: var(--radius-sm);
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 15px;
-    background: #e0e7ff;
-    color: var(--primary);
+    font-size: 16px;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
 }
 
 .section-icon.password {
-    background: #dcfce7;
-    color: #16a34a;
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
 }
 
 .section-icon.security {
-    background: #fef3c7;
-    color: #d97706;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
 }
 
 .section-icon.sessions {
-    background: #dbeafe;
-    color: #2563eb;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
 }
 
 .section-icon.danger {
-    background: #fee2e2;
-    color: #dc2626;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
 }
 
 .section-title h3 {
     font-size: 14px;
-    font-weight: 600;
-    color: #2c3e50;
+    font-weight: 650;
+    color: #1e293b;
     margin-bottom: 2px;
 }
 
 .section-title p {
-    font-size: 15px;
-    color: #888;
+    font-size: 12px;
+    color: #94a3b8;
+    margin: 0;
 }
 
+/* Section Body */
 .section-body {
-    padding: 20px;
+    padding: 22px;
 }
 
-/* ====================
-   Password Input
-   ==================== */
+/* ===== Form Overrides for Settings ===== */
+.settings-section .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-bottom: 16px;
+}
+
+.settings-section .form-group:last-child {
+    margin-bottom: 0;
+}
+
+.settings-section label {
+    display: block;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 2px;
+}
+
+.settings-section input[type="text"],
+.settings-section input[type="email"],
+.settings-section input[type="tel"],
+.settings-section input[type="password"] {
+    width: 100%;
+    height: 38px;
+    padding: 0 12px;
+    background: #fff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 400;
+    color: #1e293b;
+    transition: all 0.2s ease;
+    font-family: inherit;
+}
+
+.settings-section input[type="text"]:focus,
+.settings-section input[type="email"]:focus,
+.settings-section input[type="tel"]:focus,
+.settings-section input[type="password"]:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+.settings-section input::placeholder {
+    color: #94a3b8;
+    font-size: 12.5px;
+}
+
+/* Form hint text */
+.settings-section .form-hint {
+    font-size: 11.5px;
+    color: #64748b;
+    margin: 0 0 4px 0;
+    line-height: 1.4;
+}
+
+.settings-section textarea {
+    width: 100%;
+    padding: 10px 12px;
+    background: #fff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #1e293b;
+    transition: all 0.2s ease;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 64px;
+}
+
+.settings-section textarea:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+/* Form Row — 2 columns */
+.settings-section .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+/* Form Actions */
+.settings-section .form-actions {
+    padding-top: 6px;
+}
+
+/* Save Button */
+.btn-save {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 20px;
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.btn-save:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
+
+.btn-save:active {
+    transform: translateY(0);
+}
+
+.btn-save i {
+    font-size: 12px;
+}
+
+/* ===== Password Input ===== */
 .password-input-wrapper {
     position: relative;
 }
 
 .password-input-wrapper input {
-    padding-right: 48px;
+    padding-right: 42px !important;
 }
 
 .password-toggle {
     position: absolute;
-    right: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: none;
+    right: 1px;
+    top: 1px;
+    bottom: 1px;
+    width: 38px;
+    background: transparent;
     border: none;
-    color: #888;
+    color: #94a3b8;
     cursor: pointer;
-    padding: 4px;
-    transition: color 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0 7px 7px 0;
+    transition: all 0.15s ease;
 }
 
 .password-toggle:hover {
-    color: #667eea;
+    color: #6366f1;
+    background: #f1f5f9;
 }
 
-/* ====================
-   Responsive
-   ==================== */
+.password-toggle i {
+    font-size: 13px;
+}
+
+/* ===== Security Setting Items ===== */
+.setting-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.setting-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.setting-item:first-child {
+    padding-top: 0;
+}
+
+.setting-info h4 {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 2px;
+}
+
+.setting-info p {
+    font-size: 11.5px;
+    color: #94a3b8;
+    margin: 0;
+}
+
+/* Session Select */
+.session-select {
+    appearance: none;
+    -webkit-appearance: none;
+    padding: 6px 32px 6px 12px;
+    background: #fff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 8px center;
+    background-repeat: no-repeat;
+    background-size: 16px;
+    min-width: 140px;
+}
+
+.session-select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.12);
+}
+
+.session-select:hover {
+    border-color: #cbd5e1;
+}
+
+/* ===== Responsive ===== */
 @media (max-width: 1024px) {
+    .settings-container {
+        grid-template-columns: 1fr;
+    }
+
+    .settings-left {
+        position: relative;
+        top: auto;
+        height: auto;
+    }
+
     .profile-card {
         border-right: none;
-        border-bottom: 1px solid var(--border-light);
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .profile-avatar-section {
+        padding: 24px 20px;
     }
 }
 
 @media (max-width: 768px) {
+    .settings-right {
+        padding: 16px;
+        gap: 16px;
+    }
+
     .section-header {
-        flex-direction: column;
-        text-align: center;
         padding: 14px 16px;
     }
 
     .section-body {
         padding: 16px;
+    }
+
+    .settings-section .form-row {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+
+    .setting-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
     }
 }

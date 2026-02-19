@@ -7,6 +7,7 @@ from typing import Dict, Any, Optional, List
 
 from django.shortcuts import get_object_or_404
 from django.db import transaction
+from django.utils.timezone import localtime
 
 from ..models import Client, Staff, User
 from ..utils import send_welcome_email
@@ -73,8 +74,8 @@ class ClientService(BaseService):
             'pincode': client.pincode or '',
             'status': client.status,
             'photo_url': None,  # Phase 1: Photo field removed - using avatar placeholder
-            'created_at': client.created_at.strftime('%d-%m-%Y %I:%M %p'),
-            'updated_at': client.updated_at.strftime('%d-%m-%Y %I:%M %p'),
+            'created_at': localtime(client.created_at).strftime('%d-%m-%Y %H:%M'),
+            'updated_at': localtime(client.updated_at).strftime('%d-%m-%Y %H:%M'),
         }
         
         if include_permissions:
@@ -192,7 +193,7 @@ class ClientService(BaseService):
     def get(cls, client_id: int, include_permissions: bool = True) -> ServiceResult:
         """Get a client by ID"""
         try:
-            client = get_object_or_404(Client, id=client_id)
+            client = get_object_or_404(Client.objects.select_related('user'), id=client_id)
             return ServiceResult(
                 success=True,
                 data={'client': cls.serialize(client, include_permissions)}
@@ -204,7 +205,7 @@ class ClientService(BaseService):
     def update(cls, client_id: int, data: Dict[str, Any], photo=None) -> ServiceResult:
         """Update a client"""
         try:
-            client = get_object_or_404(Client, id=client_id)
+            client = get_object_or_404(Client.objects.select_related('user'), id=client_id)
             user = client.user
             
             with transaction.atomic():
@@ -230,15 +231,28 @@ class ClientService(BaseService):
                     if field in data:
                         setattr(client, field, data[field])
                 
+                # Handle is_active / status change via edit form
+                if 'is_active' in data:
+                    new_active = cls.parse_bool(data['is_active'])
+                    if new_active != user.is_active:
+                        user.is_active = new_active
+                        client.status = 'active' if new_active else 'inactive'
+                        user.save(update_fields=['is_active'])
+                        # Cascade deactivation to all client staff
+                        if not new_active:
+                            cls._cascade_deactivate_staff(client)
+                
                 # Phase 1: Photo field removed - using avatar placeholder
                 
                 # Track revoked permissions for cascade to staff
                 revoked_permissions = []
                 
-                # Update permissions
-                for perm in cls.PERMISSION_FIELDS:
-                    if perm in data:
-                        new_value = cls.parse_bool(data[perm])
+                # Update permissions — when ANY perm key is present, set ALL perms
+                # (missing keys default to False to prevent stale ON states)
+                has_any_perm = any(perm in data for perm in cls.PERMISSION_FIELDS)
+                if has_any_perm:
+                    for perm in cls.PERMISSION_FIELDS:
+                        new_value = cls.parse_bool(data[perm]) if perm in data else False
                         old_value = getattr(client, perm, False)
                         
                         # Track if permission is being revoked

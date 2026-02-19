@@ -393,6 +393,16 @@ Adarsh Admin Team''',
                     'message': 'User not found'
                 }
             
+            # Validate password against Django AUTH_PASSWORD_VALIDATORS
+            from django.contrib.auth.password_validation import validate_password
+            try:
+                validate_password(new_password, user=user)
+            except Exception as validation_error:
+                return {
+                    'success': False,
+                    'message': '; '.join(validation_error.messages)
+                }
+
             # Set new password
             user.set_password(new_password)
             user.save()
