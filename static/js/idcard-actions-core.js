@@ -17,8 +17,7 @@ function getTableId() {
     return typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
 }
 
-// Expose globally
-window.getTableId = getTableId;
+// Expose on IDCardApp namespace
 window.IDCardApp.getTableId = getTableId;
 
 // ==========================================
@@ -62,8 +61,7 @@ function apiCall(url, method, data = null) {
     return fetch(url, options).then(r => r.ok ? r.json() : r.json().catch(() => ({})).then(d => { throw new Error(d.message || 'Request failed'); }));
 }
 
-// Expose globally
-window.apiCall = apiCall;
+// Expose on IDCardApp namespace
 window.IDCardApp.apiCall = apiCall;
 
 // ==========================================
@@ -111,6 +109,24 @@ function getCardIdsForAction() {
     return selectedIds.length > 0 ? selectedIds : getAllVisibleCardIds();
 }
 
+// ==========================================
+// CACHED TOOLBAR BUTTON REFS
+// Populated once by _cacheToolbarButtons(), called from initCoreModule().
+// ==========================================
+var _cachedSingleBtns = null;   // editBtn*, viewBtn*
+var _cachedMultiBtns  = null;   // deleteBtn*, verifyBtn*, approveBtn*, etc.
+var _cachedAddBtn = null;
+var _cachedUploadXlsxBtn = null;
+var _cachedDeletePermanentBtn = null;
+
+function _cacheToolbarButtons() {
+    _cachedSingleBtns = document.querySelectorAll('[id^="editBtn"], [id^="viewBtn"]');
+    _cachedMultiBtns  = document.querySelectorAll('[id^="deleteBtn"], [id^="verifyBtn"], [id^="approveBtn"], [id^="disapproveBtn"], [id^="unapprovedBtn"], [id^="retrieveBtn"], [id^="unverifyBtn"], #downloadCardBtn');
+    _cachedAddBtn = document.getElementById('addBtn');
+    _cachedUploadXlsxBtn = document.getElementById('uploadXlsxBtn');
+    _cachedDeletePermanentBtn = document.getElementById('deletePermanentBtnP');
+}
+
 // Update button states when checkboxes change
 function updateButtonStates() {
     const rowCheckboxes = getRowCheckboxes();
@@ -120,25 +136,21 @@ function updateButtonStates() {
     const noneSelected = checkedBoxes.length === 0;
     
     // No-selection buttons (Add, Upload XLSX) - disabled when any row is selected
-    const addBtn = document.getElementById('addBtn');
-    const uploadXlsxBtn = document.getElementById('uploadXlsxBtn');
-    if (addBtn) addBtn.disabled = anySelected;
-    if (uploadXlsxBtn) uploadXlsxBtn.disabled = anySelected;
+    if (_cachedAddBtn) _cachedAddBtn.disabled = anySelected;
+    if (_cachedUploadXlsxBtn) _cachedUploadXlsxBtn.disabled = anySelected;
     
-    // Enable/disable buttons based on selection
-    // Single select buttons (Edit, View)
-    document.querySelectorAll('[id^="editBtn"], [id^="viewBtn"]').forEach(btn => {
-        if (btn) btn.disabled = !singleSelected;
-    });
+    // Single select buttons (Edit, View) — use cached refs
+    if (_cachedSingleBtns) {
+        _cachedSingleBtns.forEach(btn => { btn.disabled = !singleSelected; });
+    }
     
-    // Multi select buttons (Delete, Verify, Approve, Disapprove, Unapproved, Retrieve, Unverify, Download Card, Back to Approved)
-    document.querySelectorAll('[id^="deleteBtn"], [id^="verifyBtn"], [id^="approveBtn"], [id^="disapproveBtn"], [id^="unapprovedBtn"], [id^="retrieveBtn"], [id^="unverifyBtn"], #downloadCardBtn').forEach(btn => {
-        if (btn) btn.disabled = !anySelected;
-    });
+    // Multi select buttons — use cached refs
+    if (_cachedMultiBtns) {
+        _cachedMultiBtns.forEach(btn => { btn.disabled = !anySelected; });
+    }
     
     // Delete Permanent button (Pool list only)
-    const deletePermanentBtn = document.getElementById('deletePermanentBtnP');
-    if (deletePermanentBtn) deletePermanentBtn.disabled = !anySelected;
+    if (_cachedDeletePermanentBtn) _cachedDeletePermanentBtn.disabled = !anySelected;
 
     // Bridge selection state to Alpine for reactive UI bindings
     if (typeof window.alpineUpdateSelection === 'function') {
@@ -266,9 +278,9 @@ function _buildFilterQS() {
     const searchInput = document.getElementById('searchInput');
     if (searchInput && searchInput.value.trim()) params.set('search', searchInput.value.trim());
     // Class
-    if (window.currentClassFilter) params.set('class', window.currentClassFilter);
+    if (IDCardApp.currentClassFilter) params.set('class', IDCardApp.currentClassFilter);
     // Section
-    if (window.currentSectionFilter) params.set('section', window.currentSectionFilter);
+    if (IDCardApp.currentSectionFilter) params.set('section', IDCardApp.currentSectionFilter);
     // DateTime range (download list)
     const fromDate = document.getElementById('fromDateFilter');
     const toDate = document.getElementById('toDateFilter');
@@ -360,12 +372,7 @@ function getSelectedCardIdsWithDbSelect() {
     return originalGetSelectedCardIds();
 }
 
-// Expose globally
-window.getRowCheckboxes = getRowCheckboxes;
-window.getSelectedCardIds = getSelectedCardIdsWithDbSelect;
-window.getAllVisibleCardIds = getAllVisibleCardIds;
-window.getCardIdsForAction = getCardIdsForAction;
-window.updateButtonStates = updateButtonStates;
+// Expose on IDCardApp namespace
 window.IDCardApp.getRowCheckboxes = getRowCheckboxes;
 window.IDCardApp.getSelectedCardIds = getSelectedCardIdsWithDbSelect;
 window.IDCardApp.getAllVisibleCardIds = getAllVisibleCardIds;
@@ -409,7 +416,6 @@ async function getAllCardIdsForAction() {
     }
 }
 
-window.getAllCardIdsForAction = getAllCardIdsForAction;
 window.IDCardApp.getAllCardIdsForAction = getAllCardIdsForAction;
 
 // ==========================================
@@ -481,53 +487,26 @@ function applyDynamicAlignment() {
     const rows = table.querySelectorAll('tbody tr[data-card-id]');
     if (rows.length === 0) return;
     
-    // Get all dynamic field columns (skip checkbox, sr no, image fields, action, fixed cols)
-    const headerCells = table.querySelectorAll('thead th');
-    const columnAlignments = [];
-    
-    // First pass: determine if any cell in each column has long text (> 15 chars)
-    headerCells.forEach((th, colIndex) => {
-        // Skip non-dynamic columns
-        if (th.classList.contains('checkbox-col') || 
-            th.classList.contains('sr-col') || 
-            th.classList.contains('image-col') ||
-            th.classList.contains('action-col') ||
-            th.classList.contains('fixed-col')) {
-            columnAlignments[colIndex] = null; // Don't change these
-            return;
-        }
-        
-        // Check all cells in this column
-        let hasLongText = false;
-        rows.forEach(row => {
-            const cell = row.cells[colIndex];
-            if (cell && cell.classList.contains('dynamic-field')) {
-                const text = cell.textContent.trim();
-                if (text.length > 15) {
-                    hasLongText = true;
-                }
+    // Batch all writes in a single rAF to avoid interleaved read/write thrashing.
+    // Column alignment is determined by CSS classes (get_td_width_class filter),
+    // so we only need to clear stale inline overrides and center Sr No.
+    requestAnimationFrame(function() {
+        // Remove any stale inline textAlign so CSS classes take effect
+        for (var i = 0; i < rows.length; i++) {
+            var cells = rows[i].querySelectorAll('td.dynamic-field');
+            for (var j = 0; j < cells.length; j++) {
+                if (cells[j].style.textAlign) cells[j].style.textAlign = '';
             }
-        });
-        
-        // Alignment determined by CSS classes from get_td_width_class filter
-        columnAlignments[colIndex] = null; // Don't override CSS
-    });
-    
-    // Second pass: remove any stale inline textAlign so CSS classes take effect
-    rows.forEach(row => {
-        row.querySelectorAll('td.dynamic-field').forEach(cell => {
-            cell.style.textAlign = '';
-        });
-    });
-    
-    // Sr No column - center
-    document.querySelectorAll('.idcard-table td:nth-child(2)').forEach(cell => {
-        cell.style.textAlign = 'center';
+        }
+        // Sr No column — center
+        var srCells = document.querySelectorAll('.idcard-table td:nth-child(2)');
+        for (var k = 0; k < srCells.length; k++) {
+            srCells[k].style.textAlign = 'center';
+        }
     });
 }
 
-// Expose globally
-window.applyDynamicAlignment = applyDynamicAlignment;
+// Expose on IDCardApp namespace
 window.IDCardApp.applyDynamicAlignment = applyDynamicAlignment;
 
 // ==========================================
@@ -552,18 +531,11 @@ function initHorizontalScroll() {
 window.IDCardApp.initHorizontalScroll = initHorizontalScroll;
 
 // ==========================================
-// TOAST STYLES — REMOVED
-// ==========================================
-// Previously injected inline <style> for .toast positioning (bottom-right).
-// This conflicted with the core toast CSS (top-right) in tailwind-input.css.
-// All toast styling is now handled by the compiled CSS and Alpine toast queue.
-// See: static/css/tailwind-input.css, static/css/common.css
-
-// ==========================================
 // CORE MODULE INITIALIZATION
 // ==========================================
 
 function initCoreModule() {
+    _cacheToolbarButtons();
     initSidebar();
     initCheckboxes();
     initDropdowns();

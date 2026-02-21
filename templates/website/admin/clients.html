@@ -41,7 +41,7 @@
             <tr data-id="{{ c.id }}">
                 <td>
                     {% if c.logo %}
-                    <img src="{{ c.logo.url }}" class="wa-thumb" alt="{{ c.name }}">
+                    <img src="{{ c.logo.url }}" class="wa-thumb" alt="{{ c.name }}" loading="lazy" decoding="async">
                     {% else %}
                     <span class="wa-no-img"><i class="fa-solid fa-image"></i></span>
                     {% endif %}
@@ -110,5 +110,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/website-admin/clients.js' %}?v=130"></script>
+<script src="{% static 'js/website-admin/clients.js' %}"></script>
 {% endblock %}

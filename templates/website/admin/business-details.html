@@ -111,7 +111,7 @@
             {% for hero in hero_images %}
             <div class="wa-form-group hero-image-card" data-id="{{ hero.pk }}">
                 <div class="wa-img-preview relative">
-                    <img src="{{ hero.image.url }}" alt="{{ hero.title|default:'Hero' }}">
+                    <img src="{{ hero.image.url }}" alt="{{ hero.title|default:'Hero' }}" loading="lazy" decoding="async">
                     <span class="hero-order-badge" title="Display order">{{ hero.order }}</span>
                     {% if not hero.is_active %}
                     <span class="hero-inactive-badge">Inactive</span>

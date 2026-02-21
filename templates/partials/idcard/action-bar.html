@@ -168,11 +168,17 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
             {% endif %}
 
         {% elif current_status == 'download' %}
-            {# === DOWNLOAD LIST — read-only, export only === #}
+            {# === DOWNLOAD LIST — read-only, export + retrieve === #}
             {% if perm_idcard_info %}
             <button class="btn action-btn btn-gray" id="viewBtnD" disabled title="View selected card">
                 <i class="fa-solid fa-eye"></i>
                 <span class="btn-text">View</span>
+            </button>
+            {% endif %}
+            {% if perm_idcard_retrieve %}
+            <button class="btn action-btn btn-green" id="retrieveBtnD" disabled title="Retrieve to pending">
+                <i class="fa-solid fa-rotate-left"></i>
+                <span class="btn-text">Retrieve</span>
             </button>
             {% endif %}
             {% if perm_idcard_bulk_download %}

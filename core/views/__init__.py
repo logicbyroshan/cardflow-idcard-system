@@ -69,6 +69,7 @@ from .idcard_api import (
     api_idcard_table_toggle_status,
     api_idcard_table_list,
     api_idcard_list,
+    api_idcard_cards_json,
     api_idcard_create,
     api_idcard_get,
     api_idcard_update,
@@ -82,9 +83,11 @@ from .idcard_api import (
     api_upgrade_all_classes,
     api_idcard_search,
     api_idcard_all_ids,
+    api_idcard_filter_options,
     api_table_status_counts,
     api_idcard_bulk_upload,
     api_idcard_reupload_images,
+    api_idcard_modals_html,
 )
 
 from .settings_api import (
@@ -115,4 +118,8 @@ from .task_api import (
     api_create_bulk_upload_task,
     api_create_reupload_task,
     api_create_export_task,
+)
+
+from .monitoring_api import (
+    api_client_errors,
 )

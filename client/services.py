@@ -698,10 +698,12 @@ class ClientCardService(BaseService):
         status_filter: Optional[str] = None,
         offset: int = 0,
         limit: int = 100,
-        search: Optional[str] = None
+        search: Optional[str] = None,
+        cursor: int = None
     ) -> ServiceResult:
         """
         Get cards for a table (with permission checks).
+        Supports cursor-based pagination (preferred) and offset (legacy).
         """
         try:
             client = ClientAccessService.get_client_for_user(user)
@@ -734,8 +736,8 @@ class ClientCardService(BaseService):
                         message=f'No permission to view {status_filter} cards'
                     )
             
-            # Build query
-            cards_query = IDCard.objects.filter(table=table).order_by('id')
+            # Build query — defer heavy photo column
+            cards_query = IDCard.objects.filter(table=table).defer('photo').order_by('-id')
             
             if status_filter and status_filter in cls.VALID_STATUSES:
                 cards_query = cards_query.filter(status=status_filter)
@@ -758,7 +760,16 @@ class ClientCardService(BaseService):
                 )
             
             total_count = cards_query.count()
-            cards = cards_query[offset:offset + limit]
+
+            # Cursor-based pagination (preferred) or offset (legacy)
+            if cursor is not None:
+                cards = list(cards_query.filter(id__lt=cursor)[:limit + 1])
+            else:
+                cards = list(cards_query[offset:offset + limit + 1])
+            has_more = len(cards) > limit
+            if has_more:
+                cards = cards[:limit]
+            next_cursor = cards[-1].id if cards and has_more else None
             
             # Serialize
             card_list = []
@@ -815,7 +826,8 @@ class ClientCardService(BaseService):
                     'total': total_count,
                     'offset': offset,
                     'limit': limit,
-                    'has_more': offset + limit < total_count,
+                    'has_more': has_more,
+                    'next_cursor': next_cursor,
                 }
             )
             

@@ -46,7 +46,7 @@
                     <div class="card-header">
                         <div class="reviewer-avatar">
                             {% if t.reviewer_avatar %}
-                                <img src="{{ t.reviewer_avatar.url }}" alt="{{ t.reviewer_name }}">
+                                <img src="{{ t.reviewer_avatar.url }}" alt="{{ t.reviewer_name }}" loading="lazy" decoding="async">
                             {% else %}
                                 <div class="avatar-init">{{ t.reviewer_name|slice:":1" }}</div>
                             {% endif %}

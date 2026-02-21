@@ -8,19 +8,17 @@
   <meta name="csrf-token" content="{{ csrf_token }}">
   <title>Settings - Adarsh ID Cards</title>
   <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
   <!-- Tailwind CSS (primary) -->
-  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=130">
+  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
   <!-- Page-specific: settings panels -->
-  <link rel="stylesheet" href="{% static 'css/settings.css' %}?v=130">
-  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=130">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="{% static 'css/settings.css' %}">
+  <link rel="stylesheet" href="{% static 'css/global-search.css' %}">
+  <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
   <!-- Alpine.js State Module (MUST load before Alpine) -->
-  <script src="{% static 'js/alpine-state.js' %}?v=130"></script>
+  <script defer src="{% static 'js/alpine-state.js' %}"></script>
   <!-- Alpine.js -->
-  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
+  <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
 </head>
 <body x-data="layoutState()">
 
@@ -103,27 +101,27 @@
             <form id="profileForm">
               <div class="form-row">
                 <div class="form-group">
-                  <label>First Name</label>
+                  <label for="firstName">First Name</label>
                   <input type="text" id="firstName" placeholder="Enter first name"/>
                 </div>
                 <div class="form-group">
-                  <label>Last Name</label>
+                  <label for="lastName">Last Name</label>
                   <input type="text" id="lastName" placeholder="Enter last name"/>
                 </div>
               </div>
               <div class="form-row">
                 <div class="form-group">
-                  <label>Username</label>
+                  <label for="username">Username</label>
                   <input type="text" id="username" placeholder="Enter username"/>
                 </div>
                 <div class="form-group">
-                  <label>Email Address</label>
+                  <label for="email">Email Address</label>
                   <input type="email" id="email" placeholder="Enter email"/>
                 </div>
               </div>
               <div class="form-row">
                 <div class="form-group">
-                  <label>Phone Number</label>
+                  <label for="phone">Phone Number</label>
                   <input type="tel" id="phone" placeholder="Enter phone number"/>
                 </div>
                 <div class="form-group">
@@ -154,7 +152,7 @@
           <div class="section-body">
             <form id="passwordForm">
               <div class="form-group">
-                <label>Current Password</label>
+                <label for="currentPassword">Current Password</label>
                 <div class="password-input-wrapper">
                   <input type="password" id="currentPassword" placeholder="Enter current password"/>
                   <button type="button" class="password-toggle" data-target="currentPassword">
@@ -164,7 +162,7 @@
               </div>
               <div class="form-row">
                 <div class="form-group">
-                  <label>New Password</label>
+                  <label for="newPassword">New Password</label>
                   <div class="password-input-wrapper">
                     <input type="password" id="newPassword" placeholder="Enter new password"/>
                     <button type="button" class="password-toggle" data-target="newPassword">
@@ -173,7 +171,7 @@
                   </div>
                 </div>
                 <div class="form-group">
-                  <label>Confirm New Password</label>
+                  <label for="confirmPassword">Confirm New Password</label>
                   <div class="password-input-wrapper">
                     <input type="password" id="confirmPassword" placeholder="Confirm new password"/>
                     <button type="button" class="password-toggle" data-target="confirmPassword">
@@ -283,13 +281,13 @@
   {% include 'partials/components/toast.html' %}
 
   <!-- Core Modules (Load Order: api → toast → modal → utils → init) -->
-  <script src="{% static 'js/core/api.js' %}?v=130"></script>
-  <script src="{% static 'js/core/toast.js' %}?v=130"></script>
-  <script src="{% static 'js/core/modal.js' %}?v=130"></script>
-  <script src="{% static 'js/core/utils.js' %}?v=130"></script>
-  <script src="{% static 'js/init.js' %}?v=130"></script>
-  <script src="{% static 'js/settings.js' %}?v=130"></script>
-  <script src="{% static 'js/global-search.js' %}?v=130"></script>
+  <script src="{% static 'js/core/api.js' %}"></script>
+  <script src="{% static 'js/core/toast.js' %}"></script>
+  <script src="{% static 'js/core/modal.js' %}"></script>
+  <script src="{% static 'js/core/utils.js' %}"></script>
+  <script src="{% static 'js/init.js' %}"></script>
+  <script src="{% static 'js/settings.js' %}"></script>
+  <script src="{% static 'js/global-search.js' %}"></script>
   {% include 'partials/htmx-config.html' %}
 </body>
 </html>

@@ -158,25 +158,26 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             // Create Excel workbook using SheetJS
+            var _XLSX = (typeof LazyLoad !== 'undefined') ? await LazyLoad.xlsx() : XLSX;
             const headers = fields.map(f => f.name);
             
             // Create worksheet with headers only
             const wsData = [headers];
-            const ws = XLSX.utils.aoa_to_sheet(wsData);
+            const ws = _XLSX.utils.aoa_to_sheet(wsData);
             
             // Set column widths based on header lengths
             const colWidths = headers.map(h => ({ wch: Math.max(h.length + 5, 15) }));
             ws['!cols'] = colWidths;
             
             // Create workbook
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'Template');
+            const wb = _XLSX.utils.book_new();
+            _XLSX.utils.book_append_sheet(wb, ws, 'Template');
             
             // Generate filename
             const filename = `${table.name.replace(/[^a-z0-9]/gi, '_')}_template.xlsx`;
             
             // Download the Excel file
-            XLSX.writeFile(wb, filename);
+            _XLSX.writeFile(wb, filename);
             
             showToast('Excel template downloaded successfully!', 'success');
         } catch (error) {
@@ -452,7 +453,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const payload = {
             name: name,
-            fields: currentFields.map((f, idx) => ({ name: f.name, type: f.type, order: idx }))
+            fields: currentFields.map((f, idx) => ({ name: f.name, type: f.type, order: idx, mandatory: !!f.mandatory }))
         };
 
         try {
@@ -740,6 +741,9 @@ document.addEventListener('DOMContentLoaded', function() {
         fieldList.addEventListener('click', (e) => {
             if (e.target.closest('.remove-field-btn')) {
                 const idx = parseInt(e.target.closest('.remove-field-btn').dataset.idx);
+                const field = currentFields[idx];
+                const fieldLabel = field ? field.name || `Field ${idx + 1}` : `Field ${idx + 1}`;
+                if (!confirm(`Remove field "${fieldLabel}"?\n\nExisting card data for this field will be lost when you save.`)) return;
                 currentFields.splice(idx, 1);
                 renderFieldList();
                 showToast('Field removed!', 'info');

@@ -51,7 +51,7 @@ class WorkflowService:
         'pending':  ['verified', 'pool'],
         'verified': ['approved', 'pending', 'pool'],
         'approved': ['download', 'verified', 'pending', 'pool'],
-        'download': ['approved', 'reprint'],
+        'download': ['approved', 'pending', 'reprint'],
         'pool':     ['pending'],
         'reprint':  ['download'],
     }
@@ -155,8 +155,8 @@ class WorkflowService:
     @classmethod
     def _get_required_perm(cls, current_status: str, target_status: str) -> str:
         """Return the required permission key for a specific transition."""
-        # Special case: pool → pending requires perm_idcard_retrieve
-        if current_status == 'pool' and target_status == 'pending':
+        # Special case: pool/download → pending requires perm_idcard_retrieve
+        if current_status in ('pool', 'download') and target_status == 'pending':
             return 'perm_idcard_retrieve'
         return cls.TRANSITION_PERM_MAP.get(target_status, 'perm_idcard_verify')
 

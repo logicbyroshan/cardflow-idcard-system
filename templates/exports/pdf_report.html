@@ -137,9 +137,9 @@
                 <td{% if cell.is_image %} class="img-cell"{% endif %} style="text-align: {{ cell.align }};">
                     {% if cell.is_image %}
                         {% if cell.is_placeholder %}
-                            <img src="{{ cell.content }}" class="card-pic-placeholder">
+                            <img src="{{ cell.content }}" class="card-pic-placeholder" alt="Card photo placeholder">
                         {% else %}
-                            <img src="{{ cell.content }}" class="card-pic">
+                            <img src="{{ cell.content }}" class="card-pic" alt="Card photo">
                         {% endif %}
                     {% else %}
                         {{ cell.content }}

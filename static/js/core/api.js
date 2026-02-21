@@ -95,6 +95,11 @@
     // LOW-LEVEL FETCH WRAPPER
     // ------------------------------------------
     async function _request(url, method, data, options) {
+        // Safeguard: block requests to external origins (prevents credential leaking)
+        if (url.indexOf('://') !== -1 && url.indexOf(window.location.origin) !== 0) {
+            return Promise.reject(new Error('API request blocked: external URL not allowed'));
+        }
+
         var config = Object.assign({}, DEFAULTS, options);
 
         var headers = Object.assign({

@@ -102,8 +102,8 @@ function _getActiveFilters() {
     const filters = {};
     const searchInput = document.getElementById('searchInput');
     if (searchInput && searchInput.value.trim()) filters.search = searchInput.value.trim();
-    if (window.currentClassFilter) filters['class'] = window.currentClassFilter;
-    if (window.currentSectionFilter) filters.section = window.currentSectionFilter;
+    if (IDCardApp.currentClassFilter) filters['class'] = IDCardApp.currentClassFilter;
+    if (IDCardApp.currentSectionFilter) filters.section = IDCardApp.currentSectionFilter;
     // DateTime range (download list)
     const fromDate = document.getElementById('fromDateFilter');
     const toDate = document.getElementById('toDateFilter');
@@ -209,36 +209,33 @@ function downloadImages(cardIds) {
                         
                         const zipInfo = response.zip_files[downloadIndex];
                         
-                        // Convert base64 to blob
-                        const binaryString = atob(zipInfo.data);
-                        const bytes = new Uint8Array(binaryString.length);
-                        for (let i = 0; i < binaryString.length; i++) {
-                            bytes[i] = binaryString.charCodeAt(i);
-                        }
-                        const blob = new Blob([bytes], { type: 'application/zip' });
-                        
-                        // Create download link
-                        const url = window.URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.style.display = 'none';
-                        a.href = url;
-                        a.download = zipInfo.filename;
-                        
-                        document.body.appendChild(a);
-                        a.click();
-                        
-                        window.URL.revokeObjectURL(url);
-                        document.body.removeChild(a);
-                        
-                        downloadIndex++;
-                        
-                        // Update progress
-                        if (typeof showProgressToast === 'function') {
-                            showProgressToast(`Downloading ${downloadIndex}/${totalZips} ZIPs...`, Math.round((downloadIndex / totalZips) * 100));
-                        }
-                        
-                        // Download next ZIP after a small delay (to allow browser to process)
-                        setTimeout(downloadNextZip, 300);
+                        // Convert base64 to blob via fetch (non-blocking, avoids byte-by-byte loop)
+                        fetch('data:application/zip;base64,' + zipInfo.data)
+                        .then(function(r) { return r.blob(); })
+                        .then(function(blob) {
+                            // Create download link
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.style.display = 'none';
+                            a.href = url;
+                            a.download = zipInfo.filename;
+                            
+                            document.body.appendChild(a);
+                            a.click();
+                            
+                            window.URL.revokeObjectURL(url);
+                            document.body.removeChild(a);
+                            
+                            downloadIndex++;
+                            
+                            // Update progress
+                            if (typeof showProgressToast === 'function') {
+                                showProgressToast(`Downloading ${downloadIndex}/${totalZips} ZIPs...`, Math.round((downloadIndex / totalZips) * 100));
+                            }
+                            
+                            // Download next ZIP after a small delay (to allow browser to process)
+                            setTimeout(downloadNextZip, 300);
+                        });
                     }
                     
                     // Start downloading

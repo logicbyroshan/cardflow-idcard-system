@@ -2,13 +2,14 @@
 Core Middleware Module
 
 Contains middleware for:
-- Request timing and slow-request detection
+- Request timing, slow-request detection, and query monitoring
 - Permission validation on every request
 - Session invalidation when permissions are revoked
 - Active status enforcement
 """
 import logging
 import time
+from django.conf import settings as django_settings
 from django.contrib.auth import logout
 from django.shortcuts import redirect
 from django.http import JsonResponse
@@ -16,18 +17,12 @@ from django.utils.functional import SimpleLazyObject
 from django.urls import reverse
 
 logger = logging.getLogger(__name__)
+query_logger = logging.getLogger('slow_queries')
 
-# Threshold in seconds — requests slower than this are logged as WARNING
-SLOW_REQUEST_THRESHOLD = getattr(
-    __import__('django.conf', fromlist=['settings']).settings,
-    'SLOW_REQUEST_THRESHOLD', 1.5
-)
-
-# Threshold for excessive query count warning
-QUERY_COUNT_THRESHOLD = getattr(
-    __import__('django.conf', fromlist=['settings']).settings,
-    'QUERY_COUNT_THRESHOLD', 50
-)
+# Thresholds — configurable via settings.py / environment
+SLOW_REQUEST_THRESHOLD = getattr(django_settings, 'SLOW_REQUEST_THRESHOLD', 1.5)
+QUERY_COUNT_THRESHOLD = getattr(django_settings, 'QUERY_COUNT_THRESHOLD', 50)
+SLOW_QUERY_THRESHOLD = getattr(django_settings, 'SLOW_QUERY_THRESHOLD', 0.1)
 
 
 class RequestTimingMiddleware:
@@ -54,41 +49,63 @@ class RequestTimingMiddleware:
 
         start = time.monotonic()
 
-        # Query-count tracking — detect N+1 patterns
-        # In DEBUG mode: always count. In production: count only to detect excessive queries.
-        from django.conf import settings as _settings
-        count_queries = _settings.DEBUG
-        if count_queries:
-            from django.db import connection
-            initial_queries = len(connection.queries)
+        # ── Query counting (works in ALL environments) ──
+        # Uses a lightweight callback on the connection — no dependency on DEBUG.
+        from django.db import connection
+        query_count = 0
+        query_time = 0.0
+        slow_queries = []
 
-        response = self.get_response(request)
+        def _query_callback(execute, sql, params, many, context):
+            nonlocal query_count, query_time
+            q_start = time.monotonic()
+            result = execute(sql, params, many, context)
+            q_dur = time.monotonic() - q_start
+            query_count += 1
+            query_time += q_dur
+            if q_dur >= SLOW_QUERY_THRESHOLD:
+                slow_queries.append((sql[:200], round(q_dur * 1000)))
+            return result
+
+        with connection.execute_wrapper(_query_callback):
+            response = self.get_response(request)
+
         duration = time.monotonic() - start
+
+        # ── Server-Timing header ──
+        duration_ms = duration * 1000
+        db_ms = query_time * 1000
+        response['Server-Timing'] = (
+            'total;dur=%.1f, db;dur=%.1f;desc="%d queries"'
+            % (duration_ms, db_ms, query_count)
+        )
 
         user = getattr(request, 'user', None)
         username = getattr(user, 'username', 'anonymous') if user and getattr(user, 'is_authenticated', False) else 'anonymous'
         role = getattr(user, 'role', '-') if user and getattr(user, 'is_authenticated', False) else '-'
         status = response.status_code
 
-        # Build base log message
-        msg = "method=%s path=%s status=%d duration=%.3fs user=%s role=%s"
-        args = (request.method, request.path, status, duration, username, role)
+        # ── Request-level log ──
+        msg = "method=%s path=%s status=%d duration=%.3fs user=%s role=%s queries=%d db_time=%.3fs"
+        args = (request.method, request.path, status, duration, username, role, query_count, query_time)
 
-        if count_queries:
-            num_queries = len(connection.queries) - initial_queries
-            msg += " queries=%d"
-            args = args + (num_queries,)
-            if num_queries > QUERY_COUNT_THRESHOLD:
-                logger.warning("EXCESSIVE QUERIES " + msg, *args)
-            elif duration >= SLOW_REQUEST_THRESHOLD:
-                logger.warning("SLOW REQUEST " + msg, *args)
-            else:
-                logger.debug(msg, *args)
+        if query_count > QUERY_COUNT_THRESHOLD:
+            logger.warning("EXCESSIVE QUERIES " + msg, *args)
+            query_logger.warning(
+                "EXCESSIVE QUERIES path=%s queries=%d db_time=%.3fs user=%s",
+                request.path, query_count, query_time, username
+            )
+        elif duration >= SLOW_REQUEST_THRESHOLD:
+            logger.warning("SLOW REQUEST " + msg, *args)
         else:
-            if duration >= SLOW_REQUEST_THRESHOLD:
-                logger.warning("SLOW REQUEST " + msg, *args)
-            else:
-                logger.debug(msg, *args)
+            logger.debug(msg, *args)
+
+        # ── Individual slow query log ──
+        for sql, ms in slow_queries:
+            query_logger.warning(
+                "SLOW QUERY path=%s time=%dms sql=%s",
+                request.path, ms, sql
+            )
 
         return response
 
@@ -179,16 +196,23 @@ class PermissionValidationMiddleware:
         
         user = request.user
         
-        try:
-            # Re-fetch from DB to get latest state
-            fresh_user = User.objects.select_related().get(pk=user.pk)
-        except User.DoesNotExist:
-            # User was deleted - force logout
-            logger.warning(
-                "PermissionValidationMiddleware: User %s (ID: %d) no longer exists - forcing logout",
-                user.username, user.pk
-            )
-            return self._force_logout(request, 'Your account has been removed.')
+        # Cache the fresh user on the request object to avoid duplicate DB hits
+        # within the same request cycle (e.g., RoleScopingMiddleware also accesses user)
+        _cache_attr = '_pvm_fresh_user'
+        fresh_user = getattr(request, _cache_attr, None)
+        
+        if fresh_user is None:
+            try:
+                # Re-fetch from DB to get latest state
+                fresh_user = User.objects.select_related().get(pk=user.pk)
+                setattr(request, _cache_attr, fresh_user)
+            except User.DoesNotExist:
+                # User was deleted - force logout
+                logger.warning(
+                    "PermissionValidationMiddleware: User %s (ID: %d) no longer exists - forcing logout",
+                    user.username, user.pk
+                )
+                return self._force_logout(request, 'Your account has been removed.')
         
         # Check if user is still active
         if not fresh_user.is_active:
@@ -410,3 +434,93 @@ class WebsiteOfflineMiddleware:
             if path.startswith(prefix):
                 return False
         return True
+
+
+class SessionIdleTimeoutMiddleware:
+    """
+    Logs out users after SESSION_IDLE_TIMEOUT seconds of inactivity.
+
+    On every authenticated request, compares the current time with
+    the last-activity timestamp stored in the session. If the gap
+    exceeds the threshold, the session is flushed and the user is
+    redirected to login.
+
+    Set SESSION_IDLE_TIMEOUT=0 in settings to disable.
+    """
+
+    SKIP_PREFIXES = ('/static/', '/media/', '/favicon.ico')
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+        self._timeout = getattr(django_settings, 'SESSION_IDLE_TIMEOUT', 1800)
+
+    def __call__(self, request):
+        if self._timeout <= 0:
+            return self.get_response(request)
+
+        # Skip for static/media and unauthenticated users
+        if any(request.path.startswith(p) for p in self.SKIP_PREFIXES):
+            return self.get_response(request)
+
+        if not hasattr(request, 'user') or not request.user.is_authenticated:
+            return self.get_response(request)
+
+        now = time.time()
+        last_activity = request.session.get('_last_activity')
+
+        if last_activity is not None and (now - last_activity) > self._timeout:
+            username = getattr(request.user, 'username', 'unknown')
+            logger.info(
+                "SessionIdleTimeout: user=%s idle=%.0fs threshold=%ds — forcing logout",
+                username, now - last_activity, self._timeout
+            )
+            logout(request)
+
+            # API/HTMX → JSON; browser → redirect
+            is_ajax = (
+                request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+                or request.headers.get('HX-Request') == 'true'
+                or request.content_type == 'application/json'
+            )
+            if is_ajax:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Session expired due to inactivity.',
+                    'redirect': '/panel/auth/login/',
+                }, status=401)
+            return redirect('/panel/auth/login/')
+
+        # Update last-activity timestamp
+        request.session['_last_activity'] = now
+
+        return self.get_response(request)
+
+
+class SecurityHeadersMiddleware:
+    """
+    Adds extra security headers that Django's SecurityMiddleware does not cover.
+
+    Currently adds:
+    - Permissions-Policy: restricts browser APIs (camera, microphone, etc.)
+    """
+
+    SKIP_PREFIXES = ('/static/', '/media/')
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+        self._permissions_policy = getattr(
+            django_settings, 'PERMISSIONS_POLICY',
+            'camera=(), microphone=(), geolocation=(), payment=(), usb=()'
+        )
+
+    def __call__(self, request):
+        response = self.get_response(request)
+
+        # Skip for static/media (served by WhiteNoise which handles its own headers)
+        if any(request.path.startswith(p) for p in self.SKIP_PREFIXES):
+            return response
+
+        if self._permissions_policy:
+            response['Permissions-Policy'] = self._permissions_policy
+
+        return response

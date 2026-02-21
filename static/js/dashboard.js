@@ -42,9 +42,29 @@ document.addEventListener('DOMContentLoaded', function() {
         if (welcomeTime) welcomeTime.textContent = timeStr;
     }
     
-    // Update immediately and then every second
+    // Update immediately, then via rAF (pauses when tab hidden)
     updateWelcomeDateTime();
-    setInterval(updateWelcomeDateTime, 1000);
+    var _dashLastSec = -1;
+    var _dashRafId = null;
+    function _dashClockTick() {
+        var now = new Date();
+        var sec = now.getSeconds();
+        if (sec !== _dashLastSec) {
+            _dashLastSec = sec;
+            updateWelcomeDateTime();
+        }
+        _dashRafId = requestAnimationFrame(_dashClockTick);
+    }
+    function _dashOnVis() {
+        if (document.hidden) {
+            if (_dashRafId) { cancelAnimationFrame(_dashRafId); _dashRafId = null; }
+        } else {
+            _dashLastSec = -1;
+            if (!_dashRafId) _dashRafId = requestAnimationFrame(_dashClockTick);
+        }
+    }
+    document.addEventListener('visibilitychange', _dashOnVis);
+    _dashClockTick();
     
     // ====================
     // Animate Stat Cards on Load

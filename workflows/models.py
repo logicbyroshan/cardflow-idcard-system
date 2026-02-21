@@ -1,6 +1,7 @@
 import logging
 
 from django.conf import settings
+from django.contrib.postgres.indexes import GinIndex
 from django.db import models
 from client.models import Client
 
@@ -254,6 +255,12 @@ class IDCard(models.Model):
             models.Index(fields=['table', 'created_at']),
             models.Index(fields=['created_at']),
             models.Index(fields=['updated_at']),
+            # Performance indexes added in Block 1 audit
+            models.Index(fields=['table', 'status', '-id'], name='idcard_tbl_status_id_desc'),
+            models.Index(fields=['downloaded_at'], name='idcard_downloaded_at_idx'),
+            models.Index(fields=['deleted_at'], name='idcard_deleted_at_idx'),
+            # GIN index for fast JSON search (replaces icontains full table scans)
+            GinIndex(fields=['field_data'], name='idcard_field_data_gin'),
         ]
 
 

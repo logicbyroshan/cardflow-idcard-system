@@ -81,13 +81,29 @@ function layoutState() {
             const dateEl = document.getElementById('date');
             const timeEl = document.getElementById('time');
             if (!dateEl && !timeEl) return;
-            const update = () => {
+            var _lastSec = -1;
+            var _rafId = null;
+            const tick = () => {
                 const now = new Date();
-                if (dateEl) dateEl.textContent = now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-                if (timeEl) timeEl.textContent = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+                const sec = now.getSeconds();
+                if (sec !== _lastSec) {          // update DOM at most once per second
+                    _lastSec = sec;
+                    if (dateEl) dateEl.textContent = now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+                    if (timeEl) timeEl.textContent = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+                }
+                _rafId = requestAnimationFrame(tick);
             };
-            update();
-            setInterval(update, 1000);
+            // Only tick when tab is visible
+            const onVis = () => {
+                if (document.hidden) {
+                    if (_rafId) { cancelAnimationFrame(_rafId); _rafId = null; }
+                } else {
+                    _lastSec = -1;               // force immediate update
+                    if (!_rafId) _rafId = requestAnimationFrame(tick);
+                }
+            };
+            document.addEventListener('visibilitychange', onVis);
+            tick();
         },
 
         initKeyboardShortcuts() {

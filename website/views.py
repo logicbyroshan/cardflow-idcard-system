@@ -152,15 +152,6 @@ def load_more_reels(request):
     })
 
 
-# --- REMOVED: Trusted Clients standalone page (backed up to backups/trusted_clients_page/) ---
-# def trusted_clients_view(request):
-#     """Clients Page: Displays the full list of schools/corporates served"""
-#     context = get_common_context()
-#     clients = TrustedClient.objects.filter(is_active=True).order_by('order')
-#     context.update({'clients': clients})
-#     return render(request, 'website/trusted-clients.html', context)
-
-
 def why_choose_us(request):
     """About/Features Page"""
     context = get_common_context()

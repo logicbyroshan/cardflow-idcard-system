@@ -85,7 +85,7 @@
                     <tr data-id="{{ p.id }}" data-cat="{{ p.category_id|default:'' }}">
                         <td>
                             {% if p.image %}
-                            <img src="{{ p.image.url }}" class="wa-thumb" alt="{{ p.title }}">
+                            <img src="{{ p.image.url }}" class="wa-thumb" alt="{{ p.title }}" loading="lazy" decoding="async">
                             {% elif p.item_type == 'video' or p.item_type == 'reel' %}
                             <span class="wa-thumb-icon"><i class="fa-solid fa-video"></i></span>
                             {% else %}
@@ -261,5 +261,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/website-admin/portfolio.js' %}?v=130"></script>
+<script src="{% static 'js/website-admin/portfolio.js' %}"></script>
 {% endblock %}

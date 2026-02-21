@@ -3,6 +3,8 @@
  * Handles: checkbox selection, search, request reprint API, reason modal,
  *          confirm/reject, download, client-side pagination
  */
+(function() {
+'use strict';
 
 /* ══════════════════════════════════════════════════════════════════
    SHARED PAGINATION FACTORY
@@ -161,6 +163,39 @@ function createReprintPaginator(opts) {
 }
 
 /* ══════════════════════════════════════════════════════════════════
+   SHARED HELPERS (used by all 3 step IIFEs)
+   Delegates to core modules loaded before this file.
+   ══════════════════════════════════════════════════════════════════ */
+var _getCSRFToken  = window.getCSRFToken  || function() { return ''; };
+var _showToast     = window.showToast     || function() {};
+var _escapeHtml    = window.escapeHtml    || function(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
+
+function _isImageField(type, name) {
+  if (!type && !name) return false;
+  var t = (type || '').toLowerCase();
+  var n = (name || '').toLowerCase();
+  return t === 'image' || t === 'photo' || t === 'file' ||
+         n === 'photo' || n === 'image' || n === 'picture' || n === 'pic' || n === 'img';
+}
+
+function _updateTabCount(sel, count) {
+  var el = document.querySelector(sel);
+  if (el) el.textContent = count;
+}
+
+function _refreshStepCounts(tableId) {
+  ApiClient.get('/panel/api/table/' + tableId + '/reprint/step-counts/')
+    .then(function(data) {
+      if (data.status === 'success') {
+        var c = data.counts;
+        _updateTabCount('.reprint-requests-tab .tab-count', c.requested || 0);
+        _updateTabCount('.reprint-confirm-tab .tab-count', c.confirmed || 0);
+        _updateTabCount('.reprint-download-tab .tab-count', c.downloaded || 0);
+      }
+    }).catch(function() {});
+}
+
+/* ══════════════════════════════════════════════════════════════════
    STEP 1: REPRINT REQUESTS
    ══════════════════════════════════════════════════════════════════ */
 (function() {
@@ -195,8 +230,8 @@ function createReprintPaginator(opts) {
   // Initial pagination on page load
   if (paginator) paginator.paginate();
 
-  // ── Helpers (core/ globals) ──
-  const getCSRFToken = window.getCSRFToken || (() => '');
+  // ── Helpers (aliases to shared file-scope helpers) ──
+  const getCSRFToken = _getCSRFToken, escapeHtml = _escapeHtml, isImageField = _isImageField;
 
   function getCheckboxes() {
     return tableBody ? Array.from(tableBody.querySelectorAll('.reprintRowCheckbox:not(:disabled)')) : [];
@@ -490,16 +525,6 @@ function createReprintPaginator(opts) {
     if (paginator) { paginator.reset(); paginator.paginate(); }
   }
 
-  function isImageField(type, name) {
-    if (!type && !name) return false;
-    const t = (type || '').toLowerCase();
-    const n = (name || '').toLowerCase();
-    return t === 'image' || t === 'photo' || t === 'file' ||
-           n === 'photo' || n === 'image' || n === 'picture' || n === 'pic' || n === 'img';
-  }
-
-  const escapeHtml = window.escapeHtml || ((s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; });
-
   // ── Reason Modal ──
   function openReasonModal(cardIds) {
     // Remove any existing modal
@@ -589,26 +614,8 @@ function createReprintPaginator(opts) {
     });
   }
 
-  // ── Refresh Step Counts ──
-  function refreshStepCounts() {
-    ApiClient.get(`/panel/api/table/${TABLE_ID_VAL}/reprint/step-counts/`)
-      .then(data => {
-        if (data.status === 'success') {
-          const c = data.counts;
-          updateTabCount('.reprint-requests-tab .tab-count', c.requested || 0);
-          updateTabCount('.reprint-confirm-tab .tab-count', c.confirmed || 0);
-          updateTabCount('.reprint-download-tab .tab-count', c.downloaded || 0);
-        }
-      }).catch(() => {});
-  }
-
-  function updateTabCount(selector, count) {
-    const el = document.querySelector(selector);
-    if (el) el.textContent = count;
-  }
-
-  // Toast: delegate to core/toast.js global
-  const showToast = window.showToast || ((msg, type) => { /* silent fallback */ });
+  const showToast = _showToast;
+  function refreshStepCounts() { _refreshStepCounts(TABLE_ID_VAL); }
 
 })();
 
@@ -645,8 +652,9 @@ function createReprintPaginator(opts) {
   // Initial pagination on page load
   if (paginator) paginator.paginate();
 
-  // ── Helpers (core/ globals) ──
-  const getCSRFToken = window.getCSRFToken || (() => '');
+  // ── Helpers (aliases to shared file-scope helpers) ──
+  const getCSRFToken = _getCSRFToken, escapeHtml = _escapeHtml, isImageField = _isImageField, showToast = _showToast;
+  function refreshStepCounts() { _refreshStepCounts(TABLE_ID_VAL); }
 
   function getCheckboxes() {
     return tableBody ? Array.from(tableBody.querySelectorAll('.confirmRowCheckbox')) : [];
@@ -952,29 +960,6 @@ function createReprintPaginator(opts) {
     }
   }
 
-  // ── Shared Helpers (delegates to core modules) ──
-  function isImageField(type, name) {
-    if (!type && !name) return false;
-    const t = (type || '').toLowerCase();
-    const n = (name || '').toLowerCase();
-    return t === 'image' || t === 'photo' || t === 'file' ||
-           n === 'photo' || n === 'image' || n === 'picture' || n === 'pic' || n === 'img';
-  }
-  const escapeHtml = window.escapeHtml || ((s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; });
-  const showToast = window.showToast || ((msg, type) => { /* silent fallback */ });
-  function updateTabCount(sel, count) { const el = document.querySelector(sel); if (el) el.textContent = count; }
-  function refreshStepCounts() {
-    ApiClient.get(`/panel/api/table/${TABLE_ID_VAL}/reprint/step-counts/`)
-      .then(data => {
-        if (data.status === 'success') {
-          const c = data.counts;
-          updateTabCount('.reprint-requests-tab .tab-count', c.requested || 0);
-          updateTabCount('.reprint-confirm-tab .tab-count', c.confirmed || 0);
-          updateTabCount('.reprint-download-tab .tab-count', c.downloaded || 0);
-        }
-      }).catch(() => {});
-  }
-
 })();
 
 /* ══════════════════════════════════════════════════════════════════
@@ -1009,8 +994,9 @@ function createReprintPaginator(opts) {
   // Initial pagination on page load
   if (paginator) paginator.paginate();
 
-  // ── Helpers (core/ globals) ──
-  const getCSRFToken = window.getCSRFToken || (() => '');
+  // ── Helpers (aliases to shared file-scope helpers) ──
+  const getCSRFToken = _getCSRFToken, escapeHtml = _escapeHtml, isImageField = _isImageField, showToast = _showToast;
+  function refreshStepCounts() { _refreshStepCounts(TABLE_ID_VAL); }
 
   function getCheckboxes() {
     return tableBody ? Array.from(tableBody.querySelectorAll('.downloadRowCheckbox')) : [];
@@ -1265,27 +1251,6 @@ function createReprintPaginator(opts) {
     }
   }
 
-  // ── Shared Helpers (delegates to core modules) ──
-  function isImageField(type, name) {
-    if (!type && !name) return false;
-    const t = (type || '').toLowerCase();
-    const n = (name || '').toLowerCase();
-    return t === 'image' || t === 'photo' || t === 'file' ||
-           n === 'photo' || n === 'image' || n === 'picture' || n === 'pic' || n === 'img';
-  }
-  const escapeHtml = window.escapeHtml || ((s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; });
-  const showToast = window.showToast || ((msg, type) => { /* silent fallback */ });
-  function updateTabCount(sel, count) { const el = document.querySelector(sel); if (el) el.textContent = count; }
-  function refreshStepCounts() {
-    ApiClient.get(`/panel/api/table/${TABLE_ID_VAL}/reprint/step-counts/`)
-      .then(data => {
-        if (data.status === 'success') {
-          const c = data.counts;
-          updateTabCount('.reprint-requests-tab .tab-count', c.requested || 0);
-          updateTabCount('.reprint-confirm-tab .tab-count', c.confirmed || 0);
-          updateTabCount('.reprint-download-tab .tab-count', c.downloaded || 0);
-        }
-      }).catch(() => {});
-  }
-
 })();
+
+})(); // end outer IIFE

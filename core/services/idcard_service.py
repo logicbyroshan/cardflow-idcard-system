@@ -154,7 +154,8 @@ class IDCardService(BaseService):
                 validated_fields.append({
                     'name': field_name,
                     'type': field_type,
-                    'order': idx
+                    'order': idx,
+                    'mandatory': bool(field.get('mandatory', False)),
                 })
             
             table = IDCardTable.objects.create(
@@ -220,12 +221,15 @@ class IDCardService(BaseService):
                 validated_fields.append({
                     'name': field_name,
                     'type': field_type,
-                    'order': idx
+                    'order': idx,
+                    'mandatory': bool(field.get('mandatory', False)),
                 })
             
-            table.name = name
-            table.fields = validated_fields
-            table.save()
+            from django.db import transaction
+            with transaction.atomic():
+                table.name = name
+                table.fields = validated_fields
+                table.save()
             
             return ServiceResult(
                 success=True,
@@ -367,9 +371,15 @@ class IDCardService(BaseService):
         table_id: int, 
         status_filter: str = None,
         offset: int = 0,
-        limit: int = 100
+        limit: int = 100,
+        cursor: int = None
     ) -> ServiceResult:
-        """List ID Cards for a table with pagination"""
+        """List ID Cards for a table with cursor or offset pagination.
+        
+        Args:
+            cursor: If provided, fetch cards with id < cursor (keyset pagination).
+                    Falls back to offset pagination if not provided.
+        """
         try:
             table = get_object_or_404(IDCardTable, id=table_id)
             
@@ -384,7 +394,18 @@ class IDCardService(BaseService):
                 cards_query = cards_query.filter(status=status_filter)
             
             total_count = cards_query.count()
-            cards = cards_query[offset:offset + limit]
+
+            # Cursor-based pagination (preferred) or offset (legacy)
+            if cursor is not None:
+                page_qs = cards_query.filter(id__lt=cursor)[:limit + 1]
+            else:
+                page_qs = cards_query[offset:offset + limit + 1]
+
+            cards = list(page_qs)
+            has_more = len(cards) > limit
+            if has_more:
+                cards = cards[:limit]
+            next_cursor = cards[-1].id if cards and has_more else None
             
             # Serialize cards
             card_list = []
@@ -405,7 +426,8 @@ class IDCardService(BaseService):
                     'total_count': total_count,
                     'offset': offset,
                     'limit': limit,
-                    'has_more': offset + limit < total_count,
+                    'has_more': has_more,
+                    'next_cursor': next_cursor,
                     'status_counts': status_counts,
                     'table': cls.serialize_table(table),
                 }
@@ -956,10 +978,12 @@ class IDCardService(BaseService):
     @classmethod
     def upgrade_all_classes(cls, table_id: int) -> ServiceResult:
         """
-        Upgrade the class field value for all download-status cards in a table.
+        Upgrade the class field value for all download-status cards in a table,
+        then move every upgraded card to pending for the new academic cycle.
+
         Each class value is bumped to the next level (e.g. V → VI).
-        Cards at XII remain unchanged.
-        Returns: ServiceResult with data={'upgraded', 'skipped', 'total'}
+        Cards at XII stay at XII but still move to pending.
+        Returns: ServiceResult with data={'upgraded', 'skipped', 'total', 'moved_to_pending'}
         """
         from core.utils.field_utils import CLASS_UPGRADE_MAP
         try:
@@ -999,24 +1023,38 @@ class IDCardService(BaseService):
                     if current_val in CLASS_UPGRADE_MAP:
                         field_data[class_field_name] = CLASS_UPGRADE_MAP[current_val]
                         card.field_data = field_data
-                        cards_to_update.append(card)
                         upgraded += 1
                     else:
                         skipped += 1
+                    # Move ALL download cards to pending (new academic cycle)
+                    card.status = 'pending'
+                    cards_to_update.append(card)
                     # Flush batch to DB periodically to limit memory
                     if len(cards_to_update) >= BATCH_SIZE:
-                        IDCard.objects.bulk_update(cards_to_update, ['field_data', 'updated_at'], batch_size=BATCH_SIZE)
+                        IDCard.objects.bulk_update(
+                            cards_to_update,
+                            ['field_data', 'status', 'updated_at'],
+                            batch_size=BATCH_SIZE,
+                        )
                         cards_to_update = []
                 if cards_to_update:
-                    IDCard.objects.bulk_update(cards_to_update, ['field_data', 'updated_at'], batch_size=BATCH_SIZE)
+                    IDCard.objects.bulk_update(
+                        cards_to_update,
+                        ['field_data', 'status', 'updated_at'],
+                        batch_size=BATCH_SIZE,
+                    )
 
             return ServiceResult(
                 success=True,
-                message=f'Upgraded {upgraded} card(s). {skipped} skipped (already XII or unknown value).',
+                message=(
+                    f'Upgraded {upgraded} card(s). {skipped} skipped (already XII or unknown). '
+                    f'All {total} cards moved to Pending.'
+                ),
                 data={
                     'upgraded': upgraded,
                     'skipped': skipped,
                     'total': total,
+                    'moved_to_pending': total,
                     'client_name': getattr(table.group.client, 'name', ''),
                 }
             )

@@ -13,7 +13,7 @@ var IMAGE_FIELD_NAME_PATTERNS = ['photo', 'f photo', 'father photo', 'm photo', 
 var VALID_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
 
 // Populate on upload — currently empty (populated during XLSX validation)
-window.currentImageFields = [];
+IDCardApp.currentImageFields = [];
 
 // ==========================================
 // IMAGE FIELD DETECTION FUNCTIONS
@@ -333,43 +333,10 @@ function populateValidationResults(matchedFields, missingFields, ignoredFields, 
             imageColumnsList.textContent = imageFields.map(f => f.name.toUpperCase()).join(', ');
         }
         // Store image fields globally for upload processing
-        window.currentImageFields = imageFields;
+        IDCardApp.currentImageFields = imageFields;
     } else {
         if (photoZipSection) photoZipSection.style.display = 'none';
     }
-}
-
-// Legacy function for backward compatibility - now just calls showValidationResults
-function openUploadModal(matchedFields, missingFields, ignoredFields, dataRowCount, isError = false) {
-    const uploadModalOverlay = document.getElementById('uploadModalOverlay');
-    const fileSelectStage = document.getElementById('fileSelectStage');
-    const validationStage = document.getElementById('validationStage');
-    
-    // Hide file selection stage, show validation stage
-    if (fileSelectStage) fileSelectStage.style.display = 'none';
-    if (validationStage) validationStage.style.display = '';
-    
-    // Populate validation results
-    populateValidationResults(matchedFields, missingFields, ignoredFields, dataRowCount, isError);
-    
-    // Show confirm button if not an error
-    const confirmUploadModal = document.getElementById('confirmUploadModal');
-    if (confirmUploadModal) {
-        confirmUploadModal.style.display = isError ? 'none' : '';
-    }
-    
-    // Open modal if not already open
-    if (uploadModalOverlay && !uploadModalOverlay.classList.contains('active')) {
-        uploadModalOverlay.classList.add('active');
-        document.body.style.overflow = 'hidden';
-    }
-}
-
-// Initialize ZIP button listeners (called after dynamic creation)
-// Note: This is a no-op since initZipUpload uses event delegation on the container
-function initZipButtonListeners() {
-    // Event delegation is already set up in initZipUpload()
-    // No additional setup needed for dynamically created elements
 }
 
 function closeUploadModalFn() {
@@ -384,8 +351,8 @@ function closeUploadModalFn() {
     resetUploadModal();
 }
 
-// Expose globally
-window.closeUploadModal = closeUploadModalFn;
+// Expose on IDCardApp namespace
+IDCardApp.closeUploadModal = closeUploadModalFn;
 
 // ==========================================
 // XLSX UPLOAD HANDLERS
@@ -484,9 +451,31 @@ function initXlsxUpload() {
                 }
                 
                 const fileData = await file.arrayBuffer();
-                const workbook = XLSX.read(fileData, { type: 'array' });
-                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+
+                // Parse XLSX in a Web Worker to avoid blocking the main thread
+                var jsonData;
+                try {
+                    jsonData = await new Promise(function(resolve, reject) {
+                        var w = new Worker('/static/js/workers/xlsx-worker.js');
+                        w.onmessage = function(ev) {
+                            w.terminate();
+                            if (ev.data.success) resolve(ev.data.jsonData);
+                            else reject(new Error(ev.data.error));
+                        };
+                        w.onerror = function(err) {
+                            w.terminate();
+                            reject(err);
+                        };
+                        w.postMessage(fileData, [fileData]); // transfer buffer
+                    });
+                } catch (_workerErr) {
+                    // Fallback: parse on main thread if Worker fails (e.g. CSP)
+                    var _XLSX = (typeof LazyLoad !== 'undefined') ? await LazyLoad.xlsx() : XLSX;
+                    var fb = await file.arrayBuffer();
+                    var workbook = _XLSX.read(fb, { type: 'array' });
+                    var firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    jsonData = _XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+                }
                 
                 if (jsonData.length === 0) {
                     if (typeof showToast === 'function') showToast('The uploaded file is empty!', false);
@@ -784,11 +773,6 @@ function getUnifiedZipFiles() {
     return unifiedZipFiles;
 }
 
-function clearUnifiedZipFiles() {
-    unifiedZipFiles = [];
-    updateSelectedZipsList();
-}
-
 // ==========================================
 // ZIP UPLOAD HANDLERS (Legacy - kept for backward compatibility)
 // ==========================================
@@ -850,7 +834,8 @@ function initZipUpload() {
         }
         
         try {
-            const zip = await JSZip.loadAsync(file);
+            var _JSZip = (typeof LazyLoad !== 'undefined') ? await LazyLoad.jszip() : JSZip;
+            const zip = await _JSZip.loadAsync(file);
             const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
             let imageCount = 0;
             zipFileNamesMap[fieldName] = [];
@@ -922,7 +907,7 @@ function initUploadModule() {
     initZipUpload();
 }
 
-// Expose globally
+// Expose on IDCardApp namespace
 window.IDCardApp = window.IDCardApp || {};
 window.IDCardApp.initUploadModule = initUploadModule;
 window.IDCardApp.closeUploadModal = closeUploadModalFn;

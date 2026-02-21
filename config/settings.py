@@ -84,6 +84,10 @@ MIDDLEWARE = [
     # CRITICAL: Must come after AuthenticationMiddleware
     'core.middleware.PermissionValidationMiddleware',
     'core.middleware.RoleScopingMiddleware',
+    # Session idle timeout — logs out after SESSION_IDLE_TIMEOUT of inactivity
+    'core.middleware.SessionIdleTimeoutMiddleware',
+    # Security headers — Permissions-Policy
+    'core.middleware.SecurityHeadersMiddleware',
     # Website Offline Middleware — blocks public site when status is 'draft'
     'core.middleware.WebsiteOfflineMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -175,12 +179,12 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000  # 1 year
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
-    
-    # Other security
-    SECURE_CONTENT_TYPE_NOSNIFF = True
-    X_FRAME_OPTIONS = 'DENY'
-    SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
-    SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin'
+
+# ── Security headers (always applied, both dev and prod) ──
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
+SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin'
 
 # ── Cookie hardening (always applied, both dev and prod) ──
 SESSION_COOKIE_HTTPONLY = True          # JS cannot read session cookie
@@ -189,6 +193,15 @@ SESSION_COOKIE_AGE = 60 * 60 * 12      # 12-hour sessions
 CSRF_COOKIE_SAMESITE = 'Lax'           # CSRF cookie SameSite
 # Note: CSRF_COOKIE_HTTPONLY left False (Django default) because JS reads
 # the csrftoken cookie via getCSRFToken() for AJAX requests.
+
+# ── Session idle timeout (seconds) ──
+# If a user has no requests for this period, session expires on next request.
+# Set to 0 to disable. Default: 30 minutes.
+SESSION_IDLE_TIMEOUT = int(os.getenv('SESSION_IDLE_TIMEOUT', '1800'))
+
+# ── Permissions-Policy header ──
+# Restricts browser APIs not needed by this app.
+PERMISSIONS_POLICY = 'camera=(), microphone=(), geolocation=(), payment=(), usb=()'
 
 
 # =============================================================================
@@ -236,15 +249,20 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
 # Whitenoise for serving static files in production
-# Use CompressedStaticFilesStorage (NOT Manifest version) to avoid missing file errors
+# CompressedManifest version: content-hashes filenames (app.js → app.abc123.js)
+# enabling permanent caching with Cache-Control: immutable
 STORAGES = {
     "default": {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
     },
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
+
+# Safety: don't crash with 500 if a static file is missing from the manifest
+# (e.g. dynamically-referenced vendor files in lazy-load.js or xlsx-worker.js)
+WHITENOISE_MANIFEST_STRICT = False
 
 # Media files (Uploads)
 MEDIA_URL = 'media/'
@@ -340,6 +358,20 @@ APP_VERSION = os.getenv('APP_VERSION', 'v1.1.0')
 
 
 # =============================================================================
+# PERFORMANCE MONITORING THRESHOLDS
+# =============================================================================
+
+# Requests slower than this are logged as WARNING by RequestTimingMiddleware
+SLOW_REQUEST_THRESHOLD = float(os.getenv('SLOW_REQUEST_THRESHOLD', '1.5'))
+
+# Requests with more queries than this trigger EXCESSIVE QUERIES warning
+QUERY_COUNT_THRESHOLD = int(os.getenv('QUERY_COUNT_THRESHOLD', '50'))
+
+# Individual SQL queries slower than this (seconds) are logged to queries.log
+SLOW_QUERY_THRESHOLD = float(os.getenv('SLOW_QUERY_THRESHOLD', '0.1'))
+
+
+# =============================================================================
 # LOGGING
 # =============================================================================
 
@@ -409,6 +441,14 @@ LOGGING = {
             'formatter': 'verbose',
             'level': 'INFO',
         },
+        'file_queries': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(LOG_DIR, 'queries.log'),
+            'maxBytes': 10 * 1024 * 1024,  # 10 MB
+            'backupCount': 3,
+            'formatter': 'verbose',
+            'level': 'WARNING',
+        },
     },
 
     'root': {
@@ -431,6 +471,12 @@ LOGGING = {
         'django.db.backends': {
             'handlers': ['console'],
             'level': 'DEBUG' if DEBUG else 'WARNING',
+            'propagate': False,
+        },
+        # Slow/excessive query logging — writes to queries.log in all environments
+        'slow_queries': {
+            'handlers': ['file_queries'],
+            'level': 'WARNING',
             'propagate': False,
         },
         'accounts': {

@@ -29,9 +29,7 @@ Required context:
     <!-- Left - Info -->
     <div class="pagination-left">
         <span class="pagination-info">
-            Showing <strong id="showingRange">
-            {% if page_obj %}{{ page_obj.start_index }}-{{ page_obj.end_index }}{% else %}1-{{ id_cards|length }}{% endif %}
-            </strong> of <strong id="totalCount">{{ total_count }}</strong> results
+            Showing <strong id="showingRange">0</strong> of <strong id="totalCount">{{ total_count }}</strong> results
         </span>
         <span class="pagination-selected" id="selectionInfo" style="display: none;">
             (<strong id="selectedCount">0</strong> selected)

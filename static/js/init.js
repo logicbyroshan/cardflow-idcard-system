@@ -78,13 +78,8 @@
     function logModuleStatus() {
         const status = verifyModules();
         
-        if (window.Adarsh.debug) {
-            console.group('🚀 Adarsh ID Cards - Module Status');
-            console.log('Loaded:', status.loaded.join(', ') || 'None');
-            if (status.missing.length > 0) {
-                console.warn('Missing:', status.missing.join(', '));
-            }
-            console.groupEnd();
+        if (window.Adarsh.debug && status.missing.length > 0) {
+            console.warn('Missing modules:', status.missing.join(', '));
         }
 
         return status;
@@ -148,7 +143,6 @@
             // Debug mode toggle: Ctrl+Shift+D
             if (e.ctrlKey && e.shiftKey && e.key === 'D') {
                 window.Adarsh.debug = !window.Adarsh.debug;
-                console.log(`Debug mode: ${window.Adarsh.debug ? 'ON' : 'OFF'}`);
                 if (window.Adarsh.debug) {
                     logModuleStatus();
                 }
@@ -199,24 +193,13 @@
     // ==========================================
 
     /**
-     * Global error handler for uncaught errors
+     * Global error handling is now provided by error-monitor.js
+     * (window.Adarsh.errors). This function is kept as a no-op
+     * initialization point so the init() call sequence doesn't break.
      */
     function initErrorHandling() {
-        window.addEventListener('error', function(event) {
-            if (window.Adarsh.debug) {
-                console.error('Global error:', event.error);
-            }
-            // Don't show toast for script loading errors
-            if (!event.filename || event.filename.includes('.js')) {
-                return;
-            }
-        });
-
-        window.addEventListener('unhandledrejection', function(event) {
-            if (window.Adarsh.debug) {
-                console.error('Unhandled promise rejection:', event.reason);
-            }
-        });
+        // error-monitor.js installs listeners at parse-time;
+        // nothing extra needed here.
     }
 
     // ==========================================
@@ -250,10 +233,6 @@
         }));
 
         window.Adarsh.initialized = true;
-
-        if (window.Adarsh.debug) {
-            console.log('✅ Adarsh ID Cards initialized');
-        }
     }
 
     // ==========================================

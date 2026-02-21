@@ -133,8 +133,8 @@ function updateBulkActionButtons() {
     });
 }
 
-// Expose function for external calls (e.g., after status tab switch)
-window.updateBulkActionButtons = updateBulkActionButtons;
+// Expose on IDCardApp namespace
+window.IDCardApp.updateBulkActionButtons = updateBulkActionButtons;
 
 // ==========================================
 // DATE/NAME/SR HELPERS
@@ -212,8 +212,8 @@ function applyFiltersAndSort() {
     const filterColumnIndex = currentFilterField !== 'all' ? getFieldColumnIndex(currentFilterField) : -1;
     
     // Get class/section filter state from search module (exposed globally)
-    const classFilter = window.currentClassFilter || '';
-    const sectionFilter = window.currentSectionFilter || '';
+    const classFilter = IDCardApp.currentClassFilter || '';
+    const sectionFilter = IDCardApp.currentSectionFilter || '';
     
     // Resolve class/section column indices once (only if filters are active)
     let classColIndex = -1;
@@ -294,8 +294,8 @@ function applyFiltersAndSort() {
         }
         
         // Image sort filter — check image cell status (complete/pending/incomplete)
-        if (window._activeImageSort) {
-            const imgSort = window._activeImageSort;
+        if (IDCardApp._activeImageSort) {
+            const imgSort = IDCardApp._activeImageSort;
             // Try exact match first, then case-insensitive fallback
             let imageCell = row.querySelector('td.image-cell[data-field-name="' + imgSort.column + '"]');
             if (!imageCell) {
@@ -426,7 +426,7 @@ function updatePaginationInfoEndless(totalLoaded) {
     if (paginationInfo) {
         const totalCount = lazyLoadState.totalCount || totalLoaded;
         const hasMore = lazyLoadState.hasMore;
-        const hasFilter = window.currentClassFilter || window.currentSectionFilter || searchQuery;
+        const hasFilter = IDCardApp.currentClassFilter || IDCardApp.currentSectionFilter || searchQuery;
         
         if (hasMore) {
             paginationInfo.innerHTML = `Showing <strong>1-${totalLoaded}</strong> of <strong>${totalLoaded}</strong> loaded (${totalCount} total)`;
@@ -805,7 +805,7 @@ function createRowFromCard(card, index) {
                     // Use onError fallback to original if thumbnail doesn't exist
                     const fallbackAttr = thumbPath ? `onerror="this.onerror=null; this.src='${originalSrc}';"` : '';
                     const imageSrc = thumbPath ? thumbSrc : originalSrc;
-                    imageHtml = `<img src="${imageSrc}" alt="${safeFieldName}" class="table-image ${imageTypeClass}" loading="lazy" ${fallbackAttr}>`;
+                    imageHtml = `<img src="${imageSrc}" alt="${safeFieldName}" class="table-image ${imageTypeClass}" loading="lazy" decoding="async" ${fallbackAttr}>`;
                 } else {
                     // Empty/null - Colorful placeholder (no image)
                     imageHtml = `<div class="no-image colorful-placeholder"><i class="fa-solid fa-user-astronaut"></i></div>`;
@@ -889,40 +889,39 @@ function getRowActionButtons(status, cardId) {
     }
 }
 
-function attachRowEventHandlers(row) {
-    row.querySelectorAll('.verify-row-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            if (typeof verifyCard === 'function') verifyCard(this.getAttribute('data-card-id'));
-        });
-    });
-    
-    row.querySelectorAll('.approve-row-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            if (typeof approveCard === 'function') approveCard(this.getAttribute('data-card-id'));
-        });
-    });
-    
-    row.querySelectorAll('.unverify-row-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            if (typeof unverifyCard === 'function') unverifyCard(this.getAttribute('data-card-id'));
-        });
-    });
-    
-    row.querySelectorAll('.retrieve-row-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            if (typeof retrieveCard === 'function') retrieveCard(this.getAttribute('data-card-id'));
-        });
-    });
-    
-    row.querySelectorAll('.editable-cell:not(.image-field)').forEach(cell => {
-        // Single-click to start editing (Phase 6: Single Click Edit)
-        cell.addEventListener('click', function(e) {
-            // Skip if clicking on a button or already editing
-            if (e.target.closest('button') || this.classList.contains('editing')) return;
-            if (typeof startCellEdit === 'function') {
-                startCellEdit(this);
-            }
-        });
+/**
+ * One-time delegated click handler on #cardsTableBody.
+ * Covers .row-action-btn and .editable-cell clicks for all existing
+ * and future (lazy-loaded / HTMX-swapped) rows.
+ */
+function _initTableBodyDelegation() {
+    var tableBody = document.getElementById('cardsTableBody');
+    if (!tableBody || tableBody._tblDelegationInit) return;
+    tableBody._tblDelegationInit = true;
+
+    tableBody.addEventListener('click', function(e) {
+        // --- Row action buttons ---
+        var btn = e.target.closest('.row-action-btn');
+        if (btn) {
+            e.stopPropagation();
+            var cardId = btn.getAttribute('data-card-id');
+            if (!cardId) return;
+            if (btn.classList.contains('verify-row-btn') && typeof verifyCard === 'function') verifyCard(cardId);
+            else if (btn.classList.contains('approve-row-btn') && typeof approveCard === 'function') approveCard(cardId);
+            else if (btn.classList.contains('unverify-row-btn') && typeof unverifyCard === 'function') unverifyCard(cardId);
+            else if (btn.classList.contains('retrieve-row-btn') && typeof retrieveCard === 'function') retrieveCard(cardId);
+            else if (btn.classList.contains('unapprove-row-btn') && typeof unapproveCard === 'function') unapproveCard(cardId);
+            else if (btn.classList.contains('download-row-btn') && typeof downloadCard === 'function') downloadCard(cardId);
+            else if (btn.classList.contains('download-single-row-btn') && typeof downloadSingleCard === 'function') downloadSingleCard(cardId);
+            return;
+        }
+
+        // --- Editable cell single-click editing ---
+        var cell = e.target.closest('.editable-cell:not(.image-field)');
+        if (cell) {
+            if (e.target.closest('button') || cell.classList.contains('editing')) return;
+            if (typeof startCellEdit === 'function') startCellEdit(cell);
+        }
     });
 }
 
@@ -949,7 +948,6 @@ async function loadMoreData() {
                 const row = createRowFromCard(card, index);
                 tableBody.appendChild(row);
                 allRows.push(row);
-                attachRowEventHandlers(row);
             });
             
             lazyLoadState.loadedCount += data.cards.length;
@@ -1027,6 +1025,94 @@ async function loadAllData() {
         }
     } finally {
         showTableLoadingOverlay(false);
+    }
+}
+
+// ==========================================
+// INTERSECTION OBSERVER FOR LAZY LOADING
+// ==========================================
+
+/**
+ * Sets up IntersectionObserver on a sentinel element at the bottom of the table.
+ * Replaces both setInterval(1000) polling and scroll-based checkLoadMore().
+ * Ensures only one request is active at a time via isLoading + sequence guard.
+ */
+function _setupLazyLoadObserver() {
+    if (_sentinelObserver) { _sentinelObserver.disconnect(); _sentinelObserver = null; }
+    
+    if (!lazyLoadState.hasMore) return;
+    
+    var tableContainer = document.querySelector('.idcard-table');
+    if (!tableContainer) return;
+    
+    // Create or reuse sentinel element at bottom of table body
+    var tableBody = document.getElementById('cardsTableBody');
+    if (!tableBody) return;
+    
+    var sentinel = document.getElementById('lazyLoadSentinel');
+    if (!sentinel) {
+        sentinel = document.createElement('tr');
+        sentinel.id = 'lazyLoadSentinel';
+        sentinel.setAttribute('aria-hidden', 'true');
+        sentinel.innerHTML = '<td colspan="50" style="height:1px;padding:0;border:none;"></td>';
+        tableBody.appendChild(sentinel);
+    } else {
+        // Ensure sentinel is always at the end
+        tableBody.appendChild(sentinel);
+    }
+    
+    _sentinelObserver = new IntersectionObserver(function(entries) {
+        var entry = entries[0];
+        if (entry && entry.isIntersecting && lazyLoadState.hasMore && !lazyLoadState.isLoading) {
+            _sequencedLoadMore();
+        }
+    }, {
+        root: tableContainer,
+        rootMargin: '0px 0px 800px 0px',  // Trigger 800px before sentinel is visible
+        threshold: 0
+    });
+    
+    _sentinelObserver.observe(sentinel);
+    
+    // Also trigger an initial check — if table is short and sentinel is already visible
+    if (lazyLoadState.hasMore && !lazyLoadState.isLoading) {
+        // Use rAF to avoid synchronous layout
+        requestAnimationFrame(function() {
+            if (lazyLoadState.hasMore && !lazyLoadState.isLoading) {
+                _sequencedLoadMore();
+            }
+        });
+    }
+}
+
+/**
+ * Sequence-guarded load: prevents duplicate offset fetches.
+ * Only one loadMoreData() runs at a time; subsequent calls are dropped.
+ */
+async function _sequencedLoadMore() {
+    if (lazyLoadState.isLoading) return;
+    
+    var seq = ++_loadRequestSeq;
+    
+    await loadMoreData();
+    
+    // If this was the latest request and there's still more, re-check sentinel
+    if (seq === _loadRequestSeq && lazyLoadState.hasMore) {
+        // Move sentinel to end (new rows were appended above it)
+        var sentinel = document.getElementById('lazyLoadSentinel');
+        var tableBody = document.getElementById('cardsTableBody');
+        if (sentinel && tableBody) {
+            tableBody.appendChild(sentinel);
+        }
+    }
+    
+    // If no more data, disconnect observer
+    if (!lazyLoadState.hasMore && _sentinelObserver) {
+        _sentinelObserver.disconnect();
+        _sentinelObserver = null;
+        // Remove sentinel
+        var s = document.getElementById('lazyLoadSentinel');
+        if (s) s.remove();
     }
 }
 
@@ -1189,6 +1275,8 @@ function showImagePlaceholder(img) {
 let _lazyLoadInterval = null;
 let _scrollHandler = null;
 let _scrollTarget = null;
+let _sentinelObserver = null;
+let _loadRequestSeq = 0;  // Sequence guard to prevent duplicate offset fetches
 
 function initTableModule() {
     // ── Cleanup previous init ──
@@ -1196,6 +1284,7 @@ function initTableModule() {
     if (_scrollHandler && _scrollTarget) {
         _scrollTarget.removeEventListener('scroll', _scrollHandler);
     }
+    if (_sentinelObserver) { _sentinelObserver.disconnect(); _sentinelObserver = null; }
 
     // Reset state
     allRows = [];
@@ -1229,32 +1318,29 @@ function initTableModule() {
     }
 
     
-    setTimeout(() => {
-        checkLoadMore();
-    }, 500);
+    // ── Delegated click handler for row actions + editable cells ──
+    _initTableBodyDelegation();
+
+    // ── IntersectionObserver-based lazy loading (replaces setInterval + scroll) ──
+    _setupLazyLoadObserver();
     
-    // Scroll listener on the new .idcard-table element
+    // Scroll listener ONLY for pagination UI updates (not for lazy loading)
     const idcardTable = document.querySelector('.idcard-table');
     if (idcardTable) {
+        let _scrollRafPending = false;
         _scrollHandler = function() {
-            checkLoadMore();
-            if (endlessScrollMode) {
-                updatePageNumbersForEndless(filteredRows.length);
-            }
+            if (_scrollRafPending) return;
+            _scrollRafPending = true;
+            requestAnimationFrame(function() {
+                _scrollRafPending = false;
+                if (endlessScrollMode) {
+                    updatePageNumbersForEndless(filteredRows.length);
+                }
+            });
         };
         _scrollTarget = idcardTable;
-        idcardTable.addEventListener('scroll', _scrollHandler);
+        idcardTable.addEventListener('scroll', _scrollHandler, { passive: true });
     }
-    
-    // Background loading interval
-    _lazyLoadInterval = setInterval(() => {
-        if (lazyLoadState.hasMore && !lazyLoadState.isLoading) {
-            checkLoadMore();
-        } else if (!lazyLoadState.hasMore) {
-            clearInterval(_lazyLoadInterval);
-            _lazyLoadInterval = null;
-        }
-    }, 1000);
     
     // Pagination button handlers (new elements after HTMX swap)
     document.getElementById('firstPage')?.addEventListener('click', goToFirstPage);
@@ -1263,31 +1349,25 @@ function initTableModule() {
     document.getElementById('lastPage')?.addEventListener('click', goToLastPage);
 }
 
-// Expose functions globally
-window.initializeRows = initializeRows;
-window.searchRows = searchRows;
-window.filterByField = filterByField;
-window.sortRows = sortRows;
-window.applyFiltersAndSort = applyFiltersAndSort;
-window.renderTable = renderTable;
-window.goToPage = goToPage;
-window.goToFirstPage = goToFirstPage;
-window.goToPrevPage = goToPrevPage;
-window.goToNextPage = goToNextPage;
-window.goToLastPage = goToLastPage;
-window.setRowsPerPage = setRowsPerPage;
-window.loadMoreData = loadMoreData;
-window.checkLoadMore = checkLoadMore;
-window.loadAllData = loadAllData;
-window.showTableLoadingOverlay = showTableLoadingOverlay;
-window.attachRowEventHandlers = attachRowEventHandlers;
-window.handleBrokenImages = handleBrokenImages;
-window.lazyLoadState = lazyLoadState;
-
+// Expose on IDCardApp namespace
 window.IDCardApp.initTableModule = initTableModule;
+window.IDCardApp.initializeRows = initializeRows;
 window.IDCardApp.searchRows = searchRows;
 window.IDCardApp.filterByField = filterByField;
 window.IDCardApp.sortRows = sortRows;
+window.IDCardApp.applyFiltersAndSort = applyFiltersAndSort;
+window.IDCardApp.renderTable = renderTable;
+window.IDCardApp.goToPage = goToPage;
+window.IDCardApp.goToFirstPage = goToFirstPage;
+window.IDCardApp.goToPrevPage = goToPrevPage;
+window.IDCardApp.goToNextPage = goToNextPage;
+window.IDCardApp.goToLastPage = goToLastPage;
 window.IDCardApp.setRowsPerPage = setRowsPerPage;
+window.IDCardApp.loadMoreData = loadMoreData;
+window.IDCardApp.checkLoadMore = checkLoadMore;
+window.IDCardApp.loadAllData = loadAllData;
+window.IDCardApp.showTableLoadingOverlay = showTableLoadingOverlay;
+window.IDCardApp.handleBrokenImages = handleBrokenImages;
+window.IDCardApp.lazyLoadState = lazyLoadState;
 
 })();

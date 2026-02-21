@@ -30,18 +30,10 @@ function initSearchHandlers() {
             clearTimeout(searchTimeout);
             searchTimeout = setTimeout(() => {
                 const query = this.value.trim();
-                // Bridge to Alpine reactive state
                 if (typeof window.alpineUpdateSearch === 'function') window.alpineUpdateSearch(query);
-                // Use table module's searchRows function
-                if (typeof searchRows === 'function') {
-                    searchRows(query);
-                } else if (typeof window.searchRows === 'function') {
-                    window.searchRows(query);
+                if (typeof IDCardApp.searchRows === 'function') {
+                    IDCardApp.searchRows(query);
                 } else {
-                    // Fallback to old method - update table state
-                    if (window.IDCardApp?.tableState) {
-                        window.IDCardApp.tableState.searchQuery = query;
-                    }
                     applyClassSectionFilters();
                 }
             }, 300);
@@ -51,14 +43,9 @@ function initSearchHandlers() {
             if (e.key === 'Enter') {
                 clearTimeout(searchTimeout);
                 const query = this.value.trim();
-                if (typeof searchRows === 'function') {
-                    searchRows(query);
-                } else if (typeof window.searchRows === 'function') {
-                    window.searchRows(query);
+                if (typeof IDCardApp.searchRows === 'function') {
+                    IDCardApp.searchRows(query);
                 } else {
-                    if (window.IDCardApp?.tableState) {
-                        window.IDCardApp.tableState.searchQuery = query;
-                    }
                     applyClassSectionFilters();
                 }
             }
@@ -68,16 +55,10 @@ function initSearchHandlers() {
             searchClearBtn.addEventListener('click', function() {
                 searchInput.value = '';
                 updateClearButton();
-                // Bridge to Alpine reactive state
                 if (typeof window.alpineUpdateSearch === 'function') window.alpineUpdateSearch('');
-                if (typeof searchRows === 'function') {
-                    searchRows('');
-                } else if (typeof window.searchRows === 'function') {
-                    window.searchRows('');
+                if (typeof IDCardApp.searchRows === 'function') {
+                    IDCardApp.searchRows('');
                 } else {
-                    if (window.IDCardApp?.tableState) {
-                        window.IDCardApp.tableState.searchQuery = '';
-                    }
                     applyClassSectionFilters();
                 }
                 searchInput.focus();
@@ -88,14 +69,13 @@ function initSearchHandlers() {
 
 // ==========================================
 // CLASS AND SECTION FILTER HANDLERS
-// Phase 4: Updated to use text input filters instead of dropdowns
 // ==========================================
 
-// Current filter values (exposed globally for table module integration)
+// Current filter values (on IDCardApp namespace for cross-module access)
 let currentClassFilter = '';
 let currentSectionFilter = '';
-window.currentClassFilter = '';
-window.currentSectionFilter = '';
+IDCardApp.currentClassFilter = '';
+IDCardApp.currentSectionFilter = '';
 
 function initFilterHandlers() {
     initClassFilterDropdown();
@@ -109,7 +89,7 @@ function initFilterHandlers() {
 function updateClearFiltersVisibility() {
     const btn = document.getElementById('clearFiltersBtn');
     if (!btn) return;
-    const hasFilter = currentClassFilter || currentSectionFilter || window._activeImageSort;
+    const hasFilter = currentClassFilter || currentSectionFilter || IDCardApp._activeImageSort;
     if (hasFilter) {
         btn.classList.add('visible');
     } else {
@@ -124,7 +104,7 @@ function initClearFiltersButton() {
     btn.addEventListener('click', function() {
         // Reset class filter
         currentClassFilter = '';
-        window.currentClassFilter = '';
+        IDCardApp.currentClassFilter = '';
         const classText = document.getElementById('classFilterText');
         if (classText) classText.textContent = 'All Classes';
         const classOptions = document.getElementById('classFilterOptions');
@@ -135,7 +115,7 @@ function initClearFiltersButton() {
         }
         // Reset section filter
         currentSectionFilter = '';
-        window.currentSectionFilter = '';
+        IDCardApp.currentSectionFilter = '';
         const sectionText = document.getElementById('sectionFilterText');
         if (sectionText) sectionText.textContent = 'All Sections';
         const sectionOptions = document.getElementById('sectionFilterOptions');
@@ -175,7 +155,7 @@ function initClassFilterDropdown() {
         opt.classList.add('selected');
         const val = opt.dataset.value || '';
         currentClassFilter = val;
-        window.currentClassFilter = val;
+        IDCardApp.currentClassFilter = val;
         text.textContent = opt.textContent.trim();
         dropdown.classList.remove('open');
         updateClearFiltersVisibility();
@@ -209,7 +189,7 @@ function initSectionFilterDropdown() {
         opt.classList.add('selected');
         const val = opt.dataset.value || '';
         currentSectionFilter = val;
-        window.currentSectionFilter = val;
+        IDCardApp.currentSectionFilter = val;
         text.textContent = opt.textContent.trim();
         dropdown.classList.remove('open');
         updateClearFiltersVisibility();
@@ -222,10 +202,18 @@ function initSectionFilterDropdown() {
 }
 
 /**
- * Scan table rows and populate class/section filter dropdowns with unique values.
- * Called after table renders and also after any data change (add/edit/delete/upload).
+ * Populate class/section filter dropdowns with unique values.
+ * Virtual table mode: delegates to data-array based population (table-render.js override).
+ * Legacy mode: scans DOM table rows.
  */
 function populateFilterOptions() {
+    // Virtual table mode: table-render.js calls _populateFilterOptions()
+    // after every fetch — no DOM scanning needed here.
+    if (window.USE_VIRTUAL_TABLE && window.IDCardApp && window.IDCardApp.virtualTable) {
+        return;
+    }
+
+    // Legacy DOM-based path
     const { classIndex, sectionIndex } = getClassSectionColumnIndices();
     const tableBody = document.getElementById('cardsTableBody');
     if (!tableBody) return;
@@ -256,14 +244,12 @@ function populateFilterOptions() {
         const sorted = [...classValues].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
         classOptions.innerHTML = '<div class="dropdown-option selected" data-value="">All Classes</div>' +
             sorted.map(v => `<div class="dropdown-option" data-value="${v}">${v}</div>`).join('');
-        // Restore current selection if still valid
         if (currentClassFilter) {
             const match = classOptions.querySelector(`[data-value="${currentClassFilter}"]`);
             if (match) {
                 classOptions.querySelectorAll('.dropdown-option').forEach(o => o.classList.remove('selected'));
                 match.classList.add('selected');
             } else {
-                // Previous value no longer exists, reset
                 currentClassFilter = '';
                 const text = document.getElementById('classFilterText');
                 if (text) text.textContent = 'All Classes';
@@ -291,8 +277,8 @@ function populateFilterOptions() {
     }
 }
 
-// Make populateFilterOptions globally available so table module can call it after data changes
-window.populateFilterOptions = populateFilterOptions;
+// Expose on IDCardApp namespace for table module integration
+IDCardApp.populateFilterOptions = populateFilterOptions;
 
 function getClassSectionColumnIndices() {
     const headerRow = document.querySelector('#data-table thead tr');
@@ -319,65 +305,37 @@ function getClassSectionColumnIndices() {
 }
 
 function applyClassSectionFilters() {
-    // When any filter is active, we must load ALL rows from the
-    // server first — otherwise we'd only filter the ~200 rows in the DOM
-    // while thousands more remain unloaded.
-    const hasFilter = currentClassFilter || currentSectionFilter || window._activeImageSort;
-    const hasMore = window.lazyLoadState && window.lazyLoadState.hasMore;
-    
-    // Helper to run the main filter pipeline
-    function runFilters() {
-        if (typeof applyFiltersAndSort === 'function') {
-            applyFiltersAndSort();
-        } else if (typeof window.applyFiltersAndSort === 'function') {
-            window.applyFiltersAndSort();
-        }
+    // Virtual table mode: server handles search/class/section filtering.
+    // Just trigger a single re-fetch — the JSON API includes filter params.
+    // Image-sort is applied client-side inside the virtual table's _applyFilters().
+    if (window.USE_VIRTUAL_TABLE && typeof IDCardApp.applyFiltersAndSort === 'function') {
+        IDCardApp.applyFiltersAndSort();
+        return;
     }
-    
-    if (hasFilter && hasMore && typeof window.loadAllData === 'function') {
-        // PROGRESSIVE: Apply filters on already-loaded rows FIRST for instant feedback
-        runFilters();
 
-        // Show a non-blocking inline indicator instead of the full overlay
-        const loadingBtn = document.getElementById('selectAllDbBtn') || document.querySelector('.image-sort-btn');
-        const paginationInfo = document.querySelector('.pagination-info');
-        if (paginationInfo) {
-            paginationInfo.dataset.originalHtml = paginationInfo.innerHTML;
-            paginationInfo.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:4px;"></i> Loading all data...';
+    // Legacy DOM-based path (USE_VIRTUAL_TABLE=false)
+    var runFilters = function () {
+        if (typeof IDCardApp.applyFiltersAndSort === 'function') {
+            IDCardApp.applyFiltersAndSort();
         }
+    };
 
-        // Load remaining data WITHOUT blocking overlay (loadMoreData in batches)
-        (async function backgroundLoad() {
-            let batchCount = 0;
+    var hasFilter = currentClassFilter || currentSectionFilter || IDCardApp._activeImageSort;
+    var hasMore = IDCardApp.lazyLoadState && IDCardApp.lazyLoadState.hasMore;
+
+    if (hasFilter && hasMore && typeof IDCardApp.loadAllData === 'function') {
+        runFilters();
+        (async function () {
             try {
-                while (window.lazyLoadState && window.lazyLoadState.hasMore) {
-                    await window.loadMoreData();
-                    batchCount++;
-                    // Re-apply filters every 3 batches to show progressive results without excessive reflows
-                    if (batchCount % 3 === 0) {
-                        if (typeof initializeRows === 'function') initializeRows();
-                        else if (typeof window.initializeRows === 'function') window.initializeRows();
-                        runFilters();
-                    }
-                }
+                await IDCardApp.loadAllData();
             } finally {
-                // Restore pagination info
-                if (paginationInfo && paginationInfo.dataset.originalHtml) {
-                    delete paginationInfo.dataset.originalHtml;
-                }
-                // Final re-apply with all data
-                if (typeof initializeRows === 'function') initializeRows();
-                else if (typeof window.initializeRows === 'function') window.initializeRows();
+                if (typeof IDCardApp.initializeRows === 'function') IDCardApp.initializeRows();
                 runFilters();
-                populateFilterOptions();
-                // Hide any loading overlay that loadMoreData might have shown
-                if (typeof window.showTableLoadingOverlay === 'function') {
-                    window.showTableLoadingOverlay(false);
-                }
+                IDCardApp.populateFilterOptions && IDCardApp.populateFilterOptions();
+                if (typeof IDCardApp.showTableLoadingOverlay === 'function') IDCardApp.showTableLoadingOverlay(false);
             }
         })();
     } else {
-        // All data already loaded or no filter — apply directly
         runFilters();
     }
 }
@@ -392,8 +350,8 @@ function initSortHandlers() {
     sortOptions.forEach(option => {
         option.addEventListener('click', function() {
             const value = this.getAttribute('data-value');
-            if (typeof sortRows === 'function') {
-                sortRows(value);
+            if (typeof IDCardApp.sortRows === 'function') {
+                IDCardApp.sortRows(value);
             }
             
             const sortToggle = document.getElementById('sortToggle');
@@ -419,8 +377,8 @@ function initRowsPerPageHandlers() {
     rowsOptions.forEach(option => {
         option.addEventListener('click', function() {
             const value = this.getAttribute('data-value');
-            if (typeof setRowsPerPage === 'function') {
-                setRowsPerPage(value);
+            if (typeof IDCardApp.setRowsPerPage === 'function') {
+                IDCardApp.setRowsPerPage(value);
             }
             
             const rowsSelectedText = document.getElementById('rowsSelectedText');
@@ -577,8 +535,8 @@ function initSearchAllModal() {
         });
     }
     
-    // Expose close function
-    window.closeSearchAllModal = closeSearchAllModalFn;
+    // Expose close function on IDCardApp namespace
+    IDCardApp.closeSearchAllModal = closeSearchAllModalFn;
 }
 
 function displaySearchResults(results, query, container, closeModalFn) {
@@ -658,7 +616,7 @@ function clearImageSortFilter() {
     var imageSortCondition = document.getElementById('imageSortCondition');
     if (imageSortColumn) imageSortColumn.value = '';
     if (imageSortCondition) imageSortCondition.value = '';
-    window._activeImageSort = null;
+    IDCardApp._activeImageSort = null;
     updateImageSortBtnText(null, null);
     updateClearFiltersVisibility();
 }
@@ -740,7 +698,7 @@ function initImageSortModal() {
                                   condition === 'pending' ? 'Pending' : 'Incomplete';
 
             // Track active image sort state and update button text
-            window._activeImageSort = { column: columnName, condition: condition };
+            IDCardApp._activeImageSort = { column: columnName, condition: condition };
             updateImageSortBtnText(columnName, conditionText);
             updateClearFiltersVisibility();
             
@@ -769,10 +727,11 @@ function initSearchModule() {
     initImageSortModal();
 }
 
-// Expose globally
+// Expose on IDCardApp namespace
 window.IDCardApp = window.IDCardApp || {};
 window.IDCardApp.initSearchModule = initSearchModule;
 window.IDCardApp.initSearchAllModal = initSearchAllModal;
 window.IDCardApp.initImageSortModal = initImageSortModal;
+window.IDCardApp.populateFilterOptions = populateFilterOptions;
 
 })();

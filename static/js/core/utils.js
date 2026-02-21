@@ -26,6 +26,9 @@
         if (!imagePath || imagePath === '' || imagePath === 'NOT_FOUND') return null;
         if (imagePath.startsWith('PENDING:')) return null;
 
+        // Reject values that don't look like real file paths (no extension)
+        if (imagePath.indexOf('.') === -1) return null;
+
         var parts = imagePath.replace(/\\/g, '/').split('/');
         if (parts.length < 2) return 'thumbs/' + imagePath;
 

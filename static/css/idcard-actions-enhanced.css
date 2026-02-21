@@ -151,8 +151,9 @@
 
 /* Removed: .table-wrapper — handled by tailwind-input.css */
 
-.idcard-table {
+.idcard-actions-page .idcard-table {
     overflow-x: auto;
+    overflow-y: auto;
     scrollbar-width: auto;
     scrollbar-color: #94a3b8 #e2e8f0;
 }
@@ -182,7 +183,7 @@
     background: #e2e8f0;
 }
 
-.idcard-table table {
+.idcard-actions-page .idcard-table table {
     width: max-content;
     min-width: 100%;
     border-collapse: separate;
@@ -473,8 +474,37 @@
 }
 
 /* ==========================================
+   TIGHT WRAPPING — prefer text wrap over horizontal scroll
+   ========================================== */
+
+/* All dynamic cells: break long words only as last resort */
+.idcard-table td.dynamic-field {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    hyphens: auto;
+}
+
+/* Name fields: allow shrinking below min-w when viewport is tight */
+.idcard-table td.dynamic-field:not(.image-field) {
+    max-width: 220px;
+}
+
+/* ==========================================
    RESPONSIVE ADJUSTMENTS
    ========================================== */
+
+/* 1200px+ UI lock: cap table page width so it doesn't over-stretch */
+@media (min-width: 1201px) {
+    .idcard-actions-page {
+        max-width: 100vw;
+        overflow-x: hidden;
+    }
+
+    /* Let table be the only horizontal scroller */
+    .idcard-actions-page .idcard-table {
+        overflow-x: auto;
+    }
+}
 
 @media (max-width: 1200px) {
     .action-buttons-group .btn.action-btn .btn-text,

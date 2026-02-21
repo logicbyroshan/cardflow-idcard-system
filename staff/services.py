@@ -527,6 +527,8 @@ class AdminStaffCreationService:
             data = []
             for staff in staff_list:
                 permissions = AdminStaffPermissionService.get_user_permissions(staff.user)
+                # Use prefetched cache instead of re-evaluating queryset
+                assigned = list(staff.assigned_clients.all())
                 data.append({
                     'id': staff.pk,
                     'user_id': staff.user.pk,
@@ -538,9 +540,9 @@ class AdminStaffCreationService:
                     'is_active': staff.user.is_active,
                     'assigned_clients': [
                         {'id': c.id, 'name': c.name}
-                        for c in staff.assigned_clients.all()
+                        for c in assigned
                     ],
-                    'assigned_clients_count': len(staff.assigned_clients.all()),
+                    'assigned_clients_count': len(assigned),
                     'permissions_count': len(permissions),
                     'created_at': staff.created_at.isoformat(),
                 })

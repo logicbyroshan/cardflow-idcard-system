@@ -61,13 +61,14 @@ def api_reprint_list_cards(request, table_id):
     table, err = _check_reprint_table_scope(request.user, table_id)
     if err: return err
     query = request.GET.get('q', '').strip()
+    cursor = request.GET.get('cursor', '').strip()
     try:
         offset = int(request.GET.get('offset', 0))
         limit = int(request.GET.get('limit', 100))
     except (ValueError, TypeError):
         offset, limit = 0, 100
 
-    cards_qs = IDCard.objects.filter(table=table).order_by('-id')
+    cards_qs = IDCard.objects.filter(table=table).defer('photo').order_by('-id')
 
     # Text search across field_data JSON
     if query:
@@ -77,7 +78,20 @@ def api_reprint_list_cards(request, table_id):
         )
 
     total_count = cards_qs.count()
-    cards = cards_qs[offset:offset + limit]
+
+    # Cursor-based pagination (preferred) or offset (legacy)
+    if cursor:
+        try:
+            cursor_id = int(cursor)
+            cards = list(cards_qs.filter(id__lt=cursor_id)[:limit + 1])
+        except (ValueError, TypeError):
+            cards = list(cards_qs[offset:offset + limit + 1])
+    else:
+        cards = list(cards_qs[offset:offset + limit + 1])
+    has_more = len(cards) > limit
+    if has_more:
+        cards = cards[:limit]
+    next_cursor = cards[-1].id if cards and has_more else None
 
     # Get IDs of cards that already have a non-downloaded reprint request
     existing_reprint_ids = set(
@@ -121,7 +135,8 @@ def api_reprint_list_cards(request, table_id):
         'total_count': total_count,
         'offset': offset,
         'limit': limit,
-        'has_more': offset + limit < total_count,
+        'has_more': has_more,
+        'next_cursor': next_cursor,
     })
 
 
@@ -169,10 +184,17 @@ def api_reprint_step_counts(request, table_id):
     table, err = _check_reprint_table_scope(request.user, table_id)
     if err: return err
 
+    # Single aggregate query instead of 3 separate .count() round-trips
+    from django.db.models import Count
+    agg = ReprintRequest.objects.filter(table=table).aggregate(
+        requested=Count('id', filter=Q(status='requested')),
+        confirmed=Count('id', filter=Q(status='confirmed')),
+        downloaded=Count('id', filter=Q(status='downloaded')),
+    )
     counts = {
-        'requested': ReprintRequest.objects.filter(table=table, status='requested').count(),
-        'confirmed': ReprintRequest.objects.filter(table=table, status='confirmed').count(),
-        'downloaded': ReprintRequest.objects.filter(table=table, status='downloaded').count(),
+        'requested': agg['requested'],
+        'confirmed': agg['confirmed'],
+        'downloaded': agg['downloaded'],
     }
 
     return JsonResponse({'status': 'success', 'counts': counts})
@@ -190,6 +212,7 @@ def api_reprint_confirm_list(request, table_id):
     table, err = _check_reprint_table_scope(request.user, table_id)
     if err: return err
     query = request.GET.get('q', '').strip()
+    cursor = request.GET.get('cursor', '').strip()
     try:
         offset = int(request.GET.get('offset', 0))
         limit = int(request.GET.get('limit', 100))
@@ -209,7 +232,20 @@ def api_reprint_confirm_list(request, table_id):
         )
 
     total_count = rr_qs.count()
-    rr_batch = rr_qs[offset:offset + limit]
+
+    # Cursor-based pagination (preferred) or offset (legacy)
+    if cursor:
+        try:
+            cursor_id = int(cursor)
+            rr_batch = list(rr_qs.filter(id__lt=cursor_id)[:limit + 1])
+        except (ValueError, TypeError):
+            rr_batch = list(rr_qs[offset:offset + limit + 1])
+    else:
+        rr_batch = list(rr_qs[offset:offset + limit + 1])
+    has_more = len(rr_batch) > limit
+    if has_more:
+        rr_batch = rr_batch[:limit]
+    next_cursor = rr_batch[-1].id if rr_batch and has_more else None
 
     items = []
     for idx, rr in enumerate(rr_batch):
@@ -322,6 +358,7 @@ def api_reprint_download_list(request, table_id):
     if err:
         return err
     query = request.GET.get('q', '').strip()
+    cursor = request.GET.get('cursor', '').strip()
     try:
         offset = int(request.GET.get('offset', 0))
         limit = int(request.GET.get('limit', 100))
@@ -340,7 +377,20 @@ def api_reprint_download_list(request, table_id):
         )
 
     total_count = rr_qs.count()
-    rr_batch = rr_qs[offset:offset + limit]
+
+    # Cursor-based pagination (preferred) or offset (legacy)
+    if cursor:
+        try:
+            cursor_id = int(cursor)
+            rr_batch = list(rr_qs.filter(id__lt=cursor_id)[:limit + 1])
+        except (ValueError, TypeError):
+            rr_batch = list(rr_qs[offset:offset + limit + 1])
+    else:
+        rr_batch = list(rr_qs[offset:offset + limit + 1])
+    has_more = len(rr_batch) > limit
+    if has_more:
+        rr_batch = rr_batch[:limit]
+    next_cursor = rr_batch[-1].id if rr_batch and has_more else None
 
     items = []
     for idx, rr in enumerate(rr_batch):
@@ -374,7 +424,8 @@ def api_reprint_download_list(request, table_id):
         'total': total_count,
         'offset': offset,
         'limit': limit,
-        'has_more': offset + limit < total_count,
+        'has_more': has_more,
+        'next_cursor': next_cursor,
     })
 
 

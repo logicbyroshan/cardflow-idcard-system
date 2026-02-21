@@ -99,7 +99,9 @@ urlpatterns = [
     
     # ID Card APIs
     path('api/table/<int:table_id>/cards/', views.api_idcard_list, name='api_idcard_list'),
+    path('api/table/<int:table_id>/cards-json/', views.api_idcard_cards_json, name='api_idcard_cards_json'),
     path('api/table/<int:table_id>/cards/all-ids/', views.api_idcard_all_ids, name='api_idcard_all_ids'),
+    path('api/table/<int:table_id>/filter-options/', views.api_idcard_filter_options, name='api_idcard_filter_options'),
     path('api/table/<int:table_id>/card/create/', views.api_idcard_create, name='api_idcard_create'),
     path('api/card/<int:card_id>/', views.api_idcard_get, name='api_idcard_get'),
     path('api/card/<int:card_id>/update/', views.api_idcard_update, name='api_idcard_update'),
@@ -116,6 +118,7 @@ urlpatterns = [
     path('api/table/<int:table_id>/status-counts/', views.api_table_status_counts, name='api_table_status_counts'),
     path('api/table/<int:table_id>/cards/download-images/', export_views.api_export_images, name='api_idcard_download_images'),
     path('api/table/<int:table_id>/cards/reupload-images/', views.api_idcard_reupload_images, name='api_idcard_reupload_images'),
+    path('api/table/<int:table_id>/modals-html/', views.api_idcard_modals_html, name='api_idcard_modals_html'),
     path('api/table/<int:table_id>/cards/download-docx/', export_views.api_export_docx, name='api_idcard_download_docx'),
     path('api/table/<int:table_id>/cards/download-xlsx/', export_views.api_export_xlsx, name='api_idcard_download_xlsx'),
     path('api/table/<int:table_id>/cards/download-pdf/', export_views.api_export_pdf, name='api_idcard_download_pdf'),
@@ -147,6 +150,9 @@ urlpatterns = [
 
     # Allowed transitions for a card (any authenticated user)
     path('api/card/<int:card_id>/allowed-transitions/', views.api_card_allowed_transitions, name='api_card_allowed_transitions'),
+
+    # Client-side error reporting (from error-monitor.js)
+    path('api/client-errors/', views.api_client_errors, name='api_client_errors'),
 ]
 
 # Debug endpoints — only available when DEBUG=True

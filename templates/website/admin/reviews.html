@@ -44,7 +44,7 @@
             <tr data-id="{{ r.id }}">
                 <td>
                     {% if r.reviewer_avatar %}
-                    <img src="{{ r.reviewer_avatar.url }}" class="wa-thumb round" alt="{{ r.reviewer_name }}">
+                    <img src="{{ r.reviewer_avatar.url }}" class="wa-thumb round" alt="{{ r.reviewer_name }}" loading="lazy" decoding="async">
                     {% else %}
                     <span class="wa-no-img round"><i class="fa-solid fa-user"></i></span>
                     {% endif %}
@@ -149,5 +149,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/website-admin/reviews.js' %}?v=130"></script>
+<script src="{% static 'js/website-admin/reviews.js' %}"></script>
 {% endblock %}

@@ -22,11 +22,6 @@ function getAdjacentCell(currentCell, direction) {
     return null;
 }
 
-function isRowVisible(row) {
-    const rect = row.getBoundingClientRect();
-    return rect.top >= 0 && rect.bottom <= window.innerHeight;
-}
-
 // ==========================================
 // INLINE CELL EDITING
 // ==========================================
@@ -38,7 +33,7 @@ function startCellEdit(cell) {
     // Mark cell as editing to prevent duplicate clicks (Phase 5)
     cell.classList.add('editing');
     
-    const field = cell.getAttribute('data-field') || cell.getAttribute('data-field-name');
+    const field = cell.getAttribute('data-field');
     const fieldType = cell.getAttribute('data-field-type') || '';
     const cardId = cell.closest('tr').getAttribute('data-card-id');
     // Read from .cell-value span if present, otherwise fallback to textContent
@@ -200,7 +195,7 @@ function cancelCellEdit(cell) {
     cell.style.width = '';
     cell.style.height = '';
     cell.removeAttribute('data-original-value');
-    cell.classList.remove('editing'); // Phase 5: Remove editing class
+    cell.classList.remove('editing');
 }
 
 function saveCellEdit(cell, newValue, cardId, field) {
@@ -226,7 +221,7 @@ function saveCellEdit(cell, newValue, cardId, field) {
         cell.style.width = '';
         cell.style.height = '';
         cell.removeAttribute('data-original-value');
-        cell.classList.remove('editing'); // Phase 5: Remove editing class
+        cell.classList.remove('editing');
         return;
     }
     
@@ -252,7 +247,7 @@ function saveCellEdit(cell, newValue, cardId, field) {
         cell.style.minHeight = '';
         cell.style.width = '';
         cell.style.height = '';
-        cell.classList.remove('editing'); // Phase 5: Remove editing class
+        cell.classList.remove('editing');
         // Update data-original-value so next edit reads the new value
         cell.setAttribute('data-original-value', finalValue);
         
@@ -266,19 +261,19 @@ function saveCellEdit(cell, newValue, cardId, field) {
             showToast('Field updated successfully', 'success');
         }
         
-        // Phase 1: Re-apply filters so edited row hides/shows correctly
+        // Re-apply filters so edited row hides/shows correctly
         // e.g. if user changes section from A→C while filter is "A", row disappears
-        if (typeof applyFiltersAndSort === 'function') {
+        if (typeof IDCardApp.applyFiltersAndSort === 'function') {
+            IDCardApp.applyFiltersAndSort();
+        } else if (typeof applyFiltersAndSort === 'function') {
             applyFiltersAndSort();
-        } else if (typeof window.applyFiltersAndSort === 'function') {
-            window.applyFiltersAndSort();
         }
         
         // Refresh filter dropdown options in case new values were introduced
-        if (typeof populateFilterOptions === 'function') {
+        if (typeof IDCardApp.populateFilterOptions === 'function') {
+            IDCardApp.populateFilterOptions();
+        } else if (typeof populateFilterOptions === 'function') {
             populateFilterOptions();
-        } else if (typeof window.populateFilterOptions === 'function') {
-            window.populateFilterOptions();
         }
     })
     .catch(error => {
@@ -292,7 +287,7 @@ function saveCellEdit(cell, newValue, cardId, field) {
         cell.style.minHeight = '';
         cell.style.width = '';
         cell.style.height = '';
-        cell.classList.remove('editing'); // Phase 5: Remove editing class
+        cell.classList.remove('editing');
         cell.removeAttribute('data-original-value');
         
         // Show error feedback
@@ -315,13 +310,13 @@ function makeTableCellsEditable() {
     const table = document.getElementById('data-table');
     if (!table) return;
     
-    // Phase 5: Changed from dblclick to single click for faster editing
+    // Single click to edit for faster editing
     table.addEventListener('click', function(e) {
-        const cell = e.target.closest('td[data-field], td[data-field-name]');
+        const cell = e.target.closest('td[data-field]');
         if (!cell) return;
         
         // Check if cell is editable
-        const field = cell.getAttribute('data-field') || cell.getAttribute('data-field-name');
+        const field = cell.getAttribute('data-field');
         if (!field) return;
         
         // Don't edit checkbox or action columns
@@ -478,13 +473,6 @@ function openImagePreview(src) {
 }
 
 // ==========================================
-// ROW CLICK HANDLERS (REMOVED)
-// ==========================================
-// Row selection is now checkbox-only (handled in idcard-actions-core.js).
-// Clicking on a row body no longer selects it — users must use the
-// checkbox, Select All, or Shift+Click range selection.
-
-// ==========================================
 // INITIALIZATION
 // ==========================================
 
@@ -492,14 +480,14 @@ function initEditModule() {
     makeTableCellsEditable();
     addEditableHints();
     initImageCellHandlers();
-    // initRowClickHandlers() removed — selection is now checkbox-only
 }
 
-// Expose globally
-window.startCellEdit = startCellEdit;
-window.cancelCellEdit = cancelCellEdit;
-window.saveCellEdit = saveCellEdit;
-window.openImagePreview = openImagePreview;
+// Expose on IDCardApp namespace (window.saveInlineEdit kept for Alpine bridge)
+window.IDCardApp = window.IDCardApp || {};
+window.IDCardApp.startCellEdit = startCellEdit;
+window.IDCardApp.cancelCellEdit = cancelCellEdit;
+window.IDCardApp.saveCellEdit = saveCellEdit;
+window.IDCardApp.openImagePreview = openImagePreview;
 
 /**
  * Alpine inlineEditState() bridge.
@@ -531,8 +519,7 @@ window.saveInlineEdit = async function (cardId, fieldName, value) {
     }
 };
 
-window.IDCardApp = window.IDCardApp || {};
 window.IDCardApp.initEditModule = initEditModule;
-window.IDCardApp.startCellEdit = startCellEdit;
+window.IDCardApp.saveInlineEdit = window.saveInlineEdit;
 
 })();

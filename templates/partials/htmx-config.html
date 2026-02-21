@@ -7,10 +7,10 @@ Usage:
 {% endcomment %}
 
 {% load static %}
-<!-- HTMX 2.0 — Partial-swap engine -->
-<script src="https://unpkg.com/htmx.org@2.0.4" integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+" crossorigin="anonymous"></script>
+<!-- HTMX 2.0 — Partial-swap engine (self-hosted) -->
+<script src="{% static 'js/vendor/htmx.min.js' %}"></script>
 <!-- HTMX Filter Bridge — server-side search/filter via htmx.ajax() -->
-<script src="{% static 'js/core/htmx-filters.js' %}?v=130"></script>
+<script src="{% static 'js/core/htmx-filters.js' %}"></script>
 
 <script>
   // ── HTMX global CSRF config ──
@@ -91,10 +91,9 @@ Usage:
   });
 
   // ── Safety net: reinitialize Alpine trees inside swapped elements ──
-  // Currently no Alpine directives live inside swap targets, but if any
-  // are added in the future, this ensures they get initialized properly.
+  // Only called if the swapped DOM actually contains Alpine directives.
   document.body.addEventListener('htmx:afterSettle', function(evt) {
-    if (window.Alpine && evt.detail.target) {
+    if (window.Alpine && evt.detail.target && evt.detail.target.querySelector('[x-data]')) {
       Alpine.initTree(evt.detail.target);
     }
   });

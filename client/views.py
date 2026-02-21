@@ -751,6 +751,7 @@ def client_idcard_group(request):
 def client_idcard_actions(request, table_id):
     """
     ID Card Actions page for clients — same template as admin idcard-actions.html.
+    Uses shared build_idcard_actions_context() helper for queryset + context.
     """
     user = request.user
     client = _get_client_for_request(user)
@@ -773,80 +774,20 @@ def client_idcard_actions(request, table_id):
         return redirect('/panel/client/idcard-group/')
     
     status_filter = request.GET.get('status', None)
-    
-    # Check status-specific list permission
-    STATUS_LIST_PERM = {
-        'pending': 'perm_idcard_pending_list',
-        'verified': 'perm_idcard_verified_list',
-        'approved': 'perm_idcard_approved_list',
-        'download': 'perm_idcard_download_list',
-        'pool': 'perm_idcard_pool_list',
-        'reprint': 'perm_idcard_reprint_list',
-    }
     if status_filter:
-        required_perm = STATUS_LIST_PERM.get(status_filter)
+        from core.views.base import _STATUS_LIST_PERM
+        required_perm = _STATUS_LIST_PERM.get(status_filter)
         if required_perm and not PermissionService.has_permission(user, required_perm):
             return redirect('/panel/client/idcard-group/')
     
-    # ── Server-side pagination parameters ──
-    DEFAULT_PER_PAGE = 50
-    PER_PAGE_OPTIONS = [50, 100, 150, 200]
-    try:
-        per_page = int(request.GET.get('per_page', DEFAULT_PER_PAGE))
-        if per_page not in PER_PAGE_OPTIONS:
-            per_page = DEFAULT_PER_PAGE
-    except (ValueError, TypeError):
-        per_page = DEFAULT_PER_PAGE
-    
-    page_number = request.GET.get('page', 1)
-    search_query = request.GET.get('search', '').strip()
-    class_filter = request.GET.get('class', '').strip()
-    section_filter = request.GET.get('section', '').strip()
-    
-    id_cards_query = IDCard.objects.filter(table=table).order_by('-id')
-    if status_filter and status_filter in ['pending', 'verified', 'pool', 'approved', 'download', 'reprint']:
-        id_cards_query = id_cards_query.filter(status=status_filter)
-    
-    # ── Server-side search filtering ──
-    if search_query:
-        id_cards_query = id_cards_query.filter(field_data__icontains=search_query)
-    if class_filter:
-        id_cards_query = id_cards_query.filter(field_data__icontains=class_filter)
-    if section_filter:
-        id_cards_query = id_cards_query.filter(field_data__icontains=section_filter)
-    
-    total_count = id_cards_query.count()
-    
-    status_counts = IDCardService.get_status_counts(table)
-    
-    # ── Paginate ──
-    paginator = Paginator(id_cards_query, per_page)
-    page_obj = paginator.get_page(page_number)
-    
-    start_index = (page_obj.number - 1) * per_page
-    enriched_cards = enrich_cards(page_obj.object_list, table.fields, start_index)
-    
-    context = {
-        'active_page': 'idcard_group',
-        'user_role': user.get_role_display(),
-        'table': table,
-        'group': table.group,
-        'client': table.group.client,
-        'id_cards': enriched_cards,
-        'current_status': status_filter,
-        'status_counts': status_counts,
-        'total_count': total_count,
-        'has_more': False,
-        'initial_load_limit': per_page,
-        # Pagination context
-        'page_obj': page_obj,
-        'page_range': get_page_range(page_obj),
-        'per_page': per_page,
-        'per_page_options': PER_PAGE_OPTIONS,
-        'search_query': search_query,
-        'class_filter': class_filter,
-        'section_filter': section_filter,
-    }
+    from core.views.base import build_idcard_actions_context
+    context = build_idcard_actions_context(
+        request, table,
+        default_per_page=50,
+        per_page_options=[50, 100, 150, 200],
+        active_page='idcard_group',
+        user_role=user.get_role_display(),
+    )
     
     # HTMX partial response
     if is_htmx(request):

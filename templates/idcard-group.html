@@ -7,20 +7,18 @@
   <meta name="robots" content="noindex, nofollow">
   <title>ID Card Group - {{ client.name }} - Adarsh ID Cards</title>
   <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
   <!-- Tailwind CSS (primary) -->
-  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=130">
+  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
   <!-- Page-specific: ID card group UI -->
-  <link rel="stylesheet" href="{% static 'css/idcard-group.css' %}?v=130">
-  <link rel="stylesheet" href="{% static 'css/common.css' %}?v=130">
-  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=130">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="{% static 'css/idcard-group.css' %}">
+  <link rel="stylesheet" href="{% static 'css/common.css' %}">
+  <link rel="stylesheet" href="{% static 'css/global-search.css' %}">
+  <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
   <!-- Alpine.js State Module (MUST load before Alpine) -->
-  <script src="{% static 'js/alpine-state.js' %}?v=130"></script>
+  <script defer src="{% static 'js/alpine-state.js' %}"></script>
   <!-- Alpine.js -->
-  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
+  <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
 </head>
 <body x-data="layoutState()">
 
@@ -323,11 +321,11 @@
   </div>
 
   <!-- Core Modules (Load Order: api → toast → modal → utils → init) -->
-  <script src="{% static 'js/core/api.js' %}?v=130"></script>
-  <script src="{% static 'js/core/toast.js' %}?v=130"></script>
-  <script src="{% static 'js/core/modal.js' %}?v=130"></script>
-  <script src="{% static 'js/core/utils.js' %}?v=130"></script>
-  <script src="{% static 'js/init.js' %}?v=130"></script>
+  <script src="{% static 'js/core/api.js' %}"></script>
+  <script src="{% static 'js/core/toast.js' %}"></script>
+  <script src="{% static 'js/core/modal.js' %}"></script>
+  <script src="{% static 'js/core/utils.js' %}"></script>
+  <script src="{% static 'js/init.js' %}"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       const clientId = {{ client.id }};
@@ -834,7 +832,7 @@
       });
     });
   </script>
-  <script src="{% static 'js/global-search.js' %}?v=130"></script>
+  <script src="{% static 'js/global-search.js' %}"></script>
   {% include 'partials/htmx-config.html' %}
 </body>
 </html>

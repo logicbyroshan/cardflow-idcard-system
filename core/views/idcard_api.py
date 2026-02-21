@@ -47,6 +47,25 @@ def _safe_error(e, fallback='An error occurred. Please try again.'):
     return fallback
 
 
+def _get_class_section_field_names(table):
+    """Extract class and section field names from a table's field definitions.
+
+    Matches by type OR by name (mirrors IDCardTable.has_class_field / has_section_field).
+    Returns (class_field_name, section_field_name) — either may be None.
+    """
+    class_field = None
+    section_field = None
+    for field in (table.fields or []):
+        ftype = field.get('type', '')
+        fname = field.get('name', '')
+        fname_lower = fname.lower() if fname else ''
+        if not class_field and (ftype == 'class' or fname_lower == 'class'):
+            class_field = fname
+        elif not section_field and (ftype == 'section' or fname_lower == 'section'):
+            section_field = fname
+    return class_field, section_field
+
+
 # ==================== ADMIN STAFF CLIENT SCOPING ====================
 # Ensures admin_staff can only access data belonging to their assigned clients.
 
@@ -220,9 +239,228 @@ def api_idcard_list(request, table_id):
         limit = min(500, max(1, int(request.GET.get('limit', 100))))
     except (ValueError, TypeError):
         offset, limit = 0, 100
+    cursor = request.GET.get('cursor', '').strip()
+    cursor_id = None
+    if cursor:
+        try:
+            cursor_id = int(cursor)
+        except (ValueError, TypeError):
+            pass
     
-    result = IDCardService.list_cards(table_id, status_filter, offset, limit)
+    result = IDCardService.list_cards(table_id, status_filter, offset, limit, cursor=cursor_id)
     return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
+
+
+@require_http_methods(["GET"])
+@api_require_any_authenticated
+def api_idcard_cards_json(request, table_id):
+    """JSON endpoint for virtual table rendering.
+
+    Returns lightweight card data with full filter/pagination support,
+    matching the same query logic as the idcard_actions page view.
+
+    Query params:
+        status   – filter by status (pending, verified, approved, download, pool, reprint)
+        offset   – pagination offset (default 0)
+        limit    – page size, 1-500 (default 100)
+        search   – full-text search on field_data
+        class    – class filter on field_data
+        section  – section filter on field_data
+        from     – datetime lower bound (download status only)
+        to       – datetime upper bound (download status only)
+
+    Response shape:
+        {
+            "success": true,
+            "total": 1234,
+            "offset": 0,
+            "limit": 100,
+            "has_more": true,
+            "results": [
+                {
+                    "id": 5,
+                    "sr_no": 1,
+                    "status": "pending",
+                    "status_display": "Pending",
+                    "field_data": {"Name": "...", "PHOTO": "..."},
+                    "ordered_fields": [
+                        {"name": "Name", "type": "text", "value": "John"},
+                        {"name": "PHOTO", "type": "image", "value": "adarshimg/...jpg",
+                         "thumb": "adarshimg/thumbs/...jpg"}
+                    ],
+                    "updated_at": "20-Feb-2026 14:30",
+                    "updated_at_iso": "2026-02-20T14:30:00+05:30",
+                    "downloaded_at": null,
+                    "deleted_at": null
+                }
+            ]
+        }
+    """
+    from django.utils.timezone import localtime, make_aware, is_naive
+    from datetime import datetime as dt
+
+    table, err = _check_client_scope_by_table(request.user, table_id)
+    if err:
+        return err
+
+    status_filter = request.GET.get('status', None)
+
+    # Check status-specific list permission
+    if status_filter:
+        required_perm = PermissionService.STATUS_LIST_PERM_MAP.get(status_filter)
+        if required_perm and not PermissionService.has(request.user, required_perm):
+            return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
+
+    # Pagination — supports cursor-based (preferred) and offset (legacy)
+    cursor = request.GET.get('cursor', '').strip()
+    try:
+        offset = max(0, int(request.GET.get('offset', 0)))
+        limit = min(500, max(1, int(request.GET.get('limit', 100))))
+    except (ValueError, TypeError):
+        offset, limit = 0, 100
+
+    # Base queryset — newest first, defer heavy photo ImageField column
+    qs = IDCard.objects.filter(table=table).defer('photo').order_by('-id')
+
+    if status_filter and status_filter in IDCardService.VALID_STATUSES:
+        qs = qs.filter(status=status_filter)
+
+    # Search & filter on field_data JSON
+    search = request.GET.get('search', '').strip()
+    class_filter = request.GET.get('class', '').strip()
+    section_filter = request.GET.get('section', '').strip()
+    if search:
+        qs = qs.filter(field_data__icontains=search)
+
+    # Exact key-value match for class/section using JSON key extraction
+    if class_filter or section_filter:
+        from django.db.models.fields.json import KeyTextTransform
+        class_field_name, section_field_name = _get_class_section_field_names(table)
+        if class_filter and class_field_name:
+            qs = qs.annotate(_cls=KeyTextTransform(class_field_name, 'field_data'))
+            qs = qs.filter(_cls__iexact=class_filter)
+        if section_filter and section_field_name:
+            qs = qs.annotate(_sec=KeyTextTransform(section_field_name, 'field_data'))
+            qs = qs.filter(_sec__iexact=section_filter)
+
+    # Server-side image filter (column + condition)
+    image_column = request.GET.get('image_column', '').strip()
+    image_condition = request.GET.get('image_condition', '').strip()
+    if image_column and image_condition in ('complete', 'pending', 'incomplete'):
+        from django.db.models.fields.json import KeyTextTransform
+        from django.db.models import Q
+        qs = qs.annotate(_img=KeyTextTransform(image_column, 'field_data'))
+        if image_condition == 'complete':
+            qs = qs.exclude(_img__isnull=True).exclude(_img='').exclude(_img='NOT_FOUND')
+            qs = qs.exclude(_img__startswith='PENDING:')
+        elif image_condition == 'pending':
+            qs = qs.filter(_img__startswith='PENDING:')
+        elif image_condition == 'incomplete':
+            qs = qs.filter(Q(_img__isnull=True) | Q(_img='') | Q(_img='NOT_FOUND'))
+
+    # DateTime range (download list)
+    if status_filter == 'download':
+        from_date = request.GET.get('from', '').strip()
+        to_date = request.GET.get('to', '').strip()
+        if from_date:
+            try:
+                from_dt = dt.fromisoformat(from_date)
+                from_dt = make_aware(from_dt) if is_naive(from_dt) else from_dt
+                qs = qs.filter(downloaded_at__gte=from_dt)
+            except (ValueError, TypeError):
+                pass
+        if to_date:
+            try:
+                to_dt = dt.fromisoformat(to_date)
+                to_dt = make_aware(to_dt) if is_naive(to_dt) else to_dt
+                qs = qs.filter(downloaded_at__lte=to_dt)
+            except (ValueError, TypeError):
+                pass
+
+    total = qs.count()
+
+    # Cursor-based pagination: WHERE id < cursor ORDER BY id DESC LIMIT N
+    # Falls back to offset pagination if cursor not provided (backward compat)
+    if cursor:
+        try:
+            cursor_id = int(cursor)
+            cards = list(qs.filter(id__lt=cursor_id)[:limit + 1])
+        except (ValueError, TypeError):
+            cards = list(qs[offset:offset + limit + 1])
+    else:
+        cards = list(qs[offset:offset + limit + 1])
+
+    has_more = len(cards) > limit
+    if has_more:
+        cards = cards[:limit]
+    next_cursor = cards[-1].id if cards and has_more else None
+
+    # Build ordered fields with reordered display order
+    reordered_fields = BaseService.reorder_fields_for_display(table.fields or [])
+
+    def _thumb(path):
+        """Replicate get_thumbnail_path template filter."""
+        if not path or path == 'NOT_FOUND' or path.startswith('PENDING:'):
+            return path
+        # Reject values that don't look like real file paths (no extension)
+        if '.' not in path:
+            return ''
+        try:
+            parts = path.replace('\\', '/').split('/')
+            if len(parts) >= 2:
+                return parts[0] + '/thumbs/' + '/'.join(parts[1:])
+            return 'thumbs/' + path
+        except Exception:
+            return path
+
+    results = []
+    # sr_no base: for cursor mode, use offset param if provided, otherwise 0
+    sr_base = offset if not cursor else offset
+    for idx, card in enumerate(cards):
+        fd = card.field_data or {}
+        fd_upper = {k.upper(): v for k, v in fd.items()}
+
+        ordered = []
+        for field in reordered_fields:
+            fname = field['name']
+            ftype = field.get('type', 'text')
+            is_img = BaseService.is_image_field(field)
+            if is_img:
+                ftype = 'image'
+            val = fd.get(fname, '') or fd_upper.get(fname.upper(), '')
+            # Legacy photo fallback
+            if not val and fname.upper() == 'PHOTO' and card.photo:
+                try:
+                    val = card.photo.name or card.photo.url
+                except Exception:
+                    pass
+            entry = {'name': fname, 'type': ftype, 'value': val}
+            if is_img:
+                entry['thumb'] = _thumb(val) if val else ''
+            ordered.append(entry)
+
+        results.append({
+            'id': card.id,
+            'sr_no': sr_base + idx + 1,
+            'status': card.status,
+            'status_display': card.get_status_display(),
+            'field_data': fd,
+            'ordered_fields': ordered,
+            'updated_at': localtime(card.updated_at).strftime('%d-%b-%Y %H:%M') if card.updated_at else None,
+            'updated_at_iso': card.updated_at.isoformat() if card.updated_at else None,
+            'downloaded_at': localtime(card.downloaded_at).strftime('%d-%b-%Y %H:%M') if card.downloaded_at else None,
+            'deleted_at': localtime(card.deleted_at).strftime('%d-%b-%Y %H:%M') if card.deleted_at else None,
+        })
+
+    return JsonResponse({
+        'success': True,
+        'total': total,
+        'offset': offset,
+        'limit': limit,
+        'has_more': has_more,
+        'next_cursor': next_cursor,
+        'results': results,
+    })
 
 
 @require_http_methods(["GET"])
@@ -253,6 +491,55 @@ def api_idcard_all_ids(request, table_id):
         from_date=from_date, to_date=to_date,
     )
     return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
+
+
+@require_http_methods(["GET"])
+@api_require_any_authenticated
+def api_idcard_filter_options(request, table_id):
+    """Return distinct class/section values for filter dropdowns.
+
+    Uses KeyTextTransform for efficient single-column extraction —
+    much lighter than loading all field_data into Python.
+    """
+    from django.db.models.fields.json import KeyTextTransform
+
+    table, err = _check_client_scope_by_table(request.user, table_id)
+    if err:
+        return err
+
+    status_filter = request.GET.get('status', '').strip()
+
+    qs = IDCard.objects.filter(table=table)
+    if status_filter and status_filter in IDCardService.VALID_STATUSES:
+        qs = qs.filter(status=status_filter)
+
+    class_field_name, section_field_name = _get_class_section_field_names(table)
+
+    class_values = []
+    section_values = []
+
+    if class_field_name:
+        class_values = sorted(
+            qs.annotate(_cv=KeyTextTransform(class_field_name, 'field_data'))
+            .exclude(_cv__isnull=True).exclude(_cv='')
+            .values_list('_cv', flat=True).distinct(),
+            key=lambda v: (not v.isdigit(), int(v) if v.isdigit() else v),
+        )
+
+    if section_field_name:
+        section_values = sorted(
+            qs.annotate(_sv=KeyTextTransform(section_field_name, 'field_data'))
+            .exclude(_sv__isnull=True).exclude(_sv='')
+            .values_list('_sv', flat=True).distinct(),
+        )
+
+    return JsonResponse({
+        'success': True,
+        'class_values': list(class_values),
+        'section_values': list(section_values),
+        'class_field': class_field_name,
+        'section_field': section_field_name,
+    })
 
 
 @require_http_methods(["POST"])
@@ -1761,3 +2048,23 @@ def api_idcard_reupload_images(request, table_id):
         return JsonResponse({'success': False, 'message': _safe_error(e)}, status=500)
     finally:
         django_cache.delete(lock_key)
+
+
+# ==================== MODALS HTML (Lazy Load) ====================
+
+@require_http_methods(["GET"])
+@api_require_any_authenticated
+def api_idcard_modals_html(request, table_id):
+    """Return rendered modals.html partial for lazy-loading.
+    Used by modal-loader.js to inject modals on first user interaction
+    instead of pre-rendering them on every page load.
+    """
+    from django.template.loader import render_to_string
+    from django.http import HttpResponse
+
+    table, err = _check_client_scope_by_table(request.user, table_id)
+    if err:
+        return err
+
+    html = render_to_string('partials/idcard/modals.html', {'table': table}, request=request)
+    return HttpResponse(html, content_type='text/html; charset=utf-8')

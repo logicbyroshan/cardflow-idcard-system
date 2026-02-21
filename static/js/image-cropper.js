@@ -73,6 +73,9 @@ function openModal(file) {
     currentFileName = file.name;
     currentFileType = file.type || 'image/jpeg';
 
+    // Start loading Cropper.js in parallel with FileReader
+    var cropperReady = (typeof LazyLoad !== 'undefined') ? LazyLoad.cropper() : Promise.resolve(window.Cropper);
+
     return new Promise(function(resolve) {
         resolvePromise = resolve;
 
@@ -93,21 +96,23 @@ function openModal(file) {
             // Destroy old cropper & create new
             if (cropper) { cropper.destroy(); cropper = null; }
 
-            // Small delay to ensure image is rendered
+            // Small delay to ensure image is rendered, then await Cropper lib
             setTimeout(function() {
-                cropper = new Cropper(image, {
-                    viewMode: 1,
-                    dragMode: 'move',
-                    autoCropArea: 1,
-                    responsive: true,
-                    restore: false,
-                    guides: true,
-                    center: true,
-                    highlight: true,
-                    cropBoxMovable: true,
-                    cropBoxResizable: true,
-                    toggleDragModeOnDblclick: false,
-                    background: true,
+                cropperReady.then(function(CropperLib) {
+                    cropper = new CropperLib(image, {
+                        viewMode: 1,
+                        dragMode: 'move',
+                        autoCropArea: 1,
+                        responsive: true,
+                        restore: false,
+                        guides: true,
+                        center: true,
+                        highlight: true,
+                        cropBoxMovable: true,
+                        cropBoxResizable: true,
+                        toggleDragModeOnDblclick: false,
+                        background: true,
+                    });
                 });
             }, 100);
         };

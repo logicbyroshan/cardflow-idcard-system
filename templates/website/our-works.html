@@ -4,8 +4,8 @@
 {% block title %}Our Works{% endblock %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'website/styles/our-works.css' %}?v=130">
-    <link rel="stylesheet" href="{% static 'website/styles/our-works-responsive.css' %}?v=130">
+    <link rel="stylesheet" href="{% static 'website/styles/our-works.css' %}">
+    <link rel="stylesheet" href="{% static 'website/styles/our-works-responsive.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -91,7 +91,7 @@
                                         <source src="{{ reel.video_url }}" type="video/mp4">
                                     </video>
                                 {% elif reel.thumbnail %}
-                                    <img src="{{ reel.thumbnail.url }}" alt="{{ reel.title }}" class="reel-thumbnail">
+                                    <img src="{{ reel.thumbnail.url }}" alt="{{ reel.title }}" class="reel-thumbnail" loading="lazy" decoding="async">
                                 {% else %}
                                     <div class="reel-placeholder"></div>
                                 {% endif %}
@@ -192,7 +192,7 @@
                                     <source src="{{ item.video_url }}" type="video/mp4">
                                 </video>
                             {% elif item.image %}
-                                <img src="{{ item.image.url }}" alt="{{ item.title }}" class="reel-thumbnail">
+                                <img src="{{ item.image.url }}" alt="{{ item.title }}" class="reel-thumbnail" loading="lazy" decoding="async">
                             {% else %}
                                 <div class="reel-placeholder"></div>
                             {% endif %}
@@ -233,14 +233,14 @@
                     <div class="portfolio-image">
                         {% if item.item_type == 'video' or item.item_type == 'reel' %}
                             {% if item.image %}
-                                <img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy">
+                                <img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy" decoding="async">
                             {% else %}
                                 <div class="portfolio-video-placeholder"><i class="fas fa-video"></i></div>
                             {% endif %}
                             <div class="portfolio-play-icon"><i class="fas fa-play-circle"></i></div>
                         {% else %}
                             {% if item.image %}
-                                <img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy">
+                                <img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy" decoding="async">
                             {% endif %}
                         {% endif %}
                         <div class="portfolio-overlay">
@@ -291,7 +291,7 @@
     <div class="lightbox" id="lightbox">
         <button class="lightbox-close" id="lightboxClose"><i class="fas fa-times"></i></button>
         <div class="lightbox-content">
-            <img src="" id="lightboxImage">
+            <img src="" id="lightboxImage" alt="Enlarged view of selected work" loading="lazy" decoding="async">
             <div class="lightbox-caption" id="lightboxCaption"></div>
         </div>
     </div>
@@ -305,5 +305,5 @@
 {% endblock %}
 
 {% block extra_js %}
-    <script src="{% static 'website/scripts/our-works.js' %}?v=130"></script>
+    <script src="{% static 'website/scripts/our-works.js' %}"></script>
 {% endblock %}

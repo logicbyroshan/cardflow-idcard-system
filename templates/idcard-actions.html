@@ -8,33 +8,29 @@
   <title>ID Card Actions - {{ table.name }} - Adarsh ID Cards</title>
   <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
   
+  <!-- Preload critical CSS for faster first paint -->
+  <link rel="preload" href="{% static 'css/fonts.css' %}" as="style">
+  <link rel="preload" href="{% static 'css/tailwind.css' %}" as="style">
   <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
   
   <!-- Tailwind CSS (primary) -->
-<link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=130">
+<link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
   <!-- Page-specific: ID card actions UI -->
-  <link rel="stylesheet" href="{% static 'css/idcard-actions.css' %}?v=130">
-  <link rel="stylesheet" href="{% static 'css/idcard-actions-enhanced.css' %}?v=130">
-  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=130">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="{% static 'css/idcard-actions.css' %}">
+  <link rel="stylesheet" href="{% static 'css/idcard-actions-enhanced.css' %}">
+  <link rel="stylesheet" href="{% static 'css/global-search.css' %}">
+  <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
   
   <!-- Alpine.js State Module (MUST load before Alpine) -->
-  <script src="{% static 'js/alpine-state.js' %}?v=130"></script>
+  <script defer src="{% static 'js/alpine-state.js' %}"></script>
   <!-- Alpine.js - Lightweight reactive UI framework -->
-  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
+  <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
   
-  <!-- External Libraries (loaded in head for availability) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
-  <!-- Cropper.js for image crop before upload -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js" defer></script>
+  <!-- Lazy-load helper (XLSX ~500KB, JSZip ~100KB, Cropper ~90KB, Flatpickr ~50KB loaded on demand) -->
+  <script src="{% static 'js/core/lazy-load.js' %}"></script>
 
-  <!-- Flatpickr date/time picker -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <!-- Flatpickr custom theme (CSS only, JS loaded on demand) -->
   <style>
     /* Flatpickr custom theme — rounded, gap, clean look */
     .flatpickr-calendar {
@@ -192,7 +188,6 @@
       padding: 4px;
     }
   </style>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
   
   <!-- Global Variables -->
   {{ table.fields|json_script:"table-fields-data" }}
@@ -219,6 +214,10 @@
     // Client / client_staff readonly flag — cards in approved/download/reprint are view-only
     var IS_CLIENT_USER = {{ is_client|yesno:"true,false" }} || {{ is_client_staff|yesno:"true,false" }};
     var CLIENT_READONLY_STATUSES = ['approved', 'download', 'reprint'];
+    // Feature flag: Virtual Table Renderer (Block 4 Step 2)
+    // Set to true to activate virtualised DOM rendering (only ~50 rows in DOM).
+    // Set to false to use the original server-rendered table.
+    var USE_VIRTUAL_TABLE = true;
   </script>
 </head>
 <body x-data="layoutState()">
@@ -254,28 +253,37 @@
   <!-- Toast Notifications -->
   {% include 'partials/components/toast.html' %}
 
-  <!-- All Modals -->
-  {% include 'partials/idcard/modals.html' %}
+  <!-- Modals: lazy-loaded on first user interaction by modal-loader.js -->
+  <div id="modals-container"></div>
+
+  <!-- Error Monitor (loaded first to catch all errors) -->
+  <script src="{% static 'js/error-monitor.js' %}"></script>
 
   <!-- Core Modules (Load Order: api → toast → modal → utils → init) -->
-  <script src="{% static 'js/core/api.js' %}?v=130"></script>
-  <script src="{% static 'js/core/toast.js' %}?v=130"></script>
-  <script src="{% static 'js/core/modal.js' %}?v=130"></script>
-  <script src="{% static 'js/core/utils.js' %}?v=130"></script>
-  <script src="{% static 'js/init.js' %}?v=130"></script>
+  <script src="{% static 'js/core/api.js' %}"></script>
+  <script src="{% static 'js/core/toast.js' %}"></script>
+  <script src="{% static 'js/core/modal.js' %}"></script>
+  <script src="{% static 'js/core/utils.js' %}"></script>
+  <script src="{% static 'js/init.js' %}"></script>
   
   <!-- IDCard Actions Modules - Loaded in order -->
-  <script src="{% static 'js/idcard-actions-core.js' %}?v=130"></script>
-  <script src="{% static 'js/idcard-actions-table.js' %}?v=130"></script>
-  <script src="{% static 'js/idcard-actions-search.js' %}?v=130"></script>
-  <script src="{% static 'js/idcard-actions-upload.js' %}?v=130"></script>
-  <script src="{% static 'js/idcard-actions-download.js' %}?v=130"></script>
-  <script src="{% static 'js/idcard-actions-modal.js' %}?v=130"></script>
-  <script src="{% static 'js/image-cropper.js' %}?v=130"></script>
-  <script src="{% static 'js/idcard-actions-api.js' %}?v=130"></script>
-  <script src="{% static 'js/idcard-actions-edit.js' %}?v=130"></script>
-  <script src="{% static 'js/idcard-actions.js' %}?v=130"></script>
-  <script src="{% static 'js/global-search.js' %}?v=130"></script>
+  <script src="{% static 'js/idcard-actions-core.js' %}"></script>
+  <script src="{% static 'js/idcard-actions-table.js' %}"></script>
+  <script src="{% static 'js/idcard-actions-search.js' %}"></script>
+  <script src="{% static 'js/idcard-actions-upload.js' %}"></script>
+  <script src="{% static 'js/idcard-actions-download.js' %}"></script>
+  <script src="{% static 'js/idcard-actions-modal.js' %}"></script>
+  <script src="{% static 'js/image-cropper.js' %}"></script>
+  <script src="{% static 'js/idcard-actions-api.js' %}"></script>
+  <script src="{% static 'js/idcard-actions-edit.js' %}"></script>
+  <script src="{% static 'js/idcard-actions.js' %}"></script>
+  <!-- Virtual Table Renderer — feature-flagged by USE_VIRTUAL_TABLE -->
+  <script src="{% static 'js/idcard/table-render.js' %}"></script>
+  <!-- Modal Lazy Loader — fetches modals HTML on first interaction -->
+  <script src="{% static 'js/idcard/modal-loader.js' %}"></script>
+  <script src="{% static 'js/global-search.js' %}"></script>
+  <!-- Runtime Performance Monitor (data-only, zero UI) -->
+  <script src="{% static 'js/perf-monitor.js' %}"></script>
   {% include 'partials/htmx-config.html' %}
   <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -296,6 +304,7 @@
       var fromDateEl = document.getElementById('fromDateFilter');
       var toDateEl = document.getElementById('toDateFilter');
       var clearDateBtn = document.getElementById('clearDateFilterBtn');
+      var _dateFilterTimer = null;  // Debounce timer for date filter
 
       var fpConfig = {
         enableTime: true,
@@ -308,20 +317,28 @@
           // Blur time inputs so they don't auto-select after picking a date
           var timeInputs = instance.calendarContainer.querySelectorAll('.flatpickr-time input');
           timeInputs.forEach(function(inp) { inp.blur(); });
-          setTimeout(applyDateTimeFilter, 50);
+          // Debounced — avoids firing 2-4 requests per single datetime selection
+          clearTimeout(_dateFilterTimer);
+          _dateFilterTimer = setTimeout(applyDateTimeFilter, 800);
         }
       };
 
       var fpFrom = null, fpTo = null;
-      if (fromDateEl && typeof flatpickr !== 'undefined') {
-        fpFrom = flatpickr(fromDateEl, Object.assign({}, fpConfig, {
-          defaultDate: fromDateEl.value || null
-        }));
-      }
-      if (toDateEl && typeof flatpickr !== 'undefined') {
-        fpTo = flatpickr(toDateEl, Object.assign({}, fpConfig, {
-          defaultDate: toDateEl.value || null
-        }));
+
+      // Load Flatpickr on demand (~50KB JS + 16KB CSS)
+      if (fromDateEl || toDateEl) {
+        LazyLoad.flatpickr().then(function(fp) {
+          if (fromDateEl) {
+            fpFrom = fp(fromDateEl, Object.assign({}, fpConfig, {
+              defaultDate: fromDateEl.value || null
+            }));
+          }
+          if (toDateEl) {
+            fpTo = fp(toDateEl, Object.assign({}, fpConfig, {
+              defaultDate: toDateEl.value || null
+            }));
+          }
+        });
       }
 
       function applyDateTimeFilter() {
@@ -382,31 +399,28 @@
     /* Phase 7: Re-initialize handlers after HTMX table swap */
     document.body.addEventListener('htmx:afterSwap', function(evt) {
       if (evt.target.id === 'card-table-container') {
-        // Re-init TABLE module (lazy load state, scroll listener, pagination buttons)
-        try {
-          if (window.IDCardApp && typeof window.IDCardApp.initTableModule === 'function') {
-            window.IDCardApp.initTableModule();
-          }
-        } catch (e) { console.error('afterSwap: initTableModule error', e); }
-
-        // Re-init checkboxes (select all, shift+click, button states)
-        try {
-          if (window.IDCardApp && typeof window.IDCardApp.initCoreModule === 'function') {
-            window.IDCardApp.initCoreModule();
-          }
-        } catch (e) { console.error('afterSwap: initCoreModule error', e); }
-
-        // Re-init inline editing on new DOM
-        try {
-          if (window.IDCardApp && typeof window.IDCardApp.initEditModule === 'function') {
-            window.IDCardApp.initEditModule();
-          }
-        } catch (e) { console.error('afterSwap: initEditModule error', e); }
-
-        // Reset shift-click anchor index
-        if (window.IDCardApp && typeof window.IDCardApp.resetShiftClickIndex === 'function') {
-          window.IDCardApp.resetShiftClickIndex();
+        // Combined re-init — single pass instead of 3 separate try/catch blocks
+        var app = window.IDCardApp || {};
+        var errors = [];
+        
+        // Re-init TABLE module (lazy load state, IntersectionObserver, pagination buttons)
+        if (typeof app.initTableModule === 'function') {
+          try { app.initTableModule(); } catch(e) { errors.push('initTableModule: ' + e.message); }
         }
+        // Re-init checkboxes (select all, shift+click, button states)
+        if (typeof app.initCoreModule === 'function') {
+          try { app.initCoreModule(); } catch(e) { errors.push('initCoreModule: ' + e.message); }
+        }
+        // Re-init inline editing on new DOM
+        if (typeof app.initEditModule === 'function') {
+          try { app.initEditModule(); } catch(e) { errors.push('initEditModule: ' + e.message); }
+        }
+        // Reset shift-click anchor index
+        if (typeof app.resetShiftClickIndex === 'function') {
+          app.resetShiftClickIndex();
+        }
+        
+        if (errors.length) console.error('afterSwap re-init errors:', errors);
 
         // Re-attach edit-photo-btn delegation on the NEW #data-table
         // (initModalModule is only called once on page load; #data-table lives
@@ -425,23 +439,33 @@
           });
         }
 
-        // Row action buttons — event delegation on new #cardsTableBody
+        // Row action buttons — re-install delegation after HTMX swap destroys old tbody.
+        // _initTableBodyDelegation() in idcard-actions-table.js uses _tblDelegationInit;
+        // if it already ran on this new tbody, skip. Otherwise install via same flag.
         var tableBody = document.getElementById('cardsTableBody');
-        if (tableBody && !tableBody._rowActionHandlersInit) {
-          tableBody._rowActionHandlersInit = true;
+        if (tableBody && !tableBody._tblDelegationInit) {
+          tableBody._tblDelegationInit = true;
           tableBody.addEventListener('click', function(e) {
             var btn = e.target.closest('.row-action-btn');
-            if (!btn) return;
-            e.stopPropagation();
-            var cardId = btn.getAttribute('data-card-id');
-            if (!cardId) return;
-            if (btn.classList.contains('verify-row-btn') && typeof verifyCard === 'function') verifyCard(cardId);
-            else if (btn.classList.contains('approve-row-btn') && typeof approveCard === 'function') approveCard(cardId);
-            else if (btn.classList.contains('unapprove-row-btn') && typeof unapproveCard === 'function') unapproveCard(cardId);
-            else if (btn.classList.contains('unverify-row-btn') && typeof unverifyCard === 'function') unverifyCard(cardId);
-            else if (btn.classList.contains('download-row-btn') && typeof downloadCard === 'function') downloadCard(cardId);
-            else if (btn.classList.contains('retrieve-row-btn') && typeof retrieveCard === 'function') retrieveCard(cardId);
-            else if (btn.classList.contains('download-single-row-btn') && typeof downloadSingleCard === 'function') downloadSingleCard(cardId);
+            if (btn) {
+              e.stopPropagation();
+              var cardId = btn.getAttribute('data-card-id');
+              if (!cardId) return;
+              if (btn.classList.contains('verify-row-btn') && typeof verifyCard === 'function') verifyCard(cardId);
+              else if (btn.classList.contains('approve-row-btn') && typeof approveCard === 'function') approveCard(cardId);
+              else if (btn.classList.contains('unapprove-row-btn') && typeof unapproveCard === 'function') unapproveCard(cardId);
+              else if (btn.classList.contains('unverify-row-btn') && typeof unverifyCard === 'function') unverifyCard(cardId);
+              else if (btn.classList.contains('download-row-btn') && typeof downloadCard === 'function') downloadCard(cardId);
+              else if (btn.classList.contains('retrieve-row-btn') && typeof retrieveCard === 'function') retrieveCard(cardId);
+              else if (btn.classList.contains('download-single-row-btn') && typeof downloadSingleCard === 'function') downloadSingleCard(cardId);
+              return;
+            }
+            // Editable cell — also delegated
+            var cell = e.target.closest('.editable-cell:not(.image-field)');
+            if (cell) {
+              if (e.target.closest('button') || cell.classList.contains('editing')) return;
+              if (typeof startCellEdit === 'function') startCellEdit(cell);
+            }
           });
         }
       }

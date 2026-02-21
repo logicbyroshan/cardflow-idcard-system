@@ -730,13 +730,13 @@ function createNewCard(fieldData, imageFiles, mainPhoto) {
             window.location.href = `?status=pending`;
         } else {
             if (typeof showToast === 'function') showToast(data.message || 'Error adding card', false);
-            if (window._restoreSaveBtn) window._restoreSaveBtn();
+            if (IDCardApp._restoreSaveBtn) IDCardApp._restoreSaveBtn();
         }
     })
     .catch(error => {
         console.error('Error:', error);
         if (typeof showToast === 'function') showToast('Error adding card', false);
-        if (window._restoreSaveBtn) window._restoreSaveBtn();
+        if (IDCardApp._restoreSaveBtn) IDCardApp._restoreSaveBtn();
     });
 }
 
@@ -774,13 +774,13 @@ function updateExistingCard(cardId, fieldData, imageFiles, mainPhoto) {
             } else {
                 if (typeof showToast === 'function') showToast(data.message || 'Error updating card', false);
             }
-            if (window._restoreSaveBtn) window._restoreSaveBtn();
+            if (IDCardApp._restoreSaveBtn) IDCardApp._restoreSaveBtn();
         }
     })
     .catch(error => {
         console.error('Error:', error);
         if (typeof showToast === 'function') showToast('Error updating card', false);
-        if (window._restoreSaveBtn) window._restoreSaveBtn();
+        if (IDCardApp._restoreSaveBtn) IDCardApp._restoreSaveBtn();
     });
 }
 
@@ -818,7 +818,7 @@ function closeDeleteModalFn() {
         verificationStatus.textContent = '';
         verificationStatus.classList.remove('match', 'no-match');
     }
-    window.pendingDeleteCardIds = null;
+    IDCardApp.pendingDeleteCardIds = null;
     currentVerificationCode = null;
 }
 
@@ -839,7 +839,7 @@ function openPermanentDeleteModal(cardIds) {
     }
     
     // Store card IDs
-    window.pendingDeleteCardIds = cardIds;
+    IDCardApp.pendingDeleteCardIds = cardIds;
     
     // Reset and show modal
     const verificationInput = document.getElementById('deleteVerificationInput');
@@ -940,7 +940,7 @@ function initDeleteModal() {
             e.preventDefault();
             e.stopPropagation();
             
-            const cardIds = window.pendingDeleteCardIds;
+            const cardIds = IDCardApp.pendingDeleteCardIds;
             const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
             
             if (!cardIds || cardIds.length === 0 || !tableId) {
@@ -992,11 +992,11 @@ function closeSimpleDeleteModalFn() {
         modal.classList.remove('active');
         document.body.style.overflow = '';
     }
-    window.pendingSimpleDeleteCardIds = null;
+    IDCardApp.pendingSimpleDeleteCardIds = null;
 }
 
 function openSimpleDeleteModal(cardIds) {
-    window.pendingSimpleDeleteCardIds = cardIds;
+    IDCardApp.pendingSimpleDeleteCardIds = cardIds;
     
     const countText = document.getElementById('simpleDeleteCountText');
     if (countText) {
@@ -1036,7 +1036,7 @@ function initSimpleDeleteModal() {
     
     if (confirmBtn) {
         confirmBtn.addEventListener('click', function() {
-            const cardIds = window.pendingSimpleDeleteCardIds;
+            const cardIds = IDCardApp.pendingSimpleDeleteCardIds;
             const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
             
             if (!cardIds || cardIds.length === 0 || !tableId) {
@@ -1097,13 +1097,6 @@ function initModalModule() {
                 closeSideModal();
             });
         }
-    
-    // NOTE: Removed click-outside-to-close behavior - modal should only close via X or Cancel button
-    // if (sideModalOverlay) {
-    //     sideModalOverlay.addEventListener('click', function(e) {
-    //         if (e.target === this) closeSideModal();
-    //     });
-    // }
     
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape' && sideModalOverlay?.classList.contains('active')) {
@@ -1333,7 +1326,7 @@ function initModalModule() {
             }, 10000);
 
             // Store restore function globally so create/update can call it on error
-            window._restoreSaveBtn = function() {
+            IDCardApp._restoreSaveBtn = function() {
                 clearTimeout(reEnableTimeout);
                 saveSideModalBtn.disabled = false;
                 saveSideModalBtn.innerHTML = originalHTML;
@@ -1348,7 +1341,7 @@ function initModalModule() {
                 updateExistingCard(currentEditCardId, fieldData, imageFiles, mainPhoto);
             } else {
                 // Edge case: invalid mode, re-enable
-                if (window._restoreSaveBtn) window._restoreSaveBtn();
+                if (IDCardApp._restoreSaveBtn) IDCardApp._restoreSaveBtn();
             }
         });
     }
@@ -1394,6 +1387,8 @@ function initModalModule() {
 // Expose globally
 window.IDCardApp = window.IDCardApp || {};
 window.IDCardApp.initModalModule = initModalModule;
+window.IDCardApp.initDeleteModal = initDeleteModal;
+window.IDCardApp.initSimpleDeleteModal = initSimpleDeleteModal;
 window.IDCardApp.openSideModal = openSideModal;
 window.IDCardApp.closeSideModal = closeSideModal;
 window.IDCardApp.fetchCardAndOpenModal = fetchCardAndOpenModal;
@@ -1407,9 +1402,9 @@ if (typeof window.openSideModal !== 'function') {
 if (typeof window.closeSideModal !== 'function') {
     window.closeSideModal = closeSideModal;
 }
-window.openSimpleDeleteModal = openSimpleDeleteModal;
-window.openPermanentDeleteModal = openPermanentDeleteModal;
-window.closeDeleteModalFn = closeDeleteModalFn;
-window.closeSimpleDeleteModalFn = closeSimpleDeleteModalFn;
+window.openSimpleDeleteModal = IDCardApp.openSimpleDeleteModal;
+window.openPermanentDeleteModal = IDCardApp.openPermanentDeleteModal;
+IDCardApp.closeDeleteModalFn = closeDeleteModalFn;
+IDCardApp.closeSimpleDeleteModalFn = closeSimpleDeleteModalFn;
 
 })();

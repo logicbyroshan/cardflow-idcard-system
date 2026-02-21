@@ -634,67 +634,70 @@ def idcard_group(request, client_id):
     return render(request, 'idcard-group.html', context)
 
 
-# ID Card Actions
-@login_required
-@require_any_admin
-def idcard_actions(request, table_id):
-    """View and manage ID cards in a table, optionally filtered by status.
-    
-    Supports HTMX partial responses for pagination, filtering, and status tabs.
-    Query params: status, page, per_page, search, class, section
+# ────────────────────────────────────────────────────────────
+# Shared helper: builds queryset + context for idcard-actions
+# Used by admin idcard_actions() and client client_idcard_actions()
+# ────────────────────────────────────────────────────────────
+_STATUS_LIST_PERM = {
+    'pending': 'perm_idcard_pending_list',
+    'verified': 'perm_idcard_verified_list',
+    'approved': 'perm_idcard_approved_list',
+    'download': 'perm_idcard_download_list',
+    'pool': 'perm_idcard_pool_list',
+    'reprint': 'perm_idcard_reprint_list',
+}
+_VALID_STATUSES = list(_STATUS_LIST_PERM.keys())
+
+
+def build_idcard_actions_context(request, table, *, default_per_page=100,
+                                  per_page_options=None, active_page='active_clients',
+                                  user_role=None):
+    """Build the queryset, counts, and template context for idcard-actions.
+
+    Returns a dict ready to be passed to ``render()``.  Caller is still
+    responsible for access checks and redirect logic.
     """
-    table = get_object_or_404(IDCardTable.objects.select_related('group__client'), id=table_id)
-    
-    # Check if user has access to this table's client
-    user = request.user
-    if not PermissionService.can_access_client(user, table.group.client_id):
-        return redirect('active_clients')
-    
+    if per_page_options is None:
+        per_page_options = [100, 200, 300, 400, 500]
+
     status_filter = request.GET.get('status', None)
-    
-    # Check status-specific list permission
-    STATUS_LIST_PERM = {
-        'pending': 'perm_idcard_pending_list',
-        'verified': 'perm_idcard_verified_list',
-        'approved': 'perm_idcard_approved_list',
-        'download': 'perm_idcard_download_list',
-        'pool': 'perm_idcard_pool_list',
-        'reprint': 'perm_idcard_reprint_list',
-    }
-    if status_filter:
-        required_perm = STATUS_LIST_PERM.get(status_filter)
-        if required_perm and not PermissionService.has_permission(user, required_perm):
-            return redirect('active_clients')  # No permission for this status list
-    
-    # ── Server-side pagination parameters ──
-    DEFAULT_PER_PAGE = 100
-    PER_PAGE_OPTIONS = [100, 200, 300, 400, 500]
+
+    # ── Pagination params ──
     try:
-        per_page = int(request.GET.get('per_page', DEFAULT_PER_PAGE))
-        if per_page not in PER_PAGE_OPTIONS:
-            per_page = DEFAULT_PER_PAGE
+        per_page = int(request.GET.get('per_page', default_per_page))
+        if per_page not in per_page_options:
+            per_page = default_per_page
     except (ValueError, TypeError):
-        per_page = DEFAULT_PER_PAGE
-    
-    page_number = request.GET.get('page', 1)
+        per_page = default_per_page
+
     search_query = request.GET.get('search', '').strip()
     class_filter = request.GET.get('class', '').strip()
     section_filter = request.GET.get('section', '').strip()
-    
-    # Order by id descending so newest records appear first; defer heavy photo column
+
+    # ── Base queryset ──
     id_cards_query = IDCard.objects.filter(table=table).defer('photo').order_by('-id')
-    if status_filter and status_filter in ['pending', 'verified', 'pool', 'approved', 'download', 'reprint']:
+    if status_filter and status_filter in _VALID_STATUSES:
         id_cards_query = id_cards_query.filter(status=status_filter)
-    
-    # ── Server-side search filtering ──
+
+    # ── Search ──
     if search_query:
         id_cards_query = id_cards_query.filter(field_data__icontains=search_query)
-    if class_filter:
-        id_cards_query = id_cards_query.filter(field_data__icontains=class_filter)
-    if section_filter:
-        id_cards_query = id_cards_query.filter(field_data__icontains=section_filter)
-    
-    # ── DateTime range filter (download list only) ──
+
+    # ── Exact class/section filter ──
+    if class_filter or section_filter:
+        from django.db.models.fields.json import KeyTextTransform
+        from core.views.idcard_api import _get_class_section_field_names
+        class_field_name, section_field_name = _get_class_section_field_names(table)
+        if class_filter and class_field_name:
+            id_cards_query = id_cards_query.annotate(
+                _cls=KeyTextTransform(class_field_name, 'field_data')
+            ).filter(_cls__iexact=class_filter)
+        if section_filter and section_field_name:
+            id_cards_query = id_cards_query.annotate(
+                _sec=KeyTextTransform(section_field_name, 'field_data')
+            ).filter(_sec__iexact=section_filter)
+
+    # ── Date range (download only) ──
     from_date = request.GET.get('from', '').strip()
     to_date = request.GET.get('to', '').strip()
     if status_filter == 'download':
@@ -713,44 +716,63 @@ def idcard_actions(request, table_id):
                 id_cards_query = id_cards_query.filter(downloaded_at__lte=to_dt)
             except (ValueError, TypeError):
                 pass
-    
-    # Get total count for this status (before pagination)
+
     total_count = id_cards_query.count()
-    
-    # Get counts for all statuses (single aggregate query)
     status_counts = IDCardService.get_status_counts(table)
-    
-    # ── Paginate ──
-    paginator = Paginator(id_cards_query, per_page)
-    page_obj = paginator.get_page(page_number)
-    
-    # Enrich cards with ordered field data
-    start_index = (page_obj.number - 1) * per_page
-    enriched_cards = enrich_cards(page_obj.object_list, table.fields, start_index)
-    
-    context = {
-        'active_page': 'active_clients',
-        'user_role': get_user_role(request.user),
+
+    return {
+        'active_page': active_page,
+        'user_role': user_role or get_user_role(request.user),
         'table': table,
         'group': table.group,
         'client': table.group.client,
-        'id_cards': enriched_cards,
+        'id_cards': [],
         'current_status': status_filter,
         'status_counts': status_counts,
         'total_count': total_count,
-        'has_more': total_count > len(enriched_cards),  # Enable lazy loading for remaining records
+        'has_more': True,
         'initial_load_limit': per_page,
-        # Pagination context
-        'page_obj': page_obj,
-        'page_range': get_page_range(page_obj),
+        'page_obj': None,
+        'page_range': [],
         'per_page': per_page,
-        'per_page_options': PER_PAGE_OPTIONS,
+        'per_page_options': per_page_options,
         'search_query': search_query,
         'class_filter': class_filter,
         'section_filter': section_filter,
         'from_date': from_date,
         'to_date': to_date,
     }
+
+
+# ID Card Actions
+@login_required
+@require_any_admin
+def idcard_actions(request, table_id):
+    """View and manage ID cards in a table, optionally filtered by status.
+    
+    Supports HTMX partial responses for pagination, filtering, and status tabs.
+    Query params: status, page, per_page, search, class, section
+    """
+    table = get_object_or_404(IDCardTable.objects.select_related('group__client'), id=table_id)
+    
+    # Check if user has access to this table's client
+    user = request.user
+    if not PermissionService.can_access_client(user, table.group.client_id):
+        return redirect('active_clients')
+    
+    status_filter = request.GET.get('status', None)
+    if status_filter:
+        required_perm = _STATUS_LIST_PERM.get(status_filter)
+        if required_perm and not PermissionService.has_permission(user, required_perm):
+            return redirect('active_clients')
+    
+    context = build_idcard_actions_context(
+        request, table,
+        default_per_page=100,
+        per_page_options=[100, 200, 300, 400, 500],
+        active_page='active_clients',
+        user_role=get_user_role(user),
+    )
     
     # HTMX partial response — return only the table container
     if is_htmx(request):

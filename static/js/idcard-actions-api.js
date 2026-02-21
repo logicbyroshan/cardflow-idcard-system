@@ -407,7 +407,7 @@ function bulkDeletePermanent(cardIds) {
             return;
         }
         
-        window.pendingDeleteCardIds = cardIds;
+        IDCardApp.pendingDeleteCardIds = cardIds;
         
         const deleteCountText = document.getElementById('deleteCountText');
         if (deleteCountText) {
@@ -461,9 +461,17 @@ function initRowActionHandlers() {
 // ==========================================
 
 function initBulkActionHandlers() {
+    // Helper: get selected IDs from virtual table's _selectedIds Set
+    function _getIds() {
+        if (window.IDCardApp && typeof window.IDCardApp.getSelectedCardIds === 'function') {
+            return window.IDCardApp.getSelectedCardIds();
+        }
+        return typeof getSelectedCardIds === 'function' ? getSelectedCardIds() : [];
+    }
+
     // Verify Selected button
     document.getElementById('verifyBtn')?.addEventListener('click', function() {
-        const selectedIds = typeof getSelectedCardIds === 'function' ? getSelectedCardIds() : [];
+        const selectedIds = _getIds();
         if (selectedIds.length > 0) {
             bulkVerify(selectedIds);
         }
@@ -471,7 +479,7 @@ function initBulkActionHandlers() {
     
     // Delete button (moves to Pool)
     document.getElementById('deleteBtn')?.addEventListener('click', function() {
-        const selectedIds = typeof getSelectedCardIds === 'function' ? getSelectedCardIds() : [];
+        const selectedIds = _getIds();
         if (selectedIds.length > 0) {
             bulkDelete(selectedIds);
         }
@@ -479,7 +487,7 @@ function initBulkActionHandlers() {
     
     // Approve Selected button
     document.getElementById('approveBtn')?.addEventListener('click', function() {
-        const selectedIds = typeof getSelectedCardIds === 'function' ? getSelectedCardIds() : [];
+        const selectedIds = _getIds();
         if (selectedIds.length > 0) {
             bulkApprove(selectedIds);
         }
@@ -487,7 +495,7 @@ function initBulkActionHandlers() {
     
     // Unverify Selected button (move back to pending)
     document.getElementById('unverifyBtn')?.addEventListener('click', function() {
-        const selectedIds = typeof getSelectedCardIds === 'function' ? getSelectedCardIds() : [];
+        const selectedIds = _getIds();
         if (selectedIds.length > 0) {
             bulkUnverify(selectedIds);
         }
@@ -495,14 +503,22 @@ function initBulkActionHandlers() {
     
     // Disapprove Selected button (Approved list → move to pending)
     document.getElementById('disapproveBtn')?.addEventListener('click', function() {
-        const selectedIds = typeof getSelectedCardIds === 'function' ? getSelectedCardIds() : [];
+        const selectedIds = _getIds();
         if (selectedIds.length > 0) {
             bulkDisapprove(selectedIds);
         }
     });
     
-    // Retrieve button (Pool list only)
+    // Retrieve button (Pool list)
     document.getElementById('retrieveBtnP')?.addEventListener('click', function() {
+        const selectedIds = _getIds();
+        if (selectedIds.length > 0) {
+            bulkRetrieve(selectedIds);
+        }
+    });
+
+    // Retrieve button (Download list)
+    document.getElementById('retrieveBtnD')?.addEventListener('click', function() {
         const selectedIds = typeof getSelectedCardIds === 'function' ? getSelectedCardIds() : [];
         if (selectedIds.length > 0) {
             bulkRetrieve(selectedIds);
@@ -527,24 +543,19 @@ function initApiModule() {
     initBulkActionHandlers();
 }
 
-// Expose globally
-window.verifyCard = verifyCard;
-window.approveCard = approveCard;
-window.unverifyCard = unverifyCard;
-window.retrieveCard = retrieveCard;
-window.bulkVerify = bulkVerify;
-window.bulkApprove = bulkApprove;
-window.bulkUnverify = bulkUnverify;
-window.bulkDisapprove = bulkDisapprove;
-window.bulkDelete = bulkDelete;
-window.bulkRetrieve = bulkRetrieve;
-window.bulkDeletePermanent = bulkDeletePermanent;
-
+// Expose on IDCardApp namespace
 window.IDCardApp = window.IDCardApp || {};
 window.IDCardApp.initApiModule = initApiModule;
 window.IDCardApp.verifyCard = verifyCard;
 window.IDCardApp.approveCard = approveCard;
+window.IDCardApp.unverifyCard = unverifyCard;
+window.IDCardApp.retrieveCard = retrieveCard;
 window.IDCardApp.bulkVerify = bulkVerify;
+window.IDCardApp.bulkApprove = bulkApprove;
+window.IDCardApp.bulkUnverify = bulkUnverify;
+window.IDCardApp.bulkDisapprove = bulkDisapprove;
 window.IDCardApp.bulkDelete = bulkDelete;
+window.IDCardApp.bulkRetrieve = bulkRetrieve;
+window.IDCardApp.bulkDeletePermanent = bulkDeletePermanent;
 
 })();

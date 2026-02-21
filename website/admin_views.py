@@ -158,22 +158,55 @@ def website_dashboard(request):
     """Website Admin Dashboard — overview with stat cards."""
     context = _get_base_context(request, 'overview')
 
-    # Stats
-    context['total_portfolio'] = PortfolioItem.objects.count()
-    context['active_portfolio'] = PortfolioItem.objects.filter(is_active=True).count()
-    context['total_reviews'] = Testimonial.objects.count()
-    context['active_reviews'] = Testimonial.objects.filter(is_active=True).count()
-    context['total_clients'] = TrustedClient.objects.count()
-    context['active_clients'] = TrustedClient.objects.filter(is_active=True).count()
+    # Consolidated stats — one aggregate per model instead of 15 separate .count() queries
+    from django.db.models import Count, Q
+
+    portfolio_agg = PortfolioItem.objects.aggregate(
+        total=Count('id'),
+        active=Count('id', filter=Q(is_active=True)),
+    )
+    context['total_portfolio'] = portfolio_agg['total']
+    context['active_portfolio'] = portfolio_agg['active']
+
+    review_agg = Testimonial.objects.aggregate(
+        total=Count('id'),
+        active=Count('id', filter=Q(is_active=True)),
+    )
+    context['total_reviews'] = review_agg['total']
+    context['active_reviews'] = review_agg['active']
+
+    client_agg = TrustedClient.objects.aggregate(
+        total=Count('id'),
+        active=Count('id', filter=Q(is_active=True)),
+    )
+    context['total_clients'] = client_agg['total']
+    context['active_clients'] = client_agg['active']
+
     context['total_features'] = Feature.objects.count()
     context['total_reels'] = Reel.objects.count()
-    context['total_contacts'] = ContactSubmission.objects.count()
-    context['new_contacts'] = ContactSubmission.objects.filter(status='new').count()
+
+    contact_agg = ContactSubmission.objects.aggregate(
+        total=Count('id'),
+        new=Count('id', filter=Q(status='new')),
+    )
+    context['total_contacts'] = contact_agg['total']
+    context['new_contacts'] = contact_agg['new']
+
     context['website_status'] = WebsiteStatus.get_status()
-    context['total_hero_images'] = HeroImage.objects.count()
-    context['active_hero_images'] = HeroImage.objects.filter(is_active=True).count()
-    context['total_categories'] = PortfolioCategory.objects.count()
-    context['bento_categories_count'] = PortfolioCategory.objects.filter(is_bento=True).count()
+
+    hero_agg = HeroImage.objects.aggregate(
+        total=Count('id'),
+        active=Count('id', filter=Q(is_active=True)),
+    )
+    context['total_hero_images'] = hero_agg['total']
+    context['active_hero_images'] = hero_agg['active']
+
+    cat_agg = PortfolioCategory.objects.aggregate(
+        total=Count('id'),
+        bento=Count('id', filter=Q(is_bento=True)),
+    )
+    context['total_categories'] = cat_agg['total']
+    context['bento_categories_count'] = cat_agg['bento']
 
     return render(request, 'website/admin/dashboard.html', context)
 
@@ -588,7 +621,8 @@ def api_portfolio_toggle(request, pk):
 @website_admin_required
 def api_portfolio_category_list(request):
     """List portfolio categories."""
-    cats = PortfolioCategoryService.list_all()
+    from django.db.models import Count
+    cats = PortfolioCategoryService.list_all().annotate(_items_count=Count('items'))
     data = [{
         'id': c.id,
         'name': c.name,
@@ -600,7 +634,7 @@ def api_portfolio_category_list(request):
         'bento_size': c.bento_size,
         'order': c.order,
         'is_active': c.is_active,
-        'items_count': c.items.count(),
+        'items_count': c._items_count,
     } for c in cats]
     return JsonResponse({'success': True, 'categories': data})
 
