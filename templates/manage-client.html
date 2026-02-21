@@ -11,15 +11,15 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- Tailwind CSS (single stylesheet) -->
-  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=130">
-  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=130">
+  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=134">
+  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=134">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <!-- Alpine.js State Module (MUST load before Alpine) -->
-  <script src="{% static 'js/alpine-state.js' %}?v=130"></script>
+  <script src="{% static 'js/alpine-state.js' %}?v=134"></script>
   <!-- Alpine.js -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
 </head>
-<body x-data="layoutState()">
+<body x-data="layoutState()" x-init="init()">
 
   {% include 'partials/sidebar.html' %}
 
@@ -703,11 +703,11 @@
   </main>
 
   <!-- Core Modules (Load Order: api → toast → modal → utils → init) -->
-  <script src="{% static 'js/core/api.js' %}?v=130"></script>
-  <script src="{% static 'js/core/toast.js' %}?v=130"></script>
-  <script src="{% static 'js/core/modal.js' %}?v=130"></script>
-  <script src="{% static 'js/core/utils.js' %}?v=130"></script>
-  <script src="{% static 'js/init.js' %}?v=130"></script>
+  <script src="{% static 'js/core/api.js' %}?v=134"></script>
+  <script src="{% static 'js/core/toast.js' %}?v=134"></script>
+  <script src="{% static 'js/core/modal.js' %}?v=134"></script>
+  <script src="{% static 'js/core/utils.js' %}?v=134"></script>
+  <script src="{% static 'js/init.js' %}?v=134"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       // ==================== ELEMENTS ====================
@@ -913,6 +913,12 @@
           drawerTitle.textContent = 'Add New Client';
           drawerIcon.className = 'fa-solid fa-user-plus';
           submitBtn.innerHTML = '<i class="fa-solid fa-plus"></i> Add Client';
+          
+          // Default all permissions ON for new clients
+          permissionFields.forEach(field => {
+            const el = document.getElementById(field);
+            if (el) el.checked = true;
+          });
         } else {
           drawerTitle.textContent = 'Edit Client';
           drawerIcon.className = 'fa-solid fa-user-pen';
@@ -959,7 +965,7 @@
         if (clientData.photo_url) {
           avatarEl.innerHTML = `<img src="${clientData.photo_url}" alt="${clientData.name}" class="w-full h-full object-cover">`;
         } else {
-          avatarEl.innerHTML = '<i class="fa-solid fa-user"></i>';
+          avatarEl.innerHTML = '<div class="user-avatar-placeholder user-avatar-placeholder--client" style="width:100%;height:100%;border-radius:50%;font-size:22px;"><i class="fa-solid fa-building"></i></div>';
         }
         
         const statusEl = document.getElementById('viewClientStatus');
@@ -1680,7 +1686,7 @@
       staffDrawer.addEventListener('click', (e) => { if (e.target === staffDrawer) closeStaffDrawerFn(); });
     });
   </script>
-  <script src="{% static 'js/global-search.js' %}?v=130"></script>
+  <script src="{% static 'js/global-search.js' %}?v=134"></script>
   {% include 'partials/htmx-config.html' %}
   <script>
     document.addEventListener('DOMContentLoaded', function() {

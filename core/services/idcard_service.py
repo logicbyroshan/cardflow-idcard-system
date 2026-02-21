@@ -141,6 +141,7 @@ class IDCardService(BaseService):
             for idx, field in enumerate(fields):
                 field_name = field.get('name', '').strip().upper()
                 field_type = field.get('type', 'text')
+                field_mandatory = bool(field.get('mandatory', False))
                 
                 if not field_name:
                     return ServiceResult(
@@ -154,7 +155,8 @@ class IDCardService(BaseService):
                 validated_fields.append({
                     'name': field_name,
                     'type': field_type,
-                    'order': idx
+                    'order': idx,
+                    'mandatory': field_mandatory
                 })
             
             table = IDCardTable.objects.create(
@@ -207,6 +209,7 @@ class IDCardService(BaseService):
             for idx, field in enumerate(fields):
                 field_name = field.get('name', '').strip().upper()
                 field_type = field.get('type', 'text')
+                field_mandatory = bool(field.get('mandatory', False))
                 
                 if not field_name:
                     return ServiceResult(
@@ -220,7 +223,8 @@ class IDCardService(BaseService):
                 validated_fields.append({
                     'name': field_name,
                     'type': field_type,
-                    'order': idx
+                    'order': idx,
+                    'mandatory': field_mandatory
                 })
             
             table.name = name

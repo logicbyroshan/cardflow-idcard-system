@@ -462,8 +462,8 @@ def api_staff_toggle_status(request, staff_id):
             'message': result.message
         }, status=status_code)
     except Exception:
-        import logging
-        logging.getLogger(__name__).exception("Staff toggle status error")
+        import logging as _logging
+        _logging.getLogger(__name__).exception("Staff toggle status error")
         return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 
 
@@ -529,8 +529,11 @@ def api_cards_list(request, table_id):
     """
     status_filter = request.GET.get('status', '')
     search = request.GET.get('search', '')
-    page = int(request.GET.get('page', 1))
-    per_page = int(request.GET.get('per_page', 20))
+    try:
+        page = int(request.GET.get('page', 1))
+        per_page = int(request.GET.get('per_page', 20))
+    except (ValueError, TypeError):
+        page, per_page = 1, 20
     offset = (page - 1) * per_page
     
     result = ClientCardService.get_cards(
@@ -692,8 +695,8 @@ def api_upload_images(request, table_id):
             'message': result.message
         }, status=status_code)
     except Exception:
-        import logging
-        logging.getLogger(__name__).exception("Image upload error")
+        import logging as _logging
+        _logging.getLogger(__name__).exception("Image upload error")
         return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 
 

@@ -314,7 +314,7 @@ class AdminStaffCreationService:
                     'message': f'Admin staff "{full_name}" created successfully',
                     'staff': {
                         'id': staff.pk,
-                        'user_id': user.pk,
+                        'user_id': staff.user.pk,
                         'name': full_name,
                         'email': email,
                     },
@@ -677,12 +677,26 @@ from django.shortcuts import redirect
 
 def require_shop_owner(view_func):
     """Deprecated — delegates to require_super_admin from permission_service."""
+    import warnings
+    warnings.warn(
+        "require_shop_owner is deprecated. "
+        "Use 'from core.services.permission_service import require_super_admin' instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     from core.services.permission_service import require_super_admin
     return require_super_admin(view_func)
 
 
 def require_admin_staff_or_owner(view_func):
     """Deprecated — delegates to require_any_admin from permission_service."""
+    import warnings
+    warnings.warn(
+        "require_admin_staff_or_owner is deprecated. "
+        "Use 'from core.services.permission_service import require_any_admin' instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     from core.services.permission_service import require_any_admin
     return require_any_admin(view_func)
 

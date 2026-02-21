@@ -14,15 +14,15 @@
   <link href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
   
   <!-- Tailwind CSS (primary) -->
-<link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=130">
+<link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=134">
   <!-- Page-specific: ID card actions UI -->
-  <link rel="stylesheet" href="{% static 'css/idcard-actions.css' %}?v=130">
-  <link rel="stylesheet" href="{% static 'css/idcard-actions-enhanced.css' %}?v=130">
-  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=130">
+  <link rel="stylesheet" href="{% static 'css/idcard-actions.css' %}?v=134">
+  <link rel="stylesheet" href="{% static 'css/idcard-actions-enhanced.css' %}?v=134">
+  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=134">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   
   <!-- Alpine.js State Module (MUST load before Alpine) -->
-  <script src="{% static 'js/alpine-state.js' %}?v=130"></script>
+  <script src="{% static 'js/alpine-state.js' %}?v=134"></script>
   <!-- Alpine.js - Lightweight reactive UI framework -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
   
@@ -221,7 +221,7 @@
     var CLIENT_READONLY_STATUSES = ['approved', 'download', 'reprint'];
   </script>
 </head>
-<body x-data="layoutState()">
+<body x-data="layoutState()" x-init="init()">
   <!-- Sidebar -->
   {% include 'partials/sidebar.html' %}
 
@@ -258,24 +258,24 @@
   {% include 'partials/idcard/modals.html' %}
 
   <!-- Core Modules (Load Order: api → toast → modal → utils → init) -->
-  <script src="{% static 'js/core/api.js' %}?v=130"></script>
-  <script src="{% static 'js/core/toast.js' %}?v=130"></script>
-  <script src="{% static 'js/core/modal.js' %}?v=130"></script>
-  <script src="{% static 'js/core/utils.js' %}?v=130"></script>
-  <script src="{% static 'js/init.js' %}?v=130"></script>
+  <script src="{% static 'js/core/api.js' %}?v=134"></script>
+  <script src="{% static 'js/core/toast.js' %}?v=134"></script>
+  <script src="{% static 'js/core/modal.js' %}?v=134"></script>
+  <script src="{% static 'js/core/utils.js' %}?v=134"></script>
+  <script src="{% static 'js/init.js' %}?v=134"></script>
   
   <!-- IDCard Actions Modules - Loaded in order -->
-  <script src="{% static 'js/idcard-actions-core.js' %}?v=130"></script>
-  <script src="{% static 'js/idcard-actions-table.js' %}?v=130"></script>
-  <script src="{% static 'js/idcard-actions-search.js' %}?v=130"></script>
-  <script src="{% static 'js/idcard-actions-upload.js' %}?v=130"></script>
-  <script src="{% static 'js/idcard-actions-download.js' %}?v=130"></script>
-  <script src="{% static 'js/idcard-actions-modal.js' %}?v=130"></script>
-  <script src="{% static 'js/image-cropper.js' %}?v=130"></script>
-  <script src="{% static 'js/idcard-actions-api.js' %}?v=130"></script>
-  <script src="{% static 'js/idcard-actions-edit.js' %}?v=130"></script>
-  <script src="{% static 'js/idcard-actions.js' %}?v=130"></script>
-  <script src="{% static 'js/global-search.js' %}?v=130"></script>
+  <script src="{% static 'js/idcard-actions-core.js' %}?v=134"></script>
+  <script src="{% static 'js/idcard-actions-table.js' %}?v=134"></script>
+  <script src="{% static 'js/idcard-actions-search.js' %}?v=134"></script>
+  <script src="{% static 'js/idcard-actions-upload.js' %}?v=134"></script>
+  <script src="{% static 'js/idcard-actions-download.js' %}?v=134"></script>
+  <script src="{% static 'js/idcard-actions-modal.js' %}?v=134"></script>
+  <script src="{% static 'js/image-cropper.js' %}?v=134"></script>
+  <script src="{% static 'js/idcard-actions-api.js' %}?v=134"></script>
+  <script src="{% static 'js/idcard-actions-edit.js' %}?v=134"></script>
+  <script src="{% static 'js/idcard-actions.js' %}?v=134"></script>
+  <script src="{% static 'js/global-search.js' %}?v=134"></script>
   {% include 'partials/htmx-config.html' %}
   <script>
     document.addEventListener('DOMContentLoaded', function() {

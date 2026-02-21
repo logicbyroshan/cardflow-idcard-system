@@ -25,6 +25,16 @@ from .models import (
 )
 
 # ==========================================
+# DISPLAY LIMITS
+# ==========================================
+HOME_FEATURES_LIMIT = 6
+HOME_RECENT_PORTFOLIO_LIMIT = 8
+HOME_TESTIMONIALS_LIMIT = 5
+CATEGORY_IMAGES_LIMIT = 10
+REELS_INITIAL_LIMIT = 10
+BUSINESS_CACHE_TTL = 300  # 5 minutes
+
+# ==========================================
 # HELPER FUNCTIONS
 # ==========================================
 
@@ -36,7 +46,7 @@ def get_common_context():
     business = cache.get('business_details')
     if business is None:
         business = BusinessDetails.objects.first()
-        cache.set('business_details', business, 300)  # 5 minutes
+        cache.set('business_details', business, BUSINESS_CACHE_TTL)
 
     return {
         'business': business,
@@ -63,11 +73,11 @@ def home(request):
     home_sections = cache.get('home_sections')
     if home_sections is None:
         home_sections = {
-            'features': list(Feature.objects.filter(is_active=True).order_by('order')[:6]),
+            'features': list(Feature.objects.filter(is_active=True).order_by('order')[:HOME_FEATURES_LIMIT]),
             'trusted_clients': list(TrustedClient.objects.filter(is_active=True).order_by('order')),
             'featured_portfolio': list(PortfolioItem.objects.filter(is_active=True, is_featured=True).order_by('order')),
-            'recent_portfolio': list(PortfolioItem.objects.filter(is_active=True).order_by('-created_at')[:8]),
-            'testimonials': list(Testimonial.objects.filter(is_active=True).order_by('-review_date')[:5]),
+            'recent_portfolio': list(PortfolioItem.objects.filter(is_active=True).order_by('-created_at')[:HOME_RECENT_PORTFOLIO_LIMIT]),
+            'testimonials': list(Testimonial.objects.filter(is_active=True).order_by('-review_date')[:HOME_TESTIMONIALS_LIMIT]),
         }
         cache.set('home_sections', home_sections, 60)
     context.update(home_sections)
@@ -98,7 +108,7 @@ def our_work(request):
     # Build category images for bento card sliding effect (multiple images per category)
     category_images = {}
     for cat in categories:
-        cat_items = items.filter(category=cat, image__isnull=False).exclude(image='')[:10]
+        cat_items = items.filter(category=cat, image__isnull=False).exclude(image='')[:CATEGORY_IMAGES_LIMIT]
         images = [item.image.url for item in cat_items if item.image]
         category_images[str(cat.id)] = images if images else []
     
@@ -106,7 +116,7 @@ def our_work(request):
     portfolio_reels = items.filter(item_type='reel')
     
     # Get first 10 active reels for initial load (dedicated Reel model)
-    reels = Reel.objects.filter(is_active=True).order_by('order')[:10]
+    reels = Reel.objects.filter(is_active=True).order_by('order')[:REELS_INITIAL_LIMIT]
     total_reels = Reel.objects.filter(is_active=True).count()
     
     context.update({
@@ -225,7 +235,7 @@ def submit_testimonial(request):
         )
         return JsonResponse({'success': True, 'message': 'Review submitted! It will appear once approved.'})
     except Exception as e:
-        logger.error(f"Testimonial submission failed: {e}")
+        logger.error("Testimonial submission failed: %s", e)
         return JsonResponse({'success': False, 'message': 'Server error. Please try again later.'}, status=500)
 
 
@@ -258,5 +268,5 @@ def submit_contact(request):
         )
         return JsonResponse({'success': True, 'message': 'Message sent successfully!'})
     except Exception as e:
-        logger.error(f"Contact form submission failed: {e}")
+        logger.error("Contact form submission failed: %s", e)
         return JsonResponse({'success': False, 'message': 'Server error. Please try again later.'}, status=500)

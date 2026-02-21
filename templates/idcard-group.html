@@ -11,18 +11,18 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- Tailwind CSS (primary) -->
-  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=130">
+  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=134">
   <!-- Page-specific: ID card group UI -->
-  <link rel="stylesheet" href="{% static 'css/idcard-group.css' %}?v=130">
-  <link rel="stylesheet" href="{% static 'css/common.css' %}?v=130">
-  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=130">
+  <link rel="stylesheet" href="{% static 'css/idcard-group.css' %}?v=134">
+  <link rel="stylesheet" href="{% static 'css/common.css' %}?v=134">
+  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=134">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <!-- Alpine.js State Module (MUST load before Alpine) -->
-  <script src="{% static 'js/alpine-state.js' %}?v=130"></script>
+  <script src="{% static 'js/alpine-state.js' %}?v=134"></script>
   <!-- Alpine.js -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
 </head>
-<body x-data="layoutState()">
+<body x-data="layoutState()" x-init="init()">
 
   {% include 'partials/sidebar.html' %}
 
@@ -59,11 +59,11 @@
       <!-- Right - Page Switch Buttons -->
       <div class="nav-right">
         <div class="page-switch-btns">
-          <a href="{% if is_client or is_client_staff %}{% url 'client:idcard_group' %}{% else %}{% url 'idcard_group' client.id %}{% endif %}" class="switch-btn active" title="ID Card Group">
+          <a href="{% if is_client or is_client_staff %}{% url 'client:idcard_group' %}{% else %}{% url 'idcard_group' client.id %}{% endif %}" class="btn btn-md btn-primary" title="ID Card Group">
             <i class="fa-solid fa-id-card"></i> <span>ID Card Group</span>
           </a>
           {% if is_super_admin or is_admin_staff or perm_idcard_setting_list %}
-          <a href="{% if is_client or is_client_staff %}{% url 'client:group_settings' %}{% else %}#{% endif %}" {% if not is_client and not is_client_staff %}id="switchToGroupSetting"{% endif %} class="switch-btn" title="Group Setting">
+          <a href="{% if is_client or is_client_staff %}{% url 'client:group_settings' %}{% else %}#{% endif %}" {% if not is_client and not is_client_staff %}id="switchToGroupSetting"{% endif %} class="btn btn-md btn-neutral" title="Group Setting">
             <i class="fa-solid fa-table-list"></i> <span>Group Setting</span>
           </a>
           {% endif %}
@@ -76,13 +76,12 @@
     <!-- Action Bar -->
     <div class="action-bar">
         
-        <!-- Filter and Search -->
-        <div class="action-left">
+        <!-- Left Section - Filter and Search -->
+        <div class="action-bar-left">
             <div class="filter-group">
                 <div class="custom-dropdown" id="filterDropdown">
-                    <button class="dropdown-toggle" id="dropdownToggle">
-                        <i class="fa-solid fa-filter"></i>
-                        <span id="selectedText">Filter</span>
+                    <button class="dropdown-toggle" id="dropdownToggle" type="button">
+                        <span id="selectedText">All</span>
                         <i class="fa-solid fa-chevron-down"></i>
                     </button>
                     <div class="dropdown-options" id="dropdownOptions">
@@ -94,8 +93,8 @@
                 </div>
             </div>
             <div class="search-box">
-                <i class="fa-solid fa-search search-icon"></i>
-                <input type="text" class="search-input" id="searchInput" placeholder="Search..." autocomplete="off">
+                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                <input type="text" class="search-input" id="searchInput" placeholder="Search All..." autocomplete="off">
                 <button class="search-clear-btn" id="searchClearBtn" type="button" title="Clear search">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
@@ -189,10 +188,10 @@
                 {% empty %}
                 <tr>
                     <td colspan="3" class="text-center p-4">
-                        <div class="no-groups">
-                            <i class="fa-solid fa-table-list"></i>
-                            <h3>No Tables Found</h3>
-                            <p>This client has no ID card tables yet. Go to Group Settings to create tables.</p>
+                        <div class="no-groups" style="padding:40px 20px;text-align:center;color:#6b7280;">
+                            <i class="fa-solid fa-table-list" style="font-size:40px;color:#d1d5db;margin-bottom:12px;display:block;"></i>
+                            <h3 style="font-size:16px;font-weight:600;color:#374151;margin:0 0 6px;">No Tables Found</h3>
+                            <p style="font-size:13px;color:#9ca3af;margin:0 0 12px;">This client has no ID card tables yet. Go to Group Settings to create tables.</p>
                             <a href="{% if is_client or is_client_staff %}{% url 'client:group_settings' %}{% else %}{% url 'group_settings' client.id %}{% endif %}" class="btn btn-primary empty-state-action mt-2">
                                 <i class="fa-solid fa-gear"></i> Go to Group Settings
                             </a>
@@ -323,11 +322,11 @@
   </div>
 
   <!-- Core Modules (Load Order: api → toast → modal → utils → init) -->
-  <script src="{% static 'js/core/api.js' %}?v=130"></script>
-  <script src="{% static 'js/core/toast.js' %}?v=130"></script>
-  <script src="{% static 'js/core/modal.js' %}?v=130"></script>
-  <script src="{% static 'js/core/utils.js' %}?v=130"></script>
-  <script src="{% static 'js/init.js' %}?v=130"></script>
+  <script src="{% static 'js/core/api.js' %}?v=134"></script>
+  <script src="{% static 'js/core/toast.js' %}?v=134"></script>
+  <script src="{% static 'js/core/modal.js' %}?v=134"></script>
+  <script src="{% static 'js/core/utils.js' %}?v=134"></script>
+  <script src="{% static 'js/init.js' %}?v=134"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       const clientId = {{ client.id }};
@@ -834,7 +833,7 @@
       });
     });
   </script>
-  <script src="{% static 'js/global-search.js' %}?v=130"></script>
+  <script src="{% static 'js/global-search.js' %}?v=134"></script>
   {% include 'partials/htmx-config.html' %}
 </body>
 </html>

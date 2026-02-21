@@ -11,17 +11,17 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- Tailwind CSS (primary) -->
-  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=130">
+  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=134">
   <!-- Page-specific: dashboard cards, stats, activity -->
-  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=130">
-  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=130">
+  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=134">
+  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=134">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <!-- Alpine.js State Module (MUST load before Alpine) -->
-  <script src="{% static 'js/alpine-state.js' %}?v=130"></script>
+  <script src="{% static 'js/alpine-state.js' %}?v=134"></script>
   <!-- Alpine.js -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
 </head>
-<body x-data="layoutState()">
+<body x-data="layoutState()" x-init="init()">
 
   {% include 'partials/sidebar.html' %}
 
@@ -214,22 +214,22 @@
                 <span>Take Backup</span>
               </a>
               {% endif %}
-              {% if is_super_admin or is_admin_staff %}
-              <a href="{% url 'active_clients' %}" class="quick-action-btn">
-                <i class="fa-solid fa-id-card"></i>
-                <span>Active Clients</span>
-              </a>
-              {% endif %}
               {% if is_super_admin %}
               <a href="{% url 'settings' %}" class="quick-action-btn">
                 <i class="fa-solid fa-gear"></i>
-                <span>System Settings</span>
+                <span>User Settings</span>
               </a>
               {% endif %}
-              {% if is_super_admin or is_admin_staff %}
-              <a href="{% url 'manage_clients' %}" class="quick-action-btn">
-                <i class="fa-solid fa-list-check"></i>
-                <span>Manage Clients</span>
+              {% if is_super_admin %}
+              <a href="{% url 'manage_website' %}" class="quick-action-btn">
+                <i class="fa-solid fa-globe"></i>
+                <span>Manage Website</span>
+              </a>
+              {% endif %}
+              {% if is_super_admin %}
+              <a href="{% url 'manage_panel' %}" class="quick-action-btn">
+                <i class="fa-solid fa-sliders"></i>
+                <span>Manage Panel</span>
               </a>
               {% endif %}
             </div>
@@ -243,7 +243,7 @@
           </div>
           <div class="dashboard-card-body">
             <div class="cards-overview">
-              <div class="card-overview-item">
+              <a href="{% url 'manage_clients' %}" class="card-overview-item">
                 <div class="card-overview-left">
                   <div class="card-overview-icon clients">
                     <i class="fa-solid fa-building"></i>
@@ -251,8 +251,8 @@
                   <span class="card-overview-label">Total Clients</span>
                 </div>
                 <span class="card-overview-value">{{ total_clients|default:0 }}</span>
-              </div>
-              <div class="card-overview-item">
+              </a>
+              <a href="{% url 'active_clients' %}" class="card-overview-item">
                 <div class="card-overview-left">
                   <div class="card-overview-icon active-clients">
                     <i class="fa-solid fa-user-check"></i>
@@ -260,8 +260,8 @@
                   <span class="card-overview-label">Active Clients</span>
                 </div>
                 <span class="card-overview-value">{{ active_clients|default:0 }}</span>
-              </div>
-              <div class="card-overview-item">
+              </a>
+              <a href="{% url 'manage_staff' %}" class="card-overview-item">
                 <div class="card-overview-left">
                   <div class="card-overview-icon staff">
                     <i class="fa-solid fa-user-tie"></i>
@@ -269,8 +269,8 @@
                   <span class="card-overview-label">Total Staff</span>
                 </div>
                 <span class="card-overview-value">{{ total_staff|default:0 }}</span>
-              </div>
-              <div class="card-overview-item">
+              </a>
+              <a href="{% url 'manage_staff' %}" class="card-overview-item">
                 <div class="card-overview-left">
                   <div class="card-overview-icon active-staff">
                     <i class="fa-solid fa-user-shield"></i>
@@ -278,8 +278,8 @@
                   <span class="card-overview-label">Active Staff</span>
                 </div>
                 <span class="card-overview-value">{{ active_staff|default:0 }}</span>
-              </div>
-              <div class="card-overview-item">
+              </a>
+              <a href="{% url 'manage_clients' %}" class="card-overview-item">
                 <div class="card-overview-left">
                   <div class="card-overview-icon staff">
                     <i class="fa-solid fa-user-gear"></i>
@@ -287,8 +287,8 @@
                   <span class="card-overview-label">Client Staff</span>
                 </div>
                 <span class="card-overview-value">{{ client_staff_count|default:0 }}</span>
-              </div>
-              <div class="card-overview-item">
+              </a>
+              <a href="{% url 'manage_clients' %}" class="card-overview-item">
                 <div class="card-overview-left">
                   <div class="card-overview-icon active-clients">
                     <i class="fa-solid fa-user-check"></i>
@@ -296,7 +296,7 @@
                   <span class="card-overview-label">Active Client Staff</span>
                 </div>
                 <span class="card-overview-value">{{ active_client_staff_count|default:0 }}</span>
-              </div>
+              </a>
             </div>
           </div>
         </div>
@@ -329,9 +329,9 @@
                   <i class="fa-solid fa-trash"></i>
                   <span>Delete All Cards</span>
                 </button>
-                <button class="bulk-action-btn" data-action="reprint" disabled>
-                  <i class="fa-solid fa-print"></i>
-                  <span>Reprint Cards</span>
+                <button class="bulk-action-btn" data-action="reupload" disabled>
+                  <i class="fa-solid fa-images"></i>
+                  <span>Reupload Images</span>
                 </button>
                 <button class="bulk-action-btn" data-action="upgrade" disabled>
                   <i class="fa-solid fa-arrow-up"></i>
@@ -485,13 +485,13 @@
   </div>
 
   <!-- Core Modules (Load Order: api → toast → modal → utils → init) -->
-  <script src="{% static 'js/core/api.js' %}?v=130"></script>
-  <script src="{% static 'js/core/toast.js' %}?v=130"></script>
-  <script src="{% static 'js/core/modal.js' %}?v=130"></script>
-  <script src="{% static 'js/core/utils.js' %}?v=130"></script>
-  <script src="{% static 'js/init.js' %}?v=130"></script>
-  <script src="{% static 'js/dashboard.js' %}?v=130"></script>
-  <script src="{% static 'js/global-search.js' %}?v=130"></script>
+  <script src="{% static 'js/core/api.js' %}?v=134"></script>
+  <script src="{% static 'js/core/toast.js' %}?v=134"></script>
+  <script src="{% static 'js/core/modal.js' %}?v=134"></script>
+  <script src="{% static 'js/core/utils.js' %}?v=134"></script>
+  <script src="{% static 'js/init.js' %}?v=134"></script>
+  <script src="{% static 'js/dashboard.js' %}?v=134"></script>
+  <script src="{% static 'js/global-search.js' %}?v=134"></script>
   {% include 'partials/htmx-config.html' %}
 </body>
 </html>

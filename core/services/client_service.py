@@ -121,10 +121,15 @@ class ClientService(BaseService):
             name = data.get('name', '')
             name_parts = name.split() if name else []
             
-            # Password from phone number
-            phone = data.get('phone', '').strip()
-            phone_clean = ''.join(filter(str.isdigit, phone))
-            password = phone_clean if phone_clean else secrets.token_urlsafe(12)
+            # Generate a secure random password (never use phone as password)
+            password = data.get('password', '').strip() or secrets.token_urlsafe(12)
+            
+            # Validate password against Django AUTH_PASSWORD_VALIDATORS
+            from django.contrib.auth.password_validation import validate_password
+            try:
+                validate_password(password)
+            except Exception as pw_err:
+                return ServiceResult(success=False, message=str(pw_err))
             
             with transaction.atomic():
                 # Create user
@@ -175,7 +180,9 @@ class ClientService(BaseService):
             if email_sent:
                 message += ' Welcome email sent.'
             elif email_message:
-                message += f' (Email not sent: {email_message})'
+                # Log the actual error server-side, but don't expose details to user
+                import logging
+                logging.getLogger(__name__).warning('Welcome email failed for %s: %s', email, email_message)
             
             return ServiceResult(
                 success=True,

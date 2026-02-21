@@ -50,10 +50,12 @@ def _safe_error(e, fallback='An error occurred. Please try again.'):
 # ==================== ADMIN STAFF CLIENT SCOPING ====================
 # Ensures admin_staff can only access data belonging to their assigned clients.
 
-_ACCESS_DENIED_RESPONSE = JsonResponse(
-    {'success': False, 'message': 'Access denied. You are not assigned to this client.'},
-    status=403,
-)
+def _access_denied_response():
+    """Factory: return a fresh 403 JsonResponse per request (thread-safe)."""
+    return JsonResponse(
+        {'success': False, 'message': 'Access denied. You are not assigned to this client.'},
+        status=403,
+    )
 
 def _check_client_scope_by_group(user, group_id):
     """Check user has access to the client owning this group. Returns (group, error_response).
@@ -62,7 +64,7 @@ def _check_client_scope_by_group(user, group_id):
     """
     group = get_object_or_404(IDCardGroup, id=group_id)
     if not PermissionService.can_access_client(user, group.client_id):
-        return None, _ACCESS_DENIED_RESPONSE
+        return None, _access_denied_response()
     return group, None
 
 def _check_client_scope_by_table(user, table_id):
@@ -72,7 +74,7 @@ def _check_client_scope_by_table(user, table_id):
     """
     table = get_object_or_404(IDCardTable.objects.select_related('group'), id=table_id)
     if not PermissionService.can_access_client(user, table.group.client_id):
-        return None, _ACCESS_DENIED_RESPONSE
+        return None, _access_denied_response()
     return table, None
 
 def _check_client_scope_by_card(user, card_id):
@@ -82,7 +84,7 @@ def _check_client_scope_by_card(user, card_id):
     """
     card = get_object_or_404(IDCard.objects.select_related('table__group'), id=card_id)
     if not PermissionService.can_access_client(user, card.table.group.client_id):
-        return None, _ACCESS_DENIED_RESPONSE
+        return None, _access_denied_response()
     return card, None
 
 
@@ -1021,7 +1023,18 @@ def api_idcard_bulk_upload(request, table_id):
                     'message': 'Error reading Excel file. Please check the file format and try again.'
                 }, status=400)
             
-            # Map headers to table fields using fuzzy matching
+            # Check if frontend sent a manual field mapping (from 2-step wizard)
+            frontend_mapping_str = request.POST.get('field_mapping', '')
+            frontend_mapping = {}
+            if frontend_mapping_str:
+                try:
+                    frontend_mapping = json.loads(frontend_mapping_str)
+                    if not isinstance(frontend_mapping, dict):
+                        frontend_mapping = {}
+                except (json.JSONDecodeError, TypeError):
+                    frontend_mapping = {}
+            
+            # Map headers to table fields using fuzzy matching (or frontend mapping)
             # Skip any headers that match image field names (those are for ZIP matching only)
             header_to_field = {}
             available_fields = table_fields.copy()
@@ -1030,24 +1043,46 @@ def api_idcard_bulk_upload(request, table_id):
             image_ref_columns = {}
             unmatched_image_fields = list(image_fields)  # Track which image fields still need matching
             
-            for idx, header in enumerate(headers):
-                if not header:
-                    continue
+            if frontend_mapping:
+                # Use the user-provided mapping from the wizard
+                # frontend_mapping = { tableFieldName: excelHeader, ... }
+                header_index = {h: i for i, h in enumerate(headers)}
                 
-                # Try to match this header against unmatched image fields
-                # Uses abbreviation expansion: F PHOTO -> FATHER PHOTO, M PHOTO -> MOTHER PHOTO, etc.
-                matched_img_field = BaseService.find_best_image_field_match(header, unmatched_image_fields)
-                if matched_img_field:
-                    image_ref_columns[matched_img_field] = idx
-                    unmatched_image_fields.remove(matched_img_field)
-                    continue
+                for table_field_name, excel_header in frontend_mapping.items():
+                    if table_field_name in available_fields and excel_header in header_index:
+                        idx = header_index[excel_header]
+                        header_to_field[idx] = table_field_name
+                        available_fields.remove(table_field_name)
+                        matched_field_names.append(table_field_name)
                 
-                # Not an image field - try text field matching
-                match = BaseService.find_best_field_match(header, available_fields)
-                if match:
-                    header_to_field[idx] = match
-                    available_fields.remove(match)  # Don't match same field twice
-                    matched_field_names.append(match)
+                # Still try to match image columns automatically
+                for idx, header in enumerate(headers):
+                    if not header or idx in header_to_field:
+                        continue
+                    matched_img_field = BaseService.find_best_image_field_match(header, unmatched_image_fields)
+                    if matched_img_field:
+                        image_ref_columns[matched_img_field] = idx
+                        unmatched_image_fields.remove(matched_img_field)
+            else:
+                # Fallback: auto fuzzy matching (original behavior)
+                for idx, header in enumerate(headers):
+                    if not header:
+                        continue
+                    
+                    # Try to match this header against unmatched image fields
+                    # Uses abbreviation expansion: F PHOTO -> FATHER PHOTO, M PHOTO -> MOTHER PHOTO, etc.
+                    matched_img_field = BaseService.find_best_image_field_match(header, unmatched_image_fields)
+                    if matched_img_field:
+                        image_ref_columns[matched_img_field] = idx
+                        unmatched_image_fields.remove(matched_img_field)
+                        continue
+                    
+                    # Not an image field - try text field matching
+                    match = BaseService.find_best_field_match(header, available_fields)
+                    if match:
+                        header_to_field[idx] = match
+                        available_fields.remove(match)  # Don't match same field twice
+                        matched_field_names.append(match)
             
             logger.debug("image_ref_columns = %s", image_ref_columns)
             logger.debug("header_to_field = %s", header_to_field)
@@ -1319,7 +1354,7 @@ def api_idcard_bulk_upload(request, table_id):
             content = uploaded_file.read().decode('utf-8-sig')
             reader = csv.DictReader(StringIO(content))
             
-            # Map CSV headers to table fields using fuzzy matching
+            # Map CSV headers to table fields using fuzzy matching (or frontend mapping)
             csv_headers = reader.fieldnames or []
             header_to_field = {}
             available_fields = table_fields.copy()
@@ -1328,24 +1363,41 @@ def api_idcard_bulk_upload(request, table_id):
             csv_image_ref_columns = {}
             csv_unmatched_image_fields = list(image_fields)  # Track which image fields still need matching
             
-            for header in csv_headers:
-                if not header:
-                    continue
+            if frontend_mapping:
+                # Use the user-provided mapping from the wizard
+                for table_field_name, excel_header in frontend_mapping.items():
+                    if table_field_name in available_fields and excel_header in csv_headers:
+                        header_to_field[excel_header] = table_field_name
+                        available_fields.remove(table_field_name)
+                        matched_field_names.append(table_field_name)
                 
-                # Try to match this header against unmatched image fields
-                # Uses abbreviation expansion: F PHOTO -> FATHER PHOTO, M PHOTO -> MOTHER PHOTO, etc.
-                matched_img_field = BaseService.find_best_image_field_match(header, csv_unmatched_image_fields)
-                if matched_img_field:
-                    csv_image_ref_columns[matched_img_field] = header
-                    csv_unmatched_image_fields.remove(matched_img_field)
-                    continue
-                
-                # Not an image field - try text field matching
-                match = BaseService.find_best_field_match(header.strip(), available_fields)
-                if match:
-                    header_to_field[header] = match
-                    available_fields.remove(match)
-                    matched_field_names.append(match)
+                # Still try to match image columns automatically
+                for header in csv_headers:
+                    if not header or header in header_to_field:
+                        continue
+                    matched_img_field = BaseService.find_best_image_field_match(header, csv_unmatched_image_fields)
+                    if matched_img_field:
+                        csv_image_ref_columns[matched_img_field] = header
+                        csv_unmatched_image_fields.remove(matched_img_field)
+            else:
+                for header in csv_headers:
+                    if not header:
+                        continue
+                    
+                    # Try to match this header against unmatched image fields
+                    # Uses abbreviation expansion: F PHOTO -> FATHER PHOTO, M PHOTO -> MOTHER PHOTO, etc.
+                    matched_img_field = BaseService.find_best_image_field_match(header, csv_unmatched_image_fields)
+                    if matched_img_field:
+                        csv_image_ref_columns[matched_img_field] = header
+                        csv_unmatched_image_fields.remove(matched_img_field)
+                        continue
+                    
+                    # Not an image field - try text field matching
+                    match = BaseService.find_best_field_match(header.strip(), available_fields)
+                    if match:
+                        header_to_field[header] = match
+                        available_fields.remove(match)
+                        matched_field_names.append(match)
             
             if not header_to_field:
                 return JsonResponse({

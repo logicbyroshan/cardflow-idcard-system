@@ -8,8 +8,8 @@
     <title>Login - Adarsh Admin</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=130">
-    <link rel="stylesheet" href="{% static 'css/auth.css' %}?v=130">
+    <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=134">
+    <link rel="stylesheet" href="{% static 'css/auth.css' %}?v=134">
 </head>
 <body class="auth-page font-[Inter,sans-serif] min-h-screen flex items-center justify-center p-5">
     <div class="w-full max-w-[600px] max-h-[90vh] flex flex-col">
@@ -277,6 +277,11 @@
             const toggleNewPassword = document.getElementById('toggleNewPassword');
             
             // Functions
+            function getCSRFToken() {
+                const cookie = document.cookie.split(';').find(c => c.trim().startsWith('csrftoken='));
+                return cookie ? cookie.split('=')[1] : '';
+            }
+
             function showMessage(message, type = 'error') {
                 messageBox.textContent = message;
                 messageBox.className = 'message ' + type;
@@ -338,7 +343,7 @@
                 try {
                     const response = await fetch('/panel/api/auth/check-email/', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
                         body: JSON.stringify({ email, role: selectedRole })
                     });
                     
@@ -387,7 +392,7 @@
                 try {
                     const response = await fetch('/panel/api/auth/login/', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
                         body: JSON.stringify({ email, password, role: selectedRole })
                     });
                     
@@ -424,7 +429,7 @@
                 try {
                     const response = await fetch('/panel/api/auth/forgot-password/', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
                         body: JSON.stringify({ email, role: selectedRole })
                     });
                     
@@ -496,7 +501,7 @@
                 try {
                     const response = await fetch('/panel/api/auth/forgot-password/', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
                         body: JSON.stringify({ email, role: selectedRole })
                     });
                     
@@ -527,7 +532,7 @@
                 try {
                     const response = await fetch('/panel/api/auth/verify-otp/', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
                         body: JSON.stringify({ email, otp })
                     });
                     
@@ -584,7 +589,7 @@
                 try {
                     const response = await fetch('/panel/api/auth/reset-password/', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
                         body: JSON.stringify({
                             email,
                             reset_token: resetToken,

@@ -36,6 +36,13 @@ from ..services.permission_service import (
 
 logger = logging.getLogger(__name__)
 
+# ============================================================================
+# DISPLAY LIMITS
+# ============================================================================
+ACTIVITY_FEED_MAX = 8
+GLOBAL_SEARCH_DB_LIMIT = 100
+GLOBAL_SEARCH_RESULT_LIMIT = 50
+
 def get_user_role(user):
     """Helper function to get user role display name"""
     return user.get_role_display()
@@ -100,8 +107,15 @@ def enrich_cards(cards, table_fields, start_index=0):
 def super_admin_required(view_func):
     """
     Deprecated — delegates to require_super_admin from permission_service.
-    Kept for backward-compatible imports.
+    Kept for backward-compatible imports; will be removed in a future version.
     """
+    import warnings
+    warnings.warn(
+        "super_admin_required is deprecated. "
+        "Use 'from core.services.permission_service import require_super_admin' instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return _require_super_admin(view_func)
 
 
@@ -186,7 +200,7 @@ def dashboard(request):
         'client_staff_count': cs_stats['total'],
         'active_client_staff_count': cs_stats['active'],
         # Role-based activity filtering - admin_staff gets filtered by assigned clients
-        'recent_activities': ActivityService.get_recent(limit=8, user=request.user),
+        'recent_activities': ActivityService.get_recent(limit=ACTIVITY_FEED_MAX, user=request.user),
     })
     return render(request, 'index.html', context)
 
@@ -279,8 +293,8 @@ def api_recent_client_updates(request):
 def api_recent_activity(request):
     """API endpoint for the Recent Activity feed on the dashboard."""
     try:
-        limit = int(request.GET.get('limit', 8))
-        limit = min(limit, 8)  # Cap at 8 for 24hr feed
+        limit = int(request.GET.get('limit', ACTIVITY_FEED_MAX))
+        limit = min(limit, ACTIVITY_FEED_MAX)  # Cap at max for 24hr feed
         # Role-based activity filtering
         activities = ActivityService.get_recent(limit=limit, user=request.user)
         return JsonResponse({'success': True, 'activities': activities})
@@ -334,7 +348,7 @@ def api_global_search(request):
             else:
                 base_cards = base_cards.none()
         
-        cards = base_cards[:100]  # Limit at database level for speed
+        cards = base_cards[:GLOBAL_SEARCH_DB_LIMIT]  # Limit at database level for speed
         
         for card in cards:
             field_data = card.field_data or {}
@@ -411,8 +425,8 @@ def api_global_search(request):
                 'photo': photo_url,
             })
             
-            # Stop after 50 results for speed
-            if len(results) >= 50:
+            # Stop after limit for speed
+            if len(results) >= GLOBAL_SEARCH_RESULT_LIMIT:
                 break
         
         # Sort by title

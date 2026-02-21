@@ -14,7 +14,7 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    padding: 6px 10px;
+    padding: 10px 12px;
     white-space: nowrap;
     text-align: left;
     border: 1px solid rgba(255,255,255,0.15);
@@ -22,7 +22,7 @@
 
 .idcard-table td {
     padding: 12px 12px;
-    font-size: 13px;
+    font-size: 14px;
     color: #374151;
     border: 1px solid #e5e7eb;
     vertical-align: middle;
@@ -248,7 +248,7 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    padding: 3px 8px;
+    padding: 3px 4px;
     border: none;
     border-radius: 6px;
     font-size: 12px;
@@ -257,7 +257,7 @@
     transition: all 0.15s ease;
     white-space: nowrap;
     justify-content: center;
-    min-width: 120px;
+    min-width: 0;
 }
 
 /* Hide icons in bulk buttons */

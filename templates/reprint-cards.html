@@ -14,19 +14,19 @@
   <link href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
   
   <!-- Tailwind CSS (primary) -->
-  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=130">
+  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=134">
   <!-- Page-specific: reprint cards + ID card actions UI -->
-  <link rel="stylesheet" href="{% static 'css/idcard-actions.css' %}?v=130">
-  <link rel="stylesheet" href="{% static 'css/idcard-actions-enhanced.css' %}?v=130">
-  <link rel="stylesheet" href="{% static 'css/reprint-cards.css' %}?v=130">
-  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=130">
+  <link rel="stylesheet" href="{% static 'css/idcard-actions.css' %}?v=134">
+  <link rel="stylesheet" href="{% static 'css/idcard-actions-enhanced.css' %}?v=134">
+  <link rel="stylesheet" href="{% static 'css/reprint-cards.css' %}?v=134">
+  <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=134">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <!-- Cropper.js for image crop before upload -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js" defer></script>
   
   <!-- Alpine.js State Module (MUST load before Alpine) -->
-  <script src="{% static 'js/alpine-state.js' %}?v=130"></script>
+  <script src="{% static 'js/alpine-state.js' %}?v=134"></script>
   <!-- Alpine.js -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
   
@@ -40,7 +40,7 @@
     var CURRENT_STATUS = 'pending';
   </script>
 </head>
-<body x-data="layoutState()">
+<body x-data="layoutState()" x-init="init()">
   <!-- Sidebar -->
   {% include 'partials/sidebar.html' %}
 
@@ -62,18 +62,18 @@
   {% include 'partials/components/toast.html' %}
 
   <!-- Core Modules (Load Order: api → toast → modal → utils → init) -->
-  <script src="{% static 'js/core/api.js' %}?v=130"></script>
-  <script src="{% static 'js/core/toast.js' %}?v=130"></script>
-  <script src="{% static 'js/core/modal.js' %}?v=130"></script>
-  <script src="{% static 'js/core/utils.js' %}?v=130"></script>
-  <script src="{% static 'js/init.js' %}?v=130"></script>
-  <script src="{% static 'js/global-search.js' %}?v=130"></script>
+  <script src="{% static 'js/core/api.js' %}?v=134"></script>
+  <script src="{% static 'js/core/toast.js' %}?v=134"></script>
+  <script src="{% static 'js/core/modal.js' %}?v=134"></script>
+  <script src="{% static 'js/core/utils.js' %}?v=134"></script>
+  <script src="{% static 'js/init.js' %}?v=134"></script>
+  <script src="{% static 'js/global-search.js' %}?v=134"></script>
 
   <!-- Reprint Page Script -->
-  <script src="{% static 'js/idcard-actions-upload.js' %}?v=130"></script>
-  <script src="{% static 'js/idcard-actions-modal.js' %}?v=130"></script>
-  <script src="{% static 'js/image-cropper.js' %}?v=130"></script>
-  <script src="{% static 'js/reprint-cards.js' %}?v=130"></script>
+  <script src="{% static 'js/idcard-actions-upload.js' %}?v=134"></script>
+  <script src="{% static 'js/idcard-actions-modal.js' %}?v=134"></script>
+  <script src="{% static 'js/image-cropper.js' %}?v=134"></script>
+  <script src="{% static 'js/reprint-cards.js' %}?v=134"></script>
   <script>
     // Initialize the modal module for the reprint page
     if (typeof initModalModule === 'function') initModalModule();

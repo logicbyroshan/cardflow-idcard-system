@@ -235,6 +235,7 @@ class TestimonialService:
                text='', tag='', rating=5, is_active=False, reviewer_avatar=None):
         """Create a Testimonial. Returns the created instance."""
         _validate_image_upload(reviewer_avatar, 'reviewer avatar')
+        rating_val = max(1, min(5, int(rating)))  # Clamp rating to 1–5
         with transaction.atomic():
             review = Testimonial(
                 reviewer_name=reviewer_name,
@@ -242,7 +243,7 @@ class TestimonialService:
                 reviewer_school=reviewer_school,
                 text=text,
                 tag=tag,
-                rating=int(rating),
+                rating=rating_val,
                 is_active=is_active,
             )
             if reviewer_avatar:
@@ -285,7 +286,7 @@ class TestimonialService:
                 if value is not None:
                     setattr(review, field, value)
             if rating is not None:
-                review.rating = int(rating)
+                review.rating = max(1, min(5, int(rating)))  # Clamp to 1–5
             if is_active is not None:
                 review.is_active = _parse_bool(is_active)
             if reviewer_avatar:

@@ -28,7 +28,6 @@ urlpatterns = [
     path('panel/', include('core.urls')),
     path('panel/auth/', include('accounts.urls')),
     path('panel/client/', include('client.urls')),
-    path('panel/client-staff/', include('client_staff.urls')),
     path('panel/exports/', include('exports.urls')),
     path('panel/images/', include('mediafiles.urls')),
     path('panel/staff/', include('staff.urls')),
@@ -41,7 +40,6 @@ urlpatterns = [
 ]
 
 if settings.DEBUG:
-    import re
     urlpatterns += [
         path('media/<path:path>', _protected_media_serve, {'document_root': settings.MEDIA_ROOT}),
     ]

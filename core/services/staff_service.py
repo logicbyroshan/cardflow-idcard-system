@@ -124,10 +124,16 @@ class StaffService(BaseService):
             name = data.get('name', '')
             name_parts = name.split() if name else []
             
-            # Password from phone number
+            # Generate a secure random password (never use phone as password)
             phone = data.get('phone', '').strip()
-            phone_clean = ''.join(filter(str.isdigit, phone))
-            password = phone_clean if phone_clean else secrets.token_urlsafe(12)
+            password = data.get('password', '').strip() or secrets.token_urlsafe(12)
+            
+            # Validate password against Django AUTH_PASSWORD_VALIDATORS
+            from django.contrib.auth.password_validation import validate_password
+            try:
+                validate_password(password)
+            except Exception as pw_err:
+                return ServiceResult(success=False, message=str(pw_err))
             
             # Determine role
             role = 'admin_staff' if staff_type == 'admin_staff' else 'client_staff'

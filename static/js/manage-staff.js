@@ -371,19 +371,8 @@ document.addEventListener('DOMContentLoaded', function() {
             enableFormInputs(true);
             initClientAssignment([]);
             
-            // Set default-ON permissions for new staff
-            const defaultOnPerms = [
-                'perm-idcard-client-list',
-                'perm-idcard-pending-list', 'perm-idcard-verified-list',
-                'perm-idcard-pool-list', 'perm-idcard-approved-list',
-                'perm-idcard-download-list',
-                'perm-idcard-group-create', 'perm-idcard-group-delete',
-                'perm-idcard-add', 'perm-idcard-edit', 'perm-idcard-delete',
-                'perm-idcard-info', 'perm-idcard-approve', 'perm-idcard-verify',
-                'perm-idcard-bulk-upload', 'perm-idcard-bulk-download',
-                'perm-reupload-idcard-image', 'perm-idcard-retrieve'
-            ];
-            defaultOnPerms.forEach(field => {
+            // Set default-ON permissions for new staff (all permissions enabled)
+            permissionFields.forEach(field => {
                 const el = document.getElementById(field);
                 if (el) el.checked = true;
             });

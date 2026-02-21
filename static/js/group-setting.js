@@ -452,7 +452,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const payload = {
             name: name,
-            fields: currentFields.map((f, idx) => ({ name: f.name, type: f.type, order: idx }))
+            fields: currentFields.map((f, idx) => ({ name: f.name, type: f.type, order: idx, mandatory: f.mandatory || false }))
         };
 
         try {
@@ -644,7 +644,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
 
-            currentFields.push({ name: name, type: finalType, order: currentFields.length, mandatory: isMandatory });
+            // Auto-set mandatory for image-type fields
+            let finalMandatory = isMandatory;
+            if (imageFieldTypes.includes(finalType)) {
+                finalMandatory = true;
+            }
+
+            currentFields.push({ name: name, type: finalType, order: currentFields.length, mandatory: finalMandatory });
             renderFieldList();
             newFieldName.value = '';
             if (newFieldMandatory) newFieldMandatory.checked = false;
@@ -750,6 +756,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (e.target.classList.contains('field-type-select')) {
                 const idx = parseInt(e.target.dataset.idx);
                 currentFields[idx].type = e.target.value;
+                // Auto-set mandatory for image-type fields
+                if (imageFieldTypes.includes(e.target.value)) {
+                    currentFields[idx].mandatory = true;
+                    renderFieldList();
+                }
             }
             // Handle mandatory checkbox changes
             if (e.target.classList.contains('field-mandatory-checkbox')) {

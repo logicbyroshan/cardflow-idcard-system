@@ -66,6 +66,7 @@ class UserProfileService:
     def change_password(user, current_password, new_password):
         """
         Change user's password after validating current password.
+        Uses Django AUTH_PASSWORD_VALIDATORS for strength checks.
         Returns (success: bool, message: str).
         """
         if not current_password or not new_password:
@@ -74,8 +75,12 @@ class UserProfileService:
         if not user.check_password(current_password):
             return False, 'Current password is incorrect'
 
-        if len(new_password) < 6:
-            return False, 'Password must be at least 6 characters'
+        # Use Django's password validators for consistent strength checks
+        from django.contrib.auth.password_validation import validate_password
+        try:
+            validate_password(new_password, user=user)
+        except Exception as e:
+            return False, str(e)
 
         user.set_password(new_password)
         user.save()

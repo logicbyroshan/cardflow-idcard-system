@@ -16,7 +16,7 @@ import logging
 from django.core.exceptions import ValidationError
 from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_GET
 
 from core.services.permission_service import (
     PermissionService,
@@ -274,6 +274,7 @@ def api_business_toggle_status(request):
 # API — TRUSTED CLIENTS
 # =============================================================================
 
+@require_GET
 @website_admin_required
 def api_client_list(request):
     """List trusted clients."""
@@ -304,10 +305,14 @@ def api_client_create(request):
     return JsonResponse({'success': True, 'message': 'Client created', 'id': client.id})
 
 
+@require_GET
 @website_admin_required
 def api_client_get(request, pk):
     """Get a single trusted client."""
-    c = TrustedClientService.get(pk)
+    try:
+        c = TrustedClientService.get(pk)
+    except Exception:
+        return JsonResponse({'success': False, 'message': 'Client not found'}, status=404)
     return JsonResponse({
         'success': True,
         'client': {
@@ -365,6 +370,7 @@ def api_client_toggle(request, pk):
 # API — TESTIMONIALS / REVIEWS
 # =============================================================================
 
+@require_GET
 @website_admin_required
 def api_review_list(request):
     """List testimonials."""
@@ -404,10 +410,14 @@ def api_review_create(request):
     return JsonResponse({'success': True, 'message': 'Review created', 'id': review.id})
 
 
+@require_GET
 @website_admin_required
 def api_review_get(request, pk):
     """Get a single review."""
-    r = TestimonialService.get(pk)
+    try:
+        r = TestimonialService.get(pk)
+    except Exception:
+        return JsonResponse({'success': False, 'message': 'Review not found'}, status=404)
     return JsonResponse({
         'success': True,
         'review': {
@@ -473,6 +483,7 @@ def api_review_toggle(request, pk):
 # API — PORTFOLIO / OUR WORKS
 # =============================================================================
 
+@require_GET
 @website_admin_required
 def api_portfolio_list(request):
     """List portfolio items."""
@@ -514,10 +525,14 @@ def api_portfolio_create(request):
     return JsonResponse({'success': True, 'message': 'Portfolio item created', 'id': item.id})
 
 
+@require_GET
 @website_admin_required
 def api_portfolio_get(request, pk):
     """Get a single portfolio item."""
-    p = PortfolioItemService.get(pk)
+    try:
+        p = PortfolioItemService.get(pk)
+    except Exception:
+        return JsonResponse({'success': False, 'message': 'Portfolio item not found'}, status=404)
     return JsonResponse({
         'success': True,
         'item': {
@@ -585,6 +600,7 @@ def api_portfolio_toggle(request, pk):
 # API — PORTFOLIO CATEGORIES
 # =============================================================================
 
+@require_GET
 @website_admin_required
 def api_portfolio_category_list(request):
     """List portfolio categories."""
@@ -660,6 +676,7 @@ def api_portfolio_category_delete(request, pk):
 # API — HERO IMAGES
 # =============================================================================
 
+@require_GET
 @website_edit_required
 def api_hero_image_list(request):
     """GET: return all hero images ordered by position."""

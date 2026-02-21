@@ -59,7 +59,6 @@ INSTALLED_APPS = [
     'core',
     'accounts',
     'client',
-    'client_staff',
     'exports',
     'mediafiles',
     'staff',
@@ -285,6 +284,16 @@ CACHES = {
         },
     }
 }
+
+# Warn operators if production is using per-process LocMemCache
+if not DEBUG and CACHES['default']['BACKEND'].endswith('LocMemCache'):
+    import warnings
+    warnings.warn(
+        'LocMemCache is per-process: rate limiting and OTP storage are NOT shared '
+        'between Gunicorn workers. Switch to Redis or Memcached for production.',
+        UserWarning,
+        stacklevel=1,
+    )
 
 
 # =============================================================================

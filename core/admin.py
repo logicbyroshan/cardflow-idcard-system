@@ -1,6 +1,22 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
+from django.contrib.auth.models import Permission
 from .models import User, Client, Staff, IDCardGroup, IDCard, IDCardTable, WebsiteSettings, SystemSettings, ActivityLog
+
+
+# Register Permission model for admin visibility (moved from deprecated client_staff app)
+class PermissionAdmin(admin.ModelAdmin):
+    """Admin interface for Django Permissions."""
+    list_display = ('codename', 'name', 'content_type')
+    list_filter = ('content_type',)
+    search_fields = ('codename', 'name')
+    ordering = ('content_type', 'codename')
+
+try:
+    admin.site.unregister(Permission)
+except admin.sites.NotRegistered:
+    pass
+admin.site.register(Permission, PermissionAdmin)
 
 
 @admin.register(User)
@@ -35,6 +51,7 @@ class IDCardGroupAdmin(admin.ModelAdmin):
     list_display = ('name', 'client', 'is_active', 'created_at')
     list_filter = ('is_active', 'client')
     search_fields = ('name', 'client__name')
+    list_select_related = ('client',)
 
 
 @admin.register(IDCardTable)
@@ -50,6 +67,7 @@ class IDCardAdmin(admin.ModelAdmin):
     list_filter = ('status', 'table__group__client')
     search_fields = ('field_data',)
     raw_id_fields = ('table',)
+    list_select_related = ('table',)
 
 
 @admin.register(WebsiteSettings)

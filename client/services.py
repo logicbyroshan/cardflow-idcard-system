@@ -74,7 +74,11 @@ class ClientAccessService:
     
     @staticmethod
     def can_access_card(user, card: IDCard) -> bool:
-        """Check if user can access a specific card"""
+        """Check if user can access a specific card.
+        
+        NOTE: ``card`` should be fetched with
+        ``.select_related('table__group')`` to avoid extra queries.
+        """
         client = ClientAccessService.get_client_for_user(user)
         if client is None:
             return False
@@ -421,16 +425,17 @@ class ClientStaffService(BaseService):
                 first_name = name_parts[0] if name_parts else ''
                 last_name = ' '.join(name_parts[1:]) if len(name_parts) > 1 else ''
             
-            # Password from data or phone or secure random fallback
-            password = data.get('password', '').strip()
+            # Generate a secure random password (never use phone as password)
+            import secrets as _secrets
+            password = data.get('password', '').strip() or _secrets.token_urlsafe(12)
             phone = data.get('phone', '').strip()
-            if not password:
-                phone_clean = ''.join(filter(str.isdigit, phone))
-                if phone_clean:
-                    password = phone_clean
-                else:
-                    import secrets
-                    password = secrets.token_urlsafe(12)
+            
+            # Validate password against Django AUTH_PASSWORD_VALIDATORS
+            from django.contrib.auth.password_validation import validate_password
+            try:
+                validate_password(password)
+            except Exception as pw_err:
+                return ServiceResult(success=False, message=str(pw_err))
             
             with transaction.atomic():
                 # Create user
@@ -476,9 +481,10 @@ class ClientStaffService(BaseService):
                     )
                     staff.assigned_groups.set(valid_groups)
             
+            display_name = f'{first_name} {last_name}'.strip() or email
             return ServiceResult(
                 success=True,
-                message=f'Staff member "{name}" created successfully!',
+                message=f'Staff member "{display_name}" created successfully!',
                 data={'staff_id': staff.id}
             )
             

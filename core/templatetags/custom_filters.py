@@ -28,11 +28,9 @@ def _sanitize_tag(match):
         return ''  # strip non-whitelisted tag entirely
     # Strip dangerous attributes (onclick=, onerror=, javascript:, etc.)
     if _BAD_ATTR_RE.search(attrs):
-        # Only keep class= and style= attributes
-        safe_attrs = re.findall(r'\b(class|style)\s*=\s*"[^"]*"', attrs, re.IGNORECASE)
-        attrs = ' ' + ' '.join(f'{k}="{v}"' for k, v in []) if not safe_attrs else ' ' + ' '.join(safe_attrs)
-        if not safe_attrs:
-            attrs = ''
+        # Only keep class="..." and style="..." attribute pairs
+        safe_attrs = re.findall(r'\b(?:class|style)\s*=\s*"[^"]*"', attrs, re.IGNORECASE)
+        attrs = (' ' + ' '.join(safe_attrs)) if safe_attrs else ''
     return f'<{slash_open}{tag_name}{attrs}{slash_close}>'
 
 

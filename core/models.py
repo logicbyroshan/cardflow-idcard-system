@@ -57,14 +57,20 @@ class User(AbstractUser):
     def save(self, *args, **kwargs):
         """
         Override save to synchronize is_superuser and role='super_admin'.
-        - If is_superuser=True, set role to 'super_admin'
-        - If role='super_admin', set is_superuser=True
+        Both directions are enforced:
+        - is_superuser=True  ↔  role='super_admin'
+        - role='super_admin'  →  is_superuser=True, is_staff=True
+        - role != 'super_admin' AND was previously super_admin  →  clear is_superuser
         """
         if self.is_superuser:
             self.role = 'super_admin'
+            self.is_staff = True
         elif self.role == 'super_admin':
             self.is_superuser = True
-            self.is_staff = True  # Superusers should have staff access
+            self.is_staff = True
+        else:
+            # Role is not super_admin — make sure is_superuser is cleared
+            self.is_superuser = False
         super().save(*args, **kwargs)
     
     class Meta:
