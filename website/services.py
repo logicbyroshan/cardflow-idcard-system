@@ -79,6 +79,27 @@ def _parse_bool(value, default=False):
     return value in (True, 'true', '1', 'on', 'True')
 
 
+def _detect_orientation(image_file):
+    """Detect image orientation from its dimensions. Returns orientation string."""
+    try:
+        from PIL import Image
+        from io import BytesIO
+        image_file.seek(0)
+        data = image_file.read()
+        image_file.seek(0)
+        img = Image.open(BytesIO(data))
+        w, h = img.size
+        ratio = w / h if h else 1
+        if 0.85 <= ratio <= 1.15:
+            return 'square'
+        elif ratio > 1.15:
+            return 'landscape'
+        else:
+            return 'portrait'
+    except Exception:
+        return ''
+
+
 # =============================================================================
 # WEBSITE STATUS
 # =============================================================================
@@ -235,6 +256,7 @@ class TestimonialService:
                text='', tag='', rating=5, is_active=False, reviewer_avatar=None):
         """Create a Testimonial. Returns the created instance."""
         _validate_image_upload(reviewer_avatar, 'reviewer avatar')
+        rating_val = max(1, min(5, int(rating)))  # Clamp rating to 1–5
         with transaction.atomic():
             review = Testimonial(
                 reviewer_name=reviewer_name,
@@ -242,7 +264,7 @@ class TestimonialService:
                 reviewer_school=reviewer_school,
                 text=text,
                 tag=tag,
-                rating=int(rating),
+                rating=rating_val,
                 is_active=is_active,
             )
             if reviewer_avatar:
@@ -285,7 +307,7 @@ class TestimonialService:
                 if value is not None:
                     setattr(review, field, value)
             if rating is not None:
-                review.rating = int(rating)
+                review.rating = max(1, min(5, int(rating)))  # Clamp to 1–5
             if is_active is not None:
                 review.is_active = _parse_bool(is_active)
             if reviewer_avatar:
@@ -337,9 +359,21 @@ class PortfolioItemService:
     def create(*, category_id=None, orientation='', item_type='image',
                video_url='', order=0, is_active=True, is_featured=False,
                image=None, video_file=None):
-        """Create a PortfolioItem with auto-generated title. Returns the instance."""
+        """Create a PortfolioItem with auto-generated title. Returns the instance.
+        Type and orientation are auto-detected from uploaded files."""
         _validate_image_upload(image, 'portfolio image')
         _validate_video_upload(video_file, 'portfolio video')
+
+        # Auto-detect type from uploads
+        if video_file:
+            item_type = 'video'
+        elif image:
+            item_type = 'image'
+
+        # Auto-detect orientation from image dimensions
+        if image and item_type == 'image':
+            orientation = _detect_orientation(image)
+
         title = 'Portfolio Item'
         if category_id:
             try:
@@ -374,9 +408,21 @@ class PortfolioItemService:
     def update(pk, *, orientation=None, item_type=None, video_url=None,
                category_id=None, order=None, is_active=None, is_featured=None,
                image=None, video_file=None):
-        """Update a PortfolioItem. Only non-None fields are changed."""
+        """Update a PortfolioItem. Only non-None fields are changed.
+        Type and orientation are auto-detected from uploaded files."""
         _validate_image_upload(image, 'portfolio image')
         _validate_video_upload(video_file, 'portfolio video')
+
+        # Auto-detect type from new uploads
+        if video_file:
+            item_type = 'video'
+        elif image and not video_file:
+            item_type = 'image'
+
+        # Auto-detect orientation from new image
+        if image:
+            orientation = _detect_orientation(image)
+
         with transaction.atomic():
             item = get_object_or_404(PortfolioItem, pk=pk)
             for field, value in [
@@ -592,5 +638,89 @@ class ContactSubmissionService:
             from .email_utils import send_contact_email
             send_contact_email(submission)
         except Exception:
-            logger.warning(f"Email send failed for contact submission {submission.id}")
+            logger.warning("Email send failed for contact submission %s", submission.id)
         return submission
+
+
+# =============================================================================
+# REELS
+# =============================================================================
+
+class ReelService:
+    """CRUD for Reel (short video reels)."""
+
+    @staticmethod
+    def list_all():
+        """Return queryset ordered by position."""
+        return Reel.objects.all().order_by('order', '-created_at')
+
+    @staticmethod
+    def get(pk):
+        """Return a single Reel or raise 404."""
+        return get_object_or_404(Reel, pk=pk)
+
+    @staticmethod
+    def create(*, title='', order=0, is_active=True,
+               video_file=None, thumbnail=None):
+        """Create a Reel. Returns the created instance. No captions."""
+        _validate_video_upload(video_file, 'reel video')
+        _validate_image_upload(thumbnail, 'reel thumbnail')
+        if not title:
+            title = f'Reel {uuid.uuid4().hex[:6].upper()}'
+        with transaction.atomic():
+            reel = Reel(
+                title=title,
+                description='',  # no captions
+                order=int(order),
+                is_active=is_active,
+            )
+            if video_file:
+                reel.video_file = video_file
+            if thumbnail:
+                reel.thumbnail = thumbnail
+            reel.save()
+        return reel
+
+    @staticmethod
+    def update(pk, *, title=None, order=None, is_active=None,
+               video_file=None, thumbnail=None):
+        """Update a Reel. Only non-None fields are changed."""
+        _validate_video_upload(video_file, 'reel video')
+        _validate_image_upload(thumbnail, 'reel thumbnail')
+        with transaction.atomic():
+            reel = get_object_or_404(Reel, pk=pk)
+            if title is not None:
+                reel.title = title
+            if order is not None:
+                reel.order = int(order)
+            if is_active is not None:
+                reel.is_active = _parse_bool(is_active)
+            if video_file:
+                reel.video_file = video_file
+            if thumbnail:
+                reel.thumbnail = thumbnail
+            reel.save()
+        return reel
+
+    @staticmethod
+    def delete(pk):
+        """Delete a Reel by pk."""
+        with transaction.atomic():
+            reel = get_object_or_404(Reel, pk=pk)
+            for field in ('video_file', 'thumbnail'):
+                file_field = getattr(reel, field, None)
+                if file_field:
+                    try:
+                        file_field.delete(save=False)
+                    except Exception:
+                        logger.warning("Failed to delete %s file for Reel %d", field, pk)
+            reel.delete()
+
+    @staticmethod
+    def toggle(pk):
+        """Toggle active/inactive. Returns new is_active value."""
+        with transaction.atomic():
+            reel = get_object_or_404(Reel, pk=pk)
+            reel.is_active = not reel.is_active
+            reel.save()
+        return reel.is_active

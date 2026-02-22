@@ -138,6 +138,60 @@ let downloadPdfModal = null;
 let downloadXlsxModal = null;
 let downloadImgModal = null;
 
+// Cached export templates (loaded once, refreshed on modal open)
+let _cachedExportTemplates = null;
+
+/**
+ * Fetch export templates from the API and populate all template dropdowns.
+ * Called lazily when a PDF or Word modal opens.
+ */
+async function _loadExportTemplates(force) {
+    if (_cachedExportTemplates && !force) {
+        _populateTemplateDropdowns(_cachedExportTemplates);
+        return;
+    }
+    try {
+        const resp = await fetch('/panel/api/export-templates/', {
+            headers: { 'Accept': 'application/json' }
+        });
+        if (resp.ok) {
+            const data = await resp.json();
+            if (data.success) {
+                _cachedExportTemplates = data.templates || [];
+                _populateTemplateDropdowns(_cachedExportTemplates);
+            }
+        }
+    } catch (e) {
+        console.error('Failed to load export templates:', e);
+    }
+}
+
+function _populateTemplateDropdowns(templates) {
+    const selectors = ['downloadPdfTemplate', 'downloadDocxTemplate'];
+    selectors.forEach(function(selId) {
+        const sel = document.getElementById(selId);
+        if (!sel) return;
+        // Preserve current selection
+        const prev = sel.value;
+        sel.innerHTML = '<option value="">Default (No Footer Instructions)</option>';
+        templates.forEach(function(tpl) {
+            const opt = document.createElement('option');
+            opt.value = String(tpl.id);
+            opt.textContent = tpl.name;
+            if (tpl.is_default) opt.setAttribute('data-default', '1');
+            sel.appendChild(opt);
+        });
+        // Restore selection or pick default
+        if (prev && sel.querySelector('option[value="' + prev + '"]')) {
+            sel.value = prev;
+        } else {
+            // Auto-select the default template if any
+            const defaultOpt = sel.querySelector('option[data-default="1"]');
+            if (defaultOpt) sel.value = defaultOpt.value;
+        }
+    });
+}
+
 // ==========================================
 // DOWNLOAD IMAGES (Separate ZIP per image column)
 // ==========================================
@@ -202,8 +256,7 @@ function downloadImages(cardIds) {
                             if (typeof showDownloadComplete === 'function') {
                                 showDownloadComplete(`Downloaded ${totalZips} ZIP file(s) with ${response.total_images} images!`);
                             }
-                            // Move exported cards from approved → download
-                            _moveCardsToDownloadIfApproved(cardIds);
+                            // Image export: do NOT move cards to download list
                             return;
                         }
                         
@@ -235,6 +288,9 @@ function downloadImages(cardIds) {
                             
                             // Download next ZIP after a small delay (to allow browser to process)
                             setTimeout(downloadNextZip, 300);
+                        }).catch(function(err) {
+                            console.error('ZIP download failed:', err);
+                            if (typeof showToast === 'function') showToast('Failed to download ZIP file', false);
                         });
                     }
                     
@@ -276,7 +332,7 @@ function initDownloadImagesHandlers() {
         document.getElementById(btnId)?.addEventListener('click', async function() {
             this.disabled = true;
             try {
-                let cardIds = typeof getAllCardIdsForAction === 'function' ? await getAllCardIdsForAction() : [];
+                let cardIds = (window.IDCardApp && typeof window.IDCardApp.getAllCardIdsForAction === 'function') ? await window.IDCardApp.getAllCardIdsForAction() : [];
                 // If we couldn't get card IDs, proceed anyway - backend will use all cards for current status
                 openDownloadImgModal(cardIds);
             } catch (error) {
@@ -329,7 +385,7 @@ function closeDocFormatModal() {
     pendingDocxDownloadIds = [];
 }
 
-function downloadDocx(cardIds, format) {
+function downloadDocx(cardIds, format, templateId) {
     const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
     if (!tableId) {
         if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
@@ -339,6 +395,7 @@ function downloadDocx(cardIds, format) {
     // Note: If cardIds is empty, backend will fetch all cards for current status
     
     closeDocFormatModal();
+    closeDownloadDocxModal();
     
     if (typeof showProgressToast === 'function') showProgressToast(`Preparing ${format.toUpperCase()} document...`, -1);
     
@@ -395,7 +452,32 @@ function downloadDocx(cardIds, format) {
         if (typeof showToast === 'function') showToast('Failed to download document', false);
     };
     
-    xhr.send(JSON.stringify(Object.assign({ card_ids: cardIds, format: format, status: _getCurrentStatus() }, _getActiveFilters())));
+    xhr.send(JSON.stringify(Object.assign({ card_ids: cardIds, format: format, template_id: templateId || '', status: _getCurrentStatus() }, _getActiveFilters())));
+}
+
+let pendingDocxFormat = 'docx';
+
+function openDownloadDocxModal(cardIds, format) {
+    pendingDocxDownloadIds = cardIds;
+    pendingDocxFormat = format || 'docx';
+    const modal = document.getElementById('downloadDocxModal');
+    if (!modal) {
+        // Fallback: download directly if modal not found
+        downloadDocx(cardIds, pendingDocxFormat, '');
+        return;
+    }
+    const listNameEl = document.getElementById('downloadDocxListName');
+    const cardCountEl = document.getElementById('downloadDocxCardCount');
+    if (listNameEl) listNameEl.textContent = _getStatusLabel() + ' List';
+    if (cardCountEl) cardCountEl.textContent = cardIds.length > 0 ? cardIds.length : 'All';
+    // Load templates dynamically
+    _loadExportTemplates(false);
+    modal.style.display = 'flex';
+}
+
+function closeDownloadDocxModal() {
+    const modal = document.getElementById('downloadDocxModal');
+    if (modal) modal.style.display = 'none';
 }
 
 function initDownloadDocxHandlers() {
@@ -405,27 +487,34 @@ function initDownloadDocxHandlers() {
     document.getElementById('cancelDocFormatModal')?.addEventListener('click', closeDocFormatModal);
     
     if (docFormatModalOverlay) {
-        docFormatModalOverlay.addEventListener('click', function(e) {
-            if (e.target === this) closeDocFormatModal();
-        });
+        // Disabled — prevent accidental closure on outside click
     }
     
     document.querySelectorAll('.format-card').forEach(card => {
         card.addEventListener('click', function() {
             const format = this.getAttribute('data-format');
             if (format) {
-                downloadDocx(pendingDocxDownloadIds, format);
+                closeDocFormatModal();
+                openDownloadDocxModal(pendingDocxDownloadIds, format);
             }
         });
     });
     
+    // Docx template modal handlers
+    document.getElementById('downloadDocxCancel')?.addEventListener('click', closeDownloadDocxModal);
+    document.getElementById('downloadDocxConfirm')?.addEventListener('click', function() {
+        const templateSelect = document.getElementById('downloadDocxTemplate');
+        const templateId = templateSelect ? templateSelect.value : '';
+        downloadDocx(pendingDocxDownloadIds, pendingDocxFormat, templateId);
+    });
+
     const downloadDocxBtnIds = ['downloadDocxBtn', 'downloadDocxBtnV', 'downloadDocxBtnP', 'downloadDocxBtnA', 'downloadDocxBtnD'];
     
     downloadDocxBtnIds.forEach(btnId => {
         document.getElementById(btnId)?.addEventListener('click', async function() {
             this.disabled = true;
             try {
-                let cardIds = typeof getAllCardIdsForAction === 'function' ? await getAllCardIdsForAction() : [];
+                let cardIds = (window.IDCardApp && typeof window.IDCardApp.getAllCardIdsForAction === 'function') ? await window.IDCardApp.getAllCardIdsForAction() : [];
                 openDocFormatModal(cardIds);
             } catch (error) {
                 console.error('Error getting card IDs for download:', error);
@@ -544,7 +633,7 @@ function initDownloadXlsxHandlers() {
         document.getElementById(btnId)?.addEventListener('click', async function() {
             this.disabled = true;
             try {
-                let cardIds = typeof getAllCardIdsForAction === 'function' ? await getAllCardIdsForAction() : [];
+                let cardIds = (window.IDCardApp && typeof window.IDCardApp.getAllCardIdsForAction === 'function') ? await window.IDCardApp.getAllCardIdsForAction() : [];
                 openDownloadXlsxModal(cardIds);
             } catch (error) {
                 console.error('Error getting card IDs for download:', error);
@@ -584,18 +673,19 @@ function openDownloadPdfModal(cardIds) {
     
     if (!downloadPdfModal) {
         // Fallback: download directly if modal not found
-        downloadPdf(cardIds, 'default');
+        downloadPdf(cardIds, '');
         return;
     }
     
     const listNameEl = document.getElementById('downloadPdfListName');
     const cardCountEl = document.getElementById('downloadPdfCardCount');
-    const templateSelect = document.getElementById('downloadPdfTemplate');
     
     if (listNameEl) listNameEl.textContent = _getStatusLabel() + ' List';
     // Show "All" if no specific cards selected, otherwise show the count
     if (cardCountEl) cardCountEl.textContent = cardIds.length > 0 ? cardIds.length : 'All';
-    if (templateSelect) templateSelect.value = 'default';
+    
+    // Load templates dynamically
+    _loadExportTemplates(false);
     
     downloadPdfModal.style.display = 'flex';
 }
@@ -607,8 +697,8 @@ function closeDownloadPdfModal() {
     pendingPdfCardIds = [];
 }
 
-function downloadPdf(cardIds, template) {
-    template = template || 'default';
+function downloadPdf(cardIds, templateId) {
+    templateId = templateId || '';
     
     const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
     if (!tableId) {
@@ -651,8 +741,7 @@ function downloadPdf(cardIds, template) {
             document.body.removeChild(a);
             
             if (typeof showDownloadComplete === 'function') showDownloadComplete('PDF file downloaded successfully!');
-            // Move exported cards from approved → download
-            _moveCardsToDownloadIfApproved(cardIds);
+            // PDF export: do NOT move cards to download list
         } else {
             if (typeof hideProgressToast === 'function') hideProgressToast();
             const reader = new FileReader();
@@ -673,7 +762,7 @@ function downloadPdf(cardIds, template) {
         if (typeof showToast === 'function') showToast('Failed to download PDF file', false);
     };
     
-    xhr.send(JSON.stringify(Object.assign({ card_ids: cardIds, status: _getCurrentStatus(), template: template }, _getActiveFilters())));
+    xhr.send(JSON.stringify(Object.assign({ card_ids: cardIds, status: _getCurrentStatus(), template_id: templateId || '' }, _getActiveFilters())));
 }
 
 function initDownloadPdfHandlers() {
@@ -683,7 +772,7 @@ function initDownloadPdfHandlers() {
         document.getElementById(btnId)?.addEventListener('click', async function() {
             this.disabled = true;
             try {
-                let cardIds = typeof getAllCardIdsForAction === 'function' ? await getAllCardIdsForAction() : [];
+                let cardIds = (window.IDCardApp && typeof window.IDCardApp.getAllCardIdsForAction === 'function') ? await window.IDCardApp.getAllCardIdsForAction() : [];
                 openDownloadPdfModal(cardIds);
             } catch (error) {
                 console.error('Error getting card IDs for download:', error);
@@ -698,9 +787,9 @@ function initDownloadPdfHandlers() {
     document.getElementById('downloadPdfCancel')?.addEventListener('click', closeDownloadPdfModal);
     document.getElementById('downloadPdfConfirm')?.addEventListener('click', function() {
         const templateSelect = document.getElementById('downloadPdfTemplate');
-        const template = templateSelect ? templateSelect.value : 'default';
+        const templateId = templateSelect ? templateSelect.value : '';
         closeDownloadPdfModal();
-        downloadPdf(pendingPdfCardIds, template);
+        downloadPdf(pendingPdfCardIds, templateId);
     });
     
     // Close on backdrop click
@@ -879,7 +968,11 @@ function initReuploadHandlers() {
                         if (typeof showToast === 'function') showToast(result.message || 'Images reuploaded successfully!', true);
                         setTimeout(function() {
                             closeReuploadActionsModal();
-                            window.location.reload();
+                            if (window.IDCardApp && typeof window.IDCardApp.refreshCardTable === 'function') {
+                                window.IDCardApp.refreshCardTable();
+                            } else {
+                                window.location.reload();
+                            }
                         }, 1500);
                     } else {
                         if (reuploadActionsStatus) reuploadActionsStatus.textContent = result.message || 'Failed';
@@ -913,7 +1006,7 @@ function initReuploadHandlers() {
             btn.addEventListener('click', async function() {
                 this.disabled = true;
                 try {
-                    pendingReuploadCardIds = typeof getAllCardIdsForAction === 'function' ? await getAllCardIdsForAction() : [];
+                    pendingReuploadCardIds = (window.IDCardApp && typeof window.IDCardApp.getAllCardIdsForAction === 'function') ? await window.IDCardApp.getAllCardIdsForAction() : [];
                     openReuploadActionsModal();
                 } finally {
                     this.disabled = false;
@@ -944,6 +1037,10 @@ function initDownloadModals() {
             }
             if (downloadImgModal && downloadImgModal.style.display === 'flex') {
                 closeDownloadImgModal();
+            }
+            const docxModal = document.getElementById('downloadDocxModal');
+            if (docxModal && docxModal.style.display === 'flex') {
+                closeDownloadDocxModal();
             }
         }
     });

@@ -3,8 +3,8 @@
 <header class="topbar">
   <!-- Left - Breadcrumb -->
   <div class="nav-left">
-    <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
-      <i class="fa-solid fa-xmark"></i>
+    <button class="sidebar-toggle" id="sidebarToggle" @click="toggleSidebar()" aria-label="Toggle sidebar">
+      <i class="fa-solid" :class="sidebarOpen ? 'fa-xmark' : 'fa-bars'"></i>
     </button>
     <div class="breadcrumb">
       {% if is_super_admin %}

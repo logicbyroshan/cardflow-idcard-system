@@ -21,7 +21,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
 from django.utils import timezone
-from ..models import Client, Staff, IDCardGroup, IDCard, IDCardTable, ReprintRequest, User, SystemSettings
+from ..models import Client, Staff, IDCardGroup, IDCard, IDCardTable, ReprintRequest, User, SystemSettings, Notification
 from ..services import IDCardService
 from ..services.activity_service import ActivityService
 from ..utils.htmx import is_htmx, render_partial
@@ -35,6 +35,13 @@ from ..services.permission_service import (
 )
 
 logger = logging.getLogger(__name__)
+
+# ============================================================================
+# DISPLAY LIMITS
+# ============================================================================
+ACTIVITY_FEED_MAX = 8
+GLOBAL_SEARCH_DB_LIMIT = 100
+GLOBAL_SEARCH_RESULT_LIMIT = 50
 
 def get_user_role(user):
     """Helper function to get user role display name"""
@@ -100,8 +107,15 @@ def enrich_cards(cards, table_fields, start_index=0):
 def super_admin_required(view_func):
     """
     Deprecated — delegates to require_super_admin from permission_service.
-    Kept for backward-compatible imports.
+    Kept for backward-compatible imports; will be removed in a future version.
     """
+    import warnings
+    warnings.warn(
+        "super_admin_required is deprecated. "
+        "Use 'from core.services.permission_service import require_super_admin' instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return _require_super_admin(view_func)
 
 
@@ -186,7 +200,7 @@ def dashboard(request):
         'client_staff_count': cs_stats['total'],
         'active_client_staff_count': cs_stats['active'],
         # Role-based activity filtering - admin_staff gets filtered by assigned clients
-        'recent_activities': ActivityService.get_recent(limit=8, user=request.user),
+        'recent_activities': ActivityService.get_recent(limit=ACTIVITY_FEED_MAX, user=request.user),
     })
     return render(request, 'index.html', context)
 
@@ -279,8 +293,8 @@ def api_recent_client_updates(request):
 def api_recent_activity(request):
     """API endpoint for the Recent Activity feed on the dashboard."""
     try:
-        limit = int(request.GET.get('limit', 8))
-        limit = min(limit, 8)  # Cap at 8 for 24hr feed
+        limit = int(request.GET.get('limit', ACTIVITY_FEED_MAX))
+        limit = min(limit, ACTIVITY_FEED_MAX)  # Cap at max for 24hr feed
         # Role-based activity filtering
         activities = ActivityService.get_recent(limit=limit, user=request.user)
         return JsonResponse({'success': True, 'activities': activities})
@@ -334,7 +348,7 @@ def api_global_search(request):
             else:
                 base_cards = base_cards.none()
         
-        cards = base_cards[:100]  # Limit at database level for speed
+        cards = base_cards[:GLOBAL_SEARCH_DB_LIMIT]  # Limit at database level for speed
         
         for card in cards:
             field_data = card.field_data or {}
@@ -411,8 +425,8 @@ def api_global_search(request):
                 'photo': photo_url,
             })
             
-            # Stop after 50 results for speed
-            if len(results) >= 50:
+            # Stop after limit for speed
+            if len(results) >= GLOBAL_SEARCH_RESULT_LIMIT:
                 break
         
         # Sort by title
@@ -571,7 +585,8 @@ def active_clients(request):
     clients_qs = PermissionService.get_accessible_clients(
         user, base_qs
     ).prefetch_related('id_card_groups').annotate(
-        group_count=Count('id_card_groups')
+        group_count=Count('id_card_groups'),
+        table_count=Count('id_card_groups__tables', distinct=True)
     )
     
     if search_query:
@@ -624,11 +639,15 @@ def idcard_group(request, client_id):
         reprint_count=Count('id_cards', filter=Q(id_cards__status='reprint')),
         total_cards=Count('id_cards')
     )
+
+    # Get default group for Create with XLSX button
+    group = IDCardService.ensure_default_group(client)
     
     context = {
         'active_page': 'active_clients',
         'user_role': get_user_role(request.user),
         'client': client,
+        'group': group,
         'tables': tables,
     }
     return render(request, 'idcard-group.html', context)
@@ -841,13 +860,29 @@ def manage_website(request):
     return redirect('/panel/website/')
 
 
-# Manage Panel (Coming Soon)
+# Manage Panel
 @super_admin_required
 def manage_panel(request):
-    """Manage Panel page - Coming Soon."""
+    """Manage Panel page with notifications, system info, and quick actions."""
+    import sys
+    import django
+    
     context = {
         'is_super_admin': True,
         'active_page': 'manage_panel',
+        # System info
+        'django_version': django.get_version(),
+        'python_version': f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+        'total_users': User.objects.filter(is_active=True).count(),
+        'total_clients': Client.objects.count(),
+        'total_cards': IDCard.objects.count(),
+        'total_admin_staff': User.objects.filter(is_active=True, role='admin_staff').count(),
+        'total_client_staff': User.objects.filter(is_active=True, role='client_staff').count(),
+        'active_tasks': 0,
+        'total_notifications': Notification.objects.filter(is_active=True).count(),
+        'email_backend': getattr(django_settings, 'EMAIL_BACKEND', 'SMTP').split('.')[-1].replace('Backend', ''),
+        'email_from': getattr(django_settings, 'DEFAULT_FROM_EMAIL', 'Not configured'),
+        'debug_mode': django_settings.DEBUG,
     }
     return render(request, 'manage-panel.html', context)
 
@@ -1060,6 +1095,101 @@ def api_export_settings_update(request):
         return JsonResponse({'success': False, 'message': 'No valid fields provided'}, status=400)
 
     return JsonResponse({'success': True, 'message': 'Export settings updated successfully', 'updated': updated})
+
+
+# =========================================================================
+# EXPORT TEMPLATES API
+# =========================================================================
+
+@login_required
+@require_http_methods(['GET'])
+def api_export_templates_list(request):
+    """GET /api/export-templates/ — list all export templates for download modals."""
+    from core.models import ExportTemplate
+    templates = ExportTemplate.get_all_as_choices()
+    return JsonResponse({'success': True, 'templates': templates})
+
+
+@login_required
+@require_any_admin
+@require_http_methods(['POST'])
+def api_export_template_create(request):
+    """POST /api/export-templates/create/ — create a new export template."""
+    from core.models import ExportTemplate
+    try:
+        body = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
+
+    name = (body.get('name') or '').strip()
+    instructions = (body.get('instructions') or '').strip()
+    is_default = bool(body.get('is_default', False))
+
+    if not name:
+        return JsonResponse({'success': False, 'message': 'Template name is required'}, status=400)
+    if not instructions:
+        return JsonResponse({'success': False, 'message': 'Instructions text is required'}, status=400)
+    if len(name) > 100:
+        return JsonResponse({'success': False, 'message': 'Name must be 100 characters or less'}, status=400)
+
+    if ExportTemplate.objects.filter(name__iexact=name).exists():
+        return JsonResponse({'success': False, 'message': 'A template with this name already exists'}, status=400)
+
+    tpl = ExportTemplate.objects.create(name=name, instructions=instructions, is_default=is_default)
+    return JsonResponse({'success': True, 'message': 'Template created', 'template': {
+        'id': tpl.id, 'name': tpl.name, 'instructions': tpl.instructions, 'is_default': tpl.is_default
+    }})
+
+
+@login_required
+@require_any_admin
+@require_http_methods(['POST'])
+def api_export_template_update(request, template_id):
+    """POST /api/export-templates/<id>/update/ — update an export template."""
+    from core.models import ExportTemplate
+    try:
+        tpl = ExportTemplate.objects.get(id=template_id)
+    except ExportTemplate.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Template not found'}, status=404)
+
+    try:
+        body = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
+
+    name = (body.get('name') or '').strip()
+    instructions = (body.get('instructions') or '').strip()
+    is_default = body.get('is_default')
+
+    if name:
+        if len(name) > 100:
+            return JsonResponse({'success': False, 'message': 'Name must be 100 characters or less'}, status=400)
+        if ExportTemplate.objects.filter(name__iexact=name).exclude(pk=tpl.pk).exists():
+            return JsonResponse({'success': False, 'message': 'A template with this name already exists'}, status=400)
+        tpl.name = name
+    if instructions:
+        tpl.instructions = instructions
+    if is_default is not None:
+        tpl.is_default = bool(is_default)
+    tpl.save()
+
+    return JsonResponse({'success': True, 'message': 'Template updated', 'template': {
+        'id': tpl.id, 'name': tpl.name, 'instructions': tpl.instructions, 'is_default': tpl.is_default
+    }})
+
+
+@login_required
+@require_any_admin
+@require_http_methods(['POST'])
+def api_export_template_delete(request, template_id):
+    """POST /api/export-templates/<id>/delete/ — delete an export template."""
+    from core.models import ExportTemplate
+    try:
+        tpl = ExportTemplate.objects.get(id=template_id)
+    except ExportTemplate.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Template not found'}, status=404)
+    tpl.delete()
+    return JsonResponse({'success': True, 'message': 'Template deleted'})
 
 
 # =============================================================================

@@ -1,0 +1,19 @@
+<!-- Search Bar Partial -->
+<div class="px-4 py-2">
+    <div class="relative" x-data="{ query: '' }">
+        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+        <input
+            type="text"
+            x-model="query"
+            placeholder="Search students, ID cards..."
+            class="w-full pl-10 pr-10 py-2.5 bg-gray-100 border border-gray-200 rounded-lg text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition"
+        >
+        <button
+            x-show="query.length > 0"
+            @click="query = ''"
+            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+        >
+            <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+    </div>
+</div>

@@ -104,6 +104,40 @@ class IDCardService(BaseService):
         
         return missing
 
+    # ==================== Helper Methods ====================
+
+    @classmethod
+    def _get_class_section_field_names(cls, table):
+        """Extract class and section field names from table field definitions."""
+        class_field = None
+        section_field = None
+        if table.fields:
+            for field in table.fields:
+                fname = field.get('name', '')
+                ftype = field.get('type', '')
+                if ftype == 'class' or (not class_field and fname.lower() == 'class'):
+                    class_field = fname
+                if ftype == 'section' or (not section_field and fname.lower() == 'section'):
+                    section_field = fname
+        return class_field, section_field
+
+    @classmethod
+    def _get_name_field(cls, table):
+        """Get the name/text field from table definitions for sorting."""
+        if not table.fields:
+            return None
+        for field in table.fields:
+            ftype = field.get('type', '')
+            fname = field.get('name', '')
+            if fname.lower() == 'name' or fname.lower() == 'student name':
+                return fname
+        # Fallback: first text field
+        for field in table.fields:
+            ftype = field.get('type', '')
+            if ftype in ('text', 'name', ''):
+                return field.get('name', '')
+        return None
+
     # ==================== ID Card Table Operations ====================
     
     @classmethod
@@ -141,6 +175,7 @@ class IDCardService(BaseService):
             for idx, field in enumerate(fields):
                 field_name = field.get('name', '').strip().upper()
                 field_type = field.get('type', 'text')
+                field_mandatory = bool(field.get('mandatory', False))
                 
                 if not field_name:
                     return ServiceResult(
@@ -155,7 +190,7 @@ class IDCardService(BaseService):
                     'name': field_name,
                     'type': field_type,
                     'order': idx,
-                    'mandatory': bool(field.get('mandatory', False)),
+                    'mandatory': field_mandatory
                 })
             
             table = IDCardTable.objects.create(
@@ -208,6 +243,7 @@ class IDCardService(BaseService):
             for idx, field in enumerate(fields):
                 field_name = field.get('name', '').strip().upper()
                 field_type = field.get('type', 'text')
+                field_mandatory = bool(field.get('mandatory', False))
                 
                 if not field_name:
                     return ServiceResult(
@@ -222,14 +258,12 @@ class IDCardService(BaseService):
                     'name': field_name,
                     'type': field_type,
                     'order': idx,
-                    'mandatory': bool(field.get('mandatory', False)),
+                    'mandatory': field_mandatory
                 })
             
-            from django.db import transaction
-            with transaction.atomic():
-                table.name = name
-                table.fields = validated_fields
-                table.save()
+            table.name = name
+            table.fields = validated_fields
+            table.save()
             
             return ServiceResult(
                 success=True,
@@ -372,40 +406,90 @@ class IDCardService(BaseService):
         status_filter: str = None,
         offset: int = 0,
         limit: int = 100,
-        cursor: int = None
+        search: str = '',
+        class_filter: str = '',
+        section_filter: str = '',
+        sort_order: str = 'sr-asc',
+        image_column: str = '',
+        image_condition: str = '',
     ) -> ServiceResult:
-        """List ID Cards for a table with cursor or offset pagination.
-        
-        Args:
-            cursor: If provided, fetch cards with id < cursor (keyset pagination).
-                    Falls back to offset pagination if not provided.
-        """
+        """List ID Cards for a table with pagination and server-side filtering."""
+        from django.db.models.fields.json import KeyTextTransform
+        from django.db.models.functions import Cast
+        from django.db.models import Q, CharField
+
         try:
             table = get_object_or_404(IDCardTable, id=table_id)
             
-            # Base queryset - newest first, defer heavy unused fields
+            # Base queryset — defer heavy photo column
             cards_query = (
                 IDCard.objects.filter(table=table)
                 .defer('photo')
-                .order_by('-id')
             )
             
             if status_filter and status_filter in cls.VALID_STATUSES:
                 cards_query = cards_query.filter(status=status_filter)
             
-            total_count = cards_query.count()
-
-            # Cursor-based pagination (preferred) or offset (legacy)
-            if cursor is not None:
-                page_qs = cards_query.filter(id__lt=cursor)[:limit + 1]
+            # --- Server-side search ---
+            if search:
+                cards_query = cards_query.filter(field_data__icontains=search)
+            
+            # --- Class / Section filters ---
+            if class_filter or section_filter:
+                class_field_name, section_field_name = cls._get_class_section_field_names(table)
+                if class_filter and class_field_name:
+                    cards_query = cards_query.annotate(
+                        _cls=KeyTextTransform(class_field_name, 'field_data')
+                    ).filter(_cls__iexact=class_filter)
+                if section_filter and section_field_name:
+                    cards_query = cards_query.annotate(
+                        _sec=KeyTextTransform(section_field_name, 'field_data')
+                    ).filter(_sec__iexact=section_filter)
+            
+            # --- Image sort filter ---
+            # Cast() avoids SQLite crash: JSON_EXTRACT('', '$') is invalid.
+            if image_column and image_condition in ('complete', 'pending', 'incomplete'):
+                cards_query = cards_query.annotate(
+                    _img=Cast(KeyTextTransform(image_column, 'field_data'), CharField())
+                )
+                if image_condition == 'complete':
+                    cards_query = cards_query.exclude(_img__isnull=True).exclude(_img='').exclude(_img='NOT_FOUND')
+                    cards_query = cards_query.exclude(_img__startswith='PENDING:')
+                elif image_condition == 'pending':
+                    cards_query = cards_query.filter(_img__startswith='PENDING:')
+                elif image_condition == 'incomplete':
+                    cards_query = cards_query.filter(Q(_img__isnull=True) | Q(_img='') | Q(_img='NOT_FOUND'))
+            
+            # --- Sorting ---
+            if sort_order == 'sr-desc':
+                cards_query = cards_query.order_by('id')
+            elif sort_order == 'name-asc':
+                # Sort by first text field in field_data (Name/name)
+                name_field = cls._get_name_field(table)
+                if name_field:
+                    cards_query = cards_query.annotate(
+                        _name=KeyTextTransform(name_field, 'field_data')
+                    ).order_by('_name')
+                else:
+                    cards_query = cards_query.order_by('-id')
+            elif sort_order == 'name-desc':
+                name_field = cls._get_name_field(table)
+                if name_field:
+                    cards_query = cards_query.annotate(
+                        _name=KeyTextTransform(name_field, 'field_data')
+                    ).order_by('-_name')
+                else:
+                    cards_query = cards_query.order_by('-id')
+            elif sort_order == 'date-new':
+                cards_query = cards_query.order_by('-updated_at')
+            elif sort_order == 'date-old':
+                cards_query = cards_query.order_by('updated_at')
             else:
-                page_qs = cards_query[offset:offset + limit + 1]
-
-            cards = list(page_qs)
-            has_more = len(cards) > limit
-            if has_more:
-                cards = cards[:limit]
-            next_cursor = cards[-1].id if cards and has_more else None
+                # Default: sr-asc (newest first = highest ID first)
+                cards_query = cards_query.order_by('-id')
+            
+            total_count = cards_query.count()
+            cards = cards_query[offset:offset + limit]
             
             # Serialize cards
             card_list = []
@@ -426,8 +510,7 @@ class IDCardService(BaseService):
                     'total_count': total_count,
                     'offset': offset,
                     'limit': limit,
-                    'has_more': has_more,
-                    'next_cursor': next_cursor,
+                    'has_more': offset + limit < total_count,
                     'status_counts': status_counts,
                     'table': cls.serialize_table(table),
                 }
@@ -454,8 +537,13 @@ class IDCardService(BaseService):
     @classmethod
     def get_all_card_ids(cls, table_id: int, status_filter: str = None,
                          search: str = '', class_filter: str = '', section_filter: str = '',
-                         from_date: str = '', to_date: str = '') -> ServiceResult:
+                         from_date: str = '', to_date: str = '',
+                         image_column: str = '', image_condition: str = '') -> ServiceResult:
         """Get all card IDs for a table (for Select All). Capped at 50,000."""
+        from django.db.models.fields.json import KeyTextTransform
+        from django.db.models.functions import Cast
+        from django.db.models import Q, CharField
+
         MAX_CARD_IDS = 10000
         try:
             table = get_object_or_404(IDCardTable, id=table_id)
@@ -464,13 +552,35 @@ class IDCardService(BaseService):
             if status_filter and status_filter in cls.VALID_STATUSES:
                 cards_query = cards_query.filter(status=status_filter)
             
-            # Apply search/filter exactly like the main view
+            # Apply search filter
             if search:
                 cards_query = cards_query.filter(field_data__icontains=search)
-            if class_filter:
-                cards_query = cards_query.filter(field_data__icontains=class_filter)
-            if section_filter:
-                cards_query = cards_query.filter(field_data__icontains=section_filter)
+
+            # Apply class/section with precise KeyTextTransform (not icontains)
+            if class_filter or section_filter:
+                class_field_name, section_field_name = cls._get_class_section_field_names(table)
+                if class_filter and class_field_name:
+                    cards_query = cards_query.annotate(
+                        _cls=KeyTextTransform(class_field_name, 'field_data')
+                    ).filter(_cls__iexact=class_filter)
+                if section_filter and section_field_name:
+                    cards_query = cards_query.annotate(
+                        _sec=KeyTextTransform(section_field_name, 'field_data')
+                    ).filter(_sec__iexact=section_filter)
+
+            # Apply image sort filter
+            # Cast() avoids SQLite crash: JSON_EXTRACT('', '$') is invalid.
+            if image_column and image_condition in ('complete', 'pending', 'incomplete'):
+                cards_query = cards_query.annotate(
+                    _img=Cast(KeyTextTransform(image_column, 'field_data'), CharField())
+                )
+                if image_condition == 'complete':
+                    cards_query = cards_query.exclude(_img__isnull=True).exclude(_img='').exclude(_img='NOT_FOUND')
+                    cards_query = cards_query.exclude(_img__startswith='PENDING:')
+                elif image_condition == 'pending':
+                    cards_query = cards_query.filter(_img__startswith='PENDING:')
+                elif image_condition == 'incomplete':
+                    cards_query = cards_query.filter(Q(_img__isnull=True) | Q(_img='') | Q(_img='NOT_FOUND'))
             
             # DateTime range filter (download list)
             if from_date:
@@ -978,12 +1088,10 @@ class IDCardService(BaseService):
     @classmethod
     def upgrade_all_classes(cls, table_id: int) -> ServiceResult:
         """
-        Upgrade the class field value for all download-status cards in a table,
-        then move every upgraded card to pending for the new academic cycle.
-
+        Upgrade the class field value for all download-status cards in a table.
         Each class value is bumped to the next level (e.g. V → VI).
-        Cards at XII stay at XII but still move to pending.
-        Returns: ServiceResult with data={'upgraded', 'skipped', 'total', 'moved_to_pending'}
+        Cards at XII remain unchanged.
+        Returns: ServiceResult with data={'upgraded', 'skipped', 'total'}
         """
         from core.utils.field_utils import CLASS_UPGRADE_MAP
         try:
@@ -1023,38 +1131,24 @@ class IDCardService(BaseService):
                     if current_val in CLASS_UPGRADE_MAP:
                         field_data[class_field_name] = CLASS_UPGRADE_MAP[current_val]
                         card.field_data = field_data
+                        cards_to_update.append(card)
                         upgraded += 1
                     else:
                         skipped += 1
-                    # Move ALL download cards to pending (new academic cycle)
-                    card.status = 'pending'
-                    cards_to_update.append(card)
                     # Flush batch to DB periodically to limit memory
                     if len(cards_to_update) >= BATCH_SIZE:
-                        IDCard.objects.bulk_update(
-                            cards_to_update,
-                            ['field_data', 'status', 'updated_at'],
-                            batch_size=BATCH_SIZE,
-                        )
+                        IDCard.objects.bulk_update(cards_to_update, ['field_data', 'updated_at'], batch_size=BATCH_SIZE)
                         cards_to_update = []
                 if cards_to_update:
-                    IDCard.objects.bulk_update(
-                        cards_to_update,
-                        ['field_data', 'status', 'updated_at'],
-                        batch_size=BATCH_SIZE,
-                    )
+                    IDCard.objects.bulk_update(cards_to_update, ['field_data', 'updated_at'], batch_size=BATCH_SIZE)
 
             return ServiceResult(
                 success=True,
-                message=(
-                    f'Upgraded {upgraded} card(s). {skipped} skipped (already XII or unknown). '
-                    f'All {total} cards moved to Pending.'
-                ),
+                message=f'Upgraded {upgraded} card(s). {skipped} skipped (already XII or unknown value).',
                 data={
                     'upgraded': upgraded,
                     'skipped': skipped,
                     'total': total,
-                    'moved_to_pending': total,
                     'client_name': getattr(table.group.client, 'name', ''),
                 }
             )

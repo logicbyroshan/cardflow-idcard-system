@@ -7,9 +7,6 @@
   <meta name="robots" content="noindex, nofollow">
   <title>{% block title %}Adarsh ID Cards{% endblock %}</title>
   <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
-  <!-- Preload critical CSS for faster first paint -->
-  <link rel="preload" href="{% static 'css/fonts.css' %}" as="style">
-  <link rel="preload" href="{% static 'css/tailwind.css' %}" as="style">
   <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
   <!-- Tailwind CSS (compiled design system) -->
   <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
@@ -25,10 +22,13 @@
 </head>
 <body x-data="layoutState()" x-init="init()">
 
+  <!-- Skip to main content (a11y) -->
+  <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[9999] focus:bg-primary focus:text-white focus:px-4 focus:py-2 focus:rounded focus:text-sm focus:font-semibold focus:shadow-lg">Skip to main content</a>
+
   {% include 'partials/sidebar.html' %}
 
   <!-- Main -->
-  <main class="main">
+  <main class="main" id="main-content">
 
     <!-- Top Navbar -->
     <header class="topbar">
@@ -51,7 +51,7 @@
   </main>
 
   <!-- Alpine Toast Container -->
-  <div class="alpine-toast-wrapper" x-show="toastQueue.length > 0">
+  <div class="alpine-toast-wrapper" x-show="toastQueue.length > 0" role="status" aria-live="polite">
     <template x-for="toast in toastQueue" :key="toast.id">
       <div class="alpine-toast" :class="getToastClass(toast.type)" x-transition>
         <i :class="getToastIcon(toast.type)"></i>
@@ -60,21 +60,27 @@
     </template>
   </div>
 
-  <!-- Error Monitor (loaded first to catch all errors) -->
-  <script src="{% static 'js/error-monitor.js' %}"></script>
+  <!-- Vendor static URLs for LazyLoad (WhiteNoise-hashed paths) -->
+  <script>
+    window.__STATIC_URLS = {
+      xlsx:        "{% static 'js/vendor/xlsx.full.min.js' %}",
+      jszip:       "{% static 'js/vendor/jszip.min.js' %}",
+      cropperCSS:  "{% static 'css/vendor/cropper.min.css' %}",
+      cropperJS:   "{% static 'js/vendor/cropper.min.js' %}",
+      flatpickrCSS:"{% static 'css/vendor/flatpickr.min.css' %}",
+      flatpickrJS: "{% static 'js/vendor/flatpickr.min.js' %}"
+    };
+  </script>
 
   <!-- Core Modules (Load Order: api → toast → modal → utils → init) -->
-  <script src="{% static 'js/core/api.js' %}"></script>
-  <script src="{% static 'js/core/toast.js' %}"></script>
-  <script src="{% static 'js/core/modal.js' %}"></script>
-  <script src="{% static 'js/core/utils.js' %}"></script>
-  <script src="{% static 'js/init.js' %}"></script>
+  <script defer src="{% static 'js/core/api.js' %}"></script>
+  <script defer src="{% static 'js/core/toast.js' %}"></script>
+  <script defer src="{% static 'js/core/modal.js' %}"></script>
+  <script defer src="{% static 'js/core/utils.js' %}"></script>
+  <script defer src="{% static 'js/init.js' %}"></script>
   
   <!-- Global Search (available on all pages via Ctrl+K) -->
-  <script src="{% static 'js/global-search.js' %}"></script>
-
-  <!-- Runtime Performance Monitor (data-only, zero UI) -->
-  <script src="{% static 'js/perf-monitor.js' %}"></script>
+  <script defer src="{% static 'js/global-search.js' %}"></script>
 
   <!-- HTMX Configuration -->
   {% include 'partials/htmx-config.html' %}

@@ -626,6 +626,30 @@ h2 {
         gap: 1.2rem;
     }
 
+    /* Bento grid - Tablet: 2 columns */
+    .bento-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.2rem;
+    }
+
+    .bento-card {
+        padding: 1.8rem;
+        border-radius: 16px;
+    }
+
+    .bento-illustration {
+        max-width: 110px;
+        margin-bottom: 1rem;
+    }
+
+    .bento-card h3 {
+        font-size: 1.1rem;
+    }
+
+    .bento-card p {
+        font-size: 0.85rem;
+    }
+
     .feature-card {
         padding: 1.5rem;
     }
@@ -752,8 +776,20 @@ h2 {
         order: 2;
     }
 
+    .contact-form-heading {
+        font-size: 1.1rem;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
     .contact-form {
         gap: 1rem;
+    }
+
+    .contact-info-header {
+        margin-bottom: 0.3rem;
     }
 
     .form-input {
@@ -799,6 +835,33 @@ h2 {
     /* Footer - 2 Column Grid */
     .footer {
         padding: 3rem 0 1rem;
+    }
+
+    /* Download App - Tablet */
+    .download-app-section {
+        padding: 60px 0;
+    }
+
+    .download-app-wrapper {
+        grid-template-columns: 1fr auto;
+        gap: 2.5rem;
+    }
+
+    .download-app-content h2 {
+        font-size: 2rem;
+    }
+
+    .download-app-content p {
+        font-size: 1rem;
+    }
+
+    .pwa-features {
+        gap: 1.2rem;
+    }
+
+    .pwa-phone-mockup {
+        width: 220px;
+        height: 390px;
     }
 
     .footer-content {
@@ -1109,6 +1172,35 @@ h2 {
         gap: 1rem;
     }
 
+    /* Bento grid - Mobile: single column */
+    .bento-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .bento-card {
+        padding: 1.5rem;
+        border-radius: 16px;
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .bento-illustration {
+        max-width: 70px;
+        min-width: 70px;
+        margin-bottom: 0;
+    }
+
+    .bento-card h3 {
+        font-size: 1rem;
+        margin-bottom: 0.3rem;
+    }
+
+    .bento-card p {
+        font-size: 0.85rem;
+    }
+
     .feature-card {
         padding: 1.2rem;
         display: flex;
@@ -1264,8 +1356,34 @@ h2 {
         order: 2;
     }
 
+    .contact-form-heading {
+        font-size: 1.05rem;
+        margin-bottom: 1rem;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 0.8rem;
+    }
+
+    .form-group label {
+        font-size: 0.8rem;
+    }
+
     .contact-form {
         gap: 0.8rem;
+    }
+
+    .contact-info-header {
+        margin-bottom: 0.3rem;
+    }
+
+    .contact-info-header h3 {
+        font-size: 1.1rem;
+    }
+
+    .contact-info-header p {
+        font-size: 0.85rem;
     }
 
     .form-input {
@@ -1323,6 +1441,69 @@ h2 {
     .info-content p {
         font-size: 0.85rem;
         line-height: 1.4;
+    }
+
+    /* Download App - Mobile */
+    .download-app-section {
+        padding: 50px 0;
+    }
+
+    .download-app-wrapper {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+        text-align: center;
+    }
+
+    .download-app-content h2 {
+        font-size: 1.6rem;
+    }
+
+    .download-app-content p {
+        font-size: 0.95rem;
+        margin: 0 auto 1.5rem;
+    }
+
+    .pwa-features {
+        justify-content: center;
+        gap: 1rem;
+    }
+
+    .pwa-feature {
+        font-size: 0.85rem;
+    }
+
+    .pwa-feature svg {
+        width: 30px;
+        height: 30px;
+    }
+
+    .pwa-install-btn {
+        padding: 14px 28px;
+        font-size: 0.95rem;
+    }
+
+    .pwa-phone-mockup {
+        width: 200px;
+        height: 350px;
+        border-radius: 28px;
+    }
+
+    .phone-screen {
+        border-radius: 20px;
+    }
+
+    /* Nav button group - Mobile */
+    .nav-btn-group {
+        flex-direction: column;
+        gap: 8px;
+        width: 100%;
+    }
+
+    .nav-btn-group .btn-app,
+    .nav-btn-group .btn-login {
+        width: 100%;
+        text-align: center;
+        justify-content: center;
     }
 
     /* Footer - Mobile */

@@ -130,6 +130,9 @@ class Client(models.Model):
     perm_delete_all_idcard = models.BooleanField(default=False)
     perm_idcard_upgrade_all = models.BooleanField(default=False)  # Upgrade All Class
     
+    # Mobile App (PWA) Permission
+    perm_mobile_app = models.BooleanField(default=False, help_text='Allow access to mobile PWA app')
+    
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active', db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -262,7 +265,8 @@ class Client(models.Model):
                 logger.warning("Could not delete thumbs folder %s: %s", self.image_folder_code, e)
     def save(self, *args, **kwargs):
         # Check if this is an update and name changed
-        if self.pk:
+        # Only do the expensive old-instance lookup if 'name' could have changed
+        if self.pk and (not kwargs.get('update_fields') or 'name' in (kwargs.get('update_fields') or [])):
             try:
                 old_instance = Client.objects.get(pk=self.pk)
                 if old_instance.name != self.name and old_instance.image_folder_code:

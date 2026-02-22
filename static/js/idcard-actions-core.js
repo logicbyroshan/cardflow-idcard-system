@@ -161,29 +161,45 @@ function updateButtonStates() {
 function initCheckboxes() {
     const selectAll = document.getElementById("selectAll");
     
-    // Select All checkbox
+    // Select All checkbox — when checked, selects ALL cards in the database (not just loaded rows)
     if (selectAll) {
-        selectAll.addEventListener("change", function() {
+        selectAll.addEventListener("change", async function() {
             const rowCheckboxes = getRowCheckboxes();
-            rowCheckboxes.forEach(cb => {
-                cb.checked = this.checked;
-                // Sync .selected class with checkbox state
-                const row = cb.closest('tr');
-                if (row) {
-                    if (this.checked) row.classList.add('selected');
-                    else row.classList.remove('selected');
+
+            if (this.checked) {
+                // Check all visible row checkboxes
+                rowCheckboxes.forEach(cb => {
+                    cb.checked = true;
+                    const row = cb.closest('tr');
+                    if (row) row.classList.add('selected');
+                });
+
+                // Fetch ALL card IDs from the database via API
+                const tableId = window.IDCardApp.tableId;
+                if (tableId) {
+                    try {
+                        const qs = _buildFilterQS();
+                        const data = await ApiClient.get('/panel/api/table/' + tableId + '/cards/all-ids/?' + qs);
+                        if (data.success && data.card_ids) {
+                            window.IDCardApp.allDbCardIds = data.card_ids;
+                            showToast('Selected all ' + data.total_count + ' cards');
+                        }
+                    } catch (err) {
+                        console.error('Error fetching all card IDs:', err);
+                    }
                 }
-            });
-            updateButtonStates();
-            
-            // If unchecking, also deactivate the Select All DB button
-            if (!this.checked) {
-                const selectAllDbBtn = document.getElementById('selectAllDbBtn');
-                if (selectAllDbBtn) {
-                    selectAllDbBtn.classList.remove('active');
-                    window.IDCardApp.allDbCardIds = null;
-                }
+            } else {
+                // Uncheck all visible row checkboxes
+                rowCheckboxes.forEach(cb => {
+                    cb.checked = false;
+                    const row = cb.closest('tr');
+                    if (row) row.classList.remove('selected');
+                });
+                // Clear DB-wide selection
+                window.IDCardApp.allDbCardIds = null;
             }
+
+            updateButtonStates();
         });
     }
     
@@ -243,12 +259,8 @@ function initCheckboxes() {
                 const rowCheckboxes = getRowCheckboxes();
                 if (!e.target.checked) {
                     selectAll.checked = false;
-                    // Also deactivate Select All DB if any checkbox is unchecked
-                    const selectAllDbBtn = document.getElementById('selectAllDbBtn');
-                    if (selectAllDbBtn) {
-                        selectAllDbBtn.classList.remove('active');
-                        window.IDCardApp.allDbCardIds = null;
-                    }
+                    // Also clear DB-wide selection if any checkbox is unchecked
+                    window.IDCardApp.allDbCardIds = null;
                 } else if ([...rowCheckboxes].every(c => c.checked)) {
                     selectAll.checked = true;
                 }
@@ -261,9 +273,6 @@ function initCheckboxes() {
     window.IDCardApp.resetShiftClickIndex = function() {
         lastClickedCheckboxIndex = null;
     };
-    
-    // Select All Database button
-    initSelectAllDbButton();
     
     // Initial button state
     updateButtonStates();
@@ -281,6 +290,11 @@ function _buildFilterQS() {
     if (IDCardApp.currentClassFilter) params.set('class', IDCardApp.currentClassFilter);
     // Section
     if (IDCardApp.currentSectionFilter) params.set('section', IDCardApp.currentSectionFilter);
+    // Image sort filter
+    if (IDCardApp._activeImageSort) {
+        if (IDCardApp._activeImageSort.column) params.set('image_column', IDCardApp._activeImageSort.column);
+        if (IDCardApp._activeImageSort.condition) params.set('image_condition', IDCardApp._activeImageSort.condition);
+    }
     // DateTime range (download list)
     const fromDate = document.getElementById('fromDateFilter');
     const toDate = document.getElementById('toDateFilter');

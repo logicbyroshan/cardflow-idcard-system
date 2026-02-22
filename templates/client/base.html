@@ -20,18 +20,21 @@
   <!-- Alpine.js -->
   <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
 </head>
-<body x-data="layoutState()">
+<body x-data="layoutState()" x-init="init()">
+
+  <!-- Skip to main content (a11y) -->
+  <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[9999] focus:bg-primary focus:text-white focus:px-4 focus:py-2 focus:rounded focus:text-sm focus:font-semibold focus:shadow-lg">Skip to main content</a>
 
   {% include 'partials/sidebar.html' %}
 
   <!-- Main -->
-  <main class="main">
+  <main class="main" id="main-content">
 
     <!-- Top Navbar -->
     <header class="topbar">
       <div class="nav-left">
-        <button class="sidebar-toggle" id="sidebarToggle">
-          <i class="fa-solid fa-bars"></i>
+        <button class="sidebar-toggle" id="sidebarToggle" @click="toggleSidebar()" aria-label="Toggle sidebar">
+          <i class="fa-solid" :class="sidebarOpen ? 'fa-xmark' : 'fa-bars'"></i>
         </button>
         <div class="breadcrumb">
           {% block breadcrumb %}
@@ -48,14 +51,14 @@
   </main>
 
   <!-- Core Modules (Load Order: api → toast → modal → utils → init) -->
-  <script src="{% static 'js/core/api.js' %}"></script>
-  <script src="{% static 'js/core/toast.js' %}"></script>
-  <script src="{% static 'js/core/modal.js' %}"></script>
-  <script src="{% static 'js/core/utils.js' %}"></script>
-  <script src="{% static 'js/init.js' %}"></script>
+  <script defer src="{% static 'js/core/api.js' %}"></script>
+  <script defer src="{% static 'js/core/toast.js' %}"></script>
+  <script defer src="{% static 'js/core/modal.js' %}"></script>
+  <script defer src="{% static 'js/core/utils.js' %}"></script>
+  <script defer src="{% static 'js/init.js' %}"></script>
   
   <!-- Global Search (available on all pages via Ctrl+K) -->
-  <script src="{% static 'js/global-search.js' %}"></script>
+  <script defer src="{% static 'js/global-search.js' %}"></script>
 
   {% block extra_js %}{% endblock %}
 

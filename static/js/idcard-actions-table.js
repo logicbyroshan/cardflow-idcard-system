@@ -186,174 +186,113 @@ function getFieldColumnIndex(fieldName) {
 
 function searchRows(query) {
     searchQuery = query.toLowerCase().trim();
-    applyFiltersAndSort();
+    // Server-side search: reset table and reload with search param
+    resetAndReload();
 }
 
 function filterByField(fieldName) {
     currentFilterField = fieldName;
+    // Field filter is client-side only — just re-run local filter on loaded rows
     applyFiltersAndSort();
 }
 
 function sortRows(sortValue) {
     currentSort = sortValue;
-    applyFiltersAndSort();
+    // Server-side sort: reset table and reload with sort param
+    resetAndReload();
 }
 
-function applyFiltersAndSort() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const weekAgo = new Date(today);
-    weekAgo.setDate(weekAgo.getDate() - 7);
-    
-    const monthAgo = new Date(today);
-    monthAgo.setMonth(monthAgo.getMonth() - 1);
-    
-    const filterColumnIndex = currentFilterField !== 'all' ? getFieldColumnIndex(currentFilterField) : -1;
-    
-    // Get class/section filter state from search module (exposed globally)
-    const classFilter = IDCardApp.currentClassFilter || '';
-    const sectionFilter = IDCardApp.currentSectionFilter || '';
-    
-    // Resolve class/section column indices once (only if filters are active)
-    let classColIndex = -1;
-    let sectionColIndex = -1;
-    if (classFilter || sectionFilter) {
-        const headerRow = document.querySelector('#data-table thead tr');
-        if (headerRow) {
-            const headers = headerRow.querySelectorAll('th');
-            headers.forEach((header, index) => {
-                const fieldName = (header.getAttribute('data-field-name') || header.textContent.trim()).toUpperCase();
-                if (classColIndex === -1 && (fieldName === 'CLASS' || fieldName === 'STD' || fieldName === 'STANDARD' || fieldName === 'GRADE' || fieldName.includes('CLASS'))) {
-                    classColIndex = index;
-                }
-                if (sectionColIndex === -1 && (fieldName === 'SECTION' || fieldName === 'SEC' || fieldName === 'DIV' || fieldName === 'DIVISION' || fieldName.includes('SECTION'))) {
-                    sectionColIndex = index;
-                }
-            });
-        }
+/**
+ * Build URL query params for server-side filtering.
+ * Reads current filter state from module locals + IDCardApp namespace.
+ */
+function _buildFilterParams() {
+    var params = new URLSearchParams();
+    params.set('status', lazyLoadState.currentStatus || '');
+    params.set('offset', lazyLoadState.loadedCount.toString());
+    params.set('limit', lazyLoadState.batchSize.toString());
+
+    if (searchQuery) params.set('search', searchQuery);
+    if (IDCardApp.currentClassFilter) params.set('class', IDCardApp.currentClassFilter);
+    if (IDCardApp.currentSectionFilter) params.set('section', IDCardApp.currentSectionFilter);
+    if (currentSort) params.set('sort', currentSort);
+    if (IDCardApp._activeImageSort) {
+        params.set('image_column', IDCardApp._activeImageSort.column || '');
+        params.set('image_condition', IDCardApp._activeImageSort.condition || '');
     }
-    
-    filteredRows = allRows.filter(row => {
-        if (searchQuery) {
-            if (currentFilterField === 'all') {
-                const rowText = row.textContent.toLowerCase();
-                if (!rowText.includes(searchQuery)) {
-                    return false;
-                }
-            } else if (filterColumnIndex >= 0) {
-                const cells = row.querySelectorAll('td');
-                if (filterColumnIndex < cells.length) {
-                    const cellText = cells[filterColumnIndex].textContent.toLowerCase();
-                    if (!cellText.includes(searchQuery)) {
-                        return false;
-                    }
-                } else {
-                    return false;
-                }
-            }
-        }
-        
-        if (currentFilter !== 'all' && (currentFilter === 'today' || currentFilter === 'week' || currentFilter === 'month')) {
-            const rowDate = getRowDate(row);
+    return params.toString();
+}
+
+/**
+ * Reset table state and reload data from server with current filters.
+ * Used when a server-side filter/sort changes (search, class, section, sort, image).
+ */
+async function resetAndReload() {
+    // Clear all loaded rows from DOM
+    var tableBody = document.getElementById('cardsTableBody');
+    if (tableBody) {
+        tableBody.querySelectorAll('tr[data-card-id]').forEach(function(row) { row.remove(); });
+        tableBody.querySelectorAll('.no-results-row').forEach(function(row) { row.remove(); });
+    }
+    allRows = [];
+    filteredRows = [];
+
+    // Reset lazy load state
+    lazyLoadState.loadedCount = 0;
+    lazyLoadState.hasMore = true;
+    lazyLoadState.isLoading = false;
+    lazyLoadState.totalCount = 0;
+
+    // Show loading overlay
+    showTableLoadingOverlay(true);
+
+    try {
+        await loadMoreData();
+    } finally {
+        showTableLoadingOverlay(false);
+    }
+
+    // Re-setup infinite scroll observer
+    if (typeof _setupLazyLoadObserver === 'function') {
+        _setupLazyLoadObserver();
+    }
+}
+
+/**
+ * Client-side filter for date range only.
+ * Search, class/section, image, and sort are all handled server-side now.
+ * This function only applies the lightweight date filter (today/week/month)
+ * on already-loaded rows.
+ */
+function applyFiltersAndSort() {
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    var weekAgo = new Date(today);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+
+    var monthAgo = new Date(today);
+    monthAgo.setMonth(monthAgo.getMonth() - 1);
+
+    var hasDateFilter = currentFilter !== 'all' && (currentFilter === 'today' || currentFilter === 'week' || currentFilter === 'month');
+
+    if (hasDateFilter) {
+        filteredRows = allRows.filter(function(row) {
+            var rowDate = getRowDate(row);
             rowDate.setHours(0, 0, 0, 0);
-            
             if (currentFilter === 'today') {
-                if (rowDate.getTime() !== today.getTime()) return false;
+                return rowDate.getTime() === today.getTime();
             } else if (currentFilter === 'week') {
-                if (rowDate < weekAgo) return false;
+                return rowDate >= weekAgo;
             } else if (currentFilter === 'month') {
-                if (rowDate < monthAgo) return false;
+                return rowDate >= monthAgo;
             }
-        }
-        
-        // Class filter — exact match on cell text
-        if (classFilter && classColIndex >= 0) {
-            const cells = row.querySelectorAll('td');
-            if (classColIndex < cells.length) {
-                const cell = cells[classColIndex];
-                const span = cell.querySelector('.cell-value');
-                const val = (span ? span.textContent : cell.textContent).trim();
-                if (val !== classFilter) return false;
-            } else {
-                return false;
-            }
-        }
-        
-        // Section filter — exact match on cell text
-        if (sectionFilter && sectionColIndex >= 0) {
-            const cells = row.querySelectorAll('td');
-            if (sectionColIndex < cells.length) {
-                const cell = cells[sectionColIndex];
-                const span = cell.querySelector('.cell-value');
-                const val = (span ? span.textContent : cell.textContent).trim();
-                if (val !== sectionFilter) return false;
-            } else {
-                return false;
-            }
-        }
-        
-        // Image sort filter — check image cell status (complete/pending/incomplete)
-        if (IDCardApp._activeImageSort) {
-            const imgSort = IDCardApp._activeImageSort;
-            // Try exact match first, then case-insensitive fallback
-            let imageCell = row.querySelector('td.image-cell[data-field-name="' + imgSort.column + '"]');
-            if (!imageCell) {
-                // Fallback: case-insensitive search across all image cells
-                const allImageCells = row.querySelectorAll('td.image-cell[data-field-name]');
-                const colLower = imgSort.column.toLowerCase();
-                for (let i = 0; i < allImageCells.length; i++) {
-                    if ((allImageCells[i].getAttribute('data-field-name') || '').toLowerCase() === colLower) {
-                        imageCell = allImageCells[i]; break;
-                    }
-                }
-            }
-            if (!imageCell) {
-                // No matching image column found on this row — exclude it
-                return false;
-            }
-            const hasImage = imageCell.querySelector('img.table-image') !== null;
-            const originalValue = imageCell.getAttribute('data-original-value') || '';
-            const isPending = originalValue.startsWith('PENDING:');
-            const hasColorfulPlaceholder = imageCell.querySelector('.no-image.colorful-placeholder') !== null;
-            const hasPendingPlaceholder = imageCell.querySelector('.no-image.pending-placeholder') !== null;
-            let showRow = false;
-            switch (imgSort.condition) {
-                case 'complete':
-                    showRow = hasImage && originalValue.trim() !== '' && !isPending;
-                    break;
-                case 'pending':
-                    showRow = isPending || hasPendingPlaceholder;
-                    break;
-                case 'incomplete':
-                    showRow = hasColorfulPlaceholder || (!hasImage && !isPending && originalValue.trim() === '');
-                    break;
-            }
-            if (!showRow) return false;
-        }
-        
-        return true;
-    });
-    
-    filteredRows.sort((a, b) => {
-        switch (currentSort) {
-            case 'name-asc':
-                return getRowName(a).localeCompare(getRowName(b));
-            case 'name-desc':
-                return getRowName(b).localeCompare(getRowName(a));
-            case 'date-new':
-                return getRowDate(b) - getRowDate(a);
-            case 'date-old':
-                return getRowDate(a) - getRowDate(b);
-            case 'sr-asc':
-                return getRowSrNo(a) - getRowSrNo(b);
-            case 'sr-desc':
-                return getRowSrNo(b) - getRowSrNo(a);
-            default:
-                return 0;
-        }
-    });
-    
+            return true;
+        });
+    } else {
+        filteredRows = allRows.slice();
+    }
+
     currentPage = 1;
     renderTable();
 }
@@ -377,8 +316,13 @@ function renderTable() {
     const totalRows = filteredRows.length;
     
     if (endlessScrollMode) {
-        allRows.forEach(row => row.style.display = 'none');
-        filteredRows.forEach(row => row.style.display = '');
+        // Use a Set for O(1) lookup so we set display in a single pass.
+        // Avoids the old hide-all-then-show pattern that briefly collapsed
+        // the table, triggering scroll-position jumps and observer re-fires.
+        const filteredSet = new Set(filteredRows);
+        allRows.forEach(row => {
+            row.style.display = filteredSet.has(row) ? '' : 'none';
+        });
         updatePaginationInfoEndless(totalRows);
     } else {
         allRows.forEach(row => row.style.display = 'none');
@@ -906,13 +850,13 @@ function _initTableBodyDelegation() {
             e.stopPropagation();
             var cardId = btn.getAttribute('data-card-id');
             if (!cardId) return;
-            if (btn.classList.contains('verify-row-btn') && typeof verifyCard === 'function') verifyCard(cardId);
-            else if (btn.classList.contains('approve-row-btn') && typeof approveCard === 'function') approveCard(cardId);
-            else if (btn.classList.contains('unverify-row-btn') && typeof unverifyCard === 'function') unverifyCard(cardId);
-            else if (btn.classList.contains('retrieve-row-btn') && typeof retrieveCard === 'function') retrieveCard(cardId);
-            else if (btn.classList.contains('unapprove-row-btn') && typeof unapproveCard === 'function') unapproveCard(cardId);
-            else if (btn.classList.contains('download-row-btn') && typeof downloadCard === 'function') downloadCard(cardId);
-            else if (btn.classList.contains('download-single-row-btn') && typeof downloadSingleCard === 'function') downloadSingleCard(cardId);
+            if (btn.classList.contains('verify-row-btn') && window.IDCardApp && typeof window.IDCardApp.verifyCard === 'function') window.IDCardApp.verifyCard(cardId);
+            else if (btn.classList.contains('approve-row-btn') && window.IDCardApp && typeof window.IDCardApp.approveCard === 'function') window.IDCardApp.approveCard(cardId);
+            else if (btn.classList.contains('unverify-row-btn') && window.IDCardApp && typeof window.IDCardApp.unverifyCard === 'function') window.IDCardApp.unverifyCard(cardId);
+            else if (btn.classList.contains('retrieve-row-btn') && window.IDCardApp && typeof window.IDCardApp.retrieveCard === 'function') window.IDCardApp.retrieveCard(cardId);
+            else if (btn.classList.contains('unapprove-row-btn') && window.IDCardApp && typeof window.IDCardApp.disapproveCard === 'function') window.IDCardApp.disapproveCard(cardId);
+            else if (btn.classList.contains('download-row-btn') && window.IDCardApp && typeof window.IDCardApp.moveToDownload === 'function') window.IDCardApp.moveToDownload(cardId);
+            else if (btn.classList.contains('download-single-row-btn') && window.IDCardApp && typeof window.IDCardApp.moveToDownload === 'function') window.IDCardApp.moveToDownload(cardId);
             return;
         }
 
@@ -934,8 +878,7 @@ async function loadMoreData() {
     showLazyLoadIndicator(true);
     
     try {
-        const offset = lazyLoadState.loadedCount;
-        const url = `/panel/api/table/${lazyLoadState.tableId}/cards/?status=${lazyLoadState.currentStatus}&offset=${offset}&limit=${lazyLoadState.batchSize}`;
+        const url = `/panel/api/table/${lazyLoadState.tableId}/cards/?${_buildFilterParams()}`;
         
         const data = await ApiClient.get(url);
         
@@ -955,19 +898,16 @@ async function loadMoreData() {
             lazyLoadState.totalCount = data.total_count;
             
             filteredRows = [...allRows];
-            if (searchQuery) {
-                applyFiltersAndSort();
+            if (endlessScrollMode) {
+                // In endless mode new rows are already in the DOM — just update pagination UI.
+                // Calling full renderTable() here would hide/show ALL rows causing scroll jumps.
+                updatePaginationInfoEndless(filteredRows.length);
             } else {
                 renderTable();
             }
             
             // Handle any broken images in newly loaded rows
             handleBrokenImages();
-            
-            // Re-populate filter dropdowns with any new class/section values
-            if (typeof populateFilterOptions === 'function') {
-                populateFilterOptions();
-            }
             
             updateLazyLoadPaginationInfo();
             
@@ -1090,11 +1030,18 @@ function _setupLazyLoadObserver() {
  * Only one loadMoreData() runs at a time; subsequent calls are dropped.
  */
 async function _sequencedLoadMore() {
-    if (lazyLoadState.isLoading) return;
+    if (lazyLoadState.isLoading || _loadCooldown) return;
     
     var seq = ++_loadRequestSeq;
     
     await loadMoreData();
+    
+    // Cooldown prevents the IntersectionObserver from rapid-firing after each load.
+    // Without this, the observer sees the sentinel still within rootMargin after
+    // rows are appended and immediately triggers another load, creating a loop
+    // that fetches ALL data at maximum speed.
+    _loadCooldown = true;
+    setTimeout(function() { _loadCooldown = false; }, 300);
     
     // If this was the latest request and there's still more, re-check sentinel
     if (seq === _loadRequestSeq && lazyLoadState.hasMore) {
@@ -1277,6 +1224,7 @@ let _scrollHandler = null;
 let _scrollTarget = null;
 let _sentinelObserver = null;
 let _loadRequestSeq = 0;  // Sequence guard to prevent duplicate offset fetches
+let _loadCooldown = false; // Cooldown flag to prevent IntersectionObserver rapid-fire
 
 function initTableModule() {
     // ── Cleanup previous init ──
@@ -1285,6 +1233,8 @@ function initTableModule() {
         _scrollTarget.removeEventListener('scroll', _scrollHandler);
     }
     if (_sentinelObserver) { _sentinelObserver.disconnect(); _sentinelObserver = null; }
+    _loadCooldown = false;
+    _loadRequestSeq = 0;
 
     // Reset state
     allRows = [];
@@ -1366,6 +1316,7 @@ window.IDCardApp.setRowsPerPage = setRowsPerPage;
 window.IDCardApp.loadMoreData = loadMoreData;
 window.IDCardApp.checkLoadMore = checkLoadMore;
 window.IDCardApp.loadAllData = loadAllData;
+window.IDCardApp.resetAndReload = resetAndReload;
 window.IDCardApp.showTableLoadingOverlay = showTableLoadingOverlay;
 window.IDCardApp.handleBrokenImages = handleBrokenImages;
 window.IDCardApp.lazyLoadState = lazyLoadState;

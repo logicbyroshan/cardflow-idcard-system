@@ -25,6 +25,10 @@ from .base import (
     settings,
     api_export_settings_get,
     api_export_settings_update,
+    api_export_templates_list,
+    api_export_template_create,
+    api_export_template_update,
+    api_export_template_delete,
 )
 
 from .auth import (
@@ -50,6 +54,7 @@ from .client_api import (
     api_client_staff,
     api_client_staff_toggle_status,
     api_client_staff_permissions,
+    api_client_set_temp_password,
 )
 
 from .staff_api import (
@@ -59,6 +64,7 @@ from .staff_api import (
     api_staff_delete,
     api_staff_toggle_status,
     api_active_clients_list,
+    api_staff_set_temp_password,
 )
 
 from .idcard_api import (
@@ -68,6 +74,7 @@ from .idcard_api import (
     api_idcard_table_delete,
     api_idcard_table_toggle_status,
     api_idcard_table_list,
+    api_create_table_from_xlsx,
     api_idcard_list,
     api_idcard_cards_json,
     api_idcard_create,
@@ -122,4 +129,15 @@ from .task_api import (
 
 from .monitoring_api import (
     api_client_errors,
+)
+
+from .notification_api import (
+    api_notifications_list,
+    api_notifications_unread_count,
+    api_notification_mark_read,
+    api_notifications_mark_all_read,
+    api_panel_notifications_list,
+    api_panel_notification_create,
+    api_panel_notification_delete,
+    api_panel_target_users,
 )

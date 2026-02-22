@@ -158,26 +158,25 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             // Create Excel workbook using SheetJS
-            var _XLSX = (typeof LazyLoad !== 'undefined') ? await LazyLoad.xlsx() : XLSX;
             const headers = fields.map(f => f.name);
             
             // Create worksheet with headers only
             const wsData = [headers];
-            const ws = _XLSX.utils.aoa_to_sheet(wsData);
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
             
             // Set column widths based on header lengths
             const colWidths = headers.map(h => ({ wch: Math.max(h.length + 5, 15) }));
             ws['!cols'] = colWidths;
             
             // Create workbook
-            const wb = _XLSX.utils.book_new();
-            _XLSX.utils.book_append_sheet(wb, ws, 'Template');
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Template');
             
             // Generate filename
             const filename = `${table.name.replace(/[^a-z0-9]/gi, '_')}_template.xlsx`;
             
             // Download the Excel file
-            _XLSX.writeFile(wb, filename);
+            XLSX.writeFile(wb, filename);
             
             showToast('Excel template downloaded successfully!', 'success');
         } catch (error) {
@@ -453,7 +452,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const payload = {
             name: name,
-            fields: currentFields.map((f, idx) => ({ name: f.name, type: f.type, order: idx, mandatory: !!f.mandatory }))
+            fields: currentFields.map((f, idx) => ({ name: f.name, type: f.type, order: idx, mandatory: f.mandatory || false }))
         };
 
         try {
@@ -591,7 +590,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (closeDrawer) closeDrawer.addEventListener('click', closeDrawerModal);
     if (cancelDrawer) cancelDrawer.addEventListener('click', closeDrawerModal);
     if (saveDrawer) saveDrawer.addEventListener('click', saveTable);
-    if (addDrawer) addDrawer.addEventListener('click', (e) => { if (e.target === addDrawer) closeDrawerModal(); });
+    // Outside click close disabled — prevent accidental closure
 
     // Escape key closes drawer (modals now handled by Alpine layoutState)
     document.addEventListener('keydown', function(e) {
@@ -645,7 +644,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
 
-            currentFields.push({ name: name, type: finalType, order: currentFields.length, mandatory: isMandatory });
+            // Auto-set mandatory for image-type fields
+            let finalMandatory = isMandatory;
+            if (imageFieldTypes.includes(finalType)) {
+                finalMandatory = true;
+            }
+
+            currentFields.push({ name: name, type: finalType, order: currentFields.length, mandatory: finalMandatory });
             renderFieldList();
             newFieldName.value = '';
             if (newFieldMandatory) newFieldMandatory.checked = false;
@@ -741,9 +746,6 @@ document.addEventListener('DOMContentLoaded', function() {
         fieldList.addEventListener('click', (e) => {
             if (e.target.closest('.remove-field-btn')) {
                 const idx = parseInt(e.target.closest('.remove-field-btn').dataset.idx);
-                const field = currentFields[idx];
-                const fieldLabel = field ? field.name || `Field ${idx + 1}` : `Field ${idx + 1}`;
-                if (!confirm(`Remove field "${fieldLabel}"?\n\nExisting card data for this field will be lost when you save.`)) return;
                 currentFields.splice(idx, 1);
                 renderFieldList();
                 showToast('Field removed!', 'info');
@@ -754,6 +756,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (e.target.classList.contains('field-type-select')) {
                 const idx = parseInt(e.target.dataset.idx);
                 currentFields[idx].type = e.target.value;
+                // Auto-set mandatory for image-type fields
+                if (imageFieldTypes.includes(e.target.value)) {
+                    currentFields[idx].mandatory = true;
+                    renderFieldList();
+                }
             }
             // Handle mandatory checkbox changes
             if (e.target.classList.contains('field-mandatory-checkbox')) {

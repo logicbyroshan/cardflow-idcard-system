@@ -59,7 +59,6 @@ INSTALLED_APPS = [
     'core',
     'accounts',
     'client',
-    'client_staff',
     'exports',
     'mediafiles',
     'staff',
@@ -78,6 +77,9 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # Messages MUST be before custom middleware so force-logout redirects
+    # can attach messages that are visible on the landing page.
+    'django.contrib.messages.middleware.MessageMiddleware',
     # Request timing — logs duration, slow-request warnings (>1.5 s)
     'core.middleware.RequestTimingMiddleware',
     # Permission Validation Middleware - re-checks permissions on every request
@@ -86,11 +88,10 @@ MIDDLEWARE = [
     'core.middleware.RoleScopingMiddleware',
     # Session idle timeout — logs out after SESSION_IDLE_TIMEOUT of inactivity
     'core.middleware.SessionIdleTimeoutMiddleware',
-    # Security headers — Permissions-Policy
+    # Security headers — Permissions-Policy, Cache-Control
     'core.middleware.SecurityHeadersMiddleware',
     # Website Offline Middleware — blocks public site when status is 'draft'
     'core.middleware.WebsiteOfflineMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
@@ -274,8 +275,8 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 # Max size for request body (1 GB — covers bulk XLSX + ZIP uploads)
 # Files >10 MB are spilled to disk by Django (FILE_UPLOAD_MAX_MEMORY_SIZE),
-# so a 1 GB ZIP is streamed to a temp file, NOT held in RAM.
-DATA_UPLOAD_MAX_MEMORY_SIZE = 1 * 1024 * 1024 * 1024  # 1 GB
+# so large ZIPs are streamed to a temp file, NOT held in RAM.
+DATA_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024 * 1024  # 1 GB
 
 # Max size for a single uploaded file kept in memory before spilling to disk (10 MB)
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10 MB
@@ -288,21 +289,45 @@ DATA_UPLOAD_MAX_NUMBER_FILES = 30
 # CACHING
 # =============================================================================
 
-# NOTE: LocMemCache is per-process — rate limiting and cache-based locks
-# are scoped to each Gunicorn worker. With 2 workers, effective rate limits
-# are doubled (e.g., 5 req/min becomes 10 across workers).
-# For stricter rate limiting, switch to Redis:
-#   CACHES = {'default': {'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-#                          'LOCATION': 'redis://127.0.0.1:6379/1'}}
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'TIMEOUT': 300,  # 5-minute default TTL
-        'OPTIONS': {
-            'MAX_ENTRIES': 1000,
-        },
+# Auto-detect Redis: set REDIS_URL in .env for production
+# (e.g., REDIS_URL=redis://127.0.0.1:6379/1)
+# Without REDIS_URL, falls back to LocMemCache (fine for single-process dev).
+REDIS_URL = os.getenv('REDIS_URL', '')
+
+if REDIS_URL:
+    # Production: Redis — OTP, rate limiting, and export locks are shared
+    # across all Gunicorn workers.
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': REDIS_URL,
+            'TIMEOUT': 300,
+            'OPTIONS': {
+                'db': int(os.getenv('REDIS_DB', '1')),
+            },
+        }
     }
-}
+else:
+    # Local development: LocMemCache (per-process, no setup needed)
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'TIMEOUT': 300,
+            'OPTIONS': {
+                'MAX_ENTRIES': 1000,
+            },
+        }
+    }
+
+# Warn operators if production is using per-process LocMemCache
+if not DEBUG and CACHES['default']['BACKEND'].endswith('LocMemCache'):
+    import warnings
+    warnings.warn(
+        'LocMemCache is per-process: rate limiting and OTP storage are NOT shared '
+        'between Gunicorn workers. Set REDIS_URL in .env for production.',
+        UserWarning,
+        stacklevel=1,
+    )
 
 
 # =============================================================================

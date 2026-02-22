@@ -18,25 +18,7 @@
     <span>Search ID cards...</span>
     <kbd>Ctrl+K</kbd>
   </button>
-  <!-- Notification Bell -->
-  <div class="notif-wrapper" id="notifWrapper">
-    <button class="notif-btn" id="notifBtn" title="Updates" aria-label="Notifications">
-      <i class="fa-solid fa-bell"></i>
-      <span class="notif-badge" id="notifBadge"></span>
-    </button>
-    <div class="notif-dropdown" id="notifDropdown">
-      <div class="notif-dropdown-header">
-        <h4><i class="fa-solid fa-bullhorn"></i> Updates</h4>
-        <span id="notifCount"></span>
-      </div>
-      <div class="notif-list" id="notifList">
-        <div class="notif-empty">
-          <i class="fa-solid fa-bell-slash"></i>
-          No updates yet.<br>Updates from admin will appear here.
-        </div>
-      </div>
-    </div>
-  </div>
+  {% include 'partials/notification-bell.html' %}
 </div>
 {% endblock %}
 
@@ -214,6 +196,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script defer src="{% static 'js/notification-bell.js' %}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   // ── Welcome date/time ──
@@ -230,23 +213,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // ── Load dashboard stats ──
   loadDashboardData();
 
-  // ── Notification bell toggle ──
-  const notifBtn = document.getElementById('notifBtn');
-  const notifDropdown = document.getElementById('notifDropdown');
-  if (notifBtn && notifDropdown) {
-    notifBtn.addEventListener('click', function(e) {
-      e.stopPropagation();
-      notifDropdown.classList.toggle('open');
-    });
-    document.addEventListener('click', function(e) {
-      if (!e.target.closest('#notifWrapper')) {
-        notifDropdown.classList.remove('open');
-      }
-    });
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') notifDropdown.classList.remove('open');
-    });
-  }
+  // Notification bell is handled by notification-bell.js
 });
 
 async function loadDashboardData() {

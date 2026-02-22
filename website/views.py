@@ -25,6 +25,16 @@ from .models import (
 )
 
 # ==========================================
+# DISPLAY LIMITS
+# ==========================================
+HOME_FEATURES_LIMIT = 6
+HOME_RECENT_PORTFOLIO_LIMIT = 8
+HOME_TESTIMONIALS_LIMIT = 5
+CATEGORY_IMAGES_LIMIT = 10
+REELS_INITIAL_LIMIT = 10
+BUSINESS_CACHE_TTL = 300  # 5 minutes
+
+# ==========================================
 # HELPER FUNCTIONS
 # ==========================================
 
@@ -36,7 +46,7 @@ def get_common_context():
     business = cache.get('business_details')
     if business is None:
         business = BusinessDetails.objects.first()
-        cache.set('business_details', business, 300)  # 5 minutes
+        cache.set('business_details', business, BUSINESS_CACHE_TTL)
 
     return {
         'business': business,
@@ -63,11 +73,11 @@ def home(request):
     home_sections = cache.get('home_sections')
     if home_sections is None:
         home_sections = {
-            'features': list(Feature.objects.filter(is_active=True).order_by('order')[:6]),
+            'features': list(Feature.objects.filter(is_active=True).order_by('order')[:HOME_FEATURES_LIMIT]),
             'trusted_clients': list(TrustedClient.objects.filter(is_active=True).order_by('order')),
             'featured_portfolio': list(PortfolioItem.objects.filter(is_active=True, is_featured=True).order_by('order')),
-            'recent_portfolio': list(PortfolioItem.objects.filter(is_active=True).order_by('-created_at')[:8]),
-            'testimonials': list(Testimonial.objects.filter(is_active=True).order_by('-review_date')[:5]),
+            'recent_portfolio': list(PortfolioItem.objects.filter(is_active=True).order_by('-created_at')[:HOME_RECENT_PORTFOLIO_LIMIT]),
+            'testimonials': list(Testimonial.objects.filter(is_active=True).order_by('-review_date')[:HOME_TESTIMONIALS_LIMIT]),
         }
         cache.set('home_sections', home_sections, 60)
     context.update(home_sections)
@@ -96,18 +106,45 @@ def our_work(request):
     ).order_by('has_order', 'order', '-created_at')
     
     # Build category images for bento card sliding effect (multiple images per category)
-    category_images = {}
-    for cat in categories:
-        cat_items = items.filter(category=cat, image__isnull=False).exclude(image='')[:10]
-        images = [item.image.url for item in cat_items if item.image]
-        category_images[str(cat.id)] = images if images else []
+    # Fetch all items with images in ONE query, then group in Python (avoids N+1)
+    items_with_images = list(
+        items.filter(image__isnull=False).exclude(image='').values_list('category_id', 'image')
+    )
+    from collections import defaultdict
+    from django.conf import settings as _s
+    _cat_img_map = defaultdict(list)
+    for cat_id, img_path in items_with_images:
+        if img_path and len(_cat_img_map[cat_id]) < CATEGORY_IMAGES_LIMIT:
+            _cat_img_map[cat_id].append(f'{_s.MEDIA_URL}{img_path}')
+    category_images = {str(cat.id): _cat_img_map.get(cat.id, []) for cat in categories}
+
+    # Build category items data for gallery modal (images + videos with orientation)
+    _cat_items_map = defaultdict(list)
+    for item in items:
+        cat_id = str(item.category_id) if item.category_id else None
+        if not cat_id:
+            continue
+        entry = {
+            'type': item.item_type or 'image',
+            'orientation': item.orientation or 'square',
+            'title': item.title or '',
+        }
+        if item.image:
+            entry['image'] = item.image.url
+        if item.video_file:
+            entry['video'] = item.video_file.url
+        elif item.video_url:
+            entry['video'] = item.video_url
+        _cat_items_map[cat_id].append(entry)
+    category_items = dict(_cat_items_map)
     
     # Separate reel-type items for the reels section
     portfolio_reels = items.filter(item_type='reel')
     
-    # Get first 10 active reels for initial load (dedicated Reel model)
-    reels = Reel.objects.filter(is_active=True).order_by('order')[:10]
-    total_reels = Reel.objects.filter(is_active=True).count()
+    # Get reels count + initial page in a single queryset evaluation
+    reels_qs = Reel.objects.filter(is_active=True).order_by('order')
+    total_reels = reels_qs.count()
+    reels = reels_qs[:REELS_INITIAL_LIMIT]
     
     context.update({
         'portfolio_items': items,
@@ -115,6 +152,7 @@ def our_work(request):
         'bento_categories': categories.filter(is_bento=True),
         'extra_categories': categories.filter(is_bento=False),
         'category_images': category_images,
+        'category_items': category_items,
         'portfolio_reels': portfolio_reels,
         'reels': reels,
         'total_reels': total_reels,
@@ -140,6 +178,7 @@ def load_more_reels(request):
             'title': reel.title,
             'description': reel.description or 'Watch our showcase',
             'thumbnail': reel.thumbnail.url if reel.thumbnail else None,
+            'video_file': reel.video_file.url if reel.video_file else None,
             'video_url': reel.video_url or None,
             'views_count': reel.views_count,
             'likes_count': reel.likes_count,
@@ -216,7 +255,7 @@ def submit_testimonial(request):
         )
         return JsonResponse({'success': True, 'message': 'Review submitted! It will appear once approved.'})
     except Exception as e:
-        logger.error(f"Testimonial submission failed: {e}")
+        logger.error("Testimonial submission failed: %s", e)
         return JsonResponse({'success': False, 'message': 'Server error. Please try again later.'}, status=500)
 
 
@@ -249,5 +288,5 @@ def submit_contact(request):
         )
         return JsonResponse({'success': True, 'message': 'Message sent successfully!'})
     except Exception as e:
-        logger.error(f"Contact form submission failed: {e}")
+        logger.error("Contact form submission failed: %s", e)
         return JsonResponse({'success': False, 'message': 'Server error. Please try again later.'}, status=500)

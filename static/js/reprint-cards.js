@@ -561,9 +561,7 @@ function _refreshStepCounts(tableId) {
 
     // Cancel
     overlay.querySelector('#reprintCancelBtn').addEventListener('click', () => overlay.remove());
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) overlay.remove();
-    });
+    // Disabled — prevent accidental closure on outside click
 
     // Submit
     overlay.querySelector('#reprintSubmitBtn').addEventListener('click', function() {

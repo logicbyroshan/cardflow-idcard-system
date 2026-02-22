@@ -202,9 +202,9 @@ function initSectionFilterDropdown() {
 }
 
 /**
- * Populate class/section filter dropdowns with unique values.
- * Virtual table mode: delegates to data-array based population (table-render.js override).
- * Legacy mode: scans DOM table rows.
+ * Populate class/section filter dropdowns from the server-side API.
+ * Calls /panel/api/table/{id}/filter-options/ to get ALL distinct values from the database,
+ * not just from loaded rows.
  */
 function populateFilterOptions() {
     // Virtual table mode: table-render.js calls _populateFilterOptions()
@@ -213,68 +213,63 @@ function populateFilterOptions() {
         return;
     }
 
-    // Legacy DOM-based path
-    const { classIndex, sectionIndex } = getClassSectionColumnIndices();
-    const tableBody = document.getElementById('cardsTableBody');
-    if (!tableBody) return;
+    var tableId = (IDCardApp.lazyLoadState && IDCardApp.lazyLoadState.tableId) ||
+                  (typeof TABLE_ID !== 'undefined' ? TABLE_ID : null);
+    if (!tableId) return;
 
-    const rows = tableBody.querySelectorAll('tr[data-card-id]');
-    const classValues = new Set();
-    const sectionValues = new Set();
+    var status = (IDCardApp.lazyLoadState && IDCardApp.lazyLoadState.currentStatus) ||
+                 (typeof CURRENT_STATUS !== 'undefined' ? CURRENT_STATUS : '');
 
-    rows.forEach(row => {
-        const cells = row.querySelectorAll('td');
-        if (classIndex >= 0 && classIndex < cells.length) {
-            const cell = cells[classIndex];
-            const span = cell.querySelector('.cell-value');
-            const val = (span ? span.textContent : cell.textContent).trim();
-            if (val) classValues.add(val);
-        }
-        if (sectionIndex >= 0 && sectionIndex < cells.length) {
-            const cell = cells[sectionIndex];
-            const span = cell.querySelector('.cell-value');
-            const val = (span ? span.textContent : cell.textContent).trim();
-            if (val) sectionValues.add(val);
-        }
-    });
+    ApiClient.get('/panel/api/table/' + tableId + '/filter-options/?status=' + encodeURIComponent(status))
+        .then(function(data) {
+            if (!data || !data.success) return;
 
-    // Populate class dropdown
-    const classOptions = document.getElementById('classFilterOptions');
-    if (classOptions) {
-        const sorted = [...classValues].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-        classOptions.innerHTML = '<div class="dropdown-option selected" data-value="">All Classes</div>' +
-            sorted.map(v => `<div class="dropdown-option" data-value="${v}">${v}</div>`).join('');
-        if (currentClassFilter) {
-            const match = classOptions.querySelector(`[data-value="${currentClassFilter}"]`);
-            if (match) {
-                classOptions.querySelectorAll('.dropdown-option').forEach(o => o.classList.remove('selected'));
-                match.classList.add('selected');
-            } else {
-                currentClassFilter = '';
-                const text = document.getElementById('classFilterText');
-                if (text) text.textContent = 'All Classes';
+            var classValues = data.class_values || [];
+            var sectionValues = data.section_values || [];
+
+            // Populate class dropdown
+            var classOptions = document.getElementById('classFilterOptions');
+            if (classOptions) {
+                var sorted = classValues; // Already sorted by server
+                classOptions.innerHTML = '<div class="dropdown-option selected" data-value="">All Classes</div>' +
+                    sorted.map(function(v) { return '<div class="dropdown-option" data-value="' + v + '">' + v + '</div>'; }).join('');
+                if (currentClassFilter) {
+                    var match = classOptions.querySelector('[data-value="' + currentClassFilter + '"]');
+                    if (match) {
+                        classOptions.querySelectorAll('.dropdown-option').forEach(function(o) { o.classList.remove('selected'); });
+                        match.classList.add('selected');
+                    } else {
+                        currentClassFilter = '';
+                        IDCardApp.currentClassFilter = '';
+                        var text = document.getElementById('classFilterText');
+                        if (text) text.textContent = 'All Classes';
+                    }
+                }
             }
-        }
-    }
 
-    // Populate section dropdown
-    const sectionOptions = document.getElementById('sectionFilterOptions');
-    if (sectionOptions) {
-        const sorted = [...sectionValues].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-        sectionOptions.innerHTML = '<div class="dropdown-option selected" data-value="">All Sections</div>' +
-            sorted.map(v => `<div class="dropdown-option" data-value="${v}">${v}</div>`).join('');
-        if (currentSectionFilter) {
-            const match = sectionOptions.querySelector(`[data-value="${currentSectionFilter}"]`);
-            if (match) {
-                sectionOptions.querySelectorAll('.dropdown-option').forEach(o => o.classList.remove('selected'));
-                match.classList.add('selected');
-            } else {
-                currentSectionFilter = '';
-                const text = document.getElementById('sectionFilterText');
-                if (text) text.textContent = 'All Sections';
+            // Populate section dropdown
+            var sectionOptions = document.getElementById('sectionFilterOptions');
+            if (sectionOptions) {
+                var sortedS = sectionValues;
+                sectionOptions.innerHTML = '<div class="dropdown-option selected" data-value="">All Sections</div>' +
+                    sortedS.map(function(v) { return '<div class="dropdown-option" data-value="' + v + '">' + v + '</div>'; }).join('');
+                if (currentSectionFilter) {
+                    var matchS = sectionOptions.querySelector('[data-value="' + currentSectionFilter + '"]');
+                    if (matchS) {
+                        sectionOptions.querySelectorAll('.dropdown-option').forEach(function(o) { o.classList.remove('selected'); });
+                        matchS.classList.add('selected');
+                    } else {
+                        currentSectionFilter = '';
+                        IDCardApp.currentSectionFilter = '';
+                        var textS = document.getElementById('sectionFilterText');
+                        if (textS) textS.textContent = 'All Sections';
+                    }
+                }
             }
-        }
-    }
+        })
+        .catch(function(err) {
+            console.error('Failed to load filter options:', err);
+        });
 }
 
 // Expose on IDCardApp namespace for table module integration
@@ -313,30 +308,13 @@ function applyClassSectionFilters() {
         return;
     }
 
-    // Legacy DOM-based path (USE_VIRTUAL_TABLE=false)
-    var runFilters = function () {
-        if (typeof IDCardApp.applyFiltersAndSort === 'function') {
-            IDCardApp.applyFiltersAndSort();
-        }
-    };
-
-    var hasFilter = currentClassFilter || currentSectionFilter || IDCardApp._activeImageSort;
-    var hasMore = IDCardApp.lazyLoadState && IDCardApp.lazyLoadState.hasMore;
-
-    if (hasFilter && hasMore && typeof IDCardApp.loadAllData === 'function') {
-        runFilters();
-        (async function () {
-            try {
-                await IDCardApp.loadAllData();
-            } finally {
-                if (typeof IDCardApp.initializeRows === 'function') IDCardApp.initializeRows();
-                runFilters();
-                IDCardApp.populateFilterOptions && IDCardApp.populateFilterOptions();
-                if (typeof IDCardApp.showTableLoadingOverlay === 'function') IDCardApp.showTableLoadingOverlay(false);
-            }
-        })();
-    } else {
-        runFilters();
+    // Server-side filter: reset table and reload with current filter params.
+    // The server handles search, class, section, image sort, and sort order.
+    if (typeof IDCardApp.resetAndReload === 'function') {
+        IDCardApp.resetAndReload();
+    } else if (typeof IDCardApp.applyFiltersAndSort === 'function') {
+        // Fallback to client-side filtering if resetAndReload not available
+        IDCardApp.applyFiltersAndSort();
     }
 }
 
@@ -477,9 +455,7 @@ function initSearchAllModal() {
     }
     
     if (searchAllModalOverlay) {
-        searchAllModalOverlay.addEventListener('click', function(e) {
-            if (e.target === this) closeSearchAllModalFn();
-        });
+        // Disabled — prevent accidental closure on outside click
     }
     
     if (clearSearchInput) {
@@ -662,11 +638,9 @@ function initImageSortModal() {
         });
     }
     
-    // Click outside to close
+    // Click outside to close — disabled to prevent accidental closure
     if (imageSortModalOverlay) {
-        imageSortModalOverlay.addEventListener('click', function(e) {
-            if (e.target === this) closeImageSortModalFn();
-        });
+        // Disabled
     }
     
     if (clearImageSort) {

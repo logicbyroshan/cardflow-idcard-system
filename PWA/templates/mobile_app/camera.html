@@ -1,0 +1,164 @@
+{% extends "mobile_app/base.html" %}
+{% load static %}
+
+{% block title %}Camera Capture - ID Card Manager{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-black" x-data="cameraApp()">
+    <!-- Header -->
+    <div class="sticky top-0 z-40 flex items-center gap-3 px-4 py-3 bg-black/80 backdrop-blur-md">
+        <a href="{% url 'mobile_app:home' %}" class="text-white">
+            <i class="fa-solid fa-arrow-left text-lg"></i>
+        </a>
+        <h1 class="text-white font-bold text-base flex-1">Capture Photo</h1>
+        <button @click="switchCamera()" class="text-white/70">
+            <i class="fa-solid fa-camera-rotate text-lg"></i>
+        </button>
+    </div>
+
+    <!-- Camera Viewfinder -->
+    <div class="relative flex-1 flex items-center justify-center" style="height: calc(100vh - 200px);">
+        <!-- Video Element -->
+        <video
+            x-ref="video"
+            autoplay
+            playsinline
+            class="w-full h-full object-cover"
+            :class="{ 'hidden': photoTaken }"
+        ></video>
+
+        <!-- Captured Photo Preview -->
+        <canvas
+            x-ref="canvas"
+            class="w-full h-full object-cover"
+            :class="{ 'hidden': !photoTaken }"
+        ></canvas>
+
+        <!-- Camera Guide Overlay -->
+        <div x-show="!photoTaken" class="absolute inset-0 pointer-events-none">
+            <!-- Face guide -->
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-60 border-2 border-white/40 rounded-[40%] border-dashed"></div>
+            <p class="absolute bottom-4 left-0 right-0 text-center text-white/60 text-xs">Align face within the guide</p>
+        </div>
+
+        <!-- Permission Error -->
+        <div x-show="cameraError" class="absolute inset-0 flex items-center justify-center bg-gray-900">
+            <div class="text-center px-8">
+                <i class="fa-solid fa-camera-slash text-4xl text-gray-500 mb-4"></i>
+                <p class="text-white text-sm font-medium mb-2">Camera Access Required</p>
+                <p class="text-gray-400 text-xs mb-4">Please allow camera access to capture photos</p>
+                <button @click="startCamera()" class="px-6 py-2 bg-gradient-to-r from-brand-light to-brand-dark text-white text-xs font-semibold rounded-xl">
+                    Try Again
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Camera Controls -->
+    <div class="fixed bottom-0 left-0 right-0 bg-black/90 backdrop-blur-md py-6">
+        <div class="max-w-[430px] mx-auto flex items-center justify-center gap-8">
+            <!-- Gallery -->
+            <button class="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center text-white">
+                <i class="fa-solid fa-images text-lg"></i>
+            </button>
+
+            <!-- Capture / Retake -->
+            <template x-if="!photoTaken">
+                <button @click="capturePhoto()" class="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-lg shadow-white/20 hover:scale-95 transition-transform">
+                    <div class="w-14 h-14 rounded-full border-4 border-gray-200"></div>
+                </button>
+            </template>
+            <template x-if="photoTaken">
+                <div class="flex gap-4">
+                    <button @click="retakePhoto()" class="w-14 h-14 rounded-full bg-red-500 flex items-center justify-center text-white">
+                        <i class="fa-solid fa-xmark text-xl"></i>
+                    </button>
+                    <button @click="savePhoto()" class="w-14 h-14 rounded-full bg-green-500 flex items-center justify-center text-white">
+                        <i class="fa-solid fa-check text-xl"></i>
+                    </button>
+                </div>
+            </template>
+
+            <!-- Flash -->
+            <button @click="toggleFlash()" class="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center text-white" :class="{ 'bg-amber-500/30 text-amber-400': flashOn }">
+                <i class="fa-solid" :class="flashOn ? 'fa-bolt' : 'fa-bolt-slash'" style="font-size: 1.125rem;"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+function cameraApp() {
+    return {
+        stream: null,
+        photoTaken: false,
+        cameraError: false,
+        flashOn: false,
+        facingMode: 'environment',
+
+        init() {
+            this.startCamera();
+        },
+
+        async startCamera() {
+            this.cameraError = false;
+            try {
+                this.stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: this.facingMode,
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                });
+                this.$refs.video.srcObject = this.stream;
+            } catch (err) {
+                console.error('Camera error:', err);
+                this.cameraError = true;
+            }
+        },
+
+        capturePhoto() {
+            const video = this.$refs.video;
+            const canvas = this.$refs.canvas;
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0);
+            this.photoTaken = true;
+        },
+
+        retakePhoto() {
+            this.photoTaken = false;
+        },
+
+        savePhoto() {
+            const canvas = this.$refs.canvas;
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+            // In production, this would POST to server
+            console.log('Photo saved:', dataUrl.substring(0, 50) + '...');
+            alert('Photo captured successfully!');
+            this.photoTaken = false;
+        },
+
+        async switchCamera() {
+            this.facingMode = this.facingMode === 'environment' ? 'user' : 'environment';
+            if (this.stream) {
+                this.stream.getTracks().forEach(t => t.stop());
+            }
+            await this.startCamera();
+        },
+
+        toggleFlash() {
+            this.flashOn = !this.flashOn;
+            if (this.stream) {
+                const track = this.stream.getVideoTracks()[0];
+                if (track.getCapabilities && track.getCapabilities().torch) {
+                    track.applyConstraints({ advanced: [{ torch: this.flashOn }] });
+                }
+            }
+        }
+    }
+}
+</script>
+{% endblock %}

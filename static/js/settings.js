@@ -334,4 +334,143 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    // ===== Export Templates Management =====
+    const tplListEl = document.getElementById('exportTemplateList');
+    const addTplForm = document.getElementById('addExportTemplateForm');
+
+    async function loadExportTemplates() {
+        if (!tplListEl) return;
+        try {
+            const data = await ApiClient.get('/panel/api/export-templates/');
+            if (data.success) {
+                renderTemplateList(data.templates);
+            } else {
+                tplListEl.innerHTML = '<p style="color:#ef4444;font-size:13px;">Failed to load templates.</p>';
+            }
+        } catch (err) {
+            console.error('Load templates error:', err);
+            tplListEl.innerHTML = '<p style="color:#ef4444;font-size:13px;">Network error loading templates.</p>';
+        }
+    }
+
+    function renderTemplateList(templates) {
+        if (!templates || templates.length === 0) {
+            tplListEl.innerHTML = '<p style="color:#94a3b8;font-size:13px;margin:0;">No templates created yet. Add one below.</p>';
+            return;
+        }
+        let html = '';
+        templates.forEach(function(tpl) {
+            const defaultBadge = tpl.is_default ? '<span style="background:#8b5cf6;color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;margin-left:6px;">Default</span>' : '';
+            html += '<div id="tpl-row-' + tpl.id + '" style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:8px;background:#fff;">';
+            html += '  <div style="flex:1;min-width:0;">';
+            html += '    <div style="font-weight:600;font-size:13px;color:#1e293b;">' + escapeHtml(tpl.name) + defaultBadge + '</div>';
+            html += '    <div style="font-size:12px;color:#64748b;margin-top:4px;white-space:pre-wrap;word-break:break-word;">' + escapeHtml(tpl.instructions).substring(0, 200) + (tpl.instructions.length > 200 ? '...' : '') + '</div>';
+            html += '  </div>';
+            html += '  <div style="display:flex;gap:6px;flex-shrink:0;">';
+            html += '    <button onclick="editExportTemplate(' + tpl.id + ')" class="btn btn-sm" style="font-size:11px;padding:4px 10px;background:#3b82f6;color:#fff;border:none;border-radius:4px;cursor:pointer;" title="Edit"><i class="fa-solid fa-pen"></i></button>';
+            html += '    <button onclick="deleteExportTemplate(' + tpl.id + ',\'' + escapeHtml(tpl.name).replace(/'/g, "\\'") + '\')" class="btn btn-sm" style="font-size:11px;padding:4px 10px;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;" title="Delete"><i class="fa-solid fa-trash"></i></button>';
+            html += '  </div>';
+            html += '</div>';
+        });
+        tplListEl.innerHTML = html;
+    }
+
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    // Add template
+    if (addTplForm) {
+        addTplForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const name = document.getElementById('newTplName').value.trim();
+            const instructions = document.getElementById('newTplInstructions').value.trim();
+            const isDefault = document.getElementById('newTplDefault').checked;
+
+            if (!name || !instructions) {
+                showToast('Please fill in template name and instructions', 'error');
+                return;
+            }
+
+            try {
+                const data = await ApiClient.post('/panel/api/export-templates/create/', {
+                    name: name,
+                    instructions: instructions,
+                    is_default: isDefault
+                });
+                if (data.success) {
+                    showToast('Template created successfully!', 'success');
+                    document.getElementById('newTplName').value = '';
+                    document.getElementById('newTplInstructions').value = '';
+                    document.getElementById('newTplDefault').checked = false;
+                    loadExportTemplates();
+                } else {
+                    showToast(data.message || 'Failed to create template', 'error');
+                }
+            } catch (err) {
+                console.error('Create template error:', err);
+                showToast('Network error creating template', 'error');
+            }
+        });
+    }
+
+    // Edit template (inline prompt)
+    window.editExportTemplate = async function(id) {
+        const row = document.getElementById('tpl-row-' + id);
+        if (!row) return;
+
+        // Fetch current data
+        let tplData;
+        try {
+            const data = await ApiClient.get('/panel/api/export-templates/');
+            if (data.success) {
+                tplData = data.templates.find(function(t) { return t.id === id; });
+            }
+        } catch (err) { return; }
+        if (!tplData) return;
+
+        const newName = prompt('Template Name:', tplData.name);
+        if (newName === null) return;
+        const newInstructions = prompt('Footer Instructions:', tplData.instructions);
+        if (newInstructions === null) return;
+
+        try {
+            const data = await ApiClient.post('/panel/api/export-templates/' + id + '/update/', {
+                name: newName.trim(),
+                instructions: newInstructions.trim()
+            });
+            if (data.success) {
+                showToast('Template updated!', 'success');
+                loadExportTemplates();
+            } else {
+                showToast(data.message || 'Failed to update template', 'error');
+            }
+        } catch (err) {
+            console.error('Update template error:', err);
+            showToast('Network error updating template', 'error');
+        }
+    };
+
+    // Delete template
+    window.deleteExportTemplate = async function(id, name) {
+        if (!confirm('Delete template "' + name + '"?')) return;
+        try {
+            const data = await ApiClient.post('/panel/api/export-templates/' + id + '/delete/');
+            if (data.success) {
+                showToast('Template deleted', 'success');
+                loadExportTemplates();
+            } else {
+                showToast(data.message || 'Failed to delete template', 'error');
+            }
+        } catch (err) {
+            console.error('Delete template error:', err);
+            showToast('Network error deleting template', 'error');
+        }
+    };
+
+    // Load on page init
+    loadExportTemplates();
 });

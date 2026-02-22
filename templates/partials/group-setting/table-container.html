@@ -15,11 +15,11 @@ Required context:
     <table class="data-table">
         <thead>
             <tr>
-                <th>Name</th>
-                <th>Status</th>
-                <th>Created At</th>
-                <th>Updated At</th>
-                <th>Download Sample</th>
+                <th scope="col">Name</th>
+                <th scope="col">Status</th>
+                <th scope="col">Created At</th>
+                <th scope="col">Updated At</th>
+                <th scope="col">Download Sample</th>
             </tr>
         </thead>
         <tbody id="tablesBody">
@@ -34,10 +34,10 @@ Required context:
             {% empty %}
             <tr class="no-data-row">
                 <td colspan="5" class="text-center">
-                    <div class="no-tables">
-                        <i class="fa-solid fa-table-list"></i>
-                        <h3>No Tables Found</h3>
-                        <p>Create your first ID card table to get started</p>
+                    <div class="no-tables" style="padding:40px 20px;text-align:center;color:#6b7280;">
+                        <i class="fa-solid fa-table-list" style="font-size:40px;color:#d1d5db;margin-bottom:12px;display:block;"></i>
+                        <h3 style="font-size:16px;font-weight:600;color:#374151;margin:0 0 6px;">No Tables Found</h3>
+                        <p style="font-size:13px;color:#9ca3af;margin:0;">Create your first ID card table to get started</p>
                     </div>
                 </td>
             </tr>
@@ -62,14 +62,14 @@ Required context:
                 hx-target="#gs-table-container"
                 hx-swap="innerHTML"
                 {% endif %}
-                title="First Page"><i class="fa-solid fa-angles-left"></i></button>
+                title="First Page" aria-label="First Page"><i class="fa-solid fa-angles-left"></i></button>
         <button class="pagination-btn {% if not page_obj.has_previous %}disabled{% endif %}"
                 {% if page_obj.has_previous %}
                 hx-get="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}&per_page={{ per_page }}"
                 hx-target="#gs-table-container"
                 hx-swap="innerHTML"
                 {% endif %}
-                title="Previous"><i class="fa-solid fa-chevron-left"></i></button>
+                title="Previous" aria-label="Previous"><i class="fa-solid fa-chevron-left"></i></button>
         <div class="page-numbers" id="gsPageNumbers">
             {% for p in page_range %}
                 {% if p == page_obj.number %}
@@ -90,26 +90,26 @@ Required context:
                 hx-target="#gs-table-container"
                 hx-swap="innerHTML"
                 {% endif %}
-                title="Next"><i class="fa-solid fa-chevron-right"></i></button>
+                title="Next" aria-label="Next"><i class="fa-solid fa-chevron-right"></i></button>
         <button class="pagination-btn {% if not page_obj.has_next %}disabled{% endif %}"
                 {% if page_obj.has_next %}
                 hx-get="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}&per_page={{ per_page }}"
                 hx-target="#gs-table-container"
                 hx-swap="innerHTML"
                 {% endif %}
-                title="Last Page"><i class="fa-solid fa-angles-right"></i></button>
+                title="Last Page" aria-label="Last Page"><i class="fa-solid fa-angles-right"></i></button>
         {% else %}
-        <button class="pagination-btn disabled"><i class="fa-solid fa-angles-left"></i></button>
-        <button class="pagination-btn disabled"><i class="fa-solid fa-chevron-left"></i></button>
+        <button class="pagination-btn disabled" aria-label="First Page"><i class="fa-solid fa-angles-left"></i></button>
+        <button class="pagination-btn disabled" aria-label="Previous"><i class="fa-solid fa-chevron-left"></i></button>
         <div class="page-numbers" id="gsPageNumbers"><button class="page-num active">1</button></div>
-        <button class="pagination-btn disabled"><i class="fa-solid fa-chevron-right"></i></button>
-        <button class="pagination-btn disabled"><i class="fa-solid fa-angles-right"></i></button>
+        <button class="pagination-btn disabled" aria-label="Next"><i class="fa-solid fa-chevron-right"></i></button>
+        <button class="pagination-btn disabled" aria-label="Last Page"><i class="fa-solid fa-angles-right"></i></button>
         {% endif %}
     </div>
     <div class="pagination-right">
         <label>Rows per page:</label>
         <div class="custom-dropdown rows-dropdown" id="rowsDropdown">
-            <button class="dropdown-toggle" type="button" id="rowsToggle">
+            <button class="dropdown-toggle" type="button" id="rowsToggle" aria-expanded="false">
                 <span id="rowsLabel">{{ per_page }}</span>
                 <i class="fa-solid fa-chevron-down"></i>
             </button>

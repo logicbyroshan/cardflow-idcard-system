@@ -108,3 +108,25 @@ def api_active_clients_list(request):
         'success': True,
         'clients': list(clients)
     })
+
+
+@require_http_methods(["POST"])
+@api_require_super_admin
+@rate_limit(max_requests=5, window_seconds=60, key_prefix='staff_temp_pw')
+def api_staff_set_temp_password(request, staff_id):
+    """API endpoint to set a temporary password for a staff member (Super Admin only)"""
+    try:
+        data = json.loads(request.body)
+        new_password = data.get('password', '').strip()
+        if not new_password:
+            return JsonResponse({'success': False, 'message': 'Password is required'}, status=400)
+        if len(new_password) < 6:
+            return JsonResponse({'success': False, 'message': 'Password must be at least 6 characters'}, status=400)
+
+        result = StaffService.set_temp_password(staff_id, new_password, request=request)
+        return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        logger.exception("Staff temp password error: %s", e)
+        return JsonResponse({'success': False, 'message': 'An error occurred'}, status=400)

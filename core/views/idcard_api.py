@@ -69,10 +69,12 @@ def _get_class_section_field_names(table):
 # ==================== ADMIN STAFF CLIENT SCOPING ====================
 # Ensures admin_staff can only access data belonging to their assigned clients.
 
-_ACCESS_DENIED_RESPONSE = JsonResponse(
-    {'success': False, 'message': 'Access denied. You are not assigned to this client.'},
-    status=403,
-)
+def _access_denied_response():
+    """Factory: return a fresh 403 JsonResponse per request (thread-safe)."""
+    return JsonResponse(
+        {'success': False, 'message': 'Access denied. You are not assigned to this client.'},
+        status=403,
+    )
 
 def _check_client_scope_by_group(user, group_id):
     """Check user has access to the client owning this group. Returns (group, error_response).
@@ -81,7 +83,7 @@ def _check_client_scope_by_group(user, group_id):
     """
     group = get_object_or_404(IDCardGroup, id=group_id)
     if not PermissionService.can_access_client(user, group.client_id):
-        return None, _ACCESS_DENIED_RESPONSE
+        return None, _access_denied_response()
     return group, None
 
 def _check_client_scope_by_table(user, table_id):
@@ -91,7 +93,7 @@ def _check_client_scope_by_table(user, table_id):
     """
     table = get_object_or_404(IDCardTable.objects.select_related('group'), id=table_id)
     if not PermissionService.can_access_client(user, table.group.client_id):
-        return None, _ACCESS_DENIED_RESPONSE
+        return None, _access_denied_response()
     return table, None
 
 def _check_client_scope_by_card(user, card_id):
@@ -101,7 +103,7 @@ def _check_client_scope_by_card(user, card_id):
     """
     card = get_object_or_404(IDCard.objects.select_related('table__group'), id=card_id)
     if not PermissionService.can_access_client(user, card.table.group.client_id):
-        return None, _ACCESS_DENIED_RESPONSE
+        return None, _access_denied_response()
     return card, None
 
 
@@ -218,12 +220,229 @@ def api_idcard_table_list(request, group_id):
     return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
 
 
+# ==================== CREATE TABLE FROM XLSX ====================
+
+# Field-type inference patterns: map XLSX header names to field types.
+# Order matters: first match wins.  All comparisons are case-insensitive.
+_HEADER_TYPE_MAP = [
+    # Image-like fields
+    (['mother photo', 'm photo', 'mother_photo', 'mother pic'], 'mother_photo'),
+    (['father photo', 'f photo', 'father_photo', 'father pic'], 'father_photo'),
+    (['photo', 'pic', 'picture', 'image', 'student photo', 'student image'], 'photo'),
+    (['signature', 'sign'], 'signature'),
+    (['barcode'], 'barcode'),
+    (['qr code', 'qr_code', 'qr'], 'qr_code'),
+    # Structural fields
+    (['class'], 'class'),
+    (['section', 'sec'], 'section'),
+    (['email', 'e-mail', 'email id', 'email address'], 'email'),
+]
+
+
+def _infer_field_type(header_name: str) -> str:
+    """Infer field type from an XLSX header name.
+
+    Returns one of the VALID_FIELD_TYPES for IDCardTable.
+    Falls back to 'text' for any unrecognised header.
+    """
+    normalized = header_name.strip().lower().replace('_', ' ')
+    for patterns, field_type in _HEADER_TYPE_MAP:
+        if normalized in patterns:
+            return field_type
+    return 'text'
+
+
+@require_http_methods(["POST"])
+@api_require_permission('perm_idcard_setting_add')
+def api_create_table_from_xlsx(request, group_id):
+    """
+    Create a new IDCardTable from an XLSX file's header row, then bulk-upload
+    the data rows into the table.  Optionally accepts ZIP files for image fields.
+
+    This combines two steps into one:
+      1. Reads the first row of the XLSX to derive field names + types.
+      2. Creates a table with those fields.
+      3. Delegates to the existing bulk-upload logic to import the data.
+
+    POST /api/group/<group_id>/table/create-from-xlsx/
+
+    Form-data:
+        file              : XLSX/XLS/CSV file   (required)
+        table_name        : Optional override for the table name
+        photos_zip_<FIELD>: ZIP per image field  (optional)
+        unified_zip_<N>   : Unified ZIPs         (optional)
+        unified_zip_count : Number of unified ZIPs (optional)
+        zip_field_names   : JSON array of field names with ZIP uploads (optional)
+
+    Returns JSON:
+        { success, message, table_id, table_name, cards_created, ... }
+    """
+    import openpyxl
+    from io import BytesIO
+
+    group, err = _check_client_scope_by_group(request.user, group_id)
+    if err:
+        return err
+
+    # ── 1. Validate file ────────────────────────────────────────────
+    if 'file' not in request.FILES:
+        return JsonResponse({'success': False, 'message': 'No file uploaded.'}, status=400)
+
+    uploaded_file = request.FILES['file']
+    file_name = uploaded_file.name.lower()
+    if not file_name.endswith(('.xlsx', '.xls', '.csv')):
+        return JsonResponse({
+            'success': False,
+            'message': 'Only .xlsx, .xls, and .csv files are supported.'
+        }, status=400)
+
+    # Size guard: 50 MB max for the spreadsheet
+    if uploaded_file.size > 50 * 1024 * 1024:
+        return JsonResponse({
+            'success': False,
+            'message': 'Spreadsheet file must be under 50 MB.'
+        }, status=400)
+
+    # ── 2. Read headers ─────────────────────────────────────────────
+    try:
+        if file_name.endswith('.csv'):
+            import csv, io
+            content = uploaded_file.read().decode('utf-8-sig', errors='replace')
+            uploaded_file.seek(0)
+            reader = csv.reader(io.StringIO(content))
+            headers = next(reader, [])
+        else:
+            wb = openpyxl.load_workbook(BytesIO(uploaded_file.read()), read_only=True, data_only=True)
+            uploaded_file.seek(0)
+            ws = wb.active
+            raw_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), ())
+            headers = [str(cell).strip() if cell is not None else '' for cell in raw_row]
+            wb.close()
+    except Exception as exc:
+        logger.error("Failed to read XLSX headers: %s", exc)
+        return JsonResponse({
+            'success': False,
+            'message': 'Could not read the spreadsheet. Please check the file format.'
+        }, status=400)
+
+    # Filter out empty headers
+    headers = [h for h in headers if h]
+    if not headers:
+        return JsonResponse({
+            'success': False, 'message': 'The spreadsheet has no column headers in the first row.'
+        }, status=400)
+
+    if len(headers) > IDCardService.MAX_FIELDS_PER_TABLE:
+        return JsonResponse({
+            'success': False,
+            'message': f'Maximum {IDCardService.MAX_FIELDS_PER_TABLE} columns allowed. '
+                       f'Your file has {len(headers)} columns.'
+        }, status=400)
+
+    # ── 3. Infer field definitions ──────────────────────────────────
+    fields = []
+    for idx, header in enumerate(headers):
+        field_type = _infer_field_type(header)
+        fields.append({
+            'name': header.strip().upper(),
+            'type': field_type,
+            'order': idx,
+            'mandatory': False,
+        })
+
+    # ── 4. Create the table ─────────────────────────────────────────
+    table_name = (request.POST.get('table_name') or '').strip().upper()
+    if not table_name:
+        # Derive from filename (strip extension)
+        import os as _os
+        base = _os.path.splitext(uploaded_file.name)[0]
+        table_name = base.strip().upper()[:255] or 'IMPORTED TABLE'
+
+    try:
+        table = IDCardTable.objects.create(
+            group=group,
+            name=table_name,
+            fields=fields,
+            is_active=True,
+        )
+    except Exception as exc:
+        logger.exception("Failed to create table from XLSX: %s", exc)
+        return JsonResponse({
+            'success': False, 'message': 'Failed to create table. Please try again.'
+        }, status=500)
+
+    logger.info(
+        "Created table %d (%s) with %d fields from XLSX (user=%s)",
+        table.id, table_name, len(fields), request.user.id,
+    )
+
+    # ── 5. Delegate to existing bulk upload ─────────────────────────
+    # We re-use the synchronous bulk upload by faking the table_id into the
+    # existing function.  The uploaded file + ZIPs are already in request.FILES.
+    try:
+        # Import and call the existing bulk upload handler directly, passing our
+        # newly-created table_id.  We intercept its JsonResponse to enrich it.
+        from core.views.idcard_api import api_idcard_bulk_upload as _bulk_upload
+
+        # Temporarily patch the URL kwargs so the bulk upload sees our table
+        bulk_response = _bulk_upload(request, table.id)
+
+        # Parse the JSON body from the upload response
+        import json as _json
+        try:
+            body = _json.loads(bulk_response.content)
+        except Exception:
+            body = {}
+
+        if bulk_response.status_code == 200 and body.get('success'):
+            body['table_id'] = table.id
+            body['table_name'] = table.name
+            body['fields_created'] = len(fields)
+            body['message'] = (
+                f'Table "{table.name}" created with {len(fields)} fields. '
+                + (body.get('message') or
+                   f'{body.get("cards_created", 0)} cards imported.')
+            )
+            return JsonResponse(body)
+        else:
+            # Upload failed — clean up: delete the empty table
+            try:
+                table.delete()
+            except Exception:
+                pass
+            return bulk_response
+
+    except Exception as exc:
+        logger.exception("Bulk upload after table creation failed: %s", exc)
+        # Clean up table
+        try:
+            table.delete()
+        except Exception:
+            pass
+        return JsonResponse({
+            'success': False,
+            'message': 'Table was created but data import failed. Please try again.'
+        }, status=500)
+
+
 # ==================== ID CARD API ENDPOINTS ====================
 
 @require_http_methods(["GET"])
 @api_require_any_authenticated
 def api_idcard_list(request, table_id):
-    """API endpoint to list ID Cards for a table with pagination support for lazy loading"""
+    """API endpoint to list ID Cards for a table with pagination support for lazy loading.
+    
+    Supports server-side filtering via query params:
+        search  - full-text search on field_data
+        class   - exact class filter on field_data
+        section - exact section filter on field_data
+        sort    - sort order: sr-asc, sr-desc, name-asc, name-desc, date-new, date-old
+        image_column    - image field name for image sort filter
+        image_condition - complete, pending, or incomplete
+    """
+    from django.db.models.fields.json import KeyTextTransform
+    from django.db.models import Q
+
     table, err = _check_client_scope_by_table(request.user, table_id)
     if err: return err
     status_filter = request.GET.get('status', None)
@@ -239,15 +458,20 @@ def api_idcard_list(request, table_id):
         limit = min(500, max(1, int(request.GET.get('limit', 100))))
     except (ValueError, TypeError):
         offset, limit = 0, 100
-    cursor = request.GET.get('cursor', '').strip()
-    cursor_id = None
-    if cursor:
-        try:
-            cursor_id = int(cursor)
-        except (ValueError, TypeError):
-            pass
-    
-    result = IDCardService.list_cards(table_id, status_filter, offset, limit, cursor=cursor_id)
+
+    # Server-side search & filters
+    search = request.GET.get('search', '').strip()
+    class_filter = request.GET.get('class', '').strip()
+    section_filter = request.GET.get('section', '').strip()
+    sort_order = request.GET.get('sort', 'sr-asc').strip()
+    image_column = request.GET.get('image_column', '').strip()
+    image_condition = request.GET.get('image_condition', '').strip()
+
+    result = IDCardService.list_cards(
+        table_id, status_filter, offset, limit,
+        search=search, class_filter=class_filter, section_filter=section_filter,
+        sort_order=sort_order, image_column=image_column, image_condition=image_condition,
+    )
     return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
 
 
@@ -484,11 +708,14 @@ def api_idcard_all_ids(request, table_id):
     section_filter = request.GET.get('section', '').strip()
     from_date = request.GET.get('from', '').strip()
     to_date = request.GET.get('to', '').strip()
+    image_column = request.GET.get('image_column', '').strip()
+    image_condition = request.GET.get('image_condition', '').strip()
     
     result = IDCardService.get_all_card_ids(
         table_id, status_filter,
         search=search, class_filter=class_filter, section_filter=section_filter,
         from_date=from_date, to_date=to_date,
+        image_column=image_column, image_condition=image_condition,
     )
     return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
 
@@ -502,6 +729,8 @@ def api_idcard_filter_options(request, table_id):
     much lighter than loading all field_data into Python.
     """
     from django.db.models.fields.json import KeyTextTransform
+    from django.db.models.functions import Cast
+    from django.db.models import CharField
 
     table, err = _check_client_scope_by_table(request.user, table_id)
     if err:
@@ -518,18 +747,24 @@ def api_idcard_filter_options(request, table_id):
     class_values = []
     section_values = []
 
+    # NOTE: Cast() wraps KeyTextTransform so that .exclude(_cv='') uses
+    # plain-text comparison instead of JSON_EXTRACT('', '$') which crashes
+    # on SQLite (empty string is not valid JSON).
+    # .order_by() clears IDCard's default ordering so DISTINCT is clean.
     if class_field_name:
         class_values = sorted(
-            qs.annotate(_cv=KeyTextTransform(class_field_name, 'field_data'))
+            qs.annotate(_cv=Cast(KeyTextTransform(class_field_name, 'field_data'), CharField()))
             .exclude(_cv__isnull=True).exclude(_cv='')
+            .order_by()
             .values_list('_cv', flat=True).distinct(),
             key=lambda v: (not v.isdigit(), int(v) if v.isdigit() else v),
         )
 
     if section_field_name:
         section_values = sorted(
-            qs.annotate(_sv=KeyTextTransform(section_field_name, 'field_data'))
+            qs.annotate(_sv=Cast(KeyTextTransform(section_field_name, 'field_data'), CharField()))
             .exclude(_sv__isnull=True).exclude(_sv='')
+            .order_by()
             .values_list('_sv', flat=True).distinct(),
         )
 
@@ -1010,7 +1245,7 @@ def api_idcard_bulk_upload(request, table_id):
         # Process each ZIP file for each image field
         # Safety limits for per-field ZIPs (match unified ZIP limits)
         PER_FIELD_MAX_IMAGES = 5000
-        PER_FIELD_MAX_BYTES = 500 * 1024 * 1024  # 500 MB total extracted
+        PER_FIELD_MAX_BYTES = 1024 * 1024 * 1024  # 1 GB total extracted
         
         for field_name in zip_field_names:
             zip_key = f'photos_zip_{field_name}'
@@ -1145,7 +1380,7 @@ def api_idcard_bulk_upload(request, table_id):
         unified_zip_count = min(unified_zip_count, 20)
         
         MAX_ZIP_IMAGES = 5000
-        MAX_ZIP_TOTAL_BYTES = 500 * 1024 * 1024  # 500MB uncompressed total
+        MAX_ZIP_TOTAL_BYTES = 1024 * 1024 * 1024  # 1 GB uncompressed total
         total_extracted_bytes = 0
         total_extracted_images = 0
         
@@ -1308,7 +1543,18 @@ def api_idcard_bulk_upload(request, table_id):
                     'message': 'Error reading Excel file. Please check the file format and try again.'
                 }, status=400)
             
-            # Map headers to table fields using fuzzy matching
+            # Check if frontend sent a manual field mapping (from 2-step wizard)
+            frontend_mapping_str = request.POST.get('field_mapping', '')
+            frontend_mapping = {}
+            if frontend_mapping_str:
+                try:
+                    frontend_mapping = json.loads(frontend_mapping_str)
+                    if not isinstance(frontend_mapping, dict):
+                        frontend_mapping = {}
+                except (json.JSONDecodeError, TypeError):
+                    frontend_mapping = {}
+            
+            # Map headers to table fields using fuzzy matching (or frontend mapping)
             # Skip any headers that match image field names (those are for ZIP matching only)
             header_to_field = {}
             available_fields = table_fields.copy()
@@ -1317,24 +1563,46 @@ def api_idcard_bulk_upload(request, table_id):
             image_ref_columns = {}
             unmatched_image_fields = list(image_fields)  # Track which image fields still need matching
             
-            for idx, header in enumerate(headers):
-                if not header:
-                    continue
+            if frontend_mapping:
+                # Use the user-provided mapping from the wizard
+                # frontend_mapping = { tableFieldName: excelHeader, ... }
+                header_index = {h: i for i, h in enumerate(headers)}
                 
-                # Try to match this header against unmatched image fields
-                # Uses abbreviation expansion: F PHOTO -> FATHER PHOTO, M PHOTO -> MOTHER PHOTO, etc.
-                matched_img_field = BaseService.find_best_image_field_match(header, unmatched_image_fields)
-                if matched_img_field:
-                    image_ref_columns[matched_img_field] = idx
-                    unmatched_image_fields.remove(matched_img_field)
-                    continue
+                for table_field_name, excel_header in frontend_mapping.items():
+                    if table_field_name in available_fields and excel_header in header_index:
+                        idx = header_index[excel_header]
+                        header_to_field[idx] = table_field_name
+                        available_fields.remove(table_field_name)
+                        matched_field_names.append(table_field_name)
                 
-                # Not an image field - try text field matching
-                match = BaseService.find_best_field_match(header, available_fields)
-                if match:
-                    header_to_field[idx] = match
-                    available_fields.remove(match)  # Don't match same field twice
-                    matched_field_names.append(match)
+                # Still try to match image columns automatically
+                for idx, header in enumerate(headers):
+                    if not header or idx in header_to_field:
+                        continue
+                    matched_img_field = BaseService.find_best_image_field_match(header, unmatched_image_fields)
+                    if matched_img_field:
+                        image_ref_columns[matched_img_field] = idx
+                        unmatched_image_fields.remove(matched_img_field)
+            else:
+                # Fallback: auto fuzzy matching (original behavior)
+                for idx, header in enumerate(headers):
+                    if not header:
+                        continue
+                    
+                    # Try to match this header against unmatched image fields
+                    # Uses abbreviation expansion: F PHOTO -> FATHER PHOTO, M PHOTO -> MOTHER PHOTO, etc.
+                    matched_img_field = BaseService.find_best_image_field_match(header, unmatched_image_fields)
+                    if matched_img_field:
+                        image_ref_columns[matched_img_field] = idx
+                        unmatched_image_fields.remove(matched_img_field)
+                        continue
+                    
+                    # Not an image field - try text field matching
+                    match = BaseService.find_best_field_match(header, available_fields)
+                    if match:
+                        header_to_field[idx] = match
+                        available_fields.remove(match)  # Don't match same field twice
+                        matched_field_names.append(match)
             
             logger.debug("image_ref_columns = %s", image_ref_columns)
             logger.debug("header_to_field = %s", header_to_field)
@@ -1606,7 +1874,7 @@ def api_idcard_bulk_upload(request, table_id):
             content = uploaded_file.read().decode('utf-8-sig')
             reader = csv.DictReader(StringIO(content))
             
-            # Map CSV headers to table fields using fuzzy matching
+            # Map CSV headers to table fields using fuzzy matching (or frontend mapping)
             csv_headers = reader.fieldnames or []
             header_to_field = {}
             available_fields = table_fields.copy()
@@ -1615,24 +1883,41 @@ def api_idcard_bulk_upload(request, table_id):
             csv_image_ref_columns = {}
             csv_unmatched_image_fields = list(image_fields)  # Track which image fields still need matching
             
-            for header in csv_headers:
-                if not header:
-                    continue
+            if frontend_mapping:
+                # Use the user-provided mapping from the wizard
+                for table_field_name, excel_header in frontend_mapping.items():
+                    if table_field_name in available_fields and excel_header in csv_headers:
+                        header_to_field[excel_header] = table_field_name
+                        available_fields.remove(table_field_name)
+                        matched_field_names.append(table_field_name)
                 
-                # Try to match this header against unmatched image fields
-                # Uses abbreviation expansion: F PHOTO -> FATHER PHOTO, M PHOTO -> MOTHER PHOTO, etc.
-                matched_img_field = BaseService.find_best_image_field_match(header, csv_unmatched_image_fields)
-                if matched_img_field:
-                    csv_image_ref_columns[matched_img_field] = header
-                    csv_unmatched_image_fields.remove(matched_img_field)
-                    continue
-                
-                # Not an image field - try text field matching
-                match = BaseService.find_best_field_match(header.strip(), available_fields)
-                if match:
-                    header_to_field[header] = match
-                    available_fields.remove(match)
-                    matched_field_names.append(match)
+                # Still try to match image columns automatically
+                for header in csv_headers:
+                    if not header or header in header_to_field:
+                        continue
+                    matched_img_field = BaseService.find_best_image_field_match(header, csv_unmatched_image_fields)
+                    if matched_img_field:
+                        csv_image_ref_columns[matched_img_field] = header
+                        csv_unmatched_image_fields.remove(matched_img_field)
+            else:
+                for header in csv_headers:
+                    if not header:
+                        continue
+                    
+                    # Try to match this header against unmatched image fields
+                    # Uses abbreviation expansion: F PHOTO -> FATHER PHOTO, M PHOTO -> MOTHER PHOTO, etc.
+                    matched_img_field = BaseService.find_best_image_field_match(header, csv_unmatched_image_fields)
+                    if matched_img_field:
+                        csv_image_ref_columns[matched_img_field] = header
+                        csv_unmatched_image_fields.remove(matched_img_field)
+                        continue
+                    
+                    # Not an image field - try text field matching
+                    match = BaseService.find_best_field_match(header.strip(), available_fields)
+                    if match:
+                        header_to_field[header] = match
+                        available_fields.remove(match)
+                        matched_field_names.append(match)
             
             if not header_to_field:
                 return JsonResponse({

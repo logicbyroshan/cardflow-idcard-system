@@ -8,7 +8,7 @@ Usage in body (requires x-data="layoutState()"):
   {% include 'components/toast.html' %}
 {% endcomment %}
 
-<div class="alpine-toast-wrapper" x-show="toastQueue && toastQueue.length > 0" x-cloak>
+<div class="alpine-toast-wrapper" x-show="toastQueue && toastQueue.length > 0" x-cloak role="status" aria-live="polite">
   <template x-for="toast in toastQueue" :key="toast.id">
     <div class="alpine-toast"
          :class="{

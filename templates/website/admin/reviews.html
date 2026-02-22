@@ -44,7 +44,7 @@
             <tr data-id="{{ r.id }}">
                 <td>
                     {% if r.reviewer_avatar %}
-                    <img src="{{ r.reviewer_avatar.url }}" class="wa-thumb round" alt="{{ r.reviewer_name }}" loading="lazy" decoding="async">
+                    <img src="{{ r.reviewer_avatar.url }}" class="wa-thumb round" alt="{{ r.reviewer_name }}">
                     {% else %}
                     <span class="wa-no-img round"><i class="fa-solid fa-user"></i></span>
                     {% endif %}
@@ -67,10 +67,10 @@
                 </td>
                 <td class="wa-actions">
                     {% if is_super_admin or perm_website_edit %}
-                    <button class="btn-icon" title="Edit" onclick="editReview({{ r.id }})"><i class="fa-solid fa-pen"></i></button>
+                    <button class="btn btn-icon" title="Edit" onclick="editReview({{ r.id }})"><i class="fa-solid fa-pen"></i></button>
                     {% endif %}
                     {% if is_super_admin or perm_website_delete %}
-                    <button class="btn-icon danger" title="Delete" onclick="deleteReview({{ r.id }})"><i class="fa-solid fa-trash"></i></button>
+                    <button class="btn btn-icon danger" title="Delete" onclick="deleteReview({{ r.id }})"><i class="fa-solid fa-trash"></i></button>
                     {% endif %}
                 </td>
             </tr>
@@ -140,7 +140,7 @@
                 </label>
             </div>
             <div class="wa-modal-footer">
-                <button type="button" class="btn btn-outline" onclick="closeReviewModal()">Cancel</button>
+                <button type="button" class="btn btn-neutral" onclick="closeReviewModal()">Cancel</button>
                 <button type="submit" class="btn btn-primary">Save</button>
             </div>
         </form>
@@ -149,5 +149,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/website-admin/reviews.js' %}"></script>
+<script src="{% static 'js/website-admin/reviews.js' %}?v=134"></script>
 {% endblock %}

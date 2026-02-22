@@ -7,20 +7,22 @@
     <meta name="robots" content="noindex, nofollow">
     <title>{% block title %}Website Management{% endblock %} - Adarsh Admin</title>
     <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
-  <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Tailwind CSS (primary) -->
-    <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
+    <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=134">
     <!-- Page-specific: website admin -->
-    <link rel="stylesheet" href="{% static 'css/global-search.css' %}">
-    <link rel="stylesheet" href="{% static 'css/website-admin.css' %}">
+    <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=134">
+    <link rel="stylesheet" href="{% static 'css/website-admin.css' %}?v=134">
     {% block extra_css %}{% endblock %}
-    <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <!-- Alpine.js State Module (MUST load before Alpine) -->
-    <script defer src="{% static 'js/alpine-state.js' %}"></script>
+    <script src="{% static 'js/alpine-state.js' %}?v=134"></script>
     <!-- Alpine.js -->
-    <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
 </head>
-<body x-data="layoutState()">
+<body x-data="layoutState()" x-init="init()">
 
     {% include 'partials/sidebar.html' %}
 
@@ -28,8 +30,8 @@
         <!-- Top Navbar -->
         <header class="topbar">
             <div class="nav-left">
-                <button class="sidebar-toggle" id="sidebarToggle" title="Toggle Sidebar">
-                    <i class="fa-solid fa-bars"></i>
+                <button class="sidebar-toggle" id="sidebarToggle" @click="toggleSidebar()" title="Toggle Sidebar" aria-label="Toggle sidebar">
+                    <i class="fa-solid" :class="sidebarOpen ? 'fa-xmark' : 'fa-bars'"></i>
                 </button>
                 <div class="breadcrumb">
                     {% if is_super_admin %}
@@ -62,6 +64,9 @@
             <a href="{% url 'website_admin:portfolio' %}" class="wa-tab {% if active_tab == 'portfolio' %}active{% endif %}">
                 <i class="fa-solid fa-images"></i> Portfolio
             </a>
+            <a href="{% url 'website_admin:reels' %}" class="wa-tab {% if active_tab == 'reels' %}active{% endif %}">
+                <i class="fa-solid fa-film"></i> Reels
+            </a>
             {% endif %}
         </div>
 
@@ -83,19 +88,19 @@
             <h4 class="wa-confirm-title" id="waConfirmTitle">Are you sure?</h4>
             <p class="wa-confirm-text" id="waConfirmText">This action cannot be undone.</p>
             <div class="wa-confirm-actions">
-                <button type="button" class="btn btn-outline" id="waConfirmCancel">Cancel</button>
+                <button type="button" class="btn btn-neutral" id="waConfirmCancel">Cancel</button>
                 <button type="button" class="btn btn-danger" id="waConfirmOk">Confirm</button>
             </div>
         </div>
     </div>
 
     <!-- Core Modules -->
-    <script src="{% static 'js/core/api.js' %}"></script>
-    <script src="{% static 'js/core/toast.js' %}"></script>
-    <script src="{% static 'js/core/modal.js' %}"></script>
-    <script src="{% static 'js/core/utils.js' %}"></script>
-    <script src="{% static 'js/init.js' %}"></script>
-    <script src="{% static 'js/global-search.js' %}"></script>
+    <script src="{% static 'js/core/api.js' %}?v=134"></script>
+    <script src="{% static 'js/core/toast.js' %}?v=134"></script>
+    <script src="{% static 'js/core/modal.js' %}?v=134"></script>
+    <script src="{% static 'js/core/utils.js' %}?v=134"></script>
+    <script src="{% static 'js/init.js' %}?v=134"></script>
+    <script src="{% static 'js/global-search.js' %}?v=134"></script>
 
     <script>
     /* Reusable confirm modal — returns a Promise<boolean> */

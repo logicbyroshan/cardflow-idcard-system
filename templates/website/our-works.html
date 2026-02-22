@@ -4,8 +4,8 @@
 {% block title %}Our Works{% endblock %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'website/styles/our-works.css' %}">
-    <link rel="stylesheet" href="{% static 'website/styles/our-works-responsive.css' %}">
+    <link rel="stylesheet" href="{% static 'website/styles/our-works.css' %}?v=134">
+    <link rel="stylesheet" href="{% static 'website/styles/our-works-responsive.css' %}?v=134">
 {% endblock %}
 
 {% block content %}
@@ -71,6 +71,7 @@
     
     <!-- Category Images Data for JS -->
     {{ category_images|json_script:"categoryImagesData" }}
+    {{ category_items|json_script:"categoryItemsData" }}
 
     <!-- Video Reels Section -->
     <section class="reels-section" id="reels">
@@ -86,12 +87,16 @@
                         {% for reel in reels %}
                         <div class="reel-card" data-index="{{ forloop.counter0 }}" data-reel-id="{{ reel.id }}">
                             <div class="reel-video">
-                                {% if reel.video_url %}
+                                {% if reel.video_file %}
+                                    <video class="reel-video-player" muted playsinline loop preload="metadata" {% if reel.thumbnail %}poster="{{ reel.thumbnail.url }}"{% endif %}>
+                                        <source src="{{ reel.video_file.url }}" type="video/mp4">
+                                    </video>
+                                {% elif reel.video_url %}
                                     <video class="reel-video-player" muted playsinline loop preload="metadata" {% if reel.thumbnail %}poster="{{ reel.thumbnail.url }}"{% endif %}>
                                         <source src="{{ reel.video_url }}" type="video/mp4">
                                     </video>
                                 {% elif reel.thumbnail %}
-                                    <img src="{{ reel.thumbnail.url }}" alt="{{ reel.title }}" class="reel-thumbnail" loading="lazy" decoding="async">
+                                    <img src="{{ reel.thumbnail.url }}" alt="{{ reel.title }}" class="reel-thumbnail">
                                 {% else %}
                                     <div class="reel-placeholder"></div>
                                 {% endif %}
@@ -192,7 +197,7 @@
                                     <source src="{{ item.video_url }}" type="video/mp4">
                                 </video>
                             {% elif item.image %}
-                                <img src="{{ item.image.url }}" alt="{{ item.title }}" class="reel-thumbnail" loading="lazy" decoding="async">
+                                <img src="{{ item.image.url }}" alt="{{ item.title }}" class="reel-thumbnail">
                             {% else %}
                                 <div class="reel-placeholder"></div>
                             {% endif %}
@@ -233,14 +238,14 @@
                     <div class="portfolio-image">
                         {% if item.item_type == 'video' or item.item_type == 'reel' %}
                             {% if item.image %}
-                                <img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy" decoding="async">
+                                <img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy">
                             {% else %}
                                 <div class="portfolio-video-placeholder"><i class="fas fa-video"></i></div>
                             {% endif %}
                             <div class="portfolio-play-icon"><i class="fas fa-play-circle"></i></div>
                         {% else %}
                             {% if item.image %}
-                                <img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy" decoding="async">
+                                <img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy">
                             {% endif %}
                         {% endif %}
                         <div class="portfolio-overlay">
@@ -282,7 +287,12 @@
         <div class="product-gallery-content">
             <div class="product-gallery-header">
                 <h3 id="productGalleryTitle">Items</h3>
-                <button class="product-gallery-close" id="productGalleryClose"><i class="fas fa-times"></i></button>
+                <div class="product-gallery-header-actions">
+                    <button class="product-gallery-share" id="productGalleryShare" title="Copy link to this gallery">
+                        <i class="fas fa-share-alt"></i>
+                    </button>
+                    <button class="product-gallery-close" id="productGalleryClose"><i class="fas fa-times"></i></button>
+                </div>
             </div>
             <div class="product-gallery-grid" id="productGalleryGrid"></div>
         </div>
@@ -291,7 +301,7 @@
     <div class="lightbox" id="lightbox">
         <button class="lightbox-close" id="lightboxClose"><i class="fas fa-times"></i></button>
         <div class="lightbox-content">
-            <img src="" id="lightboxImage" alt="Enlarged view of selected work" loading="lazy" decoding="async">
+            <img src="" id="lightboxImage">
             <div class="lightbox-caption" id="lightboxCaption"></div>
         </div>
     </div>
@@ -305,5 +315,5 @@
 {% endblock %}
 
 {% block extra_js %}
-    <script src="{% static 'website/scripts/our-works.js' %}"></script>
+    <script src="{% static 'website/scripts/our-works.js' %}?v=134"></script>
 {% endblock %}

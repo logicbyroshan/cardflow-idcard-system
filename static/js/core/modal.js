@@ -34,6 +34,30 @@
     var drawerRegistry = new Map();
 
     // ==========================================
+    // FOCUS TRAP HELPER (a11y)
+    // ==========================================
+    var FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+    function _trapFocus(container, e) {
+        var focusable = container.querySelectorAll(FOCUSABLE);
+        if (!focusable.length) return;
+        var first = focusable[0];
+        var last  = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+        }
+    }
+
+    function _autoFocus(container) {
+        var el = container.querySelector('[autofocus]') || container.querySelector(FOCUSABLE);
+        if (el) setTimeout(function () { el.focus(); }, 50);
+    }
+
+    // ==========================================
     // MODAL CONTROLLER
     // ==========================================
     function ModalController(modalId, options) {
@@ -78,16 +102,32 @@
 
     ModalController.prototype.open = function (data) {
         if (!this.modal) return false;
+        // Save trigger element for focus restore (a11y)
+        this._triggerEl = document.activeElement;
         this.modal.classList.add(this.options.overlayClass);
+        // Set ARIA dialog attributes (a11y)
+        this.modal.setAttribute('role', 'dialog');
+        this.modal.setAttribute('aria-modal', 'true');
         if (this.options.lockBodyScroll) document.body.style.overflow = 'hidden';
         if (this.options.onOpen) this.options.onOpen(data);
         this.modal.dispatchEvent(new CustomEvent('modal:open', { detail: data }));
+        // Focus trap (a11y)
+        var self = this;
+        this._focusTrapHandler = function (e) { if (e.key === 'Tab') _trapFocus(self.modal, e); };
+        document.addEventListener('keydown', this._focusTrapHandler);
+        _autoFocus(this.modal);
         return true;
     };
 
     ModalController.prototype.close = function () {
         if (!this.modal) return false;
         this.modal.classList.remove(this.options.overlayClass);
+        // Remove ARIA and focus trap (a11y)
+        this.modal.removeAttribute('aria-modal');
+        if (this._focusTrapHandler) {
+            document.removeEventListener('keydown', this._focusTrapHandler);
+            this._focusTrapHandler = null;
+        }
         if (this.options.lockBodyScroll) {
             var anyOpen = false;
             modalRegistry.forEach(function (m) { if (m.isOpen()) anyOpen = true; });
@@ -95,6 +135,11 @@
         }
         if (this.options.onClose) this.options.onClose();
         this.modal.dispatchEvent(new CustomEvent('modal:close'));
+        // Restore focus to trigger element (a11y)
+        if (this._triggerEl && typeof this._triggerEl.focus === 'function') {
+            this._triggerEl.focus();
+            this._triggerEl = null;
+        }
         return true;
     };
 
@@ -173,6 +218,8 @@
         mode = mode || 'add';
         this.currentMode = mode;
         this.currentData = data || null;
+        // Save trigger element for focus restore (a11y)
+        this._triggerEl = document.activeElement;
 
         var cfg = this.options.modes[mode] || this.options.modes.add;
 
@@ -191,9 +238,17 @@
         this.drawer.classList.add(this.options.openClass);
         if (this.overlay) this.overlay.classList.add(this.options.overlayActiveClass);
         if (this.options.lockBodyScroll) document.body.style.overflow = 'hidden';
+        // Set ARIA dialog attributes (a11y)
+        this.drawer.setAttribute('role', 'dialog');
+        this.drawer.setAttribute('aria-modal', 'true');
         if (this.options.onModeChange) this.options.onModeChange(mode);
         if (this.options.onOpen) this.options.onOpen(mode, data);
         this.drawer.dispatchEvent(new CustomEvent('drawer:open', { detail: { mode: mode, data: data } }));
+        // Focus trap (a11y)
+        var self = this;
+        this._focusTrapHandler = function (e) { if (e.key === 'Tab') _trapFocus(self.drawer, e); };
+        document.addEventListener('keydown', this._focusTrapHandler);
+        _autoFocus(this.drawer);
         return true;
     };
 
@@ -201,6 +256,12 @@
         if (!this.drawer) return false;
         this.drawer.classList.remove(this.options.openClass);
         if (this.overlay) this.overlay.classList.remove(this.options.overlayActiveClass);
+        // Remove ARIA and focus trap (a11y)
+        this.drawer.removeAttribute('aria-modal');
+        if (this._focusTrapHandler) {
+            document.removeEventListener('keydown', this._focusTrapHandler);
+            this._focusTrapHandler = null;
+        }
         if (this.options.lockBodyScroll) {
             var anyOpen = false;
             drawerRegistry.forEach(function (d) { if (d.isOpen()) anyOpen = true; });
@@ -208,6 +269,11 @@
         }
         if (this.options.onClose) this.options.onClose();
         this.drawer.dispatchEvent(new CustomEvent('drawer:close'));
+        // Restore focus to trigger element (a11y)
+        if (this._triggerEl && typeof this._triggerEl.focus === 'function') {
+            this._triggerEl.focus();
+            this._triggerEl = null;
+        }
         return true;
     };
 

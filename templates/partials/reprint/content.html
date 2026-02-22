@@ -54,7 +54,7 @@
                 <tr>
                     <!-- Checkbox — 24px -->
                     <th class="w-[24px] min-w-[24px] text-center px-[1px]">
-                        <input type="checkbox" id="reprintSelectAll" title="Select all">
+                        <input type="checkbox" id="reprintSelectAll" title="Select all" aria-label="Select all">
                     </th>
                     <!-- SR NO — 36px, 2-line -->
                     <th class="w-[36px] min-w-[36px] px-[1px] py-1 text-center align-middle">
@@ -128,7 +128,7 @@
                             <i class="fa-solid fa-check-circle"></i> Requested
                         </span>
                         {% else %}
-                        <button class="btn-reprint-single" data-card-id="{{ card.id }}" title="Request reprint for this card">
+                        <button class="btn-reprint-single" data-card-id="{{ card.id }}" title="Request reprint for this card" aria-label="Request reprint for this card">
                             <i class="fa-solid fa-print"></i>
                         </button>
                         {% endif %}
@@ -178,7 +178,7 @@
     <div class="pagination-right">
         <label for="reprintRowsToggle">Rows per page:</label>
         <div class="custom-dropdown rows-dropdown" id="reprintRowsDropdown">
-            <button class="dropdown-toggle" id="reprintRowsToggle" type="button">
+            <button class="dropdown-toggle" id="reprintRowsToggle" type="button" aria-expanded="false">
                 <span id="reprintRowsSelectedText">50</span>
                 <i class="fa-solid fa-chevron-down"></i>
             </button>
@@ -244,7 +244,7 @@
                 <tr>
                     <!-- Checkbox — 24px -->
                     <th class="w-[24px] min-w-[24px] text-center px-[1px]">
-                        <input type="checkbox" id="confirmSelectAll" title="Select all">
+                        <input type="checkbox" id="confirmSelectAll" title="Select all" aria-label="Select all">
                     </th>
                     <!-- SR NO — 36px, 2-line -->
                     <th class="w-[36px] min-w-[36px] px-[1px] py-1 text-center align-middle">
@@ -317,10 +317,10 @@
                     <td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">{{ item.requested_at|date:"d-M-Y H:i" }}</td>
                     <td class="w-[60px] px-[1px] py-1 text-center align-middle action-cell">
                         <div class="confirm-action-btns">
-                            <button class="btn-confirm-single" data-rr-id="{{ item.rr_id }}" title="Confirm this reprint">
+                            <button class="btn-confirm-single" data-rr-id="{{ item.rr_id }}" title="Confirm this reprint" aria-label="Confirm this reprint">
                                 <i class="fa-solid fa-check"></i>
                             </button>
-                            <button class="btn-reject-single" data-rr-id="{{ item.rr_id }}" title="Reject this reprint">
+                            <button class="btn-reject-single" data-rr-id="{{ item.rr_id }}" title="Reject this reprint" aria-label="Reject this reprint">
                                 <i class="fa-solid fa-xmark"></i>
                             </button>
                         </div>
@@ -368,7 +368,7 @@
     <div class="pagination-right">
         <label for="confirmRowsToggle">Rows per page:</label>
         <div class="custom-dropdown rows-dropdown" id="confirmRowsDropdown">
-            <button class="dropdown-toggle" id="confirmRowsToggle" type="button">
+            <button class="dropdown-toggle" id="confirmRowsToggle" type="button" aria-expanded="false">
                 <span id="confirmRowsSelectedText">50</span>
                 <i class="fa-solid fa-chevron-down"></i>
             </button>
@@ -430,7 +430,7 @@
                 <tr>
                     <!-- Checkbox — 24px -->
                     <th class="w-[24px] min-w-[24px] text-center px-[1px]">
-                        <input type="checkbox" id="downloadSelectAll" title="Select all">
+                        <input type="checkbox" id="downloadSelectAll" title="Select all" aria-label="Select all">
                     </th>
                     <!-- SR NO — 36px, 2-line -->
                     <th class="w-[36px] min-w-[36px] px-[1px] py-1 text-center align-middle">
@@ -500,7 +500,7 @@
                     <td class="min-w-[80px] px-[1px] py-1 align-middle reason-cell whitespace-normal break-words text-left" title="{{ item.reason }}">{{ item.reason|truncatewords:8 }}</td>
                     <td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">{{ item.confirmed_at|date:"d-M-Y H:i" }}</td>
                     <td class="w-[60px] px-[1px] py-1 text-center align-middle action-cell">
-                        <button class="btn-download-single" data-rr-id="{{ item.rr_id }}" title="Download this reprint">
+                        <button class="btn-download-single" data-rr-id="{{ item.rr_id }}" title="Download this reprint" aria-label="Download this reprint">
                             <i class="fa-solid fa-download"></i>
                         </button>
                     </td>
@@ -547,7 +547,7 @@
     <div class="pagination-right">
         <label for="downloadRowsToggle">Rows per page:</label>
         <div class="custom-dropdown rows-dropdown" id="downloadRowsDropdown">
-            <button class="dropdown-toggle" id="downloadRowsToggle" type="button">
+            <button class="dropdown-toggle" id="downloadRowsToggle" type="button" aria-expanded="false">
                 <span id="downloadRowsSelectedText">50</span>
                 <i class="fa-solid fa-chevron-down"></i>
             </button>

@@ -9,7 +9,7 @@ import os
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views import View
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.utils.decorators import method_decorator
 from django.contrib.auth import login, logout
 from core.services.activity_service import ActivityService
@@ -26,10 +26,13 @@ logger = logging.getLogger(__name__)
 # PAGE VIEWS (Template-based)
 # =============================================================================
 
+@method_decorator(ensure_csrf_cookie, name='dispatch')
 class LoginPageView(View):
     """
     Render the login page with multi-step auth flow.
     Handles role selection, email/password, and password reset.
+    @ensure_csrf_cookie ensures the csrftoken cookie is set on GET,
+    so subsequent AJAX POSTs can read it for the X-CSRFToken header.
     """
     template_name = 'auth/login.html'
     
@@ -43,12 +46,11 @@ class LoginPageView(View):
 
 
 class LogoutView(View):
-    """Handle user logout."""
+    """Handle user logout. Only POST allowed to prevent CSRF logout attacks."""
     
     def get(self, request):
-        if request.user.is_authenticated:
-            ActivityService.log_logout(request, request.user)
-        logout(request)
+        # GET requests redirect to login — do NOT perform logout on GET
+        # (prevents CSRF logout via <img src="/logout/"> attacks)
         return redirect('accounts:login')
     
     def post(self, request):
@@ -91,56 +93,29 @@ class BaseDashboardView(LoginRequiredMixin, View):
 
 
 class OwnerDashboardView(BaseDashboardView):
-    """
-    Super Admin Dashboard — DEPRECATED.
-    Now redirects to the main dashboard at /panel/.
-    Old template: dashboard/owner.html (kept as backup).
-    """
+    """DEPRECATED — redirects to /panel/."""
     allowed_roles = ['super_admin']
-    
-    def dispatch(self, request, *args, **kwargs):
-        if request.user.is_authenticated:
-            from core.services.permission_service import PermissionService
-            if PermissionService.is_super_admin(request.user):
-                return redirect('/panel/')
-        return super().dispatch(request, *args, **kwargs)
-    
     def get(self, request):
         return redirect('/panel/')
 
 
 class StaffDashboardView(BaseDashboardView):
-    """
-    Admin Staff Dashboard — DEPRECATED.
-    Now redirects to the main dashboard at /panel/.
-    Old template: dashboard/staff.html (kept as backup).
-    """
+    """DEPRECATED — redirects to /panel/."""
     allowed_roles = ['admin_staff']
-    
     def get(self, request):
         return redirect('/panel/')
 
 
 class ClientAdminDashboardView(BaseDashboardView):
-    """
-    Client Dashboard — DEPRECATED.
-    Now redirects to /panel/client/dashboard/.
-    Old template: dashboard/client_admin.html (kept as backup).
-    """
+    """DEPRECATED — redirects to /panel/client/dashboard/."""
     allowed_roles = ['client']
-    
     def get(self, request):
         return redirect('/panel/client/dashboard/')
 
 
 class ClientStaffDashboardView(BaseDashboardView):
-    """
-    Client Staff Dashboard — DEPRECATED.
-    Now redirects to /panel/client/dashboard/.
-    Old template: dashboard/client_staff.html (kept as backup).
-    """
+    """DEPRECATED — redirects to /panel/client/dashboard/."""
     allowed_roles = ['client_staff']
-    
     def get(self, request):
         return redirect('/panel/client/dashboard/')
 
@@ -149,7 +124,6 @@ class ClientStaffDashboardView(BaseDashboardView):
 # API VIEWS (JSON responses for AJAX calls)
 # =============================================================================
 
-@method_decorator(csrf_exempt, name='dispatch')
 @method_decorator(rate_limit(max_requests=10, window_seconds=60), name='dispatch')
 class CheckEmailAPIView(View):
     """
@@ -191,12 +165,12 @@ class CheckEmailAPIView(View):
             }, status=500)
 
 
-@method_decorator(csrf_exempt, name='dispatch')
 @method_decorator(rate_limit(max_requests=5, window_seconds=60), name='dispatch')
 class LoginAPIView(View):
     """
     API endpoint for user login.
     POST /api/auth/login/
+    Requires CSRF token for session-based auth security.
     """
     
     def post(self, request):
@@ -251,7 +225,6 @@ class LoginAPIView(View):
             }, status=500)
 
 
-@method_decorator(csrf_exempt, name='dispatch')
 @method_decorator(rate_limit(max_requests=3, window_seconds=60), name='dispatch')
 class ForgotPasswordAPIView(View):
     """
@@ -298,7 +271,6 @@ class ForgotPasswordAPIView(View):
             }, status=500)
 
 
-@method_decorator(csrf_exempt, name='dispatch')
 @method_decorator(rate_limit(max_requests=5, window_seconds=60), name='dispatch')
 class VerifyOTPAPIView(View):
     """
@@ -343,7 +315,6 @@ class VerifyOTPAPIView(View):
             }, status=500)
 
 
-@method_decorator(csrf_exempt, name='dispatch')
 @method_decorator(rate_limit(max_requests=5, window_seconds=60), name='dispatch')
 class ResetPasswordAPIView(View):
     """

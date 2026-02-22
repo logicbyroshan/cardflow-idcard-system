@@ -1,0 +1,26 @@
+<!-- Download List Actions -->
+<div class="flex items-end w-full">
+    <button @click="deleteSelected()" class="action-btn flex-1 action-btn-red">
+        <i class="fa-solid fa-trash-can"></i>
+        <span class="action-btn-text">Delete</span>
+    </button>
+    <button @click="downloadAgain()" class="action-btn flex-1 action-btn-teal">
+        <i class="fa-solid fa-arrows-rotate"></i>
+        <span class="action-btn-text">Re-DL</span>
+    </button>
+    <button @click="selectedIds.length > 0 ? editSelected() : addNew()" class="action-btn-center flex-shrink-0 mx-1">
+        <div class="w-11 h-11 rounded-xl flex items-center justify-center text-white shadow-lg -mt-4 border-3 border-white"
+            :class="selectedIds.length > 0 ? 'bg-amber-500 shadow-amber-500/40' : 'bg-gradient-to-br from-brand-light to-brand-dark shadow-brand-light/40'">
+            <i class="text-lg" :class="selectedIds.length > 0 ? 'fa-solid fa-pen' : 'fa-solid fa-plus'"></i>
+        </div>
+        <span class="text-[9px] text-gray-500 font-medium" x-text="selectedIds.length > 0 ? 'Edit' : 'Add'"></span>
+    </button>
+    <button @click="downloadPDF()" class="action-btn flex-1 action-btn-purple">
+        <i class="fa-solid fa-file-pdf"></i>
+        <span class="action-btn-text">PDF</span>
+    </button>
+    <button @click="downloadIMG()" class="action-btn flex-1 action-btn-blue">
+        <i class="fa-solid fa-image"></i>
+        <span class="action-btn-text">IMG</span>
+    </button>
+</div>

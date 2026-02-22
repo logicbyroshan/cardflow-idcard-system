@@ -1,0 +1,24 @@
+<!-- =================================================
+     Notification Bell + Dropdown (reusable partial)
+     Include in any page's nav-right area.
+     Requires: tailwind.css (has .notif-* classes),
+               notification-bell.js
+     ================================================= -->
+<div class="notif-wrapper" id="notifWrapper">
+  <button class="notif-btn" id="notifBtn" title="Notifications" aria-label="Notifications" onclick="toggleNotifDropdown()">
+    <i class="fa-solid fa-bell"></i>
+    <span class="notif-badge" id="notifBadge"></span>
+  </button>
+  <div class="notif-dropdown" id="notifDropdown">
+    <div class="notif-dropdown-header">
+      <h4><i class="fa-solid fa-bell"></i> Notifications</h4>
+      <button class="notif-mark-all-btn" onclick="markAllNotificationsRead()">Mark all read</button>
+    </div>
+    <div class="notif-list" id="notifList">
+      <div class="notif-empty">
+        <i class="fa-solid fa-bell-slash"></i>
+        No notifications yet
+      </div>
+    </div>
+  </div>
+</div>

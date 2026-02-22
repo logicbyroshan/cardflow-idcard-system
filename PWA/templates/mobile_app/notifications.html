@@ -1,0 +1,40 @@
+{% extends "mobile_app/base.html" %}
+{% load static %}
+
+{% block title %}Notifications - ID Card Manager{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50">
+    <!-- Header -->
+    <div class="sticky top-0 z-40 flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-brand-light to-brand-dark">
+        <a href="{% url 'mobile_app:home' %}" class="text-white">
+            <i class="fa-solid fa-arrow-left text-lg"></i>
+        </a>
+        <h1 class="text-white font-bold text-base flex-1">Notifications</h1>
+        <button class="text-white/70 text-xs font-medium">Mark all read</button>
+    </div>
+
+    <!-- Notification List -->
+    <div class="p-4 space-y-3">
+        {% for notif in notifications %}
+        <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100 {% if not notif.read %}border-l-4 border-l-brand-light{% endif %} transition hover:shadow-md">
+            <div class="flex items-start gap-3">
+                <div class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 {% if not notif.read %}bg-gradient-to-br from-brand-light to-brand-dark text-white{% else %}bg-gray-100 text-gray-400{% endif %}">
+                    <i class="fa-solid fa-bell text-sm"></i>
+                </div>
+                <div class="flex-1">
+                    <div class="flex items-start justify-between">
+                        <h4 class="text-sm font-semibold text-gray-800">{{ notif.title }}</h4>
+                        {% if not notif.read %}
+                        <span class="w-2 h-2 bg-brand-light rounded-full flex-shrink-0 mt-1.5"></span>
+                        {% endif %}
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">{{ notif.message }}</p>
+                    <p class="text-[10px] text-gray-400 mt-1.5">{{ notif.time }}</p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

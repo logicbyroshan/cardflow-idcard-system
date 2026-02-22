@@ -14,10 +14,27 @@ PERFORMANCE IMPACT:
 
 NOTE: This migration only adds the index. It does NOT modify data or
       change any API behavior. Safe to apply on production.
+      Skipped automatically on non-PostgreSQL databases (e.g. SQLite).
 """
 
-from django.contrib.postgres.indexes import GinIndex
-from django.db import migrations
+from django.db import connection, migrations
+
+
+def add_gin_index(apps, schema_editor):
+    """Add GIN index only on PostgreSQL."""
+    if connection.vendor == 'postgresql':
+        schema_editor.execute(
+            'CREATE INDEX IF NOT EXISTS "idcard_field_data_gin" '
+            'ON "core_idcard" USING GIN ("field_data");'
+        )
+
+
+def remove_gin_index(apps, schema_editor):
+    """Remove GIN index only on PostgreSQL."""
+    if connection.vendor == 'postgresql':
+        schema_editor.execute(
+            'DROP INDEX IF EXISTS "idcard_field_data_gin";'
+        )
 
 
 class Migration(migrations.Migration):
@@ -27,11 +44,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddIndex(
-            model_name='idcard',
-            index=GinIndex(
-                fields=['field_data'],
-                name='idcard_field_data_gin',
-            ),
-        ),
+        migrations.RunPython(add_gin_index, remove_gin_index),
     ]

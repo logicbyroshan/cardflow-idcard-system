@@ -4,8 +4,8 @@ Contains: Email sending utilities with beautiful HTML templates
 """
 import secrets
 import string
-from django.core.mail import send_mail
 from django.conf import settings
+from core.utils.threaded_email import send_html_email_async
 
 
 def generate_secure_password(length=12):
@@ -31,7 +31,7 @@ def generate_secure_password(length=12):
     return ''.join(password)
 
 
-def get_welcome_email_template(name, email, password, role, login_url):
+def get_welcome_email_template(name, email, password, role, login_url, phone=''):
     """
     Generate a beautifully designed HTML email for welcome/credentials
     """
@@ -40,6 +40,14 @@ def get_welcome_email_template(name, email, password, role, login_url):
         'client': 'Client',
         'client_staff': 'Client Staff',
     }.get(role, role.replace('_', ' ').title())
+    
+    # Determine password display: if password equals phone, show "Your Mobile Number"
+    if phone and password == phone:
+        password_display = '📱 Your Mobile Number'
+        password_hint = '(Use your 10-digit mobile number as password)'
+    else:
+        password_display = password
+        password_hint = '(Please save this password securely)'
     
     html_content = f'''
 <!DOCTYPE html>
@@ -96,10 +104,10 @@ def get_welcome_email_template(name, email, password, role, login_url):
                                         <td style="padding: 10px 0; border-top: 1px dashed #ddd;">
                                             <span style="color: #666; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Password</span>
                                             <div style="color: #333; font-size: 16px; font-weight: 600; margin-top: 5px; font-family: 'Courier New', monospace; background: #fff; padding: 10px 15px; border-radius: 8px; border: 1px solid #e0e5ff;">
-                                                📱 Your Mobile Number
+                                                {password_display}
                                             </div>
                                             <p style="color: #888; font-size: 13px; margin: 8px 0 0; font-style: italic;">
-                                                (Use your 10-digit mobile number as password)
+                                                {password_hint}
                                             </p>
                                         </td>
                                     </tr>
@@ -176,7 +184,7 @@ Your account has been created as {role_display}.
 Your Login Credentials:
 ------------------------
 Email: {email}
-Password: Your Mobile Number (10-digit)
+Password: {password_display}
 Role: {role_display}
 
 Login URL: {login_url}
@@ -197,7 +205,7 @@ This is an automated message. Please do not reply to this email.
     return html_content, plain_content
 
 
-def send_welcome_email(name, email, password, role, request=None):
+def send_welcome_email(name, email, password, role, request=None, phone=''):
     """
     Send a welcome email with login credentials to new users.
     
@@ -207,6 +215,7 @@ def send_welcome_email(name, email, password, role, request=None):
         password: The generated password
         role: User's role (admin_staff, client, client_staff)
         request: Django request object (optional, for building absolute URL)
+        phone: User's phone number (to detect phone-as-password)
     
     Returns:
         tuple: (success: bool, message: str)
@@ -229,21 +238,90 @@ def send_welcome_email(name, email, password, role, request=None):
             email=email,
             password=password,
             role=role,
-            login_url=login_url
+            login_url=login_url,
+            phone=phone
         )
         
-        # Send the email
-        from django.core.mail import EmailMultiAlternatives
-        
+        # Send the email in background thread (non-blocking)
         subject = '🎉 Welcome to Adarsh Admin - Your Account is Ready!'
         from_email = settings.EMAIL_HOST_USER
         to_email = [email]
         
-        msg = EmailMultiAlternatives(subject, plain_content, from_email, to_email)
-        msg.attach_alternative(html_content, "text/html")
-        msg.send(fail_silently=False)
+        send_html_email_async(subject, plain_content, html_content, from_email, to_email)
         
         return True, 'Welcome email sent successfully!'
         
     except Exception as e:
         return False, f'Failed to send email: {str(e)}'
+
+
+def send_password_changed_notification(name, email, request=None):
+    """
+    Send a notification email informing the user their password was changed by an admin.
+    Does NOT include the new password in the email — only a notice.
+
+    Returns:
+        bool: True if email was queued successfully, False otherwise.
+    """
+    try:
+        if not settings.EMAIL_HOST_USER:
+            return False
+
+        site_url = getattr(settings, 'SITE_URL', 'http://localhost:8000')
+        if request:
+            login_url = request.build_absolute_uri('/panel/auth/login/')
+        else:
+            login_url = f'{site_url}/panel/auth/login/'
+
+        html_content = f'''<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background-color:#f4f4f7;font-family:Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f7;padding:40px 0;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.1);">
+  <tr><td style="background:linear-gradient(135deg,#4f46e5,#7c3aed);padding:30px 40px;text-align:center;">
+    <h1 style="color:#ffffff;margin:0;font-size:22px;">Password Updated</h1>
+  </td></tr>
+  <tr><td style="padding:32px 40px;">
+    <p style="font-size:16px;color:#333;">Hello <strong>{name}</strong>,</p>
+    <p style="font-size:15px;color:#555;line-height:1.6;">
+      Your account password has been updated by an administrator. If you did not request this change,
+      please contact your admin immediately.
+    </p>
+    <p style="font-size:15px;color:#555;line-height:1.6;">
+      You can log in using your new temporary password. We recommend changing it after you log in.
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin:25px 0;">
+      <tr><td align="center">
+        <a href="{login_url}" style="display:inline-block;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:15px;font-weight:600;">
+          Log In Now
+        </a>
+      </td></tr>
+    </table>
+    <p style="font-size:13px;color:#999;margin-top:24px;border-top:1px solid #eee;padding-top:16px;text-align:center;">
+      This is an automated message. Please do not reply to this email.<br>
+      &copy; 2026 Adarsh Admin. All rights reserved.
+    </p>
+  </td></tr>
+</table>
+</td></tr></table>
+</body></html>'''
+
+        plain_content = (
+            f'Hello {name},\n\n'
+            f'Your account password has been updated by an administrator.\n'
+            f'If you did not request this change, please contact your admin immediately.\n\n'
+            f'You can log in at: {login_url}\n\n'
+            f'This is an automated message. Please do not reply.'
+        )
+
+        subject = '🔒 Your Password Has Been Updated — Adarsh Admin'
+        from_email = settings.EMAIL_HOST_USER
+        to_email = [email]
+
+        send_html_email_async(subject, plain_content, html_content, from_email, to_email)
+        return True
+
+    except Exception:
+        return False

@@ -1,0 +1,243 @@
+{% extends "mobile_app/base.html" %}
+{% load static %}
+
+{% block title %}Camera Capture - ID Card Manager{% endblock %}
+
+{% block extra_head %}
+<!-- Cropper.js for photo cropping -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+<style>
+.crop-modal { position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.95);display:flex;flex-direction:column; }
+.crop-modal img { max-height:70vh;width:100%; }
+.crop-actions { display:flex;gap:12px;padding:16px;justify-content:center; }
+.crop-actions button { padding:12px 28px;border-radius:12px;font-weight:600;font-size:13px; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+<div class="min-h-screen bg-black" x-data="cameraApp()">
+    <!-- Header -->
+    <div class="sticky top-0 z-40 flex items-center gap-3 px-4 py-3 bg-black/80 backdrop-blur-md">
+        <a href="{% url 'mobile_app:home' %}" class="text-white">
+            <i class="fa-solid fa-arrow-left text-lg"></i>
+        </a>
+        <h1 class="text-white font-bold text-base flex-1">Capture Photo</h1>
+        <span class="text-white/50 text-xs">{% if table %}{{ table.name }}{% endif %}</span>
+        <button @click="switchCamera()" class="text-white/70 ml-2">
+            <i class="fa-solid fa-camera-rotate text-lg"></i>
+        </button>
+    </div>
+
+    <!-- Camera Viewfinder -->
+    <div class="relative flex-1 flex items-center justify-center" style="height: calc(100vh - 200px);">
+        <video x-ref="video" autoplay playsinline class="w-full h-full object-cover"
+               :class="{ 'hidden': photoTaken }"></video>
+        <canvas x-ref="canvas" class="w-full h-full object-cover"
+                :class="{ 'hidden': !photoTaken }"></canvas>
+        <!-- Face guide -->
+        <div x-show="!photoTaken" class="absolute inset-0 pointer-events-none">
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-60 border-2 border-white/40 rounded-[40%] border-dashed"></div>
+            <p class="absolute bottom-4 left-0 right-0 text-center text-white/60 text-xs">Align face within the guide</p>
+        </div>
+        <!-- Permission Error -->
+        <div x-show="cameraError" class="absolute inset-0 flex items-center justify-center bg-gray-900">
+            <div class="text-center px-8">
+                <i class="fa-solid fa-camera-slash text-4xl text-gray-500 mb-4"></i>
+                <p class="text-white text-sm font-medium mb-2">Camera Access Required</p>
+                <p class="text-gray-400 text-xs mb-4">Please allow camera access to capture photos</p>
+                <button @click="startCamera()" class="px-6 py-2 bg-gradient-to-r from-brand-light to-brand-dark text-white text-xs font-semibold rounded-xl">Try Again</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Camera Controls -->
+    <div class="fixed bottom-0 left-0 right-0 bg-black/90 backdrop-blur-md py-6">
+        <div class="max-w-[430px] mx-auto flex items-center justify-center gap-8">
+            <button @click="$refs.galleryFile.click()" class="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center text-white">
+                <i class="fa-solid fa-images text-lg"></i>
+            </button>
+            <input type="file" x-ref="galleryFile" accept="image/*" class="hidden" @change="onGalleryPick($event)">
+            <template x-if="!photoTaken">
+                <button @click="capturePhoto()" class="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-lg shadow-white/20 hover:scale-95 transition-transform">
+                    <div class="w-14 h-14 rounded-full border-4 border-gray-200"></div>
+                </button>
+            </template>
+            <template x-if="photoTaken">
+                <div class="flex gap-4">
+                    <button @click="retakePhoto()" class="w-14 h-14 rounded-full bg-red-500 flex items-center justify-center text-white">
+                        <i class="fa-solid fa-xmark text-xl"></i>
+                    </button>
+                    <button @click="openCropper()" class="w-14 h-14 rounded-full bg-blue-500 flex items-center justify-center text-white">
+                        <i class="fa-solid fa-crop text-xl"></i>
+                    </button>
+                    <button @click="savePhoto()" class="w-14 h-14 rounded-full bg-green-500 flex items-center justify-center text-white" :disabled="uploading">
+                        <i class="fa-solid" :class="uploading ? 'fa-spinner fa-spin' : 'fa-check'" style="font-size:1.25rem;"></i>
+                    </button>
+                </div>
+            </template>
+            <button @click="toggleFlash()" class="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center text-white"
+                    :class="{ 'bg-amber-500/30 text-amber-400': flashOn }">
+                <i class="fa-solid" :class="flashOn ? 'fa-bolt' : 'fa-bolt-slash'" style="font-size:1.125rem;"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Crop Modal -->
+    <div x-show="showCropper" class="crop-modal" x-cloak>
+        <div class="flex items-center justify-between px-4 py-3">
+            <button @click="closeCropper()" class="text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            <h3 class="text-white font-bold text-sm">Crop Photo</h3>
+            <button @click="applyCrop()" class="text-green-400 font-bold text-sm">Done</button>
+        </div>
+        <div class="flex-1 flex items-center justify-center overflow-hidden px-2">
+            <img x-ref="cropImage" class="max-w-full">
+        </div>
+        <div class="crop-actions">
+            <button @click="closeCropper()" class="bg-white/10 text-white">Cancel</button>
+            <button @click="applyCrop()" class="bg-gradient-to-r from-brand-light to-brand-dark text-white">Apply Crop</button>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div x-show="toast.show" x-transition class="fixed top-4 left-1/2 -translate-x-1/2 z-[90] max-w-[90%]">
+        <div :class="{'bg-green-500': toast.type==='success', 'bg-red-500': toast.type==='error'}"
+             class="text-white text-xs font-medium px-4 py-2.5 rounded-xl shadow-lg">
+            <span x-text="toast.message"></span>
+        </div>
+    </div>
+</div>
+
+<script>
+function getCookie(n){ let v=null; document.cookie.split(';').forEach(c=>{ c=c.trim(); if(c.startsWith(n+'=')) v=decodeURIComponent(c.substring(n.length+1)); }); return v; }
+
+function cameraApp() {
+    return {
+        stream: null,
+        photoTaken: false,
+        cameraError: false,
+        flashOn: false,
+        facingMode: 'environment',
+        showCropper: false,
+        cropper: null,
+        uploading: false,
+        toast: { show: false, message: '', type: 'info' },
+        tableId: {{ table_id }},
+
+        init() { this.startCamera(); },
+
+        async startCamera() {
+            this.cameraError = false;
+            try {
+                this.stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: this.facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+                    audio: false
+                });
+                this.$refs.video.srcObject = this.stream;
+            } catch (err) { this.cameraError = true; }
+        },
+
+        capturePhoto() {
+            const v = this.$refs.video, c = this.$refs.canvas;
+            c.width = v.videoWidth; c.height = v.videoHeight;
+            c.getContext('2d').drawImage(v, 0, 0);
+            this.photoTaken = true;
+        },
+
+        retakePhoto() { this.photoTaken = false; },
+
+        onGalleryPick(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const img = new Image();
+                img.onload = () => {
+                    const c = this.$refs.canvas;
+                    c.width = img.width; c.height = img.height;
+                    c.getContext('2d').drawImage(img, 0, 0);
+                    this.photoTaken = true;
+                };
+                img.src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+            e.target.value = '';
+        },
+
+        openCropper() {
+            this.showCropper = true;
+            this.$nextTick(() => {
+                const dataUrl = this.$refs.canvas.toDataURL('image/jpeg', 0.95);
+                this.$refs.cropImage.src = dataUrl;
+                if (this.cropper) this.cropper.destroy();
+                this.cropper = new Cropper(this.$refs.cropImage, {
+                    aspectRatio: NaN,
+                    viewMode: 1,
+                    movable: true,
+                    zoomable: true,
+                    rotatable: true,
+                    scalable: true,
+                    background: false,
+                });
+            });
+        },
+
+        applyCrop() {
+            if (!this.cropper) return;
+            const croppedCanvas = this.cropper.getCroppedCanvas({ maxWidth: 1200, maxHeight: 1200 });
+            const c = this.$refs.canvas;
+            c.width = croppedCanvas.width; c.height = croppedCanvas.height;
+            c.getContext('2d').drawImage(croppedCanvas, 0, 0);
+            this.closeCropper();
+        },
+
+        closeCropper() {
+            this.showCropper = false;
+            if (this.cropper) { this.cropper.destroy(); this.cropper = null; }
+        },
+
+        async savePhoto() {
+            this.uploading = true;
+            try {
+                const blob = await new Promise(r => this.$refs.canvas.toBlob(r, 'image/jpeg', 0.9));
+                const fd = new FormData();
+                fd.append('photo', blob, 'capture_' + Date.now() + '.jpg');
+                fd.append('card_id', '');  // Will be matched by backend
+                const csrf = getCookie('csrftoken') || document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+                const res = await fetch('/app/api/table/' + this.tableId + '/upload-photo/', {
+                    method: 'POST', headers: { 'X-CSRFToken': csrf }, body: fd
+                });
+                const data = await res.json();
+                if (data.success) {
+                    this.showMsg('Photo uploaded successfully!', 'success');
+                    this.photoTaken = false;
+                } else {
+                    this.showMsg(data.message || 'Upload failed', 'error');
+                }
+            } catch (e) { this.showMsg('Network error', 'error'); }
+            this.uploading = false;
+        },
+
+        showMsg(msg, type) {
+            this.toast = { show: true, message: msg, type };
+            setTimeout(() => { this.toast.show = false; }, 2500);
+        },
+
+        async switchCamera() {
+            this.facingMode = this.facingMode === 'environment' ? 'user' : 'environment';
+            if (this.stream) this.stream.getTracks().forEach(t => t.stop());
+            await this.startCamera();
+        },
+
+        toggleFlash() {
+            this.flashOn = !this.flashOn;
+            if (this.stream) {
+                const t = this.stream.getVideoTracks()[0];
+                if (t.getCapabilities?.().torch) t.applyConstraints({ advanced: [{ torch: this.flashOn }] });
+            }
+        }
+    }
+}
+</script>
+{% endblock %}

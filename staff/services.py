@@ -226,6 +226,7 @@ class AdminStaffCreationService:
         department: str = '',
         assigned_client_ids: Optional[List[int]] = None,
         permission_codenames: Optional[List[str]] = None,
+        password: str = '',
     ) -> Dict[str, Any]:
         """
         Create a new admin staff member.
@@ -260,14 +261,14 @@ class AdminStaffCreationService:
                 }
             
             with transaction.atomic():
-                # Generate secure password
-                password = generate_secure_password()
+                # Use custom password if provided, otherwise phone, otherwise random
+                final_password = password.strip() if password and password.strip() else (phone if phone else generate_secure_password())
                 
                 # Create User
                 user = User.objects.create_user(
                     username=email,
                     email=email,
-                    password=password,
+                    password=final_password,
                     first_name=first_name,
                     last_name=last_name,
                     role='admin_staff',
@@ -306,7 +307,8 @@ class AdminStaffCreationService:
                     email=email,
                     name=full_name,
                     password=password,
-                    role='Admin Staff'
+                    role='Admin Staff',
+                    phone=phone
                 )
                 
                 return {
@@ -314,12 +316,11 @@ class AdminStaffCreationService:
                     'message': f'Admin staff "{full_name}" created successfully',
                     'staff': {
                         'id': staff.pk,
-                        'user_id': user.pk,
+                        'user_id': staff.user.pk,
                         'name': full_name,
                         'email': email,
                     },
                     'email_sent': success,
-                    'email_message': msg,
                 }
                 
         except Exception as e:
@@ -495,7 +496,8 @@ class AdminStaffCreationService:
                 email=user.email,
                 name=user.get_full_name(),
                 password=new_password,
-                role='Admin Staff'
+                role='Admin Staff',
+                phone=getattr(user, 'phone', '')
             )
             
             return {
@@ -679,12 +681,26 @@ from django.shortcuts import redirect
 
 def require_shop_owner(view_func):
     """Deprecated — delegates to require_super_admin from permission_service."""
+    import warnings
+    warnings.warn(
+        "require_shop_owner is deprecated. "
+        "Use 'from core.services.permission_service import require_super_admin' instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     from core.services.permission_service import require_super_admin
     return require_super_admin(view_func)
 
 
 def require_admin_staff_or_owner(view_func):
     """Deprecated — delegates to require_any_admin from permission_service."""
+    import warnings
+    warnings.warn(
+        "require_admin_staff_or_owner is deprecated. "
+        "Use 'from core.services.permission_service import require_any_admin' instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     from core.services.permission_service import require_any_admin
     return require_any_admin(view_func)
 

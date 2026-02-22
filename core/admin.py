@@ -1,6 +1,22 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import User, Client, Staff, IDCardGroup, IDCard, IDCardTable, WebsiteSettings, SystemSettings, ActivityLog
+from django.contrib.auth.models import Permission
+from .models import User, Client, Staff, IDCardGroup, IDCard, IDCardTable, SystemSettings, ExportTemplate, ActivityLog, Notification, NotificationRead
+
+
+# Register Permission model for admin visibility (moved from deprecated client_staff app)
+class PermissionAdmin(admin.ModelAdmin):
+    """Admin interface for Django Permissions."""
+    list_display = ('codename', 'name', 'content_type')
+    list_filter = ('content_type',)
+    search_fields = ('codename', 'name')
+    ordering = ('content_type', 'codename')
+
+try:
+    admin.site.unregister(Permission)
+except admin.sites.NotRegistered:
+    pass
+admin.site.register(Permission, PermissionAdmin)
 
 
 @admin.register(User)
@@ -35,6 +51,7 @@ class IDCardGroupAdmin(admin.ModelAdmin):
     list_display = ('name', 'client', 'is_active', 'created_at')
     list_filter = ('is_active', 'client')
     search_fields = ('name', 'client__name')
+    list_select_related = ('client',)
 
 
 @admin.register(IDCardTable)
@@ -50,17 +67,20 @@ class IDCardAdmin(admin.ModelAdmin):
     list_filter = ('status', 'table__group__client')
     search_fields = ('field_data',)
     raw_id_fields = ('table',)
-
-
-@admin.register(WebsiteSettings)
-class WebsiteSettingsAdmin(admin.ModelAdmin):
-    list_display = ('site_name', 'contact_email', 'contact_phone')
+    list_select_related = ('table',)
 
 
 @admin.register(SystemSettings)
 class SystemSettingsAdmin(admin.ModelAdmin):
     list_display = ('key', 'value', 'updated_at')
     search_fields = ('key', 'description')
+
+
+@admin.register(ExportTemplate)
+class ExportTemplateAdmin(admin.ModelAdmin):
+    list_display = ('name', 'is_default', 'updated_at')
+    search_fields = ('name',)
+    list_editable = ('is_default',)
 
 
 @admin.register(ActivityLog)
@@ -77,3 +97,22 @@ class ActivityLogAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return False
+
+
+@admin.register(Notification)
+class NotificationAdmin(admin.ModelAdmin):
+    list_display = ('title', 'priority', 'category', 'target', 'created_by', 'is_active', 'created_at')
+    list_filter = ('priority', 'category', 'target', 'is_active', 'created_at')
+    search_fields = ('title', 'message')
+    raw_id_fields = ('created_by',)
+    filter_horizontal = ('target_users',)
+    readonly_fields = ('created_at',)
+    date_hierarchy = 'created_at'
+
+
+@admin.register(NotificationRead)
+class NotificationReadAdmin(admin.ModelAdmin):
+    list_display = ('user', 'notification', 'read_at')
+    list_filter = ('read_at',)
+    raw_id_fields = ('user', 'notification')
+    readonly_fields = ('read_at',)

@@ -57,14 +57,20 @@ class User(AbstractUser):
     def save(self, *args, **kwargs):
         """
         Override save to synchronize is_superuser and role='super_admin'.
-        - If is_superuser=True, set role to 'super_admin'
-        - If role='super_admin', set is_superuser=True
+        Both directions are enforced:
+        - is_superuser=True  ↔  role='super_admin'
+        - role='super_admin'  →  is_superuser=True, is_staff=True
+        - role != 'super_admin' AND was previously super_admin  →  clear is_superuser
         """
         if self.is_superuser:
             self.role = 'super_admin'
+            self.is_staff = True
         elif self.role == 'super_admin':
             self.is_superuser = True
-            self.is_staff = True  # Superusers should have staff access
+            self.is_staff = True
+        else:
+            # Role is not super_admin — make sure is_superuser is cleared
+            self.is_superuser = False
         super().save(*args, **kwargs)
     
     class Meta:
@@ -177,6 +183,46 @@ class SystemSettings(models.Model):
         keys = list(cls.EXPORT_DEFAULTS.keys())
         db_settings = {s.key: s.value for s in cls.objects.filter(key__in=keys)}
         return {key: db_settings.get(key, default_val) for key, default_val in cls.EXPORT_DEFAULTS.items()}
+
+
+class ExportTemplate(models.Model):
+    """
+    User-defined export templates with custom footer instructions.
+    Admins create templates in Settings → Export Templates, then choose
+    one when downloading PDF or Word files.
+    """
+    name = models.CharField(max_length=100, unique=True, help_text='Template name shown in the download dropdown')
+    instructions = models.TextField(
+        help_text='Footer instructions printed at the bottom of PDF/Word exports'
+    )
+    is_default = models.BooleanField(default=False, help_text='Mark as default selection in download modals')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name']
+        verbose_name = 'Export Template'
+        verbose_name_plural = 'Export Templates'
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        # Ensure only one default template
+        if self.is_default:
+            ExportTemplate.objects.filter(is_default=True).exclude(pk=self.pk).update(is_default=False)
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def get_default(cls):
+        """Return the default template or None."""
+        return cls.objects.filter(is_default=True).first()
+
+    @classmethod
+    def get_all_as_choices(cls):
+        """Return list of dicts for JSON serialisation."""
+        templates = list(cls.objects.values('id', 'name', 'instructions', 'is_default'))
+        return templates
 
 
 class ActivityLog(models.Model):
@@ -308,28 +354,114 @@ class ActivityLog(models.Model):
         return self.ACTION_ICONS.get(self.action, ('fa-circle-info', 'edit'))[1]
 
 
+# ============================================================================
+# NOTIFICATION SYSTEM
+# ============================================================================
+
+class Notification(models.Model):
+    """
+    Notification model for sending messages to users.
+    
+    Supports:
+    - Broadcast to all users / all of a role
+    - Targeted to specific users
+    - Priority levels and categories
+    - Read/unread tracking per-user via NotificationRead
+    """
+    PRIORITY_CHOICES = [
+        ('low', 'Low'),
+        ('normal', 'Normal'),
+        ('high', 'High'),
+        ('urgent', 'Urgent'),
+    ]
+    CATEGORY_CHOICES = [
+        ('general', 'General'),
+        ('announcement', 'Announcement'),
+        ('update', 'System Update'),
+        ('maintenance', 'Maintenance'),
+        ('alert', 'Alert'),
+    ]
+    TARGET_CHOICES = [
+        ('all', 'All Users'),
+        ('super_admin', 'Super Admins'),
+        ('admin_staff', 'Admin Staff'),
+        ('client', 'Clients'),
+        ('client_staff', 'Client Staff'),
+        ('selected', 'Selected Users'),
+    ]
+    CATEGORY_ICONS = {
+        'general': 'fa-circle-info',
+        'announcement': 'fa-bullhorn',
+        'update': 'fa-arrow-up-right-dots',
+        'maintenance': 'fa-wrench',
+        'alert': 'fa-triangle-exclamation',
+    }
+    PRIORITY_COLORS = {
+        'low': '#94a3b8',
+        'normal': '#667eea',
+        'high': '#f59e0b',
+        'urgent': '#ef4444',
+    }
+
+    title = models.CharField(max_length=200)
+    message = models.TextField()
+    priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='normal', db_index=True)
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='general', db_index=True)
+    target = models.CharField(max_length=20, choices=TARGET_CHOICES, default='all')
+
+    # For target='selected', track which users were selected
+    target_users = models.ManyToManyField(User, blank=True, related_name='targeted_notifications')
+
+    # Sender
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='sent_notifications')
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    # Optional: schedule or expiry
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['-created_at', 'target'], name='notif_time_target_idx'),
+            models.Index(fields=['is_active', '-created_at'], name='notif_active_time_idx'),
+        ]
+
+    def __str__(self):
+        return f"[{self.get_priority_display()}] {self.title}"
+
+    @property
+    def icon_class(self):
+        return self.CATEGORY_ICONS.get(self.category, 'fa-circle-info')
+
+    @property
+    def priority_color(self):
+        return self.PRIORITY_COLORS.get(self.priority, '#667eea')
+
+
+class NotificationRead(models.Model):
+    """
+    Tracks which users have read which notifications.
+    One row per (user, notification) pair.
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notification_reads')
+    notification = models.ForeignKey(Notification, on_delete=models.CASCADE, related_name='reads')
+    read_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'notification')
+        indexes = [
+            models.Index(fields=['user', '-read_at'], name='notifread_user_time_idx'),
+        ]
+
+    def __str__(self):
+        return f"{self.user} read {self.notification}"
+
+
 class BackgroundTask(models.Model):
     """
     Tracks background tasks for async processing.
     
     CRITICAL: Only ONE heavy task per user at a time to prevent RAM exhaustion.
-    
-    Usage:
-        task = BackgroundTask.objects.create(
-            user=user,
-            task_type="bulk_upload",
-            file_path="temp/upload.xlsx",
-            total=1000
-        )
-        
-        # In background worker:
-        task.mark_started()
-        
-        # During processing:
-        task.update_progress(500)
-        
-        # On completion:
-        task.mark_completed(result_path="exports/result.zip")
     """
     TASK_TYPES = [
         ("bulk_upload", "Bulk Upload"),

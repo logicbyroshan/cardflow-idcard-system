@@ -17,6 +17,7 @@ from .utils import (
     generate_export_filename,
     format_field_value,
     sort_cards_for_export,
+    stream_file_response,
 )
 
 logger = logging.getLogger(__name__)
@@ -169,15 +170,14 @@ class ExcelExporter:
             # Generate filename
             filename = generate_export_filename(table.name, 'xlsx', client_name=client_name, status=status)
             
-            # Create response
+            # Create response — uses chunked streaming for large files
             xlsx_bytes = xlsx_buffer.getvalue()
             xlsx_buffer.close()
-            response = HttpResponse(
+            response = stream_file_response(
                 xlsx_bytes,
-                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                filename,
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             )
-            response['Content-Disposition'] = f'attachment; filename="{filename}"'
-            response['Content-Length'] = len(xlsx_bytes)
             
             return ExcelExportResult(
                 success=True,

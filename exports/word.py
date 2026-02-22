@@ -34,6 +34,7 @@ from .utils import (
     is_valid_image_path,
     sort_cards_for_export,
     get_class_field_name,
+    stream_file_response,
 )
 
 logger = logging.getLogger(__name__)
@@ -78,7 +79,8 @@ class WordExporter:
         table,
         cards: QuerySet,
         doc_format: str = 'docx',
-        status: str = ''
+        status: str = '',
+        template_id: int = None
     ) -> WordExportResult:
         """
         Export cards to Word format.
@@ -171,7 +173,7 @@ class WordExporter:
                 p = doc.paragraphs[0]._element
                 p.getparent().remove(p)
             
-            # Create tables with data (with class-based page breaks)
+            # Create tables with data (page-break per N rows)
             class_field_name = get_class_field_name(table.fields)
             self._create_data_tables(
                 doc, cards_list, ordered_fields, column_widths, num_cols,
@@ -179,6 +181,13 @@ class WordExporter:
                 parse_xml, nsdecls, OxmlElement, qn, Image, ImageOps,
                 class_field_name=class_field_name
             )
+            
+            # Add template instructions (if a template was selected)
+            if template_id:
+                self._add_template_instructions(
+                    doc, template_id, Pt, RGBColor, WD_ALIGN_PARAGRAPH,
+                    parse_xml, nsdecls
+                )
             
             # Set Word 97-2003 compatibility mode
             self._set_compatibility_mode(doc)
@@ -195,11 +204,10 @@ class WordExporter:
             # python-docx always produces DOCX (OOXML) format regardless of extension
             content_type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
             
+            # Use chunked streaming for large files
             doc_bytes = doc_buffer.getvalue()
             doc_buffer.close()
-            response = HttpResponse(doc_bytes, content_type=content_type)
-            response['Content-Disposition'] = f'attachment; filename="{filename}"'
-            response['Content-Length'] = len(doc_bytes)
+            response = stream_file_response(doc_bytes, filename, content_type)
             
             return WordExportResult(
                 success=True,
@@ -494,12 +502,10 @@ class WordExporter:
             )
 
             # Decide whether to insert a page break before this row
+            # Note: class-based page breaks are PDF-only; Word uses
+            # continuous layout so all data flows without class gaps.
             need_page_break = False
             if rows_on_current_page >= self.ENTRIES_PER_PAGE:
-                need_page_break = True
-            elif (class_field_name
-                  and prev_class_val is not None
-                  and cur_class_val != prev_class_val):
                 need_page_break = True
 
             # Add the data row
@@ -789,6 +795,46 @@ class WordExporter:
             r'</w:tblBorders>'.format(nsdecls('w'))
         )
         tblPr.append(tblBorders)
+    
+    def _add_template_instructions(self, doc, template_id, Pt, RGBColor,
+                                    WD_ALIGN_PARAGRAPH, parse_xml, nsdecls):
+        """Add template instructions section after the data table."""
+        from core.models import ExportTemplate
+        try:
+            tpl = ExportTemplate.objects.get(id=template_id)
+        except ExportTemplate.DoesNotExist:
+            return
+        
+        instructions = tpl.instructions.strip()
+        if not instructions:
+            return
+        
+        # Add blank line
+        doc.add_paragraph('')
+        
+        # Instructions heading
+        heading_para = doc.add_paragraph()
+        heading_run = heading_para.add_run('INSTRUCTIONS:')
+        heading_run.bold = True
+        heading_run.underline = True
+        heading_run.font.name = 'Arial'
+        heading_run.font.size = Pt(9)
+        heading_run.font.color.rgb = RGBColor(0, 0, 0)
+        heading_para.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        self._set_para_spacing(heading_para, parse_xml, nsdecls, before=60, after=40)
+        
+        # Instructions body (preserve line breaks)
+        for line in instructions.split('\n'):
+            line = line.strip()
+            if not line:
+                continue
+            body_para = doc.add_paragraph()
+            body_run = body_para.add_run(line.upper())
+            body_run.font.name = 'Arial'
+            body_run.font.size = Pt(8)
+            body_run.font.color.rgb = RGBColor(0, 0, 0)
+            body_para.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            self._set_para_spacing(body_para, parse_xml, nsdecls, before=0, after=20, line=220)
     
     def _set_para_spacing(self, para, parse_xml, nsdecls, before=0, after=0, line=240):
         """Set paragraph spacing."""

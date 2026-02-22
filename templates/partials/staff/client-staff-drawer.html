@@ -55,6 +55,51 @@ Mirrors admin staff-drawer.html but with Group Assignment instead of Client Assi
                     <small class="field-hint">Select groups this staff can manage. Leave empty for all groups.</small>
                 </div>
             </div>
+
+            <!-- Class/Section Filters -->
+            <div class="form-section" id="class-section-filter-section">
+                <h3 class="section-title">
+                    <i class="fa-solid fa-filter"></i> Class &amp; Section Filter
+                </h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Allowed Classes</label>
+                        <div class="client-multiselect" id="class-multiselect">
+                            <div class="client-multiselect-header" id="class-multiselect-toggle">
+                                <span class="client-multiselect-placeholder" id="class-multiselect-text">All classes</span>
+                                <i class="fa-solid fa-chevron-down client-multiselect-arrow"></i>
+                            </div>
+                            <div class="client-multiselect-dropdown" id="class-multiselect-dropdown" style="display: none;">
+                                <div class="client-multiselect-search">
+                                    <i class="fa-solid fa-magnifying-glass"></i>
+                                    <input type="text" id="class-search-input" placeholder="Search classes..." autocomplete="off">
+                                </div>
+                                <div class="client-multiselect-list" id="class-multiselect-list"></div>
+                                <div class="client-multiselect-empty" id="class-multiselect-empty" style="display: none;">No classes found</div>
+                            </div>
+                        </div>
+                        <small class="field-hint">Leave empty for all classes.</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Allowed Sections</label>
+                        <div class="client-multiselect" id="section-multiselect">
+                            <div class="client-multiselect-header" id="section-multiselect-toggle">
+                                <span class="client-multiselect-placeholder" id="section-multiselect-text">All sections</span>
+                                <i class="fa-solid fa-chevron-down client-multiselect-arrow"></i>
+                            </div>
+                            <div class="client-multiselect-dropdown" id="section-multiselect-dropdown" style="display: none;">
+                                <div class="client-multiselect-search">
+                                    <i class="fa-solid fa-magnifying-glass"></i>
+                                    <input type="text" id="section-search-input" placeholder="Search sections..." autocomplete="off">
+                                </div>
+                                <div class="client-multiselect-list" id="section-multiselect-list"></div>
+                                <div class="client-multiselect-empty" id="section-multiselect-empty" style="display: none;">No sections found</div>
+                            </div>
+                        </div>
+                        <small class="field-hint">Leave empty for all sections.</small>
+                    </div>
+                </div>
+            </div>
             
             <!-- Staff Information Section -->
             <div class="form-section">
@@ -75,7 +120,6 @@ Mirrors admin staff-drawer.html but with Group Assignment instead of Client Assi
                     <div class="form-group">
                         <label for="staff-phone">Phone <span class="required">*</span></label>
                         <input type="tel" id="staff-phone" name="phone" placeholder="Enter phone number" required>
-                        <small class="field-hint text-gray-500 text-xs">This will be used as password</small>
                     </div>
                 </div>
                 
@@ -90,6 +134,20 @@ Mirrors admin staff-drawer.html but with Group Assignment instead of Client Assi
                             <option value="true">Active</option>
                             <option value="false">Inactive</option>
                         </select>
+                    </div>
+                </div>
+
+                <div class="form-row" id="staffPasswordOptionRow">
+                    <div class="form-group">
+                        <label>Password Option</label>
+                        <select id="staff-password-option" name="password_option">
+                            <option value="phone" selected>Use Phone Number</option>
+                            <option value="custom">Custom Password</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="staffCustomPasswordGroup" style="display: none;">
+                        <label for="staff-password">Password <span class="required">*</span></label>
+                        <input type="password" id="staff-password" name="password" placeholder="Enter custom password" autocomplete="new-password">
                     </div>
                 </div>
             </div>
@@ -166,12 +224,20 @@ Mirrors admin staff-drawer.html but with Group Assignment instead of Client Assi
                         <span class="permission-label">View Updated Date</span>
                         {% if not perm_idcard_updated_at %}<i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}
                     </label>
+                    <label class="permission-item{% if not perm_mobile_app %} perm-locked{% endif %}" {% if not perm_mobile_app %}title="Admin has not granted you this permission"{% endif %}>
+                        <input type="checkbox" name="perm_mobile_app" id="perm-mobile-app" {% if not perm_mobile_app %}disabled{% endif %}>
+                        <span class="permission-label">Mobile App Access</span>
+                        {% if not perm_mobile_app %}<i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}
+                    </label>
                 </div>
             </div>
         </div>
         
         <div class="drawer-footer">
             <button type="button" class="btn btn-secondary" id="drawer-cancel-btn">Cancel</button>
+            <button type="button" class="btn btn-md btn-warning" id="tempPasswordStaffBtn" style="display:none;" onclick="openTempPasswordModal('staff')">
+                <i class="fa-solid fa-key"></i> Set Temp Password
+            </button>
             <button type="submit" class="btn btn-primary" id="drawer-submit-btn">
                 <span id="submit-btn-text">Add Staff</span>
             </button>

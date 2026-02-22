@@ -66,6 +66,9 @@ urlpatterns = [
     # Get groups for staff assignment
     path('api/groups/active/', views.api_client_groups_list, name='api_groups_active'),
     
+    # Get distinct class/section values for staff filtering
+    path('api/class-section-options/', views.api_class_section_options, name='api_class_section_options'),
+    
     # ==========================================================================
     # API ENDPOINTS - Card Data
     # ==========================================================================
@@ -81,4 +84,7 @@ urlpatterns = [
     # ==========================================================================
     
     path('api/table/<int:table_id>/upload-images/', views.api_upload_images, name='api_upload_images'),
+
+    # Create Table from XLSX (reads headers, creates table, imports data)
+    path('api/create-from-xlsx/', views.client_api_create_table_from_xlsx, name='api_create_table_from_xlsx'),
 ]

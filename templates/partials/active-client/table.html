@@ -8,11 +8,11 @@ Contains: Table displaying active clients with groups info
     <table class="data-table" id="active-client-table">
         <thead>
             <tr>
-                <th class="name-col">Client Name</th>
-                <th class="email-col">Email</th>
-                <th class="phone-col">Phone</th>
-                <th class="status-col">Status</th>
-                <th class="updates-col">ID Card Groups</th>
+                <th scope="col" class="name-col">Client Name</th>
+                <th scope="col" class="email-col">Email</th>
+                <th scope="col" class="phone-col">Phone</th>
+                <th scope="col" class="status-col">Status</th>
+                <th scope="col" class="updates-col">Tables</th>
             </tr>
         </thead>
         <tbody id="client-table-body">
@@ -27,8 +27,8 @@ Contains: Table displaying active clients with groups info
                 <td class="updates-col">
                     <div class="group-badges">
                         <span class="group-badge">
-                            <i class="fa-solid fa-id-card"></i> 
-                            {{ client.group_count }} group{{ client.group_count|pluralize }}
+                            <i class="fa-solid fa-table-list"></i> 
+                            {{ client.table_count }} table{{ client.table_count|pluralize }}
                         </span>
                     </div>
                 </td>

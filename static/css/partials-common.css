@@ -11,11 +11,12 @@
    ==================== */
 .center-modal {
   background: var(--bg-white, #fff);
-  border-radius: 12px;
+  border-radius: 10px;
   box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.35);
-  width: 500px;
+  width: 600px;
   max-width: 95%;
-  max-height: 90vh;
+  min-height: 500px;
+  max-height: 650px;
   overflow: hidden;
   transform: scale(0.9) translateY(20px);
   transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);

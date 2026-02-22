@@ -11,8 +11,8 @@ Variables:
 <!-- topbar start -->
 <header class="topbar">
     <div class="left">
-        <button class="sidebar-toggle" id="sidebarToggle" title="Toggle Sidebar" aria-label="Toggle sidebar">
-            <i class="fa-solid fa-bars"></i>
+        <button class="sidebar-toggle" id="sidebarToggle" @click="toggleSidebar()" title="Toggle Sidebar" aria-label="Toggle sidebar">
+            <i class="fa-solid" :class="sidebarOpen ? 'fa-xmark' : 'fa-bars'"></i>
         </button>
         <span class="breadcrumb">
             <span>{{ breadcrumb }}</span>

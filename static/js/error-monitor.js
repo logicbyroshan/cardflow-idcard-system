@@ -28,7 +28,9 @@
     function _push(entry) {
         entry.timestamp = new Date().toISOString();
         entry.url = window.location.pathname;
-        entry.userAgent = navigator.userAgent;
+        entry.userAgent = navigator.userAgentData
+            ? JSON.stringify(navigator.userAgentData.toJSON())
+            : navigator.userAgent;
         _buffer.push(entry);
         if (_buffer.length > MAX_ERRORS) _buffer.shift();
     }
@@ -160,6 +162,9 @@
                     return { sent: payload.length };
                 }
                 throw new Error('Server returned ' + resp.status);
+            }).catch(function (err) {
+                console.error('Error flush failed:', err);
+                return { sent: 0, error: err.message };
             });
         },
 

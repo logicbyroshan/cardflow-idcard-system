@@ -308,12 +308,15 @@ body[style*="overflow:hidden"] {
    =========================================== */
 .center-modal-card {
   background: #fff;
-  border-radius: 2px;
-  padding: 20px 18px 18px;
-  max-width: 400px;
-  width: 92%;
+  border-radius: 10px;
+  padding: 24px 22px 20px;
+  width: 600px;
+  max-width: 95vw;
+  min-height: 500px;
+  max-height: 650px;
+  overflow-y: auto;
   text-align: center;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.18), 0 2px 6px rgba(0,0,0,0.08);
   animation: centerModalIn 0.22s ease-out;
 }
 @keyframes centerModalIn {
@@ -355,9 +358,9 @@ body[style*="overflow:hidden"] {
 }
 
 .center-modal-code {
-  border-radius: 2px;
-  padding: 8px;
-  margin: 0 0 8px;
+  border-radius: 6px;
+  padding: 10px;
+  margin: 0 0 10px;
   font-size: 15px;
   font-weight: 700;
   letter-spacing: 6px;
@@ -367,14 +370,14 @@ body[style*="overflow:hidden"] {
 
 .center-modal-input {
   width: 100%;
-  padding: 8px;
+  padding: 10px;
   font-size: 15px;
   text-align: center;
   border: 1px solid #d1d5db;
-  border-radius: 2px;
+  border-radius: 6px;
   letter-spacing: 4px;
   font-weight: 600;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   outline: none;
   transition: border-color 0.2s;
   box-sizing: border-box;
@@ -385,9 +388,9 @@ body[style*="overflow:hidden"] {
 
 .center-modal-dropzone {
   border: 2px dashed #d1d5db;
-  border-radius: 2px;
-  padding: 16px 10px;
-  margin-bottom: 10px;
+  border-radius: 8px;
+  padding: 18px 12px;
+  margin-bottom: 12px;
   cursor: pointer;
   transition: border-color 0.2s, background-color 0.2s;
 }
@@ -414,11 +417,11 @@ body[style*="overflow:hidden"] {
 }
 
 .center-modal-btn {
-  padding: 5px 14px;
-  border-radius: 2px;
+  padding: 7px 16px;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 600;
   transition: opacity 0.15s, background 0.15s;
 }
 .center-modal-btn-cancel {
@@ -446,7 +449,7 @@ body[style*="overflow:hidden"] {
 }
 .center-modal-progress-track {
   background: #e5e7eb;
-  border-radius: 2px;
+  border-radius: 6px;
   height: 6px;
   overflow: hidden;
 }
@@ -454,7 +457,7 @@ body[style*="overflow:hidden"] {
   height: 100%;
   width: 0%;
   transition: width 0.3s;
-  border-radius: 2px;
+  border-radius: 6px;
 }
 .center-modal-progress-text {
   color: #6b7280;
@@ -739,7 +742,7 @@ body[style*="overflow:hidden"] {
 
 /* ===========================================
    ALPINE.JS TOAST — Icon + responsive only
-   Wrapper, base, and color variants in tailwind.
+   Base wrapper, toast, and colors defined in tailwind-input.css.
    =========================================== */
 .alpine-toast i {
   font-size: 15px;
@@ -758,57 +761,5 @@ body[style*="overflow:hidden"] {
   }
 }
 
-/* ===========================================
-   ALPINE MODAL TRANSITIONS
-   =========================================== */
-.alpine-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(2px);
-  z-index: 1050;
-}
-
-.alpine-modal-content {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  max-width: 90vw;
-  max-height: 90vh;
-  overflow: auto;
-  z-index: 1051;
-}
-
-/* Fade transition for overlay */
-.alpine-fade-enter-active,
-.alpine-fade-leave-active {
-  transition: opacity 0.15s ease;
-}
-
-.alpine-fade-enter-from,
-.alpine-fade-leave-to {
-  opacity: 0;
-}
-
-/* Scale transition for modal content */
-.alpine-scale-enter-active,
-.alpine-scale-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
-}
-
-.alpine-scale-enter-from,
-.alpine-scale-leave-to {
-  opacity: 0;
-  transform: translate(-50%, -50%) scale(0.95);
-}
-
-.alpine-scale-enter-to,
-.alpine-scale-leave-from {
-  opacity: 1;
-  transform: translate(-50%, -50%) scale(1);
-}
+/* Alpine modal transitions + overlay are in tailwind-input.css (global). */
 

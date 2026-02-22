@@ -187,8 +187,9 @@ def _check_export_client_scope(request, table_id):
     return None
 
 
-def _acquire_export_lock(user_id, table_id, ttl=120):
-    """Prevent concurrent exports by the same user on the same table."""
+def _acquire_export_lock(user_id, table_id, ttl=300):
+    """Prevent concurrent exports by the same user on the same table.
+    TTL=300s (5 min) to handle large exports with many images."""
     lock_key = f'export_lock:{user_id}:{table_id}'
     return django_cache.add(lock_key, 1, ttl), lock_key
 
@@ -299,12 +300,19 @@ def api_export_docx(request, table_id: int) -> HttpResponse:
             'message': 'No cards selected for export'
         }, status=400)
     
-    # Get format preference
+    # Get format preference and template_id
     doc_format = 'docx'
+    template_id = None
     if request.content_type == 'application/json':
         try:
             data = json.loads(request.body)
             doc_format = data.get('format', 'docx')
+            tpl_val = data.get('template_id', '')
+            if tpl_val:
+                try:
+                    template_id = int(tpl_val)
+                except (ValueError, TypeError):
+                    pass
         except (json.JSONDecodeError, ValueError):
             pass
     else:
@@ -319,7 +327,7 @@ def api_export_docx(request, table_id: int) -> HttpResponse:
         return JsonResponse({'success': False, 'message': 'An export is already in progress. Please wait.'}, status=429)
     try:
         service = ExportService(request.user)
-        result = service.export_word(table_id, card_ids, doc_format=doc_format, status=_get_status_from_request(request))
+        result = service.export_word(table_id, card_ids, doc_format=doc_format, status=_get_status_from_request(request), template_id=template_id)
         
         if not result.success:
             return JsonResponse({
@@ -381,13 +389,27 @@ def api_export_pdf(request, table_id: int) -> HttpResponse:
     if len(card_ids) > MAX_PDF_EXPORT_CARD_IDS:
         card_ids = card_ids[:MAX_PDF_EXPORT_CARD_IDS]
     
+    # Extract template_id from request
+    template_id = None
+    if request.content_type == 'application/json':
+        try:
+            data = json.loads(request.body)
+            tpl_val = data.get('template_id', '')
+            if tpl_val:
+                try:
+                    template_id = int(tpl_val)
+                except (ValueError, TypeError):
+                    pass
+        except (json.JSONDecodeError, ValueError):
+            pass
+    
     # Concurrent export guard
     acquired, lock_key = _acquire_export_lock(request.user.id, table_id)
     if not acquired:
         return JsonResponse({'success': False, 'message': 'An export is already in progress. Please wait.'}, status=429)
     try:
         service = ExportService(request.user)
-        result = service.export_pdf(table_id, card_ids, status=_get_status_from_request(request))
+        result = service.export_pdf(table_id, card_ids, status=_get_status_from_request(request), template_id=template_id)
         
         if not result.success:
             return JsonResponse({

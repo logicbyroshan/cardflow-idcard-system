@@ -14,13 +14,15 @@
   <!-- Tailwind CSS (primary) -->
   <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
   <!-- Page-specific: reprint cards + ID card actions UI -->
+  <link rel="stylesheet" href="{% static 'css/common.css' %}">
   <link rel="stylesheet" href="{% static 'css/idcard-actions.css' %}">
   <link rel="stylesheet" href="{% static 'css/idcard-actions-enhanced.css' %}">
   <link rel="stylesheet" href="{% static 'css/reprint-cards.css' %}">
   <link rel="stylesheet" href="{% static 'css/global-search.css' %}">
   <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
-  <!-- Lazy-load helper (Cropper loaded on demand) -->
-  <script src="{% static 'js/core/lazy-load.js' %}"></script>
+  <!-- Cropper.js for image crop before upload -->
+  <link rel="stylesheet" href="{% static 'css/vendor/cropper.min.css' %}">
+  <script defer src="{% static 'js/vendor/cropper.min.js' %}"></script>
   
   <!-- Alpine.js State Module (MUST load before Alpine) -->
   <script defer src="{% static 'js/alpine-state.js' %}"></script>
@@ -37,7 +39,7 @@
     var CURRENT_STATUS = 'pending';
   </script>
 </head>
-<body x-data="layoutState()">
+<body x-data="layoutState()" x-init="init()">
   <!-- Sidebar -->
   {% include 'partials/sidebar.html' %}
 
@@ -59,18 +61,18 @@
   {% include 'partials/components/toast.html' %}
 
   <!-- Core Modules (Load Order: api → toast → modal → utils → init) -->
-  <script src="{% static 'js/core/api.js' %}"></script>
-  <script src="{% static 'js/core/toast.js' %}"></script>
-  <script src="{% static 'js/core/modal.js' %}"></script>
-  <script src="{% static 'js/core/utils.js' %}"></script>
-  <script src="{% static 'js/init.js' %}"></script>
-  <script src="{% static 'js/global-search.js' %}"></script>
+  <script defer src="{% static 'js/core/api.js' %}"></script>
+  <script defer src="{% static 'js/core/toast.js' %}"></script>
+  <script defer src="{% static 'js/core/modal.js' %}"></script>
+  <script defer src="{% static 'js/core/utils.js' %}"></script>
+  <script defer src="{% static 'js/init.js' %}"></script>
+  <script defer src="{% static 'js/global-search.js' %}"></script>
 
   <!-- Reprint Page Script -->
-  <script src="{% static 'js/idcard-actions-upload.js' %}"></script>
-  <script src="{% static 'js/idcard-actions-modal.js' %}"></script>
-  <script src="{% static 'js/image-cropper.js' %}"></script>
-  <script src="{% static 'js/reprint-cards.js' %}"></script>
+  <script defer src="{% static 'js/idcard-actions-upload.js' %}"></script>
+  <script defer src="{% static 'js/idcard-actions-modal.js' %}"></script>
+  <script defer src="{% static 'js/image-cropper.js' %}"></script>
+  <script defer src="{% static 'js/reprint-cards.js' %}"></script>
   <script>
     // Initialize the modal module for the reprint page
     if (typeof initModalModule === 'function') initModalModule();

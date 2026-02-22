@@ -75,4 +75,19 @@ urlpatterns = [
     path('api/hero-images/<int:pk>/update/', admin_views.api_hero_image_update, name='api_hero_image_update'),
     path('api/hero-images/<int:pk>/delete/', admin_views.api_hero_image_delete, name='api_hero_image_delete'),
     path('api/hero-images/reorder/', admin_views.api_hero_image_reorder, name='api_hero_image_reorder'),
+
+    # ==========================================================================
+    # PAGE VIEW — Reels
+    # ==========================================================================
+    path('reels/', admin_views.reels_page, name='reels'),
+
+    # ==========================================================================
+    # API — Reels
+    # ==========================================================================
+    path('api/reels/', admin_views.api_reel_list, name='api_reel_list'),
+    path('api/reels/create/', admin_views.api_reel_create, name='api_reel_create'),
+    path('api/reels/<int:pk>/', admin_views.api_reel_get, name='api_reel_get'),
+    path('api/reels/<int:pk>/update/', admin_views.api_reel_update, name='api_reel_update'),
+    path('api/reels/<int:pk>/delete/', admin_views.api_reel_delete, name='api_reel_delete'),
+    path('api/reels/<int:pk>/toggle/', admin_views.api_reel_toggle, name='api_reel_toggle'),
 ]

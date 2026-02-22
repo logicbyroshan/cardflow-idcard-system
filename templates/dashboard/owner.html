@@ -19,7 +19,7 @@
   <!-- Alpine.js -->
   <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
 </head>
-<body x-data="layoutState()">
+<body x-data="layoutState()" x-init="init()">
 
   {% include 'partials/sidebar.html' %}
 
@@ -29,19 +29,20 @@
     <!-- Top Navbar -->
     <header class="topbar">
       <div class="nav-left">
-        <button class="sidebar-toggle" id="sidebarToggle">
-          <i class="fa-solid fa-bars"></i>
+        <button class="sidebar-toggle" id="sidebarToggle" @click="toggleSidebar()" aria-label="Toggle sidebar">
+          <i class="fa-solid" :class="sidebarOpen ? 'fa-xmark' : 'fa-bars'"></i>
         </button>
         <div class="breadcrumb">
           <span class="breadcrumb-item active"><i class="fa-solid fa-house"></i> Dashboard</span>
         </div>
       </div>
-      <div class="nav-right">
+      <div class="nav-right" style="display:flex;align-items:center;gap:6px;">
         <button class="global-search-btn" id="globalSearchBtn">
           <i class="fa-solid fa-magnifying-glass"></i>
           <span>Search ID cards...</span>
           <kbd>Ctrl+K</kbd>
         </button>
+        {% include 'partials/notification-bell.html' %}
       </div>
     </header>
 
@@ -131,11 +132,11 @@
             <table class="recent-table">
               <thead>
                 <tr>
-                  <th>Client</th>
-                  <th class="text-center">Pending</th>
-                  <th class="text-center">Verified</th>
-                  <th class="text-center">Approved</th>
-                  <th class="text-center">Downloaded</th>
+                  <th scope="col">Client</th>
+                  <th scope="col" class="text-center">Pending</th>
+                  <th scope="col" class="text-center">Verified</th>
+                  <th scope="col" class="text-center">Approved</th>
+                  <th scope="col" class="text-center">Downloaded</th>
                 </tr>
               </thead>
               <tbody id="recentClientUpdatesBody">
@@ -306,12 +307,13 @@
   </div>
 
   <!-- Core Modules -->
-  <script src="{% static 'js/core/api.js' %}"></script>
-  <script src="{% static 'js/core/toast.js' %}"></script>
-  <script src="{% static 'js/core/modal.js' %}"></script>
-  <script src="{% static 'js/core/utils.js' %}"></script>
-  <script src="{% static 'js/init.js' %}"></script>
-  <script src="{% static 'js/dashboard.js' %}"></script>
-  <script src="{% static 'js/global-search.js' %}"></script>
+  <script defer src="{% static 'js/core/api.js' %}"></script>
+  <script defer src="{% static 'js/core/toast.js' %}"></script>
+  <script defer src="{% static 'js/core/modal.js' %}"></script>
+  <script defer src="{% static 'js/core/utils.js' %}"></script>
+  <script defer src="{% static 'js/init.js' %}"></script>
+  <script defer src="{% static 'js/dashboard.js' %}"></script>
+  <script defer src="{% static 'js/global-search.js' %}"></script>
+  <script defer src="{% static 'js/notification-bell.js' %}"></script>
 </body>
 </html>

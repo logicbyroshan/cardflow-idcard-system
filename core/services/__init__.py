@@ -31,6 +31,7 @@ from .idcard_service import IDCardService
 from .permission_service import PermissionService
 from .activity_service import ActivityService
 from .workflow_service import WorkflowService, ReprintWorkflowService
+from .notification_service import NotificationService
 
 __all__ = [
     'ServiceResult',
@@ -43,4 +44,5 @@ __all__ = [
     'ActivityService',
     'WorkflowService',
     'ReprintWorkflowService',
+    'NotificationService',
 ]

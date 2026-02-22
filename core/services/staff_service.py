@@ -3,6 +3,7 @@ Staff Service Module
 Contains: Staff CRUD operations, serialization
 """
 import json
+import logging
 import secrets
 from typing import Dict, Any
 
@@ -13,6 +14,8 @@ from django.utils.timezone import localtime
 from ..models import Staff, User, Client
 from ..utils import send_welcome_email
 from .base import BaseService, ServiceResult
+
+logger = logging.getLogger(__name__)
 
 
 class StaffService(BaseService):
@@ -124,10 +127,25 @@ class StaffService(BaseService):
             name = data.get('name', '')
             name_parts = name.split() if name else []
             
-            # Password from phone number
+            # Use phone number as default password (matches welcome email instructions)
             phone = data.get('phone', '').strip()
-            phone_clean = ''.join(filter(str.isdigit, phone))
-            password = phone_clean if phone_clean else secrets.token_urlsafe(12)
+            password = data.get('password', '').strip()
+            used_phone_as_password = False
+            if not password:
+                if phone:
+                    password = phone
+                    used_phone_as_password = True
+                else:
+                    password = secrets.token_urlsafe(12)
+            
+            # Skip Django password validators when using phone as password
+            # (NumericPasswordValidator would reject a pure-digit mobile number)
+            if not used_phone_as_password:
+                from django.contrib.auth.password_validation import validate_password
+                try:
+                    validate_password(password)
+                except Exception as pw_err:
+                    return ServiceResult(success=False, message=str(pw_err))
             
             # Determine role
             role = 'admin_staff' if staff_type == 'admin_staff' else 'client_staff'
@@ -202,14 +220,16 @@ class StaffService(BaseService):
                     email=email,
                     password=password,
                     role=role,
-                    request=request
+                    request=request,
+                    phone=phone
                 )
             
             message = 'Staff created successfully!'
             if email_sent:
                 message += ' Welcome email sent.'
             elif email_message:
-                message += f' (Email not sent: {email_message})'
+                logger.warning('Welcome email not sent for staff %s: %s', email, email_message)
+                message += ' (Welcome email could not be sent)'
             
             return ServiceResult(
                 success=True,
@@ -387,6 +407,47 @@ class StaffService(BaseService):
             return ServiceResult(
                 success=True,
                 data={'staff': staff_list, 'total': len(staff_list)}
+            )
+        except Exception as e:
+            return ServiceResult(success=False, message=str(e))
+
+    @classmethod
+    def set_temp_password(cls, staff_id: int, new_password: str, request=None) -> ServiceResult:
+        """
+        Set a temporary password for a staff user.
+        Sends a notification email (no password in email, just a notice).
+        """
+        try:
+            staff = Staff.objects.filter(id=staff_id).select_related('user').first()
+            if not staff:
+                return ServiceResult(success=False, message='Staff not found')
+
+            user = staff.user
+
+            if not new_password or not new_password.strip():
+                return ServiceResult(success=False, message='Password cannot be empty')
+
+            new_password = new_password.strip()
+
+            user.set_password(new_password)
+            user.save(update_fields=['password'])
+
+            # Send notification email (no password in email)
+            from ..utils.email_utils import send_password_changed_notification
+            email_sent = False
+            try:
+                email_sent = send_password_changed_notification(
+                    name=user.get_full_name(),
+                    email=user.email,
+                    request=request,
+                )
+            except Exception:
+                pass
+
+            return ServiceResult(
+                success=True,
+                message=f'Temporary password set for "{user.get_full_name()}"',
+                data={'email_sent': email_sent}
             )
         except Exception as e:
             return ServiceResult(success=False, message=str(e))

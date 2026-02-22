@@ -20,7 +20,7 @@
   <!-- Alpine.js -->
   <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
 </head>
-<body x-data="layoutState()">
+<body x-data="layoutState()" x-init="init()">
 
   {% include 'partials/sidebar.html' %}
 
@@ -30,8 +30,8 @@
     <!-- Top Navbar -->
     <header class="topbar">
       <div class="nav-left">
-        <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
-            <i class="fa-solid fa-bars"></i>
+        <button class="sidebar-toggle" id="sidebarToggle" @click="toggleSidebar()" aria-label="Toggle sidebar">
+            <i class="fa-solid" :class="sidebarOpen ? 'fa-xmark' : 'fa-bars'"></i>
         </button>
         <div class="breadcrumb">
             {% if is_super_admin %}
@@ -57,11 +57,11 @@
       <!-- Right - Page Switch Buttons -->
       <div class="nav-right">
         <div class="page-switch-btns">
-          <a href="{% if is_client or is_client_staff %}{% url 'client:idcard_group' %}{% else %}{% url 'idcard_group' client.id %}{% endif %}" class="switch-btn active" title="ID Card Group">
+          <a href="{% if is_client or is_client_staff %}{% url 'client:idcard_group' %}{% else %}{% url 'idcard_group' client.id %}{% endif %}" class="btn btn-md btn-primary" title="ID Card Group">
             <i class="fa-solid fa-id-card"></i> <span>ID Card Group</span>
           </a>
           {% if is_super_admin or is_admin_staff or perm_idcard_setting_list %}
-          <a href="{% if is_client or is_client_staff %}{% url 'client:group_settings' %}{% else %}#{% endif %}" {% if not is_client and not is_client_staff %}id="switchToGroupSetting"{% endif %} class="switch-btn" title="Group Setting">
+          <a href="{% if is_client or is_client_staff %}{% url 'client:group_settings' %}{% else %}#{% endif %}" {% if not is_client and not is_client_staff %}id="switchToGroupSetting"{% endif %} class="btn btn-md btn-neutral" title="Group Setting">
             <i class="fa-solid fa-table-list"></i> <span>Group Setting</span>
           </a>
           {% endif %}
@@ -74,13 +74,12 @@
     <!-- Action Bar -->
     <div class="action-bar">
         
-        <!-- Filter and Search -->
-        <div class="action-left">
+        <!-- Left Section - Filter and Search -->
+        <div class="action-bar-left">
             <div class="filter-group">
                 <div class="custom-dropdown" id="filterDropdown">
-                    <button class="dropdown-toggle" id="dropdownToggle">
-                        <i class="fa-solid fa-filter"></i>
-                        <span id="selectedText">Filter</span>
+                    <button class="dropdown-toggle" id="dropdownToggle" type="button">
+                        <span id="selectedText">All</span>
                         <i class="fa-solid fa-chevron-down"></i>
                     </button>
                     <div class="dropdown-options" id="dropdownOptions">
@@ -92,24 +91,33 @@
                 </div>
             </div>
             <div class="search-box">
-                <i class="fa-solid fa-search search-icon"></i>
-                <input type="text" class="search-input" id="searchInput" placeholder="Search..." autocomplete="off">
-                <button class="search-clear-btn" id="searchClearBtn" type="button" title="Clear search">
+                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                <input type="text" class="search-input" id="searchInput" placeholder="Search All..." autocomplete="off">
+                <button class="search-clear-btn" id="searchClearBtn" type="button" title="Clear search" aria-label="Clear search">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
         </div>
 
-    </div>
+        <!-- Right Section - Action Buttons -->
+        {% if is_super_admin or perm_idcard_setting_add %}
+        <div class="action-bar-right">
+          <div class="actions">
+            <div class="btn-group">
+              <button class="btn btn-md btn-success" id="createFromXlsxBtn" title="Create table directly from an XLSX file"><i class="fa-solid fa-file-excel"></i> Create with XLSX</button>
+            </div>
+          </div>
+        </div>
+        {% endif %}
 
-    <!-- ID Card Tables List -->
+    </div>
     <div class="table-container idcard-table">
         <table>
             <thead>
                 <tr>
-                    <th>Name</th>
-                    <th>Action</th>
-                    <th>Bulk Actions</th>
+                    <th scope="col">Name</th>
+                    <th scope="col">Action</th>
+                    <th scope="col">Bulk Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -187,10 +195,10 @@
                 {% empty %}
                 <tr>
                     <td colspan="3" class="text-center p-4">
-                        <div class="no-groups">
-                            <i class="fa-solid fa-table-list"></i>
-                            <h3>No Tables Found</h3>
-                            <p>This client has no ID card tables yet. Go to Group Settings to create tables.</p>
+                        <div class="no-groups" style="padding:40px 20px;text-align:center;color:#6b7280;">
+                            <i class="fa-solid fa-table-list" style="font-size:40px;color:#d1d5db;margin-bottom:12px;display:block;"></i>
+                            <h3 style="font-size:16px;font-weight:600;color:#374151;margin:0 0 6px;">No Tables Found</h3>
+                            <p style="font-size:13px;color:#9ca3af;margin:0 0 12px;">This client has no ID card tables yet. Go to Group Settings to create tables.</p>
                             <a href="{% if is_client or is_client_staff %}{% url 'client:group_settings' %}{% else %}{% url 'group_settings' client.id %}{% endif %}" class="btn btn-primary empty-state-action mt-2">
                                 <i class="fa-solid fa-gear"></i> Go to Group Settings
                             </a>
@@ -209,27 +217,59 @@
   <!-- Toast notification -->
   {% include 'partials/components/toast.html' %}
 
-  <!-- Download All Progress Modal -->
+  <!-- Create with XLSX Modal (2-step) -->
+  {% include 'partials/components/create-xlsx-modal.html' %}
+
+  <!-- Download All Confirmation + Progress Modal -->
   <div id="downloadAllModal" class="center-modal-overlay center-modal-theme-blue"
        x-show="activeModal === 'downloadAll'" x-transition.opacity
        style="display:none">
     <div class="center-modal-card" @click.stop
          x-show="activeModal === 'downloadAll'" x-transition.scale.origin.center>
-      <div class="center-modal-icon">
-        <i class="fa-solid fa-download"></i>
-      </div>
-      <h3 class="center-modal-title">Downloading ID Cards</h3>
-      <p class="center-modal-subtitle" id="downloadAllTableLabel">
-        Preparing your files...
-      </p>
-      <div id="downloadAllProgress" class="center-modal-progress" style="display:block">
-        <div class="center-modal-progress-track">
-          <div id="downloadAllBar" class="center-modal-progress-bar" style="width:0%"></div>
+      <!-- Confirmation step -->
+      <div id="downloadAllConfirmStep">
+        <div class="center-modal-icon">
+          <i class="fa-solid fa-download"></i>
         </div>
-        <p class="center-modal-progress-text" id="downloadAllStatus">Connecting to server...</p>
+        <h3 class="center-modal-title">Download All ID Cards</h3>
+        <p class="center-modal-subtitle" id="downloadAllTableLabel">
+          Download all cards from this table?
+        </p>
+
+        <!-- Format selector -->
+        <div style="margin:10px 0;">
+          <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:6px;">Select Format</label>
+          <select class="center-modal-select" id="downloadAllFormat">
+            <option value="all">All Formats (ZIP)</option>
+            <option value="xlsx">Excel (.xlsx)</option>
+            <option value="pdf">PDF</option>
+            <option value="docx">Word (.docx)</option>
+          </select>
+        </div>
+
+        <div class="center-modal-actions">
+          <button class="center-modal-btn center-modal-btn-cancel" @click="closeModal()">Cancel</button>
+          <button class="center-modal-btn center-modal-btn-confirm" id="downloadAllStartBtn">
+            <i class="fa-solid fa-download" style="margin-right:4px;"></i> Download
+          </button>
+        </div>
       </div>
-      <div class="center-modal-actions" id="downloadAllActions" style="display:none">
-        <button class="center-modal-btn center-modal-btn-cancel" @click="closeModal()">Close</button>
+      <!-- Progress step -->
+      <div id="downloadAllProgressStep" style="display:none;">
+        <div class="center-modal-icon">
+          <i class="fa-solid fa-download"></i>
+        </div>
+        <h3 class="center-modal-title">Downloading ID Cards</h3>
+        <p class="center-modal-subtitle" id="downloadAllProgressLabel">Preparing your files...</p>
+        <div id="downloadAllProgress" class="center-modal-progress" style="display:block">
+          <div class="center-modal-progress-track">
+            <div id="downloadAllBar" class="center-modal-progress-bar" style="width:0%"></div>
+          </div>
+          <p class="center-modal-progress-text" id="downloadAllStatus">Connecting to server...</p>
+        </div>
+        <div class="center-modal-actions" id="downloadAllActions" style="display:none">
+          <button class="center-modal-btn center-modal-btn-cancel" @click="closeModal()">Close</button>
+        </div>
       </div>
     </div>
   </div>
@@ -237,7 +277,7 @@
   <!-- Delete All Confirmation Modal -->
   <div id="deleteAllModal" class="center-modal-overlay center-modal-theme-red"
        x-show="activeModal === 'deleteAll'" x-transition.opacity
-       @click.self="closeModal()" style="display:none">
+       style="display:none">
     <div class="center-modal-card" @click.stop
          x-show="activeModal === 'deleteAll'" x-transition.scale.origin.center>
       <div class="center-modal-icon">
@@ -264,7 +304,7 @@
   <!-- Upgrade All Classes Confirmation Modal -->
   <div id="upgradeAllModal" class="center-modal-overlay center-modal-theme-amber"
        x-show="activeModal === 'upgradeAll'" x-transition.opacity
-       @click.self="closeModal()" style="display:none">
+       style="display:none">
     <div class="center-modal-card" @click.stop
          x-show="activeModal === 'upgradeAll'" x-transition.scale.origin.center>
       <div class="center-modal-icon">
@@ -291,7 +331,7 @@
   <!-- Reupload Image Modal -->
   <div id="reuploadModal" class="center-modal-overlay center-modal-theme-blue"
        x-show="activeModal === 'reupload'" x-transition.opacity
-       @click.self="closeModal()" style="display:none">
+       style="display:none">
     <div class="center-modal-card" @click.stop
          x-show="activeModal === 'reupload'" x-transition.scale.origin.center>
       <div class="center-modal-icon">
@@ -321,11 +361,11 @@
   </div>
 
   <!-- Core Modules (Load Order: api → toast → modal → utils → init) -->
-  <script src="{% static 'js/core/api.js' %}"></script>
-  <script src="{% static 'js/core/toast.js' %}"></script>
-  <script src="{% static 'js/core/modal.js' %}"></script>
-  <script src="{% static 'js/core/utils.js' %}"></script>
-  <script src="{% static 'js/init.js' %}"></script>
+  <script defer src="{% static 'js/core/api.js' %}"></script>
+  <script defer src="{% static 'js/core/toast.js' %}"></script>
+  <script defer src="{% static 'js/core/modal.js' %}"></script>
+  <script defer src="{% static 'js/core/utils.js' %}"></script>
+  <script defer src="{% static 'js/init.js' %}"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       const clientId = {{ client.id }};
@@ -475,23 +515,45 @@
       }
 
       // ==================== DOWNLOAD ALL ID CARDS ====================
-      function downloadAllCards(tableId) {
-        const btn = document.querySelector(`.download-all-btn[data-table="${tableId}"]`);
-        const dlBar = document.getElementById('downloadAllBar');
-        const dlStatus = document.getElementById('downloadAllStatus');
-        const dlLabel = document.getElementById('downloadAllTableLabel');
-        const dlActions = document.getElementById('downloadAllActions');
+      let downloadAllPendingTableId = null;
 
-        // Get table name from row
+      function openDownloadAllModal(tableId) {
+        downloadAllPendingTableId = tableId;
         const row = document.querySelector(`.bulk-btn[data-table="${tableId}"]`);
         const tableName = row ? (row.closest('tr')?.querySelector('td:first-child')?.textContent?.trim() || 'Table') : 'Table';
 
-        // Open progress modal
+        // Show confirmation step, hide progress step
+        document.getElementById('downloadAllConfirmStep').style.display = '';
+        document.getElementById('downloadAllProgressStep').style.display = 'none';
+        document.getElementById('downloadAllTableLabel').textContent = `Download all cards from "${tableName}"?`;
+        if (window.alpineOpenModal) window.alpineOpenModal('downloadAll');
+      }
+
+      // Wire the start button
+      document.getElementById('downloadAllStartBtn')?.addEventListener('click', function() {
+        if (!downloadAllPendingTableId) return;
+        startDownloadAll(downloadAllPendingTableId);
+      });
+
+      function startDownloadAll(tableId) {
+        // Switch to progress step
+        document.getElementById('downloadAllConfirmStep').style.display = 'none';
+        document.getElementById('downloadAllProgressStep').style.display = '';
+
+        const btn = document.querySelector(`.download-all-btn[data-table="${tableId}"]`);
+        const dlBar = document.getElementById('downloadAllBar');
+        const dlStatus = document.getElementById('downloadAllStatus');
+        const dlLabel = document.getElementById('downloadAllProgressLabel');
+        const dlActions = document.getElementById('downloadAllActions');
+
+        const row = document.querySelector(`.bulk-btn[data-table="${tableId}"]`);
+        const tableName = row ? (row.closest('tr')?.querySelector('td:first-child')?.textContent?.trim() || 'Table') : 'Table';
+
         dlLabel.textContent = `Table: ${tableName}`;
         dlBar.style.width = '0%';
+        dlBar.style.background = '';
         dlStatus.textContent = 'Connecting to server...';
         dlActions.style.display = 'none';
-        if (window.alpineOpenModal) window.alpineOpenModal('downloadAll');
 
         if (btn) {
           btn.disabled = true;
@@ -526,14 +588,12 @@
             dlBar.style.width = '85%';
             dlStatus.textContent = `Downloading ${data.total_files} file(s)...`;
 
-            // Trigger sequential downloads with small delay
             data.files.forEach((file, index) => {
               setTimeout(() => {
                 triggerBase64Download(file.data, file.filename, file.type === 'xlsx'
                   ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
                   : 'application/zip'
                 );
-                // Update progress per file
                 const filePct = 85 + ((index + 1) / data.files.length) * 15;
                 dlBar.style.width = filePct + '%';
                 if (index === data.files.length - 1) {
@@ -813,7 +873,7 @@
           if (action === 'delete-all') {
             openDeleteAllModal(tableId);
           } else if (action === 'download-all') {
-            downloadAllCards(tableId);
+            openDownloadAllModal(tableId);
           } else if (action === 'upgrade') {
             openUpgradeAllModal(tableId);
           } else if (action === 'reupload') {
@@ -832,7 +892,24 @@
       });
     });
   </script>
-  <script src="{% static 'js/global-search.js' %}"></script>
+  <script defer src="{% static 'js/global-search.js' %}"></script>
   {% include 'partials/htmx-config.html' %}
+
+  <!-- Create with XLSX logic -->
+  <script defer src="{% static 'js/create-xlsx.js' %}"></script>
+  <script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var isClientRole = {% if is_client or is_client_staff %}true{% else %}false{% endif %};
+    var groupId = {% if group %}{{ group.id }}{% else %}null{% endif %};
+    var apiUrl = isClientRole
+      ? '/panel/client/api/create-from-xlsx/'
+      : '/panel/api/group/' + groupId + '/table/create-from-xlsx/';
+    initCreateWithXlsx({
+      apiUrl: apiUrl,
+      csrfToken: '{{ csrf_token }}',
+      onSuccess: function() { window.location.reload(); }
+    });
+  });
+  </script>
 </body>
 </html>

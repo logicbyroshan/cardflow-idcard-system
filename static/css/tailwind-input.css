@@ -461,11 +461,11 @@
 
   .modal-center {
     @apply bg-white w-full flex flex-col shadow-2xl;
-    max-width: 420px; max-height: 90vh; border-radius: 14px; overflow: hidden;
+    max-width: 600px; min-height: 500px; max-height: 650px; border-radius: 10px; overflow: hidden;
   }
   .modal-center .modal-header {
     @apply flex items-center justify-between;
-    padding: 12px 16px; border-radius: 14px 14px 0 0; border-bottom: none;
+    padding: 12px 16px; border-radius: 10px 10px 0 0; border-bottom: none;
   }
   .modal-center .modal-header h3 {
     @apply text-white flex items-center gap-2;
@@ -501,11 +501,11 @@
   .side-modal .modal-header,
   .side-modal-header {
     @apply flex items-center justify-between border-b border-gray-200;
-    padding: 8px 12px; background: #1e1e2e;
+    padding: 12px 20px; background: linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%);
   }
   .side-modal .modal-header h3,
   .side-modal-header h3 {
-    @apply text-white flex items-center gap-1.5; font-size: 15px; font-weight: 700;
+    @apply text-white flex items-center gap-2; font-size: 15px; font-weight: 700;
   }
   .side-modal .modal-header h3 i,
   .side-modal-header h3 i { width: 14px; height: 14px; font-size: 14px; }
@@ -513,13 +513,14 @@
   .side-modal-close {
     @apply flex items-center justify-center text-white/80 hover:text-white hover:bg-white/20
            transition-all duration-150 cursor-pointer border-0 bg-transparent;
-    width: 24px; height: 24px; border-radius: 2px;
+    width: 30px; height: 30px; border-radius: 6px;
   }
   .side-modal .modal-body,
-  .side-modal-body { @apply flex-1 overflow-y-auto; padding: 14px 16px; }
+  .side-modal-body { @apply flex-1 overflow-y-auto; padding: 20px 24px; }
   .side-modal .modal-footer,
   .side-modal-footer {
-    @apply flex items-center justify-end gap-2 border-t border-gray-100; padding: 10px 16px;
+    @apply flex items-center justify-end gap-3 border-t border-gray-200; padding: 14px 24px;
+    background: #fafbfc;
   }
 
   /* Side modal Alpine overlay (wraps both backdrop + panel) */
@@ -575,11 +576,11 @@
 
   /* ===== BUTTON GROUP ===== */
   .btn-group { @apply flex items-center; gap: 2px; }
-  .btn-separator { width: 1px; height: 20px; background: #e5e7eb; margin: 0 2px; }
+  .btn-separator { width: 1px; height: 20px; background: #e5e7eb; margin: 0; }
   .actions { @apply flex items-center; gap: 2px; }
   .actions .btn:active:not(:disabled) { transform: scale(0.97); }
   .filter-group { @apply flex items-center; gap: 2px; }
-  .action-divider { width: 1px; height: 20px; background: #e5e7eb; margin: 0 2px; }
+  .action-divider { width: 1px; height: 20px; background: #e5e7eb; margin: 0; }
   .action-buttons-group { @apply flex flex-wrap items-center; gap: 2px; }
   .action-buttons-group .btn {
     @apply flex items-center; gap: 4px; padding: 4px 8px; font-size: 13px;
@@ -1001,7 +1002,8 @@
   .alpine-modal-content {
     @apply fixed bg-white flex flex-col;
     top: 50%; left: 50%; transform: translate(-50%, -50%);
-    z-index: var(--z-modal); max-height: 90vh; border-radius: 2px;
+    z-index: var(--z-modal); min-height: 500px; max-height: 650px; border-radius: 10px;
+    width: 600px; max-width: 95vw;
   }
 
   /* Alpine.js transition classes */
@@ -1436,6 +1438,19 @@
 @utility primary-gradient-hover { background: linear-gradient(90deg, #764ba2 0%, #667eea 100%); }
 @utility scrollbar-thin { scrollbar-width: thin; scrollbar-color: var(--color-gray-300) transparent; }
 
+/* Screen-reader only — visually hidden but accessible to assistive tech */
+@utility sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
 /* ==================== KEYFRAMES ==================== */
 @keyframes indeterminate-progress {
   0% { transform: translateX(-100%); }
@@ -1534,6 +1549,13 @@
 .notif-dropdown-header span {
   font-size: 11px; color: var(--text-muted, #64748b);
 }
+.notif-mark-all-btn {
+  background: none; border: none; cursor: pointer;
+  font-size: 11px; color: var(--accent-primary, #667eea);
+  font-weight: 600; padding: 0;
+  transition: opacity .15s;
+}
+.notif-mark-all-btn:hover { opacity: 0.8; }
 .notif-list { padding: 6px 0; }
 .notif-item {
   display: flex; align-items: flex-start; gap: 10px;
@@ -1564,4 +1586,14 @@
 .notif-empty i {
   font-size: 24px; display: block; margin-bottom: 8px;
   color: var(--text-muted, #64748b);
+}
+.notif-item.unread {
+  background: rgba(102, 126, 234, .06);
+}
+.notif-item.unread:hover {
+  background: rgba(102, 126, 234, .1);
+}
+.notif-unread-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #667eea; flex-shrink: 0; margin-top: 6px;
 }

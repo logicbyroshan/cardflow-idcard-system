@@ -267,7 +267,6 @@ def is_valid_image_path(path: Optional[str]) -> bool:
 
 # Field name patterns used to detect sort-relevant columns
 _CLASS_PATTERNS = ['CLASS']
-_SECTION_PATTERNS = ['SECTION', 'SEC']
 _NAME_PATTERNS = ['NAME', 'STUDENT', 'EMPNAME', 'STUDENT NAME', 'EMP NAME']
 
 
@@ -367,3 +366,73 @@ def get_class_field_name(table_fields: Optional[List[Dict[str, Any]]]) -> Option
         return None
     field_names = [f.get('name', '') for f in table_fields]
     return _find_field_name(field_names, _CLASS_PATTERNS)
+
+
+# =============================================================================
+# CHUNKED STREAMING DOWNLOAD
+# =============================================================================
+
+def stream_file_response(file_bytes, filename, content_type, chunk_size=1024 * 1024):
+    """
+    Stream a file download in chunks to keep memory usage low.
+
+    For small files (<10 MB), returns a normal HttpResponse.
+    For larger files, writes to a temp file on disk first,
+    then streams from disk in ``chunk_size`` (default 1 MB) chunks
+    using Django's StreamingHttpResponse.
+
+    Args:
+        file_bytes: The raw bytes of the file (bytes or BytesIO.getvalue()).
+        filename:   Suggested download filename.
+        content_type: MIME type for the response.
+        chunk_size: Size of each chunk in bytes (default 1 MB).
+
+    Returns:
+        HttpResponse or StreamingHttpResponse
+    """
+    import os
+    import tempfile
+    from django.http import HttpResponse, StreamingHttpResponse
+
+    size = len(file_bytes)
+
+    # Small files: return directly — no disk I/O
+    if size < 10 * 1024 * 1024:  # 10 MB
+        response = HttpResponse(file_bytes, content_type=content_type)
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response['Content-Length'] = size
+        return response
+
+    # Large files: spool to temp file, then stream in chunks
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(filename)[1])
+    try:
+        tmp.write(file_bytes)
+        tmp.flush()
+        tmp.close()
+
+        def _iter_chunks():
+            try:
+                with open(tmp.name, 'rb') as fh:
+                    while True:
+                        chunk = fh.read(chunk_size)
+                        if not chunk:
+                            break
+                        yield chunk
+            finally:
+                # Clean up temp file after streaming is complete
+                try:
+                    os.unlink(tmp.name)
+                except OSError:
+                    pass
+
+        response = StreamingHttpResponse(_iter_chunks(), content_type=content_type)
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response['Content-Length'] = size
+        return response
+    except Exception:
+        # Cleanup on error
+        try:
+            os.unlink(tmp.name)
+        except OSError:
+            pass
+        raise

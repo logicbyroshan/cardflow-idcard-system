@@ -22,7 +22,7 @@ Column helper classes (defined in tailwind-input.css):
 {% endcomment %}
 
 <div class="table-wrapper">
-  <table id="{{ table_id }}" class="data-table"
+  <table id="{{ table_id }}" class="data-table" aria-label="{{ table_label|default:'Data table' }}"
          {% if min_width %}style="min-width: {{ min_width }};"{% endif %}>
     <!-- <thead> and <tbody> injected by page or partial -->
   </table>

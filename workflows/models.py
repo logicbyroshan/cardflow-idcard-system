@@ -1,7 +1,6 @@
 import logging
 
 from django.conf import settings
-from django.contrib.postgres.indexes import GinIndex
 from django.db import models
 from client.models import Client
 
@@ -49,7 +48,8 @@ class IDCardGroup(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.name} - {self.client.name}"
+        client_name = self.client.name if self.client_id else 'No Client'
+        return f"{self.name} - {client_name}"
     
     def delete_all_table_images(self):
         """Delete all images from all tables in this group"""
@@ -141,12 +141,20 @@ class IDCardTable(models.Model):
         indexes = [
             models.Index(fields=['is_active']),
             models.Index(fields=['created_at']),
+            models.Index(fields=['group', 'is_active']),  # composite for filtered table lists
         ]
     
     def clean(self):
         from django.core.exceptions import ValidationError
         if len(self.fields) > 20:
             raise ValidationError('Maximum 20 fields allowed per table.')
+    
+    def save(self, *args, **kwargs):
+        # Enforce field limit on every save, not just via full_clean()
+        if len(self.fields) > 20:
+            from django.core.exceptions import ValidationError
+            raise ValidationError('Maximum 20 fields allowed per table.')
+        super().save(*args, **kwargs)
 
 
 class IDCard(models.Model):
@@ -202,7 +210,7 @@ class IDCard(models.Model):
         # Try to get a name field from field_data (with null safety)
         field_data = self.field_data or {}
         name = field_data.get('name', field_data.get('Name', f'Card #{self.id}'))
-        table_name = self.table.name if self.table else 'Unknown Table'
+        table_name = self.table.name if self.table_id else 'Unknown Table'
         return f"{name} - {table_name}"
     
     @property
@@ -259,8 +267,7 @@ class IDCard(models.Model):
             models.Index(fields=['table', 'status', '-id'], name='idcard_tbl_status_id_desc'),
             models.Index(fields=['downloaded_at'], name='idcard_downloaded_at_idx'),
             models.Index(fields=['deleted_at'], name='idcard_deleted_at_idx'),
-            # GIN index for fast JSON search (replaces icontains full table scans)
-            GinIndex(fields=['field_data'], name='idcard_field_data_gin'),
+            # GIN index for fast JSON search is added via migration 0024 (PostgreSQL only)
         ]
 
 
@@ -297,5 +304,7 @@ class ReprintRequest(models.Model):
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['table', 'status']),
+            models.Index(fields=['table', 'status', '-created_at']),  # ordered reprint queries
+            models.Index(fields=['card']),  # card_id__in lookups
             models.Index(fields=['created_at']),
         ]

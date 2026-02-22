@@ -10,13 +10,20 @@
 
 var _refreshPending = false;
 /** Refresh the card table via HTMX (no full page reload). Falls back to reload.
- *  Throttled: ignores rapid-fire calls within 300ms. */
+ *  Throttled: ignores rapid-fire calls within 300ms.
+ *  Preserves scroll position so the page doesn't jump to top. */
 function refreshCardTable() {
     if (_refreshPending) return;         // de-dup rapid calls
     _refreshPending = true;
     setTimeout(function() { _refreshPending = false; }, 300);
 
     if (typeof htmx !== 'undefined' && document.getElementById('card-table-container')) {
+        // Save scroll position before HTMX swap
+        window._savedScrollTop = window.scrollY || document.documentElement.scrollTop;
+        var tableContainer = document.getElementById('card-table-container');
+        var scrollParent = tableContainer ? tableContainer.closest('.main-content') || tableContainer.parentElement : null;
+        if (scrollParent) window._savedScrollParentTop = scrollParent.scrollTop;
+
         htmx.trigger(document.body, 'refreshTable');
         // Clear selection after table swap
         if (typeof window.alpineClearSelection === 'function') window.alpineClearSelection();
@@ -67,6 +74,8 @@ var _actionThemes = {
     unverify:    { icon: 'fa-rotate-left',       color: '#f59e0b', bg: '#fffbeb', label: 'Unverify',    confirmLabel: 'Move Back',   from: 'Verified',  to: 'Pending',   fromColor: '#10b981', toColor: '#f59e0b' },
     disapprove:  { icon: 'fa-rotate-left',       color: '#f59e0b', bg: '#fffbeb', label: 'Disapprove',  confirmLabel: 'Move Back',   from: 'Approved',  to: 'Pending',   fromColor: '#3b82f6', toColor: '#f59e0b' },
     retrieve:    { icon: 'fa-arrow-rotate-left', color: '#6366f1', bg: '#eef2ff', label: 'Retrieve',    confirmLabel: 'Retrieve',    from: 'Pool',      to: 'Pending',   fromColor: '#ef4444', toColor: '#f59e0b' },
+    'delete':    { icon: 'fa-trash-can',         color: '#f59e0b', bg: '#fffbeb', label: 'Delete',      confirmLabel: 'Delete',      from: '',          to: 'Pool',      fromColor: '#6b7280', toColor: '#ef4444' },
+    'delete-permanent': { icon: 'fa-skull-crossbones', color: '#ef4444', bg: '#fef2f2', label: 'Permanent Delete', confirmLabel: 'Delete Forever', from: '', to: '', fromColor: '#ef4444', toColor: '#ef4444' },
     'default':   { icon: 'fa-circle-question',   color: '#6366f1', bg: '#eef2ff', label: 'Confirm',     confirmLabel: 'Confirm',     from: '',          to: '',          fromColor: '#6b7280', toColor: '#6b7280' }
 };
 
@@ -90,7 +99,7 @@ function showWorkflowConfirm(message, onConfirm, options) {
     overlay.id = 'workflowConfirmOverlay';
     overlay.className = 'wf-confirm-overlay';
 
-    // Build status flow HTML
+    // Build status flow HTML (skip for permanent delete which has no from/to)
     var flowHTML = '';
     if (theme.from && theme.to) {
         flowHTML = `
@@ -99,6 +108,13 @@ function showWorkflowConfirm(message, onConfirm, options) {
                 <i class="fa-solid fa-arrow-right wf-flow-arrow" style="color:${theme.color}"></i>
                 <span class="wf-status-badge" style="background:${theme.toColor}15;color:${theme.toColor};border:1px solid ${theme.toColor}30">${theme.to}</span>
             </div>`;
+    } else if (theme.to) {
+        // One-sided flow (e.g. delete → Pool)
+        flowHTML = `
+            <div class="wf-status-flow">
+                <i class="fa-solid fa-arrow-right wf-flow-arrow" style="color:${theme.color}"></i>
+                <span class="wf-status-badge" style="background:${theme.toColor}15;color:${theme.toColor};border:1px solid ${theme.toColor}30">Moved to ${theme.to}</span>
+            </div>`;
     }
 
     // Build count info for bulk
@@ -106,6 +122,11 @@ function showWorkflowConfirm(message, onConfirm, options) {
     if (count > 1) {
         countHTML = `<div class="wf-count-badge" style="background:${theme.color}10;color:${theme.color};border:1px solid ${theme.color}25"><i class="fa-solid fa-layer-group"></i> ${count} record(s) selected</div>`;
     }
+
+    // Build note (custom override or default)
+    var noteText = options.note || (count > 1 ? 'This will update all selected records.' : 'This will update the record status.');
+    var noteIcon = options.noteIcon || 'fa-circle-info';
+    var noteStyle = options.noteDanger ? 'color:#ef4444;' : '';
 
     overlay.innerHTML = `
         <div class="wf-confirm-card">
@@ -120,9 +141,9 @@ function showWorkflowConfirm(message, onConfirm, options) {
                 <p class="wf-confirm-msg">${message}</p>
                 ${flowHTML}
                 ${countHTML}
-                <div class="wf-confirm-note">
-                    <i class="fa-solid fa-circle-info"></i>
-                    <span>${count > 1 ? 'This will update all selected records.' : 'This will update the record status.'}</span>
+                <div class="wf-confirm-note" style="${noteStyle}">
+                    <i class="fa-solid ${noteIcon}"></i>
+                    <span>${noteText}</span>
                 </div>
             </div>
             <div class="wf-confirm-footer">
@@ -158,7 +179,7 @@ function showWorkflowConfirm(message, onConfirm, options) {
     // Click handlers
     document.getElementById('workflowConfirmClose').onclick = function() { cleanup(); document.removeEventListener('keydown', onKeyDown); };
     document.getElementById('workflowConfirmCancel').onclick = function() { cleanup(); document.removeEventListener('keydown', onKeyDown); };
-    overlay.addEventListener('click', function(e) { if (e.target === overlay) { cleanup(); document.removeEventListener('keydown', onKeyDown); } });
+    overlay.addEventListener('click', function(e) { /* disabled — prevent accidental closure */ });
     document.getElementById('workflowConfirmOk').onclick = function() {
         cleanup();
         document.removeEventListener('keydown', onKeyDown);
@@ -244,6 +265,44 @@ function retrieveCard(cardId) {
                 });
         }
     }, { actionType: 'retrieve' });
+}
+
+function disapproveCard(cardId) {
+    showWorkflowConfirm('Are you sure you want to disapprove this record and move it back to pending?', function() {
+        if (typeof apiCall === 'function') {
+            apiCall(`/panel/api/card/${cardId}/status/`, 'POST', { status: 'pending' })
+                .then(data => {
+                    if (data.success === false) {
+                        if (typeof showToast === 'function') showToast(data.message || 'Cannot disapprove card', false);
+                        return;
+                    }
+                    if (typeof showToast === 'function') showToast('Card moved back to pending');
+                    refreshCardTable();
+                })
+                .catch(err => {
+                    if (typeof showToast === 'function') showToast(err.message || 'Failed to disapprove card', false);
+                });
+        }
+    }, { actionType: 'disapprove' });
+}
+
+function moveToDownload(cardId) {
+    showWorkflowConfirm('Are you sure you want to move this record to the download list?', function() {
+        if (typeof apiCall === 'function') {
+            apiCall(`/panel/api/card/${cardId}/status/`, 'POST', { status: 'download' })
+                .then(data => {
+                    if (data.success === false) {
+                        if (typeof showToast === 'function') showToast(data.message || 'Cannot move card', false);
+                        return;
+                    }
+                    if (typeof showToast === 'function') showToast('Card moved to download list');
+                    refreshCardTable();
+                })
+                .catch(err => {
+                    if (typeof showToast === 'function') showToast(err.message || 'Failed to move card', false);
+                });
+        }
+    }, { actionType: 'approve' });
 }
 
 // ==========================================
@@ -351,24 +410,37 @@ function bulkDisapprove(cardIds) {
 }
 
 function bulkDelete(cardIds) {
-    // Show confirmation modal before moving to pool
-    if (typeof openSimpleDeleteModal === 'function') {
-        openSimpleDeleteModal(cardIds);
-    } else {
-        // Fallback: direct move to pool (legacy behavior)
-        const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
-        if (!tableId) {
-            if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
-            return;
+    // Use workflow confirmation modal (consistent with verify/approve design)
+    showWorkflowConfirm(
+        `Are you sure you want to delete ${cardIds.length} selected record(s)?`,
+        function() {
+            const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
+            if (!tableId) {
+                if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
+                return;
+            }
+            if (typeof apiCall === 'function') {
+                apiCall(`/panel/api/table/${tableId}/cards/bulk-status/`, 'POST', { card_ids: cardIds, status: 'pool' })
+                    .then(data => {
+                        if (data.success === false) {
+                            if (typeof showToast === 'function') showToast(data.message || 'Cannot delete cards', false);
+                            return;
+                        }
+                        if (typeof showToast === 'function') showToast(data.message || `${data.updated_count} card(s) moved to pool`);
+                        refreshCardTable();
+                    })
+                    .catch(err => {
+                        if (typeof showToast === 'function') showToast(err.message || 'Bulk delete failed', false);
+                    });
+            }
+        },
+        {
+            actionType: 'delete',
+            count: cardIds.length,
+            note: 'Deleted cards will be moved to Pool. You can retrieve them later.',
+            noteIcon: 'fa-circle-info'
         }
-        if (typeof apiCall === 'function') {
-            apiCall(`/panel/api/table/${tableId}/cards/bulk-status/`, 'POST', { card_ids: cardIds, status: 'pool' })
-                .then(data => {
-                    if (typeof showToast === 'function') showToast(`${data.updated_count} card(s) moved to pool`);
-                    refreshCardTable();
-                });
-        }
-    }
+    );
 }
 
 function bulkRetrieve(cardIds) {
@@ -466,7 +538,7 @@ function initBulkActionHandlers() {
         if (window.IDCardApp && typeof window.IDCardApp.getSelectedCardIds === 'function') {
             return window.IDCardApp.getSelectedCardIds();
         }
-        return typeof getSelectedCardIds === 'function' ? getSelectedCardIds() : [];
+        return [];
     }
 
     // Verify Selected button
@@ -519,7 +591,7 @@ function initBulkActionHandlers() {
 
     // Retrieve button (Download list)
     document.getElementById('retrieveBtnD')?.addEventListener('click', function() {
-        const selectedIds = typeof getSelectedCardIds === 'function' ? getSelectedCardIds() : [];
+        const selectedIds = _getIds();
         if (selectedIds.length > 0) {
             bulkRetrieve(selectedIds);
         }
@@ -527,7 +599,7 @@ function initBulkActionHandlers() {
     
     // Delete Permanent button (Pool list only)
     document.getElementById('deletePermanentBtnP')?.addEventListener('click', function() {
-        const selectedIds = typeof getSelectedCardIds === 'function' ? getSelectedCardIds() : [];
+        const selectedIds = _getIds();
         if (selectedIds.length > 0) {
             bulkDeletePermanent(selectedIds);
         }
@@ -550,6 +622,8 @@ window.IDCardApp.verifyCard = verifyCard;
 window.IDCardApp.approveCard = approveCard;
 window.IDCardApp.unverifyCard = unverifyCard;
 window.IDCardApp.retrieveCard = retrieveCard;
+window.IDCardApp.disapproveCard = disapproveCard;
+window.IDCardApp.moveToDownload = moveToDownload;
 window.IDCardApp.bulkVerify = bulkVerify;
 window.IDCardApp.bulkApprove = bulkApprove;
 window.IDCardApp.bulkUnverify = bulkUnverify;
@@ -557,5 +631,6 @@ window.IDCardApp.bulkDisapprove = bulkDisapprove;
 window.IDCardApp.bulkDelete = bulkDelete;
 window.IDCardApp.bulkRetrieve = bulkRetrieve;
 window.IDCardApp.bulkDeletePermanent = bulkDeletePermanent;
+window.IDCardApp.refreshCardTable = refreshCardTable;
 
 })();

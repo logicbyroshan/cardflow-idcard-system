@@ -9,7 +9,6 @@ This enables permission-based visibility in templates using:
 """
 from django.conf import settings
 from core.services.permission_service import PermissionService
-from django.conf import settings as django_settings
 
 
 def permissions(request):

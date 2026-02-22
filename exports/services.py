@@ -235,7 +235,8 @@ class ExportService:
         table_id: int,
         card_ids: Optional[List[int]] = None,
         doc_format: str = 'docx',
-        status: str = ''
+        status: str = '',
+        template_id: Optional[int] = None
     ) -> WordExportResult:
         """
         Export cards to Word format.
@@ -245,6 +246,7 @@ class ExportService:
             card_ids: Optional list of specific card IDs
             doc_format: 'docx' or 'doc'
             status: Current status tab label
+            template_id: Optional ExportTemplate ID for footer instructions
             
         Returns:
             WordExportResult with HttpResponse if successful
@@ -258,7 +260,8 @@ class ExportService:
             )
         
         return self._word_exporter.export_cards(
-            context.table, context.cards, doc_format=doc_format, status=status
+            context.table, context.cards, doc_format=doc_format, status=status,
+            template_id=template_id
         )
     
     # =========================================================================
@@ -269,7 +272,8 @@ class ExportService:
         self,
         table_id: int,
         card_ids: Optional[List[int]] = None,
-        status: str = ''
+        status: str = '',
+        template_id: Optional[int] = None
     ) -> PdfExportResult:
         """
         Export cards to PDF format.
@@ -278,6 +282,7 @@ class ExportService:
             table_id: ID of the table to export
             card_ids: Optional list of specific card IDs
             status: Current status tab label
+            template_id: Optional ExportTemplate ID for footer instructions
             
         Returns:
             PdfExportResult with HttpResponse if successful
@@ -290,7 +295,7 @@ class ExportService:
                 message=context.error_message or 'Permission denied'
             )
         
-        return self._pdf_exporter.export_cards(context.table, context.cards, status=status)
+        return self._pdf_exporter.export_cards(context.table, context.cards, status=status, template_id=template_id)
     
     # =========================================================================
     # IMAGE ZIP EXPORT

@@ -60,7 +60,7 @@ Contains: Side drawer for adding/editing clients with form fields and permission
                     <div class="form-group">
                         <label for="client-password">Password <span class="required" id="password-required">*</span></label>
                         <div class="password-input-wrapper">
-                            <input type="password" id="client-password" name="password" placeholder="Enter password">
+                            <input type="password" id="client-password" name="password" placeholder="Enter password" autocomplete="new-password">
                             <button type="button" class="password-toggle" id="toggle-password" aria-label="Toggle password visibility">
                                 <i class="fa-solid fa-eye"></i>
                             </button>
@@ -183,6 +183,18 @@ Contains: Side drawer for adding/editing clients with form fields and permission
                         <label class="permission-item">
                             <input type="checkbox" name="perm_idcard_action_delete" id="perm-idcard-action-delete">
                             <span class="permission-label">Delete Actions</span>
+                        </label>
+                    </div>
+                </div>
+                <!-- Mobile App Permission -->
+                <div class="permission-group">
+                    <h4 class="permission-group-title">
+                        <i class="fa-solid fa-mobile-screen"></i> Mobile App
+                    </h4>
+                    <div class="permission-grid">
+                        <label class="permission-item">
+                            <input type="checkbox" name="perm_mobile_app" id="perm-mobile-app">
+                            <span class="permission-label">Mobile App Access</span>
                         </label>
                     </div>
                 </div>

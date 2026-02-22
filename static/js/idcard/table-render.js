@@ -905,11 +905,11 @@
                 e.stopPropagation();
                 var cid = btn.getAttribute('data-card-id');
                 if (!cid) return;
-                if (btn.classList.contains('verify-row-btn')   && typeof verifyCard === 'function')   verifyCard(cid);
-                else if (btn.classList.contains('approve-row-btn')  && typeof approveCard === 'function')  approveCard(cid);
-                else if (btn.classList.contains('unverify-row-btn') && typeof unverifyCard === 'function') unverifyCard(cid);
-                else if (btn.classList.contains('retrieve-row-btn') && typeof retrieveCard === 'function') retrieveCard(cid);
-                else if (btn.classList.contains('unapprove-row-btn') && typeof unapproveCard === 'function') unapproveCard(cid);
+                if (btn.classList.contains('verify-row-btn')   && window.IDCardApp && typeof window.IDCardApp.verifyCard === 'function')   window.IDCardApp.verifyCard(cid);
+                else if (btn.classList.contains('approve-row-btn')  && window.IDCardApp && typeof window.IDCardApp.approveCard === 'function')  window.IDCardApp.approveCard(cid);
+                else if (btn.classList.contains('unverify-row-btn') && window.IDCardApp && typeof window.IDCardApp.unverifyCard === 'function') window.IDCardApp.unverifyCard(cid);
+                else if (btn.classList.contains('retrieve-row-btn') && window.IDCardApp && typeof window.IDCardApp.retrieveCard === 'function') window.IDCardApp.retrieveCard(cid);
+                else if (btn.classList.contains('unapprove-row-btn') && window.IDCardApp && typeof window.IDCardApp.disapproveCard === 'function') window.IDCardApp.disapproveCard(cid);
                 return;
             }
 

@@ -121,10 +121,25 @@ class ClientService(BaseService):
             name = data.get('name', '')
             name_parts = name.split() if name else []
             
-            # Password from phone number
+            # Use phone number as default password (matches welcome email instructions)
             phone = data.get('phone', '').strip()
-            phone_clean = ''.join(filter(str.isdigit, phone))
-            password = phone_clean if phone_clean else secrets.token_urlsafe(12)
+            password = data.get('password', '').strip()
+            used_phone_as_password = False
+            if not password:
+                if phone:
+                    password = phone
+                    used_phone_as_password = True
+                else:
+                    password = secrets.token_urlsafe(12)
+            
+            # Skip Django password validators when using phone as password
+            # (NumericPasswordValidator would reject a pure-digit mobile number)
+            if not used_phone_as_password:
+                from django.contrib.auth.password_validation import validate_password
+                try:
+                    validate_password(password)
+                except Exception as pw_err:
+                    return ServiceResult(success=False, message=str(pw_err))
             
             with transaction.atomic():
                 # Create user
@@ -168,14 +183,17 @@ class ClientService(BaseService):
                     email=email,
                     password=password,
                     role='client',
-                    request=request
+                    request=request,
+                    phone=phone
                 )
             
             message = 'Client created successfully!'
             if email_sent:
                 message += ' Welcome email sent.'
             elif email_message:
-                message += f' (Email not sent: {email_message})'
+                # Log the actual error server-side, but don't expose details to user
+                import logging
+                logging.getLogger(__name__).warning('Welcome email failed for %s: %s', email, email_message)
             
             return ServiceResult(
                 success=True,
@@ -600,6 +618,44 @@ class ClientService(BaseService):
                     'updated_permissions': updated_perms,
                     'rejected_permissions': rejected_perms
                 }
+            )
+        except Exception as e:
+            return ServiceResult(success=False, message=str(e))
+
+    @classmethod
+    def set_temp_password(cls, client_id: int, new_password: str, request=None) -> ServiceResult:
+        """
+        Set a temporary password for a client user.
+        Sends a notification email (no password content, just a notice).
+        """
+        try:
+            client = get_object_or_404(Client.objects.select_related('user'), id=client_id)
+            user = client.user
+
+            if not new_password or not new_password.strip():
+                return ServiceResult(success=False, message='Password cannot be empty')
+
+            new_password = new_password.strip()
+
+            user.set_password(new_password)
+            user.save(update_fields=['password'])
+
+            # Send notification email (no password in email)
+            from ..utils.email_utils import send_password_changed_notification
+            email_sent = False
+            try:
+                email_sent = send_password_changed_notification(
+                    name=client.name or user.get_full_name(),
+                    email=user.email,
+                    request=request,
+                )
+            except Exception:
+                pass
+
+            return ServiceResult(
+                success=True,
+                message=f'Temporary password set for "{client.name}"',
+                data={'email_sent': email_sent}
             )
         except Exception as e:
             return ServiceResult(success=False, message=str(e))

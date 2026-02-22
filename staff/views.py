@@ -87,6 +87,7 @@ def api_admin_staff_list_create(request):
         department=data.get('department', ''),
         assigned_client_ids=data.get('assigned_clients', []),
         permission_codenames=data.get('permissions', []),
+        password=data.get('password', ''),
     )
     
     if result.get('success'):

@@ -4,6 +4,7 @@
 {% block title %}Cards - Client Portal{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/common.css' %}">
 <link rel="stylesheet" href="{% static 'css/idcard-actions.css' %}">
 {% endblock %}
 
@@ -28,7 +29,7 @@
   
   <div class="filters-bar">
     <div class="filter-group">
-      <label>Status:</label>
+      <label for="statusFilter">Status:</label>
       <select id="statusFilter" onchange="loadCards()">
         <option value="">All Status</option>
         <option value="pending">Pending</option>
@@ -50,12 +51,12 @@
       <table class="cards-table">
         <thead>
           <tr>
-            <th>Photo</th>
-            <th>Name</th>
-            <th>ID Number</th>
-            <th>Class/Designation</th>
-            <th>Status</th>
-            <th>Actions</th>
+            <th scope="col">Photo</th>
+            <th scope="col">Name</th>
+            <th scope="col">ID Number</th>
+            <th scope="col">Class/Designation</th>
+            <th scope="col">Status</th>
+            <th scope="col">Actions</th>
           </tr>
         </thead>
         <tbody id="cardsTableBody">
@@ -91,7 +92,7 @@
   <div class="modal-content">
     <div class="modal-header">
       <h2><i class="fa-solid fa-id-card mr-2.5 text-green-400"></i>Card Details</h2>
-      <button class="modal-close" onclick="closeModal()">
+      <button class="modal-close" onclick="closeModal()" aria-label="Close">
         <i class="fa-solid fa-times"></i>
       </button>
     </div>
@@ -327,10 +328,10 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-// Close modal on overlay click
-document.getElementById('viewModal').addEventListener('click', function(e) {
-  if (e.target === this) closeModal();
-});
+// Close modal on overlay click — disabled to prevent accidental closure
+// document.getElementById('viewModal').addEventListener('click', function(e) {
+//   if (e.target === this) closeModal();
+// });
 
 // Close modal on escape key
 document.addEventListener('keydown', function(e) {

@@ -14,11 +14,11 @@ JS contract:
   Buttons:    Inject page buttons into #<controls_id>
 {% endcomment %}
 
-<div id="{{ pagination_id|default:'pagination' }}" class="pagination-bar">
+<nav aria-label="Pagination" id="{{ pagination_id|default:'pagination' }}" class="pagination-bar">
   <span class="pagination-info" id="{{ info_id|default:'pagination-info' }}">
     Showing 0 results
   </span>
   <div class="pagination-controls" id="{{ controls_id|default:'pagination-controls' }}">
     <!-- Page buttons injected by JS -->
   </div>
-</div>
+</nav>

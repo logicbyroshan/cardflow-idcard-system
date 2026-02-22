@@ -85,7 +85,7 @@
                     <tr data-id="{{ p.id }}" data-cat="{{ p.category_id|default:'' }}">
                         <td>
                             {% if p.image %}
-                            <img src="{{ p.image.url }}" class="wa-thumb" alt="{{ p.title }}" loading="lazy" decoding="async">
+                            <img src="{{ p.image.url }}" class="wa-thumb" alt="{{ p.title }}">
                             {% elif p.item_type == 'video' or p.item_type == 'reel' %}
                             <span class="wa-thumb-icon"><i class="fa-solid fa-video"></i></span>
                             {% else %}
@@ -108,10 +108,10 @@
                         </td>
                         <td class="wa-actions">
                             {% if is_super_admin or perm_website_edit %}
-                            <button class="btn-icon" title="Edit" onclick="editPortfolio({{ p.id }})"><i class="fa-solid fa-pen"></i></button>
+                            <button class="btn btn-icon" title="Edit" onclick="editPortfolio({{ p.id }})"><i class="fa-solid fa-pen"></i></button>
                             {% endif %}
                             {% if is_super_admin or perm_website_delete %}
-                            <button class="btn-icon danger" title="Delete" onclick="deletePortfolio({{ p.id }})"><i class="fa-solid fa-trash"></i></button>
+                            <button class="btn btn-icon danger" title="Delete" onclick="deletePortfolio({{ p.id }})"><i class="fa-solid fa-trash"></i></button>
                             {% endif %}
                         </td>
                     </tr>
@@ -167,7 +167,7 @@
                 </div>
             </div>
             <div class="wa-modal-footer">
-                <button type="button" class="btn btn-outline" onclick="closeCategoryModal()">Cancel</button>
+                <button type="button" class="btn btn-neutral" onclick="closeCategoryModal()">Cancel</button>
                 <button type="submit" class="btn btn-primary">Save</button>
             </div>
         </form>
@@ -195,47 +195,22 @@
                     </select>
                 </div>
                 <div class="wa-form-group">
-                    <label for="pf_item_type">Type</label>
-                    <select id="pf_item_type" name="item_type" onchange="toggleMediaFields()">
-                        <option value="image">Image</option>
-                        <option value="video">Video</option>
-                        <option value="reel">Reel</option>
-                    </select>
-                </div>
-            </div>
-            <div class="wa-form-row">
-                <div class="wa-form-group">
                     <label for="pf_order">Display Order</label>
                     <input type="number" id="pf_order" name="order" value="0">
                     <small class="form-hint">0 = auto (latest first). Set &gt; 0 for manual ordering.</small>
                 </div>
-                <div class="wa-form-group">
-                    <label for="pf_orientation">Orientation</label>
-                    <select id="pf_orientation" name="orientation">
-                        <option value="">Default</option>
-                        <option value="square">Square</option>
-                        <option value="portrait">Portrait</option>
-                        <option value="landscape">Landscape</option>
-                        <option value="featured">Featured</option>
-                    </select>
-                </div>
             </div>
-            <!-- Image field -->
+            <!-- Image upload -->
             <div class="wa-form-group">
-                <label for="pf_image">Image / Thumbnail</label>
+                <label for="pf_image"><i class="fa-solid fa-image"></i> Image</label>
                 <input type="file" id="pf_image" name="image" accept="image/*">
-                <small class="form-hint">For videos/reels, this serves as the thumbnail/cover.</small>
+                <small class="form-hint">Upload an image. Orientation is detected automatically.</small>
             </div>
-            <!-- Video fields (shown for video/reel types) -->
-            <div id="videoFields" class="hidden">
-                <div class="wa-form-group">
-                    <label for="pf_video_url">Video URL</label>
-                    <input type="url" id="pf_video_url" name="video_url" placeholder="https://...">
-                </div>
-                <div class="wa-form-group">
-                    <label for="pf_video_file">Or Upload Video File</label>
-                    <input type="file" id="pf_video_file" name="video_file" accept="video/*">
-                </div>
+            <!-- Video upload -->
+            <div class="wa-form-group">
+                <label for="pf_video_file"><i class="fa-solid fa-video"></i> Video File (optional)</label>
+                <input type="file" id="pf_video_file" name="video_file" accept="video/*">
+                <small class="form-hint">Upload a video file. Type will be set to "video" automatically.</small>
             </div>
             <div class="wa-form-row">
                 <div class="wa-form-group">
@@ -252,7 +227,7 @@
                 </div>
             </div>
             <div class="wa-modal-footer">
-                <button type="button" class="btn btn-outline" onclick="closePortfolioModal()">Cancel</button>
+                <button type="button" class="btn btn-neutral" onclick="closePortfolioModal()">Cancel</button>
                 <button type="submit" class="btn btn-primary">Save</button>
             </div>
         </form>
@@ -261,5 +236,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/website-admin/portfolio.js' %}"></script>
+<script src="{% static 'js/website-admin/portfolio.js' %}?v=134"></script>
 {% endblock %}

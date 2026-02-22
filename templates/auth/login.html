@@ -7,12 +7,12 @@
     <meta name="robots" content="noindex, nofollow">
     <title>Login - Adarsh Admin</title>
     <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
-  <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
+    <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
     <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
     <link rel="stylesheet" href="{% static 'css/auth.css' %}">
 </head>
 <body class="auth-page font-[Inter,sans-serif] min-h-screen flex items-center justify-center p-5">
-    <div class="w-full max-w-[600px] max-h-[90vh] flex flex-col">
+  <main id="main-content" class="w-full max-w-[600px] max-h-[90vh] flex flex-col">
         <div class="login-card bg-[rgba(30,32,48,0.95)] py-7 px-9 shadow-md border border-[rgba(102,126,234,0.2)] backdrop-blur-[20px] max-h-[90vh] overflow-y-auto">
             <div class="text-center mb-4">
                 <div class="w-14 h-14 bg-gradient-to-br from-[#667eea] to-[#764ba2] flex items-center justify-center mx-auto mb-3 text-2xl text-white shadow-md">
@@ -23,14 +23,16 @@
             </div>
             
             <!-- Step Indicator -->
-            <div class="flex justify-center gap-1.5 mb-4">
-                <div class="step-dot active" data-step="1"></div>
-                <div class="step-dot" data-step="2"></div>
-                <div class="step-dot" data-step="3"></div>
+            <div class="flex justify-center gap-1.5 mb-4" role="group" aria-label="Login progress">
+                <div class="step-dot active" data-step="1" aria-label="Step 1: Role selection" aria-current="step"></div>
+                <div class="step-dot" data-step="2" aria-label="Step 2: Email"></div>
+                <div class="step-dot" data-step="3" aria-label="Step 3: Password"></div>
+                <div class="step-dot" data-step="4" aria-label="Step 4: OTP verification"></div>
+                <div class="step-dot" data-step="5" aria-label="Step 5: Reset password"></div>
             </div>
             
             <!-- Message Display -->
-            <div class="message" id="messageBox"></div>
+            <div class="message" id="messageBox" role="alert" aria-live="assertive"></div>
             
             <!-- Step 1: Role Selection -->
             <div class="login-step active" id="step1">
@@ -39,7 +41,7 @@
                 
                 <div class="flex flex-col gap-2 mb-4">
                     <label class="role-option flex items-center gap-3 py-2.5 px-3.5 bg-[rgba(102,126,234,0.05)] border border-[rgba(102,126,234,0.2)] cursor-pointer transition-all duration-200 hover:border-[#667eea] hover:bg-[rgba(102,126,234,0.12)]" data-role="super_admin">
-                        <input type="radio" name="role" value="super_admin" class="hidden">
+                        <input type="radio" name="role" value="super_admin" class="sr-only">
                         <div class="w-10 h-10 flex items-center justify-center text-base text-white shadow-sm bg-gradient-to-br from-[#667eea] to-[#764ba2]">
                             <i class="fa-solid fa-crown"></i>
                         </div>
@@ -53,7 +55,7 @@
                     </label>
                     
                     <label class="role-option flex items-center gap-3 py-2.5 px-3.5 bg-[rgba(102,126,234,0.05)] border border-[rgba(102,126,234,0.2)] cursor-pointer transition-all duration-200 hover:border-[#667eea] hover:bg-[rgba(102,126,234,0.12)]" data-role="admin_staff">
-                        <input type="radio" name="role" value="admin_staff" class="hidden">
+                        <input type="radio" name="role" value="admin_staff" class="sr-only">
                         <div class="w-10 h-10 flex items-center justify-center text-base text-white shadow-sm bg-gradient-to-br from-[#f59e0b] to-[#d97706]">
                             <i class="fa-solid fa-user-tie"></i>
                         </div>
@@ -67,7 +69,7 @@
                     </label>
                     
                     <label class="role-option flex items-center gap-3 py-2.5 px-3.5 bg-[rgba(102,126,234,0.05)] border border-[rgba(102,126,234,0.2)] cursor-pointer transition-all duration-200 hover:border-[#667eea] hover:bg-[rgba(102,126,234,0.12)]" data-role="client">
-                        <input type="radio" name="role" value="client" class="hidden">
+                        <input type="radio" name="role" value="client" class="sr-only">
                         <div class="w-10 h-10 flex items-center justify-center text-base text-white shadow-sm bg-gradient-to-br from-[#48bb78] to-[#38a169]">
                             <i class="fa-solid fa-building"></i>
                         </div>
@@ -81,7 +83,7 @@
                     </label>
                     
                     <label class="role-option flex items-center gap-3 py-2.5 px-3.5 bg-[rgba(102,126,234,0.05)] border border-[rgba(102,126,234,0.2)] cursor-pointer transition-all duration-200 hover:border-[#667eea] hover:bg-[rgba(102,126,234,0.12)]" data-role="client_staff">
-                        <input type="radio" name="role" value="client_staff" class="hidden">
+                        <input type="radio" name="role" value="client_staff" class="sr-only">
                         <div class="w-10 h-10 flex items-center justify-center text-base text-white shadow-sm bg-gradient-to-br from-[#4299e1] to-[#3182ce]">
                             <i class="fa-solid fa-users"></i>
                         </div>
@@ -147,7 +149,7 @@
                 </div>
                 
                 <div class="text-right mb-4">
-                    <button class="bg-transparent border-none text-[#818cf8] text-[13px] cursor-pointer p-0 font-medium hover:text-[#667eea] hover:underline" id="btnForgotPassword">Forgot password?</button>
+                    <button type="button" class="bg-transparent border-none text-[#818cf8] text-[13px] cursor-pointer p-0 font-medium hover:text-[#667eea] hover:underline" id="btnForgotPassword">Forgot password?</button>
                 </div>
                 
                 <button class="w-full py-2.5 border-none rounded text-sm font-semibold cursor-pointer transition-all duration-200 flex items-center justify-center gap-2 bg-gradient-to-br from-[#667eea] to-[#764ba2] text-white shadow-[0_2px_8px_rgba(102,126,234,0.25)] hover:shadow-[0_4px_12px_rgba(102,126,234,0.35)] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none" id="btnLogin">
@@ -170,12 +172,12 @@
                 </div>
                 
                 <div class="otp-inputs" id="otpInputs">
-                    <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric">
-                    <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric">
-                    <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric">
-                    <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric">
-                    <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric">
-                    <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric">
+                    <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" aria-label="OTP digit 1">
+                    <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" aria-label="OTP digit 2">
+                    <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" aria-label="OTP digit 3">
+                    <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" aria-label="OTP digit 4">
+                    <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" aria-label="OTP digit 5">
+                    <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" aria-label="OTP digit 6">
                 </div>
                 
                 <button class="w-full py-2.5 border-none rounded text-sm font-semibold cursor-pointer transition-all duration-200 flex items-center justify-center gap-2 bg-gradient-to-br from-[#667eea] to-[#764ba2] text-white shadow-[0_2px_8px_rgba(102,126,234,0.25)] hover:shadow-[0_4px_12px_rgba(102,126,234,0.35)] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none" id="btnVerifyOtp">
@@ -202,7 +204,7 @@
                     <label class="block text-[#a0aec0] text-xs font-medium mb-1.5">New Password</label>
                     <div class="relative">
                         <i class="fa-solid fa-lock absolute left-3.5 top-1/2 -translate-y-1/2 text-[#718096] text-[15px]"></i>
-                        <input type="password" id="newPasswordInput" placeholder="Enter new password" class="w-full py-2.5 px-2.5 pl-10 pr-11 bg-[rgba(102,126,234,0.05)] border border-[rgba(102,126,234,0.2)] text-[#f8fafc] text-sm transition-all duration-200 placeholder:text-[#718096] focus:outline-none focus:border-[#667eea] focus:bg-[rgba(102,126,234,0.1)] focus:ring-2 focus:ring-[rgba(102,126,234,0.1)]">
+                        <input type="password" id="newPasswordInput" placeholder="Enter new password" autocomplete="new-password" class="w-full py-2.5 px-2.5 pl-10 pr-11 bg-[rgba(102,126,234,0.05)] border border-[rgba(102,126,234,0.2)] text-[#f8fafc] text-sm transition-all duration-200 placeholder:text-[#718096] focus:outline-none focus:border-[#667eea] focus:bg-[rgba(102,126,234,0.1)] focus:ring-2 focus:ring-[rgba(102,126,234,0.1)]">
                         <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 bg-transparent border-none text-[#718096] cursor-pointer p-1 text-[15px] leading-none z-[1] hover:text-[#a0aec0]" id="toggleNewPassword" aria-label="Toggle password visibility">
                             <i class="fa-solid fa-eye"></i>
                         </button>
@@ -213,7 +215,7 @@
                     <label class="block text-[#a0aec0] text-xs font-medium mb-1.5">Confirm Password</label>
                     <div class="relative">
                         <i class="fa-solid fa-lock absolute left-3.5 top-1/2 -translate-y-1/2 text-[#718096] text-[15px]"></i>
-                        <input type="password" id="confirmPasswordInput" placeholder="Confirm new password" class="w-full py-2.5 px-2.5 pl-10 bg-[rgba(102,126,234,0.05)] border border-[rgba(102,126,234,0.2)] text-[#f8fafc] text-sm transition-all duration-200 placeholder:text-[#718096] focus:outline-none focus:border-[#667eea] focus:bg-[rgba(102,126,234,0.1)] focus:ring-2 focus:ring-[rgba(102,126,234,0.1)]">
+                        <input type="password" id="confirmPasswordInput" placeholder="Confirm new password" autocomplete="new-password" class="w-full py-2.5 px-2.5 pl-10 bg-[rgba(102,126,234,0.05)] border border-[rgba(102,126,234,0.2)] text-[#f8fafc] text-sm transition-all duration-200 placeholder:text-[#718096] focus:outline-none focus:border-[#667eea] focus:bg-[rgba(102,126,234,0.1)] focus:ring-2 focus:ring-[rgba(102,126,234,0.1)]">
                     </div>
                 </div>
                 
@@ -228,7 +230,7 @@
                 <p class="text-[#718096] text-xs">© 2026 <a href="#" class="text-[#667eea] no-underline hover:underline">Adarsh Admin</a>. All rights reserved.</p>
             </div>
         </div>
-    </div>
+    </main>
     
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -277,6 +279,11 @@
             const toggleNewPassword = document.getElementById('toggleNewPassword');
             
             // Functions
+            function getCSRFToken() {
+                const cookie = document.cookie.split(';').find(c => c.trim().startsWith('csrftoken='));
+                return cookie ? cookie.split('=')[1] : '';
+            }
+
             function showMessage(message, type = 'error') {
                 messageBox.textContent = message;
                 messageBox.className = 'message ' + type;
@@ -291,8 +298,12 @@
                 
                 stepDots.forEach((dot, index) => {
                     dot.classList.remove('active', 'completed');
+                    dot.removeAttribute('aria-current');
                     if (index + 1 < step) dot.classList.add('completed');
-                    if (index + 1 === step) dot.classList.add('active');
+                    if (index + 1 === step) {
+                        dot.classList.add('active');
+                        dot.setAttribute('aria-current', 'step');
+                    }
                 });
                 
                 currentStep = step;
@@ -338,7 +349,7 @@
                 try {
                     const response = await fetch('/panel/api/auth/check-email/', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
                         body: JSON.stringify({ email, role: selectedRole })
                     });
                     
@@ -387,7 +398,7 @@
                 try {
                     const response = await fetch('/panel/api/auth/login/', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
                         body: JSON.stringify({ email, password, role: selectedRole })
                     });
                     
@@ -424,7 +435,7 @@
                 try {
                     const response = await fetch('/panel/api/auth/forgot-password/', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
                         body: JSON.stringify({ email, role: selectedRole })
                     });
                     
@@ -479,10 +490,13 @@
             function startResendTimer() {
                 resendCountdown = 60;
                 btnResendOtp.disabled = true;
+                // Rebuild button structure to restore the timer span
+                btnResendOtp.innerHTML = 'Resend in <span id="resendTimer">' + resendCountdown + '</span>s';
                 
                 const interval = setInterval(() => {
                     resendCountdown--;
-                    resendTimerEl.textContent = resendCountdown;
+                    var timerSpan = document.getElementById('resendTimer');
+                    if (timerSpan) timerSpan.textContent = resendCountdown;
                     
                     if (resendCountdown <= 0) {
                         clearInterval(interval);
@@ -496,7 +510,7 @@
                 try {
                     const response = await fetch('/panel/api/auth/forgot-password/', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
                         body: JSON.stringify({ email, role: selectedRole })
                     });
                     
@@ -527,7 +541,7 @@
                 try {
                     const response = await fetch('/panel/api/auth/verify-otp/', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
                         body: JSON.stringify({ email, otp })
                     });
                     
@@ -584,7 +598,7 @@
                 try {
                     const response = await fetch('/panel/api/auth/reset-password/', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
                         body: JSON.stringify({
                             email,
                             reset_token: resetToken,

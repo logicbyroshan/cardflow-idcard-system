@@ -35,6 +35,16 @@ class Staff(models.Model):
         help_text='ID Card groups this staff can manage. Empty = all groups.'
     )
     
+    # For client_staff: class/section filters (empty = all)
+    allowed_classes = models.JSONField(
+        default=list, blank=True,
+        help_text='Allowed class values. Empty list = all classes.'
+    )
+    allowed_sections = models.JSONField(
+        default=list, blank=True,
+        help_text='Allowed section values. Empty list = all sections.'
+    )
+    
     address = models.TextField(blank=True, null=True)
     department = models.CharField(max_length=100, blank=True, null=True)
     designation = models.CharField(max_length=100, blank=True, null=True)
@@ -80,6 +90,9 @@ class Staff(models.Model):
     perm_idcard_bulk_reupload = models.BooleanField(default=True)  # Bulk reupload for all lists
     perm_delete_all_idcard = models.BooleanField(default=False)
     perm_idcard_upgrade_all = models.BooleanField(default=False)  # Upgrade All Class
+    
+    # Mobile App (PWA) Permission
+    perm_mobile_app = models.BooleanField(default=False, help_text='Allow access to mobile PWA app')
     
     # Website Management Permissions
     perm_website_view = models.BooleanField(default=False)

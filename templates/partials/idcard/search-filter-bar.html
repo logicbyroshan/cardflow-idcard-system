@@ -4,9 +4,6 @@
     <!-- Left Section - Select All, Image Sort, Class/Section Filters, Search -->
     <div class="action-left">
         <div class="filter-group">
-            <button class="btn btn-select-all" id="selectAllDbBtn" title="Select all cards in database">
-                <i class="fa-solid fa-check-double"></i> Select All
-            </button>
             <button class="btn btn-settings" id="imageSortBtn" title="Filter by image status" onclick="if(typeof ensureModalsLoaded==='function'){ensureModalsLoaded().then(function(){var o=document.getElementById('imageSortModalOverlay');if(o)o.classList.add('active');document.body.style.overflow='hidden';})}">
                 <i class="fa-solid fa-image"></i> Image Sort
             </button>
@@ -39,7 +36,7 @@
             {% if table.has_class_field or table.has_section_field %}
             <!-- Clear All Filters Button (class/section/image) -->
             {% endif %}
-            <button class="clear-filters-btn" id="clearFiltersBtn" type="button" title="Clear all filters">
+            <button class="clear-filters-btn" id="clearFiltersBtn" type="button" title="Clear all filters" aria-label="Clear all filters">
                 <i class="fa-solid fa-xmark"></i>
             </button>
         </div>
@@ -58,10 +55,10 @@
         <!-- DateTime Range Filter (Download list only) -->
         <div class="filter-group datetime-filter-group" id="dateTimeFilterGroup">
             <label class="datetime-label">From</label>
-            <input type="text" id="fromDateFilter" class="datetime-input" value="{{ from_date }}" title="Filter from date" placeholder="Select date & time" readonly>
+            <input type="text" id="fromDateFilter" class="datetime-input" value="{{ from_date }}" title="Filter from date" placeholder="Select date & time" aria-label="From date" readonly>
             <label class="datetime-label">To</label>
-            <input type="text" id="toDateFilter" class="datetime-input" value="{{ to_date }}" title="Filter to date" placeholder="Select date & time" readonly>
-            <button class="btn btn-settings" id="clearDateFilterBtn" type="button" title="Clear date filter" style="background:#ef4444;">
+            <input type="text" id="toDateFilter" class="datetime-input" value="{{ to_date }}" title="Filter to date" placeholder="Select date & time" aria-label="To date" readonly>
+            <button class="btn btn-danger btn-sm" id="clearDateFilterBtn" type="button" title="Clear date filter">
                 <i class="fa-solid fa-xmark"></i> Clear
             </button>
         </div>

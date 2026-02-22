@@ -35,6 +35,7 @@
         const btn = document.createElement('button');
         btn.className = 'global-search-btn';
         btn.id = 'globalSearchBtn';
+        btn.setAttribute('aria-label', 'Search ID cards (Ctrl+K)');
         btn.innerHTML = `
             <i class="fa-solid fa-magnifying-glass"></i>
             <span>Search ID cards...</span>
@@ -51,17 +52,17 @@
         overlay.className = 'global-search-overlay';
         overlay.id = 'globalSearchOverlay';
         overlay.innerHTML = `
-            <div class="global-search-modal">
+            <div class="global-search-modal" role="dialog" aria-modal="true" aria-label="Search ID cards">
                 <div class="global-search-header">
                     <div class="search-input-group">
-                        <i class="fa-solid fa-magnifying-glass"></i>
-                        <input type="text" id="globalSearchInput" placeholder="Search ID cards by name, address, mobile..." autocomplete="off">
-                        <button class="clear-global-search" id="clearGlobalSearch" style="display: none;">
-                            <i class="fa-solid fa-xmark"></i>
+                        <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                        <input type="text" id="globalSearchInput" placeholder="Search ID cards by name, address, mobile..." autocomplete="off" aria-label="Search ID cards">
+                        <button class="clear-global-search" id="clearGlobalSearch" style="display: none;" aria-label="Clear search">
+                            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
                         </button>
                     </div>
                     <div class="search-filter-group">
-                        <label>Filter:</label>
+                        <label for="globalSearchFilter">Filter:</label>
                         <select id="globalSearchFilter">
                             <option value="all">All Fields</option>
                             <option value="name">Name</option>
@@ -69,12 +70,12 @@
                             <option value="mobile">Mobile</option>
                         </select>
                     </div>
-                    <button class="close-global-search" id="closeGlobalSearch">
-                        <i class="fa-solid fa-xmark"></i>
+                    <button class="close-global-search" id="closeGlobalSearch" aria-label="Close search">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
                         <span>ESC</span>
                     </button>
                 </div>
-                <div class="global-search-body" id="globalSearchResults">
+                <div class="global-search-body" id="globalSearchResults" aria-live="polite">
                     <div class="search-placeholder">
                         <i class="fa-solid fa-search"></i>
                         <p>Search across all ID cards</p>
@@ -94,7 +95,10 @@
 
     function getEl(id) { return document.getElementById(id); }
 
+    let _searchTriggerEl = null;
+
     function openGlobalSearch() {
+        _searchTriggerEl = document.activeElement;
         const overlay = getEl('globalSearchOverlay');
         if (overlay) {
             overlay.classList.add('active');
@@ -122,6 +126,11 @@
                     <span>Enter at least 2 characters to search</span>
                 </div>
             `;
+        }
+        // Restore focus to trigger element (a11y)
+        if (_searchTriggerEl && typeof _searchTriggerEl.focus === 'function') {
+            _searchTriggerEl.focus();
+            _searchTriggerEl = null;
         }
     }
 
@@ -254,6 +263,20 @@
             if (e.key === 'Escape' && overlay?.classList.contains('active')) {
                 closeGlobalSearch();
             }
+            // Focus trap inside search modal (a11y)
+            if (e.key === 'Tab' && overlay?.classList.contains('active')) {
+                const modal = overlay.querySelector('.global-search-modal');
+                if (!modal) return;
+                const focusable = modal.querySelectorAll('input:not([disabled]), button:not([disabled]):not([style*="display: none"]), select:not([disabled]), [tabindex]:not([tabindex="-1"])');
+                if (!focusable.length) return;
+                const first = focusable[0];
+                const last = focusable[focusable.length - 1];
+                if (e.shiftKey && document.activeElement === first) {
+                    e.preventDefault(); last.focus();
+                } else if (!e.shiftKey && document.activeElement === last) {
+                    e.preventDefault(); first.focus();
+                }
+            }
         });
 
         // Close button
@@ -261,12 +284,12 @@
             closeBtn.addEventListener('click', closeGlobalSearch);
         }
 
-        // Click outside modal
-        if (overlay) {
-            overlay.addEventListener('click', function (e) {
-                if (e.target === this) closeGlobalSearch();
-            });
-        }
+        // Click outside modal — disabled to prevent accidental closure
+        // if (overlay) {
+        //     overlay.addEventListener('click', function (e) {
+        //         if (e.target === this) closeGlobalSearch();
+        //     });
+        // }
 
         // Clear search
         if (clearBtn) {

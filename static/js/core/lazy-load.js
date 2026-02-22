@@ -2,6 +2,9 @@
  * Lazy Loader — dynamic script/CSS injection for heavy vendor libraries.
  * Avoids loading ~740KB+ on every page load.
  *
+ * Paths are resolved via window.__STATIC_URLS (set by Django {% static %} tags)
+ * with fallback to /static/ for dev convenience.
+ *
  * Usage:
  *   const XLSX = await LazyLoad.xlsx();
  *   const JSZip = await LazyLoad.jszip();
@@ -12,6 +15,11 @@
 'use strict';
 
 var _cache = {};
+var _urls = window.__STATIC_URLS || {};
+
+function _url(key, fallback) {
+    return _urls[key] || fallback;
+}
 
 function _loadScript(url, globalName) {
     if (_cache[url]) return _cache[url];
@@ -63,7 +71,7 @@ window.LazyLoad = {
      * @returns {Promise<XLSX>}
      */
     xlsx: function() {
-        return _loadScript('/static/js/vendor/xlsx.full.min.js', 'XLSX');
+        return _loadScript(_url('xlsx', '/static/js/vendor/xlsx.full.min.js'), 'XLSX');
     },
 
     /**
@@ -71,7 +79,7 @@ window.LazyLoad = {
      * @returns {Promise<JSZip>}
      */
     jszip: function() {
-        return _loadScript('/static/js/vendor/jszip.min.js', 'JSZip');
+        return _loadScript(_url('jszip', '/static/js/vendor/jszip.min.js'), 'JSZip');
     },
 
     /**
@@ -80,8 +88,8 @@ window.LazyLoad = {
      */
     cropper: function() {
         return Promise.all([
-            _loadCSS('/static/css/vendor/cropper.min.css'),
-            _loadScript('/static/js/vendor/cropper.min.js', 'Cropper')
+            _loadCSS(_url('cropperCSS', '/static/css/vendor/cropper.min.css')),
+            _loadScript(_url('cropperJS', '/static/js/vendor/cropper.min.js'), 'Cropper')
         ]).then(function(results) { return results[1]; });
     },
 
@@ -91,8 +99,8 @@ window.LazyLoad = {
      */
     flatpickr: function() {
         return Promise.all([
-            _loadCSS('/static/css/vendor/flatpickr.min.css'),
-            _loadScript('/static/js/vendor/flatpickr.min.js', 'flatpickr')
+            _loadCSS(_url('flatpickrCSS', '/static/css/vendor/flatpickr.min.css')),
+            _loadScript(_url('flatpickrJS', '/static/js/vendor/flatpickr.min.js'), 'flatpickr')
         ]).then(function(results) { return results[1]; });
     }
 };

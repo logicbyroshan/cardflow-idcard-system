@@ -1,6 +1,6 @@
 /**
  * Adarsh ID Cards - Main JavaScript
- * Handles: Slider, Mobile Menu, AJAX Forms, and Scroll Animations
+ * Handles: Slider, Mobile Menu, Typing Effect, AJAX Forms, and Scroll Animations
  */
 
 // ===== 1. Dynamic Hero Slider =====
@@ -13,7 +13,6 @@ function initHeroSlider() {
 
     if (!sliderImg || dots.length === 0) return;
 
-    // We pull data from the dots' data-attributes (set in index.html)
     function updateSlider(index) {
         const targetDot = dots[index];
         const newUrl = targetDot.getAttribute('data-url');
@@ -23,7 +22,6 @@ function initHeroSlider() {
         const newTitle = targetDot.getAttribute('data-title');
         const newSubtitle = targetDot.getAttribute('data-subtitle');
 
-        // Animation: Push Out
         card.classList.add('push-out');
         
         setTimeout(() => {
@@ -31,11 +29,9 @@ function initHeroSlider() {
             if (titleEl && newTitle) titleEl.textContent = newTitle;
             if (subtitleEl && newSubtitle) subtitleEl.textContent = newSubtitle;
             
-            // Update active states
             dots.forEach(d => d.classList.remove('active'));
             targetDot.classList.add('active');
 
-            // Animation: Push In
             card.classList.remove('push-out');
             card.classList.add('push-in');
             
@@ -47,19 +43,16 @@ function initHeroSlider() {
 
     let currentSlide = 0;
     
-    // Auto-slide logic
     let slideInterval = setInterval(() => {
         currentSlide = (currentSlide + 1) % dots.length;
         updateSlider(currentSlide);
     }, 5000);
 
-    // Manual click logic
     dots.forEach((dot, idx) => {
         dot.addEventListener('click', () => {
             clearInterval(slideInterval);
             updateSlider(idx);
             currentSlide = idx;
-            // Restart auto-advance after manual click
             slideInterval = setInterval(() => {
                 currentSlide = (currentSlide + 1) % dots.length;
                 updateSlider(currentSlide);
@@ -68,7 +61,48 @@ function initHeroSlider() {
     });
 }
 
-// ===== 2. Mobile Menu Toggle =====
+// ===== 2. Hero Typing Effect =====
+function initTypingEffect() {
+    const typingEl = document.getElementById('typingText');
+    if (!typingEl) return;
+
+    const words = ['ID Cards', 'Digital Lanyards', 'Certificates', 'Marksheets', 'Fee Cards', 'RFID Cards'];
+    let wordIndex = 0;
+    let charIndex = 0;
+    let isDeleting = false;
+    let typingSpeed = 100;
+
+    function type() {
+        const currentWord = words[wordIndex];
+
+        if (isDeleting) {
+            typingEl.textContent = currentWord.substring(0, charIndex - 1);
+            charIndex--;
+            typingSpeed = 50;
+        } else {
+            typingEl.textContent = currentWord.substring(0, charIndex + 1);
+            charIndex++;
+            typingSpeed = 120;
+        }
+
+        if (!isDeleting && charIndex === currentWord.length) {
+            // Pause at end of word
+            typingSpeed = 2000;
+            isDeleting = true;
+        } else if (isDeleting && charIndex === 0) {
+            isDeleting = false;
+            wordIndex = (wordIndex + 1) % words.length;
+            typingSpeed = 300;
+        }
+
+        setTimeout(type, typingSpeed);
+    }
+
+    // Start typing after a short delay
+    setTimeout(type, 1000);
+}
+
+// ===== 3. Mobile Menu Toggle =====
 function initMobileMenu() {
     const hamburger = document.querySelector('.hamburger');
     const navLinks = document.querySelector('.nav-links');
@@ -81,7 +115,6 @@ function initMobileMenu() {
         hamburger.classList.toggle('active');
     });
 
-    // Close menu when clicking links
     document.querySelectorAll('.nav-links a').forEach(link => {
         link.addEventListener('click', () => {
             navLinks.classList.remove('active');
@@ -89,7 +122,6 @@ function initMobileMenu() {
         });
     });
 
-    // Close menu when clicking outside
     document.addEventListener('click', (e) => {
         if (!hamburger.contains(e.target) && !navLinks.contains(e.target)) {
             navLinks.classList.remove('active');
@@ -98,28 +130,7 @@ function initMobileMenu() {
     });
 }
 
-// ===== 3. UI Enhancements (Scroll, Toasts, Observers) =====
-
-function showToast(message, type = 'success') {
-    const toast = document.createElement('div');
-    toast.className = `toast-notification ${type}`;
-    const content = document.createElement('div');
-    content.className = 'toast-content';
-    const icon = document.createElement('i');
-    icon.className = `fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}`;
-    const span = document.createElement('span');
-    span.textContent = message;
-    content.appendChild(icon);
-    content.appendChild(span);
-    toast.appendChild(content);
-    document.body.appendChild(toast);
-
-    // Auto-remove
-    setTimeout(() => {
-        toast.classList.add('fade-out');
-        setTimeout(() => toast.remove(), 500);
-    }, 4000);
-}
+// ===== 4. UI Enhancements (Scroll, Observers) =====
 
 function initScrollEffects() {
     const navbar = document.querySelector('.navbar');
@@ -132,7 +143,6 @@ function initScrollEffects() {
         }
     });
 
-    // Intersection Observer for Reveal on Scroll
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
@@ -141,7 +151,7 @@ function initScrollEffects() {
         });
     }, { threshold: 0.1 });
 
-    document.querySelectorAll('.feature-card, .work-item, .testimonial-card').forEach(el => {
+    document.querySelectorAll('.bento-card, .work-item, .testimonial-card, .info-box, .download-app-wrapper').forEach(el => {
         el.classList.add('reveal-on-scroll');
         observer.observe(el);
     });
@@ -165,6 +175,7 @@ function createScrollTopButton() {
 // ===== Initialize Everything =====
 document.addEventListener('DOMContentLoaded', () => {
     initHeroSlider();
+    initTypingEffect();
     initMobileMenu();
     initScrollEffects();
     createScrollTopButton();

@@ -33,7 +33,8 @@ Slots are injected via:
 
 <!-- Panel -->
 <aside id="{{ modal_id }}" class="side-modal translate-x-full transition-transform duration-300"
-       style="transform: translateX(100%);">
+       style="transform: translateX(100%);"
+       role="dialog" aria-modal="true" aria-labelledby="{{ modal_id }}-title-text">
 
   {% if form_id %}
   <form id="{{ form_id }}">
@@ -71,13 +72,33 @@ Slots are injected via:
 /* Side Modal open/close helpers — auto-register for {{ modal_id }} */
 (function() {
   var id = '{{ modal_id|escapejs }}';
+  var FOCUSABLE_SEL = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+  var _sideModalTrigger = null;
+  var _sideModalTrapHandler = null;
+
   window.openSideModal = window.openSideModal || function(modalId) {
+    _sideModalTrigger = document.activeElement;
     var backdrop = document.getElementById(modalId + '-backdrop');
     var panel = document.getElementById(modalId);
     if (backdrop) backdrop.classList.remove('hidden');
     if (panel) {
       panel.style.transform = 'translateX(0)';
       document.body.style.overflow = 'hidden';
+      // Focus first focusable element (a11y)
+      setTimeout(function() {
+        var el = panel.querySelector(FOCUSABLE_SEL);
+        if (el) el.focus();
+      }, 350);
+      // Focus trap (a11y)
+      _sideModalTrapHandler = function(e) {
+        if (e.key !== 'Tab') return;
+        var focusable = panel.querySelectorAll(FOCUSABLE_SEL);
+        if (!focusable.length) return;
+        var first = focusable[0], last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      };
+      document.addEventListener('keydown', _sideModalTrapHandler);
     }
   };
   window.closeSideModal = window.closeSideModal || function(modalId) {
@@ -86,6 +107,16 @@ Slots are injected via:
     if (panel) panel.style.transform = 'translateX(100%)';
     if (backdrop) setTimeout(function(){ backdrop.classList.add('hidden'); }, 300);
     document.body.style.overflow = '';
+    // Remove focus trap (a11y)
+    if (_sideModalTrapHandler) {
+      document.removeEventListener('keydown', _sideModalTrapHandler);
+      _sideModalTrapHandler = null;
+    }
+    // Restore focus (a11y)
+    if (_sideModalTrigger && typeof _sideModalTrigger.focus === 'function') {
+      _sideModalTrigger.focus();
+      _sideModalTrigger = null;
+    }
   };
   /* Close on Escape */
   document.addEventListener('keydown', function(e) {

@@ -20,7 +20,7 @@
   <!-- Alpine.js -->
   <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
 </head>
-<body x-data="layoutState()">
+<body x-data="layoutState()" x-init="init()">
 
   {% include 'partials/sidebar.html' %}
 
@@ -30,8 +30,8 @@
     <!-- Top Navbar -->
     <header class="topbar">
       <div class="nav-left">
-        <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
-          <i class="fa-solid fa-bars"></i>
+        <button class="sidebar-toggle" id="sidebarToggle" @click="toggleSidebar()" aria-label="Toggle sidebar">
+          <i class="fa-solid" :class="sidebarOpen ? 'fa-xmark' : 'fa-bars'"></i>
         </button>
         <div class="breadcrumb">
             {% if is_super_admin %}
@@ -129,7 +129,7 @@
                 </div>
               </div>
               <div class="form-actions">
-                <button type="submit" class="btn-save">
+                <button type="submit" class="btn btn-save">
                   <i class="fa-solid fa-check"></i>
                   Save Changes
                 </button>
@@ -154,8 +154,8 @@
               <div class="form-group">
                 <label for="currentPassword">Current Password</label>
                 <div class="password-input-wrapper">
-                  <input type="password" id="currentPassword" placeholder="Enter current password"/>
-                  <button type="button" class="password-toggle" data-target="currentPassword">
+                  <input type="password" id="currentPassword" placeholder="Enter current password" autocomplete="current-password"/>
+                  <button type="button" class="password-toggle" data-target="currentPassword" aria-label="Toggle password visibility">
                     <i class="fa-solid fa-eye"></i>
                   </button>
                 </div>
@@ -164,8 +164,8 @@
                 <div class="form-group">
                   <label for="newPassword">New Password</label>
                   <div class="password-input-wrapper">
-                    <input type="password" id="newPassword" placeholder="Enter new password"/>
-                    <button type="button" class="password-toggle" data-target="newPassword">
+                    <input type="password" id="newPassword" placeholder="Enter new password" autocomplete="new-password"/>
+                    <button type="button" class="password-toggle" data-target="newPassword" aria-label="Toggle password visibility">
                       <i class="fa-solid fa-eye"></i>
                     </button>
                   </div>
@@ -173,15 +173,15 @@
                 <div class="form-group">
                   <label for="confirmPassword">Confirm New Password</label>
                   <div class="password-input-wrapper">
-                    <input type="password" id="confirmPassword" placeholder="Confirm new password"/>
-                    <button type="button" class="password-toggle" data-target="confirmPassword">
+                    <input type="password" id="confirmPassword" placeholder="Confirm new password" autocomplete="new-password"/>
+                    <button type="button" class="password-toggle" data-target="confirmPassword" aria-label="Toggle password visibility">
                       <i class="fa-solid fa-eye"></i>
                     </button>
                   </div>
                 </div>
               </div>
               <div class="form-actions">
-                <button type="submit" class="btn-save">
+                <button type="submit" class="btn btn-save">
                   <i class="fa-solid fa-key"></i>
                   Update Password
                 </button>
@@ -263,12 +263,56 @@
                 <textarea id="exportCopyrightLine" rows="2">{{ export_settings.export_copyright_line }}</textarea>
               </div>
               <div class="form-actions" style="display:flex;align-items:center;gap:12px;">
-                <button type="submit" class="btn-save" id="saveExportSettingsBtn">
+                <button type="submit" class="btn btn-save" id="saveExportSettingsBtn">
                   <i class="fa-solid fa-save"></i> Save Export Settings
                 </button>
                 <span id="exportSettingsStatus" style="font-size:13px;color:#64748b;"></span>
               </div>
             </form>
+          </div>
+        </div>
+
+        <!-- Export Templates Management -->
+        <div class="settings-section">
+          <div class="section-header">
+            <div class="section-icon" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);">
+              <i class="fa-solid fa-scroll"></i>
+            </div>
+            <div class="section-title">
+              <h3>Export Templates</h3>
+              <p>Create templates with custom footer instructions for PDF &amp; Word downloads</p>
+            </div>
+          </div>
+          <div class="section-body">
+            <!-- Template List -->
+            <div id="exportTemplateList" style="margin-bottom:16px;">
+              <p style="color:#94a3b8;font-size:13px;">Loading templates...</p>
+            </div>
+
+            <!-- Add New Template Form -->
+            <div style="border:1px solid #e2e8f0;border-radius:8px;padding:16px;background:#f8fafc;">
+              <h4 style="margin:0 0 12px;font-size:14px;font-weight:600;color:#334155;">
+                <i class="fa-solid fa-plus" style="margin-right:6px;"></i>Add New Template
+              </h4>
+              <form id="addExportTemplateForm">
+                <div class="form-group" style="margin-bottom:10px;">
+                  <label for="newTplName" style="font-weight:500;font-size:13px;">Template Name</label>
+                  <input type="text" id="newTplName" maxlength="100" placeholder="e.g. School Template" style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
+                </div>
+                <div class="form-group" style="margin-bottom:10px;">
+                  <label for="newTplInstructions" style="font-weight:500;font-size:13px;">Footer Instructions</label>
+                  <textarea id="newTplInstructions" rows="3" placeholder="Instructions that will appear at the bottom of the exported document..." style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;resize:vertical;"></textarea>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer;">
+                    <input type="checkbox" id="newTplDefault"> Set as default
+                  </label>
+                  <button type="submit" class="btn btn-save" style="margin-left:auto;font-size:13px;padding:6px 16px;">
+                    <i class="fa-solid fa-plus"></i> Add Template
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
         {% endif %}
@@ -281,13 +325,13 @@
   {% include 'partials/components/toast.html' %}
 
   <!-- Core Modules (Load Order: api → toast → modal → utils → init) -->
-  <script src="{% static 'js/core/api.js' %}"></script>
-  <script src="{% static 'js/core/toast.js' %}"></script>
-  <script src="{% static 'js/core/modal.js' %}"></script>
-  <script src="{% static 'js/core/utils.js' %}"></script>
-  <script src="{% static 'js/init.js' %}"></script>
-  <script src="{% static 'js/settings.js' %}"></script>
-  <script src="{% static 'js/global-search.js' %}"></script>
+  <script defer src="{% static 'js/core/api.js' %}"></script>
+  <script defer src="{% static 'js/core/toast.js' %}"></script>
+  <script defer src="{% static 'js/core/modal.js' %}"></script>
+  <script defer src="{% static 'js/core/utils.js' %}"></script>
+  <script defer src="{% static 'js/init.js' %}"></script>
+  <script defer src="{% static 'js/settings.js' %}"></script>
+  <script defer src="{% static 'js/global-search.js' %}"></script>
   {% include 'partials/htmx-config.html' %}
 </body>
 </html>

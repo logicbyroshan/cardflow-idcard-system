@@ -24,10 +24,12 @@ from ..services.permission_service import (
 )
 
 
-_REPRINT_ACCESS_DENIED = JsonResponse(
-    {'status': 'error', 'message': 'Access denied. You are not assigned to this client.'},
-    status=403,
-)
+def _reprint_access_denied():
+    """Factory: return a fresh 403 JsonResponse per request (thread-safe)."""
+    return JsonResponse(
+        {'status': 'error', 'message': 'Access denied. You are not assigned to this client.'},
+        status=403,
+    )
 
 def _check_reprint_table_scope(user, table_id):
     """Check user has access to the client owning this table. Returns (table, error_response).
@@ -42,11 +44,11 @@ def _check_reprint_table_scope(user, table_id):
         staff_profile = getattr(user, 'staff_profile', None)
         if staff_profile and staff_profile.staff_type == 'admin_staff':
             if not staff_profile.assigned_clients.filter(id=table.group.client_id).exists():
-                return None, _REPRINT_ACCESS_DENIED
+                return None, _reprint_access_denied()
         elif user.role in ('client', 'client_staff'):
             from client.services import ClientAccessService
             if not ClientAccessService.can_access_table(user, table):
-                return None, _REPRINT_ACCESS_DENIED
+                return None, _reprint_access_denied()
     return table, None
 
 

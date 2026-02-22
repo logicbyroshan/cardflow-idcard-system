@@ -17,7 +17,7 @@
   <!-- Alpine.js -->
   <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
 </head>
-<body x-data="layoutState()">
+<body x-data="layoutState()" x-init="init()">
 
   {% include 'partials/sidebar.html' %}
 
@@ -27,8 +27,8 @@
     <!-- Top Navbar -->
     <header class="topbar">
       <div class="nav-left">
-        <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
-          <i class="fa-solid fa-bars"></i>
+        <button class="sidebar-toggle" id="sidebarToggle" @click="toggleSidebar()" aria-label="Toggle sidebar">
+          <i class="fa-solid" :class="sidebarOpen ? 'fa-xmark' : 'fa-bars'"></i>
         </button>
         <div class="breadcrumb">
             {% if is_super_admin %}
@@ -77,7 +77,6 @@
                 <div class="form-group">
                   <label class="form-label" for="clientPhone">Phone <span class="required">*</span></label>
                   <input class="form-input" type="text" id="clientPhone" name="clientPhone" placeholder="Enter phone number" required>
-                  <small class="text-xs text-gray-500">This will be used as password</small>
                 </div>
               </div>
               
@@ -89,7 +88,7 @@
                 <div class="form-group">
                   <label class="form-label" for="clientStatus">Status</label>
                   <div class="custom-dropdown form-dropdown" id="clientStatusDropdown">
-                    <button type="button" class="dropdown-toggle">
+                    <button type="button" class="dropdown-toggle" aria-expanded="false">
                       <span>Active</span>
                       <i class="fa-solid fa-chevron-down"></i>
                     </button>
@@ -99,6 +98,27 @@
                     </div>
                   </div>
                   <input type="hidden" id="clientStatus" name="is_active" value="true">
+                </div>
+              </div>
+
+              <div class="form-row" id="clientPasswordOptionRow">
+                <div class="form-group">
+                  <label class="form-label">Password Option</label>
+                  <div class="custom-dropdown form-dropdown" id="clientPasswordOptionDropdown">
+                    <button type="button" class="dropdown-toggle" aria-expanded="false">
+                      <span>Use Phone Number</span>
+                      <i class="fa-solid fa-chevron-down"></i>
+                    </button>
+                    <div class="dropdown-options">
+                      <div class="dropdown-option selected" data-value="phone">Use Phone Number</div>
+                      <div class="dropdown-option" data-value="custom">Custom Password</div>
+                    </div>
+                  </div>
+                  <input type="hidden" id="clientPasswordOption" name="password_option" value="phone">
+                </div>
+                <div class="form-group" id="clientCustomPasswordGroup" style="display: none;">
+                  <label class="form-label" for="clientPassword">Password <span class="required">*</span></label>
+                  <input class="form-input" type="password" id="clientPassword" name="password" placeholder="Enter custom password" autocomplete="new-password">
                 </div>
               </div>
             </div>
@@ -357,6 +377,13 @@
                     </label>
                     <span class="permission-label">Upgrade All Class</span>
                   </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_mobile_app" name="perm_mobile_app">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Mobile App Access</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -365,6 +392,9 @@
           </div>
           <div class="drawer-footer">
             <button type="button" class="btn btn-md btn-neutral" id="cancelClientDrawer">Cancel</button>
+            <button type="button" class="btn btn-md btn-warning" id="tempPasswordClientBtn" style="display:none;" onclick="openTempPasswordModal('client')">
+              <i class="fa-solid fa-key"></i> Set Temp Password
+            </button>
             <button type="submit" class="btn btn-md btn-primary" id="submitClientBtn">
               <i class="fa-solid fa-plus"></i> Add Client
             </button>
@@ -377,58 +407,72 @@
     <div id="view-modal" class="drawer-modal">
       <div class="drawer-content">
         <div class="drawer-header">
-          <h3><i class="fa-solid fa-user"></i> Client Details</h3>
+          <h3><i class="fa-solid fa-user"></i> <span>Client Details</span></h3>
           <button class="drawer-close" id="closeViewModal" aria-label="Close view modal"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="drawer-body">
-          <div class="view-profile">
-            <div class="view-avatar" id="viewClientAvatar">
+
+          <!-- Profile Avatar -->
+          <div class="profile-upload-section flex flex-row items-center gap-4">
+            <div id="viewClientAvatar">
               {% include 'partials/components/user-avatar.html' with role='client' size='large' %}
             </div>
-            <div class="view-info">
-              <h2 id="viewClientName">-</h2>
-              <span class="status-badge active" id="viewClientStatus">Active</span>
+            <div>
+              <h2 id="viewClientName" class="text-sm font-semibold m-0" style="color:#1e293b;">-</h2>
+              <span class="status-badge active" id="viewClientStatus" style="margin-top:4px;">Active</span>
             </div>
           </div>
-          <div class="view-details">
-            <div class="detail-item">
-              <div class="detail-icon"><i class="fa-solid fa-envelope"></i></div>
-              <div class="detail-content">
-                <label>Email</label>
-                <span id="viewClientEmail">-</span>
+
+          <!-- Client Information Section -->
+          <div class="form-section">
+            <div class="section-title"><i class="fa-solid fa-user"></i> Client Information</div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Email</label>
+                <input class="form-input" type="text" id="viewClientEmail" value="-" disabled style="background:#f5f5f5;cursor:not-allowed;">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Phone</label>
+                <input class="form-input" type="text" id="viewClientPhone" value="-" disabled style="background:#f5f5f5;cursor:not-allowed;">
               </div>
             </div>
-            <div class="detail-item">
-              <div class="detail-icon"><i class="fa-solid fa-phone"></i></div>
-              <div class="detail-content">
-                <label>Phone</label>
-                <span id="viewClientPhone">-</span>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Address</label>
+                <input class="form-input" type="text" id="viewClientAddress" value="-" disabled style="background:#f5f5f5;cursor:not-allowed;">
               </div>
-            </div>
-            <div class="detail-item">
-              <div class="detail-icon"><i class="fa-solid fa-location-dot"></i></div>
-              <div class="detail-content">
-                <label>Address</label>
-                <span id="viewClientAddress">-</span>
-              </div>
-            </div>
-            
-            <div class="view-section-title"><i class="fa-solid fa-calendar"></i> Timestamps</div>
-            <div class="detail-item">
-              <div class="detail-icon"><i class="fa-solid fa-calendar-plus"></i></div>
-              <div class="detail-content">
-                <label>Created At</label>
-                <span id="viewClientCreated">-</span>
-              </div>
-            </div>
-            <div class="detail-item">
-              <div class="detail-icon"><i class="fa-solid fa-calendar-check"></i></div>
-              <div class="detail-content">
-                <label>Updated At</label>
-                <span id="viewClientUpdated">-</span>
+              <div class="form-group">
+                <label class="form-label">Status</label>
+                <input class="form-input" type="text" id="viewClientStatusText" value="-" disabled style="background:#f5f5f5;cursor:not-allowed;">
               </div>
             </div>
           </div>
+
+          <!-- Timestamps Section -->
+          <div class="form-section">
+            <div class="section-title"><i class="fa-solid fa-calendar"></i> Timestamps</div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Created At</label>
+                <input class="form-input" type="text" id="viewClientCreated" value="-" disabled style="background:#f5f5f5;cursor:not-allowed;">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Updated At</label>
+                <input class="form-input" type="text" id="viewClientUpdated" value="-" disabled style="background:#f5f5f5;cursor:not-allowed;">
+              </div>
+            </div>
+          </div>
+
+          <!-- Permissions Section (read-only) -->
+          {% if is_super_admin %}
+          <div class="form-section" id="viewPermissionsSection">
+            <div class="section-title"><i class="fa-solid fa-shield-halved"></i> Permissions</div>
+            <div id="viewPermissionsGrid" class="permissions-section">
+              <!-- Populated dynamically by JS -->
+            </div>
+          </div>
+          {% endif %}
+
         </div>
         <div class="drawer-footer">
           <button type="button" class="btn btn-md btn-neutral" id="closeViewModalBtn">Close</button>
@@ -442,7 +486,7 @@
     <!-- Delete Confirmation Modal (Center Modal) -->
     <div id="delete-modal" class="modal-backdrop"
          x-show="activeModal === 'delete'" x-transition.opacity
-         @click.self="closeModal()" style="display:none">
+         style="display:none">
       <div class="modal-center modal-danger" @click.stop
            x-show="activeModal === 'delete'" x-transition.scale.origin.center>
         <div class="modal-header">
@@ -476,7 +520,7 @@
     <!-- Status Change Confirmation Modal (Center Modal) -->
     <div id="status-modal" class="modal-backdrop"
          x-show="activeModal === 'status'" x-transition.opacity
-         @click.self="closeModal()" style="display:none">
+         style="display:none">
       <div class="modal-center modal-warning" @click.stop
            x-show="activeModal === 'status'" x-transition.scale.origin.center>
         <div class="modal-header" id="statusModalHeader">
@@ -509,6 +553,79 @@
 
     <!-- Toast Container -->
     {% include 'partials/components/toast.html' %}
+
+    <!-- Temp Password Verification Modal (Center Modal) -->
+    <div id="temp-password-modal" class="modal-backdrop" style="display:none">
+      <div class="modal-center" @click.stop>
+        <!-- Step 1: Verification Code -->
+        <div id="tempPwStep1">
+          <div class="modal-header">
+            <h3><i class="fa-solid fa-shield-halved"></i> Security Verification</h3>
+            <button class="modal-close" type="button" aria-label="Close modal" onclick="closeTempPasswordModal()">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="flex flex-col items-center text-center py-2">
+              <div class="w-10 h-10 rounded-sm bg-primary-bg flex items-center justify-center mb-2">
+                <i class="fa-solid fa-lock text-primary text-sm"></i>
+              </div>
+              <p class="text-sm text-gray-700 mb-3">This is a sensitive action. Enter the verification code below to proceed.</p>
+              <div class="verification-code-display" id="tempPwVerifyCode" style="font-size:28px;letter-spacing:12px;font-weight:700;background:var(--bg-secondary);padding:14px 28px;border-radius:8px;margin-bottom:16px;color:var(--primary);user-select:none;"></div>
+              <div class="form-group w-full" style="max-width:280px;">
+                <label for="tempPwCodeInput" class="form-label">Enter the code shown above</label>
+                <input type="text" id="tempPwCodeInput" class="form-input text-center" placeholder="Enter code" autocomplete="off" maxlength="6" style="font-size:20px;letter-spacing:8px;font-weight:600;">
+                <p id="tempPwCodeError" class="text-xs text-error mt-1" style="display:none;">Incorrect code. Please check and try again.</p>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-md btn-neutral" type="button" onclick="closeTempPasswordModal()">
+              <i class="fa-solid fa-xmark"></i> Cancel
+            </button>
+            <button class="btn btn-md btn-primary" type="button" onclick="verifyTempPwCode()">
+              <i class="fa-solid fa-check"></i> Verify
+            </button>
+          </div>
+        </div>
+        <!-- Step 2: Set New Password -->
+        <div id="tempPwStep2" style="display:none;">
+          <div class="modal-header">
+            <h3><i class="fa-solid fa-key"></i> Set Temporary Password</h3>
+            <button class="modal-close" type="button" aria-label="Close modal" onclick="closeTempPasswordModal()">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="flex flex-col items-center text-center py-2">
+              <div class="w-10 h-10 rounded-sm bg-warning-bg flex items-center justify-center mb-2">
+                <i class="fa-solid fa-key text-warning text-sm"></i>
+              </div>
+              <p class="text-sm text-gray-700 mb-1">Set a new temporary password for <strong id="tempPwUserName">this user</strong>.</p>
+              <p class="text-xs text-gray-400 mb-3">The user will be notified via email (password will not be shared in the email).</p>
+              <div class="form-group w-full" style="max-width:320px;">
+                <label for="tempPwNewPassword" class="form-label">New Temporary Password</label>
+                <div class="password-input-wrap" style="position:relative;">
+                  <input type="password" id="tempPwNewPassword" class="form-input" placeholder="Min 6 characters" minlength="6" autocomplete="new-password">
+                  <button type="button" class="password-toggle-btn" onclick="toggleTempPwVisibility()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-secondary);">
+                    <i class="fa-solid fa-eye" id="tempPwEyeIcon"></i>
+                  </button>
+                </div>
+                <p id="tempPwError" class="text-xs text-error mt-1" style="display:none;">Password must be at least 6 characters.</p>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-md btn-neutral" type="button" onclick="closeTempPasswordModal()">
+              <i class="fa-solid fa-xmark"></i> Cancel
+            </button>
+            <button class="btn btn-md btn-primary" type="button" id="tempPwSaveBtn" onclick="saveTempPassword()">
+              <i class="fa-solid fa-save"></i> Save Password
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- View Staff Drawer -->
     <div id="staff-drawer" class="drawer-modal">
@@ -576,7 +693,7 @@
         <div class="action-bar-left">
             <div class="filter-group">
                 <div class="custom-dropdown" id="filterDropdown">
-                    <button class="dropdown-toggle" id="dropdownToggle">
+                    <button class="dropdown-toggle" id="dropdownToggle" aria-expanded="false">
                         <span id="selectedText">All</span>
                         <i class="fa-solid fa-chevron-down"></i>
                     </button>
@@ -591,7 +708,7 @@
             <div class="search-box">
                 <i class="fa-solid fa-magnifying-glass search-icon"></i>
                 <input type="text" id="searchInput" placeholder="Search All..." class="search-input" autocomplete="off">
-                <button class="search-clear-btn" id="searchClearBtn" type="button" title="Clear search">
+                <button class="search-clear-btn" id="searchClearBtn" type="button" title="Clear search" aria-label="Clear search">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
@@ -630,12 +747,12 @@
         <table class="data-table" id="clientsTable">
             <thead>
                 <tr>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Mobile</th>
-                    <th>Status</th>
-                    <th>Created At</th>
-                    <th>Updated At</th>
+                    <th scope="col">Name</th>
+                    <th scope="col">Email</th>
+                    <th scope="col">Mobile</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Created At</th>
+                    <th scope="col">Updated At</th>
                 </tr>
             </thead>
 
@@ -680,7 +797,7 @@
         <div class="pagination-right">
             <label>Rows per page:</label>
             <div class="custom-dropdown rows-dropdown" id="rowsDropdown">
-                <button class="dropdown-toggle" id="rowsToggle" type="button">
+                <button class="dropdown-toggle" id="rowsToggle" type="button" aria-expanded="false">
                     <span id="rowsSelectedText">10</span>
                     <i class="fa-solid fa-chevron-down"></i>
                 </button>
@@ -701,11 +818,11 @@
   </main>
 
   <!-- Core Modules (Load Order: api → toast → modal → utils → init) -->
-  <script src="{% static 'js/core/api.js' %}"></script>
-  <script src="{% static 'js/core/toast.js' %}"></script>
-  <script src="{% static 'js/core/modal.js' %}"></script>
-  <script src="{% static 'js/core/utils.js' %}"></script>
-  <script src="{% static 'js/init.js' %}"></script>
+  <script defer src="{% static 'js/core/api.js' %}"></script>
+  <script defer src="{% static 'js/core/toast.js' %}"></script>
+  <script defer src="{% static 'js/core/modal.js' %}"></script>
+  <script defer src="{% static 'js/core/utils.js' %}"></script>
+  <script defer src="{% static 'js/init.js' %}"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       // ==================== ELEMENTS ====================
@@ -801,6 +918,56 @@
       // ==================== TOAST FUNCTIONS ====================
       // Using shared showToast from utils.js
 
+      // ==================== PASSWORD OPTION DROPDOWN ====================
+      const clientPasswordOptionDropdown = document.getElementById('clientPasswordOptionDropdown');
+      const clientPasswordOptionInput = document.getElementById('clientPasswordOption');
+      const clientCustomPasswordGroup = document.getElementById('clientCustomPasswordGroup');
+      const clientPasswordInput = document.getElementById('clientPassword');
+
+      function setClientPasswordOption(val) {
+        if (!clientPasswordOptionInput) return;
+        clientPasswordOptionInput.value = val;
+        if (clientPasswordOptionDropdown) {
+          const toggle = clientPasswordOptionDropdown.querySelector('.dropdown-toggle span');
+          const options = clientPasswordOptionDropdown.querySelectorAll('.dropdown-option');
+          options.forEach(o => o.classList.remove('selected'));
+          const match = clientPasswordOptionDropdown.querySelector(`.dropdown-option[data-value="${val}"]`);
+          if (match) {
+            match.classList.add('selected');
+            if (toggle) toggle.textContent = match.textContent;
+          }
+        }
+        // Show/hide custom password field
+        if (clientCustomPasswordGroup) {
+          clientCustomPasswordGroup.style.display = val === 'custom' ? '' : 'none';
+        }
+        if (clientPasswordInput) {
+          clientPasswordInput.required = val === 'custom';
+          if (val !== 'custom') clientPasswordInput.value = '';
+        }
+      }
+
+      if (clientPasswordOptionDropdown && clientPasswordOptionInput) {
+        const toggleBtn = clientPasswordOptionDropdown.querySelector('.dropdown-toggle');
+        const options = clientPasswordOptionDropdown.querySelectorAll('.dropdown-option');
+        if (toggleBtn) {
+          toggleBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            document.querySelectorAll('.custom-dropdown.open').forEach(d => { if (d !== clientPasswordOptionDropdown) d.classList.remove('open'); });
+            clientPasswordOptionDropdown.classList.toggle('open');
+          });
+        }
+        options.forEach(option => {
+          option.addEventListener('click', function() {
+            setClientPasswordOption(this.dataset.value);
+            clientPasswordOptionDropdown.classList.remove('open');
+          });
+        });
+        document.addEventListener('click', function(e) {
+          if (!e.target.closest('.custom-dropdown')) clientPasswordOptionDropdown.classList.remove('open');
+        });
+      }
+
       // ==================== SELECT ROW FUNCTION ====================
       function selectRow(row) {
         if (row && row.dataset.clientId) {
@@ -890,7 +1057,8 @@
         'perm_idcard_pending_list', 'perm_idcard_verified_list', 'perm_idcard_pool_list', 'perm_idcard_approved_list', 'perm_idcard_download_list', 'perm_idcard_reprint_list',
         'perm_idcard_add', 'perm_idcard_edit', 'perm_idcard_delete', 'perm_idcard_info', 'perm_idcard_approve', 'perm_idcard_verify',
         'perm_idcard_created_at', 'perm_idcard_updated_at', 'perm_idcard_delete_from_pool', 'perm_reupload_idcard_image', 'perm_idcard_retrieve',
-        'perm_idcard_bulk_upload', 'perm_idcard_bulk_download', 'perm_idcard_bulk_reupload', 'perm_delete_all_idcard', 'perm_idcard_upgrade_all'
+        'perm_idcard_bulk_upload', 'perm_idcard_bulk_download', 'perm_idcard_bulk_reupload', 'perm_delete_all_idcard', 'perm_idcard_upgrade_all',
+        'perm_mobile_app'
       ];
 
       // ==================== DRAWER FUNCTIONS ====================
@@ -898,6 +1066,7 @@
         clientForm.reset();
         clientIdInput.value = '';
         setClientStatusDropdown('true'); // Reset dropdown UI after form reset
+        setClientPasswordOption('phone'); // Reset password option to phone
         
         // Phase 1: Photo upload removed - using avatar placeholder
         
@@ -911,10 +1080,28 @@
           drawerTitle.textContent = 'Add New Client';
           drawerIcon.className = 'fa-solid fa-user-plus';
           submitBtn.innerHTML = '<i class="fa-solid fa-plus"></i> Add Client';
+          
+          // Show password option for new clients
+          const pwRow = document.getElementById('clientPasswordOptionRow');
+          if (pwRow) pwRow.style.display = '';
+          
+          // Hide temp password button in add mode
+          const tempPwBtn = document.getElementById('tempPasswordClientBtn');
+          if (tempPwBtn) tempPwBtn.style.display = 'none';
+          
+          // Permissions stay OFF by default for new clients (already reset above)
         } else {
           drawerTitle.textContent = 'Edit Client';
           drawerIcon.className = 'fa-solid fa-user-pen';
           submitBtn.innerHTML = '<i class="fa-solid fa-save"></i> Update Client';
+          
+          // Hide password option when editing (change via settings/forgot password)
+          const pwRow = document.getElementById('clientPasswordOptionRow');
+          if (pwRow) pwRow.style.display = 'none';
+          
+          // Show temp password button in edit mode
+          const tempPwBtn = document.getElementById('tempPasswordClientBtn');
+          if (tempPwBtn) tempPwBtn.style.display = '';
           
           if (clientData) {
             clientIdInput.value = clientData.id;
@@ -946,23 +1133,56 @@
       // ==================== MODAL FUNCTIONS ====================
       function openViewModal(clientData) {
         document.getElementById('viewClientName').textContent = clientData.name || '-';
-        document.getElementById('viewClientEmail').textContent = clientData.email || '-';
-        document.getElementById('viewClientPhone').textContent = clientData.phone || '-';
-        document.getElementById('viewClientAddress').textContent = clientData.address || '-';
-        document.getElementById('viewClientCreated').textContent = clientData.created_at || '-';
-        document.getElementById('viewClientUpdated').textContent = clientData.updated_at || '-';
+        document.getElementById('viewClientEmail').value = clientData.email || '-';
+        document.getElementById('viewClientPhone').value = clientData.phone || '-';
+        document.getElementById('viewClientAddress').value = clientData.address || '-';
+        document.getElementById('viewClientStatusText').value = clientData.status === 'active' ? 'Active' : 'Inactive';
+        document.getElementById('viewClientCreated').value = clientData.created_at || '-';
+        document.getElementById('viewClientUpdated').value = clientData.updated_at || '-';
         
         // Update avatar with photo if available
         const avatarEl = document.getElementById('viewClientAvatar');
         if (clientData.photo_url) {
-          avatarEl.innerHTML = `<img src="${clientData.photo_url}" alt="${clientData.name}" class="w-full h-full object-cover">`;
+          avatarEl.innerHTML = '';
+          const img = document.createElement('img');
+          img.src = clientData.photo_url;
+          img.alt = clientData.name || '';
+          img.className = 'w-full h-full object-cover';
+          img.style.cssText = 'width:48px;height:48px;border-radius:50%;';
+          avatarEl.appendChild(img);
         } else {
-          avatarEl.innerHTML = '<i class="fa-solid fa-user"></i>';
+          avatarEl.innerHTML = '<div class="user-avatar-placeholder user-avatar-placeholder--client" style="width:48px;height:48px;border-radius:50%;font-size:22px;display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-building"></i></div>';
         }
         
         const statusEl = document.getElementById('viewClientStatus');
         statusEl.textContent = clientData.status === 'active' ? 'Active' : 'Inactive';
         statusEl.className = 'status-badge ' + (clientData.status === 'active' ? 'active' : 'inactive');
+
+        // Populate permissions (read-only toggle display)
+        var permGrid = document.getElementById('viewPermissionsGrid');
+        if (permGrid) {
+          var permLabels = {
+            'perm_idcard_setting_list': 'View Settings', 'perm_idcard_setting_add': 'Add Table', 'perm_idcard_setting_edit': 'Edit Table',
+            'perm_idcard_setting_delete': 'Delete Table', 'perm_idcard_setting_status': 'Toggle Table Status',
+            'perm_idcard_pending_list': 'Pending List', 'perm_idcard_verified_list': 'Verified List', 'perm_idcard_pool_list': 'Pool List',
+            'perm_idcard_approved_list': 'Approved List', 'perm_idcard_download_list': 'Download List', 'perm_idcard_reprint_list': 'Reprint List',
+            'perm_idcard_add': 'Add Card', 'perm_idcard_edit': 'Edit Card', 'perm_idcard_delete': 'Delete Card',
+            'perm_idcard_info': 'View Card Info', 'perm_idcard_approve': 'Approve Card', 'perm_idcard_verify': 'Verify Card',
+            'perm_idcard_bulk_upload': 'Bulk Upload', 'perm_idcard_bulk_download': 'Bulk Download',
+            'perm_idcard_bulk_reupload': 'Bulk Reupload', 'perm_delete_all_idcard': 'Delete All Cards',
+            'perm_idcard_upgrade_all': 'Upgrade All Class'
+          };
+          var html = '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+          permissionFields.forEach(function(field) {
+            var label = permLabels[field] || field.replace(/^perm_/, '').replace(/_/g, ' ');
+            var active = clientData[field] === true;
+            html += '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:3px;font-size:11px;font-weight:500;' +
+              (active ? 'background:#dcfce7;color:#15803d;' : 'background:#f1f5f9;color:#94a3b8;text-decoration:line-through;') + '">' +
+              '<i class="fa-solid ' + (active ? 'fa-check' : 'fa-xmark') + '" style="font-size:9px;"></i> ' + label + '</span>';
+          });
+          html += '</div>';
+          permGrid.innerHTML = html;
+        }
         
         viewModal.classList.add('open');
         document.body.style.overflow = 'hidden';
@@ -1088,6 +1308,110 @@
         }
       }
 
+      // ==================== TEMP PASSWORD FUNCTIONS ====================
+      let tempPwVerificationCode = '';
+      let tempPwTargetType = ''; // 'client' or 'staff'
+      let tempPwTargetId = null;
+      let tempPwTargetName = '';
+
+      window.openTempPasswordModal = function(type) {
+        tempPwTargetType = type || 'client';
+
+        if (tempPwTargetType === 'staff') {
+          // Client-staff drawer: get staff ID from the shared module
+          tempPwTargetId = window._staffPageMgr ? window._staffPageMgr.getSelectedStaffId() : null;
+          tempPwTargetName = document.getElementById('staff-name')?.value || 'this staff';
+        } else {
+          tempPwTargetId = selectedClientId;
+          tempPwTargetName = document.getElementById('clientName')?.value || 'this user';
+        }
+
+        if (!tempPwTargetId) {
+          showToast('No user selected', 'error');
+          return;
+        }
+
+        // Generate random 6-digit code
+        tempPwVerificationCode = String(Math.floor(100000 + Math.random() * 900000));
+
+        // Reset modal to step 1
+        const modal = document.getElementById('temp-password-modal');
+        document.getElementById('tempPwStep1').style.display = '';
+        document.getElementById('tempPwStep2').style.display = 'none';
+        document.getElementById('tempPwVerifyCode').textContent = tempPwVerificationCode;
+        document.getElementById('tempPwCodeInput').value = '';
+        document.getElementById('tempPwCodeError').style.display = 'none';
+        document.getElementById('tempPwNewPassword').value = '';
+        document.getElementById('tempPwError').style.display = 'none';
+        document.getElementById('tempPwUserName').textContent = tempPwTargetName;
+
+        modal.style.display = 'flex';
+      };
+
+      window.closeTempPasswordModal = function() {
+        document.getElementById('temp-password-modal').style.display = 'none';
+        tempPwVerificationCode = '';
+        tempPwTargetId = null;
+      };
+
+      window.verifyTempPwCode = function() {
+        const input = document.getElementById('tempPwCodeInput').value.trim();
+        const errEl = document.getElementById('tempPwCodeError');
+        if (input === tempPwVerificationCode) {
+          errEl.style.display = 'none';
+          document.getElementById('tempPwStep1').style.display = 'none';
+          document.getElementById('tempPwStep2').style.display = '';
+          document.getElementById('tempPwNewPassword').focus();
+        } else {
+          errEl.style.display = '';
+        }
+      };
+
+      window.toggleTempPwVisibility = function() {
+        const pwInput = document.getElementById('tempPwNewPassword');
+        const eyeIcon = document.getElementById('tempPwEyeIcon');
+        if (pwInput.type === 'password') {
+          pwInput.type = 'text';
+          eyeIcon.className = 'fa-solid fa-eye-slash';
+        } else {
+          pwInput.type = 'password';
+          eyeIcon.className = 'fa-solid fa-eye';
+        }
+      };
+
+      window.saveTempPassword = async function() {
+        const password = document.getElementById('tempPwNewPassword').value;
+        const errEl = document.getElementById('tempPwError');
+        if (!password || password.length < 6) {
+          errEl.style.display = '';
+          return;
+        }
+        errEl.style.display = 'none';
+
+        const saveBtn = document.getElementById('tempPwSaveBtn');
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+
+        try {
+          const url = tempPwTargetType === 'staff'
+            ? `/panel/api/staff/${tempPwTargetId}/set-temp-password/`
+            : `/panel/api/client/${tempPwTargetId}/set-temp-password/`;
+
+          const result = await ApiClient.post(url, { password });
+          if (result.success) {
+            closeTempPasswordModal();
+            showToast(result.message || 'Temporary password set successfully!', 'success');
+          } else {
+            showToast(result.message || 'Failed to set password', 'error');
+          }
+        } catch (err) {
+          showToast('Network error. Please try again.', 'error');
+        } finally {
+          saveBtn.disabled = false;
+          saveBtn.innerHTML = '<i class="fa-solid fa-save"></i> Save Password';
+        }
+      };
+
       // ==================== EVENT HANDLERS ====================
       if (addClientBtn) addClientBtn.addEventListener('click', () => openDrawer('add'));
       
@@ -1134,6 +1458,15 @@
           address: document.getElementById('clientAddress').value,
           is_active: document.getElementById('clientStatus').value === 'true',
         };
+        
+        // Add custom password if selected
+        const pwOption = document.getElementById('clientPasswordOption');
+        if (pwOption && pwOption.value === 'custom') {
+          const pwVal = document.getElementById('clientPassword');
+          if (pwVal && pwVal.value.trim()) {
+            formData.password = pwVal.value.trim();
+          }
+        }
         
         // Add all permissions (only if super admin)
         {% if is_super_admin %}
@@ -1256,9 +1589,16 @@
       closeViewModalBtn.addEventListener('click', closeViewModalFn);
       // Close handlers for delete/status modals now managed by Alpine @click in template
       
-      // Close modals on overlay click
-      viewModal.addEventListener('click', (e) => { if (e.target === viewModal) closeViewModalFn(); });
-      clientDrawer.addEventListener('click', (e) => { if (e.target === clientDrawer) closeDrawerFn(); });
+      // Outside click close disabled — prevent accidental closure
+
+      // Close on Escape key
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          if (staffDrawer && staffDrawer.classList.contains('open')) { closeStaffDrawerFn(); return; }
+          if (viewModal && viewModal.classList.contains('open')) { closeViewModalFn(); return; }
+          if (clientDrawer && clientDrawer.classList.contains('open')) { closeDrawerFn(); return; }
+        }
+      });
 
       // ==================== SEARCH & FILTER ====================
       const searchInput = document.getElementById('searchInput');
@@ -1675,10 +2015,10 @@
       viewStaffBtn.addEventListener('click', openStaffDrawer);
       closeStaffDrawer.addEventListener('click', closeStaffDrawerFn);
       closeStaffDrawerBtn.addEventListener('click', closeStaffDrawerFn);
-      staffDrawer.addEventListener('click', (e) => { if (e.target === staffDrawer) closeStaffDrawerFn(); });
+      // Outside click close disabled — prevent accidental closure
     });
   </script>
-  <script src="{% static 'js/global-search.js' %}"></script>
+  <script defer src="{% static 'js/global-search.js' %}"></script>
   {% include 'partials/htmx-config.html' %}
   <script>
     document.addEventListener('DOMContentLoaded', function() {

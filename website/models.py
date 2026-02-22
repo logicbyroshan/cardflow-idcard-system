@@ -222,7 +222,14 @@ class PortfolioCategory(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = slugify(self.name)
+            from django.utils.text import slugify
+            base_slug = slugify(self.name)
+            slug = base_slug
+            counter = 1
+            while PortfolioCategory.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                slug = f'{base_slug}-{counter}'
+                counter += 1
+            self.slug = slug
         super().save(*args, **kwargs)
 
     @property
@@ -300,7 +307,14 @@ class PortfolioItem(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = slugify(self.title)
+            from django.utils.text import slugify
+            base_slug = slugify(self.title)
+            slug = base_slug
+            counter = 1
+            while PortfolioItem.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                slug = f'{base_slug}-{counter}'
+                counter += 1
+            self.slug = slug
         super().save(*args, **kwargs)
 
     @property
@@ -459,11 +473,12 @@ class ContactSubmission(models.Model):
         return f"{self.name}: {self.subject}"
     
     def get_next_retry_delay(self):
-        """Returns delay in seconds for next retry based on attempt count"""
+        """Returns delay in seconds for next retry based on attempt count.
+        Returns None if max retries (4) have been exceeded."""
         delays = {
             0: 60,        # 1 minute
             1: 600,       # 10 minutes
             2: 3600,      # 1 hour
             3: 86400,     # 24 hours
         }
-        return delays.get(self.email_retry_count)
+        return delays.get(self.email_retry_count, None)  # None = stop retrying

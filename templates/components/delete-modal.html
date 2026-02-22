@@ -20,13 +20,14 @@ JS contract (Alpine bridge):
 
 <div id="{{ modal_id|default:'delete-modal' }}" class="modal-backdrop"
      x-show="activeModal === 'delete'" x-transition.opacity
-     @click.self="closeModal()" style="display:none">
+     style="display:none"
+     role="dialog" aria-modal="true" aria-labelledby="{{ modal_id|default:'delete-modal' }}-title">
   <div class="modal-center modal-danger" @click.stop
        x-show="activeModal === 'delete'" x-transition.scale.origin.center>
 
     <!-- Header -->
     <div class="modal-header">
-      <h3><i class="fa-solid fa-triangle-exclamation"></i> Confirm Delete</h3>
+      <h3 id="{{ modal_id|default:'delete-modal' }}-title"><i class="fa-solid fa-triangle-exclamation"></i> Confirm Delete</h3>
       <button type="button" class="modal-close"
               @click="closeModal()"
               aria-label="Close">

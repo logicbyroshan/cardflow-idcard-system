@@ -1,0 +1,122 @@
+{% extends "website/admin/base.html" %}
+{% load static %}
+
+{% block title %}Reels{% endblock %}
+
+{% block breadcrumb_extra %}
+<i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+<span class="breadcrumb-item active">Reels</span>
+{% endblock %}
+
+{% block content %}
+<div class="wa-page-container">
+    <div class="wa-dashboard-section">
+        <div class="wa-action-bar mb-6">
+            <div class="wa-action-left">
+                <h3 class="wa-dashboard-section-title"><i class="fa-solid fa-film"></i> Reels</h3>
+                <span class="wa-count-badge">{{ reels|length }} reels</span>
+            </div>
+            <div class="wa-action-right">
+                {% if is_super_admin or perm_website_add %}
+                <button class="btn btn-primary" onclick="openReelModal()">
+                    <i class="fa-solid fa-plus"></i> Add Reel
+                </button>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="wa-table-wrap">
+            <table class="wa-table" id="reelsTable">
+                <thead>
+                    <tr>
+                        <th>Thumbnail</th>
+                        <th>Title</th>
+                        <th>Order</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="reelsBody">
+                    {% for r in reels %}
+                    <tr data-id="{{ r.id }}">
+                        <td>
+                            {% if r.thumbnail %}
+                            <img src="{{ r.thumbnail.url }}" class="wa-thumb" alt="{{ r.title }}">
+                            {% else %}
+                            <span class="wa-no-img"><i class="fa-solid fa-film"></i></span>
+                            {% endif %}
+                        </td>
+                        <td><strong>{{ r.title|default:"Untitled" }}</strong></td>
+                        <td>{{ r.order }}</td>
+                        <td>
+                            <span class="wa-status-badge {% if r.is_active %}active{% else %}inactive{% endif %}"
+                                  onclick="toggleReel({{ r.id }}, this)">
+                                {{ r.is_active|yesno:"Active,Inactive" }}
+                            </span>
+                        </td>
+                        <td class="wa-actions">
+                            {% if is_super_admin or perm_website_edit %}
+                            <button class="btn btn-icon" title="Edit" onclick="editReel({{ r.id }})"><i class="fa-solid fa-pen"></i></button>
+                            {% endif %}
+                            {% if is_super_admin or perm_website_delete %}
+                            <button class="btn btn-icon danger" title="Delete" onclick="deleteReel({{ r.id }})"><i class="fa-solid fa-trash"></i></button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="wa-empty">No reels yet. Click "Add Reel" to get started.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Reel Modal -->
+<div class="wa-modal-overlay" id="reelModal">
+    <div class="wa-modal">
+        <div class="wa-modal-header">
+            <h3 id="reelModalTitle">Add Reel</h3>
+            <button class="wa-modal-close" onclick="closeReelModal()">&times;</button>
+        </div>
+        <form id="reelForm" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" id="reelId" value="">
+            <div class="wa-form-group">
+                <label for="rl_title">Title</label>
+                <input type="text" id="rl_title" name="title" placeholder="Auto-generated if left blank">
+            </div>
+            <div class="wa-form-row">
+                <div class="wa-form-group">
+                    <label for="rl_video">Video File *</label>
+                    <input type="file" id="rl_video" name="video_file" accept="video/*">
+                </div>
+                <div class="wa-form-group">
+                    <label for="rl_thumbnail">Thumbnail</label>
+                    <input type="file" id="rl_thumbnail" name="thumbnail" accept="image/*">
+                </div>
+            </div>
+            <div class="wa-form-row">
+                <div class="wa-form-group">
+                    <label for="rl_order">Order</label>
+                    <input type="number" id="rl_order" name="order" value="0" min="0">
+                </div>
+                <div class="wa-form-group" style="display:flex;align-items:end;">
+                    <label class="wa-toggle-label">
+                        <input type="checkbox" id="rl_active" name="is_active" checked>
+                        <span>Active (visible on website)</span>
+                    </label>
+                </div>
+            </div>
+            <div class="wa-modal-footer">
+                <button type="button" class="btn btn-neutral" onclick="closeReelModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/website-admin/reels.js' %}?v=134"></script>
+{% endblock %}

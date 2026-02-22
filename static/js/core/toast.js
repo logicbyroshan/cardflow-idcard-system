@@ -48,6 +48,8 @@
         toast = document.createElement('div');
         toast.id = 'toast';
         toast.className = 'toast';
+        toast.setAttribute('role', 'alert');
+        toast.setAttribute('aria-live', 'assertive');
         toast.innerHTML =
             '<i id="toastIcon" class="fa-solid fa-check-circle"></i>' +
             '<span id="toastMessage">Success!</span>' +

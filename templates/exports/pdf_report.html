@@ -58,15 +58,20 @@
             text-align: center;
             vertical-align: middle;
             word-wrap: break-word;
+            overflow-wrap: break-word;
+            word-break: normal;
         }
 
         table.data-table td {
             border: 0.5pt solid #000;
-            padding: 1px 1px;
+            padding: 1px 2px;
             font-size: 7.5pt;
             font-weight: bold;
             vertical-align: middle;
             word-wrap: break-word;
+            overflow-wrap: break-word;
+            word-break: normal;
+            white-space: normal;
             line-height: 1.1;
         }
 
@@ -142,7 +147,7 @@
                             <img src="{{ cell.content }}" class="card-pic" alt="Card photo">
                         {% endif %}
                     {% else %}
-                        {{ cell.content }}
+                        {{ cell.content|safe }}
                     {% endif %}
                 </td>
                 {% endfor %}
@@ -151,6 +156,14 @@
         </tbody>
     </table>
     {% endfor %}
+
+    {% if template_instructions %}
+    <!-- Template Instructions Section -->
+    <div style="margin-top: 8px; padding: 6px 8px; border: 0.5pt solid #000; font-size: 7pt; line-height: 1.3;">
+        <div style="font-weight: bold; font-size: 7.5pt; margin-bottom: 3px; text-decoration: underline;">INSTRUCTIONS:</div>
+        <div style="white-space: pre-wrap;">{{ template_instructions|upper }}</div>
+    </div>
+    {% endif %}
 
     <!-- Repeating footer (rendered by @frame footer_frame on every page) -->
     <div id="footer_content">

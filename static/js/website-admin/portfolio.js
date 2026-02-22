@@ -1,6 +1,7 @@
 /**
- * Website Admin — Portfolio Module (v2)
+ * Website Admin — Portfolio Module (v3)
  * CRUD for Portfolio items + Category management
+ * Type & orientation are auto-detected server-side.
  */
 (function () {
     const BASE = '/panel/website/api';
@@ -8,29 +9,20 @@
     /* ================================================================
        PORTFOLIO ITEM — MODAL
     ================================================================ */
-    window.toggleMediaFields = function () {
-        const type = document.getElementById('pf_item_type').value;
-        document.getElementById('videoFields').classList.toggle('hidden', !(type === 'video' || type === 'reel'));
-    };
 
     window.openPortfolioModal = function (id) {
         document.getElementById('portfolioModalTitle').textContent = id ? 'Edit Portfolio Item' : 'Add Portfolio Item';
         document.getElementById('portfolioForm').reset();
         document.getElementById('portfolioId').value = id || '';
-        document.getElementById('videoFields').classList.add('hidden');
         if (id) {
             ApiClient.get(`${BASE}/portfolio/${id}/`)
                 .then(d => {
                     if (!d.success) return;
                     const p = d.item;
                     document.getElementById('pf_category').value = p.category_id || '';
-                    document.getElementById('pf_item_type').value = p.item_type || 'image';
-                    document.getElementById('pf_orientation').value = p.orientation || '';
                     document.getElementById('pf_order').value = p.order || 0;
-                    document.getElementById('pf_video_url').value = p.video_url || '';
                     document.getElementById('pf_active').checked = p.is_active;
                     document.getElementById('pf_featured').checked = p.is_featured;
-                    toggleMediaFields();
                 });
         }
         document.getElementById('portfolioModal').classList.add('show');

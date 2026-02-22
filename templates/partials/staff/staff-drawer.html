@@ -12,7 +12,7 @@ Uses Tailwind CSS component classes.
             <i class="fa-solid fa-user-plus" id="drawer-icon"></i>
             <span id="drawer-title-text">Add New Staff</span>
         </h2>
-        <button type="button" class="drawer-close" id="drawer-close-btn" title="Close">
+        <button type="button" class="drawer-close" id="drawer-close-btn" title="Close" aria-label="Close">
             <i class="fa-solid fa-xmark"></i>
         </button>
     </div>
@@ -75,7 +75,6 @@ Uses Tailwind CSS component classes.
                     <div class="form-group">
                         <label class="form-label" for="staff-phone">Phone <span class="required">*</span></label>
                         <input type="tel" id="staff-phone" name="phone" class="form-input" placeholder="Enter phone number" required>
-                        <small class="field-hint">This will be used as password</small>
                     </div>
                 </div>
                 
@@ -87,7 +86,7 @@ Uses Tailwind CSS component classes.
                     <div class="form-group">
                         <label class="form-label" for="staff-status">Status</label>
                         <div class="custom-dropdown form-dropdown" id="staffStatusDropdown">
-                            <button type="button" class="dropdown-toggle">
+                            <button type="button" class="dropdown-toggle" aria-expanded="false">
                                 <span>Active</span>
                                 <i class="fa-solid fa-chevron-down"></i>
                             </button>
@@ -97,6 +96,27 @@ Uses Tailwind CSS component classes.
                             </div>
                         </div>
                         <input type="hidden" id="staff-status" name="is_active" value="true">
+                    </div>
+                </div>
+
+                <div class="form-row" id="staffPasswordOptionRow">
+                    <div class="form-group">
+                        <label class="form-label">Password Option</label>
+                        <div class="custom-dropdown form-dropdown" id="staffPasswordOptionDropdown">
+                            <button type="button" class="dropdown-toggle" aria-expanded="false">
+                                <span>Use Phone Number</span>
+                                <i class="fa-solid fa-chevron-down"></i>
+                            </button>
+                            <div class="dropdown-options">
+                                <div class="dropdown-option selected" data-value="phone">Use Phone Number</div>
+                                <div class="dropdown-option" data-value="custom">Custom Password</div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="staff-password-option" name="password_option" value="phone">
+                    </div>
+                    <div class="form-group" id="staffCustomPasswordGroup" style="display: none;">
+                        <label class="form-label" for="staff-password">Password <span class="required">*</span></label>
+                        <input type="password" id="staff-password" name="password" class="form-input" placeholder="Enter custom password" autocomplete="new-password">
                     </div>
                 </div>
             </div>
@@ -368,6 +388,13 @@ Uses Tailwind CSS component classes.
                             </label>
                             <span class="permission-label">Upgrade All Class</span>
                         </div>
+                        <div class="permission-row">
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="perm_mobile_app" id="perm-mobile-app">
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span class="permission-label">Mobile App Access</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -375,6 +402,9 @@ Uses Tailwind CSS component classes.
         
         <div class="drawer-footer">
             <button type="button" class="btn btn-md btn-neutral" id="drawer-cancel-btn">Cancel</button>
+            <button type="button" class="btn btn-md btn-warning" id="tempPasswordStaffBtn" style="display:none;" onclick="openTempPasswordModal('staff')">
+                <i class="fa-solid fa-key"></i> Set Temp Password
+            </button>
             <button type="submit" class="btn btn-md btn-primary" id="drawer-submit-btn">
                 <span id="submit-btn-text">Add Staff</span>
             </button>

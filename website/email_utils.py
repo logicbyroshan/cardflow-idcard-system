@@ -1,6 +1,6 @@
-from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
+from core.utils.threaded_email import send_mail_async
 import logging
 
 logger = logging.getLogger(__name__)
@@ -33,15 +33,15 @@ Submitted at: {submission.created_at.strftime('%Y-%m-%d %H:%M:%S')}
             logger.error("CONTACT_FORM_RECIPIENT not configured in settings")
             return False
         
-        send_mail(
+        # Send in background thread (non-blocking)
+        send_mail_async(
             subject=subject,
             message=message,
             from_email=settings.EMAIL_HOST_USER,
             recipient_list=[recipient],
-            fail_silently=False,
         )
         
-        # Mark as sent
+        # Mark as sent (email dispatched to thread)
         submission.email_status = 'sent'
         submission.email_sent_at = timezone.now()
         submission.email_last_attempt = timezone.now()

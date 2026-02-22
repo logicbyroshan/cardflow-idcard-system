@@ -34,14 +34,14 @@ Required context:
                 hx-target="#staff-table-container"
                 hx-swap="innerHTML"
                 {% endif %}
-                title="First page"><i class="fa-solid fa-angles-left"></i></button>
+                title="First page" aria-label="First page"><i class="fa-solid fa-angles-left"></i></button>
         <button class="pagination-btn {% if not page_obj.has_previous %}disabled{% endif %}"
                 {% if page_obj.has_previous %}
                 hx-get="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}&per_page={{ per_page }}"
                 hx-target="#staff-table-container"
                 hx-swap="innerHTML"
                 {% endif %}
-                title="Previous page"><i class="fa-solid fa-chevron-left"></i></button>
+                title="Previous page" aria-label="Previous page"><i class="fa-solid fa-chevron-left"></i></button>
         <span class="page-numbers" id="page-numbers">
             {% for p in page_range %}
                 {% if p == page_obj.number %}
@@ -62,20 +62,20 @@ Required context:
                 hx-target="#staff-table-container"
                 hx-swap="innerHTML"
                 {% endif %}
-                title="Next page"><i class="fa-solid fa-chevron-right"></i></button>
+                title="Next page" aria-label="Next page"><i class="fa-solid fa-chevron-right"></i></button>
         <button class="pagination-btn {% if not page_obj.has_next %}disabled{% endif %}"
                 {% if page_obj.has_next %}
                 hx-get="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}&per_page={{ per_page }}"
                 hx-target="#staff-table-container"
                 hx-swap="innerHTML"
                 {% endif %}
-                title="Last page"><i class="fa-solid fa-angles-right"></i></button>
+                title="Last page" aria-label="Last page"><i class="fa-solid fa-angles-right"></i></button>
         {% else %}
-        <button class="pagination-btn disabled"><i class="fa-solid fa-angles-left"></i></button>
-        <button class="pagination-btn disabled"><i class="fa-solid fa-chevron-left"></i></button>
+        <button class="pagination-btn disabled" aria-label="First page"><i class="fa-solid fa-angles-left"></i></button>
+        <button class="pagination-btn disabled" aria-label="Previous page"><i class="fa-solid fa-chevron-left"></i></button>
         <span class="page-numbers" id="page-numbers"><button class="page-num active">1</button></span>
-        <button class="pagination-btn disabled"><i class="fa-solid fa-chevron-right"></i></button>
-        <button class="pagination-btn disabled"><i class="fa-solid fa-angles-right"></i></button>
+        <button class="pagination-btn disabled" aria-label="Next page"><i class="fa-solid fa-chevron-right"></i></button>
+        <button class="pagination-btn disabled" aria-label="Last page"><i class="fa-solid fa-angles-right"></i></button>
         {% endif %}
     </div>
 
@@ -83,7 +83,7 @@ Required context:
     <div class="pagination-right">
         <label>Rows per page:</label>
         <div class="custom-dropdown rows-dropdown" id="rowsDropdown">
-            <button class="dropdown-toggle" id="rowsToggle" type="button">
+            <button class="dropdown-toggle" id="rowsToggle" type="button" aria-expanded="false">
                 <span id="rowsSelectedText">{{ per_page }}</span>
                 <i class="fa-solid fa-chevron-down"></i>
             </button>

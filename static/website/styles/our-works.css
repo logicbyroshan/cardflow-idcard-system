@@ -64,6 +64,30 @@ body.modal-open {
     margin: 0;
 }
 
+.product-gallery-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.product-gallery-share {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.product-gallery-share:hover {
+    background: rgba(255, 255, 255, 0.35);
+}
+
 .product-gallery-close {
     width: 40px;
     height: 40px;
@@ -150,39 +174,9 @@ body.modal-open {
     display: block;
 }
 
-/* Video item play button overlay */
+/* Video item play button overlay (handled by .gallery-video-overlay) */
 .gallery-item.video-item {
     position: relative;
-}
-
-.gallery-item.video-item::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 60px;
-    height: 60px;
-    background: rgba(16, 15, 87, 0.9);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
-}
-
-.gallery-item.video-item::before {
-    content: '\f04b';
-    font-family: 'Font Awesome 6 Free';
-    font-weight: 900;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-45%, -50%);
-    color: #fff;
-    font-size: 1.2rem;
-    z-index: 1;
-    pointer-events: none;
 }
 
 .gallery-item-info {
@@ -200,6 +194,50 @@ body.modal-open {
     font-size: 0.85rem;
     color: #666;
     margin: 0;
+}
+
+/* Gallery inline video overlay */
+.gallery-video-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.gallery-play-btn {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: rgba(16, 15, 87, 0.85);
+    border: 2px solid rgba(255,255,255,0.5);
+    color: #fff;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.gallery-play-btn:hover {
+    background: rgba(16, 15, 87, 1);
+    transform: scale(1.1);
+}
+
+.gallery-item.video-item {
+    position: relative;
+}
+
+.gallery-item.video-item video {
+    width: 100%;
+    height: auto;
+    display: block;
 }
 
 /* ============================================

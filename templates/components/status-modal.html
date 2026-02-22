@@ -21,13 +21,14 @@ JS contract (Alpine bridge):
 
 <div id="{{ modal_id|default:'status-modal' }}" class="modal-backdrop"
      x-show="activeModal === 'status'" x-transition.opacity
-     @click.self="closeModal()" style="display:none">
+     style="display:none"
+     role="dialog" aria-modal="true" aria-labelledby="{{ modal_id|default:'status-modal' }}-title">
   <div class="modal-center modal-warning" @click.stop
        x-show="activeModal === 'status'" x-transition.scale.origin.center>
 
     <!-- Header -->
     <div class="modal-header">
-      <h3><i class="fa-solid fa-toggle-on"></i> Confirm Status Change</h3>
+      <h3 id="{{ modal_id|default:'status-modal' }}-title"><i class="fa-solid fa-toggle-on"></i> Confirm Status Change</h3>
       <button type="button" class="modal-close"
               @click="closeModal()"
               aria-label="Close">

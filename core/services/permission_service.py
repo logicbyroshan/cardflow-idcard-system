@@ -71,6 +71,10 @@ class PermissionService:
         'perm_website_delete', 'perm_website_publish',
     ]
 
+    MOBILE_APP_PERMISSIONS = [
+        'perm_mobile_app',
+    ]
+
     # All known perm keys (computed once at class-load time)
     ALL_PERMISSION_KEYS: List[str] = (
         IDCARD_CLIENT_PERMISSIONS
@@ -78,6 +82,7 @@ class PermissionService:
         + IDCARD_LIST_PERMISSIONS
         + IDCARD_ACTION_PERMISSIONS
         + WEBSITE_PERMISSIONS
+        + MOBILE_APP_PERMISSIONS
     )
 
     # Status → list-permission mapping (shared across views)

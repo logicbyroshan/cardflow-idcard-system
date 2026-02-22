@@ -14,7 +14,7 @@
 <div class="page-content">
   <div class="page-header">
     <h1>Admin Staff Management</h1>
-    <button class="btn-primary" onclick="openCreateModal()">
+    <button class="btn btn-md btn-primary" onclick="openCreateModal()">
       <i class="fa-solid fa-plus"></i> Add Admin Staff
     </button>
   </div>
@@ -29,13 +29,13 @@
       <table class="data-table" id="staffTable">
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Designation</th>
-            <th>Assigned Clients</th>
-            <th>Status</th>
-            <th>Permissions</th>
-            <th>Actions</th>
+            <th scope="col">Name</th>
+            <th scope="col">Email</th>
+            <th scope="col">Designation</th>
+            <th scope="col">Assigned Clients</th>
+            <th scope="col">Status</th>
+            <th scope="col">Permissions</th>
+            <th scope="col">Actions</th>
           </tr>
         </thead>
         <tbody id="staffTableBody">
@@ -58,7 +58,7 @@
   <div class="modal-content">
     <div class="modal-header">
       <h3 id="modalTitle">Add Admin Staff</h3>
-      <button class="modal-close" onclick="closeModal()">&times;</button>
+      <button class="modal-close" onclick="closeModal()" aria-label="Close">&times;</button>
     </div>
     <form id="staffForm" onsubmit="handleSubmit(event)">
       <input type="hidden" id="staffId" value="">
@@ -126,8 +126,8 @@
       </div>
 
       <div class="btn-group">
-        <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
-        <button type="submit" class="btn-primary" id="submitBtn">Create Staff</button>
+        <button type="button" class="btn btn-md btn-neutral" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn btn-md btn-primary" id="submitBtn">Create Staff</button>
       </div>
     </form>
   </div>
@@ -138,12 +138,12 @@
   <div class="modal-content max-w-[400px]">
     <div class="modal-header">
       <h3 id="confirmTitle">Confirm Action</h3>
-      <button class="modal-close" onclick="closeConfirmModal()">&times;</button>
+      <button class="modal-close" onclick="closeConfirmModal()" aria-label="Close">&times;</button>
     </div>
     <p id="confirmMessage"></p>
     <div class="btn-group">
-      <button type="button" class="btn-secondary" onclick="closeConfirmModal()">Cancel</button>
-      <button type="button" class="btn-primary" id="confirmBtn" onclick="executeConfirmAction()">Confirm</button>
+      <button type="button" class="btn btn-md btn-neutral" onclick="closeConfirmModal()">Cancel</button>
+      <button type="button" class="btn btn-md btn-danger" id="confirmBtn" onclick="executeConfirmAction()">Confirm</button>
     </div>
   </div>
 </div>
@@ -283,16 +283,16 @@ async function loadStaff() {
         <td>${staff.permissions_count} permissions</td>
         <td>
           <div class="staff-actions">
-            <button onclick="editStaff(${staff.id})" title="Edit">
+            <button class="btn btn-icon" onclick="editStaff(${staff.id})" title="Edit" aria-label="Edit">
               <i class="fa-solid fa-edit"></i>
             </button>
-            <button onclick="toggleStatus(${staff.id})" title="${staff.is_active ? 'Deactivate' : 'Activate'}">
+            <button class="btn btn-icon" onclick="toggleStatus(${staff.id})" title="${staff.is_active ? 'Deactivate' : 'Activate'}" aria-label="${staff.is_active ? 'Deactivate' : 'Activate'}">
               <i class="fa-solid fa-${staff.is_active ? 'ban' : 'check'}"></i>
             </button>
-            <button onclick="confirmResetPassword(${staff.id}, '${staff.name}')" title="Reset Password">
+            <button class="btn btn-icon" onclick="confirmResetPassword(${staff.id}, '${staff.name}')" title="Reset Password" aria-label="Reset Password">
               <i class="fa-solid fa-key"></i>
             </button>
-            <button onclick="confirmDelete(${staff.id}, '${staff.name}')" title="Delete">
+            <button class="btn btn-icon danger" onclick="confirmDelete(${staff.id}, '${staff.name}')" title="Delete" aria-label="Delete">
               <i class="fa-solid fa-trash"></i>
             </button>
           </div>

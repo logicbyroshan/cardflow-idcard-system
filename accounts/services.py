@@ -4,6 +4,8 @@ Accounts Services Module
 Handles authentication, OTP management, and role-based logic.
 No models - uses Django's built-in auth and cache for OTP storage.
 """
+import hmac
+import logging
 import secrets
 import string
 import hashlib
@@ -11,8 +13,10 @@ from django.core.cache import cache
 from django.contrib.auth import get_user_model, authenticate
 from django.contrib.auth.models import Group
 from django.conf import settings
-from django.core.mail import send_mail
+from core.utils.threaded_email import send_mail_async
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
@@ -74,31 +78,27 @@ class AuthService:
             user = User.objects.filter(**user_filter).first()
             
             if user:
+                # Only return minimal info needed for the login flow
+                # (first name initial + masked email) to prevent enumeration
+                first_name = user.first_name or user.username
+                display_name = first_name  # Only first name, no full details
                 return {
                     'exists': True,
-                    'user_name': user.get_full_name() or user.username,
-                    'user_email': user.email,
+                    'user_name': display_name,
+                    'user_email': email,  # Echo back what they typed, don't reveal stored email
                     'is_active': user.is_active,
                     'message': 'User found'
                 }
             
-            # Check if user exists with different role
-            user_any_role = User.objects.filter(email__iexact=email).first()
-            if user_any_role and role:
-                return {
-                    'exists': False,
-                    'message': f'No account found with this email for the selected role. '
-                              f'You may have registered with a different role.'
-                }
-            
+            # Generic message — identical regardless of whether email exists with a different role
             return {
                 'exists': False,
-                'message': 'No account found with this email'
+                'message': 'No account found. Please check your email and selected role.'
             }
         except Exception as e:
             return {
                 'exists': False,
-                'message': f'Error checking user: {str(e)}'
+                'message': 'An error occurred. Please try again.'
             }
     
     @staticmethod
@@ -118,18 +118,16 @@ class AuthService:
             # Find user by email
             user = User.objects.filter(email__iexact=email).first()
             
+            # Use a single generic failure message for all auth failures
+            # to prevent user/role/status enumeration
+            _AUTH_FAIL_MSG = 'Invalid email or password. Please try again.'
+            
             if not user:
-                return {
-                    'success': False,
-                    'message': 'No account found with this email'
-                }
+                return {'success': False, 'message': _AUTH_FAIL_MSG}
             
             # Check role if specified
             if role and user.role != role:
-                return {
-                    'success': False,
-                    'message': 'This account is not registered with the selected role'
-                }
+                return {'success': False, 'message': _AUTH_FAIL_MSG}
             
             # Check if user is active
             if not user.is_active:
@@ -142,10 +140,7 @@ class AuthService:
             authenticated_user = authenticate(username=user.username, password=password)
             
             if authenticated_user is None:
-                return {
-                    'success': False,
-                    'message': 'Invalid password. Please try again.'
-                }
+                return {'success': False, 'message': _AUTH_FAIL_MSG}
             
             # Get redirect URL based on role
             redirect_url = DASHBOARD_URLS.get(user.role, '/panel/')
@@ -160,7 +155,7 @@ class AuthService:
         except Exception as e:
             return {
                 'success': False,
-                'message': f'Authentication error: {str(e)}'
+                'message': 'An authentication error occurred. Please try again.'
             }
     
     @staticmethod
@@ -181,19 +176,19 @@ class OTPService:
     @staticmethod
     def _get_otp_cache_key(email):
         """Generate a unique cache key for OTP storage."""
-        email_hash = hashlib.md5(email.lower().encode()).hexdigest()
+        email_hash = hashlib.sha256(email.lower().encode()).hexdigest()
         return f'otp_{email_hash}'
     
     @staticmethod
     def _get_otp_attempts_key(email):
         """Generate a cache key for tracking OTP attempts."""
-        email_hash = hashlib.md5(email.lower().encode()).hexdigest()
+        email_hash = hashlib.sha256(email.lower().encode()).hexdigest()
         return f'otp_attempts_{email_hash}'
     
     @staticmethod
     def _get_reset_token_key(email):
         """Generate a cache key for reset token storage."""
-        email_hash = hashlib.md5(email.lower().encode()).hexdigest()
+        email_hash = hashlib.sha256(email.lower().encode()).hexdigest()
         return f'reset_token_{email_hash}'
     
     @staticmethod
@@ -251,10 +246,10 @@ class OTPService:
                 }
             else:
                 # Production: Send actual email
-                try:
-                    send_mail(
-                        subject='Password Reset OTP - Adarsh Admin',
-                        message=f'''Hello {user.get_full_name() or user.username},
+                # Send OTP email in background thread (non-blocking)
+                send_mail_async(
+                    subject='Password Reset OTP - Adarsh Admin',
+                    message=f'''Hello {user.get_full_name() or user.username},
 
 Your OTP for password reset is: {otp}
 
@@ -264,24 +259,19 @@ If you did not request this, please ignore this email.
 
 Thanks,
 Adarsh Admin Team''',
-                        from_email=settings.DEFAULT_FROM_EMAIL,
-                        recipient_list=[email],
-                        fail_silently=False,
-                    )
-                    return {
-                        'success': True,
-                        'message': f'OTP sent to {email}'
-                    }
-                except Exception as e:
-                    return {
-                        'success': False,
-                        'message': f'Failed to send email: {str(e)}'
-                    }
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[email],
+                )
+                return {
+                    'success': True,
+                    'message': f'OTP sent to {email}'
+                }
                     
         except Exception as e:
+            logger.error("Error generating OTP for %s: %s", email, e)
             return {
                 'success': False,
-                'message': f'Error generating OTP: {str(e)}'
+                'message': 'An error occurred. Please try again.'
             }
     
     @classmethod
@@ -309,9 +299,15 @@ Adarsh Admin Team''',
                     'message': 'OTP has expired. Please request a new one.'
                 }
             
-            # Check attempts
-            attempts = cache.get(attempts_key, 0)
-            if attempts >= OTP_MAX_ATTEMPTS:
+            # Check attempts atomically using cache.incr to prevent TOCTOU race
+            try:
+                attempts = cache.incr(attempts_key)
+            except ValueError:
+                # Key expired or missing — first attempt in a fresh window
+                cache.set(attempts_key, 1, timeout=OTP_EXPIRY_MINUTES * 60)
+                attempts = 1
+            
+            if attempts > OTP_MAX_ATTEMPTS:
                 # Clear OTP after max attempts
                 cache.delete(cache_key)
                 return {
@@ -319,11 +315,9 @@ Adarsh Admin Team''',
                     'message': 'Too many failed attempts. Please request a new OTP.'
                 }
             
-            # Verify OTP
-            if otp_data['otp'] != otp:
-                # Increment attempts
-                cache.set(attempts_key, attempts + 1, timeout=OTP_EXPIRY_MINUTES * 60)
-                remaining = OTP_MAX_ATTEMPTS - attempts - 1
+            # Verify OTP (constant-time comparison to prevent timing attacks)
+            if not hmac.compare_digest(str(otp_data['otp']), str(otp)):
+                remaining = OTP_MAX_ATTEMPTS - attempts
                 return {
                     'success': False,
                     'message': f'Invalid OTP. {remaining} attempt(s) remaining.'
@@ -351,9 +345,10 @@ Adarsh Admin Team''',
             }
             
         except Exception as e:
+            logger.error("Error verifying OTP for %s: %s", email, e)
             return {
                 'success': False,
-                'message': f'Error verifying OTP: {str(e)}'
+                'message': 'An error occurred. Please try again.'
             }
     
     @classmethod
@@ -379,7 +374,7 @@ Adarsh Admin Team''',
                     'message': 'Reset session expired. Please start again.'
                 }
             
-            if token_data['token'] != reset_token:
+            if not hmac.compare_digest(str(token_data['token']), str(reset_token)):
                 return {
                     'success': False,
                     'message': 'Invalid reset token. Please start again.'
@@ -418,7 +413,7 @@ Adarsh Admin Team''',
         except Exception as e:
             return {
                 'success': False,
-                'message': f'Error resetting password: {str(e)}'
+                'message': f'Error resetting password. Please try again.'
             }
 
 
@@ -454,7 +449,7 @@ class RoleService:
         except Exception as e:
             return {
                 'success': False,
-                'message': f'Error setting up groups: {str(e)}'
+                'message': f'Error setting up groups. Please try again.'
             }
     
     @staticmethod

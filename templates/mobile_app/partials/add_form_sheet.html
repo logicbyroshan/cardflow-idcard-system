@@ -1,0 +1,212 @@
+<!-- Add/Edit Form Bottom Sheet -->
+<div
+    x-show="showAddForm"
+    class="fixed inset-0 z-[70]"
+    x-cloak
+>
+    <!-- Backdrop -->
+    <div
+        x-show="showAddForm"
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        @click="closeAddForm()"
+    ></div>
+
+    <!-- Sheet -->
+    <div
+        x-show="showAddForm"
+        x-transition:enter="transition ease-out duration-400"
+        x-transition:enter-start="translate-y-full"
+        x-transition:enter-end="translate-y-0"
+        x-transition:leave="transition ease-in duration-300"
+        x-transition:leave-start="translate-y-0"
+        x-transition:leave-end="translate-y-full"
+        class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl flex flex-col"
+        style="height: 90vh; height: 90dvh;"
+    >
+        <!-- Drag Handle -->
+        <div class="flex justify-center pt-2 pb-1 flex-shrink-0">
+            <div class="w-10 h-1 rounded-full bg-gray-300"></div>
+        </div>
+
+        <!-- Header -->
+        <div class="flex items-center justify-between px-4 py-2 border-b border-gray-100 flex-shrink-0">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center"
+                    :class="editMode ? 'bg-amber-500' : 'bg-gradient-to-br from-brand-light to-brand-dark'">
+                    <i class="text-white text-xs" :class="editMode ? 'fa-solid fa-pen' : 'fa-solid fa-plus'"></i>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold text-gray-800" x-text="editMode ? 'Edit Student' : 'Add New Card'"></h3>
+                    <p class="text-[10px] text-gray-400" x-text="editMode ? 'Update student details' : 'Fill in student details'"></p>
+                </div>
+            </div>
+            <button @click="closeAddForm()" class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 active:scale-95 transition-all">
+                <i class="fa-solid fa-xmark text-sm"></i>
+            </button>
+        </div>
+
+        <!-- Form Body (scrollable — submit is INSIDE so keyboard can't cover it) -->
+        <div class="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+
+            <!-- Photo Section -->
+            <div class="flex flex-col items-center gap-2">
+                <div @click="openImagePicker()"
+                    class="relative w-24 h-24 rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-brand-light hover:bg-brand-light/5 transition-all group overflow-hidden">
+                    <template x-if="form.photoPreview">
+                        <img :src="form.photoPreview" class="absolute inset-0 w-full h-full object-cover rounded-xl">
+                    </template>
+                    <template x-if="!form.photoPreview">
+                        <div class="flex flex-col items-center gap-1">
+                            <i class="fa-solid fa-camera text-lg text-gray-400 group-hover:text-brand-light transition"></i>
+                            <span class="text-[9px] text-gray-400 font-medium">Add Photo</span>
+                        </div>
+                    </template>
+                    <template x-if="form.photoPreview">
+                        <div class="absolute bottom-1 right-1 w-6 h-6 rounded-full bg-brand-light text-white flex items-center justify-center text-[10px] shadow">
+                            <i class="fa-solid fa-pen"></i>
+                        </div>
+                    </template>
+                </div>
+                <p class="text-[10px] text-gray-400">Tap to upload or take photo</p>
+            </div>
+
+            <!-- Image Picker -->
+            <div x-show="showImagePicker" x-transition class="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Choose Photo Source</p>
+                <div class="grid grid-cols-2 gap-2">
+                    <button @click="takePhoto()" class="flex flex-col items-center gap-1.5 py-3 px-2 bg-white rounded-lg border border-gray-200 hover:border-brand-light hover:bg-brand-light/5 active:scale-95 transition-all">
+                        <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center"><i class="fa-solid fa-camera text-blue-500"></i></div>
+                        <span class="text-[10px] font-semibold text-gray-600">Camera</span>
+                    </button>
+                    <button @click="pickFromGallery()" class="flex flex-col items-center gap-1.5 py-3 px-2 bg-white rounded-lg border border-gray-200 hover:border-brand-light hover:bg-brand-light/5 active:scale-95 transition-all">
+                        <div class="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center"><i class="fa-solid fa-images text-purple-500"></i></div>
+                        <span class="text-[10px] font-semibold text-gray-600">Gallery</span>
+                    </button>
+                </div>
+            </div>
+
+            <input type="file" x-ref="cameraInput" accept="image/*" capture="environment" class="hidden" @change="handleImageSelected($event)">
+            <input type="file" x-ref="galleryInput" accept="image/*" class="hidden" @change="handleImageSelected($event)">
+
+            <!-- Name -->
+            <div class="space-y-1">
+                <label class="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Full Name <span class="text-red-400">*</span></label>
+                <input type="text" x-model="form.name" placeholder="Enter student name"
+                    class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
+            </div>
+
+            <!-- Father's Name -->
+            <div class="space-y-1">
+                <label class="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Father's Name <span class="text-red-400">*</span></label>
+                <input type="text" x-model="form.fatherName" placeholder="Enter father's name"
+                    class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
+            </div>
+
+            <!-- Mother's Name -->
+            <div class="space-y-1">
+                <label class="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Mother's Name</label>
+                <input type="text" x-model="form.motherName" placeholder="Enter mother's name"
+                    class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
+            </div>
+
+            <!-- Roll No & DOB -->
+            <div class="grid grid-cols-2 gap-3">
+                <div class="space-y-1">
+                    <label class="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Roll No <span class="text-red-400">*</span></label>
+                    <input type="text" x-model="form.rollNo" placeholder="e.g. R2345"
+                        class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Date of Birth <span class="text-red-400">*</span></label>
+                    <input type="date" x-model="form.dob"
+                        class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
+                </div>
+            </div>
+
+            <!-- Class & Section -->
+            <div class="grid grid-cols-2 gap-3">
+                <div class="space-y-1">
+                    <label class="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Class <span class="text-red-400">*</span></label>
+                    <select x-model="form.className"
+                        class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition appearance-none">
+                        <option value="">Select</option>
+                        <option value="1A">1A</option><option value="1B">1B</option>
+                        <option value="2A">2A</option><option value="2B">2B</option>
+                        <option value="3A">3A</option><option value="3B">3B</option>
+                        <option value="4A">4A</option><option value="4B">4B</option>
+                        <option value="5A">5A</option><option value="5B">5B</option>
+                        <option value="6A">6A</option><option value="7A">7A</option>
+                        <option value="8A">8A</option><option value="9A">9A</option>
+                        <option value="9B">9B</option><option value="10A">10A</option>
+                        <option value="10B">10B</option>
+                    </select>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Section <span class="text-red-400">*</span></label>
+                    <select x-model="form.section"
+                        class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition appearance-none">
+                        <option value="">Select</option>
+                        <option value="Section A">Section A</option>
+                        <option value="Section B">Section B</option>
+                        <option value="Section C">Section C</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Phone -->
+            <div class="space-y-1">
+                <label class="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Phone Number</label>
+                <input type="tel" x-model="form.phone" placeholder="e.g. 9876543210"
+                    class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
+            </div>
+
+            <!-- Address -->
+            <div class="space-y-1">
+                <label class="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Address</label>
+                <textarea x-model="form.address" rows="2" placeholder="Enter full address"
+                    class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition resize-none"></textarea>
+            </div>
+
+            <!-- Blood Group & Aadhar -->
+            <div class="grid grid-cols-2 gap-3">
+                <div class="space-y-1">
+                    <label class="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Blood Group</label>
+                    <select x-model="form.bloodGroup"
+                        class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition appearance-none">
+                        <option value="">Select</option>
+                        <option value="A+">A+</option><option value="A-">A-</option>
+                        <option value="B+">B+</option><option value="B-">B-</option>
+                        <option value="O+">O+</option><option value="O-">O-</option>
+                        <option value="AB+">AB+</option><option value="AB-">AB-</option>
+                    </select>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Aadhar No</label>
+                    <input type="text" x-model="form.aadhar" placeholder="xxxx-xxxx-xxxx" maxlength="14"
+                        class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
+                </div>
+            </div>
+
+            <!-- Submit Buttons (INSIDE scroll so keyboard can never hide them) -->
+            <div class="flex gap-2 pt-3 pb-8">
+                <button @click="closeAddForm()"
+                    class="flex-1 py-3 text-xs font-semibold text-gray-600 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200 active:scale-[0.98] transition-all">
+                    Cancel
+                </button>
+                <button @click="submitAddForm()"
+                    class="flex-[2] py-3 text-xs font-semibold text-white rounded-lg shadow-md hover:shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
+                    :class="editMode ? 'bg-amber-500 hover:bg-amber-600' : 'bg-gradient-to-r from-brand-light to-brand-dark'">
+                    <i class="text-[10px]" :class="editMode ? 'fa-solid fa-pen' : 'fa-solid fa-plus'"></i>
+                    <span x-text="editMode ? 'Update Student' : 'Add Student'"></span>
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>

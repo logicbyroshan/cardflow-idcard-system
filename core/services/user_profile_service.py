@@ -66,6 +66,7 @@ class UserProfileService:
     def change_password(user, current_password, new_password):
         """
         Change user's password after validating current password.
+        Uses Django AUTH_PASSWORD_VALIDATORS for strength checks.
         Returns (success: bool, message: str).
         """
         if not current_password or not new_password:
@@ -74,8 +75,12 @@ class UserProfileService:
         if not user.check_password(current_password):
             return False, 'Current password is incorrect'
 
-        if len(new_password) < 6:
-            return False, 'Password must be at least 6 characters'
+        # Use Django's password validators for consistent strength checks
+        from django.contrib.auth.password_validation import validate_password
+        try:
+            validate_password(new_password, user=user)
+        except Exception as e:
+            return False, str(e)
 
         user.set_password(new_password)
         user.save()
@@ -86,59 +91,19 @@ class UserProfileService:
         """
         Upload/replace the user's profile image.
         Returns (success: bool, message: str, image_url: str|None).
+
+        NOTE: profile_image field was removed from User model in Phase 1 refactor.
+        This method is kept for backward compat but now returns an error.
         """
-        if not image_file:
-            return False, 'No image file provided', None
-
-        if image_file.content_type not in ALLOWED_IMAGE_TYPES:
-            return False, 'Invalid file type. Use JPEG, PNG, GIF, or WebP.', None
-
-        if image_file.size > MAX_IMAGE_SIZE:
-            return False, 'File too large. Maximum 5MB.', None
-
-        # Verify file is a valid image using Pillow
-        try:
-            from PIL import Image
-            image_file.seek(0)
-            img = Image.open(image_file)
-            img.verify()
-            image_file.seek(0)
-        except Exception:
-            return False, 'Uploaded file is not a valid image.', None
-
-        with transaction.atomic():
-            # Delete old image file
-            if user.profile_image:
-                try:
-                    old_path = user.profile_image.path
-                    if os.path.exists(old_path):
-                        os.remove(old_path)
-                except Exception:
-                    logger.warning(f"Could not delete old profile image for user {user.id}")
-
-            user.profile_image = image_file
-            user.save()
-
-        return True, 'Profile image updated', user.profile_image.url
+        return False, 'Profile image feature is no longer available. Avatars are generated automatically.', None
 
     @staticmethod
     def remove_profile_image(user):
         """
         Remove the user's profile image.
         Returns (success: bool, message: str).
+
+        NOTE: profile_image field was removed from User model in Phase 1 refactor.
+        This method is kept for backward compat but now returns an error.
         """
-        if not user.profile_image:
-            return False, 'No profile image to remove'
-
-        with transaction.atomic():
-            try:
-                old_path = user.profile_image.path
-                if os.path.exists(old_path):
-                    os.remove(old_path)
-            except Exception:
-                logger.warning(f"Could not delete profile image file for user {user.id}")
-
-            user.profile_image = None
-            user.save()
-
-        return True, 'Profile image removed'
+        return False, 'Profile image feature is no longer available.'

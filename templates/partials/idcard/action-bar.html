@@ -135,6 +135,12 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
 
         {% elif current_status == 'approved' %}
             {# === APPROVED LIST === #}
+            {% if perm_idcard_edit %}
+            <button class="btn action-btn btn-blue" id="editBtnA" disabled title="Edit selected card">
+                <i class="fa-solid fa-pen-to-square"></i>
+                <span class="btn-text">Edit</span>
+            </button>
+            {% endif %}
             {% if perm_idcard_info %}
             <button class="btn action-btn btn-gray" id="viewBtnA" disabled title="View selected card">
                 <i class="fa-solid fa-eye"></i>
@@ -145,6 +151,12 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
             <button class="btn action-btn btn-red" id="disapproveBtn" disabled title="Move selected back to pending">
                 <i class="fa-solid fa-circle-xmark"></i>
                 <span class="btn-text">Disapprove Selected</span>
+            </button>
+            {% endif %}
+            {% if perm_reupload_idcard_image %}
+            <button class="btn action-btn btn-red" id="reuploadImageBtnA" title="Reupload images from ZIP">
+                <i class="fa-solid fa-rotate"></i>
+                <span class="btn-text">Reupload Image</span>
             </button>
             {% endif %}
             {% if perm_idcard_bulk_download %}
@@ -169,6 +181,12 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
 
         {% elif current_status == 'download' %}
             {# === DOWNLOAD LIST — read-only, export + retrieve === #}
+            {% if perm_idcard_edit %}
+            <button class="btn action-btn btn-blue" id="editBtnD" disabled title="Edit selected card">
+                <i class="fa-solid fa-pen-to-square"></i>
+                <span class="btn-text">Edit</span>
+            </button>
+            {% endif %}
             {% if perm_idcard_info %}
             <button class="btn action-btn btn-gray" id="viewBtnD" disabled title="View selected card">
                 <i class="fa-solid fa-eye"></i>
@@ -179,6 +197,12 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
             <button class="btn action-btn btn-green" id="retrieveBtnD" disabled title="Retrieve to pending">
                 <i class="fa-solid fa-rotate-left"></i>
                 <span class="btn-text">Retrieve</span>
+            </button>
+            {% endif %}
+            {% if perm_reupload_idcard_image %}
+            <button class="btn action-btn btn-red" id="reuploadImageBtnD" title="Reupload images from ZIP">
+                <i class="fa-solid fa-rotate"></i>
+                <span class="btn-text">Reupload Image</span>
             </button>
             {% endif %}
             {% if perm_idcard_bulk_download %}

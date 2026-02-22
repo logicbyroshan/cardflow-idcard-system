@@ -64,8 +64,20 @@ urlpatterns = [
     # Website Management → redirect to new website admin dashboard
     path('manage-website/', views.manage_website, name='manage_website'),
     
-    # Manage Panel (Coming Soon)
+    # Manage Panel
     path('manage-panel/', views.manage_panel, name='manage_panel'),
+    
+    # ==================== NOTIFICATION APIs ====================
+    # User-facing notifications
+    path('api/notifications/list/', views.api_notifications_list, name='api_notifications_list'),
+    path('api/notifications/unread-count/', views.api_notifications_unread_count, name='api_notifications_unread_count'),
+    path('api/notifications/<int:notification_id>/read/', views.api_notification_mark_read, name='api_notification_mark_read'),
+    path('api/notifications/mark-all-read/', views.api_notifications_mark_all_read, name='api_notifications_mark_all_read'),
+    # Admin notification management
+    path('api/notifications/admin/list/', views.api_panel_notifications_list, name='api_panel_notifications_list'),
+    path('api/notifications/admin/create/', views.api_panel_notification_create, name='api_panel_notification_create'),
+    path('api/notifications/admin/<int:notification_id>/delete/', views.api_panel_notification_delete, name='api_panel_notification_delete'),
+    path('api/notifications/admin/target-users/', views.api_panel_target_users, name='api_panel_target_users'),
     
     # System Settings
     path('settings/', views.settings, name='settings'),
@@ -80,6 +92,7 @@ urlpatterns = [
     path('api/client/<int:client_id>/staff/', views.api_client_staff, name='api_client_staff'),
     path('api/client/<int:client_id>/staff/<int:staff_id>/toggle-status/', views.api_client_staff_toggle_status, name='api_client_staff_toggle_status'),
     path('api/client/<int:client_id>/staff/<int:staff_id>/permissions/', views.api_client_staff_permissions, name='api_client_staff_permissions'),
+    path('api/client/<int:client_id>/set-temp-password/', views.api_client_set_temp_password, name='api_client_set_temp_password'),
     
     # Staff APIs
     path('api/staff/create/', views.api_staff_create, name='api_staff_create'),
@@ -88,6 +101,7 @@ urlpatterns = [
     path('api/staff/<int:staff_id>/delete/', views.api_staff_delete, name='api_staff_delete'),
     path('api/staff/<int:staff_id>/toggle-status/', views.api_staff_toggle_status, name='api_staff_toggle_status'),
     path('api/clients/active/', views.api_active_clients_list, name='api_active_clients_list'),
+    path('api/staff/<int:staff_id>/set-temp-password/', views.api_staff_set_temp_password, name='api_staff_set_temp_password'),
     
     # ID Card Table APIs
     path('api/group/<int:group_id>/tables/', views.api_idcard_table_list, name='api_idcard_table_list'),
@@ -96,6 +110,7 @@ urlpatterns = [
     path('api/table/<int:table_id>/update/', views.api_idcard_table_update, name='api_idcard_table_update'),
     path('api/table/<int:table_id>/delete/', views.api_idcard_table_delete, name='api_idcard_table_delete'),
     path('api/table/<int:table_id>/toggle-status/', views.api_idcard_table_toggle_status, name='api_idcard_table_toggle_status'),
+    path('api/group/<int:group_id>/table/create-from-xlsx/', views.api_create_table_from_xlsx, name='api_create_table_from_xlsx'),
     
     # ID Card APIs
     path('api/table/<int:table_id>/cards/', views.api_idcard_list, name='api_idcard_list'),
@@ -137,6 +152,12 @@ urlpatterns = [
     # Export Settings APIs
     path('api/export-settings/', views.api_export_settings_get, name='api_export_settings_get'),
     path('api/export-settings/update/', views.api_export_settings_update, name='api_export_settings_update'),
+
+    # Export Template APIs
+    path('api/export-templates/', views.api_export_templates_list, name='api_export_templates_list'),
+    path('api/export-templates/create/', views.api_export_template_create, name='api_export_template_create'),
+    path('api/export-templates/<int:template_id>/update/', views.api_export_template_update, name='api_export_template_update'),
+    path('api/export-templates/<int:template_id>/delete/', views.api_export_template_delete, name='api_export_template_delete'),
 
     # Settings/Profile APIs (for all user types)
     path('api/profile/', views.api_get_profile, name='api_get_profile'),

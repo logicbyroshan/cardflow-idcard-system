@@ -200,6 +200,30 @@ window.initStaffPage = function (cfg) {
     }
 
     // ==================== DRAWER ====================
+    // Password option helpers
+    var pwOptionSelect = document.getElementById('staff-password-option');
+    var pwGroup = document.getElementById('staffCustomPasswordGroup');
+    var pwInput = document.getElementById('staff-password');
+    var pwRow = document.getElementById('staffPasswordOptionRow');
+
+    function resetPasswordOption() {
+        if (pwOptionSelect) pwOptionSelect.value = 'phone';
+        if (pwGroup) pwGroup.style.display = 'none';
+        if (pwInput) { pwInput.value = ''; pwInput.required = false; }
+    }
+
+    // For client-staff page (plain <select>)
+    if (pwOptionSelect && pwOptionSelect.tagName === 'SELECT') {
+        pwOptionSelect.addEventListener('change', function () {
+            var val = pwOptionSelect.value;
+            if (pwGroup) pwGroup.style.display = val === 'custom' ? '' : 'none';
+            if (pwInput) {
+                pwInput.required = val === 'custom';
+                if (val !== 'custom') pwInput.value = '';
+            }
+        });
+    }
+
     function openDrawer(mode, staffData) {
         currentMode = mode || 'add';
         staffForm.reset();
@@ -209,6 +233,7 @@ window.initStaffPage = function (cfg) {
 
         cfg.permissionFields.forEach(function (f) { var el = document.getElementById(f); if (el) el.checked = false; });
         resetAssignment();
+        resetPasswordOption();
 
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<span id="submit-btn-text">Add Staff</span>';
@@ -221,19 +246,34 @@ window.initStaffPage = function (cfg) {
             submitBtn.style.display = 'inline-flex';
             enableFormInputs(true);
             initAssignment([]);
-            cfg.defaultOnPerms.forEach(function (f) { var el = document.getElementById(f); if (el) el.checked = true; });
+            // Show password option for new staff
+            if (pwRow) pwRow.style.display = '';
+            // Hide temp password button in add mode
+            var tempPwBtn = document.getElementById('tempPasswordStaffBtn');
+            if (tempPwBtn) tempPwBtn.style.display = 'none';
+            // Permissions stay OFF by default for new staff (already reset above)
         } else if (mode === 'edit') {
             drawerTitle.textContent = 'Edit Staff';
             drawerIcon.className = 'fa-solid fa-pen-to-square';
             if (submitBtnText) submitBtnText.textContent = 'Save Changes';
             submitBtn.style.display = 'inline-flex';
             enableFormInputs(true);
+            // Hide password option when editing
+            if (pwRow) pwRow.style.display = 'none';
+            // Show temp password button in edit mode
+            var tempPwBtn = document.getElementById('tempPasswordStaffBtn');
+            if (tempPwBtn) tempPwBtn.style.display = '';
             if (staffData) populateForm(staffData);
         } else if (mode === 'view') {
             drawerTitle.textContent = 'View Staff Details';
             drawerIcon.className = 'fa-solid fa-eye';
             submitBtn.style.display = 'none';
             enableFormInputs(false);
+            // Hide password option in view mode
+            if (pwRow) pwRow.style.display = 'none';
+            // Hide temp password button in view mode
+            var tempPwBtn = document.getElementById('tempPasswordStaffBtn');
+            if (tempPwBtn) tempPwBtn.style.display = 'none';
             if (staffData) populateForm(staffData);
         }
 
@@ -258,6 +298,9 @@ window.initStaffPage = function (cfg) {
             if (el) el.checked = d[api] === true;
         });
         initAssignment(d[cfg.assignment.preselectedKey] || []);
+
+        // Allow page-specific extensions to populate custom fields
+        if (cfg.onPopulateForm) cfg.onPopulateForm(d);
     }
 
     function closeDrawer() {
@@ -373,12 +416,20 @@ window.initStaffPage = function (cfg) {
                 is_active: document.getElementById('staff-status').value === 'true',
             };
 
+            // Add custom password if selected
+            if (pwOptionSelect && pwOptionSelect.value === 'custom' && pwInput && pwInput.value.trim()) {
+                formData.password = pwInput.value.trim();
+            }
+
             cfg.permissionFields.forEach(function (f) {
                 var el  = document.getElementById(f);
                 var api = f.replace(/-/g, '_');
                 if (el) formData[api] = cfg.respectDisabledPerms ? (el.disabled ? false : el.checked) : el.checked;
             });
             formData[cfg.assignment.payloadKey] = Array.from(selectedIds);
+
+            // Allow page-specific extensions to add custom data
+            if (cfg.onBeforeSubmit) cfg.onBeforeSubmit(formData);
 
             var result;
             try {
@@ -407,7 +458,7 @@ window.initStaffPage = function (cfg) {
     // Close drawer events
     if (closeDrawerBtn)  closeDrawerBtn.addEventListener('click', closeDrawer);
     if (cancelDrawerBtn) cancelDrawerBtn.addEventListener('click', function (e) { e.preventDefault(); closeDrawer(); });
-    if (staffOverlay)    staffOverlay.addEventListener('click', closeDrawer);
+    // Outside click close disabled — prevent accidental closure
 
     // ==================== FILTER & SEARCH ====================
     var dropdownToggle  = document.getElementById('statusToggle');

@@ -41,7 +41,7 @@
             <tr data-id="{{ c.id }}">
                 <td>
                     {% if c.logo %}
-                    <img src="{{ c.logo.url }}" class="wa-thumb" alt="{{ c.name }}" loading="lazy" decoding="async">
+                    <img src="{{ c.logo.url }}" class="wa-thumb" alt="{{ c.name }}">
                     {% else %}
                     <span class="wa-no-img"><i class="fa-solid fa-image"></i></span>
                     {% endif %}
@@ -56,10 +56,10 @@
                 </td>
                 <td class="wa-actions">
                     {% if is_super_admin or perm_website_edit %}
-                    <button class="btn-icon" title="Edit" onclick="editClient({{ c.id }})"><i class="fa-solid fa-pen"></i></button>
+                    <button class="btn btn-icon" title="Edit" onclick="editClient({{ c.id }})"><i class="fa-solid fa-pen"></i></button>
                     {% endif %}
                     {% if is_super_admin or perm_website_delete %}
-                    <button class="btn-icon danger" title="Delete" onclick="deleteClient({{ c.id }})"><i class="fa-solid fa-trash"></i></button>
+                    <button class="btn btn-icon danger" title="Delete" onclick="deleteClient({{ c.id }})"><i class="fa-solid fa-trash"></i></button>
                     {% endif %}
                 </td>
             </tr>
@@ -101,7 +101,7 @@
                 </label>
             </div>
             <div class="wa-modal-footer">
-                <button type="button" class="btn btn-outline" onclick="closeClientModal()">Cancel</button>
+                <button type="button" class="btn btn-neutral" onclick="closeClientModal()">Cancel</button>
                 <button type="submit" class="btn btn-primary">Save</button>
             </div>
         </form>
@@ -110,5 +110,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/website-admin/clients.js' %}"></script>
+<script src="{% static 'js/website-admin/clients.js' %}?v=134"></script>
 {% endblock %}

@@ -31,6 +31,9 @@ from django.db.models import QuerySet
 
 from mediafiles.services import ImageService
 
+from django.utils.html import escape as html_escape
+from django.utils.safestring import mark_safe
+
 from .utils import (
     separate_fields_by_type,
     generate_export_filename,
@@ -38,6 +41,7 @@ from .utils import (
     is_valid_image_path,
     sort_cards_for_export,
     get_class_field_name,
+    stream_file_response,
 )
 
 logger = logging.getLogger(__name__)
@@ -129,7 +133,8 @@ class PdfExporter:
         self,
         table,
         cards: QuerySet,
-        status: str = ''
+        status: str = '',
+        template_id: int = None
     ) -> PdfExportResult:
         """
         Export cards to PDF format.
@@ -198,8 +203,17 @@ class PdfExporter:
                 institution_name = table.group.client.name
 
             # Get dynamic export settings
-            from core.models import SystemSettings
+            from core.models import SystemSettings, ExportTemplate
             export_settings = SystemSettings.get_export_settings()
+
+            # Fetch template instructions if template_id provided
+            template_instructions = ''
+            if template_id:
+                try:
+                    tpl = ExportTemplate.objects.get(id=template_id)
+                    template_instructions = tpl.instructions
+                except ExportTemplate.DoesNotExist:
+                    pass
 
             # Render HTML
             context = {
@@ -211,18 +225,18 @@ class PdfExporter:
                 'generated_at': django_tz.localtime(django_tz.now()).strftime('%d-%b-%Y %H:%M'),
                 'export_note_line': export_settings.get('export_note_line', 'Note: This document is computer generated. Please verify all details before printing ID cards.'),
                 'export_copyright_line': export_settings.get('export_copyright_line', '© Adarsh ID Cards Management System'),
+                'template_instructions': template_instructions,
             }
 
             html = render_to_string('exports/pdf_report.html', context)
 
-            # Generate PDF
-            response = HttpResponse(content_type='application/pdf')
+            # Generate PDF into a buffer, then stream for large files
+            pdf_buffer = io.BytesIO()
             filename = generate_export_filename(table.name, 'pdf', client_name=institution_name, status=status)
-            response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
             pisa_status = pisa.CreatePDF(
                 io.BytesIO(html.encode('UTF-8')),
-                dest=response,
+                dest=pdf_buffer,
                 link_callback=_link_callback
             )
 
@@ -233,7 +247,9 @@ class PdfExporter:
                     message='Error generating PDF. Check server logs.'
                 )
 
-            response['Content-Length'] = len(response.content)
+            pdf_bytes = pdf_buffer.getvalue()
+            pdf_buffer.close()
+            response = stream_file_response(pdf_bytes, filename, 'application/pdf')
 
             return PdfExportResult(
                 success=True,
@@ -353,6 +369,26 @@ class PdfExporter:
 
         return configs
 
+    @staticmethod
+    def _wrap_text_for_pdf(text: str) -> 'mark_safe':
+        """Insert word-break opportunities in text for PDF column wrapping.
+
+        xhtml2pdf has limited CSS word-wrap support, so we insert HTML
+        break-opportunity hints (<wbr>) after commas, slashes, dashes,
+        and dots (e.g. dates like 01.02.2025) so long values wrap at
+        natural boundaries instead of mid-word character-by-character.
+
+        Returns a mark_safe string so Django templates render the HTML.
+        """
+        import re as _re
+        if not text:
+            return mark_safe('')
+        # Escape HTML entities first to avoid XSS
+        safe_text = html_escape(text)
+        # Insert <wbr> after natural break characters: , / - . ; :
+        safe_text = _re.sub(r'([,/\-\.;:])', r'\1<wbr>', safe_text)
+        return mark_safe(safe_text)
+
     def _build_rows(
         self,
         ordered_fields: List[Dict[str, Any]],
@@ -411,7 +447,9 @@ class PdfExporter:
                         cell['content'] = _PLACEHOLDER_IMAGE_PATH
                         cell['is_placeholder'] = True
                 else:
-                    cell['content'] = format_field_value(val, uppercase=True)
+                    cell['content'] = self._wrap_text_for_pdf(
+                        format_field_value(val, uppercase=True)
+                    )
 
                 row_cells.append(cell)
 

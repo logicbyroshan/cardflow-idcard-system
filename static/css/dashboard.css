@@ -5,6 +5,10 @@
    ==================== */
 .dashboard-content {
     padding: 0;
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - var(--spacing-topbar, 40px));
+    overflow: hidden;
 }
 
 .stats-cards {
@@ -72,13 +76,17 @@
 .dashboard-grid {
     display: grid;
     grid-template-columns: 2fr 1fr;
+    grid-template-rows: 1fr;
     gap: 0;
+    flex: 1;
+    min-height: 0;
 }
 
 .dashboard-grid-3col {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 0;
+    flex: none;
 }
 
 .dashboard-card {
@@ -88,6 +96,8 @@
     overflow: hidden;
     margin-left: -1px;
     margin-top: -1px;
+    display: flex;
+    flex-direction: column;
 }
 
 .dashboard-card-body {
@@ -95,9 +105,10 @@
 }
 
 .dashboard-card-body.tall-body {
-    height: 340px;
-    max-height: 340px;
+    flex: 1;
+    min-height: 200px;
     overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .dashboard-card-body.p-0 {
@@ -372,8 +383,6 @@
     display: flex;
     flex-direction: column;
     gap: 0;
-    max-height: 320px;
-    overflow-y: auto;
     padding-right: 4px;
 }
 
@@ -449,6 +458,9 @@
 
 .activity-content {
     flex: 1;
+    min-width: 0;
+    overflow-wrap: break-word;
+    word-break: break-word;
 }
 
 .activity-text {
@@ -470,7 +482,6 @@
    Recent Table Wrapper (scrollbar)
    ==================== */
 .recent-table-wrapper {
-    max-height: 340px;
     overflow-y: auto;
     overflow-x: auto;
 }
@@ -565,6 +576,14 @@ a.count-badge.downloaded:hover {
     border: 1px solid rgba(0, 0, 0, 0.15);
     margin-top: -1px;
     margin-left: -1px;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.card-overview-item:hover {
+    background: #f0f4f8;
 }
 
 .card-overview-item:first-child {
@@ -805,4 +824,75 @@ a.count-badge.downloaded:hover {
 .welcome-date .time {
     font-size: 15px;
     font-weight: 700;
+}
+
+/* ====================
+   Notification Bell - Light Theme Overrides
+   (The notif-* classes in tailwind-input.css use dark fallbacks)
+   ==================== */
+.notif-btn {
+    color: #64748b;
+}
+.notif-btn:hover {
+    background: #f1f5f9;
+    color: #334155;
+}
+.notif-badge {
+    border-color: #fff;
+}
+.notif-dropdown {
+    background: #fff;
+    border-color: #e2e8f0;
+    box-shadow: 0 12px 32px rgba(0,0,0,.12);
+    border-radius: 12px;
+}
+.notif-dropdown-header {
+    border-bottom-color: #e2e8f0;
+}
+.notif-dropdown-header h4 {
+    color: #1e293b;
+}
+.notif-dropdown-header span,
+.notif-mark-all-btn {
+    color: #667eea;
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-size: 11px;
+    font-weight: 500;
+}
+.notif-mark-all-btn:hover {
+    text-decoration: underline;
+}
+.notif-item:hover {
+    background: #f8fafc;
+}
+.notif-item .notif-title {
+    color: #1e293b;
+}
+.notif-item .notif-text {
+    color: #64748b;
+}
+.notif-item .notif-time {
+    color: #94a3b8;
+}
+.notif-empty {
+    color: #94a3b8;
+}
+.notif-empty i {
+    color: #cbd5e1;
+}
+.notif-item.unread {
+    background: #f0f4ff;
+}
+.notif-item.unread:hover {
+    background: #e8edff;
+}
+.notif-unread-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #667eea;
+    flex-shrink: 0;
+    margin-top: 6px;
 }

@@ -15,9 +15,38 @@ function getAdjacentCell(currentCell, direction) {
     const currentIndex = allCells.indexOf(currentCell);
     
     if (direction === 'next') {
-        return allCells[currentIndex + 1] || null;
+        // Try next cell in same row
+        if (currentIndex + 1 < allCells.length) {
+            return allCells[currentIndex + 1];
+        }
+        // Wrap to first editable cell of next row
+        var nextRow = row.nextElementSibling;
+        while (nextRow && nextRow.tagName === 'TR') {
+            var nextCells = nextRow.querySelectorAll('td[data-field]');
+            if (nextCells.length > 0) {
+                // Scroll the next row into view so the user can see it
+                nextRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return nextCells[0];
+            }
+            nextRow = nextRow.nextElementSibling;
+        }
+        return null;
     } else if (direction === 'prev') {
-        return allCells[currentIndex - 1] || null;
+        // Try previous cell in same row
+        if (currentIndex - 1 >= 0) {
+            return allCells[currentIndex - 1];
+        }
+        // Wrap to last editable cell of previous row
+        var prevRow = row.previousElementSibling;
+        while (prevRow && prevRow.tagName === 'TR') {
+            var prevCells = prevRow.querySelectorAll('td[data-field]');
+            if (prevCells.length > 0) {
+                prevRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return prevCells[prevCells.length - 1];
+            }
+            prevRow = prevRow.previousElementSibling;
+        }
+        return null;
     }
     return null;
 }

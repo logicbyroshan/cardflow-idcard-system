@@ -139,17 +139,6 @@ class PermissionValidationMiddleware:
         '/favicon.ico',
     ]
     
-    # URL patterns for public website (exempt from auth)
-    PUBLIC_URL_PATTERNS = [
-        '/contact/',
-        '/about/',
-        '/services/',
-        '/portfolio/',
-        '/gallery/',
-        '/why-choose-us/',
-        '/our-works/',
-    ]
-    
     def __init__(self, get_response):
         self.get_response = get_response
     
@@ -172,6 +161,9 @@ class PermissionValidationMiddleware:
         if validation_result is not None:
             return validation_result
         
+        # Mark successful validation timestamp in session
+        request.session['_pvm_last_check'] = time.time()
+        
         return self.get_response(request)
     
     def _is_exempt_url(self, path):
@@ -183,10 +175,18 @@ class PermissionValidationMiddleware:
             if path.startswith(exempt):
                 return True
         return False
+    # How often (seconds) to re-validate user from DB.
+    # Between checks, the cached validation in the session is trusted.
+    # Set to 0 to check every request (original behavior).
+    REVALIDATION_INTERVAL = 10  # seconds
     
     def _validate_user_access(self, request):
         """
         Validate user's access.
+        
+        Performance: caches the last-check timestamp in session so we only
+        hit the DB once every REVALIDATION_INTERVAL seconds instead of on
+        every single request.
         
         Returns:
             None if access is valid
@@ -195,6 +195,12 @@ class PermissionValidationMiddleware:
         from core.models import User
         
         user = request.user
+        
+        # Skip DB re-fetch if we validated recently (within REVALIDATION_INTERVAL)
+        if self.REVALIDATION_INTERVAL > 0:
+            last_check = request.session.get('_pvm_last_check', 0)
+            if (time.time() - last_check) < self.REVALIDATION_INTERVAL:
+                return None
         
         # Cache the fresh user on the request object to avoid duplicate DB hits
         # within the same request cycle (e.g., RoleScopingMiddleware also accesses user)
@@ -502,6 +508,7 @@ class SecurityHeadersMiddleware:
 
     Currently adds:
     - Permissions-Policy: restricts browser APIs (camera, microphone, etc.)
+    - Cache-Control: prevents caching of authenticated HTML pages
     """
 
     SKIP_PREFIXES = ('/static/', '/media/')
@@ -522,5 +529,11 @@ class SecurityHeadersMiddleware:
 
         if self._permissions_policy:
             response['Permissions-Policy'] = self._permissions_policy
+
+        # Prevent caching of authenticated panel pages (security best practice)
+        if request.path.startswith('/panel/') and hasattr(request, 'user') and request.user.is_authenticated:
+            if 'Cache-Control' not in response:
+                response['Cache-Control'] = 'no-store, no-cache, must-revalidate, private'
+                response['Pragma'] = 'no-cache'
 
         return response

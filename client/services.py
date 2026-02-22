@@ -13,6 +13,7 @@ ARCHITECTURE RULES:
 - Status transitions delegate to WorkflowService.
 """
 from typing import Dict, Any, Optional, List
+import os
 from django.utils.timezone import localtime
 from django.db import transaction
 from django.db.models import Count, Q
@@ -74,7 +75,11 @@ class ClientAccessService:
     
     @staticmethod
     def can_access_card(user, card: IDCard) -> bool:
-        """Check if user can access a specific card"""
+        """Check if user can access a specific card.
+        
+        NOTE: ``card`` should be fetched with
+        ``.select_related('table__group')`` to avoid extra queries.
+        """
         client = ClientAccessService.get_client_for_user(user)
         if client is None:
             return False
@@ -262,6 +267,7 @@ class ClientStaffService(BaseService):
         'perm_idcard_add', 'perm_idcard_edit', 'perm_idcard_delete',
         'perm_idcard_info', 'perm_idcard_approve', 'perm_idcard_verify',
         'perm_idcard_created_at', 'perm_idcard_updated_at',
+        'perm_mobile_app',
     ]
     
     @classmethod
@@ -306,6 +312,8 @@ class ClientStaffService(BaseService):
                     'is_active': staff.user.is_active,
                     'created_at': staff.created_at.strftime('%d %b %Y'),
                     'assigned_group_ids': list(staff.assigned_groups.values_list('id', flat=True)),
+                    'allowed_classes': staff.allowed_classes or [],
+                    'allowed_sections': staff.allowed_sections or [],
                 }
                 # Include all permissions
                 for perm in cls.STAFF_PERMISSION_FIELDS:
@@ -367,6 +375,8 @@ class ClientStaffService(BaseService):
                 'created_at': staff.created_at.strftime('%Y-%m-%dT%H:%M:%S'),
                 'profile_image_url': staff.user.profile_image.url if staff.user.profile_image else None,
                 'assigned_group_ids': list(staff.assigned_groups.values_list('id', flat=True)),
+                'allowed_classes': staff.allowed_classes or [],
+                'allowed_sections': staff.allowed_sections or [],
                 'client_permissions': client_permissions,
             }
             # Include all permissions
@@ -421,16 +431,25 @@ class ClientStaffService(BaseService):
                 first_name = name_parts[0] if name_parts else ''
                 last_name = ' '.join(name_parts[1:]) if len(name_parts) > 1 else ''
             
-            # Password from data or phone or secure random fallback
-            password = data.get('password', '').strip()
+            # Use phone number as default password (matches welcome email instructions)
+            import secrets as _secrets
             phone = data.get('phone', '').strip()
+            password = data.get('password', '').strip()
+            used_phone_as_password = False
             if not password:
-                phone_clean = ''.join(filter(str.isdigit, phone))
-                if phone_clean:
-                    password = phone_clean
+                if phone:
+                    password = phone
+                    used_phone_as_password = True
                 else:
-                    import secrets
-                    password = secrets.token_urlsafe(12)
+                    password = _secrets.token_urlsafe(12)
+            
+            # Skip Django password validators when using phone as password
+            if not used_phone_as_password:
+                from django.contrib.auth.password_validation import validate_password
+                try:
+                    validate_password(password)
+                except Exception as pw_err:
+                    return ServiceResult(success=False, message=str(pw_err))
             
             with transaction.atomic():
                 # Create user
@@ -476,9 +495,10 @@ class ClientStaffService(BaseService):
                     )
                     staff.assigned_groups.set(valid_groups)
             
+            display_name = f'{first_name} {last_name}'.strip() or email
             return ServiceResult(
                 success=True,
-                message=f'Staff member "{name}" created successfully!',
+                message=f'Staff member "{display_name}" created successfully!',
                 data={'staff_id': staff.id}
             )
             
@@ -545,6 +565,17 @@ class ClientStaffService(BaseService):
                     else:
                         setattr(staff, perm, False)
             
+            staff.save()
+            
+            # Update class/section filters if provided
+            if 'allowed_classes' in data:
+                allowed_classes = data['allowed_classes']
+                if isinstance(allowed_classes, list):
+                    staff.allowed_classes = [str(v).strip() for v in allowed_classes if isinstance(v, str)]
+            if 'allowed_sections' in data:
+                allowed_sections = data['allowed_sections']
+                if isinstance(allowed_sections, list):
+                    staff.allowed_sections = [str(v).strip() for v in allowed_sections if isinstance(v, str)]
             staff.save()
             
             # Update group assignments if provided
@@ -1046,11 +1077,47 @@ class ClientImageService(BaseService):
             if not PermissionService.has_permission(user, 'perm_reupload_idcard_image'):
                 return ServiceResult(success=False, message='No permission to upload images')
             
-            # Use the core image service for actual processing
-            from core.services.image_service import ImageService
+            # Use the mediafiles ImageService for actual processing
+            from mediafiles.services import ImageService
             
-            result = ImageService.reupload_images(table_id, images)
-            return result
+            matched = 0
+            failed = 0
+            for image in images:
+                original_name = getattr(image, 'name', '')
+                name_without_ext = os.path.splitext(original_name)[0] if original_name else ''
+                
+                # Find cards in the table that reference this image name
+                cards = IDCard.objects.filter(table_id=table_id)
+                for card in cards:
+                    fd = card.field_data or {}
+                    updated = False
+                    for key, val in fd.items():
+                        if isinstance(val, str) and name_without_ext and name_without_ext.lower() in val.lower():
+                            try:
+                                image.seek(0)
+                                img_bytes = image.read()
+                                result = ImageService.save_image(
+                                    image_bytes=img_bytes,
+                                    field_name=key,
+                                    card=card,
+                                    client=client,
+                                    original_filename=original_name,
+                                )
+                                if result.success and result.data.get('path'):
+                                    fd[key] = result.data['path']
+                                    updated = True
+                            except Exception:
+                                failed += 1
+                    if updated:
+                        card.field_data = fd
+                        card.save(update_fields=['field_data', 'updated_at'])
+                        matched += 1
+            
+            return ServiceResult(
+                success=True,
+                message=f'Reupload complete: {matched} images matched, {failed} failed.',
+                data={'matched': matched, 'failed': failed}
+            )
             
         except Exception as e:
             return ServiceResult(success=False, message=str(e))

@@ -418,7 +418,11 @@
         
         // Refresh table
         refreshTable: function() {
-            location.reload();
+            if (window.IDCardApp && typeof window.IDCardApp.refreshCardTable === 'function') {
+                window.IDCardApp.refreshCardTable();
+            } else {
+                location.reload();
+            }
         },
         
         // Get selected card IDs

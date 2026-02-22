@@ -323,12 +323,17 @@ function populateFormFields(cardData) {
         
         if (formPhotoPreview) {
             formPhotoPreview.classList.add('has-image');
+            formPhotoPreview.innerHTML = '';
+            const img = document.createElement('img');
+            img.alt = 'Photo';
             // Use thumbnail with fallback to original
             if (thumbSrc) {
-                formPhotoPreview.innerHTML = `<img src="${thumbSrc}" alt="Photo" onerror="this.onerror=null; this.src='${originalSrc}';">`;
+                img.src = thumbSrc;
+                img.onerror = function() { this.onerror = null; this.src = originalSrc; };
             } else {
-                formPhotoPreview.innerHTML = `<img src="${originalSrc}" alt="Photo">`;
+                img.src = originalSrc;
             }
+            formPhotoPreview.appendChild(img);
         }
         if (photoPathDisplay) {
             photoPathDisplay.textContent = getShortPathLocal(originalPath);
@@ -369,7 +374,11 @@ function populateFormFields(cardData) {
     if (!photoPath && cardData.photo && formPhotoPreview) {
         formPhotoPreview.classList.remove('no-path');
         formPhotoPreview.classList.add('has-image');
-        formPhotoPreview.innerHTML = `<img src="${cardData.photo}" alt="Photo">`;
+        formPhotoPreview.innerHTML = '';
+        const img = document.createElement('img');
+        img.src = cardData.photo;
+        img.alt = 'Photo';
+        formPhotoPreview.appendChild(img);
     }
     
     // Helper function to normalize field names for comparison
@@ -492,12 +501,17 @@ function populateFormFields(cardData) {
                     
                     if (previewContainer) {
                         previewContainer.classList.add('has-image');
+                        previewContainer.innerHTML = '';
+                        const img = document.createElement('img');
+                        img.alt = fieldName || '';
                         // Use thumbnail with fallback to original
                         if (thumbSrc) {
-                            previewContainer.innerHTML = `<img src="${thumbSrc}" alt="${fieldName}" onerror="this.onerror=null; this.src='${originalSrc}';">`;
+                            img.src = thumbSrc;
+                            img.onerror = function() { this.onerror = null; this.src = originalSrc; };
                         } else {
-                            previewContainer.innerHTML = `<img src="${originalSrc}" alt="${fieldName}">`;
+                            img.src = originalSrc;
                         }
+                        previewContainer.appendChild(img);
                     }
                     if (pathInput) {
                         if (pathInput.tagName === 'INPUT') {
@@ -727,7 +741,12 @@ function createNewCard(fieldData, imageFiles, mainPhoto) {
         if (data.success) {
             if (typeof showToast === 'function') showToast('Card added successfully!');
             closeSideModal();
-            window.location.href = `?status=pending`;
+            // Refresh table in-place instead of full page reload
+            if (window.IDCardApp && typeof window.IDCardApp.refreshCardTable === 'function') {
+                window.IDCardApp.refreshCardTable();
+            } else {
+                window.location.href = `?status=pending`;
+            }
         } else {
             if (typeof showToast === 'function') showToast(data.message || 'Error adding card', false);
             if (IDCardApp._restoreSaveBtn) IDCardApp._restoreSaveBtn();
@@ -765,8 +784,10 @@ function updateExistingCard(cardId, fieldData, imageFiles, mainPhoto) {
         if (data.success) {
             if (typeof showToast === 'function') showToast('Card updated successfully!');
             closeSideModal();
-            // Force reload without cache
-            window.location.href = window.location.href.split('?')[0] + '?status=' + (typeof CURRENT_STATUS !== 'undefined' ? CURRENT_STATUS : 'pending') + '&t=' + Date.now();
+            // Update the row in-place instead of full page reload.
+            // This preserves scroll position and avoids losing user context.
+            _updateRowInPlace(cardId, data.card);
+            if (IDCardApp._restoreSaveBtn) IDCardApp._restoreSaveBtn();
         } else {
             // Check for concurrency conflict
             if (data.conflict) {
@@ -782,6 +803,95 @@ function updateExistingCard(cardId, fieldData, imageFiles, mainPhoto) {
         if (typeof showToast === 'function') showToast('Error updating card', false);
         if (IDCardApp._restoreSaveBtn) IDCardApp._restoreSaveBtn();
     });
+}
+
+// ==========================================
+// IN-PLACE ROW UPDATE (avoids full page reload)
+// ==========================================
+
+/**
+ * Update a single table row in-place after modal edit save.
+ * Falls back to HTMX refreshTable if the row is not found in the DOM.
+ */
+function _updateRowInPlace(cardId, cardData) {
+    const row = document.querySelector(`tr[data-card-id="${cardId}"]`);
+    if (!row || !cardData || !cardData.field_data) {
+        // Row not in DOM (filtered/paginated away) — do a soft table refresh
+        if (typeof refreshCardTable === 'function') {
+            refreshCardTable();
+        } else if (window.IDCardApp && typeof window.IDCardApp.refreshCardTable === 'function') {
+            window.IDCardApp.refreshCardTable();
+        }
+        return;
+    }
+
+    const fieldData = cardData.field_data;
+    const _esc = window.escapeHtml || function(s) {
+        return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+    };
+
+    // Update text/editable cells
+    row.querySelectorAll('td[data-field-name]').forEach(function(td) {
+        const fieldName = td.getAttribute('data-field-name');
+        if (!fieldName) return;
+        const newValue = fieldData[fieldName];
+        if (newValue === undefined) return;
+
+        td.setAttribute('data-original-value', _esc(newValue));
+
+        // Image cell — update src
+        if (td.classList.contains('image-field')) {
+            const img = td.querySelector('img.table-image');
+            if (img && newValue && newValue !== '' && !newValue.startsWith('PENDING:') && newValue !== 'NOT_FOUND') {
+                const cacheBuster = '?t=' + Date.now();
+                const thumbPath = window.getThumbPath ? window.getThumbPath(newValue) : newValue;
+                const thumbSrc = thumbPath ? '/media/' + thumbPath + cacheBuster : null;
+                const originalSrc = '/media/' + newValue + cacheBuster;
+                img.src = thumbSrc || originalSrc;
+                img.onerror = function() { this.onerror = null; this.src = originalSrc; };
+                // Remove any placeholder that might exist
+                const placeholder = td.querySelector('.no-image');
+                if (placeholder) placeholder.remove();
+                img.style.display = '';
+            }
+        } else {
+            // Text cell — update span
+            const span = td.querySelector('.cell-value');
+            if (span) {
+                span.textContent = newValue;
+            }
+        }
+    });
+
+    // Update the updated_at cell if present
+    if (cardData.updated_at) {
+        const dateCells = row.querySelectorAll('.date-cell');
+        if (dateCells.length > 0) {
+            const lastDateCell = dateCells[dateCells.length - 1];
+            // Only update if it looks like a timestamp cell (not downloaded_at/deleted_at)
+            if (lastDateCell.previousElementSibling && !lastDateCell.previousElementSibling.classList.contains('action-cell')) {
+                // The updated_at is typically the second to last cell
+            }
+        }
+    }
+
+    // Flash green to show success
+    row.style.transition = 'background 0.3s';
+    row.style.background = '#dcfce7';
+    setTimeout(function() {
+        row.style.background = '';
+        setTimeout(function() { row.style.transition = ''; }, 300);
+    }, 1500);
+
+    // Re-apply filters if active
+    if (window.IDCardApp && typeof window.IDCardApp.applyFiltersAndSort === 'function') {
+        window.IDCardApp.applyFiltersAndSort();
+    }
+
+    // Handle broken images
+    if (window.IDCardApp && typeof window.IDCardApp.handleBrokenImages === 'function') {
+        window.IDCardApp.handleBrokenImages();
+    }
 }
 
 // ==========================================
@@ -886,9 +996,7 @@ function initDeleteModal() {
     }
     
     if (deleteModalOverlay) {
-        deleteModalOverlay.addEventListener('click', function(e) {
-            if (e.target === this) closeDeleteModalFn();
-        });
+        // Disabled — prevent accidental closure on outside click
     }
     
     // Verification code input handler
@@ -964,7 +1072,12 @@ function initDeleteModal() {
                 closeDeleteModalFn();
                 if (data.success) {
                     if (typeof showToast === 'function') showToast(`${data.deleted_count} card(s) permanently deleted`);
-                    location.reload();
+                    // Use HTMX refresh instead of full page reload
+                    if (window.IDCardApp && typeof window.IDCardApp.refreshCardTable === 'function') {
+                        window.IDCardApp.refreshCardTable();
+                    } else {
+                        location.reload();
+                    }
                 } else {
                     if (typeof showToast === 'function') showToast(data.message || 'Error deleting cards', false);
                     confirmDeleteModal.disabled = false;
@@ -1023,9 +1136,7 @@ function initSimpleDeleteModal() {
         cancelBtn.addEventListener('click', closeSimpleDeleteModalFn);
     }
     if (modal) {
-        modal.addEventListener('click', function(e) {
-            if (e.target === this) closeSimpleDeleteModalFn();
-        });
+        // Disabled — prevent accidental closure on outside click
     }
     
     document.addEventListener('keydown', function(e) {
@@ -1054,7 +1165,12 @@ function initSimpleDeleteModal() {
                 closeSimpleDeleteModalFn();
                 if (data.success) {
                     if (typeof showToast === 'function') showToast(`${data.updated_count} card(s) deleted`);
-                    location.reload();
+                    // Use HTMX refresh instead of full page reload to preserve context
+                    if (window.IDCardApp && typeof window.IDCardApp.refreshCardTable === 'function') {
+                        window.IDCardApp.refreshCardTable();
+                    } else {
+                        location.reload();
+                    }
                 } else {
                     if (typeof showToast === 'function') showToast(data.message || 'Error deleting cards', false);
                     confirmBtn.disabled = false;
@@ -1111,7 +1227,11 @@ function initModalModule() {
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     if (formPhotoPreview) {
-                        formPhotoPreview.innerHTML = `<img src="${e.target.result}" alt="Photo">`;
+                        formPhotoPreview.innerHTML = '';
+                        var img = document.createElement('img');
+                        img.src = e.target.result;
+                        img.alt = 'Photo';
+                        formPhotoPreview.appendChild(img);
                     }
                 };
                 reader.readAsDataURL(this.files[0]);
@@ -1183,7 +1303,11 @@ function initModalModule() {
             reader.onload = function(ev) {
                 previewEl.classList.remove('no-path', 'pending-image', 'path-not-found');
                 previewEl.classList.add('has-image');
-                previewEl.innerHTML = `<img src="${ev.target.result}" alt="Preview">`;
+                previewEl.innerHTML = '';
+                var img = document.createElement('img');
+                img.src = ev.target.result;
+                img.alt = 'Preview';
+                previewEl.appendChild(img);
             };
             reader.readAsDataURL(file);
         }
@@ -1271,7 +1395,7 @@ function initModalModule() {
         const btn = document.getElementById(btnId);
         if (btn) {
             btn.addEventListener('click', function() {
-                const selectedIds = typeof getSelectedCardIds === 'function' ? getSelectedCardIds() : [];
+                const selectedIds = (window.IDCardApp && typeof window.IDCardApp.getSelectedCardIds === 'function') ? window.IDCardApp.getSelectedCardIds() : [];
                 if (selectedIds.length === 1) {
                     fetchCardAndOpenModal('edit', selectedIds[0]);
                 }
@@ -1285,7 +1409,7 @@ function initModalModule() {
         const btn = document.getElementById(btnId);
         if (btn) {
             btn.addEventListener('click', function() {
-                const selectedIds = typeof getSelectedCardIds === 'function' ? getSelectedCardIds() : [];
+                const selectedIds = (window.IDCardApp && typeof window.IDCardApp.getSelectedCardIds === 'function') ? window.IDCardApp.getSelectedCardIds() : [];
                 if (selectedIds.length === 1) {
                     fetchCardAndOpenModal('view', selectedIds[0]);
                 }
@@ -1363,7 +1487,7 @@ function initModalModule() {
         if (document.getElementById('deleteModalOverlay')?.classList.contains('active')) return;
         if (document.getElementById('simpleDeleteModalOverlay')?.classList.contains('active')) return;
         
-        const selectedIds = typeof getSelectedCardIds === 'function' ? getSelectedCardIds() : [];
+        const selectedIds = (window.IDCardApp && typeof window.IDCardApp.getSelectedCardIds === 'function') ? window.IDCardApp.getSelectedCardIds() : [];
         if (selectedIds.length === 0) return;
         
         e.preventDefault();

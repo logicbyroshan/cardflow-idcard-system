@@ -4,10 +4,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Manage Panel - Adarsh ID Cards</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>Manage Panel - Adarsh Admin</title>
   <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
   <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
   <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
+  <link rel="stylesheet" href="{% static 'css/common.css' %}">
+  <link rel="stylesheet" href="{% static 'css/manage-panel.css' %}">
   <link rel="stylesheet" href="{% static 'css/global-search.css' %}">
   <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
   <script defer src="{% static 'js/alpine-state.js' %}"></script>
@@ -17,10 +21,11 @@
   {% include 'partials/sidebar.html' %}
 
   <main class="main">
+    <!-- Top Navbar -->
     <header class="topbar">
       <div class="nav-left">
-        <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
-          <i class="fa-solid fa-bars"></i>
+        <button class="sidebar-toggle" id="sidebarToggle" @click="toggleSidebar()" aria-label="Toggle sidebar">
+          <i class="fa-solid" :class="sidebarOpen ? 'fa-xmark' : 'fa-bars'"></i>
         </button>
         <div class="breadcrumb">
           <a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
@@ -28,43 +33,436 @@
           <span class="breadcrumb-item active">Manage Panel</span>
         </div>
       </div>
+      <div class="nav-right" style="display:flex;align-items:center;gap:6px;">
+        <button class="global-search-btn" id="globalSearchBtn">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <span>Search ID cards...</span>
+          <kbd>Ctrl+K</kbd>
+        </button>
+        {% include 'partials/notification-bell.html' %}
+      </div>
     </header>
 
-    <div class="main-content">
-      <div class="flex flex-col items-center justify-center min-h-[calc(100vh-120px)] text-center px-3 py-6">
-        <div class="w-16 h-16 bg-primary flex items-center justify-center mb-3 rounded-sm">
-          <i class="fa-solid fa-sliders text-white text-2xl"></i>
+    <!-- Panel Content -->
+    <div class="panel-content">
+
+      <!-- Panel Header -->
+      <div class="panel-header">
+        <div class="panel-header-left">
+          <h1 class="panel-title"><i class="fa-solid fa-sliders"></i> Control Panel</h1>
+          <p class="panel-subtitle">System administration, notifications & monitoring</p>
         </div>
-        <h1 class="text-gray-800 mb-1 text-sm font-bold">Manage Panel</h1>
-        <p class="text-gray-500 max-w-[400px] mb-3 text-xs">
-          We're building something amazing! This feature will allow you to customize and manage your panel settings.
-        </p>
-        <span class="inline-flex items-center gap-1 bg-warning-bg border border-warning text-warning-dark font-semibold px-2.5 py-0.5 text-xs rounded-sm">
-          <i class="fa-solid fa-clock text-xs"></i> Coming Soon
-        </span>
-        <div class="flex flex-wrap gap-2 justify-center mt-4 max-w-[500px]">
-          <div class="flex items-center gap-1 bg-gray-50 border border-gray-200 text-gray-600 px-2.5 py-1 text-xs rounded-sm">
-            <i class="fa-solid fa-palette text-primary text-xs"></i> Theme Customization
+      </div>
+
+      <!-- Panel Tabs -->
+      <div class="panel-tabs">
+        <button class="panel-tab active" data-tab="notifications" onclick="switchTab('notifications')">
+          <i class="fa-solid fa-bell"></i> Notifications
+          <span class="panel-tab-badge" id="totalNotifCount">0</span>
+        </button>
+        <button class="panel-tab" data-tab="system" onclick="switchTab('system')">
+          <i class="fa-solid fa-server"></i> System Info
+        </button>
+        <button class="panel-tab" data-tab="quick-actions" onclick="switchTab('quick-actions')">
+          <i class="fa-solid fa-bolt"></i> Quick Actions
+        </button>
+      </div>
+
+      <!-- === NOTIFICATIONS TAB === -->
+      <div class="panel-tab-content active" id="tab-notifications">
+
+        <!-- Notification Actions Bar -->
+        <div class="notif-actions-bar">
+          <div class="notif-actions-left">
+            <div class="notif-search-box">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input type="text" id="notifSearch" placeholder="Search notifications..." oninput="debounceSearch()">
+            </div>
           </div>
-          <div class="flex items-center gap-1 bg-gray-50 border border-gray-200 text-gray-600 px-2.5 py-1 text-xs rounded-sm">
-            <i class="fa-solid fa-bell text-primary text-xs"></i> Notification Settings
+          <div class="notif-actions-right">
+            <button class="btn btn-primary" onclick="openCreateModal()">
+              <i class="fa-solid fa-plus"></i> New Notification
+            </button>
           </div>
-          <div class="flex items-center gap-1 bg-gray-50 border border-gray-200 text-gray-600 px-2.5 py-1 text-xs rounded-sm">
-            <i class="fa-solid fa-shield-halved text-primary text-xs"></i> Security Options
+        </div>
+
+        <!-- Notification Stats -->
+        <div class="notif-stats">
+          <div class="notif-stat-card">
+            <div class="notif-stat-icon notif-stat-icon-primary">
+              <i class="fa-solid fa-bell"></i>
+            </div>
+            <div class="notif-stat-info">
+              <div class="notif-stat-value" id="statTotal">0</div>
+              <div class="notif-stat-label">Total Sent</div>
+            </div>
           </div>
-          <div class="flex items-center gap-1 bg-gray-50 border border-gray-200 text-gray-600 px-2.5 py-1 text-xs rounded-sm">
-            <i class="fa-solid fa-database text-primary text-xs"></i> Backup & Restore
+          <div class="notif-stat-card">
+            <div class="notif-stat-icon notif-stat-icon-success">
+              <i class="fa-solid fa-users"></i>
+            </div>
+            <div class="notif-stat-info">
+              <div class="notif-stat-value" id="statBroadcast">0</div>
+              <div class="notif-stat-label">Broadcasts</div>
+            </div>
+          </div>
+          <div class="notif-stat-card">
+            <div class="notif-stat-icon notif-stat-icon-warning">
+              <i class="fa-solid fa-user-check"></i>
+            </div>
+            <div class="notif-stat-info">
+              <div class="notif-stat-value" id="statTargeted">0</div>
+              <div class="notif-stat-label">Targeted</div>
+            </div>
+          </div>
+          <div class="notif-stat-card">
+            <div class="notif-stat-icon notif-stat-icon-danger">
+              <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div class="notif-stat-info">
+              <div class="notif-stat-value" id="statUrgent">0</div>
+              <div class="notif-stat-label">Urgent</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notifications Table -->
+        <div class="notif-table-wrap">
+          <table class="notif-table">
+            <thead>
+              <tr>
+                <th scope="col" style="width:30%">Notification</th>
+                <th scope="col" style="width:12%">Category</th>
+                <th scope="col" style="width:10%">Priority</th>
+                <th scope="col" style="width:14%">Target</th>
+                <th scope="col" style="width:10%">Reads</th>
+                <th scope="col" style="width:14%">Sent</th>
+                <th scope="col" style="width:10%">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="notifTableBody">
+              <tr class="notif-table-empty">
+                <td colspan="7">
+                  <div class="empty-state">
+                    <i class="fa-solid fa-bell-slash"></i>
+                    <p>No notifications yet</p>
+                    <span>Create your first notification to get started</span>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Load More -->
+        <div class="notif-load-more" id="notifLoadMore" style="display:none;">
+          <button class="btn btn-neutral" onclick="loadMoreNotifications()">
+            <i class="fa-solid fa-arrow-down"></i> Load More
+          </button>
+        </div>
+      </div>
+
+      <!-- === SYSTEM INFO TAB === -->
+      <div class="panel-tab-content" id="tab-system">
+        <div class="system-grid">
+          <div class="system-card">
+            <div class="system-card-header">
+              <i class="fa-solid fa-info-circle"></i> Application
+            </div>
+            <div class="system-card-body">
+              <div class="system-row">
+                <span class="system-label">Version</span>
+                <span class="system-value">{{ APP_VERSION|default:"v1.3.0" }}</span>
+              </div>
+              <div class="system-row">
+                <span class="system-label">Environment</span>
+                <span class="system-value">{{ environment|default:"Production" }}</span>
+              </div>
+              <div class="system-row">
+                <span class="system-label">Django</span>
+                <span class="system-value">{{ django_version|default:"5.2" }}</span>
+              </div>
+              <div class="system-row">
+                <span class="system-label">Python</span>
+                <span class="system-value">{{ python_version|default:"3.12" }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="system-card">
+            <div class="system-card-header">
+              <i class="fa-solid fa-database"></i> Database
+            </div>
+            <div class="system-card-body">
+              <div class="system-row">
+                <span class="system-label">Total Users</span>
+                <span class="system-value">{{ total_users|default:0 }}</span>
+              </div>
+              <div class="system-row">
+                <span class="system-label">Total Clients</span>
+                <span class="system-value">{{ total_clients|default:0 }}</span>
+              </div>
+              <div class="system-row">
+                <span class="system-label">Total Cards</span>
+                <span class="system-value">{{ total_cards|default:0 }}</span>
+              </div>
+              <div class="system-row">
+                <span class="system-label">Active Tasks</span>
+                <span class="system-value">{{ active_tasks|default:0 }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="system-card">
+            <div class="system-card-header">
+              <i class="fa-solid fa-shield-halved"></i> Security
+            </div>
+            <div class="system-card-body">
+              <div class="system-row">
+                <span class="system-label">Admin Staff</span>
+                <span class="system-value">{{ total_admin_staff|default:0 }}</span>
+              </div>
+              <div class="system-row">
+                <span class="system-label">Client Staff</span>
+                <span class="system-value">{{ total_client_staff|default:0 }}</span>
+              </div>
+              <div class="system-row">
+                <span class="system-label">Debug Mode</span>
+                <span class="system-value">{% if debug_mode %}On{% else %}Off{% endif %}</span>
+              </div>
+              <div class="system-row">
+                <span class="system-label">Login Notifications</span>
+                <span class="system-value">Enabled</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="system-card">
+            <div class="system-card-header">
+              <i class="fa-solid fa-envelope"></i> Email
+            </div>
+            <div class="system-card-body">
+              <div class="system-row">
+                <span class="system-label">Backend</span>
+                <span class="system-value">{{ email_backend|default:"SMTP" }}</span>
+              </div>
+              <div class="system-row">
+                <span class="system-label">From Address</span>
+                <span class="system-value system-value-small">{{ email_from|default:"—" }}</span>
+              </div>
+              <div class="system-row">
+                <span class="system-label">Notifications Sent</span>
+                <span class="system-value">{{ total_notifications|default:0 }}</span>
+              </div>
+              <div class="system-row">
+                <span class="system-label">Threaded Delivery</span>
+                <span class="system-value system-value-active">Active</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+
+      <!-- === QUICK ACTIONS TAB === -->
+      <div class="panel-tab-content" id="tab-quick-actions">
+        <div class="quick-actions-grid">
+          <a href="{% url 'manage_clients' %}" class="quick-action-card">
+            <div class="qa-icon qa-icon-primary">
+              <i class="fa-solid fa-building"></i>
+            </div>
+            <div class="qa-info">
+              <h4>Manage Clients</h4>
+              <p>View, add or edit client accounts</p>
+            </div>
+            <i class="fa-solid fa-arrow-right qa-arrow"></i>
+          </a>
+          <a href="{% url 'manage_staff' %}" class="quick-action-card">
+            <div class="qa-icon qa-icon-purple">
+              <i class="fa-solid fa-users-gear"></i>
+            </div>
+            <div class="qa-info">
+              <h4>Manage Staff</h4>
+              <p>Admin & client staff management</p>
+            </div>
+            <i class="fa-solid fa-arrow-right qa-arrow"></i>
+          </a>
+          <a href="{% url 'active_clients' %}" class="quick-action-card">
+            <div class="qa-icon qa-icon-success">
+              <i class="fa-solid fa-id-card"></i>
+            </div>
+            <div class="qa-info">
+              <h4>ID Cards</h4>
+              <p>Active clients & card management</p>
+            </div>
+            <i class="fa-solid fa-arrow-right qa-arrow"></i>
+          </a>
+          <a href="{% url 'settings' %}" class="quick-action-card">
+            <div class="qa-icon qa-icon-warning">
+              <i class="fa-solid fa-gear"></i>
+            </div>
+            <div class="qa-info">
+              <h4>Settings</h4>
+              <p>Profile, password & preferences</p>
+            </div>
+            <i class="fa-solid fa-arrow-right qa-arrow"></i>
+          </a>
+          <a href="/panel/website/" class="quick-action-card">
+            <div class="qa-icon qa-icon-info">
+              <i class="fa-solid fa-globe"></i>
+            </div>
+            <div class="qa-info">
+              <h4>Website Admin</h4>
+              <p>Manage public website content</p>
+            </div>
+            <i class="fa-solid fa-arrow-right qa-arrow"></i>
+          </a>
+          <div class="quick-action-card" onclick="openCreateModal()" style="cursor:pointer;">
+            <div class="qa-icon qa-icon-danger">
+              <i class="fa-solid fa-bullhorn"></i>
+            </div>
+            <div class="qa-info">
+              <h4>Send Notification</h4>
+              <p>Broadcast to users & staff</p>
+            </div>
+            <i class="fa-solid fa-arrow-right qa-arrow"></i>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /.panel-content -->
   </main>
 
+  <!-- ================================================================
+       CREATE NOTIFICATION MODAL (center-modal from common.css)
+       ================================================================ -->
+  <div class="center-modal-overlay center-modal-theme-blue" id="createNotifModal" onclick="if(event.target===this)closeCreateModal()">
+    <div class="center-modal-card" style="max-width:620px;">
+      <div class="center-modal-icon" style="background:rgba(102,126,234,.1);">
+        <i class="fa-solid fa-bell" style="color:#667eea;font-size:20px;"></i>
+      </div>
+      <h3 class="center-modal-title">Create Notification</h3>
+      <p class="center-modal-subtitle">Send a message to users across the platform</p>
+
+      <form id="createNotifForm" onsubmit="return handleCreateNotif(event)">
+        {% csrf_token %}
+
+        <!-- Title -->
+        <label class="panel-form-label">Title *</label>
+        <input type="text" class="panel-form-input" id="notifTitle" placeholder="e.g. System Maintenance Scheduled" required maxlength="200">
+
+        <!-- Message -->
+        <label class="panel-form-label">Message *</label>
+        <textarea class="panel-form-input" id="notifMessage" placeholder="Write your notification message..." rows="3" required></textarea>
+
+        <!-- Row: Category + Priority -->
+        <div class="panel-form-row">
+          <div>
+            <label class="panel-form-label">Category</label>
+            <select class="panel-form-select" id="notifCategory">
+              <option value="general">General</option>
+              <option value="announcement">Announcement</option>
+              <option value="update">System Update</option>
+              <option value="maintenance">Maintenance</option>
+              <option value="alert">Alert</option>
+            </select>
+          </div>
+          <div>
+            <label class="panel-form-label">Priority</label>
+            <select class="panel-form-select" id="notifPriority">
+              <option value="low">Low</option>
+              <option value="normal" selected>Normal</option>
+              <option value="high">High</option>
+              <option value="urgent">Urgent</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Target -->
+        <label class="panel-form-label">Send To</label>
+        <select class="panel-form-select" id="notifTarget" onchange="handleTargetChange()">
+          <option value="all">All Users</option>
+          <option value="super_admin">Super Admins Only</option>
+          <option value="admin_staff">Admin Staff Only</option>
+          <option value="client">Clients Only</option>
+          <option value="client_staff">Client Staff Only</option>
+          <option value="selected">Select Specific Users...</option>
+        </select>
+
+        <!-- User picker (shown when target=selected) -->
+        <div id="userPickerWrap" style="display:none;">
+          <label class="panel-form-label">Select Users</label>
+          <div class="user-picker" id="userPicker">
+            <div class="user-picker-search">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input type="text" placeholder="Search users..." oninput="filterUserPicker(this.value)">
+            </div>
+            <div class="user-picker-list" id="userPickerList">
+              <div class="user-picker-empty">Loading users...</div>
+            </div>
+            <div class="user-picker-selected" id="userPickerSelected"></div>
+          </div>
+        </div>
+
+        <!-- Email option -->
+        <label class="email-toggle">
+          <input type="checkbox" id="notifSendEmail">
+          <span>Also send email notification</span>
+        </label>
+
+        <!-- Actions -->
+        <div class="center-modal-actions">
+          <button type="button" class="center-modal-btn center-modal-btn-cancel" onclick="closeCreateModal()">Cancel</button>
+          <button type="submit" class="center-modal-btn center-modal-btn-confirm" id="createNotifBtn">
+            <i class="fa-solid fa-paper-plane"></i> Send Notification
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Global Search Overlay -->
+  <div class="global-search-overlay" id="globalSearchOverlay">
+    <div class="global-search-modal">
+      <div class="global-search-header">
+        <div class="search-input-group">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="globalSearchInput" placeholder="Search ID cards by name, address, mobile..." autocomplete="off">
+          <button class="clear-global-search hidden" id="clearGlobalSearch">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="search-filter-group">
+          <label>Filter:</label>
+          <select id="globalSearchFilter">
+            <option value="all">All Fields</option>
+            <option value="name">Name</option>
+            <option value="address">Address</option>
+            <option value="mobile">Mobile</option>
+          </select>
+        </div>
+        <button class="close-global-search" id="closeGlobalSearch">
+          <i class="fa-solid fa-xmark"></i>
+          <span>ESC</span>
+        </button>
+      </div>
+      <div class="global-search-body" id="globalSearchResults">
+        <div class="search-placeholder">
+          <i class="fa-solid fa-search"></i>
+          <p>Search across all ID cards</p>
+          <span>Enter at least 2 characters to search</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
   {% include 'components/toast.html' %}
-  <script src="{% static 'js/core/api.js' %}"></script>
-  <script src="{% static 'js/core/toast.js' %}"></script>
-  <script src="{% static 'js/core/modal.js' %}"></script>
-  <script src="{% static 'js/core/utils.js' %}"></script>
-  <script src="{% static 'js/init.js' %}"></script>
+  <script defer src="{% static 'js/core/api.js' %}"></script>
+  <script defer src="{% static 'js/core/toast.js' %}"></script>
+  <script defer src="{% static 'js/core/modal.js' %}"></script>
+  <script defer src="{% static 'js/core/utils.js' %}"></script>
+  <script defer src="{% static 'js/init.js' %}"></script>
+  <script defer src="{% static 'js/global-search.js' %}"></script>
+  <script defer src="{% static 'js/notification-bell.js' %}"></script>
+  <script defer src="{% static 'js/manage-panel.js' %}"></script>
 </body>
 </html>

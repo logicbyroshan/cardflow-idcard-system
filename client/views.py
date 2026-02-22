@@ -21,14 +21,12 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
-from django.core.paginator import Paginator
 from django.db.models import Count, Q
 
-from core.models import Client, Staff, IDCardGroup, IDCardTable, IDCard
+from core.models import IDCardTable, IDCard
 from core.services import IDCardService
 from core.services.permission_service import PermissionService
 from core.utils.htmx import is_htmx
-from core.views.base import enrich_cards, get_page_range
 
 from .services import (
     ClientAccessService,
@@ -221,7 +219,7 @@ def manage_staff(request):
         return redirect('/panel/client/dashboard/')
     
     # Get Staff QuerySet directly for server-side table rendering
-    from staff.models import Staff
+    from staff.models import Staff  # local import: not needed at module level
     staff_list = Staff.objects.filter(
         client=client,
         staff_type='client_staff'
@@ -462,8 +460,8 @@ def api_staff_toggle_status(request, staff_id):
             'message': result.message
         }, status=status_code)
     except Exception:
-        import logging
-        logging.getLogger(__name__).exception("Staff toggle status error")
+        import logging as _logging
+        _logging.getLogger(__name__).exception("Staff toggle status error")
         return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 
 
@@ -474,7 +472,7 @@ def api_client_groups_list(request):
     API: Get list of ID card groups for the current client.
     Used in staff drawer for group assignment.
     """
-    from workflows.models import IDCardGroup
+    from workflows.models import IDCardGroup  # local import: group listing
     
     user = request.user
     client = ClientAccessService.get_client_for_user(user)
@@ -487,6 +485,64 @@ def api_client_groups_list(request):
     return JsonResponse({
         'success': True,
         'groups': groups_data
+    })
+
+
+@require_client_admin
+@require_http_methods(["GET"])
+def api_class_section_options(request):
+    """
+    API: Get distinct class and section values from all cards of this client.
+    Used in staff drawer for class/section filter assignment.
+    """
+    from core.models import IDCard, IDCardTable
+    from workflows.models import IDCardGroup
+
+    user = request.user
+    client = ClientAccessService.get_client_for_user(user)
+    if not client:
+        return JsonResponse({'success': False, 'message': 'Client not found'}, status=400)
+
+    # Get all tables for this client
+    group_ids = IDCardGroup.objects.filter(client=client).values_list('id', flat=True)
+    tables = IDCardTable.objects.filter(group_id__in=group_ids)
+
+    classes = set()
+    sections = set()
+
+    for table in tables:
+        # Determine which field names are class/section type
+        class_field = None
+        section_field = None
+        for field in (table.fields or []):
+            ft = field.get('type', '').lower()
+            fn = field.get('name', '')
+            if ft == 'class' or fn.lower() == 'class':
+                class_field = fn
+            elif ft == 'section' or fn.lower() == 'section':
+                section_field = fn
+
+        if not class_field and not section_field:
+            continue
+
+        # Query cards in this table
+        cards = IDCard.objects.filter(table=table).values_list('field_data', flat=True)
+        for fd in cards:
+            if not fd:
+                continue
+            if class_field:
+                val = fd.get(class_field, '') or fd.get(class_field.upper(), '') or fd.get(class_field.lower(), '')
+                if val:
+                    classes.add(str(val).strip())
+            if section_field:
+                val = fd.get(section_field, '') or fd.get(section_field.upper(), '') or fd.get(section_field.lower(), '')
+                if val:
+                    sections.add(str(val).strip())
+
+    return JsonResponse({
+        'success': True,
+        'classes': sorted(classes),
+        'sections': sorted(sections),
     })
 
 
@@ -529,8 +585,11 @@ def api_cards_list(request, table_id):
     """
     status_filter = request.GET.get('status', '')
     search = request.GET.get('search', '')
-    page = int(request.GET.get('page', 1))
-    per_page = int(request.GET.get('per_page', 20))
+    try:
+        page = int(request.GET.get('page', 1))
+        per_page = int(request.GET.get('per_page', 20))
+    except (ValueError, TypeError):
+        page, per_page = 1, 20
     offset = (page - 1) * per_page
     
     result = ClientCardService.get_cards(
@@ -692,8 +751,8 @@ def api_upload_images(request, table_id):
             'message': result.message
         }, status=status_code)
     except Exception:
-        import logging
-        logging.getLogger(__name__).exception("Image upload error")
+        import logging as _logging
+        _logging.getLogger(__name__).exception("Image upload error")
         return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 
 
@@ -717,31 +776,37 @@ def client_idcard_group(request):
     if not client:
         return redirect('/panel/client/dashboard/')
     
-    # Require at least one list permission (matches sidebar visibility logic)
+    # Check if user has any list permission (affects what content is shown)
     LIST_PERMISSIONS = [
         'perm_idcard_setting_list', 'perm_idcard_pending_list',
         'perm_idcard_verified_list', 'perm_idcard_approved_list',
         'perm_idcard_download_list', 'perm_idcard_pool_list',
         'perm_idcard_reprint_list',
     ]
-    if not any(PermissionService.has_permission(user, p) for p in LIST_PERMISSIONS):
-        return redirect('/panel/client/dashboard/')
+    has_any_list_perm = any(PermissionService.has_permission(user, p) for p in LIST_PERMISSIONS)
     
-    # Get all tables for this client's groups with status counts
-    tables = IDCardTable.objects.filter(group__client=client).select_related('group', 'group__client').annotate(
-        pending_count=Count('id_cards', filter=Q(id_cards__status='pending')),
-        verified_count=Count('id_cards', filter=Q(id_cards__status='verified')),
-        pool_count=Count('id_cards', filter=Q(id_cards__status='pool')),
-        approved_count=Count('id_cards', filter=Q(id_cards__status='approved')),
-        download_count=Count('id_cards', filter=Q(id_cards__status='download')),
-        reprint_count=Count('id_cards', filter=Q(id_cards__status='reprint')),
-        total_cards=Count('id_cards')
-    )
+    # Always render the page — show empty if no permissions
+    if has_any_list_perm:
+        tables = IDCardTable.objects.filter(group__client=client).select_related('group', 'group__client').annotate(
+            pending_count=Count('id_cards', filter=Q(id_cards__status='pending')),
+            verified_count=Count('id_cards', filter=Q(id_cards__status='verified')),
+            pool_count=Count('id_cards', filter=Q(id_cards__status='pool')),
+            approved_count=Count('id_cards', filter=Q(id_cards__status='approved')),
+            download_count=Count('id_cards', filter=Q(id_cards__status='download')),
+            reprint_count=Count('id_cards', filter=Q(id_cards__status='reprint')),
+            total_cards=Count('id_cards')
+        )
+    else:
+        tables = IDCardTable.objects.none()
+
+    # Get default group for Create with XLSX button
+    group = IDCardService.ensure_default_group(client)
     
     context = {
         'active_page': 'idcard_group',
         'user_role': user.get_role_display(),
         'client': client,
+        'group': group,
         'tables': tables,
     }
     return render(request, 'idcard-group.html', context)
@@ -796,26 +861,29 @@ def client_idcard_actions(request, table_id):
     return render(request, 'idcard-actions.html', context)
 
 
-@require_client_user
+@require_client_admin
 def client_group_settings(request):
     """
-    Group Settings page for clients — same template as admin group-setting.html.
+    Group Settings page for client admins only — not available to client_staff.
+    Same template as admin group-setting.html.
     """
     user = request.user
     client = _get_client_for_request(user)
     if not client:
         return redirect('/panel/client/dashboard/')
     
-    # Check permission
-    if not PermissionService.has_permission(user, 'perm_idcard_setting_list'):
-        return redirect('/panel/client/dashboard/')
+    # Always render — show empty if no permissions
+    has_perm = PermissionService.has_permission(user, 'perm_idcard_setting_list')
     
-    # Get the first group for client, or create one if none exists
-    from core.services import IDCardService
-    group = IDCardService.ensure_default_group(client)
-    tables = IDCardTable.objects.filter(group=group).annotate(
-        total_cards=Count('id_cards')
-    )
+    if has_perm:
+        # Get the first group for client, or create one if none exists
+        group = IDCardService.ensure_default_group(client)
+        tables = IDCardTable.objects.filter(group=group).annotate(
+            total_cards=Count('id_cards')
+        )
+    else:
+        group = None
+        tables = IDCardTable.objects.none()
     
     context = {
         'active_page': 'group_settings',
@@ -990,3 +1058,27 @@ def client_reprint_cards(request, table_id):
         'download_has_more': download_total > INITIAL_LOAD_LIMIT,
     }
     return render(request, 'reprint-cards.html', context)
+
+
+# =============================================================================
+# CREATE TABLE FROM XLSX (client side)
+# =============================================================================
+
+@require_client_admin
+@require_http_methods(["POST"])
+def client_api_create_table_from_xlsx(request):
+    """
+    Client wrapper for the Create-from-XLSX API.
+    Auto-detects the client's default group, then delegates to the core view.
+    """
+    user = request.user
+    client = _get_client_for_request(user)
+    if not client:
+        return JsonResponse({'success': False, 'message': 'Client not found.'}, status=403)
+
+    if not PermissionService.has_permission(user, 'perm_idcard_setting_add'):
+        return JsonResponse({'success': False, 'message': 'Permission denied.'}, status=403)
+
+    group = IDCardService.ensure_default_group(client)
+    from core.views.idcard_api import api_create_table_from_xlsx
+    return api_create_table_from_xlsx(request, group.id)

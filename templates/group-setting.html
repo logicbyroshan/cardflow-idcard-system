@@ -18,10 +18,10 @@
   <script defer src="{% static 'js/alpine-state.js' %}"></script>
   <!-- Alpine.js -->
   <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
-  <!-- Lazy-load helper (XLSX loaded on demand) -->
-  <script src="{% static 'js/core/lazy-load.js' %}"></script>
+  <!-- SheetJS for Excel export -->
+  <script defer src="{% static 'js/vendor/xlsx.full.min.js' %}"></script>
 </head>
-<body class="group-setting-page" x-data="layoutState()">
+<body class="group-setting-page" x-data="layoutState()" x-init="init()">
 
   {% include 'partials/sidebar.html' %}
 
@@ -31,8 +31,8 @@
     <!-- Top Navbar -->
     <header class="topbar">
       <div class="nav-left">
-        <button class="sidebar-toggle" id="sidebarToggle">
-          <i class="fa-solid fa-bars"></i>
+        <button class="sidebar-toggle" id="sidebarToggle" @click="toggleSidebar()" aria-label="Toggle sidebar">
+          <i class="fa-solid" :class="sidebarOpen ? 'fa-xmark' : 'fa-bars'"></i>
         </button>
         <div class="breadcrumb">
             {% if is_super_admin %}
@@ -61,11 +61,11 @@
       <div class="nav-right">
         <div class="page-switch-btns">
           {% if client %}
-          <a href="{% if is_client or is_client_staff %}{% url 'client:idcard_group' %}{% else %}{% url 'idcard_group' client.id %}{% endif %}" class="switch-btn" title="ID Card Group">
+          <a href="{% if is_client or is_client_staff %}{% url 'client:idcard_group' %}{% else %}{% url 'idcard_group' client.id %}{% endif %}" class="btn btn-md btn-neutral" title="ID Card Group">
             <i class="fa-solid fa-id-card"></i> <span>ID Card Group</span>
           </a>
           {% endif %}
-          <a href="#" class="switch-btn active" title="Group Setting">
+          <a href="#" class="btn btn-md btn-primary" title="Group Setting">
             <i class="fa-solid fa-table-list"></i> <span>Group Setting</span>
           </a>
         </div>
@@ -79,7 +79,7 @@
         <div class="drawer-content">
           <div class="drawer-header">
             <h3><i class="fa-solid fa-table-list" id="drawerIcon"></i> <span id="drawerTitle">Create New Group Table</span></h3>
-            <button class="drawer-close" id="closeDrawer"><i class="fa-solid fa-xmark"></i></button>
+            <button class="drawer-close" id="closeDrawer" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
           </div>
           <div class="drawer-body">
 
@@ -100,7 +100,7 @@
                     <div class="gs-field-col gs-field-col-type">
                       <label class="form-label">Field Type</label>
                       <div class="custom-dropdown field-type-dropdown" id="fieldTypeDropdown">
-                        <button type="button" class="dropdown-toggle gs-dropdown-toggle" id="fieldTypeToggle">
+                        <button type="button" class="dropdown-toggle gs-dropdown-toggle" id="fieldTypeToggle" aria-expanded="false">
                           <span>Text</span>
                           <i class="fa-solid fa-chevron-down"></i>
                         </button>
@@ -164,6 +164,9 @@
       <!-- Toast notification -->
       {% include 'partials/components/toast.html' %}
 
+      <!-- Create with XLSX Modal (2-step) -->
+      {% include 'partials/components/create-xlsx-modal.html' %}
+
       <!-- Action Bar -->
       <div class="action-bar">
         
@@ -171,7 +174,7 @@
         <div class="action-bar-left">
           <div class="filter-group">
             <div class="custom-dropdown" id="filterDropdown">
-              <button class="dropdown-toggle" id="dropdownToggle" type="button">
+              <button class="dropdown-toggle" id="dropdownToggle" type="button" aria-expanded="false">
                 <span id="selectedText">All</span>
                 <i class="fa-solid fa-chevron-down"></i>
               </button>
@@ -185,7 +188,7 @@
           <div class="search-box">
             <i class="fa-solid fa-magnifying-glass search-icon"></i>
             <input type="text" id="searchInput" placeholder="Search All..." class="search-input" autocomplete="off">
-            <button class="search-clear-btn" id="searchClearBtn" type="button" title="Clear search">
+            <button class="search-clear-btn" id="searchClearBtn" type="button" title="Clear search" aria-label="Clear search">
                 <i class="fa-solid fa-xmark"></i>
             </button>
           </div>
@@ -212,6 +215,12 @@
               <button id="toggle-status-btn" class="btn btn-md btn-warning" disabled><i class="fa-solid fa-check"></i> Active</button>
               {% endif %}
             </div>
+            {% if is_super_admin or perm_idcard_setting_add %}
+            <div class="btn-separator"></div>
+            <div class="btn-group">
+              <button class="btn btn-md btn-success" id="createFromXlsxBtn" title="Create table directly from an XLSX file"><i class="fa-solid fa-file-excel"></i> Create with XLSX</button>
+            </div>
+            {% endif %}
           </div>
         </div>
       </div>
@@ -233,13 +242,13 @@
   </script>
   
   <!-- Core Modules (Load Order: api → toast → modal → utils → init) -->
-  <script src="{% static 'js/core/api.js' %}"></script>
-  <script src="{% static 'js/core/toast.js' %}"></script>
-  <script src="{% static 'js/core/modal.js' %}"></script>
-  <script src="{% static 'js/core/utils.js' %}"></script>
-  <script src="{% static 'js/init.js' %}"></script>
-  <script src="{% static 'js/group-setting.js' %}"></script>
-  <script src="{% static 'js/global-search.js' %}"></script>
+  <script defer src="{% static 'js/core/api.js' %}"></script>
+  <script defer src="{% static 'js/core/toast.js' %}"></script>
+  <script defer src="{% static 'js/core/modal.js' %}"></script>
+  <script defer src="{% static 'js/core/utils.js' %}"></script>
+  <script defer src="{% static 'js/init.js' %}"></script>
+  <script defer src="{% static 'js/group-setting.js' %}"></script>
+  <script defer src="{% static 'js/global-search.js' %}"></script>
   {% include 'partials/htmx-config.html' %}
   <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -250,6 +259,22 @@
         filters: []
       });
     });
+  </script>
+
+  <!-- Create with XLSX logic -->
+  <script defer src="{% static 'js/create-xlsx.js' %}"></script>
+  <script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var isClientRole = {% if is_client or is_client_staff %}true{% else %}false{% endif %};
+    var apiUrl = isClientRole
+      ? '/panel/client/api/create-from-xlsx/'
+      : '/panel/api/group/' + GROUP_ID + '/table/create-from-xlsx/';
+    initCreateWithXlsx({
+      apiUrl: apiUrl,
+      csrfToken: '{{ csrf_token }}',
+      onSuccess: function() { document.body.dispatchEvent(new Event('refreshTable')); }
+    });
+  });
   </script>
 </body>
 </html>

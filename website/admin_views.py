@@ -16,7 +16,7 @@ import logging
 from django.core.exceptions import ValidationError
 from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_GET
 
 from core.services.permission_service import (
     PermissionService,
@@ -45,6 +45,7 @@ from .services import (
     PortfolioItemService,
     PortfolioCategoryService,
     HeroImageService,
+    ReelService,
     _parse_bool,
 )
 
@@ -307,6 +308,7 @@ def api_business_toggle_status(request):
 # API — TRUSTED CLIENTS
 # =============================================================================
 
+@require_GET
 @website_admin_required
 def api_client_list(request):
     """List trusted clients."""
@@ -337,10 +339,14 @@ def api_client_create(request):
     return JsonResponse({'success': True, 'message': 'Client created', 'id': client.id})
 
 
+@require_GET
 @website_admin_required
 def api_client_get(request, pk):
     """Get a single trusted client."""
-    c = TrustedClientService.get(pk)
+    try:
+        c = TrustedClientService.get(pk)
+    except Exception:
+        return JsonResponse({'success': False, 'message': 'Client not found'}, status=404)
     return JsonResponse({
         'success': True,
         'client': {
@@ -398,6 +404,7 @@ def api_client_toggle(request, pk):
 # API — TESTIMONIALS / REVIEWS
 # =============================================================================
 
+@require_GET
 @website_admin_required
 def api_review_list(request):
     """List testimonials."""
@@ -437,10 +444,14 @@ def api_review_create(request):
     return JsonResponse({'success': True, 'message': 'Review created', 'id': review.id})
 
 
+@require_GET
 @website_admin_required
 def api_review_get(request, pk):
     """Get a single review."""
-    r = TestimonialService.get(pk)
+    try:
+        r = TestimonialService.get(pk)
+    except Exception:
+        return JsonResponse({'success': False, 'message': 'Review not found'}, status=404)
     return JsonResponse({
         'success': True,
         'review': {
@@ -506,6 +517,7 @@ def api_review_toggle(request, pk):
 # API — PORTFOLIO / OUR WORKS
 # =============================================================================
 
+@require_GET
 @website_admin_required
 def api_portfolio_list(request):
     """List portfolio items."""
@@ -547,10 +559,14 @@ def api_portfolio_create(request):
     return JsonResponse({'success': True, 'message': 'Portfolio item created', 'id': item.id})
 
 
+@require_GET
 @website_admin_required
 def api_portfolio_get(request, pk):
     """Get a single portfolio item."""
-    p = PortfolioItemService.get(pk)
+    try:
+        p = PortfolioItemService.get(pk)
+    except Exception:
+        return JsonResponse({'success': False, 'message': 'Portfolio item not found'}, status=404)
     return JsonResponse({
         'success': True,
         'item': {
@@ -618,6 +634,7 @@ def api_portfolio_toggle(request, pk):
 # API — PORTFOLIO CATEGORIES
 # =============================================================================
 
+@require_GET
 @website_admin_required
 def api_portfolio_category_list(request):
     """List portfolio categories."""
@@ -694,6 +711,7 @@ def api_portfolio_category_delete(request, pk):
 # API — HERO IMAGES
 # =============================================================================
 
+@require_GET
 @website_edit_required
 def api_hero_image_list(request):
     """GET: return all hero images ordered by position."""
@@ -781,3 +799,121 @@ def api_hero_image_reorder(request):
         return JsonResponse({'success': True, 'message': 'Order updated'})
     except (json.JSONDecodeError, ValueError):
         return JsonResponse({'success': False, 'message': 'Invalid data'}, status=400)
+
+
+# =============================================================================
+# PAGE VIEW — REELS
+# =============================================================================
+
+@website_admin_required
+def reels_page(request):
+    """Reels management page."""
+    context = _get_base_context(request, 'reels')
+    context['reels'] = Reel.objects.all().order_by('order', '-created_at')
+    return render(request, 'website/admin/reels.html', context)
+
+
+# =============================================================================
+# API — REELS
+# =============================================================================
+
+@require_GET
+@website_admin_required
+def api_reel_list(request):
+    """List all reels."""
+    qs = ReelService.list_all()
+    data = [{
+        'id': r.id,
+        'title': r.title,
+        'thumbnail': r.thumbnail.url if r.thumbnail else None,
+        'video_file': r.video_file.url if r.video_file else None,
+        'video_url': r.video_url or None,
+        'order': r.order,
+        'is_active': r.is_active,
+        'created_at': r.created_at.strftime('%Y-%m-%d'),
+    } for r in qs]
+    return JsonResponse({'success': True, 'reels': data})
+
+
+@require_POST
+@website_add_required
+def api_reel_create(request):
+    """Create a reel."""
+    try:
+        reel = ReelService.create(
+            title=request.POST.get('title', ''),
+            order=int(request.POST.get('order', 0)),
+            is_active=_parse_bool(request.POST.get('is_active', 'true')),
+            video_file=request.FILES.get('video_file'),
+            thumbnail=request.FILES.get('thumbnail'),
+        )
+    except ValidationError as e:
+        return JsonResponse({'success': False, 'message': e.message}, status=400)
+    ActivityService.log_website_update(request, 'reel added')
+    return JsonResponse({'success': True, 'message': 'Reel created', 'id': reel.id})
+
+
+@require_GET
+@website_admin_required
+def api_reel_get(request, pk):
+    """Get a single reel."""
+    try:
+        r = ReelService.get(pk)
+    except Exception:
+        return JsonResponse({'success': False, 'message': 'Reel not found'}, status=404)
+    return JsonResponse({
+        'success': True,
+        'reel': {
+            'id': r.id,
+            'title': r.title,
+            'thumbnail': r.thumbnail.url if r.thumbnail else None,
+            'video_file': r.video_file.url if r.video_file else None,
+            'video_url': r.video_url or None,
+            'order': r.order,
+            'is_active': r.is_active,
+        }
+    })
+
+
+@require_POST
+@website_edit_required
+def api_reel_update(request, pk):
+    """Update a reel."""
+    try:
+        ReelService.update(
+            pk,
+            title=request.POST.get('title'),
+            order=request.POST.get('order'),
+            is_active=request.POST.get('is_active'),
+            video_file=request.FILES.get('video_file'),
+            thumbnail=request.FILES.get('thumbnail'),
+        )
+    except ValidationError as e:
+        return JsonResponse({'success': False, 'message': e.message}, status=400)
+    ActivityService.log_website_update(request, 'reel updated')
+    return JsonResponse({'success': True, 'message': 'Reel updated'})
+
+
+@require_POST
+@website_delete_required
+def api_reel_delete(request, pk):
+    """Delete a reel."""
+    try:
+        ReelService.delete(pk)
+        ActivityService.log_website_update(request, 'reel deleted')
+        return JsonResponse({'success': True, 'message': 'Reel deleted'})
+    except Exception as e:
+        logging.getLogger(__name__).exception("Reel delete error: %s", e)
+        return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
+
+
+@require_POST
+@website_edit_required
+def api_reel_toggle(request, pk):
+    """Toggle reel active/inactive."""
+    try:
+        is_active = ReelService.toggle(pk)
+        return JsonResponse({'success': True, 'is_active': is_active})
+    except Exception as e:
+        logging.getLogger(__name__).exception("Reel toggle error: %s", e)
+        return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
