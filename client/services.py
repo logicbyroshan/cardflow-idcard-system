@@ -456,14 +456,13 @@ class ClientStaffService(BaseService):
                 staff_user = User.objects.create_user(
                     username=username,
                     email=email,
+                    password=password,
                     first_name=first_name,
                     last_name=last_name,
                     phone=phone,
                     role='client_staff',
                     is_active=data.get('is_active', True),
                 )
-                staff_user.set_password(password)
-                staff_user.save()
                 
                 # Build staff kwargs
                 staff_kwargs = {

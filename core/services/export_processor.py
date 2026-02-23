@@ -211,16 +211,16 @@ def process_export_zip(task):
                 full_zip = os.path.join(settings.MEDIA_ROOT, zip_path)
                 if os.path.exists(full_zip):
                     os.remove(full_zip)
-            except Exception:
-                pass
+            except Exception as cleanup_err:
+                logger.warning('Failed to cleanup partial ZIP %s: %s', zip_path, cleanup_err)
         # Cleanup any fully created ZIPs
         for zip_info in zip_files_created:
             try:
                 full_path = os.path.join(settings.MEDIA_ROOT, zip_info['path'])
                 if os.path.exists(full_path):
                     os.remove(full_path)
-            except Exception:
-                pass
+            except Exception as cleanup_err:
+                logger.warning('Failed to cleanup ZIP %s: %s', zip_info.get('path', '?'), cleanup_err)
         
         logger.exception("ZIP export failed: %s", e)
         task.mark_failed(str(e))
@@ -316,8 +316,8 @@ def process_export_pdf(task):
         if 'pdf_path' in locals() and os.path.exists(pdf_path):
             try:
                 os.remove(pdf_path)
-            except Exception:
-                pass
+            except Exception as cleanup_err:
+                logger.warning('Failed to cleanup partial PDF %s: %s', pdf_path, cleanup_err)
         logger.exception("PDF export failed: %s", e)
         task.mark_failed(str(e))
 
@@ -410,8 +410,8 @@ def process_export_docx(task):
         if 'docx_path' in locals() and os.path.exists(docx_path):
             try:
                 os.remove(docx_path)
-            except Exception:
-                pass
+            except Exception as cleanup_err:
+                logger.warning('Failed to cleanup partial DOCX %s: %s', docx_path, cleanup_err)
         logger.exception("DOCX export failed: %s", e)
         task.mark_failed(str(e))
 
@@ -504,7 +504,7 @@ def process_export_excel(task):
         if 'excel_path' in locals() and os.path.exists(excel_path):
             try:
                 os.remove(excel_path)
-            except Exception:
-                pass
+            except Exception as cleanup_err:
+                logger.warning('Failed to cleanup partial Excel %s: %s', excel_path, cleanup_err)
         logger.exception("Excel export failed: %s", e)
         task.mark_failed(str(e))

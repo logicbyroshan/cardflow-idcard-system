@@ -194,7 +194,7 @@ class ZipExporter:
         used_names = {}
         
         # Maximum images per ZIP to prevent memory issues
-        MAX_IMAGES_PER_ZIP = 1000
+        MAX_IMAGES_PER_ZIP = 5000
         
         try:
             with zipfile.ZipFile(zip_tmp_path, 'w', zipfile.ZIP_DEFLATED) as zf:
@@ -215,29 +215,31 @@ class ZipExporter:
                         continue
                     
                     try:
-                        if default_storage.exists(img_path):
-                            with default_storage.open(img_path, 'rb') as img_file:
-                                img_data = img_file.read()
+                        with default_storage.open(img_path, 'rb') as img_file:
+                            img_data = img_file.read()
+                            
+                            # Minimum valid image size check
+                            if img_data and len(img_data) >= 100:
+                                base = os.path.basename(img_path)
+                                # Sanitize filename for ZIP entry
+                                base = re.sub(r'[\x00-\x1f\x7f<>:"/\\|?*]', '_', base)
+                                if not base or base == '.':
+                                    base = 'image.jpg'
+                                if base in used_names:
+                                    used_names[base] += 1
+                                    name, ext = os.path.splitext(base)
+                                    download_filename = f"{name}_{used_names[base]}{ext}"
+                                else:
+                                    used_names[base] = 0
+                                    download_filename = base
+                                zf.writestr(download_filename, img_data)
+                                images_count += 1
                                 
-                                # Minimum valid image size check
-                                if img_data and len(img_data) >= 100:
-                                    base = os.path.basename(img_path)
-                                    # Sanitize filename for ZIP entry
-                                    base = re.sub(r'[\x00-\x1f\x7f<>:"/\\|?*]', '_', base)
-                                    if not base or base == '.':
-                                        base = 'image.jpg'
-                                    if base in used_names:
-                                        used_names[base] += 1
-                                        name, ext = os.path.splitext(base)
-                                        download_filename = f"{name}_{used_names[base]}{ext}"
-                                    else:
-                                        used_names[base] = 0
-                                        download_filename = base
-                                    zf.writestr(download_filename, img_data)
-                                    images_count += 1
-                                    
-                                    # Free memory for large images
-                                    del img_data
+                                # Free memory for large images
+                                del img_data
+                    except FileNotFoundError:
+                        # Image file doesn't exist on disk — skip silently
+                        continue
                     except Exception:
                         # Skip problematic images silently
                         continue

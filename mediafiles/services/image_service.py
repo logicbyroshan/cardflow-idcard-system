@@ -305,20 +305,22 @@ class ImageService:
 
         saved_path = result.data.get('path', '')
 
-        # CardMedia: delete old, create new
+        # CardMedia: delete old, create new (atomic to prevent data loss)
         if card and saved_path:
             try:
+                from django.db import transaction
                 from ..models import CardMedia
-                CardMedia.objects.filter(card=card, field_name=field_name).delete()
-                cls.create_media_record(
-                    saved_path=saved_path,
-                    client=client,
-                    card=card,
-                    field_name=field_name,
-                    media_type='photo',
-                    original_filename=original_filename,
-                    uploaded_by=uploaded_by,
-                )
+                with transaction.atomic():
+                    CardMedia.objects.filter(card=card, field_name=field_name).delete()
+                    cls.create_media_record(
+                        saved_path=saved_path,
+                        client=client,
+                        card=card,
+                        field_name=field_name,
+                        media_type='photo',
+                        original_filename=original_filename,
+                        uploaded_by=uploaded_by,
+                    )
             except Exception as cm_err:
                 logger.warning("CardMedia update failed in replace_image for %s: %s", field_name, cm_err)
 
@@ -871,18 +873,10 @@ class ImageService:
                     )
                     return None
 
-                # Phase 2: If original missing on disk, fall back to thumbnail
+                # Phase 2: Check if original exists on disk
                 try:
                     if default_storage.exists(path):
                         return path
-                    # Original missing — check thumbnail as fallback
-                    thumb_path = ThumbnailService.get_thumbnail_path(path)
-                    if thumb_path and default_storage.exists(thumb_path):
-                        logger.info(
-                            "Original missing, falling back to thumbnail: %s -> %s",
-                            path, thumb_path,
-                        )
-                        return thumb_path
                 except Exception:
                     pass
                 # Return path anyway for backward compat (callers check existence)

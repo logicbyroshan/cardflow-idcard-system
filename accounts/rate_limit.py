@@ -59,7 +59,7 @@ def rate_limit(max_requests=5, window_seconds=60, key_prefix='rl'):
                 # Key doesn't exist yet — initialize it
                 cache.set(cache_key, 1, window_seconds)
                 hits = 1
-            if hits >= max_requests:
+            if hits > max_requests:
                 logger.warning('Rate limit hit: %s from %s', view_func.__name__, ip)
                 return JsonResponse({
                     'success': False,

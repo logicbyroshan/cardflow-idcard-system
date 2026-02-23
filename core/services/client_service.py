@@ -146,13 +146,12 @@ class ClientService(BaseService):
                 user = User.objects.create_user(
                     username=username,
                     email=email,
+                    password=password,
                     first_name=name_parts[0] if name_parts else '',
                     last_name=' '.join(name_parts[1:]) if len(name_parts) > 1 else '',
                     phone=data.get('phone', ''),
                     role='client',
                 )
-                user.set_password(password)
-                user.save()
                 
                 # Build client kwargs
                 client_kwargs = {
@@ -649,8 +648,8 @@ class ClientService(BaseService):
                     email=user.email,
                     request=request,
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.getLogger(__name__).warning('Password change email failed for %s: %s', user.email, e)
 
             return ServiceResult(
                 success=True,

@@ -1065,7 +1065,7 @@ def api_generate_delete_code(request, table_id):
     _tbl, err = _check_client_scope_by_table(request.user, table_id)
     if err: return err
     try:
-        table = get_object_or_404(IDCardTable, id=table_id)
+        table = _tbl  # Reuse already-fetched table from scope check
         total = IDCard.objects.filter(table=table).count()
         
         code = str(secrets.randbelow(900000) + 100000)
@@ -1090,7 +1090,7 @@ def api_generate_upgrade_code(request, table_id):
     _tbl, err = _check_client_scope_by_table(request.user, table_id)
     if err: return err
     try:
-        table = get_object_or_404(IDCardTable, id=table_id)
+        table = _tbl  # Reuse already-fetched table from scope check
         download_count = IDCard.objects.filter(table=table, status='download').count()
 
         code = str(secrets.randbelow(900000) + 100000)
@@ -1174,7 +1174,7 @@ def api_table_status_counts(request, table_id):
     _tbl, err = _check_client_scope_by_table(request.user, table_id)
     if err: return err
     try:
-        table = get_object_or_404(IDCardTable, id=table_id)
+        table = _tbl  # Reuse already-fetched table from scope check
         status_counts = IDCardService.get_status_counts(table)
         
         return JsonResponse({
@@ -1216,7 +1216,7 @@ def api_idcard_bulk_upload(request, table_id):
         except Exception:
             pass  # Non-critical — proceed if check fails
         
-        table = get_object_or_404(IDCardTable, id=table_id)
+        table = get_object_or_404(IDCardTable.objects.select_related('group__client'), id=table_id)
         
         if 'file' not in request.FILES:
             return JsonResponse({'success': False, 'message': 'No file uploaded!'}, status=400)
@@ -1813,6 +1813,7 @@ def api_idcard_bulk_upload(request, table_id):
                                     logger.warning("Bulk upload image save failed: %s", result.message)
                                 cards_created -= 1  # Revert since we incremented early
                             except Exception as photo_error:
+                                cards_created -= 1  # Revert temporary increment
                                 # Log but don't break the whole process
                                 logger.error("Error saving photo (XLSX) for %s: %s", photo_column_value, photo_error)
                                 # Save as PENDING so it can be reuploaded later
@@ -1930,6 +1931,9 @@ def api_idcard_bulk_upload(request, table_id):
             total_photos_matched = 0
             errors = []
             
+            # Track saved image paths for rollback cleanup (mirrors XLSX path)
+            _csv_saved_image_paths = []
+            
             # Collect all CSV rows and reverse so first Excel row gets highest DB id
             # (preserves Excel order when displayed newest-first)
             csv_rows = list(reader)
@@ -1943,9 +1947,10 @@ def api_idcard_bulk_upload(request, table_id):
                     'message': f'File has {len(csv_rows)} rows. Maximum allowed is {MAX_BULK_ROWS}.'
                 }, status=400)
             
-            with transaction.atomic():
-              for row_num, row in enumerate(csv_rows, start=2):
-                try:
+            try:
+              with transaction.atomic():
+                for row_num, row in enumerate(csv_rows, start=2):
+                  try:
                     # Skip empty rows
                     if all(not v or str(v).strip() == '' for v in row.values()):
                         continue
@@ -2022,6 +2027,7 @@ def api_idcard_bulk_upload(request, table_id):
                                 if result.success and result.data.get('final_value'):
                                     saved_path = result.data['final_value']
                                     field_data[img_field] = saved_path
+                                    _csv_saved_image_paths.append(saved_path)
                                     photos_matched += 1
                                     total_photos_matched += 1
                                 else:
@@ -2029,6 +2035,7 @@ def api_idcard_bulk_upload(request, table_id):
                                     logger.warning("Bulk upload image save failed: %s", result.message)
                                 cards_created -= 1  # Revert since we incremented early
                             except Exception as photo_error:
+                                cards_created -= 1  # Revert temporary increment
                                 # Log but don't break the whole process
                                 logger.error("Error saving photo (CSV) for %s: %s", photo_column_value, photo_error)
                                 # Save as PENDING so it can be reuploaded later
@@ -2069,8 +2076,18 @@ def api_idcard_bulk_upload(request, table_id):
                             except Exception as media_err:
                                 logger.warning("Failed to create CardMedia for CSV bulk %s: %s", img_field, media_err)
                     
-                except Exception as e:
+                  except Exception as e:
                     errors.append(f'Row {row_num}: {str(e)}')
+            except Exception as atomic_err:
+                # Transaction rolled back — clean up orphaned image files saved to disk
+                logger.error("CSV bulk upload transaction failed, cleaning up %d images: %s",
+                             len(_csv_saved_image_paths), atomic_err)
+                for orphan_path in _csv_saved_image_paths:
+                    try:
+                        ImageService.delete_image(orphan_path)
+                    except Exception:
+                        pass
+                raise  # Re-raise so the outer try/except returns error response
         
         else:
             return JsonResponse({
@@ -2138,7 +2155,7 @@ def api_idcard_reupload_images(request, table_id):
         import zipfile
         from django.db import transaction
         
-        table = get_object_or_404(IDCardTable, id=table_id)
+        table = get_object_or_404(IDCardTable.objects.select_related('group__client'), id=table_id)
         client = table.group.client
         
         if 'photos_zip' not in request.FILES:

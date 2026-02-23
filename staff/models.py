@@ -126,4 +126,5 @@ class Staff(models.Model):
         indexes = [
             models.Index(fields=['staff_type', 'created_at']),
             models.Index(fields=['created_at']),
+            models.Index(fields=['client', 'staff_type']),
         ]

@@ -173,20 +173,8 @@ class CardMedia(models.Model):
         return self.original_filename
     
     def delete(self, *args, **kwargs):
-        """Delete the file when the record is deleted"""
-        if self.file:
-            # Store path before deletion
-            storage = self.file.storage
-            path = self.file.name
-            # Delete the record first
-            super().delete(*args, **kwargs)
-            # Then delete the file
-            try:
-                storage.delete(path)
-            except Exception:
-                pass  # File may already be deleted
-        else:
-            super().delete(*args, **kwargs)
+        """Delete the record. File cleanup is handled by the pre_delete signal."""
+        super().delete(*args, **kwargs)
 
 
 @receiver(pre_delete, sender=CardMedia)
@@ -195,5 +183,9 @@ def cleanup_cardmedia_file(sender, instance, **kwargs):
     if instance.file:
         try:
             instance.file.storage.delete(instance.file.name)
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(
+                "Failed to delete file %s for CardMedia %s: %s",
+                instance.file.name, instance.pk, e
+            )

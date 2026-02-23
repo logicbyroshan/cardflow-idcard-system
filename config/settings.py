@@ -276,7 +276,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # Max size for request body (1 GB — covers bulk XLSX + ZIP uploads)
 # Files >10 MB are spilled to disk by Django (FILE_UPLOAD_MAX_MEMORY_SIZE),
 # so large ZIPs are streamed to a temp file, NOT held in RAM.
-DATA_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024 * 1024  # 1 GB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 1 * 1024 * 1024 * 1024  # 1 GB
 
 # Max size for a single uploaded file kept in memory before spilling to disk (10 MB)
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10 MB

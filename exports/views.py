@@ -142,8 +142,8 @@ def _get_card_ids_from_request(request, table_id: int = None) -> Optional[List[i
                 except (ValueError, TypeError):
                     pass
             card_ids = list(qs.order_by('id').values_list('id', flat=True)[:MAX_EXPORT_CARD_IDS])
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Export card_ids fallback query failed for table %s: %s", table_id, e)
     
     return card_ids if card_ids else None
 
@@ -178,7 +178,7 @@ def _check_export_client_scope(request, table_id):
     Returns:
         None if permitted, JsonResponse with error if not
     """
-    table = get_object_or_404(IDCardTable, id=table_id)
+    table = get_object_or_404(IDCardTable.objects.select_related('group'), id=table_id)
     if not PermissionService.can_access_client(request.user, table.group.client_id):
         return JsonResponse({
             'success': False,
@@ -348,8 +348,8 @@ def api_export_docx(request, table_id: int) -> HttpResponse:
 # PDF EXPORT
 # =============================================================================
 
-# PDF generation is memory-intensive; use a lower limit
-MAX_PDF_EXPORT_CARD_IDS = 2000
+# PDF generation is memory-intensive
+MAX_PDF_EXPORT_CARD_IDS = 5000
 
 @login_required
 @require_POST
@@ -430,8 +430,8 @@ def api_export_pdf(request, table_id: int) -> HttpResponse:
 # IMAGE ZIP EXPORT
 # =============================================================================
 
-# Image/ZIP exports are memory-intensive; use a reasonable limit
-MAX_ZIP_EXPORT_CARD_IDS = 3000
+# Image/ZIP exports
+MAX_ZIP_EXPORT_CARD_IDS = 5000
 
 @login_required
 @require_POST
@@ -606,7 +606,6 @@ def api_download_all_cards(request, table_id: int) -> JsonResponse:
         "total_files": 3
     }
     """
-    import gc  # For memory cleanup
     
     # Check permission
     perm_error = _check_export_permission(request)
@@ -619,7 +618,7 @@ def api_download_all_cards(request, table_id: int) -> JsonResponse:
         return scope_error
     
     try:
-        table = get_object_or_404(IDCardTable, id=table_id)
+        table = get_object_or_404(IDCardTable.objects.select_related('group__client'), id=table_id)
     except Exception:
         return JsonResponse({'success': False, 'message': 'Table not found'}, status=404)
     
@@ -644,9 +643,9 @@ def api_download_all_cards(request, table_id: int) -> JsonResponse:
         files = []
         counter = 0
         
-        # Memory-efficient limits
-        MAX_CARDS_PER_STATUS = 1000  # Reduced from 2000
-        MAX_TOTAL_CARDS = 3000  # Total card limit across all statuses
+        # Export limits per download-all
+        MAX_CARDS_PER_STATUS = 15000
+        MAX_TOTAL_CARDS = 15000  # Total card limit across all statuses
         total_cards_processed = 0
         
         for status_key, status_label in _DOWNLOAD_ALL_STATUSES.items():
@@ -691,9 +690,6 @@ def api_download_all_cards(request, table_id: int) -> JsonResponse:
             except Exception as e:
                 logger.error("XLSX export failed for status %s: %s", status_key, e)
             
-            # Force garbage collection after XLSX
-            gc.collect()
-            
             # Generate ZIP(s) for image fields (base64) - use batched processing
             try:
                 zip_result = zip_exporter.export_images(table, cards, status=status_key)
@@ -711,9 +707,6 @@ def api_download_all_cards(request, table_id: int) -> JsonResponse:
                 del zip_result
             except Exception as e:
                 logger.error("ZIP export failed for status %s: %s", status_key, e)
-            
-            # Force garbage collection after each status to prevent memory buildup
-            gc.collect()
         
         if not files:
             return JsonResponse({

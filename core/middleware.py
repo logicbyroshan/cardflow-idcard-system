@@ -210,7 +210,9 @@ class PermissionValidationMiddleware:
         if fresh_user is None:
             try:
                 # Re-fetch from DB to get latest state
-                fresh_user = User.objects.select_related().get(pk=user.pk)
+                fresh_user = User.objects.only(
+                    'pk', 'username', 'is_active', 'role', 'first_name', 'last_name'
+                ).get(pk=user.pk)
                 setattr(request, _cache_attr, fresh_user)
             except User.DoesNotExist:
                 # User was deleted - force logout

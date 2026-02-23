@@ -842,7 +842,12 @@ function _updateRowInPlace(cardId, cardData) {
         // Image cell — update src
         if (td.classList.contains('image-field')) {
             const img = td.querySelector('img.table-image');
-            if (img && newValue && newValue !== '' && !newValue.startsWith('PENDING:') && newValue !== 'NOT_FOUND') {
+            const isPending = newValue && newValue.startsWith('PENDING:');
+            const isNotFound = newValue === 'NOT_FOUND';
+            const hasValidImage = newValue && newValue !== '' && !isPending && !isNotFound;
+
+            if (img && hasValidImage) {
+                // Valid image path — show thumbnail
                 const cacheBuster = '?t=' + Date.now();
                 const thumbPath = window.getThumbPath ? window.getThumbPath(newValue) : newValue;
                 const thumbSrc = thumbPath ? '/media/' + thumbPath + cacheBuster : null;
@@ -853,6 +858,36 @@ function _updateRowInPlace(cardId, cardData) {
                 const placeholder = td.querySelector('.no-image');
                 if (placeholder) placeholder.remove();
                 img.style.display = '';
+            } else {
+                // Image removed, empty, PENDING, or NOT_FOUND — hide img, show placeholder
+                if (img) {
+                    img.style.display = 'none';
+                    img.removeAttribute('src');
+                }
+                // Hide edit-photo button
+                const editBtn = td.querySelector('.edit-photo-btn');
+                if (editBtn) editBtn.style.display = 'none';
+
+                // Remove old placeholder if any
+                var existingPlaceholder = td.querySelector('.no-image');
+                if (existingPlaceholder) existingPlaceholder.remove();
+
+                // Insert appropriate placeholder
+                var wrapper = td.querySelector('.image-with-edit') || td;
+                if (isPending) {
+                    var pendRef = newValue.replace('PENDING:', '');
+                    var ph = document.createElement('div');
+                    ph.className = 'no-image pending-placeholder';
+                    ph.title = 'Waiting for upload: ' + pendRef;
+                    ph.innerHTML = '<i class="fa-solid fa-clock"></i>';
+                    wrapper.insertBefore(ph, wrapper.firstChild);
+                } else {
+                    var ph = document.createElement('div');
+                    ph.className = 'no-image colorful-placeholder';
+                    ph.title = isNotFound ? 'Image not found' : '';
+                    ph.innerHTML = '<i class="fa-solid fa-user-astronaut"></i>';
+                    wrapper.insertBefore(ph, wrapper.firstChild);
+                }
             }
         } else {
             // Text cell — update span

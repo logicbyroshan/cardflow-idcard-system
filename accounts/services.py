@@ -86,7 +86,6 @@ class AuthService:
                     'exists': True,
                     'user_name': display_name,
                     'user_email': email,  # Echo back what they typed, don't reveal stored email
-                    'is_active': user.is_active,
                     'message': 'User found'
                 }
             
@@ -129,12 +128,9 @@ class AuthService:
             if role and user.role != role:
                 return {'success': False, 'message': _AUTH_FAIL_MSG}
             
-            # Check if user is active
+            # Check if user is active (same generic message to prevent enumeration)
             if not user.is_active:
-                return {
-                    'success': False,
-                    'message': 'Your account has been deactivated. Please contact support.'
-                }
+                return {'success': False, 'message': _AUTH_FAIL_MSG}
             
             # Authenticate with username (Django's default)
             authenticated_user = authenticate(username=user.username, password=password)

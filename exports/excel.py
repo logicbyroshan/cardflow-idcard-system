@@ -57,6 +57,9 @@ class ExcelExporter:
     MIN_COLUMN_WIDTH = 8
     MAX_COLUMN_WIDTH = 50
     
+    # Maximum cards for Excel export (prevents OOM with large datasets)
+    MAX_EXCEL_CARDS = 5000
+    
     def export_cards(
         self,
         table,
@@ -123,7 +126,7 @@ class ExcelExporter:
                 column_widths[col_idx] = len(str(header)) + 2
             
             # Sort cards for export (Class → Name, or Name only)
-            sorted_cards = sort_cards_for_export(list(cards), table.fields)
+            sorted_cards = sort_cards_for_export(list(cards[:self.MAX_EXCEL_CARDS]), table.fields)
 
             # Write data rows
             row_count = 0

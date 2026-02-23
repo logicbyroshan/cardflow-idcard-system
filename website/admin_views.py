@@ -242,7 +242,11 @@ def reviews_page(request):
 def portfolio_page(request):
     """Our Works / Portfolio management page."""
     context = _get_base_context(request, 'portfolio')
-    PortfolioCategory.ensure_defaults()
+    # Cache ensure_defaults to avoid 9 get_or_create queries per page load
+    from django.core.cache import cache
+    if not cache.get('portfolio_defaults_ensured'):
+        PortfolioCategory.ensure_defaults()
+        cache.set('portfolio_defaults_ensured', True, 3600)
     context['items'] = PortfolioItem.objects.select_related('category').all().order_by('order', '-created_at')
     context['categories'] = PortfolioCategory.objects.all().order_by('order')
     return render(request, 'website/admin/portfolio.html', context)

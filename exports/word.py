@@ -122,7 +122,7 @@ class WordExporter:
             )
 
         # Hard cap to prevent OOM — python-docx embeds all images in memory
-        MAX_WORD_CARDS = 500
+        MAX_WORD_CARDS = 5000
         card_count = cards.count()
         if card_count > MAX_WORD_CARDS:
             return WordExportResult(
@@ -624,8 +624,6 @@ class WordExporter:
         images are visible in Normal/Draft view and compatible with
         Word 97-2003 format.
         """
-        import logging
-        logger = logging.getLogger(__name__)
         self._set_cell_margins(cell, parse_xml, nsdecls, 0, 0, 0, 0)
         self._set_cell_vertical_align(cell, parse_xml, nsdecls)
         

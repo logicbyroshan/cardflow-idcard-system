@@ -49,7 +49,7 @@ def _validate_upload(file_obj, allowed_extensions, max_size, label='file'):
             f"Maximum is {max_size // (1024*1024)}MB."
         )
     # For images, verify with Pillow
-    if allowed_extensions == ALLOWED_IMAGE_EXTENSIONS and name.endswith(('.svg',)) is False:
+    if allowed_extensions == ALLOWED_IMAGE_EXTENSIONS and not name.endswith('.svg'):
         try:
             from PIL import Image
             from io import BytesIO

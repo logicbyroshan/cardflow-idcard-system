@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils import timezone
 from django.core.validators import MaxValueValidator, MinValueValidator
+from django.core.exceptions import ValidationError
 from django.utils.text import slugify
 import re
 
@@ -29,7 +30,7 @@ class WebsiteStatus(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.pk and WebsiteStatus.objects.exists():
-            return
+            raise ValidationError("Only one WebsiteStatus instance is allowed. Update the existing one.")
         super().save(*args, **kwargs)
 
     @classmethod
@@ -95,7 +96,7 @@ class BusinessDetails(models.Model):
     def save(self, *args, **kwargs):
         """Ensure only one instance of BusinessDetails exists. Sanitize HTML fields."""
         if not self.pk and BusinessDetails.objects.exists():
-            return  # Or raise an error
+            raise ValidationError("Only one BusinessDetails instance is allowed. Update the existing one.")
         # Sanitize hero_title: allow only <span>, <br>, <strong>, <em> tags
         if self.hero_title:
             self.hero_title = self._sanitize_html(self.hero_title)
@@ -162,8 +163,8 @@ class Feature(models.Model):
     number = models.PositiveIntegerField(default=1, help_text='Display order/number')
     highlight = models.CharField(max_length=255, blank=True, help_text='Highlight tags (comma separated)')
     
-    is_featured = models.BooleanField(default=False)
-    is_active = models.BooleanField(default=True)
+    is_featured = models.BooleanField(default=False, db_index=True)
+    is_active = models.BooleanField(default=True, db_index=True)
     order = models.IntegerField(default=0)
     
     created_at = models.DateTimeField(auto_now_add=True)
@@ -173,6 +174,9 @@ class Feature(models.Model):
         verbose_name = 'Feature'
         verbose_name_plural = 'Features'
         ordering = ['order', 'number']
+        indexes = [
+            models.Index(fields=['is_active', 'order']),
+        ]
 
     def __str__(self):
         return self.title
@@ -208,7 +212,7 @@ class PortfolioCategory(models.Model):
         help_text='Card size in bento grid',
     )
     order = models.IntegerField(default=0)
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -216,6 +220,9 @@ class PortfolioCategory(models.Model):
         verbose_name = 'Portfolio Category'
         verbose_name_plural = 'Portfolio Categories'
         ordering = ['order', 'name']
+        indexes = [
+            models.Index(fields=['is_active', 'order']),
+        ]
 
     def __str__(self):
         return self.name
@@ -290,8 +297,8 @@ class PortfolioItem(models.Model):
     video_url = models.URLField(blank=True, help_text='Video URL for video/reel items')
     video_file = models.FileField(upload_to='videos/Portfolio/', null=True, blank=True, help_text='Upload video file')
     
-    is_featured = models.BooleanField(default=False)
-    is_active = models.BooleanField(default=True)
+    is_featured = models.BooleanField(default=False, db_index=True)
+    is_active = models.BooleanField(default=True, db_index=True)
     order = models.IntegerField(default=0)
     
     created_at = models.DateTimeField(auto_now_add=True)
@@ -301,6 +308,10 @@ class PortfolioItem(models.Model):
         verbose_name = 'Portfolio Item'
         verbose_name_plural = 'Portfolio Items'
         ordering = ['order', '-created_at']
+        indexes = [
+            models.Index(fields=['is_active', 'order']),
+            models.Index(fields=['is_active', 'is_featured']),
+        ]
 
     def __str__(self):
         return self.title
@@ -339,7 +350,7 @@ class TrustedClient(models.Model):
     logo = models.ImageField(upload_to='images/Schools/Logos/', help_text='School/Company logo (small, transparent preferred)')
     
     order = models.IntegerField(default=0)
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -347,6 +358,9 @@ class TrustedClient(models.Model):
         verbose_name = 'Trusted Client'
         verbose_name_plural = 'Trusted Clients'
         ordering = ['order', 'name']
+        indexes = [
+            models.Index(fields=['is_active', 'order']),
+        ]
 
     def __str__(self):
         return self.name
@@ -369,7 +383,7 @@ class Testimonial(models.Model):
     tag = models.CharField(max_length=100, blank=True, help_text='e.g. Quality, Delivery')
     text = models.TextField(blank=True)
     
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -377,6 +391,9 @@ class Testimonial(models.Model):
         verbose_name = 'Testimonial'
         verbose_name_plural = 'Testimonials'
         ordering = ['-review_date']
+        indexes = [
+            models.Index(fields=['is_active', '-review_date']),
+        ]
 
     def __str__(self):
         return self.reviewer_name
@@ -387,7 +404,7 @@ class FAQ(models.Model):
     question = models.CharField(max_length=500)
     answer = models.TextField()
     order = models.IntegerField(default=0, help_text='Display order')
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -395,6 +412,9 @@ class FAQ(models.Model):
         verbose_name = 'FAQ'
         verbose_name_plural = 'FAQs'
         ordering = ['order', 'created_at']
+        indexes = [
+            models.Index(fields=['is_active', 'order']),
+        ]
 
     def __str__(self):
         return self.question[:50]
@@ -410,7 +430,7 @@ class Reel(models.Model):
     views_count = models.CharField(max_length=20, default='1K', help_text='e.g. 12.5K')
     likes_count = models.CharField(max_length=20, default='100', help_text='e.g. 890')
     order = models.IntegerField(default=0)
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -418,6 +438,9 @@ class Reel(models.Model):
         verbose_name = 'Reel'
         verbose_name_plural = 'Reels'
         ordering = ['order', '-created_at']
+        indexes = [
+            models.Index(fields=['is_active', 'order']),
+        ]
 
     def __str__(self):
         return self.title
@@ -443,7 +466,7 @@ class ContactSubmission(models.Model):
     ]
     
     name = models.CharField(max_length=255)
-    email = models.EmailField()
+    email = models.EmailField(db_index=True)
     phone = models.CharField(max_length=20, blank=True)
     subject = models.CharField(max_length=255)
     message = models.TextField()

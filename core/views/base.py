@@ -814,7 +814,7 @@ def group_settings(request, client_id):
     search_query = request.GET.get('search', '').strip()
     
     group = IDCardService.ensure_default_group(client)
-    tables_qs = IDCardTable.objects.filter(group=group).annotate(
+    tables_qs = IDCardTable.objects.filter(group=group).select_related('group').annotate(
         total_cards=Count('id_cards')
     )
     
@@ -873,17 +873,24 @@ def manage_panel(request):
         # System info
         'django_version': django.get_version(),
         'python_version': f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
-        'total_users': User.objects.filter(is_active=True).count(),
         'total_clients': Client.objects.count(),
         'total_cards': IDCard.objects.count(),
-        'total_admin_staff': User.objects.filter(is_active=True, role='admin_staff').count(),
-        'total_client_staff': User.objects.filter(is_active=True, role='client_staff').count(),
         'active_tasks': 0,
         'total_notifications': Notification.objects.filter(is_active=True).count(),
         'email_backend': getattr(django_settings, 'EMAIL_BACKEND', 'SMTP').split('.')[-1].replace('Backend', ''),
         'email_from': getattr(django_settings, 'DEFAULT_FROM_EMAIL', 'Not configured'),
         'debug_mode': django_settings.DEBUG,
     }
+    # Aggregate user counts in a single query instead of 3 separate .count() calls
+    from django.db.models import Q, Sum, Case, When, IntegerField
+    user_counts = User.objects.filter(is_active=True).aggregate(
+        total=Count('id'),
+        admin_staff=Count('id', filter=Q(role='admin_staff')),
+        client_staff=Count('id', filter=Q(role='client_staff')),
+    )
+    context['total_users'] = user_counts['total']
+    context['total_admin_staff'] = user_counts['admin_staff']
+    context['total_client_staff'] = user_counts['client_staff']
     return render(request, 'manage-panel.html', context)
 
 
@@ -1294,7 +1301,7 @@ def api_card_allowed_transitions(request, card_id):
     from ..services.workflow_service import WorkflowService
 
     try:
-        card = get_object_or_404(IDCard, id=card_id)
+        card = get_object_or_404(IDCard.objects.select_related('table__group'), id=card_id)
     except Exception:
         return JsonResponse({'success': False, 'message': 'Card not found'}, status=404)
 
@@ -1343,7 +1350,7 @@ def api_debug_image_integrity(request):
 
     if card_id:
         try:
-            card = get_object_or_404(IDCard, id=int(card_id))
+            card = get_object_or_404(IDCard.objects.select_related('table'), id=int(card_id))
         except (ValueError, TypeError):
             return JsonResponse({'success': False, 'message': 'Invalid card_id'}, status=400)
 

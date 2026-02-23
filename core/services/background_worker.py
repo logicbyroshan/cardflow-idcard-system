@@ -160,16 +160,16 @@ class BackgroundWorker:
             try:
                 task.refresh_from_db()
                 task.mark_failed(str(e))
-            except Exception:
-                pass
+            except Exception as mark_err:
+                logger.warning('Failed to mark task %d as failed: %s', task_id, mark_err)
         finally:
             # Periodic cleanup of orphaned temp/export files after every task
             try:
                 from core.services.task_cleanup import cleanup_orphaned_temp_files, cleanup_old_exports
                 cleanup_orphaned_temp_files(hours=24)
                 cleanup_old_exports(days=3)
-            except Exception:
-                pass
+            except Exception as cleanup_err:
+                logger.warning('Post-task cleanup failed: %s', cleanup_err)
     
     def _process_bulk_upload(self, task):
         """

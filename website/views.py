@@ -88,8 +88,10 @@ def our_work(request):
     """Portfolio Page: Shows all items filtered by category"""
     context = get_common_context()
     
-    # Ensure default categories exist
-    PortfolioCategory.ensure_defaults()
+    # Ensure default categories exist (cached to avoid 9 queries per page load)
+    if not cache.get('portfolio_defaults_ensured'):
+        PortfolioCategory.ensure_defaults()
+        cache.set('portfolio_defaults_ensured', True, 3600)
     
     # Get active categories
     categories = PortfolioCategory.objects.filter(is_active=True).order_by('order')
@@ -243,7 +245,7 @@ def submit_testimonial(request):
             return JsonResponse({'success': False, 'message': 'All fields are required.'}, status=400)
 
         try:
-            rating_val = int(rating)
+            rating_val = max(1, min(5, int(rating)))
         except (ValueError, TypeError):
             rating_val = 5
 

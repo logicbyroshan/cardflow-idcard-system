@@ -161,7 +161,7 @@ class PdfExporter:
             )
 
         # Hard cap to prevent OOM — xhtml2pdf is very memory-hungry with images
-        MAX_PDF_CARDS = 500
+        MAX_PDF_CARDS = 5000
         card_count = cards.count()
         if card_count > MAX_PDF_CARDS:
             return PdfExportResult(
@@ -184,7 +184,6 @@ class PdfExporter:
                 )
 
             # Sort cards for export (Class → Name, or Name only)
-            MAX_PDF_CARDS = 2000
             cards_list = sort_cards_for_export(list(cards[:MAX_PDF_CARDS]), table.fields)
             column_configs = self._build_column_configs(ordered_fields, cards_list)
 

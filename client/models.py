@@ -77,7 +77,7 @@ class Client(models.Model):
     image_folder_suffix = models.CharField(max_length=5, blank=True, null=True)
     
     # Basic Information
-    name = models.CharField(max_length=200)
+    name = models.CharField(max_length=200, db_index=True)
     # DEPRECATED: photo field removed - use frontend placeholder avatars instead
     # photo field removed in Phase 1 refactor
     
@@ -139,6 +139,11 @@ class Client(models.Model):
 
     def __str__(self):
         return self.name
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Cache original name to detect changes without an extra DB query in save()
+        self._original_name = self.name if self.pk else None
     
     def generate_folder_code(self):
         """Generate and set the image folder code based on client name"""
@@ -265,20 +270,18 @@ class Client(models.Model):
                 logger.warning("Could not delete thumbs folder %s: %s", self.image_folder_code, e)
     def save(self, *args, **kwargs):
         # Check if this is an update and name changed
-        # Only do the expensive old-instance lookup if 'name' could have changed
+        # Uses cached _original_name from __init__ to avoid extra DB query
         if self.pk and (not kwargs.get('update_fields') or 'name' in (kwargs.get('update_fields') or [])):
-            try:
-                old_instance = Client.objects.get(pk=self.pk)
-                if old_instance.name != self.name and old_instance.image_folder_code:
-                    self.rename_image_folder(old_instance.name)
-            except Client.DoesNotExist:
-                pass
+            if self._original_name and self._original_name != self.name and self.image_folder_code:
+                self.rename_image_folder(self._original_name)
         
         # Generate folder code if not set
         if not self.image_folder_code:
             self.generate_folder_code()
         
         super().save(*args, **kwargs)
+        # Update cached name after save
+        self._original_name = self.name
     
     def delete(self, *args, **kwargs):
         # Delete image folder when client is deleted

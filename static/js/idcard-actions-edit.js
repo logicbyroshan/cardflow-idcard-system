@@ -11,7 +11,8 @@
 
 function getAdjacentCell(currentCell, direction) {
     const row = currentCell.closest('tr');
-    const allCells = Array.from(row.querySelectorAll('td[data-field]'));
+    // Only select text cells that are editable (excludes image-field, action, SR NO, dates)
+    const allCells = Array.from(row.querySelectorAll('td.editable-cell[data-field]:not(.image-field)'));
     const currentIndex = allCells.indexOf(currentCell);
     
     if (direction === 'next') {
@@ -22,7 +23,7 @@ function getAdjacentCell(currentCell, direction) {
         // Wrap to first editable cell of next row
         var nextRow = row.nextElementSibling;
         while (nextRow && nextRow.tagName === 'TR') {
-            var nextCells = nextRow.querySelectorAll('td[data-field]');
+            var nextCells = nextRow.querySelectorAll('td.editable-cell[data-field]:not(.image-field)');
             if (nextCells.length > 0) {
                 // Scroll the next row into view so the user can see it
                 nextRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -39,7 +40,7 @@ function getAdjacentCell(currentCell, direction) {
         // Wrap to last editable cell of previous row
         var prevRow = row.previousElementSibling;
         while (prevRow && prevRow.tagName === 'TR') {
-            var prevCells = prevRow.querySelectorAll('td[data-field]');
+            var prevCells = prevRow.querySelectorAll('td.editable-cell[data-field]:not(.image-field)');
             if (prevCells.length > 0) {
                 prevRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 return prevCells[prevCells.length - 1];
@@ -58,6 +59,14 @@ function getAdjacentCell(currentCell, direction) {
 function startCellEdit(cell) {
     if (cell.querySelector('input, textarea, select')) return; // Already editing
     if (cell.classList.contains('editing')) return; // Already in edit mode
+    
+    // Skip image fields and non-editable cells
+    if (cell.classList.contains('image-field')) return;
+    if (!cell.classList.contains('editable-cell')) return;
+    var ft = (cell.getAttribute('data-field-type') || '').toLowerCase();
+    if (ft === 'image') return;
+    var fn = (cell.getAttribute('data-field') || '').toLowerCase();
+    if (fn.includes('photo') || fn.includes('image') || fn.includes('picture')) return;
     
     // Mark cell as editing to prevent duplicate clicks (Phase 5)
     cell.classList.add('editing');

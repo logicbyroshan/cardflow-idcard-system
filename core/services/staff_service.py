@@ -441,8 +441,8 @@ class StaffService(BaseService):
                     email=user.email,
                     request=request,
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning('Password change email failed for %s: %s', user.email, e)
 
             return ServiceResult(
                 success=True,
