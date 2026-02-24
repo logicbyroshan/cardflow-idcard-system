@@ -18,6 +18,7 @@ from django.conf import settings
 from django.http import HttpResponse, HttpResponseForbidden
 from django.views.decorators.cache import cache_page
 from django.views.decorators.http import require_GET
+from core.views.health import health_check
 
 
 @require_GET
@@ -44,6 +45,9 @@ def _protected_media_serve(request, path, document_root=None):
 
 
 urlpatterns = [
+    # Health check — no auth, used by load balancers / CI/CD
+    path('api/health/', health_check, name='health_check'),
+
     # SEO — block all crawlers on panel subdomain
     path('robots.txt', panel_robots_txt, name='panel_robots_txt'),
 

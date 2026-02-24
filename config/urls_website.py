@@ -10,6 +10,7 @@ For local development (single domain), config/urls.py is used instead.
 from django.conf import settings
 from django.urls import path, include
 from website.seo import robots_txt, sitemap_xml
+from core.views.health import health_check
 
 
 def _public_media_serve(request, path, document_root=None):
@@ -29,6 +30,9 @@ def _public_media_serve(request, path, document_root=None):
 
 
 urlpatterns = [
+    # Health check — no auth, used by load balancers / CI/CD
+    path('api/health/', health_check, name='health_check'),
+
     # SEO
     path('robots.txt', robots_txt, name='robots_txt'),
     path('sitemap.xml', sitemap_xml, name='sitemap_xml'),

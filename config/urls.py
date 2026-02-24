@@ -4,6 +4,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.http import HttpResponseForbidden
 from website.seo import robots_txt, sitemap_xml
+from core.views.health import health_check
 
 
 def _protected_media_serve(request, path, document_root=None):
@@ -27,6 +28,9 @@ def _protected_media_serve(request, path, document_root=None):
     return serve(request, path, document_root=document_root)
 
 urlpatterns = [
+    # Health check — no auth, used by load balancers / CI/CD
+    path('api/health/', health_check, name='health_check'),
+
     # SEO — served at root, only for public website
     path('robots.txt', robots_txt, name='robots_txt'),
     path('sitemap.xml', sitemap_xml, name='sitemap_xml'),
