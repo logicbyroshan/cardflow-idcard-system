@@ -1,0 +1,25 @@
+{
+    "name": "Adarsh ID Cards - Admin Panel",
+    "short_name": "Adarsh Admin",
+    "description": "Manage ID cards, clients, staff and orders — Adarsh ID Cards Management System",
+    "start_url": "/panel/auth/login/",
+    "scope": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#3498db",
+    "orientation": "any",
+    "icons": [
+        {
+            "src": "/static/website/images/adarsh.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/static/website/images/adarsh.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}

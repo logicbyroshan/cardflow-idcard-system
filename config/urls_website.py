@@ -13,6 +13,24 @@ from website.seo import robots_txt, sitemap_xml
 from core.views.health import health_check
 
 
+def _serve_pwa_file(request, filename):
+    """Serve PWA manifest/service-worker from /static/website/ at root URL."""
+    import os
+    from django.http import FileResponse, Http404
+    content_types = {
+        'manifest.json': 'application/manifest+json',
+        'sw.js': 'application/javascript',
+    }
+    filepath = os.path.join(settings.BASE_DIR, 'static', 'website', filename)
+    if not os.path.isfile(filepath) or filename not in content_types:
+        raise Http404
+    response = FileResponse(open(filepath, 'rb'), content_type=content_types[filename])
+    if filename == 'sw.js':
+        response['Service-Worker-Allowed'] = '/'
+        response['Cache-Control'] = 'no-cache'
+    return response
+
+
 def _public_media_serve(request, path, document_root=None):
     """
     Serve media files on the public website.
@@ -32,6 +50,10 @@ def _public_media_serve(request, path, document_root=None):
 urlpatterns = [
     # Health check — no auth, used by load balancers / CI/CD
     path('api/health/', health_check, name='health_check'),
+
+    # PWA — manifest and service worker at root scope
+    path('manifest.json', lambda r: _serve_pwa_file(r, 'manifest.json'), name='pwa_manifest'),
+    path('sw.js', lambda r: _serve_pwa_file(r, 'sw.js'), name='pwa_sw'),
 
     # SEO
     path('robots.txt', robots_txt, name='robots_txt'),

@@ -234,8 +234,27 @@ function initQrCode() {
     const qrImg = document.getElementById('appQrCode');
     if (!qrImg) return;
 
-    const appUrl = window.location.origin + '/app/';
-    qrImg.src = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&color=100F57&data=' + encodeURIComponent(appUrl);
+    // QR code points to the website root — user opens in browser → can install PWA → goes to login
+    const siteUrl = window.location.origin + '/';
+    qrImg.src = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&color=100F57&data=' + encodeURIComponent(siteUrl);
+}
+
+// ===== 7. PWA Install Trigger =====
+function triggerPwaInstall() {
+    if (window.__pwaInstallPrompt) {
+        // Native install prompt available (Chrome/Edge on Android/Desktop)
+        window.__pwaInstallPrompt.prompt();
+        window.__pwaInstallPrompt.userChoice.then(function(choice) {
+            if (choice.outcome === 'accepted') {
+                console.log('PWA install accepted');
+            }
+            window.__pwaInstallPrompt = null;
+        });
+    } else {
+        // Fallback: redirect to panel login (works on iOS Safari where
+        // beforeinstallprompt is not supported — user can Add to Home Screen manually)
+        window.location.href = window.location.origin + '/panel/auth/login/';
+    }
 }
 
 // ===== Initialize Everything =====
