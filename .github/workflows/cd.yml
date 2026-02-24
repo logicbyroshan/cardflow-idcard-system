@@ -92,7 +92,8 @@ jobs:
             fi
 
             echo "Running health check..." | tee -a "$DEPLOY_LOG"
-            if ! curl -f http://127.0.0.1:8001/api/health/ > /dev/null; then
+
+            if ! curl -fsSL https://adarshbhopal.in/api/health/ > /dev/null; then
               echo "❌ Health check failed. Rolling back..." | tee -a "$DEPLOY_LOG"
               git reset --hard "$PREV_COMMIT"
               sudo systemctl restart "$SERVICE_NAME"
