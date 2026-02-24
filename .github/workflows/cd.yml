@@ -1,7 +1,6 @@
 # =============================================================================
-# CD Pipeline — Enterprise Grade Production Deploy
-# Deploys ONLY after CI succeeds on main branch
-# Safe rollback + health verification + zero-downtime reload
+# CD Pipeline — Production Deploy (Stable Version)
+# Runs ONLY after CI succeeds on main branch
 # =============================================================================
 
 name: CD — Deploy Production
@@ -28,7 +27,6 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SERVER_PORT }}
-          script_stop: true
           script: |
             set -e
 
@@ -61,7 +59,6 @@ jobs:
             if ! $PYTHON manage.py check --fail-level WARNING; then
               echo "❌ Django check failed. Rolling back..." | tee -a "$DEPLOY_LOG"
               git reset --hard "$PREV_COMMIT"
-              $PIP install -r requirements.txt --quiet
               exit 1
             fi
 
@@ -81,8 +78,8 @@ jobs:
               exit 1
             fi
 
-            echo "Reloading Gunicorn (zero downtime)..." | tee -a "$DEPLOY_LOG"
-            sudo systemctl reload "$SERVICE_NAME"
+            echo "Restarting application..." | tee -a "$DEPLOY_LOG"
+            sudo systemctl restart "$SERVICE_NAME"
 
             sleep 5
 
