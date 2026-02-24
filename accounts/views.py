@@ -39,6 +39,10 @@ class LoginPageView(View):
     def get(self, request):
         # If user is already authenticated, redirect to dashboard
         if request.user.is_authenticated:
+            # Respect ?next= param (e.g. from PWA → login redirect)
+            next_url = request.GET.get('next', '')
+            if next_url and next_url.startswith('/') and not next_url.startswith('//'):
+                return redirect(next_url)
             redirect_url = AuthService.get_dashboard_url(request.user)
             return redirect(redirect_url)
         

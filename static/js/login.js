@@ -171,8 +171,11 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (data.success) {
                 showMessage('Login successful! Redirecting...', 'success');
+                // Respect ?next= param (e.g. from PWA → login redirect)
+                const nextUrl = new URLSearchParams(window.location.search).get('next');
+                const safeNext = nextUrl && nextUrl.startsWith('/') && !nextUrl.startsWith('//') ? nextUrl : null;
                 setTimeout(() => {
-                    window.location.href = data.redirect_url;
+                    window.location.href = safeNext || data.redirect_url;
                 }, 500);
             } else {
                 showMessage(data.message);
