@@ -54,7 +54,16 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-
+      - name: Install system dependencies (for pycairo, reportlab, etc)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libcairo2-dev \
+            pkg-config \
+            python3-dev \
+            libjpeg-dev \
+            libfreetype6-dev \
+            libffi-dev
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
