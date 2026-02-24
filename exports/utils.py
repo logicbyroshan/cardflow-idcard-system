@@ -215,6 +215,9 @@ def format_field_value(value: Any, uppercase: bool = False) -> str:
     """
     Format a field value for export.
     
+    Strips values that look like image paths or pending image references
+    so they don't leak into text columns.
+    
     Args:
         value: Raw value
         uppercase: Whether to convert to uppercase
@@ -227,10 +230,48 @@ def format_field_value(value: Any, uppercase: bool = False) -> str:
     
     str_value = str(value).strip()
     
+    if not str_value:
+        return ''
+    
+    # Strip image-like values that shouldn't appear in text columns
+    if _looks_like_image_data(str_value):
+        return ''
+    
     if uppercase:
         return str_value.upper()
     
     return str_value
+
+
+# Image file extensions used to detect leaked image paths in text fields
+_IMAGE_EXTENSIONS = ('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '.svg')
+
+
+def _looks_like_image_data(value: str) -> bool:
+    """
+    Check if a value looks like image path data that shouldn't appear as text.
+    
+    Catches:
+    - PENDING:filename.jpg references
+    - NOT_FOUND markers
+    - File paths with image extensions (e.g. adarshimg/client/12345.jpg)
+    """
+    val_upper = value.upper().strip()
+    
+    # PENDING:filename or bare PENDING
+    if val_upper.startswith('PENDING:') or val_upper == 'PENDING':
+        return True
+    
+    # NOT_FOUND marker
+    if val_upper == 'NOT_FOUND':
+        return True
+    
+    # File path with image extension (e.g. adarshimg/XYZ/12345.jpg)
+    val_lower = value.lower().strip()
+    if '/' in val_lower and val_lower.endswith(_IMAGE_EXTENSIONS):
+        return True
+    
+    return False
 
 
 def is_valid_image_path(path: Optional[str]) -> bool:

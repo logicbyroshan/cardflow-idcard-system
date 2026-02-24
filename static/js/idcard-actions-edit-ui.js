@@ -81,11 +81,14 @@ function startCellEdit(cell) {
     const currentValue = valueSpan ? valueSpan.textContent.trim() : cell.textContent.trim();
     const originalWidth = cell.offsetWidth;
     const originalHeight = cell.offsetHeight;
+    // Ensure minimum editing width of ~20 chars (180px)
+    const MIN_EDIT_WIDTH = 180;
+    const effectiveWidth = Math.max(originalWidth, MIN_EDIT_WIDTH);
 
     // Lock cell dimensions to prevent column/row shrinking when content is replaced
-    cell.style.minWidth = originalWidth + 'px';
+    cell.style.minWidth = effectiveWidth + 'px';
     cell.style.minHeight = originalHeight + 'px';
-    cell.style.width = originalWidth + 'px';
+    cell.style.width = effectiveWidth + 'px';
     cell.style.height = originalHeight + 'px';
     
     let editElement;

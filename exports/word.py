@@ -672,10 +672,15 @@ class WordExporter:
             except Exception as e:
                 logger.warning("Word export: Image load error for %s: %s", img_path, e)
         
-        # Placeholder for missing/invalid image
+        # Placeholder for missing/invalid image — reserve cell space
         para = cell.paragraphs[0]
         para.alignment = WD_ALIGN_PARAGRAPH.CENTER
         self._set_para_spacing(para, parse_xml, nsdecls)
+        # Add "NO IMAGE" placeholder text so column width/height is maintained
+        run = para.add_run('NO IMAGE')
+        run.font.size = Pt(7)
+        run.font.color.rgb = RGBColor(180, 180, 180)
+        run.font.name = 'Arial'
     
     def _convert_to_vml(self, run, inline_shape):
         """Convert an inline DrawingML image to VML for backward compatibility.
