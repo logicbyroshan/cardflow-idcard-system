@@ -92,7 +92,7 @@
                                  class="table-image {{ field.name|get_image_class }}" 
                                  loading="lazy"
                                  decoding="async"
-                                 onerror="this.onerror=null; this.src='/media/{{ field.value }}'">
+                                 onerror="this.onerror=null; this.src='/media/{{ field.value|escapejs }}'">
                             {% elif field.value|slice:":8" == "PENDING:" %}
                             <div class="no-image pending-placeholder" title="Waiting for upload: {{ field.value|slice:'8:' }}">
                                 <i class="fa-solid fa-clock"></i>

@@ -185,8 +185,15 @@ def api_client_set_temp_password(request, client_id):
         new_password = data.get('password', '').strip()
         if not new_password:
             return JsonResponse({'success': False, 'message': 'Password is required'}, status=400)
-        if len(new_password) < 6:
-            return JsonResponse({'success': False, 'message': 'Password must be at least 6 characters'}, status=400)
+        if len(new_password) < 8:
+            return JsonResponse({'success': False, 'message': 'Password must be at least 8 characters'}, status=400)
+
+        # Validate against Django password validators
+        from django.contrib.auth.password_validation import validate_password
+        try:
+            validate_password(new_password)
+        except Exception as validation_error:
+            return JsonResponse({'success': False, 'message': '; '.join(validation_error.messages)}, status=400)
 
         result = ClientService.set_temp_password(client_id, new_password, request=request)
         return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)

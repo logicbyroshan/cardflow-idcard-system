@@ -2,6 +2,7 @@
 Core Middleware Module
 
 Contains middleware for:
+- Subdomain-based URL routing (www vs panel)
 - Request timing, slow-request detection, and query monitoring
 - Permission validation on every request
 - Session invalidation when permissions are revoked
@@ -23,6 +24,41 @@ query_logger = logging.getLogger('slow_queries')
 SLOW_REQUEST_THRESHOLD = getattr(django_settings, 'SLOW_REQUEST_THRESHOLD', 1.5)
 QUERY_COUNT_THRESHOLD = getattr(django_settings, 'QUERY_COUNT_THRESHOLD', 50)
 SLOW_QUERY_THRESHOLD = getattr(django_settings, 'SLOW_QUERY_THRESHOLD', 0.1)
+
+
+class SubdomainRoutingMiddleware:
+    """
+    Routes requests to different URL configurations based on the subdomain.
+
+    - WEBSITE_DOMAIN (e.g. www.adarshbhopal.in)  → config.urls_website
+    - PANEL_DOMAIN   (e.g. panel.adarshbhopal.in) → config.urls_panel
+
+    In local development (when neither domain is set, or the Host header
+    matches neither), the default ROOT_URLCONF is used (all routes).
+
+    Must be placed BEFORE WhiteNoiseMiddleware in MIDDLEWARE so that the
+    urlconf is set before any downstream middleware resolves URLs.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+        self.website_domain = getattr(django_settings, 'WEBSITE_DOMAIN', '').lower().strip()
+        self.panel_domain = getattr(django_settings, 'PANEL_DOMAIN', '').lower().strip()
+
+    def __call__(self, request):
+        # Skip routing if domains are not configured (local dev fallback)
+        if not self.website_domain and not self.panel_domain:
+            return self.get_response(request)
+
+        host = request.get_host().split(':')[0].lower()  # strip port
+
+        if host == self.website_domain:
+            request.urlconf = 'config.urls_website'
+        elif host == self.panel_domain:
+            request.urlconf = 'config.urls_panel'
+        # else: use default ROOT_URLCONF (config.urls)
+
+        return self.get_response(request)
 
 
 class RequestTimingMiddleware:
@@ -519,6 +555,7 @@ class SecurityHeadersMiddleware:
     Currently adds:
     - Permissions-Policy: restricts browser APIs (camera, microphone, etc.)
     - Cache-Control: prevents caching of authenticated HTML pages
+    - X-Robots-Tag: noindex on panel subdomain (SEO isolation)
     """
 
     SKIP_PREFIXES = ('/static/', '/media/')
@@ -529,6 +566,7 @@ class SecurityHeadersMiddleware:
             django_settings, 'PERMISSIONS_POLICY',
             'camera=(), microphone=(), geolocation=(), payment=(), usb=()'
         )
+        self._panel_domain = getattr(django_settings, 'PANEL_DOMAIN', '').lower().strip()
 
     def __call__(self, request):
         response = self.get_response(request)
@@ -545,5 +583,11 @@ class SecurityHeadersMiddleware:
             if 'Cache-Control' not in response:
                 response['Cache-Control'] = 'no-store, no-cache, must-revalidate, private'
                 response['Pragma'] = 'no-cache'
+
+        # SEO: block indexing on the panel subdomain (belt-and-suspenders with robots.txt)
+        if self._panel_domain:
+            host = request.get_host().split(':')[0].lower()
+            if host == self._panel_domain:
+                response['X-Robots-Tag'] = 'noindex, nofollow'
 
         return response

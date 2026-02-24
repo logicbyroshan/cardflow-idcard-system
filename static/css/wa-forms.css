@@ -82,7 +82,7 @@
 .wa-form-group textarea:focus,
 .wa-form-group select:focus {
     border-color: var(--wa-primary);
-    box-shadow: 0 0 0 2px rgba(99,102,241,0.12);
+    box-shadow: 0 0 0 2px rgba(102,126,234,0.15);
 }
 .wa-form-group input[type="file"] {
     font-size: 12px;

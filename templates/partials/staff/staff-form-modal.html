@@ -1,56 +1,57 @@
 {% load static %}
 
 <!-- Create/Edit Staff Modal -->
-<div class="modal-overlay" id="staffModal">
-  <div class="modal-content">
+<div class="modal-backdrop" id="staffModal">
+  <div class="modal-center modal-purple">
     <div class="modal-header">
-      <h3 id="modalTitle">Add Admin Staff</h3>
+      <h3><i class="fa-solid fa-users-gear"></i> <span id="modalTitle">Add Admin Staff</span></h3>
       <button class="modal-close" onclick="closeModal()" aria-label="Close">&times;</button>
     </div>
     <form id="staffForm" onsubmit="handleSubmit(event)">
+      <div class="modal-body">
       <input type="hidden" id="staffId" value="">
       
       <div class="form-row">
         <div class="form-group">
-          <label for="firstName">First Name *</label>
-          <input type="text" id="firstName" name="first_name" required>
+          <label class="form-label" for="firstName">First Name <span class="required">*</span></label>
+          <input class="form-input" type="text" id="firstName" name="first_name" required>
         </div>
         <div class="form-group">
-          <label for="lastName">Last Name *</label>
-          <input type="text" id="lastName" name="last_name" required>
+          <label class="form-label" for="lastName">Last Name <span class="required">*</span></label>
+          <input class="form-input" type="text" id="lastName" name="last_name" required>
         </div>
       </div>
 
       <div class="form-group">
-        <label for="email">Email *</label>
-        <input type="email" id="email" name="email" required>
+        <label class="form-label" for="email">Email <span class="required">*</span></label>
+        <input class="form-input" type="email" id="email" name="email" required>
       </div>
 
       <div class="form-row">
         <div class="form-group">
-          <label for="phone">Phone</label>
-          <input type="tel" id="phone" name="phone">
+          <label class="form-label" for="phone">Phone</label>
+          <input class="form-input" type="tel" id="phone" name="phone">
         </div>
         <div class="form-group">
-          <label for="designation">Designation</label>
-          <input type="text" id="designation" name="designation" value="Staff">
+          <label class="form-label" for="designation">Designation</label>
+          <input class="form-input" type="text" id="designation" name="designation" value="Staff">
         </div>
       </div>
 
       <div class="form-group">
-        <label for="department">Department</label>
-        <input type="text" id="department" name="department">
+        <label class="form-label" for="department">Department</label>
+        <input class="form-input" type="text" id="department" name="department">
       </div>
 
       <div class="form-group">
-        <label>Assigned Clients</label>
+        <label class="form-label">Assigned Clients</label>
         <div class="client-select-grid" id="clientsContainer">
           <!-- Populated by JS -->
         </div>
       </div>
 
       <div class="form-group">
-        <label>Permissions</label>
+        <label class="form-label">Permissions</label>
         <div id="permissionsContainer">
           <!-- Client Management -->
           <div class="permission-category">
@@ -71,8 +72,9 @@
           </div>
         </div>
       </div>
+      </div>
 
-      <div class="btn-group">
+      <div class="modal-footer">
         <button type="button" class="btn btn-md btn-neutral" onclick="closeModal()">Cancel</button>
         <button type="submit" class="btn btn-md btn-primary" id="submitBtn">Create Staff</button>
       </div>

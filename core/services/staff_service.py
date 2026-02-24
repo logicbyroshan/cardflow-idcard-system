@@ -127,7 +127,10 @@ class StaffService(BaseService):
             name = data.get('name', '')
             name_parts = name.split() if name else []
             
-            # Use phone number as default password (matches welcome email instructions)
+            # Default password strategy: phone number → random token
+            # SECURITY NOTE: Phone-as-password is a deliberate UX choice — the welcome
+            # email tells users "use your mobile number". When a stronger policy is
+            # desired, always pass an explicit password from the UI instead.
             phone = data.get('phone', '').strip()
             password = data.get('password', '').strip()
             used_phone_as_password = False
@@ -276,9 +279,14 @@ class StaffService(BaseService):
                 user.first_name = name_parts[0] if name_parts else ''
                 user.last_name = ' '.join(name_parts[1:]) if len(name_parts) > 1 else ''
             
-            # Update password if provided
+            # Update password if provided — validate before setting
             password = data.get('password', '')
             if isinstance(password, str) and password.strip():
+                from django.contrib.auth.password_validation import validate_password
+                try:
+                    validate_password(password.strip(), user=user)
+                except Exception as pw_err:
+                    return ServiceResult(success=False, message=str(pw_err))
                 user.set_password(password.strip())
             
             # Update status

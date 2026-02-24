@@ -109,8 +109,8 @@
                     <li><a href="{% url 'website:testimonials' %}">Testimonials</a></li>
                     <li><a href="{% url 'website:home' %}#contact">Contact</a></li>
                     <li class="nav-btn-group">
-                        <a href="#download-app" class="btn-cta btn-app"><i class="fas fa-mobile-alt"></i> Get Our App</a>
-                        <a href="{% url 'accounts:login' %}" class="btn-cta btn-login"><i class="fas fa-sign-in-alt"></i> Login</a>
+                        <a href="#download-app" class="btn-cta btn-app"><i class="fas fa-download"></i> Install App</a>
+                        <a href="{% if PANEL_URL %}{{ PANEL_URL }}/panel/auth/login/{% else %}{% url 'accounts:login' %}{% endif %}" class="btn-cta btn-login"><i class="fas fa-sign-in-alt"></i> Login</a>
                     </li>
                 </ul>
                 <div class="hamburger">

@@ -46,6 +46,25 @@ else:
 
 
 # =============================================================================
+# SUBDOMAIN ROUTING
+# When both are set, SubdomainRoutingMiddleware splits traffic:
+#   WEBSITE_DOMAIN → config.urls_website  (public site only)
+#   PANEL_DOMAIN   → config.urls_panel    (admin panel + PWA)
+# In local dev, leave both blank to serve everything on one domain.
+# =============================================================================
+WEBSITE_DOMAIN = os.getenv('WEBSITE_DOMAIN', '').strip()   # e.g. www.adarshbhopal.in
+PANEL_DOMAIN = os.getenv('PANEL_DOMAIN', '').strip()       # e.g. panel.adarshbhopal.in
+
+# Convenience URLs for templates / email links
+WEBSITE_URL = os.getenv('WEBSITE_URL', '').rstrip('/') or (
+    f'https://{WEBSITE_DOMAIN}' if WEBSITE_DOMAIN else ''
+)
+PANEL_URL = os.getenv('PANEL_URL', '').rstrip('/') or (
+    f'https://{PANEL_DOMAIN}' if PANEL_DOMAIN else ''
+)
+
+
+# =============================================================================
 # APPLICATION DEFINITION
 # =============================================================================
 
@@ -71,6 +90,9 @@ INSTALLED_APPS = [
 AUTH_USER_MODEL = 'core.User'
 
 MIDDLEWARE = [
+    # Subdomain routing — sets request.urlconf based on Host header
+    # MUST be first so all downstream middleware see the correct URL conf
+    'core.middleware.SubdomainRoutingMiddleware',
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -85,7 +107,7 @@ MIDDLEWARE = [
     # Permission Validation Middleware - re-checks permissions on every request
     # CRITICAL: Must come after AuthenticationMiddleware
     'core.middleware.PermissionValidationMiddleware',
-    'core.middleware.RoleScopingMiddleware',
+    # RoleScopingMiddleware removed — deprecated, scoping merged into PermissionValidationMiddleware
     # Session idle timeout — logs out after SESSION_IDLE_TIMEOUT of inactivity
     'core.middleware.SessionIdleTimeoutMiddleware',
     # Security headers — Permissions-Policy, Cache-Control
@@ -194,6 +216,14 @@ SESSION_COOKIE_AGE = 60 * 60 * 12      # 12-hour sessions
 CSRF_COOKIE_SAMESITE = 'Lax'           # CSRF cookie SameSite
 # Note: CSRF_COOKIE_HTTPONLY left False (Django default) because JS reads
 # the csrftoken cookie via getCSRFToken() for AJAX requests.
+
+# ── Cross-subdomain session cookie ──
+# If SESSION_COOKIE_DOMAIN is set (e.g. ".adarshbhopal.in"), the session
+# cookie is readable by ALL subdomains.  Only needed if you want a login
+# on panel.* to also be recognised on www.* (rare — www is public).
+_session_cookie_domain = os.getenv('SESSION_COOKIE_DOMAIN', '').strip()
+if _session_cookie_domain:
+    SESSION_COOKIE_DOMAIN = _session_cookie_domain
 
 # ── Session idle timeout (seconds) ──
 # If a user has no requests for this period, session expires on next request.

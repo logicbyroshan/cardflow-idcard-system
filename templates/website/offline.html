@@ -160,7 +160,7 @@
             This website is currently under maintenance and not available to the public.
             If you are an administrator, you can log in to the management panel below.
         </p>
-        <a href="/panel/auth/login/" class="offline-btn">
+        <a href="{% if PANEL_URL %}{{ PANEL_URL }}/panel/auth/login/{% else %}/panel/auth/login/{% endif %}" class="offline-btn">
             <i class="fa-solid fa-right-to-bracket"></i>
             Go to Admin Panel
         </a>

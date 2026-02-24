@@ -46,7 +46,7 @@ def send_mail_async(subject, message, from_email, recipient_list,
         except Exception as exc:
             logger.error("Threaded email to %s failed: %s", recipient_list, exc)
 
-    t = threading.Thread(target=_send, daemon=True)
+    t = threading.Thread(target=_send, daemon=False, name='email-send')
     t.start()
 
 
@@ -67,5 +67,5 @@ def send_html_email_async(subject, plain_content, html_content,
             logger.error("Threaded HTML email to %s failed: %s",
                          recipient_list, exc)
 
-    t = threading.Thread(target=_send, daemon=True)
+    t = threading.Thread(target=_send, daemon=False, name='html-email-send')
     t.start()

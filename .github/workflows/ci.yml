@@ -1,6 +1,7 @@
 # =============================================================================
-# CI Pipeline — Runs on every push/PR to main
-# Validates code integrity before any deploy is allowed
+# CI Pipeline — Production Grade
+# Runs on push & PR to main
+# Ensures code is safe before deployment
 # =============================================================================
 
 name: CI
@@ -13,13 +14,36 @@ on:
 
 jobs:
   ci:
-    name: Lint & Validate
+    name: Validate Django Project
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: test_db
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_pass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U test_user"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
 
     env:
       DJANGO_SETTINGS_MODULE: config.settings
-      SECRET_KEY: ci-test-secret-key-not-for-production
+      SECRET_KEY: ci-secret-key-not-for-production
       DEBUG: "True"
+      DATABASE_URL: postgres://test_user:test_pass@localhost:5432/test_db
+      REDIS_URL: redis://localhost:6379/1
+      ALLOWED_HOSTS: localhost,127.0.0.1
 
     steps:
       - name: Checkout code
@@ -36,26 +60,35 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Django system check
+      - name: Wait for PostgreSQL
+        run: |
+          until pg_isready -h localhost -p 5432; do
+            sleep 1
+          done
+
+      - name: Run Django system checks
         run: python manage.py check --fail-level WARNING
 
-      - name: Check for pending migrations
+      - name: Apply migrations
+        run: python manage.py migrate --no-input
+
+      - name: Verify no pending migrations
         run: python manage.py makemigrations --check --dry-run
 
-      - name: Verify migrations are consistent
-        run: python manage.py migrate --run-syncdb --check 2>/dev/null || python manage.py migrate --check 2>/dev/null || echo "Migration check passed (SQLite)"
+      - name: Test collectstatic
+        run: python manage.py collectstatic --no-input
 
-      - name: Run tests (if present)
-        run: |
-          python manage.py test --verbosity=2 --no-input 2>&1 || true
-        continue-on-error: true
+      - name: Run tests
+        run: python manage.py test --verbosity=2 --no-input
 
-      - name: Check for hardcoded secrets
+      - name: Check for hardcoded SECRET_KEY
         run: |
           echo "Checking for hardcoded secrets..."
-          # Fail if SECRET_KEY has a real value committed (not the insecure default)
           if grep -rn "SECRET_KEY\s*=" config/settings.py | grep -v "os.getenv" | grep -v "insecure" | grep -v "#"; then
             echo "ERROR: Hardcoded SECRET_KEY found!"
             exit 1
           fi
           echo "No hardcoded secrets found."
+
+      - name: CI Completed
+        run: echo "CI passed successfully!"

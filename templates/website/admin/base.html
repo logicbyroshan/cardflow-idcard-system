@@ -7,20 +7,19 @@
     <meta name="robots" content="noindex, nofollow">
     <title>{% block title %}Website Management{% endblock %} - Adarsh Admin</title>
     <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Self-hosted fonts (consistent with main app — no CDN dependency) -->
+    <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
     <!-- Tailwind CSS (primary) -->
     <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=134">
     <!-- Page-specific: website admin -->
     <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=134">
     <link rel="stylesheet" href="{% static 'css/website-admin.css' %}?v=134">
     {% block extra_css %}{% endblock %}
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
     <!-- Alpine.js State Module (MUST load before Alpine) -->
     <script src="{% static 'js/alpine-state.js' %}?v=134"></script>
-    <!-- Alpine.js -->
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
+    <!-- Alpine.js (self-hosted — consistent with main app) -->
+    <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
 </head>
 <body x-data="layoutState()" x-init="init()">
 

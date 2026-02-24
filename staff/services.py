@@ -262,6 +262,9 @@ class AdminStaffCreationService:
             
             with transaction.atomic():
                 # Use custom password if provided, otherwise phone, otherwise random
+                # SECURITY NOTE: Phone-as-password is a deliberate UX choice — the welcome
+                # email tells users "use your mobile number". When a stronger policy is
+                # desired, always pass an explicit password from the UI instead.
                 final_password = password.strip() if password and password.strip() else (phone if phone else generate_secure_password())
                 
                 # Create User

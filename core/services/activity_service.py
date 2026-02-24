@@ -259,9 +259,10 @@ class ActivityService:
             user: If provided, filter activities based on user role:
                 - super_admin: All activities
                 - admin_staff: Activities for assigned clients only
-                - client: Activities for own client only
-                - client_staff: Activities for own client only
-            hide_admin_names: If True, replace admin/admin_staff names with "System"
+                - client: Only activities performed by themselves or their own staff
+                - client_staff: Only their own activities
+            hide_admin_names: If True, replace admin/admin_staff names with "System".
+                Automatically enabled for client and client_staff users.
         
         Returns:
             List of dicts ready for template rendering.
@@ -280,6 +281,9 @@ class ActivityService:
         # Apply role-based filtering
         if user and user.is_authenticated:
             qs = cls._apply_role_filter(qs, user)
+            # Always hide admin names for client-side users (defense in depth)
+            if user.role in ('client', 'client_staff'):
+                hide_admin_names = True
         
         results = []
         for entry in qs[:limit]:
@@ -302,56 +306,63 @@ class ActivityService:
         """
         Apply role-based filtering to activity queryset.
         
+        SECURITY: Client/client_staff must NEVER see admin-side activities.
+        
         Role-based visibility:
         - super_admin: All activities
-        - admin_staff: Activities for assigned clients only
-        - client: Activities for own client only
-        - client_staff: Activities for own client only
+        - admin_staff: All activities (scoped to assigned clients + own)
+        - client: ONLY activities performed by the client user themselves
+                  or by their client_staff members — never admin actions
+        - client_staff: ONLY their own activities — never admin or other
+                        staff/client actions
         """
         from core.services.permission_service import PermissionService
+        from django.db.models import Q
         
         # Super admin sees everything
         if PermissionService.is_super_admin(user):
             return queryset
         
-        # Admin staff: filter by assigned clients
+        # Admin staff: filter by assigned clients + own activities
         if user.role == 'admin_staff':
             staff = getattr(user, 'staff_profile', None)
             if staff:
                 client_ids = list(staff.assigned_clients.values_list('id', flat=True))
                 if client_ids:
-                    # Filter to activities from assigned clients or by this user
-                    from django.db.models import Q
                     return queryset.filter(
                         Q(target_model='Client', target_id__in=client_ids) |
                         Q(user=user)
                     )
-                return queryset.filter(user=user)  # No assigned clients, only own activities
+                return queryset.filter(user=user)
             return queryset.none()
         
-        # Client: filter to own client activities
+        # ── Client isolation ────────────────────────────────────────
+        # Clients only see activities performed by users in their own
+        # organisation (role in client, client_staff + belonging to
+        # the same client).  Admin/admin_staff activities are EXCLUDED.
+        
         if user.role == 'client':
             client = getattr(user, 'client_profile', None)
             if client:
-                from django.db.models import Q
-                return queryset.filter(
-                    Q(target_model='Client', target_id=client.id) |
-                    Q(user=user) |
-                    # Include card operations for the client's cards
-                    Q(target_model='IDCard', target_name__icontains=client.name)
+                # Collect all user PKs that belong to this client org
+                from core.models import User as UserModel
+                org_user_ids = set()
+                org_user_ids.add(user.pk)  # the client user themselves
+                # Add all client_staff belonging to this client
+                staff_user_ids = list(
+                    UserModel.objects.filter(
+                        role='client_staff',
+                        staff_profile__client_id=client.id,
+                    ).values_list('pk', flat=True)
                 )
+                org_user_ids.update(staff_user_ids)
+                
+                return queryset.filter(user_id__in=org_user_ids)
             return queryset.none()
         
-        # Client staff: filter to own client activities
+        # Client staff: see ONLY their own activities
         if user.role == 'client_staff':
-            staff = getattr(user, 'staff_profile', None)
-            if staff and staff.client:
-                from django.db.models import Q
-                return queryset.filter(
-                    Q(target_model='Client', target_id=staff.client.id) |
-                    Q(user=user)
-                )
-            return queryset.none()
+            return queryset.filter(user=user)
         
         return queryset.none()
     
@@ -360,8 +371,9 @@ class ActivityService:
         """
         Get the display name for the activity actor.
         
-        If hide_admin_names is True and the actor is admin/admin_staff,
-        and the viewing_user is client/client_staff, show "System" instead.
+        Always hides admin/admin_staff names from client/client_staff users
+        (shows "System" instead). This is enforced regardless of the
+        hide_admin_names flag when the viewing_user is a client-side role.
         """
         if not entry.user:
             return 'System'
@@ -369,11 +381,16 @@ class ActivityService:
         actor_role = entry.user.role
         actor_name = entry.user.get_full_name() or entry.user.username
         
-        # If viewing user is client/client_staff and actor is admin/admin_staff, hide name
-        if hide_admin_names and viewing_user and viewing_user.is_authenticated:
+        # Always hide admin identities from client-side users
+        if viewing_user and viewing_user.is_authenticated:
             if viewing_user.role in ('client', 'client_staff'):
                 if actor_role in ('super_admin', 'admin_staff') or entry.user.is_superuser:
                     return 'System'
+        
+        # Explicit hide_admin_names flag (for backward compatibility)
+        if hide_admin_names:
+            if actor_role in ('super_admin', 'admin_staff') or entry.user.is_superuser:
+                return 'System'
         
         return actor_name
 

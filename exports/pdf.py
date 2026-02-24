@@ -121,13 +121,28 @@ class PdfExporter:
 
     # Width boost multiplier for name/address fields
     NAME_ADDRESS_BOOST = 1.4
+    # Width boost for non-wrappable fields (mobile, DOB, Aadhar, etc.)
+    NOWRAP_BOOST = 1.35
     # Image column weight (fixed)
     IMAGE_COLUMN_WEIGHT = 25
     # Column width bounds (percentage)
-    MIN_COL_WIDTH = 3.5
-    MAX_COL_WIDTH = 25.0
-    # Landscape A4 content width (29.7cm page - 1cm left - 1cm right margins)
-    PAGE_CONTENT_WIDTH_CM = 27.7
+    MIN_COL_WIDTH = 4.0
+    MAX_COL_WIDTH = 30.0
+    # Minimum width for non-wrappable fields (percentage)
+    MIN_NOWRAP_COL_WIDTH = 5.5
+    # Landscape A4 content width (29.7cm page - 0.5cm left - 0.5cm right margins)
+    PAGE_CONTENT_WIDTH_CM = 28.7
+
+    # Field name keywords that indicate non-wrappable content
+    NOWRAP_KEYWORDS = [
+        'mobile', 'phone', 'contact', 'tel', 'cell',
+        'dob', 'date', 'birth', 'joining',
+        'aadhar', 'aadhaar', 'aadharno', 'aadhaarno',
+        'pan', 'pincode', 'pin', 'zip',
+        'roll', 'enrollment', 'enrolment', 'reg',
+        'id no', 'idno', 'sr no', 'srno', 'uid',
+        'account', 'ifsc', 'bank',
+    ]
 
     def export_cards(
         self,
@@ -218,6 +233,7 @@ class PdfExporter:
             context = {
                 'columns': column_configs,
                 'pages': pages,
+                'total_pages': len(pages),
                 'institution_name': institution_name,
                 'table_name': table.name,
                 'current_date': django_tz.localtime(django_tz.now()).strftime('%d-%m-%Y'),
@@ -292,6 +308,21 @@ class PdfExporter:
             pass
         return IMAGE_HEIGHT * DEFAULT_RATIO
 
+    @classmethod
+    def _is_nowrap_field(cls, field_name: str) -> bool:
+        """Check if a field contains non-wrappable data (phone, DOB, ID numbers, etc.)."""
+        name_lower = field_name.lower().replace(' ', '').replace('_', '').replace('.', '')
+        return any(kw.replace(' ', '') in name_lower for kw in cls.NOWRAP_KEYWORDS)
+
+    @classmethod
+    def _looks_numeric_or_date(cls, value: str) -> bool:
+        """Check if a value is primarily numeric/date-like (shouldn't be wrapped)."""
+        if not value:
+            return False
+        # Count digits + separators vs letters
+        digits_seps = sum(1 for c in value if c.isdigit() or c in '/-.:+ ')
+        return digits_seps >= len(value) * 0.6
+
     def _build_column_configs(
         self,
         ordered_fields: List[Dict[str, Any]],
@@ -302,6 +333,8 @@ class PdfExporter:
         
         Image columns: fixed percentage = (rendered_width + 0.1cm) / page_width
         Text columns: share remaining percentage proportionally
+        Non-wrappable columns (mobile, DOB, Aadhar): boosted width to avoid
+        text touching cell borders.
         """
         # Build column metadata
         configs = [{
@@ -309,18 +342,40 @@ class PdfExporter:
             'width': 0,
             'align': 'center',
             'is_image': False,
+            'nowrap': False,
         }]
 
         for field in ordered_fields:
             name = field['name']
             is_image = field.get('is_image', False)
             align = 'left' if any(w in name.lower() for w in ['name', 'address']) else 'center'
+            nowrap = (not is_image) and self._is_nowrap_field(name)
             configs.append({
                 'label': name.upper(),
                 'width': 0,
                 'align': align,
                 'is_image': is_image,
+                'nowrap': nowrap,
             })
+
+        # Auto-detect nowrap from data: if >70% of values look numeric/date,
+        # flag the column as nowrap even if the name didn't match keywords
+        for i, cfg in enumerate(configs):
+            if cfg['is_image'] or cfg['nowrap'] or i == 0:
+                continue
+            field = ordered_fields[i - 1]
+            name = field['name']
+            sample_count = min(len(cards), 20)
+            if sample_count == 0:
+                continue
+            numeric_count = 0
+            for card in cards[:sample_count]:
+                fd = card.field_data or {}
+                val = str(fd.get(name, '') or '').strip()
+                if val and self._looks_numeric_or_date(val):
+                    numeric_count += 1
+            if numeric_count >= sample_count * 0.7:
+                cfg['nowrap'] = True
 
         # Step 1: Fix image column percentages from actual image dimensions
         # 1mm padding on left + right = 0.2cm extra
@@ -346,6 +401,7 @@ class PdfExporter:
             else:
                 field = ordered_fields[i - 1]
                 name = field['name']
+                is_nowrap = configs[i]['nowrap']
                 max_len = len(name.upper())
                 for card in cards:
                     fd = card.field_data or {}
@@ -353,13 +409,18 @@ class PdfExporter:
                     length = len(str(val)) if val else 0
                     if any(w in name.lower() for w in ['name', 'address', 'email']):
                         length = int(length * self.NAME_ADDRESS_BOOST)
+                    elif is_nowrap:
+                        # Boost non-wrappable fields so the full value fits
+                        # without touching cell borders
+                        length = int(length * self.NOWRAP_BOOST)
                     max_len = max(max_len, length)
                 text_weights.append(max_len)
 
         total_tw = sum(text_weights) or 1
         for idx, i in enumerate(text_indices):
             pct = (text_weights[idx] / total_tw) * remaining_pct
-            configs[i]['width'] = max(self.MIN_COL_WIDTH, min(pct, self.MAX_COL_WIDTH))
+            min_w = self.MIN_NOWRAP_COL_WIDTH if configs[i].get('nowrap') else self.MIN_COL_WIDTH
+            configs[i]['width'] = max(min_w, min(pct, self.MAX_COL_WIDTH))
 
         # Normalize text columns so text + image = 100%
         text_actual = sum(configs[i]['width'] for i in text_indices) or 1
@@ -368,14 +429,16 @@ class PdfExporter:
 
         return configs
 
-    @staticmethod
-    def _wrap_text_for_pdf(text: str) -> 'mark_safe':
+    @classmethod
+    def _wrap_text_for_pdf(cls, text: str, nowrap: bool = False) -> 'mark_safe':
         """Insert word-break opportunities in text for PDF column wrapping.
 
         xhtml2pdf has limited CSS word-wrap support, so we insert HTML
-        break-opportunity hints (<wbr>) after commas, slashes, dashes,
-        and dots (e.g. dates like 01.02.2025) so long values wrap at
-        natural boundaries instead of mid-word character-by-character.
+        break-opportunity hints (<wbr>) after commas, slashes, dashes
+        so long values wrap at natural boundaries instead of mid-word.
+
+        For non-wrappable content (phone numbers, DOB, numeric IDs) we
+        skip the <wbr> insertion entirely so the value stays on one line.
 
         Returns a mark_safe string so Django templates render the HTML.
         """
@@ -384,8 +447,14 @@ class PdfExporter:
             return mark_safe('')
         # Escape HTML entities first to avoid XSS
         safe_text = html_escape(text)
-        # Insert <wbr> after natural break characters: , / - . ; :
-        safe_text = _re.sub(r'([,/\-\.;:])', r'\1<wbr>', safe_text)
+        # Skip wrap hints for non-wrappable fields or short values
+        if nowrap or len(text) <= 14 or cls._looks_numeric_or_date(text):
+            return mark_safe(safe_text)
+        # Insert <wbr> after natural break characters: , / ; :
+        # (NOT after . or - as those appear inside dates/phones)
+        safe_text = _re.sub(r'([,/;:])', r'\1<wbr>', safe_text)
+        # Insert <wbr> after spaces for long wrappable text
+        safe_text = safe_text.replace(' ', ' <wbr>')
         return mark_safe(safe_text)
 
     def _build_rows(
@@ -416,11 +485,13 @@ class PdfExporter:
                 name = field['name']
                 is_image = field.get('is_image', False)
                 val = fd.get(name, '')
+                is_nowrap = (not is_image) and self._is_nowrap_field(name)
 
                 cell = {
                     'align': 'left' if any(w in name.lower() for w in ['name', 'address']) else 'center',
                     'is_image': is_image,
                     'is_placeholder': False,
+                    'nowrap': is_nowrap,
                     'content': '',
                 }
 
@@ -446,8 +517,12 @@ class PdfExporter:
                         cell['content'] = _PLACEHOLDER_IMAGE_PATH
                         cell['is_placeholder'] = True
                 else:
+                    formatted = format_field_value(val, uppercase=True)
+                    # Auto-detect nowrap from value content
+                    if not is_nowrap and formatted and self._looks_numeric_or_date(formatted):
+                        cell['nowrap'] = True
                     cell['content'] = self._wrap_text_for_pdf(
-                        format_field_value(val, uppercase=True)
+                        formatted, nowrap=cell['nowrap']
                     )
 
                 row_cells.append(cell)

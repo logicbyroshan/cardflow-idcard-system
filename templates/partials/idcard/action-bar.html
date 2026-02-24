@@ -135,16 +135,18 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
 
         {% elif current_status == 'approved' %}
             {# === APPROVED LIST === #}
-            {% if perm_idcard_edit %}
-            <button class="btn action-btn btn-blue" id="editBtnA" disabled title="Edit selected card">
-                <i class="fa-solid fa-pen-to-square"></i>
-                <span class="btn-text">Edit</span>
-            </button>
-            {% endif %}
+            {# Clients/client_staff: view-only — no action or export buttons #}
             {% if perm_idcard_info %}
             <button class="btn action-btn btn-gray" id="viewBtnA" disabled title="View selected card">
                 <i class="fa-solid fa-eye"></i>
                 <span class="btn-text">View</span>
+            </button>
+            {% endif %}
+            {% if not is_client and not is_client_staff %}
+            {% if perm_idcard_edit %}
+            <button class="btn action-btn btn-blue" id="editBtnA" disabled title="Edit selected card">
+                <i class="fa-solid fa-pen-to-square"></i>
+                <span class="btn-text">Edit</span>
             </button>
             {% endif %}
             {% if perm_idcard_approve %}
@@ -178,19 +180,21 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
                 <span class="btn-text">Download PDF</span>
             </button>
             {% endif %}
+            {% endif %}
 
         {% elif current_status == 'download' %}
-            {# === DOWNLOAD LIST — read-only, export + retrieve === #}
-            {% if perm_idcard_edit %}
-            <button class="btn action-btn btn-blue" id="editBtnD" disabled title="Edit selected card">
-                <i class="fa-solid fa-pen-to-square"></i>
-                <span class="btn-text">Edit</span>
-            </button>
-            {% endif %}
+            {# === DOWNLOAD LIST — clients/client_staff: view-only === #}
             {% if perm_idcard_info %}
             <button class="btn action-btn btn-gray" id="viewBtnD" disabled title="View selected card">
                 <i class="fa-solid fa-eye"></i>
                 <span class="btn-text">View</span>
+            </button>
+            {% endif %}
+            {% if not is_client and not is_client_staff %}
+            {% if perm_idcard_edit %}
+            <button class="btn action-btn btn-blue" id="editBtnD" disabled title="Edit selected card">
+                <i class="fa-solid fa-pen-to-square"></i>
+                <span class="btn-text">Edit</span>
             </button>
             {% endif %}
             {% if perm_idcard_retrieve %}
@@ -223,6 +227,7 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
                 <i class="fa-solid fa-file-pdf"></i>
                 <span class="btn-text">Export PDF</span>
             </button>
+            {% endif %}
             {% endif %}
 
         {% elif current_status == 'pool' %}

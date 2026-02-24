@@ -5,7 +5,9 @@
             <tr>
                 <th scope="col">Name</th>
                 <th scope="col">Action</th>
+                {% if not is_client and not is_client_staff %}
                 <th scope="col">Bulk Actions</th>
+                {% endif %}
             </tr>
         </thead>
         <tbody>
@@ -49,6 +51,7 @@
                         {% endif %}
                     </div>
                 </td>
+                {% if not is_client and not is_client_staff %}
                 <td class="bulk-action-cell">
                     <div class="bulk-action-buttons">
                         {% if is_super_admin or perm_reupload_idcard_image %}
@@ -78,17 +81,18 @@
                         {% endif %}
                     </div>
                 </td>
+                {% endif %}
             </tr>
             {% endwith %}
             {% empty %}
             <tr>
-                <td colspan="3" class="text-center p-4">
-                    <div class="no-groups" style="padding:40px 20px;text-align:center;color:#6b7280;">
-                        <i class="fa-solid fa-table-list" style="font-size:40px;color:#d1d5db;margin-bottom:12px;display:block;"></i>
-                        <h3 style="font-size:16px;font-weight:600;color:#374151;margin:0 0 6px;">No Tables Found</h3>
-                        <p style="font-size:13px;color:#9ca3af;margin:0 0 12px;">This client has no ID card tables yet. Go to Group Settings to create tables.</p>
-                        <a href="{% if is_client or is_client_staff %}{% url 'client:group_settings' %}{% else %}{% url 'group_settings' client.id %}{% endif %}" class="btn btn-primary empty-state-action mt-2">
-                            <i class="fa-solid fa-gear"></i> Go to Group Settings
+                <td colspan="{% if is_client or is_client_staff %}2{% else %}3{% endif %}" class="text-center p-4">
+                    <div class=\"empty-state\" style=\"display:block;\">
+                        <i class=\"fa-solid fa-table-list\"></i>
+                        <h3>No Tables Found</h3>
+                        <p>This client has no ID card tables yet. Go to Group Settings to create tables.</p>
+                        <a href=\"{% if is_client or is_client_staff %}{% url 'client:group_settings' %}{% else %}{% url 'group_settings' client.id %}{% endif %}\" class=\"btn btn-md btn-primary mt-2\">
+                            <i class=\"fa-solid fa-gear\"></i> Go to Group Settings
                         </a>
                     </div>
                 </td>

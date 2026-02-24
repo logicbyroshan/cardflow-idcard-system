@@ -303,8 +303,8 @@
     height: 38px;
     padding: 0 12px;
     background: #fff;
-    border: 1.5px solid #e2e8f0;
-    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
     font-size: 13px;
     font-weight: 400;
     color: #1e293b;
@@ -318,7 +318,7 @@
 .settings-section input[type="password"]:focus {
     outline: none;
     border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.15);
 }
 
 .settings-section input::placeholder {
@@ -338,8 +338,8 @@
     width: 100%;
     padding: 10px 12px;
     background: #fff;
-    border: 1.5px solid #e2e8f0;
-    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
     font-size: 13px;
     color: #1e293b;
     transition: all 0.2s ease;
@@ -351,14 +351,14 @@
 .settings-section textarea:focus {
     outline: none;
     border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.15);
 }
 
-/* Form Row â€” 2 columns */
+/* Form Row — 2 columns */
 .settings-section .form-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 16px;
+    gap: 14px;
 }
 
 /* Form Actions */

@@ -4,7 +4,7 @@
     <div class="container">
         <div class="download-app-wrapper">
             <div class="download-app-content">
-                <h2>Get Our App</h2>
+                <h2>Install Our App</h2>
                 <p>Install our Progressive Web App directly on your device — no app store needed. Manage orders, track deliveries, and access your dashboard instantly.</p>
                 <div class="pwa-features">
                     <div class="pwa-feature">
@@ -20,24 +20,31 @@
                         <span>Works Offline</span>
                     </div>
                 </div>
-                <div class="download-app-buttons">
+                <div class="pwa-action-bar">
                     <a href="/app/" class="pwa-install-btn" id="pwaInstallBtn">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="5" y="2" width="14" height="20" rx="2" stroke="currentColor" stroke-width="2"/><line x1="12" y1="18" x2="12" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-                        Open App
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="7 10 12 15 17 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="15" x2="12" y2="3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        Install App
                     </a>
-                    <p class="pwa-hint">Login required · Works best on mobile</p>
+                    <div class="pwa-action-bar-divider"></div>
+                    <div class="pwa-action-bar-qr">
+                        <img id="appQrCode" alt="Scan to install app" width="64" height="64">
+                        <div class="pwa-qr-text">
+                            <strong>Scan with your phone</strong>
+                            Install the app directly from your mobile browser
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="download-app-visual">
                 <div class="pwa-phone-mockup">
                     <div class="phone-screen">
                         <div class="phone-statusbar"></div>
-                        <div class="phone-content">
-                            <div class="phone-logo">
-                                <svg width="40" height="40" viewBox="0 0 60 60" fill="none"><rect width="60" height="60" rx="14" fill="#0A92DD"/><rect x="10" y="14" width="40" height="28" rx="4" fill="white" opacity="0.9"/><circle cx="22" cy="25" r="6" fill="#dbeafe"/><rect x="32" y="20" width="14" height="3" rx="1.5" fill="#93c5fd"/><rect x="32" y="26" width="10" height="3" rx="1.5" fill="#bfdbfe"/><rect x="14" y="35" width="32" height="3" rx="1.5" fill="#eff6ff"/></svg>
-                            </div>
-                            <div class="phone-text">Adarsh ID Cards</div>
-                            <div class="phone-dots"><span></span><span></span><span></span></div>
+                        <div class="phone-slideshow">
+                            <img class="phone-slide active" src="{% static 'website/images/Products/Product1.png' %}" alt="App Screenshot - ID Cards">
+                            <img class="phone-slide" src="{% static 'website/images/Products/Lanyard.jpg' %}" alt="App Screenshot - Lanyards">
+                            <img class="phone-slide" src="{% static 'website/images/Products/Certificate.jpg' %}" alt="App Screenshot - Certificates">
+                            <img class="phone-slide" src="{% static 'website/images/Products/Invitation.png' %}" alt="App Screenshot - Invitations">
+                            <img class="phone-slide" src="{% static 'website/images/Products/Marksheets.png' %}" alt="App Screenshot - Marksheets">
                         </div>
                     </div>
                 </div>

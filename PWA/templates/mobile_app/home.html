@@ -150,8 +150,9 @@
 </div>
 
 <!-- Inject hero images data for Alpine.js -->
+{{ hero_images|json_script:"hero-images-data" }}
 <script>
-    window.__heroImages = {{ hero_images|safe }};
+    window.__heroImages = JSON.parse(document.getElementById('hero-images-data').textContent);
 </script>
 
 <script>

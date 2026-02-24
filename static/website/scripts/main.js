@@ -1,9 +1,9 @@
 /**
  * Adarsh ID Cards - Main JavaScript
- * Handles: Slider, Mobile Menu, Typing Effect, AJAX Forms, and Scroll Animations
+ * Handles: Slider, Mobile Menu, Typing Effect, AJAX Forms, Phone Slideshow, and Scroll Animations
  */
 
-// ===== 1. Dynamic Hero Slider =====
+// ===== 1. Dynamic Hero Slider (Crossfade) =====
 function initHeroSlider() {
     const sliderImg = document.getElementById('slider-img');
     const card = document.querySelector('.slide-card');
@@ -13,36 +13,46 @@ function initHeroSlider() {
 
     if (!sliderImg || dots.length === 0) return;
 
+    // Preload all images for seamless transitions
+    dots.forEach(dot => {
+        const url = dot.getAttribute('data-url');
+        if (url) { const img = new Image(); img.src = url; }
+    });
+
+    let isAnimating = false;
+
     function updateSlider(index) {
+        if (isAnimating) return;
         const targetDot = dots[index];
         const newUrl = targetDot.getAttribute('data-url');
-        
-        if (!newUrl) return;
+        if (!newUrl || sliderImg.src.endsWith(newUrl.split('/').pop())) return;
 
         const newTitle = targetDot.getAttribute('data-title');
         const newSubtitle = targetDot.getAttribute('data-subtitle');
 
+        isAnimating = true;
         card.classList.add('push-out');
-        
+
         setTimeout(() => {
             sliderImg.src = newUrl;
             if (titleEl && newTitle) titleEl.textContent = newTitle;
             if (subtitleEl && newSubtitle) subtitleEl.textContent = newSubtitle;
-            
+
             dots.forEach(d => d.classList.remove('active'));
             targetDot.classList.add('active');
 
             card.classList.remove('push-out');
             card.classList.add('push-in');
-            
+
             setTimeout(() => {
                 card.classList.remove('push-in');
-            }, 600);
-        }, 300);
+                isAnimating = false;
+            }, 500);
+        }, 500);
     }
 
     let currentSlide = 0;
-    
+
     let slideInterval = setInterval(() => {
         currentSlide = (currentSlide + 1) % dots.length;
         updateSlider(currentSlide);
@@ -61,45 +71,79 @@ function initHeroSlider() {
     });
 }
 
-// ===== 2. Hero Typing Effect =====
+// ===== 2. Hero Typing Effect (Full-Line with Highlighted Product) =====
 function initTypingEffect() {
-    const typingEl = document.getElementById('typingText');
+    const typingEl = document.getElementById('typingLine');
     if (!typingEl) return;
 
-    const words = ['ID Cards', 'Digital Lanyards', 'Certificates', 'Marksheets', 'Fee Cards', 'RFID Cards'];
-    let wordIndex = 0;
+    const lines = [
+        { before: 'Professional ', product: 'ID Cards', after: ' for Your School' },
+        { before: 'Custom ', product: 'Digital Lanyards', after: ' for Your College' },
+        { before: 'Premium ', product: 'Badges', after: ' for Your Institution' },
+        { before: 'Elegant ', product: 'Invitation Cards', after: ' for Your Event' },
+        { before: 'Official ', product: 'Certificates', after: ' for Your Academy' },
+        { before: 'Detailed ', product: 'Marksheets', after: ' for Your School' },
+        { before: 'Comprehensive ', product: 'Report Cards', after: ' for Your Institute' },
+        { before: 'Creative ', product: 'Diaries', after: ' for Your Students' },
+        { before: 'Custom ', product: 'Calendars', after: ' for Your Organization' },
+        { before: 'Stunning ', product: 'Brochures', after: ' for Your Business' },
+    ];
+
+    let lineIndex = 0;
     let charIndex = 0;
     let isDeleting = false;
-    let typingSpeed = 100;
+
+    function esc(str) {
+        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function getFullText(line) {
+        return line.before + line.product + line.after;
+    }
+
+    function renderLine(line, chars) {
+        const bLen = line.before.length;
+        const pLen = line.product.length;
+        const full = getFullText(line);
+        const visible = full.substring(0, chars);
+
+        if (chars <= bLen) {
+            return esc(visible);
+        } else if (chars <= bLen + pLen) {
+            return esc(line.before) + '<span class="typing-highlight">' + esc(visible.substring(bLen)) + '</span>';
+        } else {
+            return esc(line.before) + '<span class="typing-highlight">' + esc(line.product) + '</span>' + esc(visible.substring(bLen + pLen));
+        }
+    }
 
     function type() {
-        const currentWord = words[wordIndex];
+        const currentLine = lines[lineIndex];
+        const fullText = getFullText(currentLine);
+        let speed;
 
         if (isDeleting) {
-            typingEl.textContent = currentWord.substring(0, charIndex - 1);
             charIndex--;
-            typingSpeed = 50;
+            speed = 30;
         } else {
-            typingEl.textContent = currentWord.substring(0, charIndex + 1);
             charIndex++;
-            typingSpeed = 120;
+            speed = 70;
         }
 
-        if (!isDeleting && charIndex === currentWord.length) {
-            // Pause at end of word
-            typingSpeed = 2000;
+        typingEl.innerHTML = renderLine(currentLine, charIndex);
+
+        if (!isDeleting && charIndex === fullText.length) {
+            speed = 2200;
             isDeleting = true;
         } else if (isDeleting && charIndex === 0) {
             isDeleting = false;
-            wordIndex = (wordIndex + 1) % words.length;
-            typingSpeed = 300;
+            lineIndex = (lineIndex + 1) % lines.length;
+            speed = 400;
         }
 
-        setTimeout(type, typingSpeed);
+        setTimeout(type, speed);
     }
 
-    // Start typing after a short delay
-    setTimeout(type, 1000);
+    setTimeout(type, 800);
 }
 
 // ===== 3. Mobile Menu Toggle =====
@@ -172,6 +216,28 @@ function createScrollTopButton() {
     });
 }
 
+// ===== 5. PWA Phone Mockup Slideshow =====
+function initPhoneSlideshow() {
+    const slides = document.querySelectorAll('.phone-slide');
+    if (slides.length === 0) return;
+
+    let current = 0;
+    setInterval(() => {
+        slides[current].classList.remove('active');
+        current = (current + 1) % slides.length;
+        slides[current].classList.add('active');
+    }, 3000);
+}
+
+// ===== 6. Dynamic QR Code =====
+function initQrCode() {
+    const qrImg = document.getElementById('appQrCode');
+    if (!qrImg) return;
+
+    const appUrl = window.location.origin + '/app/';
+    qrImg.src = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&color=100F57&data=' + encodeURIComponent(appUrl);
+}
+
 // ===== Initialize Everything =====
 document.addEventListener('DOMContentLoaded', () => {
     initHeroSlider();
@@ -179,4 +245,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initMobileMenu();
     initScrollEffects();
     createScrollTopButton();
+    initPhoneSlideshow();
+    initQrCode();
 });

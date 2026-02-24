@@ -1855,7 +1855,9 @@ def api_idcard_bulk_upload(request, table_id):
                                 logger.warning("Failed to create CardMedia for bulk %s: %s", img_field, media_err)
                     
                 except Exception as e:
-                    errors.append(f'Row {row_num}: {str(e)}')
+                    # Sanitize error — never leak raw exception details to the client
+                    safe_msg = str(e)[:120].replace('\n', ' ').replace('\r', '')
+                    errors.append(f'Row {row_num}: Processing error — {safe_msg}')
             except Exception as atomic_err:
                 # Transaction rolled back — clean up orphaned image files saved to disk
                 logger.error("Bulk upload transaction failed, cleaning up %d images: %s",
@@ -2077,7 +2079,9 @@ def api_idcard_bulk_upload(request, table_id):
                                 logger.warning("Failed to create CardMedia for CSV bulk %s: %s", img_field, media_err)
                     
                   except Exception as e:
-                    errors.append(f'Row {row_num}: {str(e)}')
+                    # Sanitize error — never leak raw exception details to the client
+                    safe_msg = str(e)[:120].replace('\n', ' ').replace('\r', '')
+                    errors.append(f'Row {row_num}: Processing error — {safe_msg}')
             except Exception as atomic_err:
                 # Transaction rolled back — clean up orphaned image files saved to disk
                 logger.error("CSV bulk upload transaction failed, cleaning up %d images: %s",

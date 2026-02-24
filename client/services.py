@@ -431,7 +431,10 @@ class ClientStaffService(BaseService):
                 first_name = name_parts[0] if name_parts else ''
                 last_name = ' '.join(name_parts[1:]) if len(name_parts) > 1 else ''
             
-            # Use phone number as default password (matches welcome email instructions)
+            # Default password strategy: phone number → random token
+            # SECURITY NOTE: Phone-as-password is a deliberate UX choice — the welcome
+            # email tells users "use your mobile number". When a stronger policy is
+            # desired, always pass an explicit password from the UI instead.
             import secrets as _secrets
             phone = data.get('phone', '').strip()
             password = data.get('password', '').strip()

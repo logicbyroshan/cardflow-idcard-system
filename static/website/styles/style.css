@@ -358,6 +358,11 @@ body {
     margin-bottom: 20px;
     line-height: 1.2;
     color: #fff;
+    min-height: 4.2em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
 }
 
 .hero .gradient-text {
@@ -486,32 +491,32 @@ body {
 }
 
 .slide-card.push-out .card-image img {
-    animation: pushOutLeft 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+    animation: fadeOutSlider 0.5s ease forwards;
 }
 
 .slide-card.push-in .card-image img {
-    animation: pushInFromRight 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+    animation: fadeInSlider 0.5s ease forwards;
 }
 
-@keyframes pushOutLeft {
+@keyframes fadeOutSlider {
     from {
-        transform: translateX(0);
         opacity: 1;
+        transform: scale(1);
     }
     to {
-        transform: translateX(-150%);
         opacity: 0;
+        transform: scale(1.03);
     }
 }
 
-@keyframes pushInFromRight {
+@keyframes fadeInSlider {
     from {
-        transform: translateX(150%);
         opacity: 0;
+        transform: scale(0.97);
     }
     to {
-        transform: translateX(0);
         opacity: 1;
+        transform: scale(1);
     }
 }
 
@@ -527,6 +532,7 @@ body {
     align-items: center;
     justify-content: center;
     position: relative;
+    background: linear-gradient(135deg, #100F57 0%, #0a92dd 100%);
 }
 
 .card-image::before {
@@ -1413,28 +1419,24 @@ body {
     transform: translateY(0) !important;
 }
 
-.push-out { transform: translateX(-20px); opacity: 0; transition: 0.3s; }
-.push-in { transform: translateX(0); opacity: 1; transition: 0.3s; }
+/* Crossfade transition helpers (handled by animations above) */
 
 /* ===== Typing Effect ===== */
-.typing-wrapper {
+#typingLine {
     display: inline;
-    position: relative;
 }
 
-.typing-text {
-    background: linear-gradient(135deg, #0a92dd, #667eea, #764ba2);
+.typing-highlight {
+    background: linear-gradient(135deg, #fbbf24, #f97316);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    font-weight: 800;
 }
 
 .typing-cursor {
     display: inline-block;
-    background: linear-gradient(135deg, #0a92dd, #667eea);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: rgba(255, 255, 255, 0.8);
     font-weight: 300;
     animation: blink 0.8s step-end infinite;
     margin-left: 2px;
@@ -1655,6 +1657,80 @@ body {
 
 .phone-dots span:first-child {
     background: rgba(255, 255, 255, 0.7);
+}
+
+/* Phone Mockup Image Slideshow */
+.phone-slideshow {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+}
+
+.phone-slide {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 0.8s ease;
+}
+
+.phone-slide.active {
+    opacity: 1;
+}
+
+/* CTA Action Bar (Install button + QR) */
+.pwa-action-bar {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-top: 2rem;
+    padding: 1.2rem 1.5rem;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(4px);
+}
+
+.pwa-action-bar .pwa-install-btn {
+    flex-shrink: 0;
+}
+
+.pwa-action-bar-divider {
+    width: 1px;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.15);
+    flex-shrink: 0;
+}
+
+.pwa-action-bar-qr {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.pwa-action-bar-qr img {
+    width: 64px;
+    height: 64px;
+    border-radius: 10px;
+    background: white;
+    padding: 4px;
+    flex-shrink: 0;
+}
+
+.pwa-qr-text {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.7);
+    line-height: 1.4;
+}
+
+.pwa-qr-text strong {
+    display: block;
+    color: rgba(255, 255, 255, 0.95);
+    font-size: 0.9rem;
+    margin-bottom: 2px;
 }
 
 /* ===== Navbar Button Group ===== */

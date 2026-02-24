@@ -152,6 +152,9 @@ def _check_export_permission(request):
     """
     Check if user has export permission.
     
+    Clients/client_staff are blocked from exporting approved/download status
+    cards and from the download-all endpoint.
+    
     Returns:
         None if permitted, JsonResponse with error if not
     """
@@ -166,6 +169,15 @@ def _check_export_permission(request):
             'success': False,
             'message': 'Permission denied: You do not have bulk download access'
         }, status=403)
+    
+    # Block client/client_staff from exporting approved or download status cards
+    if request.user.role in ('client', 'client_staff'):
+        status = _get_status_from_request(request)
+        if status in ('approved', 'download'):
+            return JsonResponse({
+                'success': False,
+                'message': 'Export is not available for this list'
+            }, status=403)
     
     return None
 
@@ -583,6 +595,8 @@ def api_download_all_cards(request, table_id: int) -> JsonResponse:
     Memory-efficient implementation: processes data in batches and limits
     total export size to prevent server crashes.
     
+    Not available to client/client_staff users.
+    
     POST /api/table/<table_id>/cards/download-all/
     
     Returns JSON with base64-encoded files:
@@ -606,6 +620,13 @@ def api_download_all_cards(request, table_id: int) -> JsonResponse:
         "total_files": 3
     }
     """
+    
+    # Block client/client_staff from download-all (contains approved/download data)
+    if request.user.is_authenticated and request.user.role in ('client', 'client_staff'):
+        return JsonResponse({
+            'success': False,
+            'message': 'This feature is not available for your account'
+        }, status=403)
     
     # Check permission
     perm_error = _check_export_permission(request)

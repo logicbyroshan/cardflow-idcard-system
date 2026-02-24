@@ -104,18 +104,29 @@ class BusinessDetails(models.Model):
 
     @staticmethod
     def _sanitize_html(value):
-        """Strip all HTML tags except a safe allowlist."""
+        """Strip all HTML tags except a safe allowlist, and remove dangerous attributes."""
         ALLOWED_TAGS = {'span', 'br', 'strong', 'em', 'b', 'i'}
         # Remove <script>, <style>, and event handlers first
         value = re.sub(r'<script[^>]*>.*?</script>', '', value, flags=re.DOTALL | re.IGNORECASE)
         value = re.sub(r'<style[^>]*>.*?</style>', '', value, flags=re.DOTALL | re.IGNORECASE)
-        value = re.sub(r'\son\w+\s*=\s*["\'][^"\']*["\']', '', value, flags=re.IGNORECASE)
+        # Remove ALL event handler attributes (on*=...)
+        value = re.sub(r'\son\w+\s*=\s*(?:"[^"]*"|\x27[^\x27]*\x27|[^\s>]+)', '', value, flags=re.IGNORECASE)
+        # Remove javascript: protocol in any attribute
+        value = re.sub(r'javascript\s*:', '', value, flags=re.IGNORECASE)
+        # Remove data: protocol in any attribute (prevent data URI attacks)
+        value = re.sub(r'data\s*:[^\s>]*', '', value, flags=re.IGNORECASE)
 
         def _replace_tag(match):
             full = match.group(0)
             tag_name = match.group(1).lower().strip('/')
             if tag_name in ALLOWED_TAGS:
-                return full
+                # For allowed tags, strip all attributes except safe ones
+                if tag_name == 'span':
+                    # Only allow class and style on span
+                    cleaned = re.sub(r'\s+(?!class=|style=)\w+=(?:"[^"]*"|\x27[^\x27]*\x27|[^\s>]+)', '', full, flags=re.IGNORECASE)
+                    return cleaned
+                # For other allowed tags, strip ALL attributes
+                return f'<{match.group(1).strip()}>'
             return ''
         return re.sub(r'<(/?\s*\w+)[^>]*>', _replace_tag, value)
 

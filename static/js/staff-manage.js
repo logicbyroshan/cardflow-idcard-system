@@ -161,7 +161,7 @@ function openCreateModal() {
   document.getElementById('email').removeAttribute('disabled');
   document.querySelectorAll('input[name="permissions"]').forEach(cb => cb.checked = false);
   document.querySelectorAll('input[name="clients"]').forEach(cb => cb.checked = false);
-  document.getElementById('staffModal').classList.add('active');
+  document.getElementById('staffModal').classList.add('show');
 }
 
 // Edit staff
@@ -193,7 +193,7 @@ async function editStaff(id) {
         cb.checked = clientIds.includes(parseInt(cb.value));
       });
       
-      document.getElementById('staffModal').classList.add('active');
+      document.getElementById('staffModal').classList.add('show');
     }
   } catch (error) {
     console.error('Error loading staff details:', error);
@@ -203,7 +203,7 @@ async function editStaff(id) {
 
 // Close modal
 function closeModal() {
-  document.getElementById('staffModal').classList.remove('active');
+  document.getElementById('staffModal').classList.remove('show');
 }
 
 // Handle form submit

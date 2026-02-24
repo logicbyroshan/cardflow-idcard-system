@@ -121,7 +121,10 @@ class ClientService(BaseService):
             name = data.get('name', '')
             name_parts = name.split() if name else []
             
-            # Use phone number as default password (matches welcome email instructions)
+            # Default password strategy: phone number → random token
+            # SECURITY NOTE: Phone-as-password is a deliberate UX choice — the welcome
+            # email tells users "use your mobile number". When a stronger policy is
+            # desired, always pass an explicit password from the UI instead.
             phone = data.get('phone', '').strip()
             password = data.get('password', '').strip()
             used_phone_as_password = False

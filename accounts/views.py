@@ -384,9 +384,14 @@ def setup_groups_view(request):
     """
     Utility view to setup Django Groups.
     Should be called once during initial setup.
-    Only accessible by superusers.
+    Only accessible by super admins via POST.
     """
-    if not request.user.is_superuser:
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Method not allowed'}, status=405)
+
+    # Use PermissionService for consistent role checking across the app
+    from core.services import PermissionService
+    if not PermissionService.is_super_admin(request.user):
         return JsonResponse({
             'success': False,
             'message': 'Unauthorized'

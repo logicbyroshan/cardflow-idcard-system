@@ -1093,9 +1093,13 @@ def api_export_settings_update(request):
         return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
 
     updated = []
+    MAX_SETTING_VALUE_LEN = 1000
     for key in SystemSettings.EXPORT_DEFAULTS:
         if key in body:
-            SystemSettings.set_value(key, body[key].strip())
+            val = body[key].strip() if isinstance(body[key], str) else str(body[key]).strip()
+            if len(val) > MAX_SETTING_VALUE_LEN:
+                return JsonResponse({'success': False, 'message': f'{key} exceeds maximum length of {MAX_SETTING_VALUE_LEN} characters'}, status=400)
+            SystemSettings.set_value(key, val)
             updated.append(key)
 
     if not updated:
@@ -1109,6 +1113,7 @@ def api_export_settings_update(request):
 # =========================================================================
 
 @login_required
+@require_any_admin
 @require_http_methods(['GET'])
 def api_export_templates_list(request):
     """GET /api/export-templates/ — list all export templates for download modals."""
@@ -1136,6 +1141,8 @@ def api_export_template_create(request):
         return JsonResponse({'success': False, 'message': 'Template name is required'}, status=400)
     if not instructions:
         return JsonResponse({'success': False, 'message': 'Instructions text is required'}, status=400)
+    if len(instructions) > 5000:
+        return JsonResponse({'success': False, 'message': 'Instructions must be 5000 characters or less'}, status=400)
     if len(name) > 100:
         return JsonResponse({'success': False, 'message': 'Name must be 100 characters or less'}, status=400)
 
@@ -1175,6 +1182,8 @@ def api_export_template_update(request, template_id):
             return JsonResponse({'success': False, 'message': 'A template with this name already exists'}, status=400)
         tpl.name = name
     if instructions:
+        if len(instructions) > 5000:
+            return JsonResponse({'success': False, 'message': 'Instructions must be 5000 characters or less'}, status=400)
         tpl.instructions = instructions
     if is_default is not None:
         tpl.is_default = bool(is_default)
@@ -1205,6 +1214,7 @@ def api_export_template_delete(request, template_id):
 
 @login_required
 @require_any_admin
+@require_http_methods(["GET"])
 def api_health(request):
     """Auth-protected health & version endpoint."""
     return JsonResponse({
@@ -1218,6 +1228,7 @@ def api_health(request):
 # =============================================================================
 
 @login_required
+@require_http_methods(["GET"])
 def api_debug_permissions(request):
     """
     Self-check endpoint: returns the effective permissions for the requesting
@@ -1247,6 +1258,7 @@ def api_debug_permissions(request):
 # =============================================================================
 
 @login_required
+@require_http_methods(["GET"])
 def api_debug_workflow(request):
     """
     Workflow self-check endpoint.
@@ -1323,6 +1335,7 @@ def api_card_allowed_transitions(request, card_id):
 # =============================================================================
 
 @login_required
+@require_http_methods(["GET"])
 def api_debug_image_integrity(request):
     """
     Image integrity self-check endpoint.

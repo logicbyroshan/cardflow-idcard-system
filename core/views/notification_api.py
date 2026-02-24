@@ -27,8 +27,11 @@ logger = logging.getLogger(__name__)
 @require_http_methods(["GET"])
 def api_notifications_list(request):
     """Get notifications for the current user (with read/unread status)."""
-    limit = min(int(request.GET.get('limit', 20)), 50)
-    offset = int(request.GET.get('offset', 0))
+    try:
+        limit = min(int(request.GET.get('limit', 20)), 50)
+        offset = max(int(request.GET.get('offset', 0)), 0)
+    except (ValueError, TypeError):
+        limit, offset = 20, 0
     unread_only = request.GET.get('unread_only', '').lower() == 'true'
 
     data = NotificationService.get_notifications_for_user(
@@ -74,8 +77,11 @@ def api_notifications_mark_all_read(request):
 @require_http_methods(["GET"])
 def api_panel_notifications_list(request):
     """List all notifications for admin panel management."""
-    limit = min(int(request.GET.get('limit', 50)), 100)
-    offset = int(request.GET.get('offset', 0))
+    try:
+        limit = min(int(request.GET.get('limit', 50)), 100)
+        offset = max(int(request.GET.get('offset', 0)), 0)
+    except (ValueError, TypeError):
+        limit, offset = 50, 0
     search = request.GET.get('search', '')
 
     data = NotificationService.list_all_notifications(

@@ -252,7 +252,13 @@ class Client(models.Model):
         if not self.image_folder_code:
             return
 
-        folder_path = os.path.join(settings.MEDIA_ROOT, f"adarshimg/{self.image_folder_code}")
+        media_root = os.path.realpath(settings.MEDIA_ROOT)
+
+        folder_path = os.path.realpath(os.path.join(settings.MEDIA_ROOT, f"adarshimg/{self.image_folder_code}"))
+        # Path traversal protection: ensure resolved path is within MEDIA_ROOT
+        if not folder_path.startswith(media_root + os.sep):
+            logger.error("Path traversal blocked in delete_image_folder: %s", folder_path)
+            return
         if os.path.exists(folder_path):
             try:
                 shutil.rmtree(folder_path)
@@ -261,7 +267,10 @@ class Client(models.Model):
                 logger.warning("Could not delete folder %s: %s", self.image_folder_code, e)
 
         # Also delete thumbnail folder
-        thumbs_path = os.path.join(settings.MEDIA_ROOT, f"adarshimg/thumbs/{self.image_folder_code}")
+        thumbs_path = os.path.realpath(os.path.join(settings.MEDIA_ROOT, f"adarshimg/thumbs/{self.image_folder_code}"))
+        if not thumbs_path.startswith(media_root + os.sep):
+            logger.error("Path traversal blocked in delete_image_folder (thumbs): %s", thumbs_path)
+            return
         if os.path.exists(thumbs_path):
             try:
                 shutil.rmtree(thumbs_path)

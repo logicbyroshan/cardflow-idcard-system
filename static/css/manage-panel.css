@@ -510,10 +510,10 @@
   letter-spacing: normal;
   font-weight: 400;
   border: 1px solid #d1d5db;
-  border-radius: 4px;
+  border-radius: 6px;
   margin-bottom: 10px;
   outline: none;
-  transition: border-color .2s;
+  transition: border-color .2s, box-shadow .2s;
   box-sizing: border-box;
   font-family: inherit;
   color: #334155;
@@ -521,6 +521,7 @@
 }
 .panel-form-input:focus {
   border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102,126,234,0.15);
 }
 textarea.panel-form-input {
   resize: vertical;
@@ -532,10 +533,10 @@ textarea.panel-form-input {
   padding: 9px 12px;
   font-size: 13px;
   border: 1px solid #d1d5db;
-  border-radius: 4px;
+  border-radius: 6px;
   margin-bottom: 10px;
   outline: none;
-  transition: border-color .2s;
+  transition: border-color .2s, box-shadow .2s;
   background: #fff;
   cursor: pointer;
   appearance: none;
@@ -548,6 +549,7 @@ textarea.panel-form-input {
 }
 .panel-form-select:focus {
   border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102,126,234,0.15);
 }
 .panel-form-label {
   display: block;
@@ -559,7 +561,7 @@ textarea.panel-form-input {
 .panel-form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 14px;
 }
 
 /* Stat card icon variants */

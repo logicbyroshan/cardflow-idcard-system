@@ -212,9 +212,10 @@ class OTPService:
             # Check if user exists
             user = User.objects.filter(email__iexact=email).first()
             if not user:
+                # Return same success message to prevent user enumeration
                 return {
-                    'success': False,
-                    'message': 'No account found with this email'
+                    'success': True,
+                    'message': f'If an account exists with this email, an OTP has been sent to {email}'
                 }
             
             # Generate OTP
@@ -237,7 +238,7 @@ class OTPService:
                 logger.info("[DEV] OTP for %s: %s", email, otp)
                 return {
                     'success': True,
-                    'message': f'OTP sent to {email}',
+                    'message': f'If an account exists with this email, an OTP has been sent to {email}',
                     'dev_otp': otp  # Only in debug mode
                 }
             else:
@@ -260,7 +261,7 @@ Adarsh Admin Team''',
                 )
                 return {
                     'success': True,
-                    'message': f'OTP sent to {email}'
+                    'message': f'If an account exists with this email, an OTP has been sent to {email}'
                 }
                     
         except Exception as e:
@@ -313,10 +314,9 @@ Adarsh Admin Team''',
             
             # Verify OTP (constant-time comparison to prevent timing attacks)
             if not hmac.compare_digest(str(otp_data['otp']), str(otp)):
-                remaining = OTP_MAX_ATTEMPTS - attempts
                 return {
                     'success': False,
-                    'message': f'Invalid OTP. {remaining} attempt(s) remaining.'
+                    'message': 'Invalid OTP. Please try again.'
                 }
             
             # OTP verified - generate reset token
