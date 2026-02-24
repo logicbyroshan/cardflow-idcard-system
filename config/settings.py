@@ -16,33 +16,33 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # CORE SETTINGS
 # =============================================================================
 
-# SECURITY WARNING: keep the secret key used in production secret!
-# In production, set SECRET_KEY in .env file
-_default_secret = 'django-insecure-dev-key-change-in-production-*m$!x7r9vt=%9aqv1nnaav'
-SECRET_KEY = os.getenv('SECRET_KEY', _default_secret)
+# SECURITY: SECRET_KEY must always come from .env — no hardcoded fallback.
+# Generate one with: python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+SECRET_KEY = os.getenv('SECRET_KEY')
+if not SECRET_KEY:
+    raise ImproperlyConfigured(
+        'SECRET_KEY is not set. Add it to your .env file. '
+        'Generate one with: python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"'
+    )
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # Safe default: False — must explicitly opt-in to DEBUG mode
 DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes')
-
-# Crash fast in production if SECRET_KEY is still the insecure default
-if not DEBUG and SECRET_KEY == _default_secret:
-    raise ImproperlyConfigured(
-        'SECRET_KEY must be set to a secure random value in production. '
-        'Set the SECRET_KEY environment variable.'
-    )
 
 # Allowed Hosts
 # In DEBUG mode allow everything; in production read from .env
 if DEBUG:
     ALLOWED_HOSTS = ['*']
 else:
-    _default_hosts = ''
     ALLOWED_HOSTS = [
         host.strip()
-        for host in os.getenv('ALLOWED_HOSTS', _default_hosts).split(',')
+        for host in os.getenv('ALLOWED_HOSTS', '').split(',')
         if host.strip()
     ]
+    if not ALLOWED_HOSTS:
+        raise ImproperlyConfigured(
+            'ALLOWED_HOSTS is not set. Add comma-separated hostnames to your .env file.'
+        )
 
 
 # =============================================================================
@@ -143,13 +143,13 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 # =============================================================================
 
-# Local default: SQLite | Production: Set DATABASE_URL in .env
+# Production: Set DATABASE_URL in .env
 # Example DATABASE_URL: postgres://user:password@host:5432/dbname
 
 DATABASE_URL = os.getenv('DATABASE_URL')
 
 if DATABASE_URL:
-    # Production: Use DATABASE_URL (PostgreSQL, MySQL, etc.)
+    # Production / Staging: Use DATABASE_URL (PostgreSQL, MySQL, etc.)
     DATABASES = {
         'default': dj_database_url.config(
             default=DATABASE_URL,
@@ -157,14 +157,19 @@ if DATABASE_URL:
             conn_health_checks=True,
         )
     }
-else:
-    # Local development: Use SQLite (no setup needed)
+elif DEBUG:
+    # Local development only: Use SQLite (no setup needed)
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
+else:
+    raise ImproperlyConfigured(
+        'DATABASE_URL is not set. Add it to your .env file for production. '
+        'Example: DATABASE_URL=postgres://user:password@host:5432/dbname'
+    )
 
 
 # =============================================================================
