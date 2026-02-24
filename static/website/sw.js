@@ -1,8 +1,10 @@
-// Service Worker for Adarsh Admin PWA (website install → panel login)
+// Service Worker for Adarsh Admin PWA
+// Works on both: panel subdomain (clean URLs) and local dev (/panel/ prefix).
 // Lightweight: caches only the shell assets, network-first for everything else.
 
-const CACHE_NAME = 'adarsh-admin-pwa-v1';
+const CACHE_NAME = 'adarsh-admin-pwa-v2';
 const SHELL_ASSETS = [
+    '/auth/login/',
     '/panel/auth/login/',
     '/static/website/images/adarsh.png',
     '/static/website/images/favicon.ico',

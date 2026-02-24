@@ -250,9 +250,11 @@ function triggerPwaInstall() {
             }
             window.__pwaInstallPrompt = null;
         });
+    } else if (window.__panelUrl) {
+        // Redirect to panel login — PWA install happens from the panel subdomain
+        window.location.href = window.__panelUrl + '/auth/login/';
     } else {
-        // Fallback: redirect to panel login (works on iOS Safari where
-        // beforeinstallprompt is not supported — user can Add to Home Screen manually)
+        // Fallback for local dev: redirect to panel login
         window.location.href = window.location.origin + '/panel/auth/login/';
     }
 }

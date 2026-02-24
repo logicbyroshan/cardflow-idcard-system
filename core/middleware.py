@@ -33,6 +33,10 @@ class SubdomainRoutingMiddleware:
     - WEBSITE_DOMAIN (e.g. www.adarshbhopal.in)  → config.urls_website
     - PANEL_DOMAIN   (e.g. panel.adarshbhopal.in) → config.urls_panel
 
+    On the panel subdomain, any incoming path that starts with /panel/ is
+    silently rewritten (prefix stripped) so that all existing hardcoded
+    /panel/… URLs in JS, templates, and Python code keep working.
+
     In local development (when neither domain is set, or the Host header
     matches neither), the default ROOT_URLCONF is used (all routes).
 
@@ -48,15 +52,23 @@ class SubdomainRoutingMiddleware:
     def __call__(self, request):
         # Skip routing if domains are not configured (local dev fallback)
         if not self.website_domain and not self.panel_domain:
+            request._is_panel_subdomain = False
             return self.get_response(request)
 
         host = request.get_host().split(':')[0].lower()  # strip port
 
         if host == self.website_domain:
             request.urlconf = 'config.urls_website'
+            request._is_panel_subdomain = False
         elif host == self.panel_domain:
             request.urlconf = 'config.urls_panel'
-        # else: use default ROOT_URLCONF (config.urls)
+            request._is_panel_subdomain = True
+            # Backward compat: strip /panel/ prefix so hardcoded URLs still work
+            if request.path_info.startswith('/panel/'):
+                request.path_info = request.path_info[len('/panel'):]  # /panel/auth/… → /auth/…
+        else:
+            # Unknown host — use default ROOT_URLCONF (local dev)
+            request._is_panel_subdomain = False
 
         return self.get_response(request)
 
@@ -170,34 +182,62 @@ class PermissionValidationMiddleware:
     - User.is_active must be True
     - For client users: Client.status must be 'active'
     - For client_staff: Client.status must be 'active' and staff user must be active
+    
+    Prefix-aware: On the panel subdomain (where SubdomainRoutingMiddleware
+    strips the /panel/ prefix), paths arrive without the prefix. On local
+    dev, paths retain the /panel/ prefix. This middleware handles both.
     """
     
-    # URLs that should be exempt from permission checking
-    EXEMPT_URLS = [
-        '/panel/auth/login/',
-        '/panel/auth/logout/',
-        '/panel/auth/password-reset/',
-        '/panel/api/auth/',
-        '/panel/inactive/',
+    # URL suffixes that are exempt from permission checking (prefix is prepended)
+    EXEMPT_SUFFIXES = [
+        'auth/login/',
+        'auth/logout/',
+        'auth/password-reset/',
+        'api/auth/',
+        'inactive/',
+    ]
+    
+    # Paths that are always exempt regardless of prefix
+    ALWAYS_EXEMPT = [
         '/static/',
         '/media/',
         '/admin/',
         '/favicon.ico',
+        '/api/health/',
+        '/robots.txt',
+        '/manifest.json',
+        '/sw.js',
     ]
     
     def __init__(self, get_response):
         self.get_response = get_response
     
+    @staticmethod
+    def _panel_prefix(request):
+        """Return the panel URL prefix: '' on panel subdomain, '/panel' on local dev."""
+        if getattr(request, '_is_panel_subdomain', False):
+            return ''
+        return '/panel'
+    
+    @staticmethod
+    def _is_panel_path(request):
+        """Check if the current request is a panel route."""
+        if getattr(request, '_is_panel_subdomain', False):
+            # On the panel subdomain, all paths are panel paths
+            # (SubdomainRoutingMiddleware already stripped /panel/ prefix)
+            return True
+        return request.path.startswith('/panel/')
+    
     def __call__(self, request):
         # Skip for exempt URLs
-        if self._is_exempt_url(request.path):
+        if self._is_exempt_url(request):
             return self.get_response(request)
         
-        # Safety net: redirect unauthenticated users away from /panel/ routes
+        # Safety net: redirect unauthenticated users away from panel routes
         if not request.user.is_authenticated:
-            if request.path.startswith('/panel/'):
-                from django.shortcuts import redirect
-                return redirect('/panel/auth/login/')
+            if self._is_panel_path(request):
+                prefix = self._panel_prefix(request)
+                return redirect(f'{prefix}/auth/login/')
             return self.get_response(request)
         
         # Re-fetch user from database to get latest state
@@ -215,14 +255,26 @@ class PermissionValidationMiddleware:
         
         return self.get_response(request)
     
-    def _is_exempt_url(self, path):
-        """Check if URL is exempt from permission validation"""
-        # Public website pages (not under /panel/) don't need auth validation
-        if not path.startswith('/panel/') and not path.startswith('/api/'):
-            return True
-        for exempt in self.EXEMPT_URLS:
+    def _is_exempt_url(self, request):
+        """Check if URL is exempt from permission validation."""
+        path = request.path
+        
+        # Always-exempt paths (static, media, admin, etc.)
+        for exempt in self.ALWAYS_EXEMPT:
             if path.startswith(exempt):
                 return True
+        
+        # Panel-specific exempt paths (with correct prefix)
+        prefix = self._panel_prefix(request)
+        for suffix in self.EXEMPT_SUFFIXES:
+            if path.startswith(f'{prefix}/{suffix}'):
+                return True
+        
+        # On local dev: public website pages (not under /panel/) don't need auth
+        if not getattr(request, '_is_panel_subdomain', False):
+            if not path.startswith('/panel/') and not path.startswith('/api/'):
+                return True
+        
         return False
     # How often (seconds) to re-validate user from DB.
     # Between checks, the cached validation in the session is trusted.
@@ -401,6 +453,8 @@ class PermissionValidationMiddleware:
         # Log out the user
         logout(request)
         
+        prefix = self._panel_prefix(request)
+        
         # Check if this is an API request
         is_api_request = (
             request.headers.get('X-Requested-With') == 'XMLHttpRequest' or
@@ -413,11 +467,11 @@ class PermissionValidationMiddleware:
                 'success': False,
                 'message': message,
                 'force_logout': True,
-                'redirect': f'/panel/inactive/?reason={quote(message)}'
+                'redirect': f'{prefix}/inactive/?reason={quote(message)}'
             }, status=401)
         
         # Regular page request - redirect to inactive page
-        return redirect(f'/panel/inactive/?reason={quote(message)}')
+        return redirect(f'{prefix}/inactive/?reason={quote(message)}')
 
 
 class RoleScopingMiddleware:
@@ -441,7 +495,10 @@ class WebsiteOfflineMiddleware:
     
     Shows a styled offline page with a link to the admin panel login.
     Only affects public routes (the 'website' app at /).
-    Admin panel (/panel/), static, media, and API routes are NOT affected.
+    Admin panel, static, media, and API routes are NOT affected.
+    
+    On the panel subdomain (request._is_panel_subdomain), all requests
+    bypass this middleware since there are no public website pages.
     """
 
     # Paths that should NEVER be blocked (admin panel, static, media, etc.)
@@ -453,12 +510,20 @@ class WebsiteOfflineMiddleware:
         '/favicon.ico',
         '/robots.txt',
         '/sitemap.xml',
+        '/api/',
+        '/app/',
+        '/manifest.json',
+        '/sw.js',
     )
 
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
+        # Panel subdomain has no public website routes — skip entirely
+        if getattr(request, '_is_panel_subdomain', False):
+            return self.get_response(request)
+
         # Only intercept public-facing website routes
         if self._is_public_website_route(request.path):
             from website.models import WebsiteStatus
@@ -528,6 +593,9 @@ class SessionIdleTimeoutMiddleware:
             )
             logout(request)
 
+            prefix = '' if getattr(request, '_is_panel_subdomain', False) else '/panel'
+            login_url = f'{prefix}/auth/login/'
+
             # API/HTMX → JSON; browser → redirect
             is_ajax = (
                 request.headers.get('X-Requested-With') == 'XMLHttpRequest'
@@ -538,9 +606,9 @@ class SessionIdleTimeoutMiddleware:
                 return JsonResponse({
                     'success': False,
                     'message': 'Session expired due to inactivity.',
-                    'redirect': '/panel/auth/login/',
+                    'redirect': login_url,
                 }, status=401)
-            return redirect('/panel/auth/login/')
+            return redirect(login_url)
 
         # Update last-activity timestamp
         request.session['_last_activity'] = now
@@ -579,7 +647,8 @@ class SecurityHeadersMiddleware:
             response['Permissions-Policy'] = self._permissions_policy
 
         # Prevent caching of authenticated panel pages (security best practice)
-        if request.path.startswith('/panel/') and hasattr(request, 'user') and request.user.is_authenticated:
+        is_panel = getattr(request, '_is_panel_subdomain', False) or request.path.startswith('/panel/')
+        if is_panel and hasattr(request, 'user') and request.user.is_authenticated:
             if 'Cache-Control' not in response:
                 response['Cache-Control'] = 'no-store, no-cache, must-revalidate, private'
                 response['Pragma'] = 'no-cache'

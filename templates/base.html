@@ -5,8 +5,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#3498db">
   <title>{% block title %}Adarsh ID Cards{% endblock %}</title>
   <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="{% static 'website/images/adarsh.png' %}">
   <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
   <!-- Tailwind CSS (compiled design system) -->
   <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
@@ -84,6 +88,15 @@
 
   <!-- HTMX Configuration -->
   {% include 'partials/htmx-config.html' %}
+
+  <!-- PWA: Register service worker for panel app -->
+  <script>
+  if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js', { scope: '/' })
+          .then(function(reg) { console.log('Panel SW registered, scope:', reg.scope); })
+          .catch(function(err) { console.warn('Panel SW registration failed:', err); });
+  }
+  </script>
 
   {% block extra_js %}{% endblock %}
 
