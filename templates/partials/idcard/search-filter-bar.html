@@ -4,7 +4,7 @@
     <!-- Left Section - Select All, Image Sort, Class/Section Filters, Search -->
     <div class="action-left">
         <div class="filter-group">
-            <button class="btn btn-settings" id="imageSortBtn" title="Filter by image status" onclick="if(typeof ensureModalsLoaded==='function'){ensureModalsLoaded().then(function(){var o=document.getElementById('imageSortModalOverlay');if(o)o.classList.add('active');document.body.style.overflow='hidden';})}">
+            <button class="btn btn-settings" id="imageSortBtn" title="Filter by image status" onclick="var o=document.getElementById('imageSortModalOverlay');if(o){o.classList.add('active');document.body.style.overflow='hidden';}">
                 <i class="fa-solid fa-image"></i> Image Sort
             </button>
             {% if table.has_class_field %}

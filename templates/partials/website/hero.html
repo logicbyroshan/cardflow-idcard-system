@@ -1,0 +1,64 @@
+{% load static custom_filters %}
+<!-- Hero Section -->
+<section class="hero" id="home">
+    <div class="hero-inner">
+        <div class="hero-content">
+            <div class="hero-badge">
+                <i class="fas fa-award"></i>
+                <span>20+ Years of Trust</span>
+            </div>
+            <h1>
+                {% if business.hero_title %}
+                    {{ business.hero_title|safe_html }}
+                {% else %}
+                    Professional <span class="typing-wrapper"><span class="typing-text" id="typingText">ID Cards</span><span class="typing-cursor">|</span></span> <br>for Your Institution
+                {% endif %}
+            </h1>
+            <p class="hero-subtitle">
+                {{ business.hero_description|default:"Create stunning, secure ID cards that represent your school or organization with excellence" }}
+            </p>
+            <div class="hero-buttons">
+                <a href="#contact" class="btn btn-primary">Enquire Now</a>
+                <a href="{% url 'website:why_choose_us' %}" class="btn btn-secondary">Know More</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="hero-card-wrapper">
+        <div class="card-slider">
+            <div class="card slide-card active">
+                <div class="card-image">
+                    {% if hero_images %}
+                        {% with first_hero=hero_images.0 %}
+                        <img id="slider-img" src="{{ first_hero.image.url }}" alt="{{ first_hero.title|default:'Hero Slide' }}">
+                        {% endwith %}
+                    {% else %}
+                        <img id="slider-img" src="{% static 'website/images/Hero/Hero1.jpg' %}" alt="Default Hero">
+                    {% endif %}
+                </div>
+                <div class="card-info">
+                    {% if hero_images %}
+                        {% with first_hero=hero_images.0 %}
+                        <h3 id="slider-title">{{ first_hero.title|default:"Premium Quality" }}</h3>
+                        <p id="slider-subtitle">{{ first_hero.subtitle|default:"Trusted by 500+ Schools" }}</p>
+                        {% endwith %}
+                    {% else %}
+                        <h3 id="slider-title">Premium Quality</h3>
+                        <p id="slider-subtitle">Trusted by 500+ Schools</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <!-- Slider Dots (dynamic from HeroImage model) -->
+        <div class="slider-dots">
+            {% for hero in hero_images %}
+            <span class="dot{% if forloop.first %} active{% endif %}" data-index="{{ forloop.counter }}" data-url="{{ hero.image.url }}" data-title="{{ hero.title|default:'' }}" data-subtitle="{{ hero.subtitle|default:'' }}"></span>
+            {% empty %}
+            <span class="dot active" data-index="1" data-url="{% static 'website/images/Hero/Hero1.jpg' %}" data-title="Premium Quality" data-subtitle="Trusted by 500+ Schools"></span>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- Spacer to push content below floating card -->
+<div style="height: 180px;" class="hero-spacer"></div>

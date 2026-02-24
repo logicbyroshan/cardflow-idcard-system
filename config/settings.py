@@ -458,24 +458,17 @@ LOGGING = {
             'formatter': 'verbose',
             'level': 'INFO',
         },
-        'file_tasks': {
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': os.path.join(LOG_DIR, 'tasks.log'),
-            'maxBytes': 10 * 1024 * 1024,  # 10 MB
-            'backupCount': 5,
-            'formatter': 'verbose',
-            'level': 'INFO',
-        },
         'file_queries': {
             'class': 'logging.handlers.RotatingFileHandler',
             'filename': os.path.join(LOG_DIR, 'queries.log'),
-            'maxBytes': 10 * 1024 * 1024,  # 10 MB
+            'maxBytes': 10 * 1024 * 1024,
             'backupCount': 3,
             'formatter': 'verbose',
             'level': 'WARNING',
         },
     },
 
+    # Root logger catches everything not handled by specific loggers
     'root': {
         'handlers': ['console', 'file_app', 'file_error'],
         'level': 'DEBUG' if DEBUG else 'INFO',
@@ -487,21 +480,10 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
+        # Security-sensitive loggers — also write to security.log
         'django.security': {
             'handlers': ['file_security'],
             'level': 'INFO',
-            'propagate': False,
-        },
-        # Slow-query awareness: enable in dev to spot N+1 queries
-        'django.db.backends': {
-            'handlers': ['console'],
-            'level': 'DEBUG' if DEBUG else 'WARNING',
-            'propagate': False,
-        },
-        # Slow/excessive query logging — writes to queries.log in all environments
-        'slow_queries': {
-            'handlers': ['file_queries'],
-            'level': 'WARNING',
             'propagate': False,
         },
         'accounts': {
@@ -514,44 +496,16 @@ LOGGING = {
             'level': 'DEBUG' if DEBUG else 'INFO',
             'propagate': False,
         },
-        'core.services': {
-            'handlers': ['console', 'file_app', 'file_error', 'file_tasks'],
-            'level': 'DEBUG' if DEBUG else 'INFO',
+        # Slow/excessive query logging — writes to queries.log
+        'slow_queries': {
+            'handlers': ['file_queries'],
+            'level': 'WARNING',
             'propagate': False,
         },
-        'core.views': {
-            'handlers': ['console', 'file_app', 'file_error'],
-            'level': 'DEBUG' if DEBUG else 'INFO',
-            'propagate': False,
-        },
-        'exports': {
-            'handlers': ['console', 'file_app', 'file_error', 'file_tasks'],
-            'level': 'DEBUG' if DEBUG else 'INFO',
-            'propagate': False,
-        },
-        'mediafiles': {
-            'handlers': ['console', 'file_app'],
-            'level': 'DEBUG' if DEBUG else 'INFO',
-            'propagate': False,
-        },
-        'staff': {
-            'handlers': ['console', 'file_app'],
-            'level': 'DEBUG' if DEBUG else 'INFO',
-            'propagate': False,
-        },
-        'client': {
-            'handlers': ['console', 'file_app'],
-            'level': 'DEBUG' if DEBUG else 'INFO',
-            'propagate': False,
-        },
-        'workflows': {
-            'handlers': ['console', 'file_app'],
-            'level': 'DEBUG' if DEBUG else 'INFO',
-            'propagate': False,
-        },
-        'website': {
-            'handlers': ['console', 'file_app'],
-            'level': 'DEBUG' if DEBUG else 'INFO',
+        # DB backend query logging — only verbose in DEBUG mode
+        'django.db.backends': {
+            'handlers': ['console'],
+            'level': 'DEBUG' if DEBUG else 'WARNING',
             'propagate': False,
         },
     },

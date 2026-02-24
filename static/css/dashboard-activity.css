@@ -1,0 +1,177 @@
+/* ============================================
+   Dashboard Activity
+   Recent activity feed & notification overrides
+   ============================================ */
+
+/* ====================
+   Recent Activity
+   ==================== */
+.activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding-right: 4px;
+}
+
+.activity-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.activity-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.activity-list::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 2px;
+}
+
+.activity-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.activity-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.activity-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.activity-item:first-child {
+    padding-top: 0;
+}
+
+.activity-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+.activity-icon.add {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.activity-icon.edit {
+    background: #dbeafe;
+    color: #2563eb;
+}
+
+.activity-icon.delete {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.activity-icon.verify {
+    background: #ede9fe;
+    color: #7c3aed;
+}
+
+.activity-icon.approve {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.activity-content {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+.activity-text {
+    font-size: 13px;
+    color: #2c3e50;
+    margin-bottom: 4px;
+}
+
+.activity-text strong {
+    font-weight: 600;
+}
+
+.activity-time {
+    font-size: 13px;
+    color: #999;
+}
+
+/* ====================
+   Notification Bell - Light Theme Overrides
+   (The notif-* classes in tailwind-input.css use dark fallbacks)
+   ==================== */
+.notif-btn {
+    color: #64748b;
+}
+.notif-btn:hover {
+    background: #f1f5f9;
+    color: #334155;
+}
+.notif-badge {
+    border-color: #fff;
+}
+.notif-dropdown {
+    background: #fff;
+    border-color: #e2e8f0;
+    box-shadow: 0 12px 32px rgba(0,0,0,.12);
+    border-radius: 12px;
+}
+.notif-dropdown-header {
+    border-bottom-color: #e2e8f0;
+}
+.notif-dropdown-header h4 {
+    color: #1e293b;
+}
+.notif-dropdown-header span,
+.notif-mark-all-btn {
+    color: #667eea;
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-size: 11px;
+    font-weight: 500;
+}
+.notif-mark-all-btn:hover {
+    text-decoration: underline;
+}
+.notif-item:hover {
+    background: #f8fafc;
+}
+.notif-item .notif-title {
+    color: #1e293b;
+}
+.notif-item .notif-text {
+    color: #64748b;
+}
+.notif-item .notif-time {
+    color: #94a3b8;
+}
+.notif-empty {
+    color: #94a3b8;
+}
+.notif-empty i {
+    color: #cbd5e1;
+}
+.notif-item.unread {
+    background: #f0f4ff;
+}
+.notif-item.unread:hover {
+    background: #e8edff;
+}
+.notif-unread-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #667eea;
+    flex-shrink: 0;
+    margin-top: 6px;
+}

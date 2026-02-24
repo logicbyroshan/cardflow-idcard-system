@@ -15,9 +15,9 @@ IF NOT EXIST "node_modules\@tailwindcss\cli\dist\index.mjs" (
 
 IF "%1"=="--watch" (
     echo Starting Tailwind CSS in watch mode...
-    %TW_CMD% -i static/css/tailwind-input.css -o static/css/tailwind.css --watch
+    %TW_CMD% -i tailwind-input.css -o static/css/tailwind.css --watch
 ) ELSE (
     echo Building Tailwind CSS [production]...
-    %TW_CMD% -i static/css/tailwind-input.css -o static/css/tailwind.css --minify
+    %TW_CMD% -i tailwind-input.css -o static/css/tailwind.css --minify
     echo Done! Output: static/css/tailwind.css
 )

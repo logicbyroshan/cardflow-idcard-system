@@ -1,0 +1,16 @@
+{% load static %}
+
+<!-- Confirmation Modal -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal-content max-w-[400px]">
+    <div class="modal-header">
+      <h3 id="confirmTitle">Confirm Action</h3>
+      <button class="modal-close" onclick="closeConfirmModal()" aria-label="Close">&times;</button>
+    </div>
+    <p id="confirmMessage"></p>
+    <div class="btn-group">
+      <button type="button" class="btn btn-md btn-neutral" onclick="closeConfirmModal()">Cancel</button>
+      <button type="button" class="btn btn-md btn-danger" id="confirmBtn" onclick="executeConfirmAction()">Confirm</button>
+    </div>
+  </div>
+</div>

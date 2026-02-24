@@ -1,0 +1,82 @@
+{% load static %}
+<!-- Contact Section -->
+<section class="contact-section" id="contact">
+    <div class="container">
+        <h2 class="section-title">Get In Touch</h2>
+        <p class="section-subtitle" style="display: block;">Have a question or need a quote? We'd love to hear from you.</p>
+        <div class="contact-wrapper">
+            <!-- Contact Form -->
+            <div class="contact-form-side">
+                <h3 class="contact-form-heading"><i class="fas fa-paper-plane"></i> Send Us a Message</h3>
+                <form class="contact-form" id="contactForm">
+                    {% csrf_token %}
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="contactName"><i class="fas fa-user"></i> Name</label>
+                            <input type="text" id="contactName" name="name" placeholder="Your full name" required class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label for="contactEmail"><i class="fas fa-envelope"></i> Email</label>
+                            <input type="email" id="contactEmail" name="email" placeholder="you@example.com" required class="form-input">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="contactPhone"><i class="fas fa-phone-alt"></i> Phone</label>
+                            <input type="tel" id="contactPhone" name="phone" placeholder="Your phone number" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label for="contactSubject"><i class="fas fa-tag"></i> Requirement</label>
+                            <input type="text" id="contactSubject" name="subject" placeholder="e.g. 500 ID Cards" required class="form-input">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="contactMessage"><i class="fas fa-comment-dots"></i> Message</label>
+                        <textarea id="contactMessage" name="message" placeholder="Tell us about your requirements..." rows="4" required class="form-input textarea"></textarea>
+                    </div>
+                    <div id="formMessage" class="form-message" style="display: none;"></div>
+                    <button type="submit" class="btn btn-primary form-btn" id="submitBtn"><i class="fas fa-paper-plane"></i> Send Message</button>
+                </form>
+            </div>
+
+            <!-- Contact Info Side -->
+            <div class="contact-info-side">
+                <div class="contact-info-header">
+                    <h3>Contact Information</h3>
+                    <p>Reach out to us through any of these channels</p>
+                </div>
+                <div class="info-box">
+                    <div class="info-icon"><i class="fas fa-phone-alt"></i></div>
+                    <div class="info-content">
+                        <h3>Phone</h3>
+                        <p>{{ business.phone|default:'Contact us for details' }}</p>
+                    </div>
+                </div>
+                
+                <div class="info-box">
+                    <div class="info-icon"><i class="fas fa-envelope"></i></div>
+                    <div class="info-content">
+                        <h3>Email</h3>
+                        <p>{{ business.email|default:'info@adarshidcards.com' }}</p>
+                    </div>
+                </div>
+                
+                <div class="info-box">
+                    <div class="info-icon"><i class="fas fa-map-marker-alt"></i></div>
+                    <div class="info-content">
+                        <h3>Address</h3>
+                        <p>{{ business.address|default:'Bhopal, Madhya Pradesh' }}</p>
+                    </div>
+                </div>
+
+                <div class="info-box">
+                    <div class="info-icon"><i class="fas fa-clock"></i></div>
+                    <div class="info-content">
+                        <h3>Working Hours</h3>
+                        <p>{{ business.working_hours|default:'Mon-Sat: 9AM - 6PM' }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

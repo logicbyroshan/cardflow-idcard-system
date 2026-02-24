@@ -52,7 +52,7 @@ def process_bulk_upload(task):
     """
     from core.models import IDCardTable, IDCard
     from core.services.base import BaseService
-    from core.services.image_service import ImageService
+    from mediafiles.services import ImageService
     from core.utils.field_utils import validate_image_bytes, convert_class_value, convert_section_value
     
     metadata = task.metadata or {}
@@ -444,7 +444,7 @@ def _find_and_save_image_from_zips(photo_column_value, img_field, zip_paths, uni
     Never extracts entire ZIP into memory.
     """
     from core.services.base import BaseService
-    from core.services.image_service import ImageService
+    from mediafiles.services import ImageService
     from core.utils.field_utils import validate_image_bytes
     
     normalized_key = BaseService.normalize_image_identifier(photo_column_value)
@@ -519,7 +519,7 @@ def _save_extracted_image(result, client, batch_counter):
     """
     Save an extracted image using ImageService single-authority entry point.
     """
-    from core.services.image_service import ImageService
+    from mediafiles.services import ImageService
     
     try:
         save_result = ImageService.save_new_image(
@@ -543,7 +543,7 @@ def _create_media_records_for_card(card, image_fields, client, user):
     """
     Create CardMedia records for a card's images.
     """
-    from core.services.image_service import ImageService
+    from mediafiles.services import ImageService
     
     field_data = card.field_data or {}
     

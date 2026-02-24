@@ -69,13 +69,28 @@
   <script defer src="{% static 'js/global-search.js' %}"></script>
 
   <!-- Reprint Page Script -->
-  <script defer src="{% static 'js/idcard-actions-upload.js' %}"></script>
-  <script defer src="{% static 'js/idcard-actions-modal.js' %}"></script>
+  <script defer src="{% static 'js/idcard-actions-upload-ui.js' %}"></script>
+  <script defer src="{% static 'js/idcard-actions-upload-logic.js' %}"></script>
+  <script defer src="{% static 'js/idcard-actions-modal-view-helpers.js' %}"></script>
+  <script defer src="{% static 'js/idcard-actions-modal-view-render.js' %}"></script>
+  <script defer src="{% static 'js/idcard-actions-modal-delete.js' %}"></script>
+  <script defer src="{% static 'js/idcard-actions-modal-form-data.js' %}"></script>
+  <script defer src="{% static 'js/idcard-actions-modal-form-ops.js' %}"></script>
   <script defer src="{% static 'js/image-cropper.js' %}"></script>
-  <script defer src="{% static 'js/reprint-cards.js' %}"></script>
+  <!-- Split: shared, requests (step 1), confirm (step 2), download (step 3) -->
+  <script defer src="{% static 'js/reprint-cards-shared.js' %}"></script>
+  <script defer src="{% static 'js/reprint-cards-requests.js' %}"></script>
+  <script defer src="{% static 'js/reprint-cards-confirm.js' %}"></script>
+  <script defer src="{% static 'js/reprint-cards-download.js' %}"></script>
   <script>
     // Initialize the modal module for the reprint page
-    if (typeof initModalModule === 'function') initModalModule();
+    document.addEventListener('DOMContentLoaded', function() {
+      if (window.IDCardApp && typeof window.IDCardApp.initModalModule === 'function') {
+        window.IDCardApp.initModalModule();
+      } else if (typeof initModalModule === 'function') {
+        initModalModule();
+      }
+    });
   </script>
   {% include 'partials/htmx-config.html' %}
 </body>

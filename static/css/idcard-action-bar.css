@@ -1,0 +1,459 @@
+/* ==========================================
+   ID CARD ACTION BAR — Action bar, buttons, tabs
+   Split from idcard-actions.css
+   ========================================== */
+
+/* ==========================================
+   ACTION BUTTONS BAR (Top Section)
+   ========================================== */
+
+.action-buttons-bar {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-bottom: none;
+    border-radius: 0;
+    padding: 5px 10px;
+    margin-bottom: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+}
+
+/* Pool Danger Zone - far right */
+.pool-danger-zone {
+    margin-left: auto;
+    padding-left: 10px;
+    border-left: 2px solid #fee2e2;
+}
+
+/* Navigation Group - right aligned */
+.action-nav-group {
+    margin-left: auto;
+    padding-left: 10px;
+    border-left: 1px solid #e5e7eb;
+}
+
+.action-nav-group .btn.action-btn {
+    text-decoration: none;
+}
+
+/* When both nav group and danger zone exist (pool list) */
+.pool-danger-zone ~ .action-nav-group,
+.action-nav-group + .pool-danger-zone {
+    margin-left: 0;
+}
+
+/* Danger Zone Button Style */
+.btn.action-btn.btn-danger-zone {
+    background: linear-gradient(135deg, #991b1b 0%, #7f1d1d 100%) !important;
+    color: #fff !important;
+    border: 2px solid #fca5a5 !important;
+    animation: danger-pulse 2s ease-in-out infinite;
+}
+
+.btn.action-btn.btn-danger-zone:hover:not(:disabled) {
+    background: linear-gradient(135deg, #7f1d1d 0%, #450a0a 100%) !important;
+    transform: scale(1.02);
+}
+
+.btn.action-btn.btn-danger-zone:disabled {
+    opacity: 0.5;
+    animation: none;
+}
+
+@keyframes danger-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
+    50% { box-shadow: 0 0 0 4px rgba(220, 38, 38, 0); }
+}
+
+.action-buttons-group .btn.action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 4px;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    height: 28px;
+}
+
+.action-buttons-group .btn.action-btn i {
+    font-size: 12px;
+}
+
+.action-buttons-group .btn.action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Button colors — uses variables.css tokens (single source of truth)
+   .btn-blue, .btn-green, .btn-red, .btn-purple
+   are already defined globally in variables.css.
+   Only the scoped sizing context needs to be here. */
+
+.action-buttons-group .btn.btn-blue,
+.action-buttons-group .btn.btn-green,
+.action-buttons-group .btn.btn-red,
+.action-buttons-group .btn.btn-purple,
+.action-buttons-group .btn.btn-amber {
+    color: var(--text-white);
+    border: none;
+}
+
+/* Gray variant for View buttons inside action-buttons-group */
+.action-buttons-group .btn.btn-gray {
+    background: var(--gray-500);
+    color: var(--text-white);
+    border: none;
+}
+
+.action-buttons-group .btn.btn-gray:hover:not(:disabled) {
+    background: var(--gray-600);
+}
+
+/* Keep white text on colored buttons when disabled */
+.action-buttons-group .btn.btn-blue:disabled,
+.action-buttons-group .btn.btn-green:disabled,
+.action-buttons-group .btn.btn-red:disabled,
+.action-buttons-group .btn.btn-purple:disabled,
+.action-buttons-group .btn.btn-amber:disabled,
+.action-buttons-group .btn.btn-gray:disabled {
+    color: var(--text-white);
+}
+
+/* ==========================================
+   BUTTON GROUPS IN ACTION BAR
+   ========================================== */
+
+.action-bar {
+    justify-content: space-between;
+}
+
+.btn-group {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 0;
+}
+
+/* ==========================================
+   BUTTON COLORS — .action-bar scope
+   ========================================== */
+.action-bar .btn.btn-blue {
+    background: #3b82f6;
+    color: #fff !important;
+    border: none;
+}
+.action-bar .btn.btn-blue:hover:not(:disabled) {
+    background: #2563eb;
+}
+.action-bar .btn.btn-green {
+    background: #22c55e;
+    color: #fff !important;
+    border: none;
+}
+.action-bar .btn.btn-green:hover:not(:disabled) {
+    background: #16a34a;
+}
+.action-bar .btn.btn-red {
+    background: #ef4444;
+    color: #fff !important;
+    border: none;
+}
+.action-bar .btn.btn-red:hover:not(:disabled) {
+    background: #dc2626;
+}
+.action-bar .btn.btn-purple {
+    background: #8b5cf6;
+    color: #fff !important;
+    border: none;
+}
+.action-bar .btn.btn-purple:hover:not(:disabled) {
+    background: #7c3aed;
+}
+.action-bar .btn.btn-gray {
+    background: #6b7280;
+    color: #fff !important;
+    border: none;
+}
+.action-bar .btn.btn-gray:hover:not(:disabled) {
+    background: #4b5563;
+}
+.action-bar .btn.btn-amber {
+    background: #f59e0b;
+    color: #fff !important;
+    border: none;
+}
+.action-bar .btn.btn-amber:hover:not(:disabled) {
+    background: #d97706;
+}
+.action-bar .btn.btn-danger-zone {
+    background: #b91c1c;
+    color: #fff !important;
+    border: none;
+}
+.action-bar .btn.btn-danger-zone:hover:not(:disabled) {
+    background: #991b1b;
+}
+/* Go Back button — subtle dark style with arrow */
+.action-bar .btn.btn-back {
+    background: #1e293b;
+    color: #fff !important;
+    border: none;
+    padding: 4px 10px;
+    gap: 4px;
+}
+.action-bar .btn.btn-back:hover {
+    background: #0f172a;
+}
+.action-bar .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    color: #fff !important;
+}
+
+/* ==========================================
+   ACTION BUTTON STYLES
+   (Legacy block — now defers to .action-buttons-group rules
+    and .action-bar .btn.btn-* color rules above)
+   ========================================== */
+
+.action-bar .btn.action-btn {
+    padding: 4px 8px;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 4px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    height: 28px;
+    border: none;  /* Override base .btn 1px transparent border that creates visual gaps */
+}
+
+.action-bar .btn.action-btn i {
+    font-size: 13px;
+}
+
+.action-bar .btn.action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.action-bar .btn.action-btn::after {
+    display: none;
+}
+
+/* Legacy btn-edit/view/delete/warning/success/info/primary/secondary classes — REMOVED.
+   Action bar uses .btn-blue, .btn-green, .btn-red, .btn-purple, .btn-gray, .btn-amber
+   defined in the "BUTTON COLORS — .action-bar scope" section above. */
+
+/* Action Tabs in Topbar */
+
+.nav-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-left: 0;
+}
+
+.nav-right {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+}
+
+.action-tabs {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+/* No separator between tabs — just gap */
+.action-tabs .action-tab + .action-tab::before {
+    display: none;
+}
+
+.tab-arrow {
+    display: none; /* Phase 6: Remove > arrows */
+}
+
+.action-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    border-radius: 2px;
+    font-size: 13px;
+    font-weight: 400;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.action-tab .tab-label {
+    opacity: 0.9;
+}
+
+.action-tab .tab-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 16px;
+    padding: 0 5px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1;
+    vertical-align: middle;
+}
+
+/* Pending Tab - Yellow */
+.pending-tab {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fcd34d;
+}
+
+.pending-tab:hover {
+    background: #fde68a;
+}
+
+.pending-tab .tab-count {
+    background: #f59e0b;
+    color: #fff;
+}
+
+.pending-tab.active {
+    background: #f59e0b;
+    color: #fff;
+    border-color: #d97706;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+}
+
+.pending-tab.active .tab-count {
+    background: #fff;
+    color: #f59e0b;
+}
+
+/* Verified Tab - Green */
+.verified-tab {
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #6ee7b7;
+}
+
+.verified-tab:hover {
+    background: #a7f3d0;
+}
+
+.verified-tab .tab-count {
+    background: #10b981;
+    color: #fff;
+}
+
+.verified-tab.active {
+    background: #10b981;
+    color: #fff;
+    border-color: #059669;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+}
+
+.verified-tab.active .tab-count {
+    background: #fff;
+    color: #10b981;
+}
+
+/* Pool Tab - Red */
+.pool-tab {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+
+.pool-tab:hover {
+    background: #fecaca;
+}
+
+.pool-tab .tab-count {
+    background: #ef4444;
+    color: #fff;
+}
+
+.pool-tab.active {
+    background: #ef4444;
+    color: #fff;
+    border-color: #dc2626;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+}
+
+.pool-tab.active .tab-count {
+    background: #fff;
+    color: #ef4444;
+}
+
+/* Approved Tab - Blue */
+.approved-tab {
+    background: #dbeafe;
+    color: #1e40af;
+    border: 1px solid #93c5fd;
+}
+
+.approved-tab:hover {
+    background: #bfdbfe;
+}
+
+.approved-tab .tab-count {
+    background: #3b82f6;
+    color: #fff;
+}
+
+.approved-tab.active {
+    background: #3b82f6;
+    color: #fff;
+    border-color: #2563eb;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+}
+
+.approved-tab.active .tab-count {
+    background: #fff;
+    color: #3b82f6;
+}
+
+/* Download Tab - Gray */
+.download-tab {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+
+.download-tab:hover {
+    background: #e5e7eb;
+}
+
+.download-tab .tab-count {
+    background: #6b7280;
+    color: #fff;
+}
+
+.download-tab.active {
+    background: #6b7280;
+    color: #fff;
+    border-color: #4b5563;
+    box-shadow: 0 2px 8px rgba(107, 114, 128, 0.4);
+}
+
+.download-tab.active .tab-count {
+    background: #fff;
+    color: #6b7280;
+}

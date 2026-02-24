@@ -1,0 +1,73 @@
+<!-- Filter Side Panel -->
+<div x-show="showFilters" x-transition class="fixed inset-0 z-50" @click.self="showFilters = false">
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="showFilters = false"></div>
+    <div
+        x-show="showFilters"
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="translate-x-full"
+        x-transition:enter-end="translate-x-0"
+        x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="translate-x-0"
+        x-transition:leave-end="translate-x-full"
+        class="absolute right-0 top-0 bottom-0 w-[85%] max-w-[340px] bg-white shadow-2xl flex flex-col"
+    >
+        <div class="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-brand-light to-brand-dark flex-shrink-0">
+            <h3 class="text-white font-bold text-sm">
+                <i class="fa-solid fa-filter mr-2"></i>Filters
+            </h3>
+            <button @click="showFilters = false" class="text-white/80 hover:text-white">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-4 space-y-4">
+            <div class="filter-group">
+                <label class="filter-label">Photo Status</label>
+                <div class="flex gap-2">
+                    <button @click="filters.photo = 'all'" :class="filters.photo === 'all' ? 'filter-chip-active' : 'filter-chip'" class="flex-1 text-center">All</button>
+                    <button @click="filters.photo = 'with'" :class="filters.photo === 'with' ? 'filter-chip-active' : 'filter-chip'" class="flex-1 text-center">With</button>
+                    <button @click="filters.photo = 'without'" :class="filters.photo === 'without' ? 'filter-chip-active' : 'filter-chip'" class="flex-1 text-center">Without</button>
+                </div>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Sort By</label>
+                <select x-model="filters.sort" class="filter-select">
+                    <option value="name_asc">Name (A-Z)</option>
+                    <option value="name_desc">Name (Z-A)</option>
+                    <option value="date_new">Newest First</option>
+                    <option value="date_old">Oldest First</option>
+                    <option value="roll_asc">Roll No (Asc)</option>
+                    <option value="roll_desc">Roll No (Desc)</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Class</label>
+                <div class="flex flex-wrap gap-2">
+                    <button @click="filters.selectedClass = ''" :class="filters.selectedClass === '' ? 'filter-chip-active' : 'filter-chip'">All</button>
+                    {% for cls in classes %}
+                    <button @click="filters.selectedClass = '{{ cls }}'" :class="filters.selectedClass === '{{ cls }}' ? 'filter-chip-active' : 'filter-chip'">{{ cls }}</button>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Section</label>
+                <div class="flex flex-wrap gap-2">
+                    <button @click="filters.selectedSection = ''" :class="filters.selectedSection === '' ? 'filter-chip-active' : 'filter-chip'">All</button>
+                    {% for sec in sections %}
+                    <button @click="filters.selectedSection = '{{ sec }}'" :class="filters.selectedSection === '{{ sec }}' ? 'filter-chip-active' : 'filter-chip'">{{ sec }}</button>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Date Range</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="date" x-model="filters.dateFrom" class="filter-input">
+                    <input type="date" x-model="filters.dateTo" class="filter-input">
+                </div>
+            </div>
+        </div>
+        <div class="flex-shrink-0 px-4 py-3 bg-gray-50 border-t border-gray-100 flex gap-2">
+            <button @click="resetFilters()" class="flex-1 py-2.5 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition">Clear All</button>
+            <button @click="applyFilters(); showFilters = false" class="flex-1 py-2.5 text-xs font-semibold text-white bg-gradient-to-r from-brand-light to-brand-dark rounded-xl shadow-md hover:shadow-lg transition">Apply</button>
+        </div>
+    </div>
+</div>

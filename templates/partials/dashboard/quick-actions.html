@@ -1,0 +1,47 @@
+{% load static %}
+<!-- Quick Actions - Permission controlled -->
+<div class="dashboard-card">
+  <div class="dashboard-card-header">
+    <h3><i class="fa-solid fa-bolt"></i> Quick Actions</h3>
+  </div>
+  <div class="dashboard-card-body">
+    <div class="quick-actions">
+      {% if is_super_admin or is_admin_staff %}
+      <a href="{% url 'manage_clients' %}?add=1" class="quick-action-btn">
+        <i class="fa-solid fa-user-plus"></i>
+        <span>Add New Client</span>
+      </a>
+      {% endif %}
+      {% if is_super_admin %}
+      <a href="{% url 'manage_staff' %}?add=1" class="quick-action-btn">
+        <i class="fa-solid fa-user-tie"></i>
+        <span>Add New Staff</span>
+      </a>
+      {% endif %}
+      {% if is_super_admin %}
+      <a href="{% url 'settings' %}" class="quick-action-btn" id="takeBackupBtn">
+        <i class="fa-solid fa-database"></i>
+        <span>Take Backup</span>
+      </a>
+      {% endif %}
+      {% if is_super_admin %}
+      <a href="{% url 'settings' %}" class="quick-action-btn">
+        <i class="fa-solid fa-gear"></i>
+        <span>User Settings</span>
+      </a>
+      {% endif %}
+      {% if is_super_admin %}
+      <a href="{% url 'manage_website' %}" class="quick-action-btn">
+        <i class="fa-solid fa-globe"></i>
+        <span>Manage Website</span>
+      </a>
+      {% endif %}
+      {% if is_super_admin %}
+      <a href="{% url 'manage_panel' %}" class="quick-action-btn">
+        <i class="fa-solid fa-sliders"></i>
+        <span>Manage Panel</span>
+      </a>
+      {% endif %}
+    </div>
+  </div>
+</div>

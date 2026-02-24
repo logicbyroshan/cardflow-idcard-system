@@ -1,0 +1,177 @@
+/**
+ * Website Admin — Table
+ * ================================================
+ * Action bar, data table, thumbnails, action buttons,
+ * status badges, type badges.
+ */
+
+/* ===== ACTION BAR ===== */
+.wa-action-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.wa-action-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.wa-action-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.wa-count-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 10px;
+    background: var(--wa-primary);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 10px;
+}
+
+/* ===== TABLE ===== */
+.wa-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--wa-gray-200);
+    border-radius: var(--wa-radius);
+}
+.wa-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+.wa-table thead {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+}
+.wa-table thead th {
+    padding: 10px 14px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #475569;
+    text-align: left;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--wa-gray-200);
+}
+.wa-table tbody tr {
+    border-bottom: 1px solid var(--wa-gray-100);
+    transition: background 0.1s ease;
+}
+.wa-table tbody tr:last-child { border-bottom: none; }
+.wa-table tbody tr:hover { background: var(--wa-gray-50); }
+.wa-table tbody td {
+    padding: 10px 14px;
+    color: var(--wa-gray-700);
+    vertical-align: middle;
+}
+
+/* Table thumbnails */
+.wa-thumb {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid var(--wa-gray-200);
+}
+.wa-thumb.round { border-radius: 50%; }
+.wa-no-img {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: var(--wa-gray-100);
+    color: var(--wa-gray-400);
+    border-radius: 6px;
+    font-size: 14px;
+}
+.wa-no-img.round { border-radius: 50%; }
+
+/* Table action buttons */
+.wa-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border: 1px solid var(--wa-gray-200);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--wa-gray-500);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.btn-icon:hover {
+    background: var(--wa-blue-bg);
+    border-color: var(--wa-blue);
+    color: var(--wa-blue);
+}
+.btn-icon.danger:hover {
+    background: var(--wa-red-bg);
+    border-color: var(--wa-red);
+    color: var(--wa-red);
+}
+
+/* Status badges */
+.wa-status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+.wa-status-badge.active {
+    background: var(--wa-green-bg);
+    color: var(--wa-green);
+    border: 1px solid rgba(34,197,94,0.2);
+}
+.wa-status-badge.active:hover {
+    background: #dcfce7;
+}
+.wa-status-badge.inactive,
+.wa-status-badge.pending {
+    background: var(--wa-gray-100);
+    color: var(--wa-gray-500);
+    border: 1px solid var(--wa-gray-200);
+}
+.wa-status-badge.inactive:hover,
+.wa-status-badge.pending:hover {
+    background: var(--wa-gray-200);
+}
+
+/* Type badge (portfolio) */
+.wa-type-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 10px;
+    text-transform: capitalize;
+}
+.wa-type-badge.image { background: var(--wa-blue-bg); color: var(--wa-blue); }
+.wa-type-badge.video { background: var(--wa-purple-bg); color: var(--wa-purple); }
+.wa-type-badge.reel { background: var(--wa-orange-bg); color: var(--wa-orange); }
+
+/* ===== RESPONSIVE (Table) ===== */
+@media (max-width: 640px) {
+    .wa-action-bar { flex-direction: column; align-items: flex-start; }
+}

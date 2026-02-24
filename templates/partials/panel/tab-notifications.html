@@ -1,0 +1,93 @@
+<!-- === NOTIFICATIONS TAB === -->
+<div class="panel-tab-content active" id="tab-notifications">
+
+  <!-- Notification Actions Bar -->
+  <div class="notif-actions-bar">
+    <div class="notif-actions-left">
+      <div class="notif-search-box">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="notifSearch" placeholder="Search notifications..." oninput="debounceSearch()">
+      </div>
+    </div>
+    <div class="notif-actions-right">
+      <button class="btn btn-primary" onclick="openCreateModal()">
+        <i class="fa-solid fa-plus"></i> New Notification
+      </button>
+    </div>
+  </div>
+
+  <!-- Notification Stats -->
+  <div class="notif-stats">
+    <div class="notif-stat-card">
+      <div class="notif-stat-icon notif-stat-icon-primary">
+        <i class="fa-solid fa-bell"></i>
+      </div>
+      <div class="notif-stat-info">
+        <div class="notif-stat-value" id="statTotal">0</div>
+        <div class="notif-stat-label">Total Sent</div>
+      </div>
+    </div>
+    <div class="notif-stat-card">
+      <div class="notif-stat-icon notif-stat-icon-success">
+        <i class="fa-solid fa-users"></i>
+      </div>
+      <div class="notif-stat-info">
+        <div class="notif-stat-value" id="statBroadcast">0</div>
+        <div class="notif-stat-label">Broadcasts</div>
+      </div>
+    </div>
+    <div class="notif-stat-card">
+      <div class="notif-stat-icon notif-stat-icon-warning">
+        <i class="fa-solid fa-user-check"></i>
+      </div>
+      <div class="notif-stat-info">
+        <div class="notif-stat-value" id="statTargeted">0</div>
+        <div class="notif-stat-label">Targeted</div>
+      </div>
+    </div>
+    <div class="notif-stat-card">
+      <div class="notif-stat-icon notif-stat-icon-danger">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+      </div>
+      <div class="notif-stat-info">
+        <div class="notif-stat-value" id="statUrgent">0</div>
+        <div class="notif-stat-label">Urgent</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notifications Table -->
+  <div class="notif-table-wrap">
+    <table class="notif-table">
+      <thead>
+        <tr>
+          <th scope="col" style="width:30%">Notification</th>
+          <th scope="col" style="width:12%">Category</th>
+          <th scope="col" style="width:10%">Priority</th>
+          <th scope="col" style="width:14%">Target</th>
+          <th scope="col" style="width:10%">Reads</th>
+          <th scope="col" style="width:14%">Sent</th>
+          <th scope="col" style="width:10%">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="notifTableBody">
+        <tr class="notif-table-empty">
+          <td colspan="7">
+            <div class="empty-state">
+              <i class="fa-solid fa-bell-slash"></i>
+              <p>No notifications yet</p>
+              <span>Create your first notification to get started</span>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Load More -->
+  <div class="notif-load-more" id="notifLoadMore" style="display:none;">
+    <button class="btn btn-neutral" onclick="loadMoreNotifications()">
+      <i class="fa-solid fa-arrow-down"></i> Load More
+    </button>
+  </div>
+</div>

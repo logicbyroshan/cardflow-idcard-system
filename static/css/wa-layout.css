@@ -1,0 +1,171 @@
+/**
+ * Website Admin — Layout
+ * ================================================
+ * CSS variables, tab navigation, page container,
+ * status banner, dashboard sections, dashboard row grid.
+ */
+
+/* ===== CSS VARIABLES ===== */
+:root {
+    --wa-primary: #667eea;
+    --wa-primary-dark: #5a67d8;
+    --wa-green: #22c55e;
+    --wa-green-bg: #f0fdf4;
+    --wa-red: #ef4444;
+    --wa-red-bg: #fef2f2;
+    --wa-yellow: #f59e0b;
+    --wa-yellow-bg: #fffbeb;
+    --wa-blue: #3b82f6;
+    --wa-blue-bg: #eff6ff;
+    --wa-purple: #8b5cf6;
+    --wa-purple-bg: #f5f3ff;
+    --wa-teal: #14b8a6;
+    --wa-teal-bg: #f0fdfa;
+    --wa-orange: #f97316;
+    --wa-orange-bg: #fff7ed;
+    --wa-gray-50: #f9fafb;
+    --wa-gray-100: #f3f4f6;
+    --wa-gray-200: #e5e7eb;
+    --wa-gray-300: #d1d5db;
+    --wa-gray-400: #9ca3af;
+    --wa-gray-500: #6b7280;
+    --wa-gray-600: #4b5563;
+    --wa-gray-700: #374151;
+    --wa-gray-800: #1f2937;
+    --wa-radius: 8px;
+    --wa-radius-lg: 12px;
+    --wa-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --wa-shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -1px rgba(0,0,0,0.04);
+}
+
+/* ===== TAB NAVIGATION ===== */
+.wa-tabs {
+    display: flex;
+    gap: 2px;
+    padding: 0 20px;
+    background: #fff;
+    border-bottom: 1px solid #e2e8f0;
+    overflow-x: auto;
+}
+.wa-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+.wa-tab:hover {
+    color: #1e293b;
+    background: #f8fafc;
+}
+.wa-tab.active {
+    color: var(--wa-primary);
+    border-bottom-color: var(--wa-primary);
+    background: rgba(99,102,241,0.04);
+    font-weight: 600;
+}
+.wa-tab i { font-size: 12px; }
+
+/* ===== PAGE CONTAINER ===== */
+.wa-page-container {
+    padding: 0;
+}
+.wa-dashboard {
+    padding: 0 0 20px;
+    margin: 0;
+}
+
+/* ===== STATUS BANNER ===== */
+.wa-status-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    margin: 16px 20px 0;
+    border-radius: var(--wa-radius-lg);
+    font-size: 13px;
+    font-weight: 600;
+}
+.wa-status-banner.live {
+    background: #f0fdf4;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+.wa-status-banner.draft {
+    background: #fffbeb;
+    color: #92400e;
+    border: 1px solid #fde68a;
+}
+.wa-status-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.wa-status-label i { font-size: 14px; }
+
+/* ===== DASHBOARD SECTIONS ===== */
+.wa-dashboard-section {
+    background: #fff;
+    border: 1px solid var(--wa-gray-200);
+    border-radius: var(--wa-radius-lg);
+    padding: 20px;
+    margin: 16px 20px;
+    box-shadow: var(--wa-shadow);
+}
+.wa-dashboard-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--wa-gray-100);
+}
+.wa-dashboard-section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--wa-gray-800);
+    margin: 0;
+}
+.wa-dashboard-section-title i {
+    color: var(--wa-primary);
+    font-size: 14px;
+}
+
+/* ===== DASHBOARD ROW (2-col) ===== */
+.wa-dashboard-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    padding: 0 20px 20px;
+}
+.wa-dashboard-row .wa-dashboard-section {
+    margin: 0;
+    border-radius: var(--wa-radius-lg);
+}
+.wa-dashboard-row .wa-dashboard-section:first-child {
+    border-radius: var(--wa-radius-lg) 0 0 var(--wa-radius-lg);
+    border-right: none;
+}
+.wa-dashboard-row .wa-dashboard-section:last-child {
+    border-radius: 0 var(--wa-radius-lg) var(--wa-radius-lg) 0;
+}
+@media (max-width: 768px) {
+    .wa-dashboard-row { grid-template-columns: 1fr; padding: 0 12px 12px; }
+    .wa-dashboard-row .wa-dashboard-section { border-radius: var(--wa-radius-lg) !important; border-right: 1px solid var(--wa-gray-200) !important; margin-bottom: 0; }
+    .wa-dashboard-row .wa-dashboard-section:first-child { margin-bottom: 12px; }
+}
+
+/* ===== RESPONSIVE (Layout) ===== */
+@media (max-width: 640px) {
+    .wa-tabs { padding: 0 12px; }
+    .wa-tab { padding: 8px 12px; font-size: 12px; }
+}

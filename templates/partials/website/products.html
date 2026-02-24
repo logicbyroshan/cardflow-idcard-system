@@ -1,0 +1,64 @@
+{% load static %}
+<!-- Our Products Section -->
+{% if featured_portfolio or recent_portfolio %}
+<section class="our-works" id="products">
+    <div class="container">
+        <h2 class="section-title">Our Products</h2>
+        <p class="section-subtitle" style="display: block;">Showcase of our latest projects</p>
+        
+        {% if featured_portfolio %}
+        <!-- Row 1: Featured Items (Scroll Left to Right) -->
+        <div class="works-carousel">
+            <div class="works-track scroll-left-right">
+                {% for item in featured_portfolio %}
+                    <div class="work-item">
+                        {% if item.image %}<img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy" decoding="async">{% endif %}
+                        <div class="work-overlay">
+                            <h3>{{ item.title }}</h3>
+                            <p>{{ item.category.name|default:"Portfolio" }}</p>
+                        </div>
+                    </div>
+                {% endfor %}
+                <!-- Duplicate for seamless infinite loop -->
+                {% for item in featured_portfolio %}
+                    <div class="work-item">
+                        {% if item.image %}<img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy" decoding="async">{% endif %}
+                        <div class="work-overlay">
+                            <h3>{{ item.title }}</h3>
+                            <p>{{ item.category.name|default:"Portfolio" }}</p>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if recent_portfolio %}
+        <!-- Row 2: Recent Items (Scroll Right to Left) -->
+        <div class="works-carousel">
+            <div class="works-track scroll-right-left">
+                {% for item in recent_portfolio %}
+                    <div class="work-item">
+                        {% if item.image %}<img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy" decoding="async">{% endif %}
+                        <div class="work-overlay">
+                            <h3>{{ item.title }}</h3>
+                            <p>{{ item.category.name|default:"Portfolio" }}</p>
+                        </div>
+                    </div>
+                {% endfor %}
+                <!-- Duplicate for seamless infinite loop -->
+                {% for item in recent_portfolio %}
+                    <div class="work-item">
+                        {% if item.image %}<img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy" decoding="async">{% endif %}
+                        <div class="work-overlay">
+                            <h3>{{ item.title }}</h3>
+                            <p>{{ item.category.name|default:"Portfolio" }}</p>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endif %}

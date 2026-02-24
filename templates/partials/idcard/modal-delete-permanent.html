@@ -1,0 +1,44 @@
+<!-- Delete Permanent Confirmation Modal (Pool List - requires 6-digit code) -->
+<div class="upload-modal-overlay" id="deleteModalOverlay">
+  <div class="upload-modal delete-modal">
+    <div class="upload-modal-header delete-header">
+      <h3><i class="fa-solid fa-triangle-exclamation"></i> Permanent Delete Warning</h3>
+      <button type="button" class="upload-modal-close" id="closeDeleteModal" aria-label="Close delete modal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="upload-modal-body">
+      <div class="delete-warning-content">
+        <div class="delete-warning-icon">
+          <i class="fa-solid fa-trash"></i>
+        </div>
+        <div class="delete-warning-text">
+          <p class="delete-count"><strong id="deleteCountText">0 card(s)</strong> will be permanently deleted</p>
+          <div class="delete-warning-list">
+            <div class="warning-item"><i class="fa-solid fa-xmark"></i> This action <strong>cannot be undone</strong></div>
+            <div class="warning-item"><i class="fa-solid fa-xmark"></i> Data will be <strong>permanently removed</strong> from database</div>
+            <div class="warning-item"><i class="fa-solid fa-xmark"></i> <strong>No retrieve option</strong> available after deletion</div>
+          </div>
+        </div>
+        <!-- 6-digit verification code section -->
+        <div class="delete-verification-section">
+          <div class="verification-code-display">
+            <span class="verification-label">Type this code to confirm:</span>
+            <span class="verification-code" id="deleteVerificationCode">------</span>
+          </div>
+          <div class="verification-input-wrapper">
+            <input type="text" 
+                   id="deleteVerificationInput" 
+                   class="verification-input" 
+                   placeholder="Enter 6-digit code"
+                   maxlength="6"
+                   autocomplete="off">
+            <span class="verification-status" id="verificationStatus"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="upload-modal-footer delete-footer">
+      <button type="button" class="btn btn-secondary" id="cancelDeleteModal">Cancel</button>
+      <button type="button" class="btn btn-danger" id="confirmDeleteModal" disabled><i class="fa-solid fa-trash"></i> Delete Permanently</button>
+    </div>
+  </div>
+</div>

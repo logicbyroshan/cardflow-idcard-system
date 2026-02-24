@@ -1,0 +1,29 @@
+<!-- Reupload Images Modal (for idcard-actions per-list reupload) -->
+<div id="reuploadActionsModal" class="center-modal-overlay center-modal-theme-red" style="display:none;">
+  <div class="center-modal-card">
+    <div class="center-modal-icon">
+      <i class="fa-solid fa-rotate"></i>
+    </div>
+    <h3 class="center-modal-title">Reupload Images</h3>
+    <p class="center-modal-subtitle">List: <strong id="reuploadActionsListName"></strong></p>
+    <p class="center-modal-subtitle">Cards: <strong id="reuploadActionsCardCount">0</strong></p>
+    <p class="center-modal-subtitle mb-4">Upload a ZIP file with images. Filenames will be matched against the cards in this list.</p>
+    <div id="reuploadActionsDropZone" class="center-modal-dropzone"
+      ondragover="event.preventDefault(); this.style.borderColor='#ef4444'; this.style.backgroundColor='#fef2f2';"
+      ondragleave="this.style.borderColor='#d1d5db'; this.style.backgroundColor='';">
+      <i class="fa-solid fa-file-zipper"></i>
+      <p id="reuploadActionsFileName">Click or drag &amp; drop a ZIP file</p>
+      <input type="file" id="reuploadActionsFileInput" accept=".zip" style="display:none;">
+    </div>
+    <div class="center-modal-actions">
+      <button id="reuploadActionsCancel" class="center-modal-btn center-modal-btn-cancel">Cancel</button>
+      <button id="reuploadActionsConfirm" class="center-modal-btn center-modal-btn-confirm" disabled>Upload &amp; Match</button>
+    </div>
+    <div id="reuploadActionsProgress" class="center-modal-progress">
+      <div class="center-modal-progress-track">
+        <div id="reuploadActionsBar" class="center-modal-progress-bar"></div>
+      </div>
+      <p class="center-modal-progress-text" id="reuploadActionsStatus">Uploading...</p>
+    </div>
+  </div>
+</div>

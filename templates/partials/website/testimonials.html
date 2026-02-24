@@ -1,0 +1,34 @@
+{% load static %}
+<!-- Testimonials Section -->
+{% if testimonials %}
+<section class="testimonials" id="testimonials">
+    <div class="container">
+        <h2 class="section-title">Customer Reviews</h2>
+        <div class="testimonials-grid">
+            {% for testimonial in testimonials %}
+                <div class="testimonial-card">
+                    <div class="stars">
+                        {% for i in "12345"|make_list %}
+                            {% if forloop.counter <= testimonial.rating %}
+                                <i class="fas fa-star"></i>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    <p>"{{ testimonial.text|truncatechars:150 }}"</p>
+                    <div class="testimonial-author">
+                        {% if testimonial.reviewer_avatar %}
+                            <img src="{{ testimonial.reviewer_avatar.url }}" alt="{{ testimonial.reviewer_name }}" loading="lazy" decoding="async">
+                        {% else %}
+                            <div class="avatar-placeholder"><i class="fas fa-user"></i></div>
+                        {% endif %}
+                        <div>
+                            <h4>{{ testimonial.reviewer_name }}</h4>
+                            <p>{{ testimonial.reviewer_title }} - {{ testimonial.reviewer_school }}</p>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}

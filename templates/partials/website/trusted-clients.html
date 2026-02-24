@@ -1,0 +1,22 @@
+{% load static %}
+<!-- Trusted Clients Section (Seamless Loop) -->
+{% if trusted_clients %}
+<section class="trusted-schools" id="trusted">
+    <h2 class="section-title">Trusted Clients</h2>
+    <div class="logos-carousel">
+        <div class="logos-track">
+            {% for client in trusted_clients %}
+                <div class="logo-item">
+                    <img src="{{ client.logo.url }}" alt="{{ client.name }}" loading="lazy" decoding="async">
+                </div>
+            {% endfor %}
+            <!-- Duplicate ALL items for seamless infinite loop -->
+            {% for client in trusted_clients %}
+                <div class="logo-item">
+                    <img src="{{ client.logo.url }}" alt="{{ client.name }}" loading="lazy" decoding="async">
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}

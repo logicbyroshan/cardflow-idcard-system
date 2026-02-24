@@ -1,0 +1,218 @@
+/**
+ * Website Admin — Forms
+ * ================================================
+ * Form groups, inputs, form actions, toggle,
+ * hero image cards, image preview.
+ */
+
+/* ===== FORMS ===== */
+.wa-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+.wa-form-group-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #1e293b;
+    padding: 8px 14px;
+    border-radius: 6px;
+    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+    border: 1px solid #e2e8f0;
+    margin-top: 18px;
+    margin-bottom: 12px;
+}
+.wa-form-group-title:first-child { margin-top: 0; }
+.wa-form-group-title i {
+    font-size: 12px;
+    color: var(--wa-primary);
+}
+.wa-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 12px;
+}
+.wa-form-row .wa-form-group.full {
+    grid-column: 1 / -1;
+}
+.wa-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 12px;
+}
+.wa-form-group label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--wa-gray-600);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.wa-form-group label i { font-size: 12px; }
+.wa-form-group input[type="text"],
+.wa-form-group input[type="email"],
+.wa-form-group input[type="url"],
+.wa-form-group input[type="number"],
+.wa-form-group input[type="tel"],
+.wa-form-group textarea,
+.wa-form-group select {
+    height: 34px;
+    padding: 0 10px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--wa-gray-700);
+    background: #fff;
+    border: 1px solid var(--wa-gray-200);
+    border-radius: 6px;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    font-family: inherit;
+}
+.wa-form-group textarea {
+    height: auto;
+    padding: 8px 10px;
+    resize: vertical;
+}
+.wa-form-group input:focus,
+.wa-form-group textarea:focus,
+.wa-form-group select:focus {
+    border-color: var(--wa-primary);
+    box-shadow: 0 0 0 2px rgba(99,102,241,0.12);
+}
+.wa-form-group input[type="file"] {
+    font-size: 12px;
+    padding: 6px 0;
+    border: none;
+    background: none;
+    color: var(--wa-gray-600);
+    height: auto;
+}
+.wa-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--wa-gray-100);
+}
+
+/* Toggle label */
+.wa-toggle-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--wa-gray-700);
+    font-weight: 500;
+}
+.wa-toggle-label input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    accent-color: var(--wa-primary);
+    cursor: pointer;
+}
+
+/* ===== HERO IMAGE CARDS ===== */
+.wa-form-images {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+}
+.hero-image-card {
+    background: var(--wa-gray-50);
+    border-radius: var(--wa-radius);
+    padding: 8px;
+    border: 1px solid var(--wa-gray-200);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.hero-image-card:hover {
+    border-color: var(--wa-primary);
+    box-shadow: var(--wa-shadow-md);
+}
+.hero-image-card .wa-img-preview {
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
+}
+.hero-image-card .wa-img-preview img {
+    width: 100%;
+    height: 100px;
+    object-fit: cover;
+    display: block;
+    border-radius: 6px;
+}
+.hero-remove-btn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(239, 68, 68, 0.85);
+    color: #fff;
+    font-size: 1rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s ease, background 0.2s ease;
+}
+.hero-image-card:hover .hero-remove-btn { opacity: 1; }
+.hero-remove-btn:hover { background: rgba(239, 68, 68, 1); }
+.hero-order-badge {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    background: var(--wa-primary);
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.hero-inactive-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: var(--wa-red);
+    color: #fff;
+    font-size: 0.6rem;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 8px;
+}
+.hero-image-card .btn {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ===== IMAGE PREVIEW ===== */
+.wa-img-preview { margin-bottom: 6px; }
+.wa-img-preview img {
+    width: 100%;
+    max-height: 90px;
+    object-fit: cover;
+    border-radius: var(--wa-radius);
+    border: 1px solid var(--wa-gray-200);
+}
+
+/* ===== RESPONSIVE (Forms) ===== */
+@media (max-width: 640px) {
+    .wa-form-row { grid-template-columns: 1fr; }
+    .wa-form-images { grid-template-columns: repeat(2, 1fr) !important; }
+}

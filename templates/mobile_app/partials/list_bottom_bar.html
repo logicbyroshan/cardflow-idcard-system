@@ -1,0 +1,25 @@
+{% load static %}
+<!-- Fixed Bottom Action Bar -->
+<div class="flex-shrink-0 z-40 bg-white border-t border-gray-200 shadow-[0_-2px_10px_rgba(0,0,0,0.06)]">
+    <!-- Selected Count -->
+    <div x-show="selectedIds.length > 0" x-transition class="px-3 py-1 bg-brand-light/5 border-b border-gray-100">
+        <p class="text-[10px] text-brand-light font-semibold text-center">
+            <i class="fa-solid fa-check-circle mr-1"></i>
+            <span x-text="selectedIds.length"></span> item(s) selected
+        </p>
+    </div>
+    <!-- Action Buttons -->
+    <div class="px-1 py-1.5">
+        {% if list_type == 'pending' %}
+        {% include "mobile_app/partials/actions_pending.html" %}
+        {% elif list_type == 'verified' %}
+        {% include "mobile_app/partials/actions_verified.html" %}
+        {% elif list_type == 'approved' %}
+        {% include "mobile_app/partials/actions_approved.html" %}
+        {% elif list_type == 'download' %}
+        {% include "mobile_app/partials/actions_download.html" %}
+        {% elif list_type == 'pool' %}
+        {% include "mobile_app/partials/actions_pool.html" %}
+        {% endif %}
+    </div>
+</div>

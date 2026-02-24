@@ -1,0 +1,33 @@
+{% load static %}
+<link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
+
+<!-- Fonts -->
+<link rel="stylesheet" href="{% static 'css/fonts.css' %}">
+
+<!-- Tailwind CSS (primary) -->
+<link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
+<!-- Page-specific: ID card actions UI -->
+<link rel="stylesheet" href="{% static 'css/common.css' %}">
+<link rel="stylesheet" href="{% static 'css/idcard-actions.css' %}">
+<link rel="stylesheet" href="{% static 'css/idcard-actions-enhanced.css' %}">
+<link rel="stylesheet" href="{% static 'css/global-search.css' %}">
+<link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
+
+<!-- Alpine.js State Module (MUST load before Alpine) -->
+<script defer src="{% static 'js/alpine-state.js' %}"></script>
+<!-- Alpine.js - Lightweight reactive UI framework -->
+<script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
+
+<!-- External Libraries (loaded in head for availability) -->
+<script defer src="{% static 'js/vendor/xlsx.full.min.js' %}"></script>
+<!-- Cropper.js for image crop before upload -->
+<link rel="stylesheet" href="{% static 'css/vendor/cropper.min.css' %}">
+<script defer src="{% static 'js/vendor/cropper.min.js' %}"></script>
+
+<!-- Flatpickr date/time picker -->
+<link rel="stylesheet" href="{% static 'css/vendor/flatpickr.min.css' %}">
+<script defer src="{% static 'js/vendor/flatpickr.min.js' %}"></script>
+<!-- Custom Flatpickr theme -->
+<link rel="stylesheet" href="{% static 'css/flatpickr-theme.css' %}">
+
+<script defer src="{% static 'js/vendor/jszip.min.js' %}"></script>

@@ -193,13 +193,13 @@
     // ==========================================
 
     /**
-     * Global error handling is now provided by error-monitor.js
-     * (window.Adarsh.errors). This function is kept as a no-op
-     * initialization point so the init() call sequence doesn't break.
+     * Error handling is managed by htmx-config.html (shows toasts on server errors)
+     * and browser DevTools Console for JS errors.
+     * No custom error monitoring JS needed.
      */
     function initErrorHandling() {
-        // error-monitor.js installs listeners at parse-time;
-        // nothing extra needed here.
+        // htmx-config.html handles HTMX errors (4xx/5xx → toast)
+        // Browser DevTools Console catches JS errors natively
     }
 
     // ==========================================

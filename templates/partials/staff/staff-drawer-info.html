@@ -1,0 +1,69 @@
+{% comment %}
+Staff Drawer - Staff Information Section
+Partial for staff name, email, phone, address, status, password fields.
+{% endcomment %}
+
+<!-- Staff Information Section -->
+<div class="form-section">
+    <h3 class="section-title">
+        <i class="fa-solid fa-info-circle"></i> Staff Information
+    </h3>
+    
+    <div class="form-group">
+        <label class="form-label" for="staff-name">Staff Name <span class="required">*</span></label>
+        <input type="text" id="staff-name" name="name" class="form-input" placeholder="Enter staff name" required>
+    </div>
+    
+    <div class="form-row">
+        <div class="form-group">
+            <label class="form-label" for="staff-email">Email <span class="required">*</span></label>
+            <input type="email" id="staff-email" name="email" class="form-input" placeholder="Enter email address" required>
+        </div>
+        <div class="form-group">
+            <label class="form-label" for="staff-phone">Phone <span class="required">*</span></label>
+            <input type="tel" id="staff-phone" name="phone" class="form-input" placeholder="Enter phone number" required>
+        </div>
+    </div>
+    
+    <div class="form-row">
+        <div class="form-group">
+            <label class="form-label" for="staff-address">Address</label>
+            <textarea id="staff-address" name="address" class="form-textarea" rows="2" placeholder="Enter address (optional)"></textarea>
+        </div>
+        <div class="form-group">
+            <label class="form-label" for="staff-status">Status</label>
+            <div class="custom-dropdown form-dropdown" id="staffStatusDropdown">
+                <button type="button" class="dropdown-toggle" aria-expanded="false">
+                    <span>Active</span>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <div class="dropdown-options">
+                    <div class="dropdown-option selected" data-value="true">Active</div>
+                    <div class="dropdown-option" data-value="false">Inactive</div>
+                </div>
+            </div>
+            <input type="hidden" id="staff-status" name="is_active" value="true">
+        </div>
+    </div>
+
+    <div class="form-row" id="staffPasswordOptionRow">
+        <div class="form-group">
+            <label class="form-label">Password Option</label>
+            <div class="custom-dropdown form-dropdown" id="staffPasswordOptionDropdown">
+                <button type="button" class="dropdown-toggle" aria-expanded="false">
+                    <span>Use Phone Number</span>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <div class="dropdown-options">
+                    <div class="dropdown-option selected" data-value="phone">Use Phone Number</div>
+                    <div class="dropdown-option" data-value="custom">Custom Password</div>
+                </div>
+            </div>
+            <input type="hidden" id="staff-password-option" name="password_option" value="phone">
+        </div>
+        <div class="form-group" id="staffCustomPasswordGroup" style="display: none;">
+            <label class="form-label" for="staff-password">Password <span class="required">*</span></label>
+            <input type="password" id="staff-password" name="password" class="form-input" placeholder="Enter custom password" autocomplete="new-password">
+        </div>
+    </div>
+</div>

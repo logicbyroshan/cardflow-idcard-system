@@ -1,0 +1,78 @@
+<!-- Table Area - Takes ALL remaining space -->
+<div class="flex-1 overflow-hidden">
+    <div class="h-full overflow-x-auto overflow-y-auto custom-scrollbar">
+        <table class="w-full min-w-[600px] text-xs font-condensed">
+            <thead class="sticky top-0 z-10">
+                <tr class="bg-gradient-to-r from-brand-light to-brand-dark text-white">
+                    <th class="px-2 py-2 text-left w-8">
+                        <label class="custom-checkbox">
+                            <input type="checkbox" x-model="selectAll" @change="toggleSelectAll()">
+                            <span class="checkmark checkmark-white"></span>
+                        </label>
+                    </th>
+                    <th class="px-1 py-2 text-left text-[10px] uppercase tracking-wider font-semibold w-8">#</th>
+                    <th class="px-1 py-2 text-left text-[10px] uppercase tracking-wider font-semibold w-10">Photo</th>
+                    <th class="px-2 py-2 text-left text-[10px] uppercase tracking-wider font-semibold">Name</th>
+                    <th class="px-2 py-2 text-left text-[10px] uppercase tracking-wider font-semibold">Roll No</th>
+                    <th class="px-1 py-2 text-left text-[10px] uppercase tracking-wider font-semibold w-12">Class</th>
+                    <th class="px-2 py-2 text-left text-[10px] uppercase tracking-wider font-semibold">Section</th>
+                    <th class="px-2 py-2 text-left text-[10px] uppercase tracking-wider font-semibold">Father</th>
+                    <th class="px-2 py-2 text-left text-[10px] uppercase tracking-wider font-semibold">DOB</th>
+                    <th class="px-2 py-2 text-left text-[10px] uppercase tracking-wider font-semibold">Status</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50 bg-white">
+                {% for student in students %}
+                <tr
+                    class="hover:bg-brand-light/5 transition-colors cursor-pointer"
+                    :class="selectedIds.includes({{ student.id }}) ? 'bg-blue-50/80 !border-l-2 !border-l-brand-light' : ''"
+                    @click="toggleSelect({{ student.id }})"
+                >
+                    <td class="px-2 py-2">
+                        <label class="custom-checkbox" @click.stop>
+                            <input type="checkbox" :checked="selectedIds.includes({{ student.id }})" @change="toggleSelect({{ student.id }})">
+                            <span class="checkmark"></span>
+                        </label>
+                    </td>
+                    <td class="px-1 py-2 text-gray-400 font-medium">{{ forloop.counter }}</td>
+                    <td class="px-1 py-2">
+                        {% if student.has_photo %}
+                        <img src="{{ student.photo_url }}" class="w-7 h-7 rounded-md object-cover" alt="" loading="lazy">
+                        {% else %}
+                        <div class="w-7 h-7 rounded-md bg-gray-100 flex items-center justify-center text-gray-400 text-[10px]">
+                            <i class="fa-solid fa-image"></i>
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td class="px-2 py-2 font-medium text-gray-800 whitespace-nowrap">{{ student.name }}</td>
+                    <td class="px-2 py-2 text-gray-600">{{ student.roll_no }}</td>
+                    <td class="px-1 py-2">
+                        <span class="inline-block bg-gray-100 text-gray-700 text-[10px] font-semibold px-1.5 py-0.5 rounded">{{ student.class_name }}</span>
+                    </td>
+                    <td class="px-2 py-2 text-gray-600 whitespace-nowrap">{{ student.section }}</td>
+                    <td class="px-2 py-2 text-gray-600 whitespace-nowrap">{{ student.father_name }}</td>
+                    <td class="px-2 py-2 text-gray-500 whitespace-nowrap">{{ student.dob }}</td>
+                    <td class="px-2 py-2">
+                        {% if student.status == 'pending' %}
+                        <span class="status-badge bg-amber-50 text-amber-700 border-amber-200">Pending</span>
+                        {% elif student.status == 'verified' %}
+                        <span class="status-badge bg-green-50 text-green-700 border-green-200">Verified</span>
+                        {% elif student.status == 'approved' %}
+                        <span class="status-badge bg-blue-50 text-blue-700 border-blue-200">Approved</span>
+                        {% elif student.status == 'download' %}
+                        <span class="status-badge bg-purple-50 text-purple-700 border-purple-200">Download</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="10" class="text-center py-10 text-gray-400">
+                        <i class="fa-solid fa-inbox text-3xl mb-2 block"></i>
+                        <p class="text-sm">No records found</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>

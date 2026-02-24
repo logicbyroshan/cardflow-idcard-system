@@ -221,7 +221,15 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-.package-lock.json
-.package.json
-/node_modules/
-.node_modules/
+# Node / Tailwind
+node_modules/
+package-lock.json
+tailwind-input.css
+
+# Temp test scripts
+test_*.py
+
+# Generated reports (dev-only)
+CODE_REVIEW_REPORT.md
+FRONTEND_PERFORMANCE_REPORT.md
+REDIS.md

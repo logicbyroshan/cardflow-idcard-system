@@ -1,0 +1,31 @@
+<!-- Reupload Image Modal -->
+<div id="reuploadModal" class="center-modal-overlay center-modal-theme-blue"
+     x-show="activeModal === 'reupload'" x-transition.opacity
+     style="display:none">
+  <div class="center-modal-card" @click.stop
+       x-show="activeModal === 'reupload'" x-transition.scale.origin.center>
+    <div class="center-modal-icon">
+      <i class="fa-solid fa-upload"></i>
+    </div>
+    <h3 class="center-modal-title">Reupload Images</h3>
+    <p class="center-modal-subtitle">Table: <strong id="reuploadTableName"></strong></p>
+    <p class="center-modal-subtitle mb-4">Upload a ZIP file with images. Filenames will be matched against ALL cards in every list (Pending, Verified, Approved, Download, Pool).</p>
+    <div id="reuploadDropZone" class="center-modal-dropzone"
+      ondragover="event.preventDefault(); this.style.borderColor='#3b82f6'; this.style.backgroundColor='#eff6ff';"
+      ondragleave="this.style.borderColor='#d1d5db'; this.style.backgroundColor='';">
+      <i class="fa-solid fa-file-zipper"></i>
+      <p id="reuploadFileName">Click or drag & drop a ZIP file</p>
+      <input type="file" id="reuploadFileInput" accept=".zip" class="hidden">
+    </div>
+    <div class="center-modal-actions">
+      <button id="reuploadCancel" class="center-modal-btn center-modal-btn-cancel" @click="closeModal()">Cancel</button>
+      <button id="reuploadConfirm" class="center-modal-btn center-modal-btn-confirm" disabled>Upload &amp; Match</button>
+    </div>
+    <div id="reuploadProgress" class="center-modal-progress">
+      <div class="center-modal-progress-track">
+        <div id="reuploadBar" class="center-modal-progress-bar"></div>
+      </div>
+      <p class="center-modal-progress-text" id="reuploadStatus">Uploading...</p>
+    </div>
+  </div>
+</div>

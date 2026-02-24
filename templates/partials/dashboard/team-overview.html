@@ -1,0 +1,65 @@
+{% load static %}
+<!-- Team Overview -->
+<div class="dashboard-card">
+  <div class="dashboard-card-header">
+    <h3><i class="fa-solid fa-users"></i> Team Overview</h3>
+  </div>
+  <div class="dashboard-card-body">
+    <div class="cards-overview">
+      <a href="{% url 'manage_clients' %}" class="card-overview-item">
+        <div class="card-overview-left">
+          <div class="card-overview-icon clients">
+            <i class="fa-solid fa-building"></i>
+          </div>
+          <span class="card-overview-label">Total Clients</span>
+        </div>
+        <span class="card-overview-value">{{ total_clients|default:0 }}</span>
+      </a>
+      <a href="{% url 'active_clients' %}" class="card-overview-item">
+        <div class="card-overview-left">
+          <div class="card-overview-icon active-clients">
+            <i class="fa-solid fa-user-check"></i>
+          </div>
+          <span class="card-overview-label">Active Clients</span>
+        </div>
+        <span class="card-overview-value">{{ active_clients|default:0 }}</span>
+      </a>
+      <a href="{% url 'manage_staff' %}" class="card-overview-item">
+        <div class="card-overview-left">
+          <div class="card-overview-icon staff">
+            <i class="fa-solid fa-user-tie"></i>
+          </div>
+          <span class="card-overview-label">Total Staff</span>
+        </div>
+        <span class="card-overview-value">{{ total_staff|default:0 }}</span>
+      </a>
+      <a href="{% url 'manage_staff' %}" class="card-overview-item">
+        <div class="card-overview-left">
+          <div class="card-overview-icon active-staff">
+            <i class="fa-solid fa-user-shield"></i>
+          </div>
+          <span class="card-overview-label">Active Staff</span>
+        </div>
+        <span class="card-overview-value">{{ active_staff|default:0 }}</span>
+      </a>
+      <a href="{% url 'manage_clients' %}" class="card-overview-item">
+        <div class="card-overview-left">
+          <div class="card-overview-icon staff">
+            <i class="fa-solid fa-user-gear"></i>
+          </div>
+          <span class="card-overview-label">Client Staff</span>
+        </div>
+        <span class="card-overview-value">{{ client_staff_count|default:0 }}</span>
+      </a>
+      <a href="{% url 'manage_clients' %}" class="card-overview-item">
+        <div class="card-overview-left">
+          <div class="card-overview-icon active-clients">
+            <i class="fa-solid fa-user-check"></i>
+          </div>
+          <span class="card-overview-label">Active Client Staff</span>
+        </div>
+        <span class="card-overview-value">{{ active_client_staff_count|default:0 }}</span>
+      </a>
+    </div>
+  </div>
+</div>

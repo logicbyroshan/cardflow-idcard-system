@@ -1,214 +1,361 @@
-{% comment %}
-Client Drawer Partial
-Contains: Side drawer for adding/editing clients with form fields and permissions
-{% endcomment %}
+{% load static %}
+    <!-- Add/Edit Client Drawer (Side Modal) -->
+    <div id="client-drawer" class="drawer-modal">
+      <div class="drawer-content">
+        <div class="drawer-header">
+          <h3 id="drawerTitle"><i class="fa-solid fa-user-plus" id="drawerIcon"></i> <span id="drawerTitleText">Add New Client</span></h3>
+          <button class="drawer-close" id="closeClientDrawer" aria-label="Close client drawer"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form id="clientForm">
+          <input type="hidden" id="clientId" name="clientId" value="">
+          <div class="drawer-body">
+            
+            <!-- Profile Avatar Placeholder -->
+            <div class="profile-upload-section flex flex-row items-center gap-4">
+              {% include 'partials/components/user-avatar.html' with role='client' size='large' %}
+              <p class="text-gray-500 m-0 text-xs">Client avatar</p>
+            </div>
 
-<!-- Client Drawer Start -->
-<div class="drawer-overlay" id="client-drawer-overlay"></div>
-<aside class="side-drawer" id="client-drawer">
-    <div class="drawer-header">
-        <h2 id="drawer-title">
-            <i class="fa-solid fa-user-plus"></i>
-            <span id="drawer-title-text">Add New Client</span>
-        </h2>
-        <button class="drawer-close" id="drawer-close-btn" title="Close">
-            <i class="fa-solid fa-xmark"></i>
-        </button>
-    </div>
-    
-    <div class="drawer-body">
-        <form id="client-form" class="client-form">
-            <input type="hidden" id="client-id" name="client_id">
-            
-            <!-- Profile Avatar Placeholder (Phase 1: Photo upload removed) -->
+            <!-- Client Info Section -->
             <div class="form-section">
-                <div class="profile-upload justify-center">
-                    <div class="user-avatar-placeholder client w-20 h-20 text-2xl">
-                        <i class="fa-solid fa-building"></i>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Client Information Section -->
-            <div class="form-section">
-                <h3 class="section-title">
-                    <i class="fa-solid fa-info-circle"></i> Client Information
-                </h3>
-                
+              <div class="section-title"><i class="fa-solid fa-user"></i> Client Information</div>
+              
+              <div class="form-group">
+                <label class="form-label" for="clientName">Name <span class="required">*</span></label>
+                <input class="form-input" type="text" id="clientName" name="clientName" placeholder="Enter client name" required>
+              </div>
+              
+              <div class="form-row">
                 <div class="form-group">
-                    <label for="client-name">Client Name <span class="required">*</span></label>
-                    <input type="text" id="client-name" name="name" placeholder="Enter client name" required>
+                  <label class="form-label" for="clientEmail">Email <span class="required">*</span></label>
+                  <input class="form-input" type="email" id="clientEmail" name="clientEmail" placeholder="Enter email address" required>
+                  <span class="field-error hidden" id="clientEmailError"></span>
                 </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="client-email">Email <span class="required">*</span></label>
-                        <input type="email" id="client-email" name="email" placeholder="Enter email address" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="client-phone">Phone <span class="required">*</span></label>
-                        <input type="tel" id="client-phone" name="phone" placeholder="Enter phone number" required>
-                    </div>
-                </div>
-                
                 <div class="form-group">
-                    <label for="client-address">Address</label>
-                    <textarea id="client-address" name="address" rows="2" placeholder="Enter address"></textarea>
+                  <label class="form-label" for="clientPhone">Phone <span class="required">*</span></label>
+                  <input class="form-input" type="text" id="clientPhone" name="clientPhone" placeholder="Enter phone number" required>
                 </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="client-password">Password <span class="required" id="password-required">*</span></label>
-                        <div class="password-input-wrapper">
-                            <input type="password" id="client-password" name="password" placeholder="Enter password" autocomplete="new-password">
-                            <button type="button" class="password-toggle" id="toggle-password" aria-label="Toggle password visibility">
-                                <i class="fa-solid fa-eye"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="client-status">Status</label>
-                        <select id="client-status" name="is_active">
-                            <option value="true">Active</option>
-                            <option value="false">Inactive</option>
-                        </select>
-                    </div>
+              </div>
+              
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label" for="clientAddress">Address</label>
+                  <textarea class="form-textarea" id="clientAddress" name="clientAddress" placeholder="Enter address (optional)" rows="2"></textarea>
                 </div>
+                <div class="form-group">
+                  <label class="form-label" for="clientStatus">Status</label>
+                  <div class="custom-dropdown form-dropdown" id="clientStatusDropdown">
+                    <button type="button" class="dropdown-toggle" aria-expanded="false">
+                      <span>Active</span>
+                      <i class="fa-solid fa-chevron-down"></i>
+                    </button>
+                    <div class="dropdown-options">
+                      <div class="dropdown-option selected" data-value="true">Active</div>
+                      <div class="dropdown-option" data-value="false">Inactive</div>
+                    </div>
+                  </div>
+                  <input type="hidden" id="clientStatus" name="is_active" value="true">
+                </div>
+              </div>
+
+              <div class="form-row" id="clientPasswordOptionRow">
+                <div class="form-group">
+                  <label class="form-label">Password Option</label>
+                  <div class="custom-dropdown form-dropdown" id="clientPasswordOptionDropdown">
+                    <button type="button" class="dropdown-toggle" aria-expanded="false">
+                      <span>Use Phone Number</span>
+                      <i class="fa-solid fa-chevron-down"></i>
+                    </button>
+                    <div class="dropdown-options">
+                      <div class="dropdown-option selected" data-value="phone">Use Phone Number</div>
+                      <div class="dropdown-option" data-value="custom">Custom Password</div>
+                    </div>
+                  </div>
+                  <input type="hidden" id="clientPasswordOption" name="password_option" value="phone">
+                </div>
+                <div class="form-group" id="clientCustomPasswordGroup" style="display: none;">
+                  <label class="form-label" for="clientPassword">Password <span class="required">*</span></label>
+                  <input class="form-input" type="password" id="clientPassword" name="password" placeholder="Enter custom password" autocomplete="new-password">
+                </div>
+              </div>
             </div>
-            
-            <!-- Permissions Section -->
+
+            {% if is_super_admin %}
+            <!-- User Permission Section -->
             <div class="form-section">
-                <h3 class="section-title">
-                    <i class="fa-solid fa-shield-halved"></i> Permissions
-                </h3>
-                
-                <!-- Staff Management -->
-                <div class="permission-group">
-                    <h4 class="permission-group-title">
-                        <i class="fa-solid fa-users"></i> Staff Management
-                    </h4>
-                    <div class="permission-grid">
-                        <label class="permission-item">
-                            <input type="checkbox" name="perm_idcard_client_list" id="perm-idcard-client-list">
-                            <span class="permission-label">Manage Staff</span>
-                        </label>
-                    </div>
+              <div class="permission-header"><i class="fa-solid fa-shield-halved"></i> User Permission</div>
+              
+              <!-- Staff Management Permission -->
+              <div class="permission-category">
+                <div class="category-title"><i class="fa-solid fa-users"></i> Staff Management</div>
+                <div class="permissions-grid">
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_client_list" name="perm_idcard_client_list">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Manage Staff</span>
+                  </div>
                 </div>
-                
-                <!-- Template Settings Permissions -->
-                <div class="permission-group">
-                    <h4 class="permission-group-title">
-                        <i class="fa-solid fa-sliders"></i> Template Settings
-                    </h4>
-                    <div class="permission-grid">
-                        <label class="permission-item">
-                            <input type="checkbox" name="perm_idcard_setting_list" id="perm_idcard_setting_list">
-                            <span class="permission-label">View Templates</span>
-                        </label>
-                        <label class="permission-item">
-                            <input type="checkbox" name="perm_idcard_setting_add" id="perm_idcard_setting_add">
-                            <span class="permission-label">Add Template</span>
-                        </label>
-                        <label class="permission-item">
-                            <input type="checkbox" name="perm_idcard_setting_edit" id="perm_idcard_setting_edit">
-                            <span class="permission-label">Edit Template</span>
-                        </label>
-                        <label class="permission-item">
-                            <input type="checkbox" name="perm_idcard_setting_delete" id="perm_idcard_setting_delete">
-                            <span class="permission-label">Delete Template</span>
-                        </label>
-                    </div>
+              </div>
+              
+              <!-- Template Settings Permissions -->
+              <div class="permission-category">
+                <div class="category-title"><i class="fa-solid fa-cog"></i> Template Settings</div>
+                <div class="permissions-grid">
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_setting_list" name="perm_idcard_setting_list">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">View Templates</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_setting_add" name="perm_idcard_setting_add">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Add Template</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_setting_edit" name="perm_idcard_setting_edit">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Edit Template</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_setting_delete" name="perm_idcard_setting_delete">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Delete Template</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_setting_status" name="perm_idcard_setting_status">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Toggle Template Status</span>
+                  </div>
                 </div>
-                
-                <!-- Group/Table Permissions -->
-                <div class="permission-group">
-                    <h4 class="permission-group-title">
-                        <i class="fa-solid fa-folder-plus"></i> Group / Table
-                    </h4>
-                    <div class="permission-grid">
-                        <label class="permission-item">
-                            <input type="checkbox" name="perm_idcard_group_create" id="perm_idcard_group_create">
-                            <span class="permission-label">Create Group / Table</span>
-                        </label>
-                        <label class="permission-item">
-                            <input type="checkbox" name="perm_idcard_group_delete" id="perm_idcard_group_delete">
-                            <span class="permission-label">Delete Group / Table</span>
-                        </label>
-                    </div>
+              </div>
+              
+              <!-- Group/Table Management Permissions -->
+              <div class="permission-category">
+                <div class="category-title"><i class="fa-solid fa-table-cells"></i> Group / Table Management</div>
+                <div class="permissions-grid">
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_group_create" name="perm_idcard_group_create">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Create Group / Table</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_group_delete" name="perm_idcard_group_delete">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Delete Group / Table</span>
+                  </div>
                 </div>
-                
-                <!-- ID Card List Permissions -->
-                <div class="permission-group">
-                    <h4 class="permission-group-title">
-                        <i class="fa-solid fa-list"></i> ID Card Lists
-                    </h4>
-                    <div class="permission-grid">
-                        <label class="permission-item">
-                            <input type="checkbox" name="perm_idcard_list_view" id="perm-idcard-list-view">
-                            <span class="permission-label">View Lists</span>
-                        </label>
-                        <label class="permission-item">
-                            <input type="checkbox" name="perm_idcard_list_add" id="perm-idcard-list-add">
-                            <span class="permission-label">Add Lists</span>
-                        </label>
-                        <label class="permission-item">
-                            <input type="checkbox" name="perm_idcard_list_edit" id="perm-idcard-list-edit">
-                            <span class="permission-label">Edit Lists</span>
-                        </label>
-                        <label class="permission-item">
-                            <input type="checkbox" name="perm_idcard_list_delete" id="perm-idcard-list-delete">
-                            <span class="permission-label">Delete Lists</span>
-                        </label>
-                    </div>
+              </div>
+              
+              <!-- View Card Lists Permissions -->
+              <div class="permission-category">
+                <div class="category-title"><i class="fa-solid fa-list"></i> View Card Lists</div>
+                <div class="permissions-grid">
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_pending_list" name="perm_idcard_pending_list">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">View Pending Cards</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_verified_list" name="perm_idcard_verified_list">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">View Verified Cards</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_pool_list" name="perm_idcard_pool_list">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">View Pool Cards</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_approved_list" name="perm_idcard_approved_list">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">View Approved Cards</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_download_list" name="perm_idcard_download_list">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">View Download List</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_reprint_list" name="perm_idcard_reprint_list">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">View Reprint List</span>
+                  </div>
                 </div>
-                
-                <!-- ID Card Actions Permissions -->
-                <div class="permission-group">
-                    <h4 class="permission-group-title">
-                        <i class="fa-solid fa-id-card"></i> ID Card Actions
-                    </h4>
-                    <div class="permission-grid">
-                        <label class="permission-item">
-                            <input type="checkbox" name="perm_idcard_action_view" id="perm-idcard-action-view">
-                            <span class="permission-label">View Actions</span>
-                        </label>
-                        <label class="permission-item">
-                            <input type="checkbox" name="perm_idcard_action_add" id="perm-idcard-action-add">
-                            <span class="permission-label">Add Actions</span>
-                        </label>
-                        <label class="permission-item">
-                            <input type="checkbox" name="perm_idcard_action_edit" id="perm-idcard-action-edit">
-                            <span class="permission-label">Edit Actions</span>
-                        </label>
-                        <label class="permission-item">
-                            <input type="checkbox" name="perm_idcard_action_delete" id="perm-idcard-action-delete">
-                            <span class="permission-label">Delete Actions</span>
-                        </label>
-                    </div>
+              </div>
+              
+              <!-- Card Actions Permissions -->
+              <div class="permission-category">
+                <div class="category-title"><i class="fa-solid fa-id-card"></i> Card Actions</div>
+                <div class="permissions-grid">
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_add" name="perm_idcard_add">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Add Card</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_edit" name="perm_idcard_edit">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Edit Card</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_delete" name="perm_idcard_delete">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Delete Card</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_info" name="perm_idcard_info">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">View Card Info</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_approve" name="perm_idcard_approve">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Approve Card</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_verify" name="perm_idcard_verify">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Verify Card</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_created_at" name="perm_idcard_created_at">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">View Created Date</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_updated_at" name="perm_idcard_updated_at">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">View Updated Date</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_delete_from_pool" name="perm_idcard_delete_from_pool">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Remove From Pool</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_reupload_idcard_image" name="perm_reupload_idcard_image">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Reupload Card Image</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_retrieve" name="perm_idcard_retrieve">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Retrieve Card</span>
+                  </div>
                 </div>
-                <!-- Mobile App Permission -->
-                <div class="permission-group">
-                    <h4 class="permission-group-title">
-                        <i class="fa-solid fa-mobile-screen"></i> Mobile App
-                    </h4>
-                    <div class="permission-grid">
-                        <label class="permission-item">
-                            <input type="checkbox" name="perm_mobile_app" id="perm-mobile-app">
-                            <span class="permission-label">Mobile App Access</span>
-                        </label>
-                    </div>
+              </div>
+              
+              <!-- Bulk Actions Permissions -->
+              <div class="permission-category">
+                <div class="category-title"><i class="fa-solid fa-layer-group"></i> Bulk Actions</div>
+                <div class="permissions-grid">
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_bulk_upload" name="perm_idcard_bulk_upload">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Bulk Upload Cards</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_bulk_download" name="perm_idcard_bulk_download">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Bulk Download Cards</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_bulk_reupload" name="perm_idcard_bulk_reupload">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Bulk Reupload Images</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_delete_all_idcard" name="perm_delete_all_idcard">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Delete All Cards</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_upgrade_all" name="perm_idcard_upgrade_all">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Upgrade All Class</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_mobile_app" name="perm_mobile_app">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Mobile App Access</span>
+                  </div>
                 </div>
+              </div>
             </div>
+            {% endif %}
+
+          </div>
+          <div class="drawer-footer">
+            <button type="button" class="btn btn-md btn-neutral" id="cancelClientDrawer">Cancel</button>
+            <button type="button" class="btn btn-md btn-warning" id="tempPasswordClientBtn" style="display:none;" onclick="openTempPasswordModal('client')">
+              <i class="fa-solid fa-key"></i> Set Temp Password
+            </button>
+            <button type="submit" class="btn btn-md btn-primary" id="submitClientBtn">
+              <i class="fa-solid fa-plus"></i> Add Client
+            </button>
+          </div>
         </form>
+      </div>
     </div>
-    
-    <div class="drawer-footer">
-        <button type="button" class="btn btn-secondary" id="drawer-cancel-btn">
-            <i class="fa-solid fa-xmark"></i> Cancel
-        </button>
-        <button type="submit" form="client-form" class="btn btn-primary" id="drawer-submit-btn">
-            <i class="fa-solid fa-check"></i> <span id="submit-btn-text">Save Client</span>
-        </button>
-    </div>
-</aside>
-<!-- Client Drawer End -->

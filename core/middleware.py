@@ -27,30 +27,44 @@ SLOW_QUERY_THRESHOLD = getattr(django_settings, 'SLOW_QUERY_THRESHOLD', 0.1)
 
 class RequestTimingMiddleware:
     """
-    Logs every request with duration, path, user, role, and status code.
+    Logs request duration and adds Server-Timing header.
     
-    - Requests slower than SLOW_REQUEST_THRESHOLD seconds → WARNING
-    - All others → DEBUG (so they only appear when DEBUG=True)
+    - Requests slower than SLOW_REQUEST_THRESHOLD → WARNING
+    - All others → DEBUG (only visible when DEBUG=True)
+    - Server-Timing header visible in browser DevTools → Network → Timing tab
     
-    MUST be placed early in MIDDLEWARE (after AuthenticationMiddleware)
-    so that request.user is available.
+    Query counting uses connection.execute_wrapper only when DEBUG=True
+    to avoid overhead in production. In production, only request duration
+    is tracked.
     """
 
-    # Skip timing for static/media assets to reduce noise
     SKIP_PREFIXES = ('/static/', '/media/', '/favicon.ico')
 
     def __init__(self, get_response):
         self.get_response = get_response
+        self._debug = getattr(django_settings, 'DEBUG', False)
 
     def __call__(self, request):
-        # Skip static/media
         if any(request.path.startswith(p) for p in self.SKIP_PREFIXES):
             return self.get_response(request)
 
         start = time.monotonic()
 
-        # ── Query counting (works in ALL environments) ──
-        # Uses a lightweight callback on the connection — no dependency on DEBUG.
+        if self._debug:
+            # Full query counting only in DEBUG mode (avoids production overhead)
+            response = self._call_with_query_tracking(request, start)
+        else:
+            # Production: just time the request, no per-query wrapper
+            response = self.get_response(request)
+            duration = time.monotonic() - start
+            duration_ms = duration * 1000
+            response['Server-Timing'] = 'total;dur=%.1f' % duration_ms
+            self._log_request(request, response.status_code, duration, 0, 0.0)
+
+        return response
+
+    def _call_with_query_tracking(self, request, start):
+        """Track individual queries — DEBUG mode only."""
         from django.db import connection
         query_count = 0
         query_time = 0.0
@@ -71,8 +85,6 @@ class RequestTimingMiddleware:
             response = self.get_response(request)
 
         duration = time.monotonic() - start
-
-        # ── Server-Timing header ──
         duration_ms = duration * 1000
         db_ms = query_time * 1000
         response['Server-Timing'] = (
@@ -80,12 +92,19 @@ class RequestTimingMiddleware:
             % (duration_ms, db_ms, query_count)
         )
 
+        self._log_request(request, response.status_code, duration, query_count, query_time)
+
+        for sql, ms in slow_queries:
+            query_logger.warning("SLOW QUERY path=%s time=%dms sql=%s", request.path, ms, sql)
+
+        return response
+
+    def _log_request(self, request, status, duration, query_count, query_time):
+        """Log the request at appropriate level."""
         user = getattr(request, 'user', None)
         username = getattr(user, 'username', 'anonymous') if user and getattr(user, 'is_authenticated', False) else 'anonymous'
         role = getattr(user, 'role', '-') if user and getattr(user, 'is_authenticated', False) else '-'
-        status = response.status_code
 
-        # ── Request-level log ──
         msg = "method=%s path=%s status=%d duration=%.3fs user=%s role=%s queries=%d db_time=%.3fs"
         args = (request.method, request.path, status, duration, username, role, query_count, query_time)
 
@@ -99,15 +118,6 @@ class RequestTimingMiddleware:
             logger.warning("SLOW REQUEST " + msg, *args)
         else:
             logger.debug(msg, *args)
-
-        # ── Individual slow query log ──
-        for sql, ms in slow_queries:
-            query_logger.warning(
-                "SLOW QUERY path=%s time=%dms sql=%s",
-                request.path, ms, sql
-            )
-
-        return response
 
 
 class PermissionValidationMiddleware:
@@ -163,6 +173,9 @@ class PermissionValidationMiddleware:
         
         # Mark successful validation timestamp in session
         request.session['_pvm_last_check'] = time.time()
+        
+        # Annotate request with role-based scope (merged from RoleScopingMiddleware)
+        self._annotate_request_scope(request)
         
         return self.get_response(request)
     
@@ -322,6 +335,30 @@ class PermissionValidationMiddleware:
         
         return None
     
+    def _annotate_request_scope(self, request):
+        """Add role-based scope attributes to request for use by views."""
+        from core.services.permission_service import PermissionService
+        user = request.user
+        
+        request.user_scope = {
+            'is_super_admin': PermissionService.is_super_admin(user),
+            'is_admin_staff': PermissionService.is_admin_staff(user),
+            'is_client': PermissionService.is_client(user),
+            'is_client_staff': PermissionService.is_client_staff(user),
+            'client_id': None,
+            'accessible_client_ids': PermissionService.get_accessible_client_ids(user),
+        }
+        
+        if PermissionService.is_client(user):
+            client = getattr(user, 'client_profile', None)
+            if client:
+                request.user_scope['client_id'] = client.id
+        
+        elif PermissionService.is_client_staff(user):
+            staff = getattr(user, 'staff_profile', None)
+            if staff and staff.client:
+                request.user_scope['client_id'] = staff.client.id
+    
     def _force_logout(self, request, message):
         """Force logout user and redirect to inactive page"""
         from urllib.parse import quote
@@ -349,46 +386,17 @@ class PermissionValidationMiddleware:
 
 class RoleScopingMiddleware:
     """
-    Middleware to ensure users can only access data within their scope.
-    
-    This is a defense-in-depth layer that adds request annotations
-    for use by views in building scoped queries.
+    DEPRECATED: Role scoping is now merged into PermissionValidationMiddleware.
+    This middleware is kept as a pass-through for backward compatibility.
+    It can be safely removed from MIDDLEWARE in settings.py.
     """
     
     def __init__(self, get_response):
         self.get_response = get_response
     
     def __call__(self, request):
-        # Add scoping attributes to request for use by views
-        if request.user.is_authenticated:
-            self._annotate_request_scope(request)
-        
+        # Role scoping is now handled by PermissionValidationMiddleware._annotate_request_scope()
         return self.get_response(request)
-    
-    def _annotate_request_scope(self, request):
-        """Add role-based scope attributes to request — delegates to PermissionService."""
-        from core.services.permission_service import PermissionService
-        user = request.user
-        
-        # Initialize scope attributes (via single authority)
-        request.user_scope = {
-            'is_super_admin': PermissionService.is_super_admin(user),
-            'is_admin_staff': PermissionService.is_admin_staff(user),
-            'is_client': PermissionService.is_client(user),
-            'is_client_staff': PermissionService.is_client_staff(user),
-            'client_id': None,
-            'accessible_client_ids': PermissionService.get_accessible_client_ids(user),
-        }
-        
-        if PermissionService.is_client(user):
-            client = getattr(user, 'client_profile', None)
-            if client:
-                request.user_scope['client_id'] = client.id
-        
-        elif PermissionService.is_client_staff(user):
-            staff = getattr(user, 'staff_profile', None)
-            if staff and staff.client:
-                request.user_scope['client_id'] = staff.client.id
 
 
 class WebsiteOfflineMiddleware:

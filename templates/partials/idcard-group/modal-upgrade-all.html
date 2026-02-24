@@ -1,0 +1,26 @@
+<!-- Upgrade All Classes Confirmation Modal -->
+<div id="upgradeAllModal" class="center-modal-overlay center-modal-theme-amber"
+     x-show="activeModal === 'upgradeAll'" x-transition.opacity
+     style="display:none">
+  <div class="center-modal-card" @click.stop
+       x-show="activeModal === 'upgradeAll'" x-transition.scale.origin.center>
+    <div class="center-modal-icon">
+      <i class="fa-solid fa-arrow-up"></i>
+    </div>
+    <h3 class="center-modal-title">Upgrade All Classes</h3>
+    <p class="center-modal-subtitle">
+      Table: <strong id="upgradeAllTableName"></strong>
+    </p>
+    <p class="center-modal-subtitle">
+      This will upgrade the class value of <strong id="upgradeAllCount"></strong> cards in the <strong>Download list</strong> to the next level (e.g. V &rarr; VI).
+    </p>
+    <p class="center-modal-warning">This action CANNOT be undone.</p>
+    <p class="center-modal-label">Enter the 6-digit code below to confirm:</p>
+    <div class="center-modal-code" id="upgradeAllCode"></div>
+    <input type="text" id="upgradeAllCodeInput" class="center-modal-input" maxlength="6" placeholder="Enter code here">
+    <div class="center-modal-actions">
+      <button id="upgradeAllCancel" class="center-modal-btn center-modal-btn-cancel" @click="closeModal()">Cancel</button>
+      <button id="upgradeAllConfirm" class="center-modal-btn center-modal-btn-confirm" disabled>Upgrade All Classes</button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,47 @@
+{% load static %}
+<!-- Fixed Top Section -->
+<div class="flex-shrink-0 z-40 bg-white shadow-sm">
+    <!-- Back Navigation Header -->
+    <div class="flex items-center gap-3 px-4 py-2.5 bg-gradient-to-r from-brand-light to-brand-dark">
+        <a href="{% url 'mobile_app:home' %}" class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all">
+            <i class="fa-solid fa-arrow-left text-sm"></i>
+        </a>
+        <div class="flex-1">
+            <h1 class="text-white font-bold text-sm">
+                {% if list_type == 'pending' %}Pending List
+                {% elif list_type == 'verified' %}Verified List
+                {% elif list_type == 'approved' %}Approved List
+                {% elif list_type == 'download' %}Download List
+                {% elif list_type == 'pool' %}Pool List
+                {% endif %}
+            </h1>
+            <p class="text-white/70 text-[10px]">{% if table %}{{ table.name }} — {% endif %}{{ total_count }} records</p>
+        </div>
+        <span class="bg-white/20 text-white text-xs font-bold px-2.5 py-1 rounded-full">
+            {{ total_count }}
+        </span>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="px-3 py-2 bg-white border-b border-gray-100">
+        <div class="flex items-center gap-2">
+            <div class="relative flex-1">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                <input
+                    type="text"
+                    x-model="searchQuery"
+                    @input="filterStudents()"
+                    placeholder="Search by name, roll no..."
+                    class="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition"
+                >
+            </div>
+            <button
+                @click="showFilters = !showFilters"
+                :class="showFilters ? 'bg-brand-light text-white' : 'bg-gray-50 text-gray-600 border border-gray-200'"
+                class="p-2 rounded-lg transition-all"
+            >
+                <i class="fa-solid fa-sliders text-sm"></i>
+            </button>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,66 @@
+{% load static %}
+<!-- === QUICK ACTIONS TAB === -->
+<div class="panel-tab-content" id="tab-quick-actions">
+  <div class="quick-actions-grid">
+    <a href="{% url 'manage_clients' %}" class="quick-action-card">
+      <div class="qa-icon qa-icon-primary">
+        <i class="fa-solid fa-building"></i>
+      </div>
+      <div class="qa-info">
+        <h4>Manage Clients</h4>
+        <p>View, add or edit client accounts</p>
+      </div>
+      <i class="fa-solid fa-arrow-right qa-arrow"></i>
+    </a>
+    <a href="{% url 'manage_staff' %}" class="quick-action-card">
+      <div class="qa-icon qa-icon-purple">
+        <i class="fa-solid fa-users-gear"></i>
+      </div>
+      <div class="qa-info">
+        <h4>Manage Staff</h4>
+        <p>Admin & client staff management</p>
+      </div>
+      <i class="fa-solid fa-arrow-right qa-arrow"></i>
+    </a>
+    <a href="{% url 'active_clients' %}" class="quick-action-card">
+      <div class="qa-icon qa-icon-success">
+        <i class="fa-solid fa-id-card"></i>
+      </div>
+      <div class="qa-info">
+        <h4>ID Cards</h4>
+        <p>Active clients & card management</p>
+      </div>
+      <i class="fa-solid fa-arrow-right qa-arrow"></i>
+    </a>
+    <a href="{% url 'settings' %}" class="quick-action-card">
+      <div class="qa-icon qa-icon-warning">
+        <i class="fa-solid fa-gear"></i>
+      </div>
+      <div class="qa-info">
+        <h4>Settings</h4>
+        <p>Profile, password & preferences</p>
+      </div>
+      <i class="fa-solid fa-arrow-right qa-arrow"></i>
+    </a>
+    <a href="/panel/website/" class="quick-action-card">
+      <div class="qa-icon qa-icon-info">
+        <i class="fa-solid fa-globe"></i>
+      </div>
+      <div class="qa-info">
+        <h4>Website Admin</h4>
+        <p>Manage public website content</p>
+      </div>
+      <i class="fa-solid fa-arrow-right qa-arrow"></i>
+    </a>
+    <div class="quick-action-card" onclick="openCreateModal()" style="cursor:pointer;">
+      <div class="qa-icon qa-icon-danger">
+        <i class="fa-solid fa-bullhorn"></i>
+      </div>
+      <div class="qa-info">
+        <h4>Send Notification</h4>
+        <p>Broadcast to users & staff</p>
+      </div>
+      <i class="fa-solid fa-arrow-right qa-arrow"></i>
+    </div>
+  </div>
+</div>

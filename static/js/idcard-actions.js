@@ -399,6 +399,14 @@
         initResizeHandler();
         logPerformance();
     }
+
+    // Handle bfcache restore (browser back button) — reinitialize table
+    // from scratch so data loads from offset=0 (sr_no 1) instead of stale state.
+    window.addEventListener('pageshow', function(e) {
+        if (e.persisted) {
+            initializeApp();
+        }
+    });
     
     // ==========================================
     // PUBLIC API

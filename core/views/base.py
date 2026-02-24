@@ -461,7 +461,7 @@ def manage_staff(request):
     search_query = request.GET.get('search', '').strip()
     status_filter = request.GET.get('status', '').strip()
     
-    staff_qs = Staff.objects.filter(staff_type='admin_staff').select_related('user')
+    staff_qs = Staff.objects.filter(staff_type='admin_staff').select_related('user').order_by('-id')
     
     # Server-side search
     if search_query:
@@ -522,7 +522,7 @@ def manage_clients(request):
     
     clients_qs = PermissionService.get_accessible_clients(
         user, Client.objects.all().select_related('user')
-    )
+    ).order_by('-id')
     
     if search_query:
         clients_qs = clients_qs.filter(
@@ -587,7 +587,7 @@ def active_clients(request):
     ).prefetch_related('id_card_groups').annotate(
         group_count=Count('id_card_groups'),
         table_count=Count('id_card_groups__tables', distinct=True)
-    )
+    ).order_by('-id')
     
     if search_query:
         clients_qs = clients_qs.filter(
@@ -816,7 +816,7 @@ def group_settings(request, client_id):
     group = IDCardService.ensure_default_group(client)
     tables_qs = IDCardTable.objects.filter(group=group).select_related('group').annotate(
         total_cards=Count('id_cards')
-    )
+    ).order_by('-created_at')
     
     if search_query:
         tables_qs = tables_qs.filter(name__icontains=search_query)

@@ -1,0 +1,85 @@
+{% load static %}
+<!-- Why Choose Us Section (Bento Box Layout) -->
+<section class="why-choose-us" id="why">
+    <div class="container">
+        <h2 class="section-title">Why Choose Us</h2>
+        <div class="bento-grid">
+            {% for feature in features %}
+                <div class="bento-card bento-card-{{ forloop.counter }}">
+                    <div class="bento-icon">
+                        <i class="{{ feature.icon }}"></i>
+                    </div>
+                    <h3>{{ feature.title }}</h3>
+                    <p>{{ feature.description }}</p>
+                </div>
+            {% empty %}
+                <div class="bento-card bento-card-1">
+                    <div class="bento-illustration">
+                        <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="15" y="25" width="90" height="60" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="2"/>
+                            <circle cx="40" cy="50" r="12" fill="#93c5fd"/>
+                            <rect x="60" y="40" width="35" height="4" rx="2" fill="#3b82f6"/>
+                            <rect x="60" y="50" width="25" height="4" rx="2" fill="#93c5fd"/>
+                            <rect x="60" y="60" width="30" height="4" rx="2" fill="#bfdbfe"/>
+                            <rect x="20" y="70" width="80" height="8" rx="3" fill="#eff6ff"/>
+                            <path d="M36 47 L40 52 L48 44" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <h3>Premium Quality Cards</h3>
+                    <p>High-resolution PVC ID cards with vibrant colors, sharp text, and durable lamination that lasts for years.</p>
+                </div>
+                <div class="bento-card bento-card-2">
+                    <div class="bento-illustration">
+                        <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="20" y="35" width="80" height="55" rx="6" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
+                            <path d="M30 60 Q60 30 90 60" stroke="#f59e0b" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+                            <circle cx="60" cy="55" r="6" fill="#fbbf24"/>
+                            <rect x="35" y="70" width="50" height="4" rx="2" fill="#fde68a"/>
+                            <rect x="42" y="78" width="36" height="4" rx="2" fill="#fef3c7"/>
+                            <path d="M85 40 L95 30" stroke="#f59e0b" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M90 45 L100 38" stroke="#fbbf24" stroke-width="1.5" stroke-linecap="round"/>
+                            <circle cx="98" cy="28" r="3" fill="#fbbf24"/>
+                        </svg>
+                    </div>
+                    <h3>Custom Designs</h3>
+                    <p>Unique, professionally designed layouts tailored to your school or organization's branding and identity.</p>
+                </div>
+                <div class="bento-card bento-card-3">
+                    <div class="bento-illustration">
+                        <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="25" y="30" width="70" height="55" rx="8" fill="#dcfce7" stroke="#22c55e" stroke-width="2"/>
+                            <circle cx="60" cy="50" r="15" fill="#bbf7d0" stroke="#22c55e" stroke-width="2"/>
+                            <path d="M52 50 L57 56 L68 44" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                            <rect x="35" y="72" width="50" height="4" rx="2" fill="#86efac"/>
+                            <rect x="30" y="20" width="16" height="16" rx="3" fill="#bbf7d0" stroke="#22c55e" stroke-width="1.5"/>
+                            <rect x="33" y="24" width="4" height="4" rx="1" fill="#22c55e"/>
+                            <rect x="39" y="24" width="4" height="4" rx="1" fill="#22c55e"/>
+                            <rect x="33" y="30" width="4" height="4" rx="1" fill="#22c55e"/>
+                            <rect x="39" y="30" width="4" height="4" rx="1" fill="#22c55e"/>
+                        </svg>
+                    </div>
+                    <h3>Secure & Tamper-Proof</h3>
+                    <p>Advanced security features including holograms, QR codes, barcodes, and RFID integration to prevent forgery.</p>
+                </div>
+                <div class="bento-card bento-card-4">
+                    <div class="bento-illustration">
+                        <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="20" y="30" width="80" height="55" rx="6" fill="#fae8ff" stroke="#a855f7" stroke-width="2"/>
+                            <circle cx="45" cy="50" r="10" fill="#e9d5ff"/>
+                            <circle cx="65" cy="50" r="10" fill="#d8b4fe"/>
+                            <circle cx="85" cy="50" r="10" fill="#c084fc"/>
+                            <path d="M42 48 L45 52 L50 46" stroke="#7c3aed" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M62 48 L65 52 L70 46" stroke="#7c3aed" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M82 48 L85 52 L90 46" stroke="#7c3aed" stroke-width="2" stroke-linecap="round"/>
+                            <rect x="30" y="68" width="60" height="8" rx="4" fill="#f3e8ff"/>
+                            <rect x="32" y="70" width="30" height="4" rx="2" fill="#a855f7"/>
+                            <text x="94" y="76" font-size="8" fill="#a855f7" font-weight="bold">✓</text>
+                        </svg>
+                    </div>
+                    <h3>Bulk Order Management</h3>
+                    <p>Streamlined process for large orders — from data collection to printing. Track every card through our smart dashboard.</p>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>

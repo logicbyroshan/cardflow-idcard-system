@@ -1,0 +1,41 @@
+{% load static %}
+<!-- Action Bar -->
+<div class="action-bar">
+    
+    <!-- Left Section - Filter and Search -->
+    <div class="action-bar-left">
+        <div class="filter-group">
+            <div class="custom-dropdown" id="filterDropdown">
+                <button class="dropdown-toggle" id="dropdownToggle" type="button">
+                    <span id="selectedText">All</span>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <div class="dropdown-options" id="dropdownOptions">
+                    <div class="dropdown-option selected" data-value="all">All</div>
+                    <div class="dropdown-option" data-value="pending">Pending</div>
+                    <div class="dropdown-option" data-value="verified">Verified</div>
+                    <div class="dropdown-option" data-value="approved">Approved</div>
+                </div>
+            </div>
+        </div>
+        <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input type="text" class="search-input" id="searchInput" placeholder="Search All..." autocomplete="off">
+            <button class="search-clear-btn" id="searchClearBtn" type="button" title="Clear search" aria-label="Clear search">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Right Section - Action Buttons -->
+    {% if is_super_admin or perm_idcard_setting_add %}
+    <div class="action-bar-right">
+      <div class="actions">
+        <div class="btn-group">
+          <button class="btn btn-md btn-success" id="createFromXlsxBtn" title="Create table directly from an XLSX file"><i class="fa-solid fa-file-excel"></i> Create with XLSX</button>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+</div>

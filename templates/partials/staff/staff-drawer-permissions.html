@@ -1,0 +1,282 @@
+{% comment %}
+Staff Drawer - Permissions Section
+Partial for all staff permission toggles (staff mgmt, templates, groups, card lists, card actions, bulk actions).
+{% endcomment %}
+
+<!-- Permissions Section -->
+<div class="form-section">
+    <div class="permission-header">
+        <i class="fa-solid fa-shield-halved"></i> User Permission
+    </div>
+    
+    <!-- Staff Management -->
+    <div class="permission-category">
+        <div class="category-title">
+            <i class="fa-solid fa-users"></i> Staff Management
+        </div>
+        <div class="permissions-grid">
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_idcard_client_list" id="perm-idcard-client-list">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">Manage Staff</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Template Settings -->
+    <div class="permission-category">
+        <div class="category-title">
+            <i class="fa-solid fa-cog"></i> Template Settings
+        </div>
+        <div class="permissions-grid">
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_idcard_setting_list" id="perm-idcard-setting-list">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">View Templates</span>
+            </div>
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_idcard_setting_add" id="perm-idcard-setting-add">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">Add Template</span>
+            </div>
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_idcard_setting_edit" id="perm-idcard-setting-edit">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">Edit Template</span>
+            </div>
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_idcard_setting_delete" id="perm-idcard-setting-delete">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">Delete Template</span>
+            </div>
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_idcard_setting_status" id="perm-idcard-setting-status">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">Toggle Template Status</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Group/Table Management -->
+    <div class="permission-category">
+        <div class="category-title">
+            <i class="fa-solid fa-table-cells"></i> Group / Table Management
+        </div>
+        <div class="permissions-grid">
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_idcard_group_create" id="perm-idcard-group-create">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">Create Group / Table</span>
+            </div>
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_idcard_group_delete" id="perm-idcard-group-delete">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">Delete Group / Table</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- View Card Lists -->
+    <div class="permission-category">
+        <div class="category-title">
+            <i class="fa-solid fa-list"></i> View Card Lists
+        </div>
+        <div class="permissions-grid">
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_idcard_pending_list" id="perm-idcard-pending-list">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">View Pending Cards</span>
+            </div>
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_idcard_verified_list" id="perm-idcard-verified-list">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">View Verified Cards</span>
+            </div>
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_idcard_pool_list" id="perm-idcard-pool-list">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">View Pool Cards</span>
+            </div>
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_idcard_approved_list" id="perm-idcard-approved-list">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">View Approved Cards</span>
+            </div>
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_idcard_download_list" id="perm-idcard-download-list">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">View Download List</span>
+            </div>
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_idcard_reprint_list" id="perm-idcard-reprint-list">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">View Reprint List</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Card Actions -->
+    <div class="permission-category">
+        <div class="category-title">
+            <i class="fa-solid fa-id-card"></i> Card Actions
+        </div>
+        <div class="permissions-grid">
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_idcard_add" id="perm-idcard-add">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">Add Card</span>
+            </div>
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_idcard_edit" id="perm-idcard-edit">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">Edit Card</span>
+            </div>
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_idcard_delete" id="perm-idcard-delete">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">Delete Card</span>
+            </div>
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_idcard_info" id="perm-idcard-info">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">View Card Info</span>
+            </div>
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_idcard_approve" id="perm-idcard-approve">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">Approve Card</span>
+            </div>
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_idcard_verify" id="perm-idcard-verify">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">Verify Card</span>
+            </div>
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_idcard_created_at" id="perm-idcard-created-at">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">View Created Date</span>
+            </div>
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_idcard_updated_at" id="perm-idcard-updated-at">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">View Updated Date</span>
+            </div>
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_idcard_delete_from_pool" id="perm-idcard-delete-from-pool">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">Remove From Pool</span>
+            </div>
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_reupload_idcard_image" id="perm-reupload-idcard-image">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">Reupload Card Image</span>
+            </div>
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_idcard_retrieve" id="perm-idcard-retrieve">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">Retrieve Card</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bulk Actions -->
+    <div class="permission-category">
+        <div class="category-title">
+            <i class="fa-solid fa-layer-group"></i> Bulk Actions
+        </div>
+        <div class="permissions-grid">
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_idcard_bulk_upload" id="perm-idcard-bulk-upload">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">Bulk Upload Cards</span>
+            </div>
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_idcard_bulk_download" id="perm-idcard-bulk-download">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">Bulk Download Cards</span>
+            </div>
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_idcard_bulk_reupload" id="perm-idcard-bulk-reupload">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">Bulk Reupload Images</span>
+            </div>
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_delete_all_idcard" id="perm-delete-all-idcard">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">Delete All Cards</span>
+            </div>
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_idcard_upgrade_all" id="perm-idcard-upgrade-all">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">Upgrade All Class</span>
+            </div>
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_mobile_app" id="perm-mobile-app">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">Mobile App Access</span>
+            </div>
+        </div>
+    </div>
+</div>

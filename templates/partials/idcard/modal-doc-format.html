@@ -1,0 +1,39 @@
+<!-- Document Format Selection Modal -->
+<div class="upload-modal-overlay" id="docFormatModalOverlay">
+  <div class="upload-modal doc-format-modal">
+    <div class="upload-modal-header">
+      <h3><i class="fa-solid fa-file-word"></i> Select Document Format</h3>
+      <button class="upload-modal-close" id="closeDocFormatModal" aria-label="Close document format modal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="upload-modal-body">
+      <div class="doc-format-options">
+        <p class="format-info"><i class="fa-solid fa-info-circle"></i> Choose the document format based on your Microsoft Word version:</p>
+        <div class="format-cards">
+          <div class="format-card" data-format="docx">
+            <div class="format-icon">
+              <i class="fa-solid fa-file-word"></i>
+            </div>
+            <div class="format-details">
+              <h4>.DOCX Format</h4>
+              <p>For Word 2007 and later</p>
+              <span class="format-badge recommended">Recommended</span>
+            </div>
+          </div>
+          <div class="format-card" data-format="doc">
+            <div class="format-icon">
+              <i class="fa-solid fa-file-word"></i>
+            </div>
+            <div class="format-details">
+              <h4>.DOC Format</h4>
+              <p>For Word 2003 and earlier</p>
+              <span class="format-badge legacy">Legacy</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="upload-modal-footer">
+      <button class="btn btn-secondary" id="cancelDocFormatModal">Cancel</button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,608 @@
+/* ==========================================
+   ID CARD SIDE MODAL — Form controls, image fields, view mode
+   Split from idcard-actions.css
+   ========================================== */
+
+/* Form Control (side modal text inputs) */
+.form-control {
+    width: 100%;
+    padding: 6px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    color: #374151;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.form-control:focus {
+    border-color: var(--color-primary, #667eea);
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.15);
+}
+.form-control::placeholder { color: #9ca3af; }
+textarea.form-control { resize: vertical; min-height: 60px; }
+
+/* Form fields grid inside side modal */
+.form-fields-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+.form-fields-grid .form-group { margin-bottom: 0; }
+.form-fields-grid .form-group.full-width { grid-column: 1 / -1; }
+.form-fields-grid .form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: #4b5563;
+    margin-bottom: 3px;
+}
+
+/* Photo Section in Form */
+.btn.btn-upload {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    background: var(--primary);
+    color: var(--text-white);
+    border: none;
+    border-radius: 2px;
+    font-size: 13px;
+    font-weight: 400;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn.btn-upload:hover {
+    background: var(--primary-dark);
+}
+
+/* ========== MODAL IMAGES SECTION ========== */
+.modal-images-section {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    border: 1px solid #e2e8f0;
+}
+
+/* Unified Images Grid - 2 images per row like staff/client modals */
+.images-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+}
+
+/* Main Photo Container - DEPRECATED, use images-grid instead */
+/* Other Images Grid - DEPRECATED alias */
+/* Image Field Wrapper - Contains title + card */
+.image-field-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* Image Field Title - OUTSIDE the card, above it */
+.image-field-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding-left: 2px;
+}
+
+/* Image Field Card - Redesigned like staff/client profile section */
+.image-field-card {
+    background: #fff;
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border: 1px solid #e2e8f0;
+    transition: all 0.2s ease;
+}
+
+.image-field-card:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    border-color: #cbd5e1;
+}
+
+/* Top row: Image preview + buttons side by side */
+.image-field-top {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+/* Buttons column */
+.image-field-buttons {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    flex: 1;
+}
+
+/* Image Buttons Row */
+/* Bottom row: Full-width path input */
+.image-field-path {
+    width: 100%;
+}
+
+/* Upload Button for fields - styled like staff/client modals */
+.btn.btn-upload-field {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: #fff;
+    border: none;
+    border-radius: 2px;
+    font-size: 13px;
+    font-weight: 400;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+.btn.btn-upload-field:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
+}
+
+.btn.btn-upload-field i {
+    font-size: 14px;
+}
+
+/* Remove Button for fields */
+.btn.btn-remove-field {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: #fff;
+    border: none;
+    border-radius: 2px;
+    font-size: 13px;
+    font-weight: 400;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+}
+
+.btn.btn-remove-field:hover {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(239, 68, 68, 0.4);
+}
+
+.btn.btn-remove-field i {
+    font-size: 14px;
+}
+
+/* Download Image Button - Side modal */
+.btn.btn-download-field {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: #fff;
+    border: none;
+    border-radius: 2px;
+    font-size: 13px;
+    font-weight: 400;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.btn.btn-download-field:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    transform: translateY(-1px);
+}
+
+.btn.btn-download-field i {
+    font-size: 14px;
+}
+
+/* Image Preview Box - Base - Larger like staff/client modals */
+.image-preview-box {
+    width: 85px;
+    height: 105px;
+    border: 2px dashed #cbd5e1;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.image-preview-box i {
+    font-size: 28px;
+    color: #94a3b8;
+}
+
+.image-preview-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Photo Type Preview Box (passport style) - Larger */
+.image-preview-box.photo-type {
+    width: 85px;
+    height: 105px;
+    border-radius: 6px;
+}
+
+.image-preview-box.photo-type img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Signature Type Preview Box - Wider landscape style */
+.image-preview-box.signature-type {
+    width: 120px;
+    height: 60px;
+    border: 2px dashed #cbd5e1;
+    background: #fff;
+    border-radius: 6px;
+}
+
+.image-preview-box.signature-type img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.image-preview-box.signature-type.has-image {
+    border: 2px solid #22c55e;
+    background: #fff;
+}
+
+/* QR Type Preview Box (square) - Larger */
+.image-preview-box.qr-type {
+    width: 85px;
+    height: 85px;
+    border: 2px dashed #cbd5e1;
+    background: #fff;
+    border-radius: 6px;
+}
+
+.image-preview-box.qr-type img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.image-preview-box.qr-type.has-image {
+    border: 2px solid #22c55e;
+}
+
+/* Barcode Type Preview Box - Landscape */
+.image-preview-box.barcode-type {
+    width: 120px;
+    height: 50px;
+    border: 2px dashed #cbd5e1;
+    background: #fff;
+    border-radius: 6px;
+}
+
+.image-preview-box.barcode-type img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.image-preview-box.barcode-type.has-image {
+    border: 2px solid #22c55e;
+}
+
+/* Preview box states */
+.image-preview-box.has-image {
+    border: 2px solid #22c55e;
+    background: #fff;
+}
+
+.image-preview-box.signature-type.has-image,
+.image-preview-box.qr-type.has-image,
+.image-preview-box.barcode-type.has-image {
+    border: 2px solid #22c55e;
+    background: #fff;
+}
+
+.image-preview-box.pending-image {
+    border: 2px dashed #f59e0b;
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+}
+
+.image-preview-box.pending-image i {
+    color: #d97706;
+}
+
+/* Upload Button Small */
+.image-upload-btn {
+    cursor: pointer;
+}
+
+.btn.btn-upload-sm {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+.btn.btn-upload-sm:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    transform: scale(1.1);
+}
+
+/* Image Path Display - styled like staff/client modals (defined once below) */
+
+/* Upload hint text */
+.upload-hint-text {
+    font-size: 14px;
+    color: #94a3b8;
+    margin-top: 2px;
+}
+
+/* Image Path Input - Editable path field (full width at bottom) */
+.image-path-input {
+    width: 100%;
+    padding: 6px 10px;
+    font-size: 15px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    color: #475569;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.image-path-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    background: #fff;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.image-path-input::placeholder {
+    color: #94a3b8;
+    font-style: italic;
+}
+
+.image-path-input.has-image {
+    background: #f0fdf4;
+    border-color: #86efac;
+    color: #166534;
+}
+
+.image-path-input.pending {
+    background: #fffbeb;
+    border-color: #fcd34d;
+    color: #92400e;
+}
+
+/* ========== END MODAL IMAGES SECTION ========== */
+
+/* Image preview small (in form fields) */
+.image-preview-small.pending-image {
+    border: 2px dashed #f59e0b;
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+}
+
+.image-preview-small.pending-image i {
+    color: #d97706;
+}
+
+/* Image Upload Group in Form */
+.form-group.image-upload-group {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Inline Image Field - Compact Layout */
+.form-group.image-field-inline {
+    display: flex;
+    flex-direction: column;
+}
+
+.image-field-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.image-preview-small {
+    width: 50px;
+    height: 50px;
+    border: 1px solid #ddd;
+    background: #f8f9fa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.image-preview-small i {
+    font-size: 15px;
+    color: #b0bec5;
+}
+
+.image-preview-small img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Placeholder styles for image preview */
+.image-preview-small.no-path {
+    background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
+    border: 1px dashed #bdbdbd;
+}
+
+.image-preview-small.no-path i {
+    color: #9e9e9e;
+}
+
+.image-preview-small.path-not-found {
+    background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+    border: 1px dashed #ff9800;
+}
+
+.image-preview-small.path-not-found i {
+    color: #e65100;
+}
+
+.image-preview-small.has-image {
+    border: 1px solid #4caf50;
+    background: #fff;
+}
+
+.image-path-display {
+    font-size: 14px;
+    color: #666;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: monospace;
+    background: #f5f5f5;
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+/* Image path display in modal image cards */
+.image-field-card .image-path-display {
+    font-size: 14px;
+    max-width: 100%;
+    text-align: center;
+    margin-top: 2px;
+    word-break: break-all;
+    white-space: normal;
+    line-height: 1.2;
+    padding: 2px 4px;
+}
+
+.image-path-display.no-path {
+    color: #9e9e9e;
+    font-style: italic;
+}
+
+.image-path-display.not-found {
+    color: #e65100;
+    background: #fff3e0;
+}
+
+.btn.btn-upload-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 8px 14px;
+    background: #667eea;
+    color: #fff;
+    border: none;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn.btn-upload-inline:hover {
+    background: #5a6fd6;
+}
+
+.image-preview {
+    width: 50px;
+    height: 60px;
+    border-radius: 4px;
+    border: 1px dashed #ccc;
+    background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.image-preview i {
+    font-size: 15px;
+    color: #b0bec5;
+}
+
+.image-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.image-upload-label {
+    cursor: pointer;
+}
+
+.btn.btn-upload-small {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    background: #667eea;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn.btn-upload-small:hover {
+    background: #5a6fd6;
+}
+
+/* View Mode - Read Only */
+.side-modal.view-mode .form-control {
+    background: #e9ecef;
+    cursor: default;
+}
+
+/* Hide upload buttons, hints, and remove buttons in view mode */
+.side-modal.view-mode .image-upload-btn,
+.side-modal.view-mode .upload-hint-text,
+.side-modal.view-mode .image-field-controls .btn {
+    display: none;
+}
+
+/* Make path input read-only in view mode */
+.side-modal.view-mode .image-path-input {
+    background: #f1f5f9;
+    border-color: #e2e8f0;
+    cursor: default;
+    pointer-events: none;
+}
+
+.side-modal.view-mode .side-modal-footer .btn-primary {
+    display: none;
+}

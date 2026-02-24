@@ -1,0 +1,128 @@
+/* ============================================
+   Dashboard Layout
+   Layout, grid, card containers & welcome banner
+   ============================================ */
+
+/* ====================
+   Dashboard Layout
+   ==================== */
+.dashboard-content {
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - var(--spacing-topbar, 40px));
+    overflow: hidden;
+}
+
+/* ====================
+   Dashboard Grid
+   ==================== */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    grid-template-rows: 1fr;
+    gap: 0;
+    flex: 1;
+    min-height: 0;
+}
+
+.dashboard-grid-3col {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    flex: none;
+}
+
+.dashboard-card {
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 0;
+    overflow: hidden;
+    margin-left: -1px;
+    margin-top: -1px;
+    display: flex;
+    flex-direction: column;
+}
+
+.dashboard-card-body {
+    padding: 12px 16px;
+}
+
+.dashboard-card-body.tall-body {
+    flex: 1;
+    min-height: 200px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.dashboard-card-body.p-0 {
+    padding: 0;
+}
+
+/* ====================
+   Dashboard Card Header Gradient
+   ==================== */
+.dashboard-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.03) 0%, rgba(118, 75, 162, 0.03) 100%);
+}
+
+.dashboard-card-header h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: #2c3e50;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+}
+
+.dashboard-card-header h3 i {
+    color: #667eea;
+    font-size: 13px;
+}
+
+/* ====================
+   Welcome Banner
+   ==================== */
+.welcome-banner {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 0;
+    padding: 14px 16px;
+    margin-bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+.welcome-text h2 {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+.welcome-text p {
+    font-size: 13px;
+    opacity: 0.9;
+}
+
+.welcome-date {
+    text-align: right;
+}
+
+.welcome-date .date {
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.welcome-date .time {
+    font-size: 15px;
+    font-weight: 700;
+}

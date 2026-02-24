@@ -44,7 +44,7 @@ def process_reupload_images(task):
     """
     from core.models import IDCardTable, IDCard
     from core.services.base import BaseService
-    from core.services.image_service import ImageService
+    from mediafiles.services import ImageService
     from core.utils.field_utils import validate_image_bytes
     
     metadata = task.metadata or {}

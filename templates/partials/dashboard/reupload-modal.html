@@ -1,0 +1,35 @@
+<!-- Reupload Image Modal (Dashboard) -->
+<div id="dashReuploadModal" class="modal-backdrop"
+     x-show="activeModal === 'dashReupload'" x-transition.opacity
+     style="display:none">
+  <div class="modal-center" @click.stop
+       x-show="activeModal === 'dashReupload'" x-transition.scale.origin.center>
+    <div class="modal-header">
+      <h3><i class="fa-solid fa-upload"></i> Reupload Images</h3>
+      <button type="button" class="modal-close" @click="closeModal()" aria-label="Close">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="flex flex-col items-center text-center py-2">
+        <p class="text-xs text-gray-500 mb-2">Upload a ZIP file. Filenames will be matched against ALL cards in this table.</p>
+        <div id="dashReuploadDropZone" class="w-full border-2 border-dashed border-gray-300 bg-gray-50 cursor-pointer mb-2 flex flex-col items-center justify-center p-3 rounded-sm transition-colors"
+          ondragover="event.preventDefault(); this.classList.add('border-primary','bg-primary/5');"
+          ondragleave="this.classList.remove('border-primary','bg-primary/5');">
+          <i class="fa-solid fa-file-zipper text-gray-400 mb-1 text-lg"></i>
+          <p class="text-sm text-gray-500 m-0" id="dashReuploadFileName">Click or drag & drop a ZIP file</p>
+          <input type="file" id="dashReuploadFileInput" accept=".zip" class="hidden">
+        </div>
+        <div id="dashReuploadProgress" class="hidden w-full">
+          <div class="bg-gray-200 overflow-hidden h-1.5 rounded-full"><div id="dashReuploadBar" class="bg-primary h-full w-0 transition-all duration-300"></div></div>
+          <p class="text-xs text-gray-500 mt-1" id="dashReuploadStatus">Uploading...</p>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button id="dashReuploadCancel" class="btn btn-md btn-neutral" type="button"
+              @click="closeModal()">Cancel</button>
+      <button id="dashReuploadConfirm" class="btn btn-md btn-primary" type="button" disabled>Upload &amp; Match</button>
+    </div>
+  </div>
+</div>

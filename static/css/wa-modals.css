@@ -1,0 +1,136 @@
+/**
+ * Website Admin — Modals
+ * ================================================
+ * Form modal overlay, confirm/alert modal.
+ */
+
+/* ===== MODAL (Revamped) ===== */
+.wa-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 9998;
+    align-items: center;
+    justify-content: center;
+}
+.wa-modal-overlay.show { display: flex; }
+.wa-modal {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.18), 0 2px 6px rgba(0,0,0,0.08);
+    width: 600px;
+    max-width: 95vw;
+    min-height: 500px;
+    max-height: 650px;
+    overflow-y: auto;
+    animation: waSlide 0.2s ease;
+}
+@keyframes waSlide {
+    from { opacity: 0; transform: translateY(-16px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.wa-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 20px 12px;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-radius: 10px 10px 0 0;
+    border-bottom: 1px solid var(--wa-gray-200);
+}
+.wa-modal-header h3 {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+}
+.wa-modal-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: transparent;
+    border: none;
+    font-size: 18px;
+    color: #94a3b8;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.15s;
+    line-height: 1;
+}
+.wa-modal-close:hover {
+    color: #1e293b;
+    background: #e2e8f0;
+}
+.wa-modal form {
+    padding: 18px 20px 20px;
+}
+.wa-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding-top: 16px;
+    border-top: 1px solid var(--wa-gray-100);
+    margin-top: 12px;
+}
+
+/* ===== CONFIRM MODAL (for replacing confirm()) ===== */
+.wa-confirm-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+}
+.wa-confirm-overlay.show { display: flex; }
+.wa-confirm-box {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.18), 0 2px 6px rgba(0,0,0,0.08);
+    width: 600px;
+    max-width: 95vw;
+    text-align: center;
+    padding: 28px 24px 22px;
+    max-height: 650px;
+    overflow-y: auto;
+    animation: waSlide 0.15s ease;
+}
+.wa-confirm-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    margin: 0 auto 12px;
+    font-size: 20px;
+    background: var(--wa-yellow-bg);
+    color: var(--wa-yellow);
+}
+.wa-confirm-icon.danger { background: var(--wa-red-bg); color: var(--wa-red); }
+.wa-confirm-icon.warning { background: var(--wa-yellow-bg); color: var(--wa-yellow); }
+.wa-confirm-icon.info { background: var(--wa-blue-bg); color: var(--wa-blue); }
+.wa-confirm-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--wa-gray-800);
+    margin: 0 0 4px;
+}
+.wa-confirm-text {
+    font-size: 13px;
+    color: var(--wa-gray-500);
+    margin: 0 0 18px;
+    line-height: 1.5;
+}
+.wa-confirm-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+.wa-confirm-actions .btn {
+    min-width: 90px;
+}

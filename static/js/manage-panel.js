@@ -311,9 +311,9 @@ async function handleCreateNotif(e) {
 }
 
 /* ============ Helpers ============ */
+// Use canonical getCSRFToken from core/api.js (exposed as window.getCSRFToken)
 function getCSRFToken() {
-  const cookie = document.cookie.split(';').find(c => c.trim().startsWith('csrftoken='));
-  return cookie ? cookie.split('=')[1] : '';
+  return (typeof window.getCSRFToken === 'function') ? window.getCSRFToken() : '';
 }
 
 function escHtml(str) {

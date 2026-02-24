@@ -1,0 +1,40 @@
+<!-- Bulk Actions -->
+<div class="dashboard-card">
+  <div class="dashboard-card-header">
+    <h3><i class="fa-solid fa-gears"></i> Bulk Actions</h3>
+  </div>
+  <div class="dashboard-card-body">
+    <div class="bulk-actions-panel">
+      <div class="bulk-actions-selectors">
+        <div class="bulk-select-group">
+          <select id="bulkClientSelect">
+            <option value="">Select Client</option>
+          </select>
+        </div>
+        <div class="bulk-select-group">
+          <select id="bulkTableSelect" disabled>
+            <option value="">Select Table</option>
+          </select>
+        </div>
+      </div>
+      <div class="bulk-actions-buttons" id="bulkActionsButtons">
+        <button class="bulk-action-btn" data-action="download-all" disabled>
+          <i class="fa-solid fa-id-card"></i>
+          <span>Download All Cards</span>
+        </button>
+        <button class="bulk-action-btn" data-action="delete-all" disabled>
+          <i class="fa-solid fa-trash"></i>
+          <span>Delete All Cards</span>
+        </button>
+        <button class="bulk-action-btn" data-action="reupload" disabled>
+          <i class="fa-solid fa-images"></i>
+          <span>Reupload Images</span>
+        </button>
+        <button class="bulk-action-btn" data-action="upgrade" disabled>
+          <i class="fa-solid fa-arrow-up"></i>
+          <span>Upgrade All Class</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,181 @@
+/* ============================================
+   Dashboard Actions
+   Quick actions & bulk actions panel
+   ============================================ */
+
+/* ====================
+   Quick Actions
+   ==================== */
+.quick-actions {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0;
+}
+
+.quick-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #fafbfc;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 0;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    color: inherit;
+    margin-top: -1px;
+    margin-left: -1px;
+}
+
+.quick-action-btn:first-child,
+.quick-action-btn:nth-child(2) {
+    margin-top: 0;
+}
+
+.quick-action-btn:hover {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+    border-color: rgba(102, 126, 234, 0.3);
+    transform: none;
+}
+
+.quick-action-btn i {
+    width: 32px;
+    height: 32px;
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+}
+
+.quick-action-btn span {
+    font-size: 13px;
+    font-weight: 500;
+    color: #2c3e50;
+}
+
+/* ====================
+   Bulk Actions Panel
+   ==================== */
+.bulk-actions-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.bulk-actions-selectors {
+    display: flex;
+    gap: 10px;
+}
+
+.bulk-select-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.bulk-select-group label {
+    font-size: 15px;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.bulk-select-group select {
+    padding: var(--space-sm) var(--space-md);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-md);
+    color: var(--text-primary);
+    background: var(--bg-white);
+    cursor: pointer;
+    transition: all var(--transition-base);
+    min-height: 36px;
+}
+
+.bulk-select-group select:hover {
+    border-color: var(--primary);
+}
+
+.bulk-select-group select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.1);
+}
+
+.bulk-select-group select:disabled {
+    background: var(--gray-100);
+    color: var(--gray-400);
+    cursor: not-allowed;
+}
+
+.bulk-actions-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0;
+}
+
+.bulk-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 0;
+    background: #fafbfc;
+    color: #2c3e50;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: -1px;
+    margin-left: -1px;
+}
+
+.bulk-action-btn:first-child,
+.bulk-action-btn:nth-child(2) {
+    margin-top: 0;
+}
+
+.bulk-action-btn i {
+    width: 32px;
+    height: 32px;
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.bulk-action-btn span {
+    font-size: 13px;
+    font-weight: 500;
+    color: #2c3e50;
+}
+
+.bulk-action-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+    border-color: rgba(102, 126, 234, 0.3);
+}
+
+.bulk-action-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.bulk-action-btn[data-action="delete-all"] i {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+.bulk-action-btn[data-action="delete-all"]:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.08);
+    border-color: rgba(239, 68, 68, 0.3);
+}

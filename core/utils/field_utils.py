@@ -48,7 +48,7 @@ CLASS_UPGRADE_MAP = {
 
 def validate_image_bytes(image_bytes):
     """Validate that image bytes represent a valid image."""
-    from core.services.image_service import ImageService
+    from mediafiles.services import ImageService
     return ImageService.validate_image_bytes(image_bytes)
 
 

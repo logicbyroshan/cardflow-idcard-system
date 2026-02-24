@@ -1,0 +1,157 @@
+/* ============================================
+   Dashboard Table
+   Recent table, client sub-rows, scrollbar & view-all link
+   ============================================ */
+
+/* ====================
+   Recent Table (Dashboard)
+   ==================== */
+.recent-table {
+    width: 100%;
+    font-size: 13px;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+/* Fixed column widths: Client gets remaining space, status cols are equal */
+.recent-table th:nth-child(1),
+.recent-table td:nth-child(1) { width: 28%; }
+.recent-table th:nth-child(2),
+.recent-table td:nth-child(2),
+.recent-table th:nth-child(3),
+.recent-table td:nth-child(3),
+.recent-table th:nth-child(4),
+.recent-table td:nth-child(4),
+.recent-table th:nth-child(5),
+.recent-table td:nth-child(5) { width: 18%; }
+
+.recent-table thead {
+    position: sticky;
+    top: 0;
+}
+
+.recent-table th {
+    padding: 6px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #ffffff;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: 1px solid rgba(255,255,255,0.15);
+}
+
+.recent-table td {
+    padding: 6px 12px;
+    font-size: 13px;
+    color: #374151;
+    border: 1px solid #e5e7eb;
+}
+
+.recent-table tbody tr:nth-child(odd) {
+    background: #f9fafb;
+}
+.recent-table tbody tr:nth-child(even) {
+    background: #ffffff;
+}
+.recent-table tbody tr:hover {
+    background: #f3f4f6;
+}
+
+/* Sub-rows keep same background as parent group */
+.recent-table tbody tr.client-sub-row {
+    background: #f8f9ff !important;
+}
+.recent-table tbody tr.client-sub-row:hover {
+    background: #eef1ff !important;
+}
+
+/* Expandable client sub-rows (per-table) */
+.client-sub-row td {
+    border-top: 1px solid #e8ecf4 !important;
+    padding: 6px 10px !important;
+    font-size: 12px;
+}
+.client-sub-row td:first-child {
+    padding-left: 32px !important;
+}
+.client-sub-row .sub-row-name {
+    color: #4b5563;
+    text-decoration: none;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: color 0.15s;
+}
+.client-sub-row .sub-row-name:hover {
+    color: #667eea;
+}
+.client-sub-row .sub-row-name i {
+    font-size: 10px;
+    color: #9ca3af;
+}
+.client-sub-row .count-badge {
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* Clickable client rows */
+.recent-table tbody tr.client-row {
+    cursor: pointer;
+}
+.recent-table tbody tr.client-row td:first-child {
+    position: relative;
+    padding-left: 24px;
+}
+.recent-table tbody tr.client-row td:first-child::before {
+    content: '\f054';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    font-size: 9px;
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+    transition: transform 0.2s;
+}
+.recent-table tbody tr.client-row.expanded td:first-child::before {
+    transform: translateY(-50%) rotate(90deg);
+    color: #667eea;
+}
+
+/* ====================
+   View All Link
+   ==================== */
+.view-all {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--primary, #667eea);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: color 0.15s;
+}
+
+.view-all:hover {
+    color: #4f46e5;
+}
+
+/* ====================
+   Recent Table Wrapper (scrollbar)
+   ==================== */
+.recent-table-wrapper {
+    overflow-y: auto;
+    overflow-x: auto;
+}
+
+.recent-table-wrapper::-webkit-scrollbar {
+    width: 6px;
+}
+
+.recent-table-wrapper::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 3px;
+}
