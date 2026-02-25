@@ -54,7 +54,7 @@
 
         table.data-table th {
             border: 0.5pt solid #000;
-            padding: 4px 6px;
+            padding: 1px 2px;
             font-size: 7pt;
             font-weight: bold;
             text-align: center;
@@ -66,35 +66,35 @@
 
         table.data-table td {
             border: 0.5pt solid #000;
-            padding: 2px 5px;
+            padding: 1px 1px;
             font-size: 7.5pt;
             font-weight: bold;
             vertical-align: middle;
             word-wrap: break-word;
             overflow-wrap: break-word;
-            word-break: normal;
+            word-break: break-all;
             white-space: normal;
-            line-height: 1.15;
-            height: 2.7cm;
+            line-height: 1.1;
+            height: {{ row_height_cm }}cm;
+            max-width: 0;
+            overflow: hidden;
         }
 
-        /* Image cells — 1mm padding inside cell */
+        /* Image cells — minimal padding */
         table.data-table td.img-cell {
-            padding: 1mm;
+            padding: 1px;
         }
 
-        /* Image sizing — fixed height AND width per column */
+        /* Image sizing — dimensions set inline per subtype */
         .card-pic {
-            height: 2.5cm;
             display: block;
             margin: 0 auto;
             border: 0.5pt solid #000;
             padding: 0;
         }
 
-        /* Placeholder images — same fixed size, no border */
+        /* Placeholder images — same layout, no border */
         .card-pic-placeholder {
-            height: 2.5cm;
             display: block;
             margin: 0 auto;
             padding: 0;
@@ -148,9 +148,9 @@
                 <td{% if cell.is_image %} class="img-cell"{% endif %} style="text-align: {{ cell.align }};">
                     {% if cell.is_image %}
                         {% if cell.is_placeholder %}
-                            <img src="{{ cell.content }}" class="card-pic-placeholder" style="width: {{ cell.image_width_cm }}cm;" alt="Placeholder">
+                            <img src="{{ cell.content }}" class="card-pic-placeholder" style="width: {{ cell.image_width_cm }}cm; height: {{ cell.image_height_cm }}cm;" alt="Placeholder">
                         {% else %}
-                            <img src="{{ cell.content }}" class="card-pic" style="width: {{ cell.image_width_cm }}cm;" alt="Photo">
+                            <img src="{{ cell.content }}" class="card-pic" style="width: {{ cell.image_width_cm }}cm; height: {{ cell.image_height_cm }}cm;" alt="Photo">
                         {% endif %}
                     {% else %}
                         {{ cell.content|safe }}

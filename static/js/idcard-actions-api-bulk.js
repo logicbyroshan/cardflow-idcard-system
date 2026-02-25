@@ -19,7 +19,7 @@ function bulkVerify(cardIds) {
             return;
         }
         if (typeof apiCall === 'function') {
-            apiCall(`/panel/api/table/${tableId}/cards/bulk-status/`, 'POST', { card_ids: cardIds, status: 'verified' })
+            apiCall(`/panel/api/table/${tableId}/cards/bulk-status/`, 'POST', { card_ids: cardIds, status: 'verified' }, { timeout: 120000 })
                 .then(data => {
                     if (data.success === false) {
                         if (typeof showToast === 'function') showToast(data.message || 'Cannot verify cards', false);
@@ -45,7 +45,7 @@ function bulkApprove(cardIds) {
             return;
         }
         if (typeof apiCall === 'function') {
-            apiCall(`/panel/api/table/${tableId}/cards/bulk-status/`, 'POST', { card_ids: cardIds, status: 'approved' })
+            apiCall(`/panel/api/table/${tableId}/cards/bulk-status/`, 'POST', { card_ids: cardIds, status: 'approved' }, { timeout: 120000 })
                 .then(data => {
                     if (data.success === false) {
                         if (typeof showToast === 'function') showToast(data.message || 'Cannot approve cards', false);
@@ -71,7 +71,7 @@ function bulkUnverify(cardIds) {
             return;
         }
         if (typeof apiCall === 'function') {
-            apiCall(`/panel/api/table/${tableId}/cards/bulk-status/`, 'POST', { card_ids: cardIds, status: 'pending' })
+            apiCall(`/panel/api/table/${tableId}/cards/bulk-status/`, 'POST', { card_ids: cardIds, status: 'pending' }, { timeout: 120000 })
                 .then(data => {
                     if (data.success === false) {
                         if (typeof showToast === 'function') showToast(data.message || 'Cannot unverify cards', false);
@@ -95,7 +95,7 @@ function bulkDisapprove(cardIds) {
             return;
         }
         if (typeof apiCall === 'function') {
-            apiCall(`/panel/api/table/${tableId}/cards/bulk-status/`, 'POST', { card_ids: cardIds, status: 'pending' })
+            apiCall(`/panel/api/table/${tableId}/cards/bulk-status/`, 'POST', { card_ids: cardIds, status: 'pending' }, { timeout: 120000 })
                 .then(data => {
                     if (data.success === false) {
                         if (typeof showToast === 'function') showToast(data.message || 'Cannot disapprove cards', false);
@@ -122,7 +122,7 @@ function bulkDelete(cardIds) {
                 return;
             }
             if (typeof apiCall === 'function') {
-                apiCall(`/panel/api/table/${tableId}/cards/bulk-status/`, 'POST', { card_ids: cardIds, status: 'pool' })
+                apiCall(`/panel/api/table/${tableId}/cards/bulk-status/`, 'POST', { card_ids: cardIds, status: 'pool' }, { timeout: 120000 })
                     .then(data => {
                         if (data.success === false) {
                             if (typeof showToast === 'function') showToast(data.message || 'Cannot delete cards', false);
@@ -153,7 +153,7 @@ function bulkRetrieve(cardIds) {
             return;
         }
         if (typeof apiCall === 'function') {
-            apiCall(`/panel/api/table/${tableId}/cards/bulk-status/`, 'POST', { card_ids: cardIds, status: 'pending' })
+            apiCall(`/panel/api/table/${tableId}/cards/bulk-status/`, 'POST', { card_ids: cardIds, status: 'pending' }, { timeout: 120000 })
                 .then(data => {
                     if (data.success === false) {
                         if (typeof showToast === 'function') showToast(data.message || 'Cannot retrieve cards', false);

@@ -141,10 +141,8 @@ class PdfExporter:
     FOOTER_HEIGHT_CM = 0.85
     # Safety margin to account for xhtml2pdf rendering differences
     PAGE_SAFETY_MARGIN_CM = 0.15
-    # Data row height (image 2.5cm + 1mm padding top/bottom)
-    DATA_ROW_HEIGHT_CM = 2.7
     # Header row: base padding + per-line text height
-    HEADER_BASE_CM = 0.30  # 4px top + 4px bottom padding
+    HEADER_BASE_CM = 0.12  # ~1px top + 1px bottom padding
     HEADER_LINE_CM = 0.24  # ~7pt text + leading per line
 
     # Field name keywords that indicate non-wrappable content
@@ -216,6 +214,14 @@ class PdfExporter:
             cards_list = sort_cards_for_export(list(cards[:MAX_PDF_CARDS]), table.fields)
             column_configs = self._build_column_configs(ordered_fields, cards_list)
 
+            # Compute dynamic row height from tallest image column
+            max_img_h = 0
+            for cfg in column_configs:
+                if cfg.get('is_image') and 'image_height_cm' in cfg:
+                    max_img_h = max(max_img_h, cfg['image_height_cm'])
+            row_height_cm = round(max_img_h + 0.15, 2) if max_img_h > 0 else 0.8
+            data_row_height_cm = row_height_cm
+
             # Build row data (with placeholder images for missing photos)
             rows = self._build_rows(ordered_fields, cards_list, column_configs)
 
@@ -240,7 +246,8 @@ class PdfExporter:
             # Group rows into pages (dynamic RPP, class-break aware)
             class_field_name = get_class_field_name(table.fields)
             rpp = self._compute_records_per_page(
-                column_configs, has_instructions=bool(template_instructions)
+                column_configs, has_instructions=bool(template_instructions),
+                data_row_height_cm=data_row_height_cm
             )
             pages = self._group_rows_into_pages(
                 rows, cards_list, class_field_name, records_per_page=rpp
@@ -258,6 +265,7 @@ class PdfExporter:
                 'export_note_line': export_settings.get('export_note_line', 'Note: This document is computer generated. Please verify all details before printing ID cards.'),
                 'export_copyright_line': export_settings.get('export_copyright_line', '© Adarsh ID Cards Management System'),
                 'template_instructions': template_instructions,
+                'row_height_cm': row_height_cm,
             }
 
             html = render_to_string('exports/pdf_report.html', context)
@@ -341,8 +349,8 @@ class PdfExporter:
         for cfg in column_configs:
             label = cfg.get('label', '')
             col_width_cm = (cfg['width'] / 100) * self.PAGE_CONTENT_WIDTH_CM
-            # Usable text width = column width - left/right padding (~6px each) - borders
-            usable_cm = col_width_cm - 0.45
+            # Usable text width = column width - left/right padding (~1px each) - borders
+            usable_cm = col_width_cm - 0.15
             if usable_cm <= 0:
                 usable_cm = 0.4
             # At 7pt Helvetica, ~1 uppercase char ≈ 0.13cm
@@ -364,7 +372,7 @@ class PdfExporter:
             max_lines = max(max_lines, lines)
         return max_lines
 
-    def _compute_records_per_page(self, column_configs, has_instructions=False):
+    def _compute_records_per_page(self, column_configs, has_instructions=False, data_row_height_cm=None):
         """Compute how many data rows safely fit on one page.
 
         Takes into account:
@@ -372,7 +380,11 @@ class PdfExporter:
           - Inline footer height
           - Instructions block on last page (optional)
           - Safety margin for xhtml2pdf rendering quirks
+          - Dynamic row height based on tallest image column
         """
+        if data_row_height_cm is None:
+            data_row_height_cm = 2.7  # fallback
+
         header_lines = self._estimate_header_lines(column_configs)
         header_height = self.HEADER_BASE_CM + header_lines * self.HEADER_LINE_CM
 
@@ -381,8 +393,8 @@ class PdfExporter:
                   - self.PAGE_SAFETY_MARGIN_CM
                   - header_height)
 
-        rpp = int(budget / self.DATA_ROW_HEIGHT_CM)
-        return max(3, min(rpp, 6))
+        rpp = int(budget / data_row_height_cm)
+        return max(3, min(rpp, 10))
 
     @classmethod
     def _looks_numeric_or_date(cls, value: str) -> bool:
@@ -447,19 +459,19 @@ class PdfExporter:
             if numeric_count >= sample_count * 0.7:
                 cfg['nowrap'] = True
 
-        # Step 1: Fix image column percentages from actual image dimensions
-        # 1mm padding on left + right = 0.2cm extra
-        IMAGE_CELL_PADDING_CM = 0.2
+        # Step 1: Fix image column percentages from subtype dimensions
+        # ~1px padding each side
+        IMAGE_CELL_PADDING_CM = 0.1
         image_indices = set()
         for i, cfg in enumerate(configs):
             if cfg['is_image']:
                 image_indices.add(i)
                 field = ordered_fields[i - 1]  # offset for Sr No at index 0
-                render_w = self._get_image_render_width_cm(cards, field['name'])
+                render_w = field.get('image_width_cm', 1.95)
+                render_h = field.get('image_height_cm', 2.5)
                 cfg['width'] = ((render_w + IMAGE_CELL_PADDING_CM) / self.PAGE_CONTENT_WIDTH_CM) * 100
-                # Store fixed render width so all images in this column
-                # get the same dimensions (height=2.5cm, width=render_w)
-                cfg['image_width_cm'] = round(render_w, 2)
+                cfg['image_width_cm'] = render_w
+                cfg['image_height_cm'] = render_h
 
         # Step 2: Remaining percentage for text columns
         image_pct = sum(configs[i]['width'] for i in image_indices)
@@ -538,13 +550,17 @@ class PdfExporter:
 
         PDF-only rule: missing images get a placeholder image.
         """
-        # Build a map: field_index → image_width_cm from column_configs
+        # Build a map: field_index → image_width_cm and image_height_cm from column_configs
         # column_configs[0] = Sr No, column_configs[1..] = fields
         image_width_map = {}
+        image_height_map = {}
         if column_configs:
             for i, cfg in enumerate(column_configs):
-                if cfg.get('is_image') and 'image_width_cm' in cfg:
-                    image_width_map[i - 1] = cfg['image_width_cm']  # field index
+                if cfg.get('is_image'):
+                    if 'image_width_cm' in cfg:
+                        image_width_map[i - 1] = cfg['image_width_cm']
+                    if 'image_height_cm' in cfg:
+                        image_height_map[i - 1] = cfg['image_height_cm']
 
         rows = []
 
@@ -572,8 +588,9 @@ class PdfExporter:
                 }
 
                 if is_image:
-                    # Fixed image width from column config
-                    cell['image_width_cm'] = image_width_map.get(field_idx, 1.9)
+                    # Fixed image dimensions from column config
+                    cell['image_width_cm'] = image_width_map.get(field_idx, 1.95)
+                    cell['image_height_cm'] = image_height_map.get(field_idx, 2.5)
 
                     # Phase 4: Use thumbnail if available for smaller PDF file size
                     img_path = ImageService.get_image_path_for_export(

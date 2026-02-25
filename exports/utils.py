@@ -15,12 +15,21 @@ from mediafiles.constants import IMAGE_FIELD_TYPES
 # FIELD TYPE CONSTANTS (Extended for export name matching)
 # =============================================================================
 
-# Extended uppercase name patterns for export matching
-IMAGE_FIELD_NAMES = [
-    'PHOTO', 'SIGNATURE', 'IMAGE', 'PIC', 'PICTURE', 'SIGN',
-    'MOTHER PHOTO', 'FATHER PHOTO', 'M PHOTO', 'F PHOTO',
-    'BARCODE', 'QR CODE', 'QR'
+# Keywords checked as substrings in field names (case-insensitive)
+_IMAGE_NAME_KEYWORDS = [
+    'photo', 'signature', 'sign', 'image', 'pic', 'picture', 'barcode', 'qr',
 ]
+
+# Fixed dimensions for each image subtype (height × width in cm)
+IMAGE_SUBTYPE_DIMENSIONS = {
+    'photo':        {'height_cm': 2.5,  'width_cm': 1.95},
+    'mother_photo': {'height_cm': 2.0,  'width_cm': 1.5},
+    'father_photo': {'height_cm': 2.0,  'width_cm': 1.5},
+    'signature':    {'height_cm': 0.5,  'width_cm': 1.9},
+    'qr_code':      {'height_cm': 1.0,  'width_cm': 1.0},
+    'barcode':      {'height_cm': 1.0,  'width_cm': 1.5},
+}
+_DEFAULT_IMAGE_DIMENSIONS = {'height_cm': 2.5, 'width_cm': 1.95}
 
 
 # =============================================================================
@@ -31,19 +40,78 @@ def is_image_field(field: Dict[str, Any]) -> bool:
     """
     Check if a field is an image field.
     
+    Uses two strategies:
+      1. Explicit type match (e.g. type='photo', 'mother_photo', 'signature')
+      2. Substring match on field name (e.g. 'Student Photo' contains 'photo')
+    
     Args:
         field: Field configuration dict with 'name' and 'type' keys
         
     Returns:
         True if field is image type, False otherwise
     """
-    field_name = field.get('name', '').upper()
+    field_type = field.get('type', 'text').lower()
+    if field_type in IMAGE_FIELD_TYPES:
+        return True
+    name_lower = field.get('name', '').lower().strip()
+    return any(kw in name_lower for kw in _IMAGE_NAME_KEYWORDS)
+
+
+def classify_image_subtype(field: Dict[str, Any]) -> Optional[str]:
+    """
+    Classify an image field into a specific subtype.
+    
+    Returns one of: 'photo', 'mother_photo', 'father_photo', 'signature',
+                    'qr_code', 'barcode', or None if not an image field.
+    
+    The subtype determines fixed export dimensions (see IMAGE_SUBTYPE_DIMENSIONS).
+    """
     field_type = field.get('type', 'text').lower()
     
-    return (
-        field_type in IMAGE_FIELD_TYPES or 
-        field_name in IMAGE_FIELD_NAMES
-    )
+    # Direct type mapping (most reliable — set explicitly in table config)
+    _TYPE_MAP = {
+        'photo': 'photo', 'mother_photo': 'mother_photo',
+        'father_photo': 'father_photo', 'signature': 'signature',
+        'barcode': 'barcode', 'qr_code': 'qr_code', 'image': 'photo',
+    }
+    if field_type in _TYPE_MAP:
+        return _TYPE_MAP[field_type]
+    
+    # Name-based detection (fallback for type='text' with image-like name)
+    name_lower = field.get('name', '').lower().strip()
+    name_norm = re.sub(r'[\s_]+', ' ', name_lower)
+    
+    # Parent photos — check before generic 'photo' to avoid false match
+    if ('mother' in name_lower and 'photo' in name_lower) or name_norm in ('m photo',):
+        return 'mother_photo'
+    if ('father' in name_lower and 'photo' in name_lower) or name_norm in ('f photo',):
+        return 'father_photo'
+    # Signature
+    if 'sign' in name_lower:
+        return 'signature'
+    # Barcode
+    if 'barcode' in name_lower:
+        return 'barcode'
+    # QR code
+    if 'qr' in name_lower:
+        return 'qr_code'
+    # Generic photo (catch-all)
+    if any(kw in name_lower for kw in ('photo', 'pic', 'picture', 'image')):
+        return 'photo'
+    return None
+
+
+def get_image_dimensions(field: Dict[str, Any]) -> Dict[str, float]:
+    """
+    Get fixed height and width dimensions (cm) for an image field.
+    
+    Returns dict with 'height_cm' and 'width_cm' keys.
+    Dimensions are determined by the image subtype (photo, signature, etc.).
+    """
+    subtype = classify_image_subtype(field)
+    if subtype and subtype in IMAGE_SUBTYPE_DIMENSIONS:
+        return IMAGE_SUBTYPE_DIMENSIONS[subtype].copy()
+    return _DEFAULT_IMAGE_DIMENSIONS.copy()
 
 
 def get_text_fields(fields: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -99,13 +167,18 @@ def separate_fields_by_type(fields: List[Dict[str, Any]]) -> Dict[str, List[Dict
     image_fields = []
     
     for field in fields:
+        is_img = is_image_field(field)
         field_info = {
             'name': field.get('name', ''),
             'type': field.get('type', 'text'),
-            'is_image': is_image_field(field)
+            'is_image': is_img,
         }
         
-        if field_info['is_image']:
+        if is_img:
+            dims = get_image_dimensions(field)
+            field_info['image_subtype'] = classify_image_subtype(field)
+            field_info['image_height_cm'] = dims['height_cm']
+            field_info['image_width_cm'] = dims['width_cm']
             image_fields.append(field_info)
         else:
             text_fields.append(field_info)

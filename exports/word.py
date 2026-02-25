@@ -428,14 +428,14 @@ class WordExporter:
     def _calculate_column_widths(self, ordered_fields, cards, num_cols):
         """Calculate optimal column widths based on content.
         
-        Image columns: fixed width = rendered image width + 0.1 cm
+        Image columns: fixed width from subtype dimensions + 0.1 cm
         Text columns: share remaining page width proportionally
         """
-        # Step 1: Compute fixed widths for image columns
+        # Step 1: Compute fixed widths for image columns (from subtype dimensions)
         image_widths = {}
         for idx, field in enumerate(ordered_fields):
             if field['is_image']:
-                render_w = self._get_image_render_width_cm(cards, field['name'])
+                render_w = field.get('image_width_cm', self.IMAGE_DEFAULT_WIDTH_CM)
                 image_widths[1 + idx] = render_w + 0.1
         
         # Step 2: Remaining page width for text + Sr No columns
@@ -488,13 +488,19 @@ class WordExporter:
         rows_on_current_page = 0
         prev_class_val = None
 
-        # Pre-compute fixed image widths per image field (once for all rows)
+        # Pre-compute fixed image dimensions per image field (from subtype)
         image_fixed_widths = {}
+        image_fixed_heights = {}
+        max_image_height = 0
         for field in ordered_fields:
             if field['is_image']:
-                image_fixed_widths[field['name']] = self._get_image_render_width_cm(
-                    cards_list, field['name']
-                )
+                w = field.get('image_width_cm', self.IMAGE_DEFAULT_WIDTH_CM)
+                h = field.get('image_height_cm', self.IMAGE_HEIGHT_CM)
+                image_fixed_widths[field['name']] = w
+                image_fixed_heights[field['name']] = h
+                max_image_height = max(max_image_height, h)
+        # Dynamic row height: tallest image + minimal padding, or default 0.8cm
+        row_height_cm = round(max_image_height + 0.15, 2) if max_image_height > 0 else 0.8
 
         # Create ONE table with a header row
         table_obj = doc.add_table(rows=1, cols=num_cols)
@@ -526,7 +532,8 @@ class WordExporter:
             self._add_data_row(
                 table_obj, card, ordered_fields, column_widths, sr_no,
                 Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls,
-                Image, ImageOps, image_fixed_widths=image_fixed_widths
+                Image, ImageOps, image_fixed_widths=image_fixed_widths,
+                image_fixed_heights=image_fixed_heights, row_height_cm=row_height_cm
             )
 
             # If a page break is needed, set it on the FIRST paragraph
@@ -573,8 +580,8 @@ class WordExporter:
             run.font.size = Pt(9)
             run.font.color.rgb = RGBColor(0, 0, 0)
         para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        # Generous left/right padding (57 twips ~1mm) so text never touches border
-        self._set_cell_margins(cell, parse_xml, nsdecls, 28, 28, 57, 57)
+        # Minimal padding (~1px = 14 twips) so text doesn't touch border
+        self._set_cell_margins(cell, parse_xml, nsdecls, 14, 14, 14, 14)
         self._set_cell_vertical_align(cell, parse_xml, nsdecls)
         self._set_para_spacing(para, parse_xml, nsdecls)
         cell.width = Cm(width)
@@ -588,7 +595,8 @@ class WordExporter:
     
     def _add_data_row(self, table, card, ordered_fields, column_widths, sr_no,
                       Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls,
-                      Image, ImageOps, image_fixed_widths=None):
+                      Image, ImageOps, image_fixed_widths=None,
+                      image_fixed_heights=None, row_height_cm=None):
         """Add a data row to the table."""
         new_row = table.add_row()
         cells = new_row.cells
@@ -596,7 +604,8 @@ class WordExporter:
         # Set row height — "atLeast" so text can wrap and expand if needed
         tr = new_row._tr
         trPr = tr.get_or_add_trPr()
-        row_height_twips = int(Cm(self.ROW_HEIGHT_CM).twips)
+        effective_row_h = row_height_cm if row_height_cm else self.ROW_HEIGHT_CM
+        row_height_twips = int(Cm(effective_row_h).twips)
         trHeight = parse_xml(
             r'<w:trHeight {} w:val="{}" w:hRule="atLeast"/>'.format(nsdecls('w'), row_height_twips)
         )
@@ -606,6 +615,8 @@ class WordExporter:
         field_data = card.field_data or {}
         if image_fixed_widths is None:
             image_fixed_widths = {}
+        if image_fixed_heights is None:
+            image_fixed_heights = {}
         
         # Sr No
         cells[col_idx].text = str(sr_no)
@@ -628,10 +639,12 @@ class WordExporter:
                     fallback_to_field_data=True
                 )
                 img_fixed_w = image_fixed_widths.get(field['name'], self.IMAGE_DEFAULT_WIDTH_CM)
+                img_fixed_h = image_fixed_heights.get(field['name'], self.IMAGE_HEIGHT_CM)
                 self._add_image_to_cell(
                     cell, image_path or '',
                     Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls,
-                    Image, ImageOps, fixed_width_cm=img_fixed_w
+                    Image, ImageOps, fixed_width_cm=img_fixed_w,
+                    fixed_height_cm=img_fixed_h
                 )
             else:
                 value = format_field_value(field_data.get(field['name'], ''), uppercase=True)
@@ -643,7 +656,7 @@ class WordExporter:
     
     def _add_image_to_cell(self, cell, img_path, Cm, Pt, RGBColor,
                            WD_ALIGN_PARAGRAPH, parse_xml, nsdecls, Image, ImageOps,
-                           fixed_width_cm=None):
+                           fixed_width_cm=None, fixed_height_cm=None):
         """Add an image to a cell using VML for Word 97-2003 compatibility.
         
         Uses VML (Vector Markup Language) instead of DrawingML to ensure
@@ -655,6 +668,8 @@ class WordExporter:
         """
         if fixed_width_cm is None:
             fixed_width_cm = self.IMAGE_DEFAULT_WIDTH_CM
+        if fixed_height_cm is None:
+            fixed_height_cm = self.IMAGE_HEIGHT_CM
 
         self._set_cell_margins(cell, parse_xml, nsdecls, 0, 0, 0, 0)
         self._set_cell_vertical_align(cell, parse_xml, nsdecls)
@@ -690,10 +705,10 @@ class WordExporter:
                             
                             para = cell.paragraphs[0]
                             run = para.add_run()
-                            # Fixed dimensions: height=IMAGE_HEIGHT_CM, width=fixed_width_cm
+                            # Fixed dimensions per subtype
                             inline_shape = run.add_picture(
                                 img_stream,
-                                height=Cm(self.IMAGE_HEIGHT_CM),
+                                height=Cm(fixed_height_cm),
                                 width=Cm(fixed_width_cm)
                             )
                             img_stream.close()
@@ -711,10 +726,10 @@ class WordExporter:
         # Missing/pending image → draw an empty bordered rectangle
         # (no placeholder image, no text — just empty space with a border)
         self._add_empty_image_box(cell, Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH,
-                                   parse_xml, nsdecls, fixed_width_cm)
+                                   parse_xml, nsdecls, fixed_width_cm, fixed_height_cm)
 
     def _add_empty_image_box(self, cell, Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH,
-                              parse_xml, nsdecls, fixed_width_cm):
+                              parse_xml, nsdecls, fixed_width_cm, fixed_height_cm=None):
         """Draw an empty bordered rectangle for missing/pending images.
         
         Uses a 1-row, 1-col inner table with fixed dimensions and
@@ -736,10 +751,11 @@ class WordExporter:
         from docx.oxml import OxmlElement
 
         # Width/Height in EMU (1 cm = 360000 EMU)
+        effective_h = fixed_height_cm if fixed_height_cm else self.IMAGE_HEIGHT_CM
         box_w_emu = int(fixed_width_cm * 360000)
-        box_h_emu = int(self.IMAGE_HEIGHT_CM * 360000)
+        box_h_emu = int(effective_h * 360000)
         box_w_pt = fixed_width_cm * 28.3465
-        box_h_pt = self.IMAGE_HEIGHT_CM * 28.3465
+        box_h_pt = effective_h * 28.3465
 
         # Create VML rectangle shape directly
         run = para.add_run()
@@ -833,8 +849,8 @@ class WordExporter:
         if is_image:
             self._set_cell_margins(cell, parse_xml, nsdecls, 0, 0, 0, 0)
         else:
-            # Generous left/right padding (57 twips ~1mm) so text never touches border
-            self._set_cell_margins(cell, parse_xml, nsdecls, 0, 0, 57, 57)
+            # Minimal padding (~1px = 14 twips) so text doesn't touch border
+            self._set_cell_margins(cell, parse_xml, nsdecls, 0, 0, 14, 14)
         
         self._set_cell_vertical_align(cell, parse_xml, nsdecls)
         

@@ -271,7 +271,7 @@ function initSimpleDeleteModal() {
             this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Deleting...';
             
             // Delete cards (moves to pool status)
-            ApiClient.post(`/panel/api/table/${tableId}/cards/bulk-status/`, { card_ids: cardIds, status: 'pool' })
+            ApiClient.post(`/panel/api/table/${tableId}/cards/bulk-status/`, { card_ids: cardIds, status: 'pool' }, { timeout: 120000 })
             .then(data => {
                 closeSimpleDeleteModalFn();
                 if (data.success) {

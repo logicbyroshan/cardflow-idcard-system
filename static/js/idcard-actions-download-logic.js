@@ -57,7 +57,7 @@ function _doBulkMoveToDownload(tableId, cardIds) {
         apiCall('/panel/api/table/' + tableId + '/cards/bulk-status/', 'POST', {
             card_ids: cardIds,
             status: 'download'
-        })
+        }, { timeout: 120000 })
         .then(function(data) {
             if (data.success === false) {
                 // Permission denied or validation error — silently log, don't interrupt UX
