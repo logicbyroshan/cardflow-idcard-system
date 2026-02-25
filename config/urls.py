@@ -58,6 +58,17 @@ def _serve_mobile_sw(request):
     return response
 
 
+def _serve_mobile_manifest(request):
+    """Serve the mobile app manifest from /static/mobile/manifest.json."""
+    import os
+    from django.http import FileResponse, Http404
+    filepath = os.path.join(settings.BASE_DIR, 'static', 'mobile', 'manifest.json')
+    if not os.path.isfile(filepath):
+        raise Http404
+    response = FileResponse(open(filepath, 'rb'), content_type='application/manifest+json')
+    return response
+
+
 urlpatterns = [
     # Health check — no auth, used by load balancers / CI/CD
     path('api/health/', health_check, name='health_check'),
@@ -85,7 +96,7 @@ urlpatterns = [
     path('panel/website/', include('website.admin_urls')),
 
     # ==================== PWA MOBILE APP (/app/) ====================
-    path('app/manifest.json', lambda r: _serve_pwa_file(r, 'manifest.json'), name='mobile_pwa_manifest'),
+    path('app/manifest.json', _serve_mobile_manifest, name='mobile_pwa_manifest'),
     path('app/sw.js', _serve_mobile_sw, name='mobile_pwa_sw'),
     path('app/', include('PWA.mobile_app.urls')),
 

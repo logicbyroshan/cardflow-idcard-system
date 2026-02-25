@@ -90,12 +90,15 @@
   <!-- HTMX Configuration -->
   {% include 'partials/htmx-config.html' %}
 
-  <!-- PWA: Register service worker for panel app -->
+  <!-- PWA: Register service worker for panel app (desktop only — mobile uses /app/ SW) -->
   <script>
   if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js', { scope: '/' })
-          .then(function(reg) { console.log('Panel SW registered, scope:', reg.scope); })
-          .catch(function(err) { console.warn('Panel SW registration failed:', err); });
+      var isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      if (!isMobileDevice) {
+          navigator.serviceWorker.register('/sw.js', { scope: '/' })
+              .then(function(reg) { console.log('Panel SW registered, scope:', reg.scope); })
+              .catch(function(err) { console.warn('Panel SW registration failed:', err); });
+      }
   }
   </script>
 

@@ -1,10 +1,11 @@
-// Service Worker for PWA offline support
-const CACHE_NAME = 'idcard-mobile-v1';
+// Service Worker for Mobile PWA (ID Card Manager)
+// Scope: '/' — covers /app/ pages AND /auth/login/ so login stays in-app.
+// Network-first strategy; only caches static shell assets for offline fallback.
+const CACHE_NAME = 'idcard-mobile-v3';
 const STATIC_ASSETS = [
-    '/',
+    '/app/',
     '/static/mobile/css/mobile.css',
     '/static/mobile/js/app.js',
-    '/static/mobile/manifest.json',
 ];
 
 // Install: cache static assets
@@ -29,13 +30,21 @@ self.addEventListener('activate', event => {
     self.clients.claim();
 });
 
-// Fetch: network-first strategy
+// Fetch: network-first, only cache GET requests for static/app assets
 self.addEventListener('fetch', event => {
+    if (event.request.method !== 'GET') return;
+
+    const url = event.request.url;
+    // Never cache API calls, admin panel pages, or media files
+    if (url.includes('/api/') || url.includes('/admin/') || url.includes('/media/')) return;
+
     event.respondWith(
         fetch(event.request)
             .then(response => {
-                const clone = response.clone();
-                caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+                if (response.ok) {
+                    const clone = response.clone();
+                    caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+                }
                 return response;
             })
             .catch(() => caches.match(event.request))

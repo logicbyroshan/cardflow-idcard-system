@@ -234,9 +234,9 @@ function initQrCode() {
     const qrImg = document.getElementById('appQrCode');
     if (!qrImg) return;
 
-    // QR code points to the website root — user opens in browser → can install PWA → goes to login
-    const siteUrl = window.location.origin + '/';
-    qrImg.src = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&color=100F57&data=' + encodeURIComponent(siteUrl);
+    // QR code points to the mobile app — user opens in Chrome → installs PWA
+    const appUrl = window.__panelUrl ? (window.__panelUrl + '/app/') : (window.location.origin + '/app/');
+    qrImg.src = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&color=100F57&data=' + encodeURIComponent(appUrl);
 }
 
 // ===== 7. PWA Install Trigger =====
@@ -251,11 +251,11 @@ function triggerPwaInstall() {
             window.__pwaInstallPrompt = null;
         });
     } else if (window.__panelUrl) {
-        // Redirect to panel login — PWA install happens from the panel subdomain
-        window.location.href = window.__panelUrl + '/auth/login/';
+        // Redirect to the mobile app on panel subdomain — it handles login redirect itself
+        window.location.href = window.__panelUrl + '/app/';
     } else {
-        // Fallback for local dev: redirect to panel login
-        window.location.href = window.location.origin + '/panel/auth/login/';
+        // Fallback for local dev
+        window.location.href = window.location.origin + '/panel/app/';
     }
 }
 

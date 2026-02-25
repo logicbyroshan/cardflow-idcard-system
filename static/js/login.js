@@ -191,8 +191,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Respect ?next= param (e.g. from PWA → login redirect)
                 const nextUrl = new URLSearchParams(window.location.search).get('next');
                 const safeNext = nextUrl && nextUrl.startsWith('/') && !nextUrl.startsWith('//') ? nextUrl : null;
+
+                // Auto-detect mobile: if on a phone and no explicit ?next=, go to /app/
+                let redirectTo = safeNext || data.redirect_url;
+                if (!safeNext) {
+                    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                    if (isMobile) {
+                        redirectTo = '/panel/app/';
+                    }
+                }
+
                 setTimeout(() => {
-                    window.location.href = safeNext || data.redirect_url;
+                    window.location.href = redirectTo;
                 }, 500);
             } else {
                 showMessage(data.message);

@@ -3,7 +3,7 @@
     "short_name": "IDCard",
     "description": "Mobile ID Card Management System",
     "start_url": "/app/",
-    "scope": "/app/",
+    "scope": "/",
     "display": "standalone",
     "background_color": "#667eea",
     "theme_color": "#667eea",
