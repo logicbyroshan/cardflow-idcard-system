@@ -66,6 +66,9 @@ class SubdomainRoutingMiddleware:
             # Backward compat: strip /panel/ prefix so hardcoded URLs still work
             if request.path_info.startswith('/panel/'):
                 request.path_info = request.path_info[len('/panel'):]  # /panel/auth/… → /auth/…
+                # CRITICAL: Also update request.path so downstream middleware
+                # (e.g. PermissionValidationMiddleware) sees the rewritten path.
+                request.path = request.path_info
         else:
             # Unknown host — use default ROOT_URLCONF (local dev)
             request._is_panel_subdomain = False
