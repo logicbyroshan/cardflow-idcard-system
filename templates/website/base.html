@@ -112,7 +112,6 @@
                     <li><a href="{% url 'website:testimonials' %}">Testimonials</a></li>
                     <li><a href="{% url 'website:home' %}#contact">Contact</a></li>
                     <li class="nav-btn-group">
-                        <a href="javascript:void(0)" onclick="triggerPwaInstall()" class="btn-cta btn-app pwa-install-btn"><i class="fas fa-download"></i> Install App</a>
                         <a href="{% if PANEL_URL %}{{ PANEL_URL }}/auth/login/{% else %}{% url 'accounts:login' %}{% endif %}" class="btn-cta btn-login"><i class="fas fa-sign-in-alt"></i> Login</a>
                     </li>
                 </ul>

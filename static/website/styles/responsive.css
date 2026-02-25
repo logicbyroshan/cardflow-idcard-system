@@ -428,10 +428,11 @@ h2 {
         flex-direction: column;
         gap: 0;
         width: 100%;
-        box-shadow: var(--shadow);
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
         z-index: 999;
         max-height: calc(100vh - 60px);
         overflow-y: auto;
+        border-top: 2px solid var(--primary-color);
     }
 
     .nav-links.active {
@@ -447,10 +448,30 @@ h2 {
         display: block;
         padding: 15px 20px;
         font-size: 1rem;
+        color: var(--text-color) !important;
+        text-shadow: none !important;
     }
 
     .nav-links a:hover {
         background: var(--light-bg);
+        color: var(--primary-color) !important;
+    }
+
+    .nav-btn-group {
+        padding: 12px 20px;
+        border-bottom: none !important;
+    }
+
+    .nav-btn-group .btn-login {
+        background: linear-gradient(135deg, #100F57 0%, #0a92dd 100%) !important;
+        color: white !important;
+        border: none !important;
+        width: 100%;
+        text-align: center;
+        justify-content: center;
+        padding: 14px 24px !important;
+        border-radius: 12px !important;
+        font-size: 1rem;
     }
 
     .btn-cta {
@@ -950,10 +971,11 @@ h2 {
         flex-direction: column;
         gap: 0;
         width: 100%;
-        box-shadow: var(--shadow);
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
         z-index: 999;
         overflow-y: auto;
         padding-bottom: 20px;
+        border-top: 2px solid var(--primary-color);
     }
 
     .nav-links.active {
@@ -966,14 +988,45 @@ h2 {
     }
 
     .nav-links a {
-        display: block;
+        display: flex;
+        align-items: center;
+        gap: 10px;
         padding: 16px 20px;
         font-size: 1.05rem;
         font-weight: 500;
+        color: var(--text-color) !important;
+        text-shadow: none !important;
+        transition: all 0.2s ease;
     }
 
+    .nav-links a:hover,
     .nav-links a:active {
         background: var(--light-bg);
+        color: var(--primary-color) !important;
+        padding-left: 26px;
+    }
+
+    .nav-btn-group {
+        padding: 16px 20px !important;
+        border-bottom: none !important;
+    }
+
+    .nav-btn-group .btn-login {
+        background: linear-gradient(135deg, #100F57 0%, #0a92dd 100%) !important;
+        color: white !important;
+        border: none !important;
+        width: 100%;
+        text-align: center;
+        justify-content: center;
+        padding: 14px 24px !important;
+        border-radius: 12px !important;
+        font-size: 1rem;
+        font-weight: 600;
+        box-shadow: 0 4px 15px rgba(10, 146, 221, 0.25);
+    }
+
+    .nav-btn-group .btn-login:active {
+        transform: scale(0.97);
     }
 
     .btn-cta {
@@ -1043,7 +1096,7 @@ h2 {
     .hero .hero-content h1 {
         font-size: 1.5rem;
         line-height: 1.3;
-        min-height: 4em;
+        min-height: 3em;
     }
 
     /* Hide all line breaks on mobile */
@@ -1129,8 +1182,8 @@ h2 {
     }
 
     /* Spacer for mobile - reduced since hero is now auto height */
-    body > div[style*="height: 220px"] {
-        height: 60px !important;
+    .hero-spacer {
+        height: 40px !important;
     }
 
     /* Trusted Schools - Mobile */
@@ -1529,13 +1582,6 @@ h2 {
         width: 100%;
     }
 
-    .nav-btn-group .btn-app,
-    .nav-btn-group .btn-login {
-        width: 100%;
-        text-align: center;
-        justify-content: center;
-    }
-
     /* Footer - Mobile */
     .footer {
         padding: 2.5rem 0 1rem;
@@ -1634,6 +1680,16 @@ h2 {
 @media (max-width: 479px) {
     .container {
         padding: 0 12px;
+    }
+
+    /* Hide top bar on small phones - info is in contact section */
+    .top-bar {
+        display: none;
+    }
+
+    /* Hero spacer even smaller on tiny screens */
+    .hero-spacer {
+        height: 20px !important;
     }
 
     /* Navbar */
