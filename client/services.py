@@ -51,7 +51,11 @@ class ClientAccessService:
     
     @staticmethod
     def can_access_client(user, client_id: int) -> bool:
-        """Check if user can access a specific client's data"""
+        """Check if user can access a specific client's data.
+        Admin roles (super_admin / admin_staff) have unrestricted access.
+        """
+        if PermissionService.is_any_admin(user):
+            return True
         client = ClientAccessService.get_client_for_user(user)
         if client is None:
             return False
@@ -59,7 +63,11 @@ class ClientAccessService:
     
     @staticmethod
     def can_access_group(user, group: IDCardGroup) -> bool:
-        """Check if user can access a specific group"""
+        """Check if user can access a specific group.
+        Admin roles have unrestricted access.
+        """
+        if PermissionService.is_any_admin(user):
+            return True
         client = ClientAccessService.get_client_for_user(user)
         if client is None:
             return False
@@ -67,7 +75,11 @@ class ClientAccessService:
     
     @staticmethod
     def can_access_table(user, table: IDCardTable) -> bool:
-        """Check if user can access a specific table"""
+        """Check if user can access a specific table.
+        Admin roles have unrestricted access.
+        """
+        if PermissionService.is_any_admin(user):
+            return True
         client = ClientAccessService.get_client_for_user(user)
         if client is None:
             return False
@@ -76,10 +88,13 @@ class ClientAccessService:
     @staticmethod
     def can_access_card(user, card: IDCard) -> bool:
         """Check if user can access a specific card.
-        
+        Admin roles have unrestricted access.
+
         NOTE: ``card`` should be fetched with
         ``.select_related('table__group')`` to avoid extra queries.
         """
+        if PermissionService.is_any_admin(user):
+            return True
         client = ClientAccessService.get_client_for_user(user)
         if client is None:
             return False
@@ -92,14 +107,17 @@ class ClientDashboardService(BaseService):
     """
     
     @classmethod
-    def get_dashboard_data(cls, user) -> ServiceResult:
+    def get_dashboard_data(cls, user, client=None) -> ServiceResult:
         """
         Get dashboard summary data for a client user.
         
         Returns counts of cards by status for all tables belonging to the client.
+        Accepts optional *client* override so admin roles (whose
+        ``get_client_for_user`` returns ``None``) can view a specific client.
         """
         try:
-            client = ClientAccessService.get_client_for_user(user)
+            if not client:
+                client = ClientAccessService.get_client_for_user(user)
             if not client:
                 return ServiceResult(
                     success=False, 
@@ -682,12 +700,14 @@ class ClientCardService(BaseService):
     VALID_STATUSES = ['pending', 'verified', 'pool', 'approved', 'download', 'reprint']
     
     @classmethod
-    def get_tables_for_client(cls, user) -> ServiceResult:
+    def get_tables_for_client(cls, user, client=None) -> ServiceResult:
         """
         Get all tables for the client with card counts.
+        Accepts optional *client* override for admin roles.
         """
         try:
-            client = ClientAccessService.get_client_for_user(user)
+            if not client:
+                client = ClientAccessService.get_client_for_user(user)
             if not client:
                 return ServiceResult(success=False, message='Client profile not found')
             
@@ -740,7 +760,7 @@ class ClientCardService(BaseService):
         """
         try:
             client = ClientAccessService.get_client_for_user(user)
-            if not client:
+            if not client and not PermissionService.is_any_admin(user):
                 return ServiceResult(success=False, message='Client profile not found')
             
             # Get table and verify ownership
@@ -874,7 +894,7 @@ class ClientCardService(BaseService):
         """
         try:
             client = ClientAccessService.get_client_for_user(user)
-            if not client:
+            if not client and not PermissionService.is_any_admin(user):
                 return ServiceResult(success=False, message='Client profile not found')
             
             # Get card
@@ -995,7 +1015,7 @@ class ClientCardService(BaseService):
         """
         try:
             client = ClientAccessService.get_client_for_user(user)
-            if not client:
+            if not client and not PermissionService.is_any_admin(user):
                 return ServiceResult(success=False, message='Client profile not found')
             
             # Get card
@@ -1025,7 +1045,7 @@ class ClientCardService(BaseService):
         """
         try:
             client = ClientAccessService.get_client_for_user(user)
-            if not client:
+            if not client and not PermissionService.is_any_admin(user):
                 return ServiceResult(success=False, message='Client profile not found')
             
             # Verify table ownership

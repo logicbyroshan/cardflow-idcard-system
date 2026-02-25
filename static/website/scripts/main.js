@@ -241,8 +241,22 @@ function initQrCode() {
 
 // ===== 7. PWA Install Trigger =====
 function triggerPwaInstall() {
+    var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+    // Mobile: always redirect to the panel subdomain mobile app.
+    // The website manifest doesn't work cross-origin, so mobile users
+    // install the PWA from panel.adarshbhopal.in/app/ instead.
+    if (isMobile) {
+        if (window.__panelUrl) {
+            window.location.href = window.__panelUrl + '/app/';
+        } else {
+            window.location.href = window.location.origin + '/panel/app/';
+        }
+        return;
+    }
+
+    // Desktop: use native install prompt if available
     if (window.__pwaInstallPrompt) {
-        // Native install prompt available (Chrome/Edge on Android/Desktop)
         window.__pwaInstallPrompt.prompt();
         window.__pwaInstallPrompt.userChoice.then(function(choice) {
             if (choice.outcome === 'accepted') {
@@ -251,10 +265,8 @@ function triggerPwaInstall() {
             window.__pwaInstallPrompt = null;
         });
     } else if (window.__panelUrl) {
-        // Redirect to the mobile app on panel subdomain — it handles login redirect itself
         window.location.href = window.__panelUrl + '/app/';
     } else {
-        // Fallback for local dev
         window.location.href = window.location.origin + '/panel/app/';
     }
 }

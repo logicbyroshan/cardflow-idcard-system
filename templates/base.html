@@ -90,11 +90,16 @@
   <!-- HTMX Configuration -->
   {% include 'partials/htmx-config.html' %}
 
-  <!-- PWA: Register service worker for panel app (desktop only — mobile uses /app/ SW) -->
+  <!-- PWA: Register service worker (desktop: admin SW, mobile: mobile app SW) -->
   <script>
   if ('serviceWorker' in navigator) {
       var isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      if (!isMobileDevice) {
+      if (isMobileDevice) {
+          // Mobile: register the mobile app SW so PWA install works from any page
+          navigator.serviceWorker.register('/app/sw.js', { scope: '/' })
+              .then(function(reg) { console.log('Mobile SW registered, scope:', reg.scope); })
+              .catch(function(err) { console.warn('Mobile SW registration failed:', err); });
+      } else {
           navigator.serviceWorker.register('/sw.js', { scope: '/' })
               .then(function(reg) { console.log('Panel SW registered, scope:', reg.scope); })
               .catch(function(err) { console.warn('Panel SW registration failed:', err); });

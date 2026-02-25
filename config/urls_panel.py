@@ -109,7 +109,10 @@ def panel_manifest_json(request):
         except (FileNotFoundError, json.JSONDecodeError):
             raise Http404
 
-        # Override start_url for the panel subdomain (no /panel/ prefix)
+        # Override for the admin panel PWA on panel subdomain
+        manifest['name'] = 'Adarsh ID Cards - Admin Panel'
+        manifest['short_name'] = 'Adarsh Admin'
+        manifest['description'] = 'Manage ID cards, clients, staff and orders'
         manifest['start_url'] = '/auth/login/'
         manifest['scope'] = '/'
 

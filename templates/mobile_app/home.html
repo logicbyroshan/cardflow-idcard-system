@@ -28,6 +28,7 @@
                 <div class="grid grid-cols-2 gap-3 flex-1">
 
                     <!-- Pending -->
+                    {% if perm_idcard_pending_list %}
                     <a href="{% url 'mobile_app:table_picker' 'pending' %}" class="grid-card-styled group" style="background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); border-color: #fed7aa;">
                         <div class="flex items-center justify-between w-full mb-1">
                             <div class="w-10 h-10 rounded-xl bg-amber-400/15 flex items-center justify-center">
@@ -41,8 +42,10 @@
                         </div>
                         <div class="absolute bottom-0 right-0 w-16 h-16 rounded-tl-[3rem] bg-amber-200/20"></div>
                     </a>
+                    {% endif %}
 
                     <!-- Verified -->
+                    {% if perm_idcard_verified_list %}
                     <a href="{% url 'mobile_app:table_picker' 'verified' %}" class="grid-card-styled group" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-color: #bbf7d0;">
                         <div class="flex items-center justify-between w-full mb-1">
                             <div class="w-10 h-10 rounded-xl bg-green-400/15 flex items-center justify-center">
@@ -56,8 +59,10 @@
                         </div>
                         <div class="absolute bottom-0 right-0 w-16 h-16 rounded-tl-[3rem] bg-green-200/20"></div>
                     </a>
+                    {% endif %}
 
                     <!-- Approved -->
+                    {% if perm_idcard_approved_list %}
                     <a href="{% url 'mobile_app:table_picker' 'approved' %}" class="grid-card-styled group" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-color: #bfdbfe;">
                         <div class="flex items-center justify-between w-full mb-1">
                             <div class="w-10 h-10 rounded-xl bg-blue-400/15 flex items-center justify-center">
@@ -71,8 +76,10 @@
                         </div>
                         <div class="absolute bottom-0 right-0 w-16 h-16 rounded-tl-[3rem] bg-blue-200/20"></div>
                     </a>
+                    {% endif %}
 
                     <!-- Download -->
+                    {% if perm_idcard_download_list %}
                     <a href="{% url 'mobile_app:table_picker' 'download' %}" class="grid-card-styled group" style="background: linear-gradient(135deg, #faf5ff 0%, #ede9fe 100%); border-color: #ddd6fe;">
                         <div class="flex items-center justify-between w-full mb-1">
                             <div class="w-10 h-10 rounded-xl bg-purple-400/15 flex items-center justify-center">
@@ -86,11 +93,13 @@
                         </div>
                         <div class="absolute bottom-0 right-0 w-16 h-16 rounded-tl-[3rem] bg-purple-200/20"></div>
                     </a>
+                    {% endif %}
 
                 </div>
 
                 <!-- Pool List -->
                 <div class="py-3">
+                    {% if perm_idcard_pool_list %}
                     <a href="{% url 'mobile_app:table_picker' 'pool' %}" class="flex items-center justify-between w-full rounded-xl p-3 hover:shadow-md active:scale-[0.98] transition-all group" style="background: linear-gradient(135deg, #fef2f2 0%, #fecaca40 100%); border: 1px solid #fecaca;">
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-xl bg-red-400/15 flex items-center justify-center">
@@ -106,6 +115,7 @@
                             <i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
                         </div>
                     </a>
+                    {% endif %}
                 </div>
             </div>
         </div>

@@ -1,13 +1,18 @@
 <!-- Pool List Actions -->
 <div class="flex items-end w-full">
+    {% if perm_idcard_delete_from_pool %}
     <button @click="permanentlyDelete()" class="action-btn flex-1 action-btn-red">
         <i class="fa-solid fa-skull-crossbones"></i>
         <span class="action-btn-text">Perm Del</span>
     </button>
+    {% endif %}
+    {% if perm_idcard_retrieve %}
     <button @click="retrieveSelected()" class="action-btn flex-1 action-btn-green">
         <i class="fa-solid fa-arrow-up-from-bracket"></i>
         <span class="action-btn-text">Retrieve</span>
     </button>
+    {% endif %}
+    {% if perm_idcard_add or perm_idcard_edit %}
     <button @click="selectedIds.length > 0 ? editSelected() : addNew()" class="action-btn-center flex-shrink-0 mx-1">
         <div class="w-11 h-11 rounded-xl flex items-center justify-center text-white shadow-lg -mt-4 border-3 border-white"
             :class="selectedIds.length > 0 ? 'bg-amber-500 shadow-amber-500/40' : 'bg-gradient-to-br from-brand-light to-brand-dark shadow-brand-light/40'">
@@ -15,6 +20,8 @@
         </div>
         <span class="text-[9px] text-gray-500 font-medium" x-text="selectedIds.length > 0 ? 'Edit' : 'Add'"></span>
     </button>
+    {% endif %}
+    {% if perm_idcard_bulk_download %}
     <button @click="downloadPDF()" class="action-btn flex-1 action-btn-purple">
         <i class="fa-solid fa-file-pdf"></i>
         <span class="action-btn-text">PDF</span>
@@ -23,4 +30,5 @@
         <i class="fa-solid fa-image"></i>
         <span class="action-btn-text">IMG</span>
     </button>
+    {% endif %}
 </div>

@@ -1,8 +1,8 @@
 {
-    "name": "Adarsh ID Cards - Admin Panel",
-    "short_name": "Adarsh Admin",
-    "description": "Manage ID cards, clients, staff and orders — Adarsh ID Cards Management System",
-    "start_url": "/panel/auth/login/",
+    "name": "Adarsh ID Cards",
+    "short_name": "Adarsh",
+    "description": "Professional ID Card Printing & Management — Adarsh ID Cards, Bhopal",
+    "start_url": "/",
     "scope": "/",
     "display": "standalone",
     "background_color": "#ffffff",

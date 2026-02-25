@@ -90,7 +90,7 @@ def home(request):
     if not client:
         return redirect('/panel/auth/login/')
 
-    result = ClientDashboardService.get_dashboard_data(user)
+    result = ClientDashboardService.get_dashboard_data(user, client=client)
 
     tables = IDCardTable.objects.filter(
         group__client=client, is_active=True,
@@ -139,6 +139,11 @@ def table_picker(request, status):
     client, perms = _client_ctx(user)
     if not client:
         return redirect('/panel/auth/login/')
+
+    # Check status-specific list permission before showing tables
+    status_perm = PermissionService.STATUS_LIST_PERM_MAP.get(status)
+    if status_perm and not PermissionService.has(user, status_perm):
+        return redirect('mobile_app:home')
 
     tables = IDCardTable.objects.filter(
         group__client=client, is_active=True,
@@ -241,6 +246,10 @@ def camera_capture(request, table_id):
     if not client:
         return redirect('/panel/auth/login/')
 
+    # Camera requires image upload permission
+    if not PermissionService.has(user, 'perm_reupload_idcard_image'):
+        return redirect('mobile_app:home')
+
     table = get_object_or_404(IDCardTable.objects.select_related('group__client'), id=table_id)
     if not PermissionService.is_any_admin(user) and not ClientAccessService.can_access_table(user, table):
         return redirect('mobile_app:home')
@@ -262,7 +271,7 @@ def notifications(request):
     if not client:
         return redirect('/panel/auth/login/')
 
-    result = ClientDashboardService.get_dashboard_data(user)
+    result = ClientDashboardService.get_dashboard_data(user, client=client)
     activities = []
     if result.success:
         for act in result.data.get('recent_activity', []):
@@ -359,6 +368,9 @@ def api_bulk_status(request, table_id):
 @require_http_methods(["POST"])
 def api_upload_photo(request, table_id):
     """Upload photo for a card."""
+    # Check upload permission
+    if not PermissionService.has(request.user, 'perm_reupload_idcard_image'):
+        return JsonResponse({'success': False, 'message': 'No permission to upload images'}, status=403)
     card_id = request.POST.get('card_id')
     photo = request.FILES.get('photo')
     if not photo or not card_id:
