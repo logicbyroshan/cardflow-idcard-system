@@ -253,6 +253,12 @@
     flex-direction: column;
     justify-content: center;
     min-height: 38px;
+    /* Reset tailwind.css .section-title overrides (blue gradient bg / white text) */
+    background: none;
+    color: inherit;
+    border-radius: 0;
+    padding: 0;
+    margin-bottom: 0;
 }
 
 .section-title h3 {
