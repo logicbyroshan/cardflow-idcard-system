@@ -134,6 +134,7 @@ function downloadImages(cardIds) {
     
     const xhr = new XMLHttpRequest();
     xhr.open('POST', `/panel/api/table/${tableId}/cards/download-images/`, true);
+    xhr.timeout = 600000;
     xhr.setRequestHeader('Content-Type', 'application/json');
     xhr.setRequestHeader('X-CSRFToken', typeof getCSRFToken === 'function' ? getCSRFToken() : '');
     
@@ -211,6 +212,11 @@ function downloadImages(cardIds) {
         if (typeof showToast === 'function') showToast('Failed to download images', false);
     };
     
+    xhr.ontimeout = function() {
+        if (typeof hideProgressToast === 'function') hideProgressToast();
+        if (typeof showToast === 'function') showToast('Image download timed out. Try selecting fewer cards.', false);
+    };
+    
     xhr.send(JSON.stringify(Object.assign({ card_ids: cardIds, status: _getCurrentStatus() }, _getActiveFilters())));
 }
 
@@ -255,6 +261,7 @@ function downloadDocx(cardIds, format, templateId) {
     
     const xhr = new XMLHttpRequest();
     xhr.open('POST', `/panel/api/table/${tableId}/cards/download-docx/`, true);
+    xhr.timeout = 600000;
     xhr.setRequestHeader('Content-Type', 'application/json');
     xhr.setRequestHeader('X-CSRFToken', typeof getCSRFToken === 'function' ? getCSRFToken() : '');
     xhr.responseType = 'blob';
@@ -305,6 +312,11 @@ function downloadDocx(cardIds, format, templateId) {
         if (typeof showToast === 'function') showToast('Failed to download document', false);
     };
     
+    xhr.ontimeout = function() {
+        if (typeof hideProgressToast === 'function') hideProgressToast();
+        if (typeof showToast === 'function') showToast('Document download timed out. Try selecting fewer cards.', false);
+    };
+    
     xhr.send(JSON.stringify(Object.assign({ card_ids: cardIds, format: format, template_id: templateId || '', status: _getCurrentStatus() }, _getActiveFilters())));
 }
 
@@ -343,6 +355,7 @@ function downloadXlsx(cardIds) {
     
     const xhr = new XMLHttpRequest();
     xhr.open('POST', `/panel/api/table/${tableId}/cards/download-xlsx/`, true);
+    xhr.timeout = 600000;
     xhr.setRequestHeader('Content-Type', 'application/json');
     xhr.setRequestHeader('X-CSRFToken', typeof getCSRFToken === 'function' ? getCSRFToken() : '');
     xhr.responseType = 'blob';
@@ -393,6 +406,11 @@ function downloadXlsx(cardIds) {
         if (typeof showToast === 'function') showToast('Failed to download Excel file', false);
     };
     
+    xhr.ontimeout = function() {
+        if (typeof hideProgressToast === 'function') hideProgressToast();
+        if (typeof showToast === 'function') showToast('Excel download timed out. Try selecting fewer cards.', false);
+    };
+    
     xhr.send(JSON.stringify(Object.assign({ card_ids: cardIds, status: _getCurrentStatus() }, _getActiveFilters())));
 }
 
@@ -433,6 +451,7 @@ function downloadPdf(cardIds, templateId) {
     
     const xhr = new XMLHttpRequest();
     xhr.open('POST', `/panel/api/table/${tableId}/cards/download-pdf/`, true);
+    xhr.timeout = 600000;
     xhr.setRequestHeader('Content-Type', 'application/json');
     xhr.setRequestHeader('X-CSRFToken', typeof getCSRFToken === 'function' ? getCSRFToken() : '');
     xhr.responseType = 'blob';
@@ -480,6 +499,11 @@ function downloadPdf(cardIds, templateId) {
     xhr.onerror = function() {
         if (typeof hideProgressToast === 'function') hideProgressToast();
         if (typeof showToast === 'function') showToast('Failed to download PDF file', false);
+    };
+    
+    xhr.ontimeout = function() {
+        if (typeof hideProgressToast === 'function') hideProgressToast();
+        if (typeof showToast === 'function') showToast('PDF download timed out. Try selecting fewer cards.', false);
     };
     
     xhr.send(JSON.stringify(Object.assign({ card_ids: cardIds, status: _getCurrentStatus(), template_id: templateId || '' }, _getActiveFilters())));

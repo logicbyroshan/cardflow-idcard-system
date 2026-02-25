@@ -203,6 +203,9 @@ function initIdcardGroup(config) {
       return setTimeout(function() { dlBar.style.width = step.pct; dlStatus.textContent = step.text; }, step.delay);
     });
 
+    var _dlAbort = new AbortController();
+    setTimeout(function() { _dlAbort.abort(); }, 600000); // 10 min timeout
+
     fetch('/panel/api/table/' + tableId + '/cards/download-all/', {
       method: 'POST',
       headers: {
@@ -210,6 +213,7 @@ function initIdcardGroup(config) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({}),
+      signal: _dlAbort.signal,
     })
     .then(function(res) { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
     .then(function(data) {
@@ -246,11 +250,12 @@ function initIdcardGroup(config) {
     .catch(function(err) {
       progressTimers.forEach(function(t) { clearTimeout(t); });
       console.error('Download all error:', err);
+      var errMsg = (err.name === 'AbortError') ? 'Download timed out — the server took too long. Try again later.' : 'Error downloading files';
       dlBar.style.width = '100%';
       dlBar.style.background = '#ef4444';
-      dlStatus.textContent = 'Error downloading files';
+      dlStatus.textContent = errMsg;
       dlActions.style.display = '';
-      window.showToast('Error downloading files', 'error');
+      window.showToast(errMsg, 'error');
     })
     .finally(function() {
       if (btn) {
@@ -356,9 +361,11 @@ function initIdcardGroup(config) {
       var formData = new FormData();
       formData.append('photos_zip', reuploadFileInput.files[0]);
 
+      var _grpRetryCount = 0;
       var xhr = new XMLHttpRequest();
       xhr.open('POST', '/panel/api/table/' + reuploadTableId + '/cards/reupload-images/');
       if (window.getCSRFToken) xhr.setRequestHeader('X-CSRFToken', window.getCSRFToken());
+      xhr.timeout = 600000; // 10-minute timeout
 
       xhr.upload.onprogress = function(e) {
         if (e.lengthComputable) {
@@ -372,10 +379,33 @@ function initIdcardGroup(config) {
         reuploadBar.style.width = '100%';
         try {
           var data = JSON.parse(xhr.responseText);
-          if (data.success) {
+          if (xhr.status === 200 && data.success) {
             reuploadStatus.textContent = data.message || 'Done!';
             window.showToast(data.message || 'Images reuploaded!', 'success');
             setTimeout(function() { closeReuploadModal(); location.reload(); }, 1500);
+          } else if (xhr.status === 429) {
+            _grpRetryCount++;
+            if (_grpRetryCount <= 2) {
+              reuploadStatus.textContent = (data.message || 'Server busy') + ' Retrying...';
+              setTimeout(function() {
+                reuploadBar.style.width = '0%';
+                reuploadStatus.textContent = 'Retrying...';
+                var retryXhr = new XMLHttpRequest();
+                retryXhr.open('POST', '/panel/api/table/' + reuploadTableId + '/cards/reupload-images/');
+                if (window.getCSRFToken) retryXhr.setRequestHeader('X-CSRFToken', window.getCSRFToken());
+                retryXhr.timeout = 600000;
+                retryXhr.onload = xhr.onload;
+                retryXhr.onerror = xhr.onerror;
+                retryXhr.ontimeout = xhr.ontimeout;
+                retryXhr.upload.onprogress = xhr.upload.onprogress;
+                retryXhr.send(formData);
+              }, 5000);
+            } else {
+              reuploadStatus.textContent = 'Server busy. Please try later.';
+              window.showToast('Server is busy. Please try again in a minute.', 'error');
+              reuploadConfirmBtn.disabled = false;
+              reuploadConfirmBtn.textContent = 'Upload & Match';
+            }
           } else {
             reuploadStatus.textContent = data.message || 'Failed';
             window.showToast(data.message || 'Reupload failed', 'error');
@@ -383,16 +413,47 @@ function initIdcardGroup(config) {
             reuploadConfirmBtn.textContent = 'Upload & Match';
           }
         } catch (parseErr) {
-          console.error('Reupload parse error:', parseErr);
-          window.showToast('Unexpected error during reupload', 'error');
+          console.error('Reupload parse error:', parseErr, 'Status:', xhr.status);
+          var errMsg = 'Unexpected error during reupload';
+          if (xhr.status === 413) errMsg = 'ZIP file too large. Please reduce the file size.';
+          else if (xhr.status === 502 || xhr.status === 504) errMsg = 'Server timeout — try a smaller ZIP file.';
+          else if (xhr.status === 500) errMsg = 'Server error. Please try again.';
+          else if (xhr.status === 0) errMsg = 'Connection lost. Check your internet.';
+          window.showToast(errMsg, 'error');
           reuploadConfirmBtn.disabled = false;
           reuploadConfirmBtn.textContent = 'Upload & Match';
         }
       };
 
       xhr.onerror = function() {
-        console.error('Reupload XHR error');
-        window.showToast('Network error during reupload', 'error');
+        _grpRetryCount++;
+        if (_grpRetryCount <= 2) {
+          reuploadStatus.textContent = 'Network error. Retrying in 5s...';
+          window.showToast('Network error. Retrying...', 'error');
+          setTimeout(function() {
+            reuploadBar.style.width = '0%';
+            reuploadStatus.textContent = 'Retrying...';
+            var retryXhr = new XMLHttpRequest();
+            retryXhr.open('POST', '/panel/api/table/' + reuploadTableId + '/cards/reupload-images/');
+            if (window.getCSRFToken) retryXhr.setRequestHeader('X-CSRFToken', window.getCSRFToken());
+            retryXhr.timeout = 600000;
+            retryXhr.onload = xhr.onload;
+            retryXhr.onerror = xhr.onerror;
+            retryXhr.ontimeout = xhr.ontimeout;
+            retryXhr.upload.onprogress = xhr.upload.onprogress;
+            retryXhr.send(formData);
+          }, 5000);
+        } else {
+          console.error('Reupload XHR error after retries');
+          window.showToast('Upload failed after retries. Check your connection.', 'error');
+          reuploadConfirmBtn.disabled = false;
+          reuploadConfirmBtn.textContent = 'Upload & Match';
+          reuploadProgress.style.display = 'none';
+        }
+      };
+
+      xhr.ontimeout = function() {
+        window.showToast('Reupload timed out — server took too long. Try a smaller ZIP.', 'error');
         reuploadConfirmBtn.disabled = false;
         reuploadConfirmBtn.textContent = 'Upload & Match';
         reuploadProgress.style.display = 'none';

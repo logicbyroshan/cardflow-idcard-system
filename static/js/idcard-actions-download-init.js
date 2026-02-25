@@ -220,9 +220,11 @@ function initReuploadHandlers() {
             formData.append('card_ids', JSON.stringify(pendingReuploadCardIds));
             formData.append('status', _getCurrentStatus());
 
+            let _reuploadRetryCount = 0;
             const xhr = new XMLHttpRequest();
             xhr.open('POST', `/panel/api/table/${tableId}/cards/reupload-images/`, true);
             xhr.setRequestHeader('X-CSRFToken', typeof getCSRFToken === 'function' ? getCSRFToken() : '');
+            xhr.timeout = 600000; // 10-minute timeout
 
             xhr.upload.onprogress = function(event) {
                 if (event.lengthComputable) {
@@ -247,6 +249,30 @@ function initReuploadHandlers() {
                                 window.location.reload();
                             }
                         }, 1500);
+                    } else if (xhr.status === 429) {
+                        // Rate limited / duplicate request — retry after delay
+                        const retryMsg = result.message || 'Server is busy. Retrying...';
+                        if (reuploadActionsStatus) reuploadActionsStatus.textContent = retryMsg;
+                        _reuploadRetryCount++;
+                        if (_reuploadRetryCount <= 2) {
+                            setTimeout(function() {
+                                if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Retrying...';
+                                if (reuploadActionsBar) reuploadActionsBar.style.width = '0%';
+                                const retryXhr = new XMLHttpRequest();
+                                retryXhr.open('POST', `/panel/api/table/${tableId}/cards/reupload-images/`, true);
+                                retryXhr.setRequestHeader('X-CSRFToken', typeof getCSRFToken === 'function' ? getCSRFToken() : '');
+                                retryXhr.timeout = 600000;
+                                retryXhr.onload = xhr.onload;
+                                retryXhr.onerror = xhr.onerror;
+                                retryXhr.ontimeout = xhr.ontimeout;
+                                retryXhr.upload.onprogress = xhr.upload.onprogress;
+                                retryXhr.send(formData);
+                            }, 5000);
+                        } else {
+                            if (typeof showToast === 'function') showToast('Server is busy. Please try again in a minute.', false);
+                            reuploadActionsConfirmBtn.disabled = false;
+                            reuploadActionsConfirmBtn.textContent = 'Upload & Match';
+                        }
                     } else {
                         if (reuploadActionsStatus) reuploadActionsStatus.textContent = result.message || 'Failed';
                         if (typeof showToast === 'function') showToast(result.message || 'Reupload failed', false);
@@ -254,14 +280,47 @@ function initReuploadHandlers() {
                         reuploadActionsConfirmBtn.textContent = 'Upload & Match';
                     }
                 } catch (e) {
-                    if (typeof showToast === 'function') showToast('Error processing response', false);
+                    console.error('Reupload parse error:', e, 'Status:', xhr.status, 'Response:', xhr.responseText ? xhr.responseText.substring(0, 200) : '(empty)');
+                    let errMsg = 'Error processing response';
+                    if (xhr.status === 413) errMsg = 'ZIP file too large. Please reduce the file size.';
+                    else if (xhr.status === 502 || xhr.status === 504) errMsg = 'Server timeout — try with a smaller ZIP file.';
+                    else if (xhr.status === 500) errMsg = 'Server error during reupload. Please try again.';
+                    else if (xhr.status === 0) errMsg = 'Connection lost. Check your internet and try again.';
+                    else errMsg = 'Error processing response (HTTP ' + xhr.status + ')';
+                    if (typeof showToast === 'function') showToast(errMsg, false);
                     reuploadActionsConfirmBtn.disabled = false;
                     reuploadActionsConfirmBtn.textContent = 'Upload & Match';
                 }
             };
 
             xhr.onerror = function() {
-                if (typeof showToast === 'function') showToast('Failed to reupload images', false);
+                _reuploadRetryCount++;
+                if (_reuploadRetryCount <= 2) {
+                    if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Network error. Retrying in 5s...';
+                    if (typeof showToast === 'function') showToast('Network error. Retrying automatically...', false);
+                    setTimeout(function() {
+                        if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Retrying...';
+                        if (reuploadActionsBar) reuploadActionsBar.style.width = '0%';
+                        const retryXhr = new XMLHttpRequest();
+                        retryXhr.open('POST', `/panel/api/table/${tableId}/cards/reupload-images/`, true);
+                        retryXhr.setRequestHeader('X-CSRFToken', typeof getCSRFToken === 'function' ? getCSRFToken() : '');
+                        retryXhr.timeout = 600000;
+                        retryXhr.onload = xhr.onload;
+                        retryXhr.onerror = xhr.onerror;
+                        retryXhr.ontimeout = xhr.ontimeout;
+                        retryXhr.upload.onprogress = xhr.upload.onprogress;
+                        retryXhr.send(formData);
+                    }, 5000);
+                } else {
+                    if (typeof showToast === 'function') showToast('Upload failed after retries. Please check your connection.', false);
+                    reuploadActionsConfirmBtn.disabled = false;
+                    reuploadActionsConfirmBtn.textContent = 'Upload & Match';
+                    if (reuploadActionsProgress) reuploadActionsProgress.style.display = 'none';
+                }
+            };
+
+            xhr.ontimeout = function() {
+                if (typeof showToast === 'function') showToast('Reupload timed out — the server took too long. Please try with a smaller ZIP.', false);
                 reuploadActionsConfirmBtn.disabled = false;
                 reuploadActionsConfirmBtn.textContent = 'Upload & Match';
                 if (reuploadActionsProgress) reuploadActionsProgress.style.display = 'none';

@@ -1233,7 +1233,7 @@ def api_idcard_bulk_upload(request, table_id):
     if err: return err
     # Double-click guard: prevent duplicate uploads from rapid form submissions
     lock_key = f'bulk_upload_lock:{request.user.id}:{table_id}'
-    if not django_cache.add(lock_key, 1, 15):
+    if not django_cache.add(lock_key, 1, 300):
         return JsonResponse({'success': False, 'message': 'Upload already in progress. Please wait.'}, status=429)
     try:
         import openpyxl
@@ -1713,204 +1713,191 @@ def api_idcard_bulk_upload(request, table_id):
                 logger.info("Bulk upload: %d duplicate photo keys found — those rows will be PENDING", len(_duplicate_keys))
             
             # Process data rows using rows_data collected earlier
-            try:
-              with transaction.atomic():
-               for row_num, row in enumerate(rows_data, start=2):
+            # Use batched transactions to avoid holding DB lock for too long
+            # (SQLite locks the entire DB during a write transaction)
+            BULK_BATCH_SIZE = 100
+            for batch_start in range(0, len(rows_data), BULK_BATCH_SIZE):
+                batch_rows = rows_data[batch_start:batch_start + BULK_BATCH_SIZE]
+                batch_offset = batch_start + 2  # row numbering starts at 2 (after header)
                 try:
-                    # Skip empty rows
-                    if all(cell is None or str(cell).strip() == '' for cell in row):
-                        continue
-                    
-                    field_data = {}
-                    for col_idx, field_name in header_to_field.items():
-                        if col_idx < len(row):
-                            value = row[col_idx]
-                            if value is not None:
-                                # Convert to string, handle dates and numbers
-                                if hasattr(value, 'strftime'):
-                                    # Already a datetime object
-                                    value = value.strftime('%d-%m-%Y')
-                                elif isinstance(value, float):
-                                    # Check if it's an Excel date serial number (typically between 1 and 60000)
-                                    # Excel dates start from 1900-01-01 (serial 1)
-                                    if 1 < value < 60000 and ('date' in field_name.lower() or 'dob' in field_name.lower() or 'birth' in field_name.lower()):
-                                        # Convert Excel serial date to actual date
-                                        from datetime import datetime, timedelta
-                                        # Excel's epoch is December 30, 1899
-                                        excel_epoch = datetime(1899, 12, 30)
-                                        actual_date = excel_epoch + timedelta(days=int(value))
-                                        value = actual_date.strftime('%d-%m-%Y')
-                                    elif value == int(value):
-                                        # It's actually an integer (no decimal part)
-                                        value = str(int(value)).upper()
-                                    else:
-                                        value = str(value).upper()
-                                elif isinstance(value, int):
-                                    # Check if it might be an Excel date serial for integer values
-                                    if 1 < value < 60000 and ('date' in field_name.lower() or 'dob' in field_name.lower() or 'birth' in field_name.lower()):
-                                        from datetime import datetime, timedelta
-                                        excel_epoch = datetime(1899, 12, 30)
-                                        actual_date = excel_epoch + timedelta(days=value)
-                                        value = actual_date.strftime('%d-%m-%Y')
-                                    else:
-                                        value = str(value).upper()
-                                else:
-                                    value = str(value).strip().upper()  # Convert to uppercase
-                                # Clean openpyxl carriage-return artifacts
-                                if isinstance(value, str):
-                                    value = value.replace('_X000D_', '').replace('_x000D_', '').replace('_x000d_', '').replace('\r\n', '\n').replace('\r', '')
-                                field_data[field_name] = value
-                            else:
-                                field_data[field_name] = ''
-                        else:
-                            field_data[field_name] = ''
-                    
-                    # Apply class/section value conversions for XLSX import
-                    field_type_lookup = {f['name']: f['type'] for f in all_table_fields}
-                    for fname in list(field_data.keys()):
-                        ftype = field_type_lookup.get(fname, 'text')
-                        if ftype == 'class' and field_data[fname]:
-                            field_data[fname] = convert_class_value(field_data[fname])
-                        elif ftype == 'section' and field_data[fname]:
-                            field_data[fname] = convert_section_value(field_data[fname])
-                    
-                    # Process image fields - try to match with ZIP photos
-                    photos_matched = 0
-                    used_photo_keys_this_row = set()  # Prevent same image going to multiple columns
-                    
-                    for img_field in image_fields:
-                        # Get the photo reference value ONLY from the mapped column
-                        # No fallback — if this field has no column mapped, it stays empty
-                        photo_column_value = None
-                        
-                        if img_field in image_ref_columns:
-                            col_idx = image_ref_columns[img_field]
-                            if col_idx < len(row):
-                                cell_value = row[col_idx]
-                                if cell_value is not None and str(cell_value).strip() and str(cell_value).strip().lower() != 'none':
-                                    # Handle numeric values - convert float 1.0 to "1"
-                                    if isinstance(cell_value, float) and cell_value == int(cell_value):
-                                        photo_column_value = str(int(cell_value))
-                                    elif isinstance(cell_value, int):
-                                        photo_column_value = str(cell_value)
-                                    else:
-                                        photo_column_value = str(cell_value).strip()
-                        # else: field not mapped to any XLSX column — leave empty
-                        
-                        # Try to match photo from ZIP using normalized matching
-                        # This handles: case insensitivity, whitespace, numeric formats
-                        field_zip_photos = zip_photos_by_field.get(img_field, {})
-                        
-                        # Normalize the Excel cell value for matching
-                        photo_key = BaseService.normalize_image_identifier(photo_column_value) if photo_column_value else None
-                        
-                        # Prevent same image appearing in multiple columns within the same row
-                        if photo_key and photo_key in used_photo_keys_this_row:
-                            logger.warning("Row %d: photo_key '%s' already used by another field, skipping for '%s'",
-                                          row_num, photo_key, img_field)
-                            photo_key = None
-                        
-                        # Debug first few rows
-                        if row_num <= 5:
-                            logger.debug("Row %d: img_field='%s', photo_key='%s', field_zip_photos_keys=%s, unified_zip_keys=%s",
-                                        row_num, img_field, photo_key,
-                                        list(field_zip_photos.keys())[:5] if field_zip_photos else 'EMPTY',
-                                        list(unified_zip_photos.keys())[:5] if unified_zip_photos else 'EMPTY')
-                        
-                        # Try to find photo in: 1) field-specific ZIP, 2) unified ZIP pool
-                        photo_info = None
-                        if photo_key:
-                            if field_zip_photos and photo_key in field_zip_photos:
-                                photo_info = field_zip_photos[photo_key]
-                            elif unified_zip_photos and photo_key in unified_zip_photos:
-                                photo_info = unified_zip_photos[photo_key]
-                            if photo_info:
-                                used_photo_keys_this_row.add(photo_key)  # Claim this key
-                        
-                        # If this key is used by multiple rows, skip saving — all get PENDING
-                        if photo_key and (img_field, photo_key) in _duplicate_keys:
-                            field_data[img_field] = f'PENDING:{photo_column_value}'
-                        elif photo_info:
+                    with transaction.atomic():
+                        for row_idx, row in enumerate(batch_rows):
+                            row_num = batch_offset + row_idx
                             try:
-                                # Use ImageService.save_new_image (single authority)
-                                cards_created += 1  # Increment before for 1-based counter
-                                original_ext = photo_info['ext']
+                                # Skip empty rows
+                                if all(cell is None or str(cell).strip() == '' for cell in row):
+                                    continue
                                 
-                                result = ImageService.save_new_image(
-                                    image_bytes=photo_info['bytes'],
-                                    client=client,
-                                    field_name=img_field,
-                                    card=None,  # card not yet created
-                                    batch_counter=cards_created,
-                                    original_ext=original_ext,
-                                )
+                                field_data = {}
+                                for col_idx, field_name in header_to_field.items():
+                                    if col_idx < len(row):
+                                        value = row[col_idx]
+                                        if value is not None:
+                                            # Convert to string, handle dates and numbers
+                                            if hasattr(value, 'strftime'):
+                                                value = value.strftime('%d-%m-%Y')
+                                            elif isinstance(value, float):
+                                                if 1 < value < 60000 and ('date' in field_name.lower() or 'dob' in field_name.lower() or 'birth' in field_name.lower()):
+                                                    from datetime import datetime, timedelta
+                                                    excel_epoch = datetime(1899, 12, 30)
+                                                    actual_date = excel_epoch + timedelta(days=int(value))
+                                                    value = actual_date.strftime('%d-%m-%Y')
+                                                elif value == int(value):
+                                                    value = str(int(value)).upper()
+                                                else:
+                                                    value = str(value).upper()
+                                            elif isinstance(value, int):
+                                                if 1 < value < 60000 and ('date' in field_name.lower() or 'dob' in field_name.lower() or 'birth' in field_name.lower()):
+                                                    from datetime import datetime, timedelta
+                                                    excel_epoch = datetime(1899, 12, 30)
+                                                    actual_date = excel_epoch + timedelta(days=value)
+                                                    value = actual_date.strftime('%d-%m-%Y')
+                                                else:
+                                                    value = str(value).upper()
+                                            else:
+                                                value = str(value).strip().upper()
+                                            if isinstance(value, str):
+                                                value = value.replace('_X000D_', '').replace('_x000D_', '').replace('_x000d_', '').replace('\r\n', ' ').replace('\r', '').replace('\n', ' ')
+                                                # Collapse multiple spaces from newline replacement
+                                                while '  ' in value:
+                                                    value = value.replace('  ', ' ')
+                                                value = value.strip()
+                                            field_data[field_name] = value
+                                        else:
+                                            field_data[field_name] = ''
+                                    else:
+                                        field_data[field_name] = ''
                                 
-                                if result.success and result.data.get('final_value'):
-                                    saved_path = result.data['final_value']
-                                    _saved_image_paths.append(saved_path)
-                                    field_data[img_field] = saved_path
-                                    photos_matched += 1
-                                    total_photos_matched += 1
-                                else:
-                                    field_data[img_field] = ''
-                                    logger.warning("Bulk upload image save failed: %s", result.message)
-                                cards_created -= 1  # Revert since we incremented early
-                            except Exception as photo_error:
-                                cards_created -= 1  # Revert temporary increment
-                                # Log but don't break the whole process
-                                logger.error("Error saving photo (XLSX) for %s: %s", photo_column_value, photo_error)
-                                # Save as PENDING so it can be reuploaded later
-                                if photo_column_value:
-                                    field_data[img_field] = f'PENDING:{photo_column_value}'
-                                else:
-                                    field_data[img_field] = ''
-                        else:
-                            # No image in ZIP but has reference value - save as PENDING for later reupload
-                            if photo_column_value:
-                                field_data[img_field] = f'PENDING:{photo_column_value}'
-                            else:
-                                # No reference value at all - empty field
-                                field_data[img_field] = ''
-                    
-                    # Create the card
-                    card = IDCard.objects.create(
-                        table=table,
-                        field_data=field_data,
-                        status=WorkflowService.INITIAL_STATUS
-                    )
-                    cards_created += 1
-                    
-                    # DUAL-WRITE: Create CardMedia records for bulk-uploaded images
-                    for img_field in image_fields:
-                        img_path = field_data.get(img_field, '')
-                        if img_path and not img_path.startswith('PENDING:') and img_path not in ['', 'NOT_FOUND']:
-                            try:
-                                ImageService.create_media_record(
-                                    saved_path=img_path,
-                                    client=client,
-                                    card=card,
-                                    field_name=img_field,
-                                    media_type='photo',
-                                    original_filename=None,
-                                    uploaded_by=request.user if request.user.is_authenticated else None
+                                # Apply class/section value conversions for XLSX import
+                                field_type_lookup = {f['name']: f['type'] for f in all_table_fields}
+                                for fname in list(field_data.keys()):
+                                    ftype = field_type_lookup.get(fname, 'text')
+                                    if ftype == 'class' and field_data[fname]:
+                                        field_data[fname] = convert_class_value(field_data[fname])
+                                    elif ftype == 'section' and field_data[fname]:
+                                        field_data[fname] = convert_section_value(field_data[fname])
+                                
+                                # Process image fields - try to match with ZIP photos
+                                photos_matched = 0
+                                used_photo_keys_this_row = set()
+                                
+                                for img_field in image_fields:
+                                    photo_column_value = None
+                                    
+                                    if img_field in image_ref_columns:
+                                        col_idx = image_ref_columns[img_field]
+                                        if col_idx < len(row):
+                                            cell_value = row[col_idx]
+                                            if cell_value is not None and str(cell_value).strip() and str(cell_value).strip().lower() != 'none':
+                                                if isinstance(cell_value, float) and cell_value == int(cell_value):
+                                                    photo_column_value = str(int(cell_value))
+                                                elif isinstance(cell_value, int):
+                                                    photo_column_value = str(cell_value)
+                                                else:
+                                                    photo_column_value = str(cell_value).strip()
+                                    
+                                    field_zip_photos = zip_photos_by_field.get(img_field, {})
+                                    photo_key = BaseService.normalize_image_identifier(photo_column_value) if photo_column_value else None
+                                    
+                                    if photo_key and photo_key in used_photo_keys_this_row:
+                                        logger.warning("Row %d: photo_key '%s' already used by another field, skipping for '%s'",
+                                                      row_num, photo_key, img_field)
+                                        photo_key = None
+                                    
+                                    if row_num <= 5:
+                                        logger.debug("Row %d: img_field='%s', photo_key='%s', field_zip_photos_keys=%s, unified_zip_keys=%s",
+                                                    row_num, img_field, photo_key,
+                                                    list(field_zip_photos.keys())[:5] if field_zip_photos else 'EMPTY',
+                                                    list(unified_zip_photos.keys())[:5] if unified_zip_photos else 'EMPTY')
+                                    
+                                    photo_info = None
+                                    if photo_key:
+                                        if field_zip_photos and photo_key in field_zip_photos:
+                                            photo_info = field_zip_photos[photo_key]
+                                        elif unified_zip_photos and photo_key in unified_zip_photos:
+                                            photo_info = unified_zip_photos[photo_key]
+                                        if photo_info:
+                                            used_photo_keys_this_row.add(photo_key)
+                                    
+                                    if photo_key and (img_field, photo_key) in _duplicate_keys:
+                                        field_data[img_field] = f'PENDING:{photo_column_value}'
+                                    elif photo_info:
+                                        try:
+                                            cards_created += 1
+                                            original_ext = photo_info['ext']
+                                            
+                                            result = ImageService.save_new_image(
+                                                image_bytes=photo_info['bytes'],
+                                                client=client,
+                                                field_name=img_field,
+                                                card=None,
+                                                batch_counter=cards_created,
+                                                original_ext=original_ext,
+                                            )
+                                            
+                                            if result.success and result.data.get('final_value'):
+                                                saved_path = result.data['final_value']
+                                                _saved_image_paths.append(saved_path)
+                                                field_data[img_field] = saved_path
+                                                photos_matched += 1
+                                                total_photos_matched += 1
+                                            else:
+                                                field_data[img_field] = ''
+                                                logger.warning("Bulk upload image save failed: %s", result.message)
+                                            cards_created -= 1
+                                        except Exception as photo_error:
+                                            cards_created -= 1
+                                            logger.error("Error saving photo (XLSX) for %s: %s", photo_column_value, photo_error)
+                                            if photo_column_value:
+                                                field_data[img_field] = f'PENDING:{photo_column_value}'
+                                            else:
+                                                field_data[img_field] = ''
+                                    else:
+                                        if photo_column_value:
+                                            field_data[img_field] = f'PENDING:{photo_column_value}'
+                                        else:
+                                            field_data[img_field] = ''
+                                
+                                # Create the card
+                                card = IDCard.objects.create(
+                                    table=table,
+                                    field_data=field_data,
+                                    status=WorkflowService.INITIAL_STATUS
                                 )
-                            except Exception as media_err:
-                                logger.warning("Failed to create CardMedia for bulk %s: %s", img_field, media_err)
-                    
-                except Exception as e:
-                    # Sanitize error — never leak raw exception details to the client
-                    safe_msg = str(e)[:120].replace('\n', ' ').replace('\r', '')
-                    errors.append(f'Row {row_num}: Processing error — {safe_msg}')
-            except Exception as atomic_err:
-                # Transaction rolled back — clean up orphaned image files saved to disk
-                logger.error("Bulk upload transaction failed, cleaning up %d images: %s",
-                             len(_saved_image_paths), atomic_err)
-                for orphan_path in _saved_image_paths:
-                    try:
-                        ImageService.delete_image(orphan_path)
-                    except Exception:
-                        pass
-                raise  # Re-raise so the outer try/except returns error response
+                                cards_created += 1
+                                
+                                # DUAL-WRITE: Create CardMedia records for bulk-uploaded images
+                                for img_field in image_fields:
+                                    img_path = field_data.get(img_field, '')
+                                    if img_path and not img_path.startswith('PENDING:') and img_path not in ['', 'NOT_FOUND']:
+                                        try:
+                                            ImageService.create_media_record(
+                                                saved_path=img_path,
+                                                client=client,
+                                                card=card,
+                                                field_name=img_field,
+                                                media_type='photo',
+                                                original_filename=None,
+                                                uploaded_by=request.user if request.user.is_authenticated else None
+                                            )
+                                        except Exception as media_err:
+                                            logger.warning("Failed to create CardMedia for bulk %s: %s", img_field, media_err)
+                                
+                            except Exception as e:
+                                safe_msg = str(e)[:120].replace('\n', ' ').replace('\r', '')
+                                errors.append(f'Row {row_num}: Processing error — {safe_msg}')
+                except Exception as atomic_err:
+                    # Batch transaction rolled back — clean up orphaned image files from this batch,
+                    # but continue processing remaining batches
+                    logger.error("Bulk upload batch transaction failed at row ~%d, cleaning up images: %s",
+                                 batch_start + 2, atomic_err)
+                    for orphan_path in _saved_image_paths:
+                        try:
+                            ImageService.delete_image(orphan_path)
+                        except Exception:
+                            pass
+                    _saved_image_paths.clear()
+                    errors.append(f'Batch starting at row {batch_start + 2}: Transaction error — {str(atomic_err)[:100]}')
         
         elif file_name.endswith('.csv'):
             import csv
@@ -1992,149 +1979,138 @@ def api_idcard_bulk_upload(request, table_id):
                     'message': f'File has {len(csv_rows)} rows. Maximum allowed is {MAX_BULK_ROWS}.'
                 }, status=400)
             
-            try:
-              with transaction.atomic():
-                for row_num, row in enumerate(csv_rows, start=2):
-                  try:
-                    # Skip empty rows
-                    if all(not v or str(v).strip() == '' for v in row.values()):
-                        continue
-                    
-                    field_data = {}
-                    for csv_header, field_name in header_to_field.items():
-                        value = row.get(csv_header, '')
-                        field_data[field_name] = str(value).strip().upper() if value else ''  # Convert to uppercase
-                    
-                    # Apply class/section value conversions for CSV import
-                    field_type_lookup = {f['name']: f['type'] for f in all_table_fields}
-                    for fname in list(field_data.keys()):
-                        ftype = field_type_lookup.get(fname, 'text')
-                        if ftype == 'class' and field_data[fname]:
-                            field_data[fname] = convert_class_value(field_data[fname])
-                        elif ftype == 'section' and field_data[fname]:
-                            field_data[fname] = convert_section_value(field_data[fname])
-                    
-                    # Process image fields - try to match with ZIP photos
-                    photos_matched = 0
-                    used_photo_keys_this_row = set()  # Prevent same image going to multiple columns
-                    
-                    for img_field in image_fields:
-                        # Get the photo reference value ONLY from the mapped column
-                        # No fallback — if this field has no column mapped, it stays empty
-                        photo_column_value = None
-                        
-                        if img_field in csv_image_ref_columns:
-                            csv_header = csv_image_ref_columns[img_field]
-                            cell_value = row.get(csv_header, '')
-                            if cell_value and str(cell_value).strip():
-                                # CASE SENSITIVE - do NOT convert to uppercase
-                                photo_column_value = str(cell_value).strip()
-                        # else: field not mapped to any CSV column — leave empty
-                        
-                        # Try to match photo from ZIP using normalized matching
-                        # This handles: case insensitivity, whitespace, numeric formats
-                        field_zip_photos = zip_photos_by_field.get(img_field, {})
-                        
-                        # Normalize the CSV cell value for matching
-                        photo_key = BaseService.normalize_image_identifier(photo_column_value) if photo_column_value else None
-                        
-                        # Prevent same image appearing in multiple columns within the same row
-                        if photo_key and photo_key in used_photo_keys_this_row:
-                            logger.warning("CSV Row %d: photo_key '%s' already used by another field, skipping for '%s'",
-                                          row_num, photo_key, img_field)
-                            photo_key = None
-                        
-                        # Try to find photo in: 1) field-specific ZIP, 2) unified ZIP pool
-                        photo_info = None
-                        if photo_key:
-                            if field_zip_photos and photo_key in field_zip_photos:
-                                photo_info = field_zip_photos[photo_key]
-                            elif unified_zip_photos and photo_key in unified_zip_photos:
-                                photo_info = unified_zip_photos[photo_key]
-                            if photo_info:
-                                used_photo_keys_this_row.add(photo_key)  # Claim this key
-                        
-                        if photo_info:
+            for csv_batch_start in range(0, len(csv_rows), BULK_BATCH_SIZE):
+                csv_batch = csv_rows[csv_batch_start:csv_batch_start + BULK_BATCH_SIZE]
+                csv_batch_offset = csv_batch_start + 2
+                try:
+                    with transaction.atomic():
+                        for csv_row_idx, row in enumerate(csv_batch):
+                            row_num = csv_batch_offset + csv_row_idx
                             try:
-                                # Use ImageService.save_new_image (single authority)
-                                cards_created += 1  # Increment before for 1-based counter
-                                original_ext = photo_info['ext']
+                                # Skip empty rows
+                                if all(not v or str(v).strip() == '' for v in row.values()):
+                                    continue
                                 
-                                result = ImageService.save_new_image(
-                                    image_bytes=photo_info['bytes'],
-                                    client=client,
-                                    field_name=img_field,
-                                    card=None,  # card not yet created
-                                    batch_counter=cards_created,
-                                    original_ext=original_ext,
-                                )
+                                field_data = {}
+                                for csv_header, field_name in header_to_field.items():
+                                    value = row.get(csv_header, '')
+                                    field_data[field_name] = str(value).strip().upper() if value else ''
                                 
-                                if result.success and result.data.get('final_value'):
-                                    saved_path = result.data['final_value']
-                                    field_data[img_field] = saved_path
-                                    _csv_saved_image_paths.append(saved_path)
-                                    photos_matched += 1
-                                    total_photos_matched += 1
-                                else:
-                                    field_data[img_field] = ''
-                                    logger.warning("Bulk upload image save failed: %s", result.message)
-                                cards_created -= 1  # Revert since we incremented early
-                            except Exception as photo_error:
-                                cards_created -= 1  # Revert temporary increment
-                                # Log but don't break the whole process
-                                logger.error("Error saving photo (CSV) for %s: %s", photo_column_value, photo_error)
-                                # Save as PENDING so it can be reuploaded later
-                                if photo_column_value:
-                                    field_data[img_field] = f'PENDING:{photo_column_value}'
-                                else:
-                                    field_data[img_field] = ''
-                        else:
-                            # No image in ZIP but has reference value - save as PENDING for later reupload
-                            if photo_column_value:
-                                field_data[img_field] = f'PENDING:{photo_column_value}'
-                            else:
-                                # No reference value at all - empty field
-                                field_data[img_field] = ''
-                    
-                    # Create the card
-                    card = IDCard.objects.create(
-                        table=table,
-                        field_data=field_data,
-                        status=WorkflowService.INITIAL_STATUS
-                    )
-                    cards_created += 1
-                    
-                    # DUAL-WRITE: Create CardMedia records for CSV bulk-uploaded images
-                    for img_field in image_fields:
-                        img_path = field_data.get(img_field, '')
-                        if img_path and not img_path.startswith('PENDING:') and img_path not in ['', 'NOT_FOUND']:
-                            try:
-                                ImageService.create_media_record(
-                                    saved_path=img_path,
-                                    client=client,
-                                    card=card,
-                                    field_name=img_field,
-                                    media_type='photo',
-                                    original_filename=None,
-                                    uploaded_by=request.user if request.user.is_authenticated else None
+                                # Apply class/section value conversions for CSV import
+                                field_type_lookup = {f['name']: f['type'] for f in all_table_fields}
+                                for fname in list(field_data.keys()):
+                                    ftype = field_type_lookup.get(fname, 'text')
+                                    if ftype == 'class' and field_data[fname]:
+                                        field_data[fname] = convert_class_value(field_data[fname])
+                                    elif ftype == 'section' and field_data[fname]:
+                                        field_data[fname] = convert_section_value(field_data[fname])
+                                
+                                # Process image fields - try to match with ZIP photos
+                                photos_matched = 0
+                                used_photo_keys_this_row = set()
+                                
+                                for img_field in image_fields:
+                                    photo_column_value = None
+                                    
+                                    if img_field in csv_image_ref_columns:
+                                        csv_header = csv_image_ref_columns[img_field]
+                                        cell_value = row.get(csv_header, '')
+                                        if cell_value and str(cell_value).strip():
+                                            photo_column_value = str(cell_value).strip()
+                                    
+                                    field_zip_photos = zip_photos_by_field.get(img_field, {})
+                                    photo_key = BaseService.normalize_image_identifier(photo_column_value) if photo_column_value else None
+                                    
+                                    if photo_key and photo_key in used_photo_keys_this_row:
+                                        logger.warning("CSV Row %d: photo_key '%s' already used by another field, skipping for '%s'",
+                                                      row_num, photo_key, img_field)
+                                        photo_key = None
+                                    
+                                    photo_info = None
+                                    if photo_key:
+                                        if field_zip_photos and photo_key in field_zip_photos:
+                                            photo_info = field_zip_photos[photo_key]
+                                        elif unified_zip_photos and photo_key in unified_zip_photos:
+                                            photo_info = unified_zip_photos[photo_key]
+                                        if photo_info:
+                                            used_photo_keys_this_row.add(photo_key)
+                                    
+                                    if photo_info:
+                                        try:
+                                            cards_created += 1
+                                            original_ext = photo_info['ext']
+                                            
+                                            result = ImageService.save_new_image(
+                                                image_bytes=photo_info['bytes'],
+                                                client=client,
+                                                field_name=img_field,
+                                                card=None,
+                                                batch_counter=cards_created,
+                                                original_ext=original_ext,
+                                            )
+                                            
+                                            if result.success and result.data.get('final_value'):
+                                                saved_path = result.data['final_value']
+                                                field_data[img_field] = saved_path
+                                                _csv_saved_image_paths.append(saved_path)
+                                                photos_matched += 1
+                                                total_photos_matched += 1
+                                            else:
+                                                field_data[img_field] = ''
+                                                logger.warning("Bulk upload image save failed: %s", result.message)
+                                            cards_created -= 1
+                                        except Exception as photo_error:
+                                            cards_created -= 1
+                                            logger.error("Error saving photo (CSV) for %s: %s", photo_column_value, photo_error)
+                                            if photo_column_value:
+                                                field_data[img_field] = f'PENDING:{photo_column_value}'
+                                            else:
+                                                field_data[img_field] = ''
+                                    else:
+                                        if photo_column_value:
+                                            field_data[img_field] = f'PENDING:{photo_column_value}'
+                                        else:
+                                            field_data[img_field] = ''
+                                
+                                # Create the card
+                                card = IDCard.objects.create(
+                                    table=table,
+                                    field_data=field_data,
+                                    status=WorkflowService.INITIAL_STATUS
                                 )
-                            except Exception as media_err:
-                                logger.warning("Failed to create CardMedia for CSV bulk %s: %s", img_field, media_err)
-                    
-                  except Exception as e:
-                    # Sanitize error — never leak raw exception details to the client
-                    safe_msg = str(e)[:120].replace('\n', ' ').replace('\r', '')
-                    errors.append(f'Row {row_num}: Processing error — {safe_msg}')
-            except Exception as atomic_err:
-                # Transaction rolled back — clean up orphaned image files saved to disk
-                logger.error("CSV bulk upload transaction failed, cleaning up %d images: %s",
-                             len(_csv_saved_image_paths), atomic_err)
-                for orphan_path in _csv_saved_image_paths:
-                    try:
-                        ImageService.delete_image(orphan_path)
-                    except Exception:
-                        pass
-                raise  # Re-raise so the outer try/except returns error response
+                                cards_created += 1
+                                
+                                # DUAL-WRITE: Create CardMedia records for CSV bulk-uploaded images
+                                for img_field in image_fields:
+                                    img_path = field_data.get(img_field, '')
+                                    if img_path and not img_path.startswith('PENDING:') and img_path not in ['', 'NOT_FOUND']:
+                                        try:
+                                            ImageService.create_media_record(
+                                                saved_path=img_path,
+                                                client=client,
+                                                card=card,
+                                                field_name=img_field,
+                                                media_type='photo',
+                                                original_filename=None,
+                                                uploaded_by=request.user if request.user.is_authenticated else None
+                                            )
+                                        except Exception as media_err:
+                                            logger.warning("Failed to create CardMedia for CSV bulk %s: %s", img_field, media_err)
+                                
+                            except Exception as e:
+                                safe_msg = str(e)[:120].replace('\n', ' ').replace('\r', '')
+                                errors.append(f'Row {row_num}: Processing error — {safe_msg}')
+                except Exception as atomic_err:
+                    # Batch transaction rolled back — clean up orphaned image files from this batch
+                    logger.error("CSV bulk upload batch failed at row ~%d, cleaning up images: %s",
+                                 csv_batch_start + 2, atomic_err)
+                    for orphan_path in _csv_saved_image_paths:
+                        try:
+                            ImageService.delete_image(orphan_path)
+                        except Exception:
+                            pass
+                    _csv_saved_image_paths.clear()
+                    errors.append(f'Batch starting at row {csv_batch_start + 2}: Transaction error — {str(atomic_err)[:100]}')
         
         else:
             return JsonResponse({
@@ -2196,7 +2172,7 @@ def api_idcard_reupload_images(request, table_id):
             }, status=403)
     # Double-click guard: prevent duplicate reupload from rapid form submissions
     lock_key = f'reupload_lock:{request.user.id}:{table_id}'
-    if not django_cache.add(lock_key, 1, 30):
+    if not django_cache.add(lock_key, 1, 300):
         return JsonResponse({'success': False, 'message': 'Reupload already in progress. Please wait.'}, status=429)
     try:
         import zipfile
@@ -2301,81 +2277,89 @@ def api_idcard_reupload_images(request, table_id):
         matched_count = 0
         errors = []
         
-        with transaction.atomic():
-            # Lock rows to prevent concurrent modifications during reupload
-            cards = cards_qs.select_for_update()
-            batch_counter = 0
+        # Process cards in batches to avoid long-running transactions
+        # (SQLite locks the entire DB during a transaction; smaller batches
+        # reduce lock duration and prevent "database is locked" errors)
+        REUPLOAD_BATCH_SIZE = 50
+        all_card_ids = list(cards_qs.values_list('id', flat=True))
+        batch_counter = 0
+        
+        for batch_start in range(0, len(all_card_ids), REUPLOAD_BATCH_SIZE):
+            batch_ids = all_card_ids[batch_start:batch_start + REUPLOAD_BATCH_SIZE]
             
-            for card in cards:
-                field_data = card.field_data or {}
-                card_updated = False
+            with transaction.atomic():
+                batch_cards = IDCard.objects.filter(id__in=batch_ids).order_by('id')
                 
-                for img_field in image_field_names:
-                    current_value = field_data.get(img_field, '')
+                for card in batch_cards:
+                    field_data = card.field_data or {}
+                    card_updated = False
                     
-                    # Determine what to match against
-                    match_key = None
-                    existing_path = None
-                    
-                    if current_value.startswith('PENDING:'):
-                        # Extract the reference from PENDING:reference
-                        match_key = BaseService.normalize_image_identifier(current_value[8:])
-                    elif current_value and current_value not in ('NOT_FOUND', ''):
-                        # Has existing image - extract filename for matching
-                        existing_path = current_value
-                        existing_filename = os.path.splitext(os.path.basename(current_value))[0]
-                        match_key = BaseService.normalize_image_identifier(existing_filename)
-                    else:
-                        # No current value - skip unless we want to match by card data
-                        # Could extend to match by NAME or other field values
-                        continue
-                    
-                    if not match_key:
-                        continue
-                    
-                    # Try to find matching photo in ZIP
-                    if match_key in zip_photos:
-                        photo_info = zip_photos[match_key]
-                        matched_count += 1
+                    for img_field in image_field_names:
+                        current_value = field_data.get(img_field, '')
                         
-                        try:
-                            batch_counter += 1
+                        # Determine what to match against
+                        match_key = None
+                        existing_path = None
+                        
+                        if current_value.startswith('PENDING:'):
+                            # Extract the reference from PENDING:reference
+                            match_key = BaseService.normalize_image_identifier(current_value[8:])
+                        elif current_value and current_value not in ('NOT_FOUND', ''):
+                            # Has existing image - extract filename for matching
+                            existing_path = current_value
+                            existing_filename = os.path.splitext(os.path.basename(current_value))[0]
+                            match_key = BaseService.normalize_image_identifier(existing_filename)
+                        else:
+                            # No current value - skip unless we want to match by card data
+                            # Could extend to match by NAME or other field values
+                            continue
+                        
+                        if not match_key:
+                            continue
+                        
+                        # Try to find matching photo in ZIP
+                        if match_key in zip_photos:
+                            photo_info = zip_photos[match_key]
+                            matched_count += 1
                             
-                            # Use single-authority entry point
-                            if existing_path:
-                                result = ImageService.replace_image(
-                                    image_bytes=photo_info['bytes'],
-                                    client=client,
-                                    field_name=img_field,
-                                    existing_path=existing_path,
-                                    card=card,
-                                    batch_counter=batch_counter,
-                                    original_ext=photo_info['ext'],
-                                )
-                            else:
-                                result = ImageService.save_new_image(
-                                    image_bytes=photo_info['bytes'],
-                                    client=client,
-                                    field_name=img_field,
-                                    card=card,
-                                    batch_counter=batch_counter,
-                                    original_ext=photo_info['ext'],
-                                )
-                            
-                            if result.success and result.data.get('final_value'):
-                                field_data[img_field] = result.data['final_value']
-                                card_updated = True
-                                logger.debug("Reupload: Card %s field %s updated to %s", 
-                                           card.pk, img_field, result.data['final_value'])
-                            else:
-                                errors.append(f"Card {card.pk}: Failed to save {img_field} - {result.message}")
-                        except Exception as save_err:
-                            errors.append(f"Card {card.pk}: Error saving {img_field} - {str(save_err)}")
-                
-                if card_updated:
-                    card.field_data = field_data
-                    card.save()
-                    updated_count += 1
+                            try:
+                                batch_counter += 1
+                                
+                                # Use single-authority entry point
+                                if existing_path:
+                                    result = ImageService.replace_image(
+                                        image_bytes=photo_info['bytes'],
+                                        client=client,
+                                        field_name=img_field,
+                                        existing_path=existing_path,
+                                        card=card,
+                                        batch_counter=batch_counter,
+                                        original_ext=photo_info['ext'],
+                                    )
+                                else:
+                                    result = ImageService.save_new_image(
+                                        image_bytes=photo_info['bytes'],
+                                        client=client,
+                                        field_name=img_field,
+                                        card=card,
+                                        batch_counter=batch_counter,
+                                        original_ext=photo_info['ext'],
+                                    )
+                                
+                                if result.success and result.data.get('final_value'):
+                                    field_data[img_field] = result.data['final_value']
+                                    card_updated = True
+                                    logger.debug("Reupload: Card %s field %s updated to %s", 
+                                               card.pk, img_field, result.data['final_value'])
+                                else:
+                                    errors.append(f"Card {card.pk}: Failed to save {img_field} - {result.message}")
+                            except Exception as save_err:
+                                errors.append(f"Card {card.pk}: Error saving {img_field} - {str(save_err)}")
+                    
+                    if card_updated:
+                        card.field_data = field_data
+                        card.save()
+                        updated_count += 1
         
         # Build response
         result_msg = f"Updated {updated_count} cards with {matched_count} images matched"

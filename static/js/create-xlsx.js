@@ -302,27 +302,60 @@ function initCreateWithXlsx(opts) {
       formData.append('unified_zip_count', zipFiles.length);
     }
 
-    fetch(apiUrl, {
-      method: 'POST',
-      headers: { 'X-CSRFToken': csrfToken },
-      body: formData
-    })
-    .then(function(res) { return res.json().then(function(data) { return { ok: res.ok, data: data }; }); })
-    .then(function(result) {
-      if (result.data.success) {
-        if (window.showToast) showToast(result.data.message || 'Table created successfully!', 'success');
-        if (window.alpineCloseModal) window.alpineCloseModal();
-        setTimeout(onSuccess, 800);
-      } else {
-        if (window.showToast) showToast(result.data.message || 'Failed to create table.', 'error');
+    var _createRetryCount = 0;
+    var MAX_RETRIES = 2;
+
+    function attemptUpload() {
+      // Use AbortController for 10-minute timeout
+      var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      var timeoutId = controller ? setTimeout(function() { controller.abort(); }, 600000) : null;
+
+      var fetchOpts = {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken },
+        body: formData
+      };
+      if (controller) fetchOpts.signal = controller.signal;
+
+      fetch(apiUrl, fetchOpts)
+      .then(function(res) { return res.json().then(function(data) { return { ok: res.ok, status: res.status, data: data }; }); })
+      .then(function(result) {
+        if (timeoutId) clearTimeout(timeoutId);
+        if (result.data.success) {
+          if (window.showToast) showToast(result.data.message || 'Table created successfully!', 'success');
+          if (window.alpineCloseModal) window.alpineCloseModal();
+          setTimeout(onSuccess, 800);
+        } else if (result.status === 429 && _createRetryCount < MAX_RETRIES) {
+          // Rate limited — retry after delay
+          _createRetryCount++;
+          progressText.textContent = (result.data.message || 'Server busy') + ' Retrying...';
+          setTimeout(attemptUpload, 5000);
+        } else {
+          if (window.showToast) showToast(result.data.message || 'Failed to create table.', 'error');
+          showStep(1);
+        }
+      })
+      .catch(function(err) {
+        if (timeoutId) clearTimeout(timeoutId);
+        console.error('Create from XLSX error:', err);
+
+        // Retry on network errors
+        if (_createRetryCount < MAX_RETRIES && err.name !== 'AbortError') {
+          _createRetryCount++;
+          progressText.textContent = 'Network error. Retrying in 5s...';
+          if (window.showToast) showToast('Network error. Retrying automatically...', 'error');
+          setTimeout(attemptUpload, 5000);
+          return;
+        }
+
+        var errMsg = 'Network error. Please try again.';
+        if (err.name === 'AbortError') errMsg = 'Upload timed out — server took too long. Try a smaller file.';
+        if (window.showToast) showToast(errMsg, 'error');
         showStep(1);
-      }
-    })
-    .catch(function(err) {
-      console.error('Create from XLSX error:', err);
-      if (window.showToast) showToast('Network error. Please try again.', 'error');
-      showStep(1);
-    });
+      });
+    }
+
+    attemptUpload();
   }
 
   // ── Event listeners — Step 1 ──

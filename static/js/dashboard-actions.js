@@ -412,9 +412,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const formData = new FormData();
             formData.append('photos_zip', dashReuploadFileInput.files[0]);
 
+            let _dashRetryCount = 0;
             const xhr = new XMLHttpRequest();
             xhr.open('POST', `/panel/api/table/${dashReuploadTableId}/cards/reupload-images/`);
             xhr.setRequestHeader('X-CSRFToken', typeof getCSRFToken === 'function' ? getCSRFToken() : '');
+            xhr.timeout = 600000; // 10-minute timeout
 
             xhr.upload.onprogress = function(e) {
                 if (e.lengthComputable) {
@@ -428,23 +430,70 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (dashReuploadBar) dashReuploadBar.style.width = '100%';
                 try {
                     const data = JSON.parse(xhr.responseText);
-                    if (data.success) {
+                    if (xhr.status === 200 && data.success) {
                         if (dashReuploadStatus) dashReuploadStatus.textContent = data.message || 'Done!';
                         if (typeof showToast === 'function') showToast(data.message || 'Images reuploaded!', 'success');
                         setTimeout(() => dashCloseReuploadModal(), 1500);
+                    } else if (xhr.status === 429 && _dashRetryCount < 2) {
+                        _dashRetryCount++;
+                        if (dashReuploadStatus) dashReuploadStatus.textContent = (data.message || 'Server busy') + ' Retrying...';
+                        setTimeout(function() {
+                            if (dashReuploadBar) dashReuploadBar.style.width = '0%';
+                            if (dashReuploadStatus) dashReuploadStatus.textContent = 'Retrying...';
+                            const retryXhr = new XMLHttpRequest();
+                            retryXhr.open('POST', `/panel/api/table/${dashReuploadTableId}/cards/reupload-images/`);
+                            retryXhr.setRequestHeader('X-CSRFToken', typeof getCSRFToken === 'function' ? getCSRFToken() : '');
+                            retryXhr.timeout = 600000;
+                            retryXhr.onload = xhr.onload;
+                            retryXhr.onerror = xhr.onerror;
+                            retryXhr.ontimeout = xhr.ontimeout;
+                            retryXhr.upload.onprogress = xhr.upload.onprogress;
+                            retryXhr.send(formData);
+                        }, 5000);
                     } else {
                         if (dashReuploadStatus) dashReuploadStatus.textContent = data.message || 'Failed';
                         if (typeof showToast === 'function') showToast(data.message || 'Reupload failed', 'error');
                         dashReuploadConfirmBtn.disabled = false; dashReuploadConfirmBtn.textContent = 'Upload & Match';
                     }
-                } catch (_) {
-                    if (typeof showToast === 'function') showToast('Unexpected error', 'error');
+                } catch (parseErr) {
+                    console.error('Dashboard reupload parse error:', parseErr, 'Status:', xhr.status);
+                    let errMsg = 'Unexpected error';
+                    if (xhr.status === 413) errMsg = 'ZIP file too large.';
+                    else if (xhr.status === 502 || xhr.status === 504) errMsg = 'Server timeout — try a smaller ZIP.';
+                    else if (xhr.status === 500) errMsg = 'Server error. Please try again.';
+                    else if (xhr.status === 0) errMsg = 'Connection lost. Check your internet.';
+                    if (typeof showToast === 'function') showToast(errMsg, 'error');
                     dashReuploadConfirmBtn.disabled = false; dashReuploadConfirmBtn.textContent = 'Upload & Match';
                 }
             };
 
             xhr.onerror = function() {
-                if (typeof showToast === 'function') showToast('Network error', 'error');
+                _dashRetryCount++;
+                if (_dashRetryCount <= 2) {
+                    if (dashReuploadStatus) dashReuploadStatus.textContent = 'Network error. Retrying in 5s...';
+                    if (typeof showToast === 'function') showToast('Network error. Retrying...', 'error');
+                    setTimeout(function() {
+                        if (dashReuploadBar) dashReuploadBar.style.width = '0%';
+                        if (dashReuploadStatus) dashReuploadStatus.textContent = 'Retrying...';
+                        const retryXhr = new XMLHttpRequest();
+                        retryXhr.open('POST', `/panel/api/table/${dashReuploadTableId}/cards/reupload-images/`);
+                        retryXhr.setRequestHeader('X-CSRFToken', typeof getCSRFToken === 'function' ? getCSRFToken() : '');
+                        retryXhr.timeout = 600000;
+                        retryXhr.onload = xhr.onload;
+                        retryXhr.onerror = xhr.onerror;
+                        retryXhr.ontimeout = xhr.ontimeout;
+                        retryXhr.upload.onprogress = xhr.upload.onprogress;
+                        retryXhr.send(formData);
+                    }, 5000);
+                } else {
+                    if (typeof showToast === 'function') showToast('Upload failed after retries. Check your connection.', 'error');
+                    dashReuploadConfirmBtn.disabled = false; dashReuploadConfirmBtn.textContent = 'Upload & Match';
+                    if (dashReuploadProgress) dashReuploadProgress.style.display = 'none';
+                }
+            };
+
+            xhr.ontimeout = function() {
+                if (typeof showToast === 'function') showToast('Reupload timed out — try a smaller ZIP.', 'error');
                 dashReuploadConfirmBtn.disabled = false; dashReuploadConfirmBtn.textContent = 'Upload & Match';
                 if (dashReuploadProgress) dashReuploadProgress.style.display = 'none';
             };

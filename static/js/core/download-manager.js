@@ -292,6 +292,7 @@
 
         xhr.open(opts.method || 'POST', opts.url, true);
         xhr.responseType = 'blob';
+        xhr.timeout = 600000; // 10 minutes for large exports
 
         // Set headers
         if (opts.headers) {
@@ -361,6 +362,12 @@
             if (dl.status !== 'downloading') return;
             _finishToast(dl, 'error', 'Network error — download failed');
             if (typeof opts.onError === 'function') opts.onError('Network error');
+        };
+
+        xhr.ontimeout = function () {
+            if (dl.status !== 'downloading') return;
+            _finishToast(dl, 'error', 'Download timed out — the server took too long to respond. Please try again.');
+            if (typeof opts.onError === 'function') opts.onError('Timeout');
         };
 
         xhr.onabort = function () {
@@ -488,6 +495,7 @@
         dl.xhr = xhr;
 
         xhr.open(options.method || 'POST', options.url, true);
+        xhr.timeout = 600000; // 10 minutes for large image exports
         xhr.setRequestHeader('Content-Type', 'application/json');
         if (typeof getCSRFToken === 'function') {
             xhr.setRequestHeader('X-CSRFToken', getCSRFToken());
@@ -555,6 +563,11 @@
         xhr.onerror = function () {
             if (dl.status !== 'downloading') return;
             _finishToast(dl, 'error', 'Network error — download failed');
+        };
+
+        xhr.ontimeout = function () {
+            if (dl.status !== 'downloading') return;
+            _finishToast(dl, 'error', 'Image download timed out — too many images or slow connection. Try fewer cards.');
         };
 
         xhr.send(options.body ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body)) : null);

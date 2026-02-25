@@ -219,15 +219,6 @@ class PdfExporter:
             # Build row data (with placeholder images for missing photos)
             rows = self._build_rows(ordered_fields, cards_list, column_configs)
 
-            # Group rows into pages (dynamic RPP, class-break aware)
-            class_field_name = get_class_field_name(table.fields)
-            rpp = self._compute_records_per_page(
-                column_configs, has_instructions=bool(template_instructions)
-            )
-            pages = self._group_rows_into_pages(
-                rows, cards_list, class_field_name, records_per_page=rpp
-            )
-
             # Get institution name
             institution_name = "Institution"
             if table.group and table.group.client:
@@ -245,6 +236,15 @@ class PdfExporter:
                     template_instructions = tpl.instructions
                 except ExportTemplate.DoesNotExist:
                     pass
+
+            # Group rows into pages (dynamic RPP, class-break aware)
+            class_field_name = get_class_field_name(table.fields)
+            rpp = self._compute_records_per_page(
+                column_configs, has_instructions=bool(template_instructions)
+            )
+            pages = self._group_rows_into_pages(
+                rows, cards_list, class_field_name, records_per_page=rpp
+            )
 
             # Render HTML
             context = {

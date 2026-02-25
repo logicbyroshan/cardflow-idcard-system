@@ -89,7 +89,11 @@ function getAllVisibleCardIds() {
 
 // Get card IDs - selected if any, otherwise all visible
 function getCardIdsForAction() {
-    const selectedIds = getSelectedCardIds();
+    // Use the DB-aware getter so Select All checkbox includes all 
+    // database cards, not just the visible 100
+    const selectedIds = (typeof getSelectedCardIdsWithDbSelect === 'function')
+        ? getSelectedCardIdsWithDbSelect()
+        : getSelectedCardIds();
     return selectedIds.length > 0 ? selectedIds : getAllVisibleCardIds();
 }
 
@@ -359,10 +363,12 @@ function initSelectAllDbButton() {
 // Override getSelectedCardIds to use all DB IDs when Select All DB is active
 const originalGetSelectedCardIds = getSelectedCardIds;
 function getSelectedCardIdsWithDbSelect() {
-    // If Select All DB is active, return all DB card IDs
+    // If Select All DB is active (via selectAllDbBtn OR selectAll checkbox), return all DB card IDs
     if (window.IDCardApp.allDbCardIds && window.IDCardApp.allDbCardIds.length > 0) {
         const selectAllDbBtn = document.getElementById('selectAllDbBtn');
-        if (selectAllDbBtn && selectAllDbBtn.classList.contains('active')) {
+        const selectAllCb = document.getElementById('selectAll');
+        if ((selectAllDbBtn && selectAllDbBtn.classList.contains('active')) ||
+            (selectAllCb && selectAllCb.checked)) {
             return window.IDCardApp.allDbCardIds;
         }
     }

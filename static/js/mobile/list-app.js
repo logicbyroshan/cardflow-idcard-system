@@ -50,11 +50,14 @@ function listApp() {
         async apiAction(status, label) {
             if (!this.selectedIds.length) { this.showToast('Select items first', 'error'); return; }
             this.loading = true;
+            var _ac = new AbortController();
+            setTimeout(function() { _ac.abort(); }, 120000);
             try {
                 const res = await fetch('/app/api/table/' + TABLE_ID + '/bulk-status/', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
                     body: JSON.stringify({ card_ids: this.selectedIds, status: status }),
+                    signal: _ac.signal,
                 });
                 if (!res.ok && !(res.headers.get('content-type') || '').includes('application/json')) {
                     this.showToast('Server error (' + res.status + ')', 'error');
@@ -68,7 +71,7 @@ function listApp() {
                 } else {
                     this.showToast(data.message || 'Action failed', 'error');
                 }
-            } catch (e) { this.showToast('Network error', 'error'); }
+            } catch (e) { this.showToast(e.name === 'AbortError' ? 'Request timed out' : 'Network error', 'error'); }
             this.loading = false;
             this.selectedIds = [];
         },
@@ -155,7 +158,9 @@ function listApp() {
             fd.append('field_data', JSON.stringify(fieldData));
             if (this.form.photoFile) fd.append('photo', this.form.photoFile);
             try {
-                const res = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': CSRF }, body: fd });
+                var _ac2 = new AbortController();
+                setTimeout(function() { _ac2.abort(); }, 120000);
+                const res = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': CSRF }, body: fd, signal: _ac2.signal });
                 if (!res.ok && !(res.headers.get('content-type') || '').includes('application/json')) {
                     this.showToast('Server error (' + res.status + ')', 'error');
                     return;
