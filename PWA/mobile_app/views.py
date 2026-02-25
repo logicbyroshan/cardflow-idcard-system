@@ -45,15 +45,16 @@ def is_mobile(request):
 def require_mobile_client(view_func):
     """Decorator: login + any valid role + perm_mobile_app + mobile UA.
     Supports all 4 roles: super_admin, admin_staff, client, client_staff.
+    After login, redirects back to /app/ (PWA) via ?next= parameter.
     """
     @wraps(view_func)
-    @login_required(login_url='/panel/auth/login/')
+    @login_required(login_url='/panel/auth/login/?next=/panel/app/')
     def wrapper(request, *args, **kwargs):
         user = request.user
         # Allow all 4 valid roles; reject unknown/empty roles
         valid_roles = ('super_admin', 'admin_staff', 'client', 'client_staff')
         if not hasattr(user, 'role') or user.role not in valid_roles:
-            return redirect('/panel/auth/login/')
+            return redirect('/panel/auth/login/?next=/panel/app/')
         # super_admin always has access; others need perm_mobile_app
         if not PermissionService.is_super_admin(user):
             if not PermissionService.has(user, 'perm_mobile_app'):

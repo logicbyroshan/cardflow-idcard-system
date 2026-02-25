@@ -177,7 +177,17 @@ document.addEventListener('DOMContentLoaded', function() {
     if (logoutBtn) {
         logoutBtn.addEventListener('click', function() {
             if (confirm('Are you sure you want to logout?')) {
-                window.location.href = '/panel/auth/logout/';
+                // Must use POST for logout (GET is ignored for CSRF safety)
+                var form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/panel/auth/logout/';
+                var csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'csrfmiddlewaretoken';
+                csrfInput.value = (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '';
+                form.appendChild(csrfInput);
+                document.body.appendChild(form);
+                form.submit();
             }
         });
     }

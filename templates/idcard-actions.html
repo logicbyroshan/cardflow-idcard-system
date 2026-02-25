@@ -29,7 +29,7 @@
       <!-- HTMX Table Container — swappable for pagination/filter/status -->
       <div id="card-table-container"
            hx-trigger="refreshTable from:body"
-           hx-get="{% url 'idcard_actions' table.id %}{% if current_status %}?status={{ current_status }}{% endif %}"
+           hx-get="{{ actions_base_url }}{% if current_status %}?status={{ current_status }}{% endif %}"
            hx-target="#card-table-container"
            hx-swap="innerHTML">
         {% include 'partials/idcard/table-container.html' %}
@@ -52,7 +52,7 @@
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       var _htmxFilters = initHTMXFilters({
-        baseUrl: '{% url "idcard_actions" table.id %}',
+        baseUrl: '{{ actions_base_url }}',
         target:  '#card-table-container',
         searchInputId: 'searchInput',
         filters: [
@@ -103,7 +103,7 @@
         else params.delete('from');
         if (toDateEl.value) params.set('to', toDateEl.value);
         else params.delete('to');
-        var url = '{% url "idcard_actions" table.id %}?' + params.toString();
+        var url = '{{ actions_base_url }}?' + params.toString();
         htmx.ajax('GET', url, { target: '#card-table-container', swap: 'innerHTML' });
       }
 
@@ -116,7 +116,7 @@
           var params = _htmxFilters.getParams();
           params.delete('from');
           params.delete('to');
-          var url = '{% url "idcard_actions" table.id %}?' + params.toString();
+          var url = '{{ actions_base_url }}?' + params.toString();
           htmx.ajax('GET', url, { target: '#card-table-container', swap: 'innerHTML' });
         });
       }

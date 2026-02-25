@@ -255,7 +255,11 @@ def _parse_excel_file(file_path, table_fields, image_fields, all_table_fields):
         # Get header row
         try:
             header_row = next(row_iter)
-            headers = [str(cell).strip() if cell else '' for cell in header_row]
+            headers = [
+                str(cell).strip().replace('_x000D_', '').replace('_X000D_', '').replace('_x000d_', '').replace('\r', '')
+                if cell else ''
+                for cell in header_row
+            ]
         except StopIteration:
             return [], [], {}, {}
         
@@ -395,6 +399,12 @@ def _parse_row_fields(row, header_to_field, field_type_lookup):
                         value = str(value).upper()
                 else:
                     value = str(value).strip().upper()
+                
+                # Clean openpyxl carriage-return artifacts (_x000D_ / _X000D_)
+                # Excel cells with Alt+Enter line breaks produce these when
+                # read by openpyxl. Remove them to prevent data corruption.
+                if isinstance(value, str):
+                    value = value.replace('_X000D_', '').replace('_x000D_', '').replace('_x000d_', '').replace('\r\n', '\n').replace('\r', '')
                 
                 field_data[field_name] = value
             else:

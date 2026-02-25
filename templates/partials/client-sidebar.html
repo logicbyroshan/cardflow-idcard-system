@@ -42,7 +42,7 @@
       <a href="{% url 'settings' %}" class="{% if active_page == 'settings' %}active{% endif %}">
         <i class="fa-solid fa-gear"></i><span>Settings</span>
       </a>
-      <a href="{% url 'logout' %}">
+      <a href="#" onclick="event.preventDefault(); var f=document.createElement('form'); f.method='POST'; f.action='{% url 'logout' %}'; var i=document.createElement('input'); i.type='hidden'; i.name='csrfmiddlewaretoken'; i.value=(document.cookie.match(/csrftoken=([^;]+)/)||[])[1]||''; f.appendChild(i); document.body.appendChild(f); f.submit();">
         <i class="fa-solid fa-right-from-bracket"></i><span>Logout</span>
       </a>
     </div>

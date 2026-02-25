@@ -67,6 +67,12 @@ class LogoutView(View):
         if next_url and next_url.startswith('/') and not next_url.startswith('//'):
             login_url = reverse('accounts:login') + '?next=' + next_url
             return redirect(login_url)
+        # Redirect to the main website landing page if configured,
+        # otherwise fall back to the login page
+        from django.conf import settings
+        website_url = getattr(settings, 'WEBSITE_URL', '')
+        if website_url:
+            return redirect(website_url)
         return redirect('accounts:login')
 
 

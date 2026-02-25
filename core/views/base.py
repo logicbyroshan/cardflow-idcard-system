@@ -798,6 +798,10 @@ def idcard_actions(request, table_id):
         user_role=get_user_role(user),
     )
     
+    # Provide the correct base URL for HTMX requests in the template
+    from django.urls import reverse
+    context['actions_base_url'] = reverse('idcard_actions', args=[table.id])
+    
     # HTMX partial response — return only the table container
     if is_htmx(request):
         return render(request, 'partials/idcard/table-container.html', context)

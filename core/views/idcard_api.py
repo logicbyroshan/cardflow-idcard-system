@@ -316,7 +316,11 @@ def api_create_table_from_xlsx(request, group_id):
             uploaded_file.seek(0)
             ws = wb.active
             raw_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), ())
-            headers = [str(cell).strip() if cell is not None else '' for cell in raw_row]
+            headers = [
+                str(cell).strip().replace('_x000D_', '').replace('_X000D_', '').replace('_x000d_', '').replace('\r', '')
+                if cell is not None else ''
+                for cell in raw_row
+            ]
             wb.close()
     except Exception as exc:
         logger.error("Failed to read XLSX headers: %s", exc)
@@ -1521,7 +1525,7 @@ def api_idcard_bulk_upload(request, table_id):
                         # Get header row (first row)
                         for cell in ws[1]:
                             if cell.value:
-                                headers.append(str(cell.value).strip())
+                                headers.append(str(cell.value).strip().replace('_x000D_', '').replace('_X000D_', '').replace('_x000d_', '').replace('\r', ''))
                         
                         # Get data rows
                         for row in ws.iter_rows(min_row=2, values_only=True):
@@ -1752,6 +1756,9 @@ def api_idcard_bulk_upload(request, table_id):
                                         value = str(value).upper()
                                 else:
                                     value = str(value).strip().upper()  # Convert to uppercase
+                                # Clean openpyxl carriage-return artifacts
+                                if isinstance(value, str):
+                                    value = value.replace('_X000D_', '').replace('_x000D_', '').replace('_x000d_', '').replace('\r\n', '\n').replace('\r', '')
                                 field_data[field_name] = value
                             else:
                                 field_data[field_name] = ''
