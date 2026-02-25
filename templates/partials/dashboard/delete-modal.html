@@ -11,16 +11,28 @@
       </button>
     </div>
     <div class="modal-body">
-      <div class="flex flex-col items-center text-center py-2">
-        <div class="w-10 h-10 rounded-sm bg-danger-bg flex items-center justify-center mb-2">
-          <i class="fa-solid fa-triangle-exclamation text-danger text-sm"></i>
+      <div class="flex flex-col items-center text-center" style="padding:18px 12px 8px">
+        <div style="width:52px;height:52px;border-radius:50%;background:var(--color-danger-bg,#fee2e2);display:flex;align-items:center;justify-content:center;margin-bottom:14px">
+          <i class="fa-solid fa-triangle-exclamation" style="font-size:22px;color:var(--color-danger,#ef4444)"></i>
         </div>
-        <p class="text-sm text-gray-600 mb-1">Table: <strong id="dashDeleteTableName"></strong></p>
-        <p class="text-sm text-gray-600 mb-1">This will permanently delete <strong id="dashDeleteCount"></strong> cards from <strong>ALL lists</strong>.</p>
-        <p class="text-xs text-danger font-semibold mb-2">This action CANNOT be undone.</p>
-        <p class="text-sm text-gray-700 mb-1">Enter the 6-digit code below to confirm:</p>
-        <div class="bg-danger-bg border-2 border-danger-light text-danger font-bold mb-2 px-2 py-1 text-lg tracking-widest rounded-sm" id="dashDeleteCode"></div>
-        <input type="text" id="dashDeleteCodeInput" maxlength="6" placeholder="Enter code here" class="form-input text-center font-semibold mb-2 w-44 tracking-wider text-xs">
+        <p style="font-size:15px;font-weight:600;color:#1f2937;margin:0 0 4px">Delete All ID Cards?</p>
+        <p class="text-sm text-gray-600" style="margin-bottom:6px">Table: <strong id="dashDeleteTableName"></strong></p>
+        <p class="text-sm text-gray-600" style="margin-bottom:12px">This will permanently delete <strong id="dashDeleteCount"></strong> cards from <strong>ALL lists</strong>.</p>
+
+        <div style="width:100%;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;text-align:left;margin-bottom:14px">
+          <p style="font-size:12px;color:#991b1b;font-weight:600;margin:0 0 6px;display:flex;align-items:center;gap:6px">
+            <i class="fa-solid fa-circle-exclamation"></i> Warning
+          </p>
+          <ul style="margin:0;padding:0 0 0 16px;font-size:12px;color:#7f1d1d;line-height:1.7">
+            <li>All ID cards will be permanently deleted</li>
+            <li>Cards from all lists (Pool, Active, Printed) will be removed</li>
+            <li>This action <strong>CANNOT</strong> be undone</li>
+          </ul>
+        </div>
+
+        <p style="font-size:13px;color:#374151;margin:0 0 8px;font-weight:500">Enter the 6-digit code to confirm:</p>
+        <div style="background:var(--color-danger-bg,#fee2e2);border:2px solid #fca5a5;color:var(--color-danger,#ef4444);font-weight:700;padding:6px 16px;font-size:18px;letter-spacing:4px;border-radius:6px;margin-bottom:10px" id="dashDeleteCode"></div>
+        <input type="text" id="dashDeleteCodeInput" maxlength="6" placeholder="Enter code here" class="form-input text-center font-semibold w-44 tracking-wider text-xs" style="margin-bottom:4px">
       </div>
     </div>
     <div class="modal-footer">

@@ -22,12 +22,23 @@ Required JavaScript handlers:
             </button>
         </div>
         <div class="modal-body">
-            <div class="delete-warning">
-                <div class="delete-icon">
-                    <i class="fa-solid fa-trash-can"></i>
+            <div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:18px 12px 8px">
+                <div style="width:52px;height:52px;border-radius:50%;background:#fee2e2;display:flex;align-items:center;justify-content:center;margin-bottom:14px">
+                    <i class="fa-solid fa-trash-can" style="font-size:22px;color:#ef4444"></i>
                 </div>
-                <p>Are you sure you want to delete <strong id="deleteStaffName">this {{ item_name|default:'item' }}</strong>?</p>
-                <p class="delete-note"><i class="fa-solid fa-exclamation-circle"></i>This action cannot be undone.</p>
+                <p style="font-size:15px;font-weight:600;color:#1f2937;margin:0 0 4px">Delete {{ item_name|default:'item' }}?</p>
+                <p style="font-size:13px;color:#6b7280;margin:0 0 14px">
+                    You are about to delete <strong id="deleteStaffName" style="color:#1f2937">this {{ item_name|default:'item' }}</strong>.
+                </p>
+                <div style="width:100%;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;text-align:left">
+                    <p style="font-size:12px;color:#991b1b;font-weight:600;margin:0 0 6px;display:flex;align-items:center;gap:6px">
+                        <i class="fa-solid fa-circle-exclamation"></i> Warning
+                    </p>
+                    <ul style="margin:0;padding:0 0 0 16px;font-size:12px;color:#7f1d1d;line-height:1.7">
+                        <li>All associated data will be permanently removed</li>
+                        <li>This action cannot be undone</li>
+                    </ul>
+                </div>
             </div>
         </div>
         <div class="modal-footer">

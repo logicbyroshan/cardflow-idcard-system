@@ -310,10 +310,10 @@ body[style*="overflow:hidden"] {
   background: #fff;
   border-radius: 10px;
   padding: 24px 22px 20px;
-  width: 600px;
+  width: 420px;
   max-width: 95vw;
-  min-height: 500px;
-  max-height: 650px;
+  min-height: auto;
+  max-height: 90vh;
   overflow-y: auto;
   text-align: center;
   box-shadow: 0 12px 32px rgba(0,0,0,0.18), 0 2px 6px rgba(0,0,0,0.08);

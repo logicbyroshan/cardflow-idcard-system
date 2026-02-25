@@ -287,10 +287,10 @@
     background: var(--card-bg, #1e2030);
     border-radius: 10px;
     border: 1px solid var(--border-color, rgba(255,255,255,0.1));
-    width: 600px;
+    width: 420px;
     max-width: 95vw;
-    min-height: 500px;
-    max-height: 650px;
+    min-height: auto;
+    max-height: 90vh;
     overflow: auto;
   }
   

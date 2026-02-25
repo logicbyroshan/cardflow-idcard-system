@@ -86,6 +86,15 @@
             </div>
             <h4 class="wa-confirm-title" id="waConfirmTitle">Are you sure?</h4>
             <p class="wa-confirm-text" id="waConfirmText">This action cannot be undone.</p>
+            <div id="waConfirmWarning" style="width:100%;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;text-align:left;margin-bottom:16px">
+                <p style="font-size:12px;color:#991b1b;font-weight:600;margin:0 0 6px;display:flex;align-items:center;gap:6px">
+                    <i class="fa-solid fa-circle-exclamation"></i> Warning
+                </p>
+                <ul style="margin:0;padding:0 0 0 16px;font-size:12px;color:#7f1d1d;line-height:1.7" id="waConfirmWarningList">
+                    <li>This action may affect your data</li>
+                    <li>Please confirm before proceeding</li>
+                </ul>
+            </div>
             <div class="wa-confirm-actions">
                 <button type="button" class="btn btn-neutral" id="waConfirmCancel">Cancel</button>
                 <button type="button" class="btn btn-danger" id="waConfirmOk">Confirm</button>
@@ -111,6 +120,8 @@
             const textEl  = document.getElementById('waConfirmText');
             const okBtn   = document.getElementById('waConfirmOk');
             const cancelBtn = document.getElementById('waConfirmCancel');
+            const warningBox = document.getElementById('waConfirmWarning');
+            const warningList = document.getElementById('waConfirmWarningList');
 
             titleEl.textContent = opts.title || 'Are you sure?';
             textEl.textContent  = opts.text  || 'This action cannot be undone.';
@@ -121,6 +132,17 @@
                 iconEl.innerHTML = '<i class="' + opts.icon + '"></i>';
             } else {
                 iconEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+            }
+
+            /* Warning box: show custom warnings or default */
+            if (opts.warnings && opts.warnings.length) {
+                warningList.innerHTML = opts.warnings.map(w => '<li>' + w + '</li>').join('');
+                warningBox.style.display = '';
+            } else if (opts.hideWarning) {
+                warningBox.style.display = 'none';
+            } else {
+                warningList.innerHTML = '<li>This action may affect your data</li><li>Please confirm before proceeding</li>';
+                warningBox.style.display = '';
             }
 
             overlay.classList.add('show');

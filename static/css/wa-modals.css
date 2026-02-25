@@ -20,10 +20,10 @@
     background: #fff;
     border-radius: 10px;
     box-shadow: 0 12px 32px rgba(0,0,0,0.18), 0 2px 6px rgba(0,0,0,0.08);
-    width: 600px;
+    width: 420px;
     max-width: 95vw;
-    min-height: 500px;
-    max-height: 650px;
+    min-height: auto;
+    max-height: 90vh;
     overflow-y: auto;
     animation: waSlide 0.2s ease;
 }
@@ -93,11 +93,11 @@
     background: #fff;
     border-radius: 10px;
     box-shadow: 0 12px 32px rgba(0,0,0,0.18), 0 2px 6px rgba(0,0,0,0.08);
-    width: 600px;
+    width: 420px;
     max-width: 95vw;
     text-align: center;
     padding: 28px 24px 22px;
-    max-height: 650px;
+    max-height: 90vh;
     overflow-y: auto;
     animation: waSlide 0.15s ease;
 }

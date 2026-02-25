@@ -318,9 +318,15 @@ async function handleCreateNotif(e) {
 }
 
 /* ============ Helpers ============ */
-// Use canonical getCSRFToken from core/api.js (exposed as window.getCSRFToken)
+// Read CSRF token directly from cookie / meta / hidden input
 function getCSRFToken() {
-  return (typeof window.getCSRFToken === 'function') ? window.getCSRFToken() : '';
+  const cookie = document.cookie.split(';').find(c => c.trim().startsWith('csrftoken='));
+  if (cookie) return cookie.split('=')[1];
+  const meta = document.querySelector('meta[name="csrf-token"]');
+  if (meta) return meta.getAttribute('content');
+  const hidden = document.querySelector('input[name="csrfmiddlewaretoken"]');
+  if (hidden) return hidden.value;
+  return '';
 }
 
 function escHtml(str) {

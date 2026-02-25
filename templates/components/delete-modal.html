@@ -37,17 +37,23 @@ JS contract (Alpine bridge):
 
     <!-- Body -->
     <div class="modal-body">
-      <div class="flex flex-col items-center text-center py-2">
-        <div class="w-10 h-10 rounded-sm bg-danger-bg flex items-center justify-center mb-2">
-          <i class="fa-solid fa-trash-can text-danger text-sm"></i>
+      <div class="flex flex-col items-center text-center" style="padding:18px 12px 8px">
+        <div style="width:52px;height:52px;border-radius:50%;background:var(--color-danger-bg,#fee2e2);display:flex;align-items:center;justify-content:center;margin-bottom:14px">
+          <i class="fa-solid fa-trash-can" style="font-size:22px;color:var(--color-danger,#ef4444)"></i>
         </div>
-        <p class="text-gray-700 text-sm">
-          Are you sure you want to delete
-          <strong id="deleteStaffName">this {{ item_name|default:'item' }}</strong>?
+        <p style="font-size:15px;font-weight:600;color:#1f2937;margin:0 0 4px">Delete {{ item_name|default:'item' }}?</p>
+        <p style="font-size:13px;color:#6b7280;margin:0 0 14px">
+          You are about to delete <strong id="deleteStaffName" style="color:#1f2937">this {{ item_name|default:'item' }}</strong>.
         </p>
-        <p class="text-gray-400 mt-1 flex items-center gap-1 text-xs">
-          <i class="fa-solid fa-exclamation-circle"></i> This action cannot be undone.
-        </p>
+        <div style="width:100%;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;text-align:left">
+          <p style="font-size:12px;color:#991b1b;font-weight:600;margin:0 0 6px;display:flex;align-items:center;gap:6px">
+            <i class="fa-solid fa-circle-exclamation"></i> Warning
+          </p>
+          <ul style="margin:0;padding:0 0 0 16px;font-size:12px;color:#7f1d1d;line-height:1.7">
+            <li>All associated data will be permanently removed</li>
+            <li>This action cannot be undone</li>
+          </ul>
+        </div>
       </div>
     </div>
 
