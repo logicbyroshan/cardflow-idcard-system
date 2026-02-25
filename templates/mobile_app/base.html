@@ -43,8 +43,9 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{% static 'mobile/css/mobile.css' %}">
 
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="{% static 'mobile/manifest.json' %}">
+    <!-- PWA Manifest (dynamic — served by Django with correct scope) -->
+    <link rel="manifest" href="/app/manifest.json">
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'mobile/images/icon-192.png' %}">
 
     {% block extra_head %}{% endblock %}
 
@@ -89,6 +90,16 @@
 
     <!-- Custom JS -->
     <script src="{% static 'mobile/js/app.js' %}"></script>
+
+    <!-- PWA: Register mobile service worker via Django-served endpoint -->
+    <script>
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/app/sw.js', { scope: '/' })
+            .then(function(reg) { console.log('Mobile SW registered, scope:', reg.scope); })
+            .catch(function(err) { console.warn('Mobile SW registration failed:', err); });
+    }
+    </script>
+
     {% block extra_js %}{% endblock %}
 </body>
 </html>

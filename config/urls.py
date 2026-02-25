@@ -45,6 +45,19 @@ def _protected_media_serve(request, path, document_root=None):
             return HttpResponseForbidden('Access denied')
     return serve(request, path, document_root=document_root)
 
+def _serve_mobile_sw(request):
+    """Serve mobile PWA service worker with correct Service-Worker-Allowed header."""
+    import os
+    from django.http import FileResponse, Http404
+    filepath = os.path.join(settings.BASE_DIR, 'static', 'mobile', 'sw.js')
+    if not os.path.isfile(filepath):
+        raise Http404
+    response = FileResponse(open(filepath, 'rb'), content_type='application/javascript')
+    response['Service-Worker-Allowed'] = '/'
+    response['Cache-Control'] = 'no-cache'
+    return response
+
+
 urlpatterns = [
     # Health check — no auth, used by load balancers / CI/CD
     path('api/health/', health_check, name='health_check'),
@@ -72,6 +85,8 @@ urlpatterns = [
     path('panel/website/', include('website.admin_urls')),
 
     # ==================== PWA MOBILE APP (/app/) ====================
+    path('app/manifest.json', lambda r: _serve_pwa_file(r, 'manifest.json'), name='mobile_pwa_manifest'),
+    path('app/sw.js', _serve_mobile_sw, name='mobile_pwa_sw'),
     path('app/', include('PWA.mobile_app.urls')),
 
     # ==================== PUBLIC WEBSITE (/) ====================

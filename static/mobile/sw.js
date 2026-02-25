@@ -1,18 +1,19 @@
-// Service Worker for PWA offline support
-const CACHE_NAME = 'idcard-mobile-v2';
+// Service Worker for Mobile PWA (ID Card Manager)
+// Scope: '/' — covers /app/ pages AND /auth/login/ so login stays in-app.
+// Network-first strategy; only caches static shell assets for offline fallback.
+const CACHE_NAME = 'idcard-mobile-v3';
 const STATIC_ASSETS = [
     '/app/',
     '/static/mobile/css/mobile.css',
     '/static/mobile/js/app.js',
-    '/static/mobile/manifest.json',
 ];
 
 // Install: cache static assets
 self.addEventListener('install', event => {
     event.waitUntil(
-        caches.open(CACHE_NAME).then(cache => {
-            return cache.addAll(STATIC_ASSETS);
-        })
+        caches.open(CACHE_NAME)
+            .then(cache => cache.addAll(STATIC_ASSETS))
+            .catch(() => {}) // Don't block install if pre-cache fails
     );
     self.skipWaiting();
 });
@@ -29,18 +30,21 @@ self.addEventListener('activate', event => {
     self.clients.claim();
 });
 
-// Fetch: network-first strategy (only cache static assets, not API responses)
+// Fetch: network-first, only cache GET requests for static/app assets
 self.addEventListener('fetch', event => {
-    // Skip non-GET requests and API calls
     if (event.request.method !== 'GET') return;
+
     const url = event.request.url;
-    if (url.includes('/api/') || url.includes('/panel/')) return;
+    // Never cache API calls, admin panel pages, or media files
+    if (url.includes('/api/') || url.includes('/admin/') || url.includes('/media/')) return;
 
     event.respondWith(
         fetch(event.request)
             .then(response => {
-                const clone = response.clone();
-                caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+                if (response.ok) {
+                    const clone = response.clone();
+                    caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+                }
                 return response;
             })
             .catch(() => caches.match(event.request))

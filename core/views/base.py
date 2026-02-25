@@ -16,6 +16,7 @@ from django.conf import settings as django_settings
 from django.core.cache import cache
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
+from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
@@ -417,9 +418,9 @@ def api_global_search(request):
                 'subtitle': f'{client_name} • {table_name} • {card.get_status_display()}',
                 'matched_field': matched_field or 'Field',
                 'matched_value': matched_value or query,
-                'url': (f'/panel/client/table/{card.table.id}/actions/?status={card.status}&highlight={card.id}'
+                'url': (f'{reverse("client:idcard_actions", args=[card.table.id])}?status={card.status}&highlight={card.id}'
                         if is_client_role else
-                        f'/panel/table/{card.table.id}/cards/?status={card.status}&highlight={card.id}') if card.table else '#',
+                        f'{reverse("idcard_actions", args=[card.table.id])}?status={card.status}&highlight={card.id}') if card.table else '#',
                 'icon': 'fa-id-card',
                 'status': card.status,
                 'photo': photo_url,

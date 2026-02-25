@@ -19,6 +19,7 @@ For local development (single domain), config/urls.py is used instead.
 """
 import json
 import os
+import re
 
 from django.contrib import admin
 from django.urls import path, include
@@ -52,24 +53,65 @@ def _protected_media_serve(request, path, document_root=None):
     return serve(request, path, document_root=document_root)
 
 
+def _is_mobile_ua(request):
+    """Quick mobile user-agent check."""
+    ua = request.META.get('HTTP_USER_AGENT', '')
+    return bool(re.search(
+        r'Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini',
+        ua, re.I,
+    ))
+
+
 @require_GET
 def panel_manifest_json(request):
     """
     Serve the PWA manifest dynamically for the panel subdomain.
 
-    Uses the static manifest as base but overrides start_url to the
-    correct panel-subdomain path (no /panel/ prefix).
-    """
-    manifest_path = os.path.join(settings.BASE_DIR, 'static', 'website', 'manifest.json')
-    try:
-        with open(manifest_path, 'r', encoding='utf-8') as f:
-            manifest = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        raise Http404
+    Mobile devices  → mobile app manifest  (start_url: /app/)
+    Desktop devices → admin panel manifest (start_url: /auth/login/)
 
-    # Override start_url for the panel subdomain (no /panel/ prefix)
-    manifest['start_url'] = '/auth/login/'
-    manifest['scope'] = '/'
+    Both use scope '/' so that login redirects stay inside the PWA
+    standalone window.
+    """
+    if _is_mobile_ua(request):
+        # Mobile → ID Card Manager (mobile app)
+        manifest = {
+            'name': 'ID Card Manager',
+            'short_name': 'IDCard',
+            'description': 'Mobile ID Card Management System',
+            'start_url': '/app/',
+            'scope': '/',
+            'display': 'standalone',
+            'background_color': '#667eea',
+            'theme_color': '#667eea',
+            'orientation': 'portrait',
+            'icons': [
+                {
+                    'src': '/static/mobile/images/icon-192.png',
+                    'sizes': '192x192',
+                    'type': 'image/png',
+                    'purpose': 'any maskable',
+                },
+                {
+                    'src': '/static/mobile/images/icon-512.png',
+                    'sizes': '512x512',
+                    'type': 'image/png',
+                    'purpose': 'any maskable',
+                },
+            ],
+        }
+    else:
+        # Desktop → Admin Panel
+        manifest_path = os.path.join(settings.BASE_DIR, 'static', 'website', 'manifest.json')
+        try:
+            with open(manifest_path, 'r', encoding='utf-8') as f:
+                manifest = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            raise Http404
+
+        # Override start_url for the panel subdomain (no /panel/ prefix)
+        manifest['start_url'] = '/auth/login/'
+        manifest['scope'] = '/'
 
     response = JsonResponse(manifest)
     response['Content-Type'] = 'application/manifest+json'
@@ -79,6 +121,17 @@ def panel_manifest_json(request):
 def _serve_panel_sw(request):
     """Serve the PWA service worker for the panel subdomain."""
     filepath = os.path.join(settings.BASE_DIR, 'static', 'website', 'sw.js')
+    if not os.path.isfile(filepath):
+        raise Http404
+    response = FileResponse(open(filepath, 'rb'), content_type='application/javascript')
+    response['Service-Worker-Allowed'] = '/'
+    response['Cache-Control'] = 'no-cache'
+    return response
+
+
+def _serve_mobile_sw(request):
+    """Serve the mobile PWA service worker with correct scope header."""
+    filepath = os.path.join(settings.BASE_DIR, 'static', 'mobile', 'sw.js')
     if not os.path.isfile(filepath):
         raise Http404
     response = FileResponse(open(filepath, 'rb'), content_type='application/javascript')
@@ -112,6 +165,9 @@ urlpatterns = [
     path('website/', include('website.admin_urls')),
 
     # ==================== PWA MOBILE APP (/app/) ====================
+    # Mobile manifest & SW served via Django for correct headers
+    path('app/manifest.json', panel_manifest_json, name='mobile_pwa_manifest'),
+    path('app/sw.js', _serve_mobile_sw, name='mobile_pwa_sw'),
     path('app/', include('PWA.mobile_app.urls')),
 ]
 

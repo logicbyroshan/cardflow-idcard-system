@@ -8,6 +8,28 @@ from django.conf import settings
 from core.utils.threaded_email import send_html_email_async
 
 
+def _get_panel_login_url(request=None):
+    """
+    Build the panel login URL for use in emails.
+
+    Priority:
+      1. PANEL_URL setting  → https://panel.adarshbhopal.in/auth/login/
+      2. request (if given) → build_absolute_uri('/auth/login/')
+      3. SITE_URL fallback  → {SITE_URL}/panel/auth/login/  (local dev)
+    """
+    panel_url = getattr(settings, 'PANEL_URL', '')
+    if panel_url:
+        return f'{panel_url}/auth/login/'
+
+    if request:
+        # On subdomain, path is already stripped; build clean URL
+        return request.build_absolute_uri('/auth/login/')
+
+    # Local dev fallback
+    site_url = getattr(settings, 'SITE_URL', 'http://localhost:8000')
+    return f'{site_url}/panel/auth/login/'
+
+
 def generate_secure_password(length=12):
     """
     Generate a secure random password.
@@ -225,12 +247,8 @@ def send_welcome_email(name, email, password, role, request=None, phone=''):
         if not settings.EMAIL_HOST_USER:
             return False, 'Email settings not configured. Please add EMAIL_HOST_USER in .env file.'
         
-        # Build login URL using SITE_URL from settings
-        site_url = getattr(settings, 'SITE_URL', 'http://localhost:8000')
-        if request:
-            login_url = request.build_absolute_uri('/panel/auth/login/')
-        else:
-            login_url = f'{site_url}/panel/auth/login/'
+        # Build clean login URL (prefers PANEL_URL from settings)
+        login_url = _get_panel_login_url(request)
         
         # Get email templates
         html_content, plain_content = get_welcome_email_template(
@@ -267,11 +285,8 @@ def send_password_changed_notification(name, email, request=None):
         if not settings.EMAIL_HOST_USER:
             return False
 
-        site_url = getattr(settings, 'SITE_URL', 'http://localhost:8000')
-        if request:
-            login_url = request.build_absolute_uri('/panel/auth/login/')
-        else:
-            login_url = f'{site_url}/panel/auth/login/'
+        # Build clean login URL (prefers PANEL_URL from settings)
+        login_url = _get_panel_login_url(request)
 
         html_content = f'''<!DOCTYPE html>
 <html>

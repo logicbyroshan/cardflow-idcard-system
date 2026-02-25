@@ -2,14 +2,8 @@
  * ID Card Manager - Mobile PWA JavaScript
  */
 
-// Register Service Worker for PWA
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/static/mobile/sw.js', { scope: '/app/' })
-            .then(reg => console.log('SW registered:', reg.scope))
-            .catch(err => console.log('SW registration failed:', err));
-    });
-}
+// Service Worker is registered in base.html via Django-served endpoint
+// (ensures Service-Worker-Allowed header is set for scope '/')
 
 // Device detection - block desktop
 function enforceDeviceRestriction() {
