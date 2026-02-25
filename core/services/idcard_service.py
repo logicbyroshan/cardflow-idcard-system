@@ -412,6 +412,8 @@ class IDCardService(BaseService):
         sort_order: str = 'sr-asc',
         image_column: str = '',
         image_condition: str = '',
+        from_date: str = '',
+        to_date: str = '',
     ) -> ServiceResult:
         """List ID Cards for a table with pagination and server-side filtering."""
         from django.db.models.fields.json import KeyTextTransform
@@ -460,6 +462,25 @@ class IDCardService(BaseService):
                 elif image_condition == 'incomplete':
                     cards_query = cards_query.filter(Q(_img__isnull=True) | Q(_img='') | Q(_img='NOT_FOUND'))
             
+            # --- DateTime range filter (download list) ---
+            if status_filter == 'download' and (from_date or to_date):
+                from datetime import datetime as dt
+                from django.utils.timezone import make_aware, is_naive
+                if from_date:
+                    try:
+                        from_dt = dt.fromisoformat(from_date)
+                        from_dt = make_aware(from_dt) if is_naive(from_dt) else from_dt
+                        cards_query = cards_query.filter(downloaded_at__gte=from_dt)
+                    except (ValueError, TypeError):
+                        pass
+                if to_date:
+                    try:
+                        to_dt = dt.fromisoformat(to_date)
+                        to_dt = make_aware(to_dt) if is_naive(to_dt) else to_dt
+                        cards_query = cards_query.filter(downloaded_at__lte=to_dt)
+                    except (ValueError, TypeError):
+                        pass
+
             # --- Sorting ---
             if sort_order == 'sr-desc':
                 cards_query = cards_query.order_by('id')
@@ -485,8 +506,15 @@ class IDCardService(BaseService):
             elif sort_order == 'date-old':
                 cards_query = cards_query.order_by('updated_at')
             else:
-                # Default: sr-asc (newest first = highest ID first)
-                cards_query = cards_query.order_by('-id')
+                # Default: sr-asc — show recently moved cards first
+                # Download list: order by downloaded_at (most recent download first)
+                # Other lists: order by updated_at (most recently moved first)
+                if status_filter == 'download':
+                    cards_query = cards_query.order_by('-downloaded_at', '-id')
+                elif status_filter == 'pool':
+                    cards_query = cards_query.order_by('-deleted_at', '-id')
+                else:
+                    cards_query = cards_query.order_by('-updated_at', '-id')
             
             total_count = cards_query.count()
             cards = cards_query[offset:offset + limit]

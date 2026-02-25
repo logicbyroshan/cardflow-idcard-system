@@ -152,16 +152,16 @@
 /* Removed: .table-wrapper — handled by tailwind-input.css */
 
 .idcard-actions-page .idcard-table {
-    overflow-x: hidden;
+    overflow-x: auto;
     overflow-y: auto;
     scrollbar-width: auto;
     scrollbar-color: #94a3b8 #e2e8f0;
 }
 
-/* Visible scrollbar — vertical only (horizontal hidden since table is 100%) */
+/* Visible scrollbar — both axes */
 .idcard-table::-webkit-scrollbar {
     width: 8px;
-    height: 0;
+    height: 10px;
 }
 
 .idcard-table::-webkit-scrollbar-track {
@@ -511,11 +511,6 @@
     .idcard-actions-page {
         max-width: 100vw;
         overflow-x: hidden;
-    }
-
-    /* Let table be the only horizontal scroller */
-    .idcard-actions-page .idcard-table {
-        overflow-x: auto;
     }
 }
 

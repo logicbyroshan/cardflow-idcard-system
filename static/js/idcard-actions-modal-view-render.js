@@ -214,18 +214,38 @@ function _updateRowInPlace(cardId, cardData) {
             const isNotFound = newValue === 'NOT_FOUND';
             const hasValidImage = newValue && newValue !== '' && !isPending && !isNotFound;
 
-            if (img && hasValidImage) {
+            if (hasValidImage) {
                 // Valid image path — show thumbnail
                 const cacheBuster = '?t=' + Date.now();
                 const thumbPath = window.getThumbPath ? window.getThumbPath(newValue) : newValue;
                 const thumbSrc = thumbPath ? '/media/' + thumbPath + cacheBuster : null;
                 const originalSrc = '/media/' + newValue + cacheBuster;
-                img.src = thumbSrc || originalSrc;
-                img.onerror = function() { this.onerror = null; this.src = originalSrc; };
+
                 // Remove any placeholder that might exist
                 const placeholder = td.querySelector('.no-image');
                 if (placeholder) placeholder.remove();
-                img.style.display = '';
+
+                if (img) {
+                    // Existing img element — just update src
+                    img.src = thumbSrc || originalSrc;
+                    img.onerror = function() { this.onerror = null; this.src = originalSrc; };
+                    img.style.display = '';
+                } else {
+                    // No img element exists (was a placeholder) — create one
+                    var wrapper = td.querySelector('.image-with-edit') || td;
+                    var newImg = document.createElement('img');
+                    newImg.src = thumbSrc || originalSrc;
+                    newImg.alt = fieldName;
+                    newImg.className = 'table-image';
+                    newImg.loading = 'lazy';
+                    newImg.decoding = 'async';
+                    newImg.onerror = function() { this.onerror = null; this.src = originalSrc; };
+                    wrapper.insertBefore(newImg, wrapper.firstChild);
+                }
+
+                // Show edit-photo button if it was hidden
+                var editBtn = td.querySelector('.edit-photo-btn');
+                if (editBtn) editBtn.style.display = '';
             } else {
                 // Image removed, empty, PENDING, or NOT_FOUND — hide img, show placeholder
                 if (img) {

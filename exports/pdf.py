@@ -133,6 +133,20 @@ class PdfExporter:
     # Landscape A4 content width (29.7cm page - 0.5cm left - 0.5cm right margins)
     PAGE_CONTENT_WIDTH_CM = 28.7
 
+    # ── Page height budget (all values in cm) ──
+    # A4 landscape height = 21cm
+    # @page margin: top=1.5cm, bottom=0.3cm → content height = 19.2cm
+    PAGE_CONTENT_HEIGHT_CM = 19.2
+    # Inline footer: 3 lines at 6.5pt, ~0.15cm top margin, page number
+    FOOTER_HEIGHT_CM = 0.85
+    # Safety margin to account for xhtml2pdf rendering differences
+    PAGE_SAFETY_MARGIN_CM = 0.15
+    # Data row height (image 2.5cm + 1mm padding top/bottom)
+    DATA_ROW_HEIGHT_CM = 2.7
+    # Header row: base padding + per-line text height
+    HEADER_BASE_CM = 0.30  # 4px top + 4px bottom padding
+    HEADER_LINE_CM = 0.24  # ~7pt text + leading per line
+
     # Field name keywords that indicate non-wrappable content
     NOWRAP_KEYWORDS = [
         'mobile', 'phone', 'contact', 'tel', 'cell',
@@ -203,12 +217,15 @@ class PdfExporter:
             column_configs = self._build_column_configs(ordered_fields, cards_list)
 
             # Build row data (with placeholder images for missing photos)
-            rows = self._build_rows(ordered_fields, cards_list)
+            rows = self._build_rows(ordered_fields, cards_list, column_configs)
 
-            # Group rows into pages (6 per page, class-break aware)
+            # Group rows into pages (dynamic RPP, class-break aware)
             class_field_name = get_class_field_name(table.fields)
+            rpp = self._compute_records_per_page(
+                column_configs, has_instructions=bool(template_instructions)
+            )
             pages = self._group_rows_into_pages(
-                rows, cards_list, class_field_name, records_per_page=6
+                rows, cards_list, class_field_name, records_per_page=rpp
             )
 
             # Get institution name
@@ -314,6 +331,59 @@ class PdfExporter:
         name_lower = field_name.lower().replace(' ', '').replace('_', '').replace('.', '')
         return any(kw.replace(' ', '') in name_lower for kw in cls.NOWRAP_KEYWORDS)
 
+    def _estimate_header_lines(self, column_configs):
+        """Estimate max number of text lines the tallest column header needs.
+
+        Uses column width (%) to compute available characters per line,
+        then simulates word-boundary wrapping on each label.
+        """
+        max_lines = 1
+        for cfg in column_configs:
+            label = cfg.get('label', '')
+            col_width_cm = (cfg['width'] / 100) * self.PAGE_CONTENT_WIDTH_CM
+            # Usable text width = column width - left/right padding (~6px each) - borders
+            usable_cm = col_width_cm - 0.45
+            if usable_cm <= 0:
+                usable_cm = 0.4
+            # At 7pt Helvetica, ~1 uppercase char ≈ 0.13cm
+            chars_per_line = max(2, int(usable_cm / 0.13))
+            # Simulate word-wrap
+            words = label.split()
+            lines = 1
+            current_len = 0
+            for word in words:
+                word_len = len(word)
+                if current_len > 0 and current_len + 1 + word_len > chars_per_line:
+                    lines += 1
+                    current_len = word_len
+                else:
+                    current_len += (1 if current_len > 0 else 0) + word_len
+            # A single very long word that exceeds the line width also wraps
+            if len(label.replace(' ', '')) > chars_per_line and lines == 1:
+                lines = max(1, -(-len(label) // chars_per_line))  # ceil div
+            max_lines = max(max_lines, lines)
+        return max_lines
+
+    def _compute_records_per_page(self, column_configs, has_instructions=False):
+        """Compute how many data rows safely fit on one page.
+
+        Takes into account:
+          - Dynamic header height (based on column label wrapping)
+          - Inline footer height
+          - Instructions block on last page (optional)
+          - Safety margin for xhtml2pdf rendering quirks
+        """
+        header_lines = self._estimate_header_lines(column_configs)
+        header_height = self.HEADER_BASE_CM + header_lines * self.HEADER_LINE_CM
+
+        budget = (self.PAGE_CONTENT_HEIGHT_CM
+                  - self.FOOTER_HEIGHT_CM
+                  - self.PAGE_SAFETY_MARGIN_CM
+                  - header_height)
+
+        rpp = int(budget / self.DATA_ROW_HEIGHT_CM)
+        return max(3, min(rpp, 6))
+
     @classmethod
     def _looks_numeric_or_date(cls, value: str) -> bool:
         """Check if a value is primarily numeric/date-like (shouldn't be wrapped)."""
@@ -387,6 +457,9 @@ class PdfExporter:
                 field = ordered_fields[i - 1]  # offset for Sr No at index 0
                 render_w = self._get_image_render_width_cm(cards, field['name'])
                 cfg['width'] = ((render_w + IMAGE_CELL_PADDING_CM) / self.PAGE_CONTENT_WIDTH_CM) * 100
+                # Store fixed render width so all images in this column
+                # get the same dimensions (height=2.5cm, width=render_w)
+                cfg['image_width_cm'] = round(render_w, 2)
 
         # Step 2: Remaining percentage for text columns
         image_pct = sum(configs[i]['width'] for i in image_indices)
@@ -434,11 +507,8 @@ class PdfExporter:
         """Insert word-break opportunities in text for PDF column wrapping.
 
         xhtml2pdf has limited CSS word-wrap support, so we insert HTML
-        break-opportunity hints (<wbr>) after commas, slashes, dashes
-        so long values wrap at natural boundaries instead of mid-word.
-
-        For non-wrappable content (phone numbers, DOB, numeric IDs) we
-        skip the <wbr> insertion entirely so the value stays on one line.
+        break-opportunity hints (<wbr>) after natural boundaries (commas,
+        slashes, spaces) so long values wrap without breaking mid-word.
 
         Returns a mark_safe string so Django templates render the HTML.
         """
@@ -447,11 +517,10 @@ class PdfExporter:
             return mark_safe('')
         # Escape HTML entities first to avoid XSS
         safe_text = html_escape(text)
-        # Skip wrap hints for non-wrappable fields or short values
-        if nowrap or len(text) <= 14 or cls._looks_numeric_or_date(text):
+        # Short values don't need break hints
+        if len(text) <= 14:
             return mark_safe(safe_text)
         # Insert <wbr> after natural break characters: , / ; :
-        # (NOT after . or - as those appear inside dates/phones)
         safe_text = _re.sub(r'([,/;:])', r'\1<wbr>', safe_text)
         # Insert <wbr> after spaces for long wrappable text
         safe_text = safe_text.replace(' ', ' <wbr>')
@@ -460,14 +529,23 @@ class PdfExporter:
     def _build_rows(
         self,
         ordered_fields: List[Dict[str, Any]],
-        cards: list
+        cards: list,
+        column_configs: List[Dict[str, Any]] = None,
     ) -> List[List[Dict[str, Any]]]:
         """
         Build row data for the template.
-        Each cell: { align, is_image, content }
+        Each cell: { align, is_image, content, image_width_cm (for images) }
 
         PDF-only rule: missing images get a placeholder image.
         """
+        # Build a map: field_index → image_width_cm from column_configs
+        # column_configs[0] = Sr No, column_configs[1..] = fields
+        image_width_map = {}
+        if column_configs:
+            for i, cfg in enumerate(column_configs):
+                if cfg.get('is_image') and 'image_width_cm' in cfg:
+                    image_width_map[i - 1] = cfg['image_width_cm']  # field index
+
         rows = []
 
         for sr_no, card in enumerate(cards, start=1):
@@ -481,21 +559,22 @@ class PdfExporter:
                 'content': str(sr_no),
             })
 
-            for field in ordered_fields:
+            for field_idx, field in enumerate(ordered_fields):
                 name = field['name']
                 is_image = field.get('is_image', False)
                 val = fd.get(name, '')
-                is_nowrap = (not is_image) and self._is_nowrap_field(name)
 
                 cell = {
                     'align': 'left' if any(w in name.lower() for w in ['name', 'address']) else 'center',
                     'is_image': is_image,
                     'is_placeholder': False,
-                    'nowrap': is_nowrap,
                     'content': '',
                 }
 
                 if is_image:
+                    # Fixed image width from column config
+                    cell['image_width_cm'] = image_width_map.get(field_idx, 1.9)
+
                     # Phase 4: Use thumbnail if available for smaller PDF file size
                     img_path = ImageService.get_image_path_for_export(
                         card=card,
@@ -504,26 +583,18 @@ class PdfExporter:
                         fallback_to_field_data=True
                     )
                     if img_path and is_valid_image_path(img_path):
-                        # Resolve to absolute filesystem path for xhtml2pdf
                         abs_path = os.path.join(settings.MEDIA_ROOT, img_path)
                         if os.path.isfile(abs_path):
                             cell['content'] = abs_path
                         else:
-                            # File missing on disk → placeholder
                             cell['content'] = _PLACEHOLDER_IMAGE_PATH
                             cell['is_placeholder'] = True
                     else:
-                        # No image data at all → placeholder
                         cell['content'] = _PLACEHOLDER_IMAGE_PATH
                         cell['is_placeholder'] = True
                 else:
                     formatted = format_field_value(val, uppercase=True)
-                    # Auto-detect nowrap from value content
-                    if not is_nowrap and formatted and self._looks_numeric_or_date(formatted):
-                        cell['nowrap'] = True
-                    cell['content'] = self._wrap_text_for_pdf(
-                        formatted, nowrap=cell['nowrap']
-                    )
+                    cell['content'] = self._wrap_text_for_pdf(formatted)
 
                 row_cells.append(cell)
 

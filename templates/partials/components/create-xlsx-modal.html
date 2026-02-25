@@ -1,28 +1,31 @@
 {% comment %}
-Create with XLSX — 2-step center modal
+Create with XLSX — 3-step center modal
 Step 1: Select XLSX/CSV file (required)
-Step 2: Optionally add photo ZIP files
+Step 2: Preview detected fields (column names, types, mandatory)
+Step 3: Optionally add photo ZIP files
 
 Include this partial on any page that needs the feature.
-Requires: Alpine.js x-data context with openModal/closeModal, and the
-JS block at the bottom which wires up the logic.
+Requires: Alpine.js x-data context with openModal/closeModal, SheetJS (xlsx.full.min.js),
+and the JS block at the bottom which wires up the logic.
 {% endcomment %}
 
 <!-- Create with XLSX Modal -->
 <div class="center-modal-overlay center-modal-theme-green"
      x-show="activeModal === 'createXlsx'" x-transition.opacity
      style="display:none;">
-  <div class="center-modal-card" style="text-align:left;"
+  <div class="center-modal-card" style="text-align:left;max-width:560px;"
        @click.stop x-show="activeModal === 'createXlsx'"
        x-transition:enter="transition ease-out duration-200"
        x-transition:enter-start="opacity-0 scale-95"
        x-transition:enter-end="opacity-100 scale-100">
 
-    <!-- Step indicator -->
+    <!-- Step indicator (3 steps) -->
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
       <div id="cxStep1Dot" style="width:8px;height:8px;border-radius:50%;background:#22c55e;"></div>
-      <div style="flex:1;height:2px;background:#e5e7eb;" id="cxStepLine"><div id="cxStepLineFill" style="width:0%;height:100%;background:#22c55e;transition:width 0.3s;"></div></div>
+      <div style="flex:1;height:2px;background:#e5e7eb;" id="cxStepLine1"><div id="cxStepLineFill1" style="width:0%;height:100%;background:#22c55e;transition:width 0.3s;"></div></div>
       <div id="cxStep2Dot" style="width:8px;height:8px;border-radius:50%;background:#e5e7eb;"></div>
+      <div style="flex:1;height:2px;background:#e5e7eb;" id="cxStepLine2"><div id="cxStepLineFill2" style="width:0%;height:100%;background:#22c55e;transition:width 0.3s;"></div></div>
+      <div id="cxStep3Dot" style="width:8px;height:8px;border-radius:50%;background:#e5e7eb;"></div>
     </div>
 
     <!-- Step 1: XLSX Upload -->
@@ -61,8 +64,49 @@ JS block at the bottom which wires up the logic.
       </div>
     </div>
 
-    <!-- Step 2: Optional ZIP Photos -->
+    <!-- Step 2: Field Preview -->
     <div id="cxStep2" style="display:none;">
+      <div class="center-modal-icon" style="text-align:center;"><i class="fa-solid fa-table-columns" style="font-size:28px;color:#3b82f6;"></i></div>
+      <h4 class="center-modal-title" style="text-align:center;">Field Preview</h4>
+      <p class="center-modal-subtitle" style="text-align:center;font-size:13px;">
+        Review detected columns, their types, and mark mandatory fields.
+      </p>
+
+      <!-- Data rows count -->
+      <div id="cxDataRowsInfo" style="margin:8px 0;padding:6px 10px;background:#eff6ff;border-radius:6px;border:1px solid #bfdbfe;display:flex;align-items:center;gap:6px;">
+        <i class="fa-solid fa-table-list" style="color:#3b82f6;font-size:12px;"></i>
+        <span style="font-size:12px;font-weight:500;color:#1e40af;" id="cxDataRowsCount">0 data rows found</span>
+      </div>
+
+      <!-- Field table -->
+      <div style="max-height:300px;overflow-y:auto;margin-top:8px;border:1px solid #e2e8f0;border-radius:8px;">
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <thead>
+            <tr style="background:#f8fafc;position:sticky;top:0;z-index:1;">
+              <th style="text-align:left;padding:8px 10px;font-weight:600;color:#475569;border-bottom:1px solid #e2e8f0;">#</th>
+              <th style="text-align:left;padding:8px 10px;font-weight:600;color:#475569;border-bottom:1px solid #e2e8f0;">Column Name</th>
+              <th style="text-align:left;padding:8px 10px;font-weight:600;color:#475569;border-bottom:1px solid #e2e8f0;">Type</th>
+              <th style="text-align:center;padding:8px 10px;font-weight:600;color:#475569;border-bottom:1px solid #e2e8f0;">Mandatory</th>
+            </tr>
+          </thead>
+          <tbody id="cxFieldsBody">
+            <!-- Populated by JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="center-modal-actions" style="margin-top:14px;">
+        <button type="button" class="center-modal-btn center-modal-btn-cancel" id="cxBackToStep1">
+          <i class="fa-solid fa-arrow-left" style="margin-right:4px;font-size:11px;"></i> Back
+        </button>
+        <button type="button" class="center-modal-btn center-modal-btn-confirm" id="cxNextToStep3">
+          Next <i class="fa-solid fa-arrow-right" style="margin-left:4px;font-size:11px;"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Step 3: Optional ZIP Photos -->
+    <div id="cxStep3" style="display:none;">
       <div class="center-modal-icon" style="text-align:center;"><i class="fa-solid fa-images" style="font-size:28px;color:#22c55e;"></i></div>
       <h4 class="center-modal-title" style="text-align:center;">Add Photo ZIPs <span style="font-weight:400;font-size:12px;color:#9ca3af;">(optional)</span></h4>
       <p class="center-modal-subtitle" style="text-align:center;font-size:13px;">Upload ZIP files containing images to match with cards. Skip this step if no photos.</p>

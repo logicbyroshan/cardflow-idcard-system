@@ -56,6 +56,11 @@ function listApp() {
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
                     body: JSON.stringify({ card_ids: this.selectedIds, status: status }),
                 });
+                if (!res.ok && !(res.headers.get('content-type') || '').includes('application/json')) {
+                    this.showToast('Server error (' + res.status + ')', 'error');
+                    this.loading = false;
+                    return;
+                }
                 const data = await res.json();
                 if (data.success) {
                     this.showToast(data.message || (this.selectedIds.length + ' ' + label), 'success');
@@ -151,6 +156,10 @@ function listApp() {
             if (this.form.photoFile) fd.append('photo', this.form.photoFile);
             try {
                 const res = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': CSRF }, body: fd });
+                if (!res.ok && !(res.headers.get('content-type') || '').includes('application/json')) {
+                    this.showToast('Server error (' + res.status + ')', 'error');
+                    return;
+                }
                 const data = await res.json();
                 if (data.success) {
                     this.showToast(data.message || (this.editMode ? 'Updated!' : 'Added!'), 'success');

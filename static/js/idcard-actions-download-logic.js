@@ -1,6 +1,7 @@
 // ID Card Actions - Download Logic Sub-module
 // Core download functions: Images, DOCX, XLSX, PDF, and status management
 // Part of IDCardApp module system — registers functions on window.IDCardApp
+// Uses DownloadManager for concurrent downloads with progress, cancel, queuing
 
 (function() {
 'use strict';
@@ -8,25 +9,6 @@
 // ==========================================
 // INTERNAL HELPERS
 // ==========================================
-
-/**
- * Extract filename from Content-Disposition header, or use fallback.
- */
-function _getDownloadFilename(xhr, fallbackExt) {
-    const disposition = xhr.getResponseHeader('Content-Disposition');
-    if (disposition) {
-        // Try filename*= (RFC 5987) first, then filename=
-        let match = disposition.match(/filename\*?=(?:UTF-8''|"?)([^";]+)"?/i);
-        if (match && match[1]) return decodeURIComponent(match[1]);
-    }
-    // Fallback: ClientName_TableName_Status.ext (from globals)
-    const clientName = (typeof CLIENT_NAME !== 'undefined' ? CLIENT_NAME : '').replace(/\s+/g, '');
-    const tableName = (typeof TABLE_NAME !== 'undefined' ? TABLE_NAME : '').replace(/\s+/g, '');
-    const status = (typeof CURRENT_STATUS !== 'undefined' ? CURRENT_STATUS : 'pending');
-    const statusCap = status.charAt(0).toUpperCase() + status.slice(1);
-    const parts = [clientName, tableName, statusCap].filter(Boolean);
-    return (parts.length ? parts.join('_') : 'export') + '.' + fallbackExt;
-}
 
 /**
  * Get current status label for request body.
@@ -84,8 +66,10 @@ function _doBulkMoveToDownload(tableId, cardIds) {
             }
             var count = data.updated_count || cardIds.length;
             if (typeof showToast === 'function') showToast(data.message || count + ' card(s) moved to Download list', true);
-            // Refresh table via HTMX (same pattern as refreshCardTable in api module)
-            if (typeof htmx !== 'undefined' && document.getElementById('card-table-container')) {
+            // Refresh table and status counts via the unified helper
+            if (window.IDCardApp && typeof window.IDCardApp.refreshCardTable === 'function') {
+                window.IDCardApp.refreshCardTable();
+            } else if (typeof htmx !== 'undefined' && document.getElementById('card-table-container')) {
                 htmx.trigger(document.body, 'refreshTable');
                 if (typeof window.alpineClearSelection === 'function') window.alpineClearSelection();
             } else {
@@ -119,6 +103,7 @@ function _getActiveFilters() {
 
 // ==========================================
 // DOWNLOAD IMAGES (Separate ZIP per image column)
+// Uses DownloadManager.startImageDownload for JSON-based response
 // ==========================================
 
 function downloadImages(cardIds) {
@@ -127,9 +112,24 @@ function downloadImages(cardIds) {
         if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
         return;
     }
-    
-    // Note: If cardIds is empty, backend will fetch all cards for current status
-    
+
+    // Use DownloadManager if available
+    if (window.DownloadManager) {
+        window.DownloadManager.startImageDownload({
+            name: 'Images ZIP',
+            url: `/panel/api/table/${tableId}/cards/download-images/`,
+            body: Object.assign({ card_ids: cardIds, status: _getCurrentStatus() }, _getActiveFilters()),
+            onComplete: function() {
+                // Image export: do NOT move cards to download list
+            },
+            onError: function(msg) {
+                console.error('Image download error:', msg);
+            }
+        });
+        return;
+    }
+
+    // Legacy fallback (no DownloadManager)
     if (typeof showProgressToast === 'function') showProgressToast('Preparing images...', -1);
     
     const xhr = new XMLHttpRequest();
@@ -143,7 +143,6 @@ function downloadImages(cardIds) {
                 const response = JSON.parse(xhr.responseText);
                 
                 if (response.success && response.zip_files && response.zip_files.length > 0) {
-                    // Download each ZIP file with a small delay between each
                     let downloadIndex = 0;
                     const totalZips = response.zip_files.length;
                     
@@ -152,17 +151,14 @@ function downloadImages(cardIds) {
                             if (typeof showDownloadComplete === 'function') {
                                 showDownloadComplete(`Downloaded ${totalZips} ZIP file(s) with ${response.total_images} images!`);
                             }
-                            // Image export: do NOT move cards to download list
                             return;
                         }
                         
                         const zipInfo = response.zip_files[downloadIndex];
                         
-                        // Convert base64 to blob via fetch (non-blocking, avoids byte-by-byte loop)
                         fetch('data:application/zip;base64,' + zipInfo.data)
                         .then(function(r) { return r.blob(); })
                         .then(function(blob) {
-                            // Create download link
                             const url = window.URL.createObjectURL(blob);
                             const a = document.createElement('a');
                             a.style.display = 'none';
@@ -177,12 +173,10 @@ function downloadImages(cardIds) {
                             
                             downloadIndex++;
                             
-                            // Update progress
                             if (typeof showProgressToast === 'function') {
                                 showProgressToast(`Downloading ${downloadIndex}/${totalZips} ZIPs...`, Math.round((downloadIndex / totalZips) * 100));
                             }
                             
-                            // Download next ZIP after a small delay (to allow browser to process)
                             setTimeout(downloadNextZip, 300);
                         }).catch(function(err) {
                             console.error('ZIP download failed:', err);
@@ -190,7 +184,6 @@ function downloadImages(cardIds) {
                         });
                     }
                     
-                    // Start downloading
                     downloadNextZip();
                     
                 } else {
@@ -223,6 +216,7 @@ function downloadImages(cardIds) {
 
 // ==========================================
 // DOWNLOAD DOCX
+// Uses DownloadManager for blob-based response
 // ==========================================
 
 function downloadDocx(cardIds, format, templateId) {
@@ -232,14 +226,31 @@ function downloadDocx(cardIds, format, templateId) {
         return;
     }
     
-    // Note: If cardIds is empty, backend will fetch all cards for current status
-    
     // Close modals via DOM (modal state functions are in UI sub-module)
     var _docFormatOverlay = document.getElementById('docFormatModalOverlay');
     if (_docFormatOverlay) { _docFormatOverlay.classList.remove('active'); document.body.style.overflow = ''; }
     var _docxModal = document.getElementById('downloadDocxModal');
     if (_docxModal) _docxModal.style.display = 'none';
-    
+
+    // Use DownloadManager if available
+    if (window.DownloadManager) {
+        window.DownloadManager.start({
+            name: format.toUpperCase() + ' Document',
+            url: `/panel/api/table/${tableId}/cards/download-docx/`,
+            body: Object.assign({ card_ids: cardIds, format: format, template_id: templateId || '', status: _getCurrentStatus() }, _getActiveFilters()),
+            fallbackExt: format,
+            completeMessage: 'Document downloaded successfully!',
+            onComplete: function() {
+                _moveCardsToDownloadIfApproved(cardIds);
+            },
+            onError: function(msg) {
+                console.error('DOCX download error:', msg);
+            }
+        });
+        return;
+    }
+
+    // Legacy fallback
     if (typeof showProgressToast === 'function') showProgressToast(`Preparing ${format.toUpperCase()} document...`, -1);
     
     const xhr = new XMLHttpRequest();
@@ -273,7 +284,6 @@ function downloadDocx(cardIds, format, templateId) {
             document.body.removeChild(a);
             
             if (typeof showDownloadComplete === 'function') showDownloadComplete('Document downloaded successfully!');
-            // Move exported cards from approved → download
             _moveCardsToDownloadIfApproved(cardIds);
         } else {
             if (typeof hideProgressToast === 'function') hideProgressToast();
@@ -300,6 +310,7 @@ function downloadDocx(cardIds, format, templateId) {
 
 // ==========================================
 // DOWNLOAD XLSX
+// Uses DownloadManager for blob-based response
 // ==========================================
 
 function downloadXlsx(cardIds) {
@@ -308,9 +319,26 @@ function downloadXlsx(cardIds) {
         if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
         return;
     }
-    
-    // Note: If cardIds is empty, backend will fetch all cards for current status
-    
+
+    // Use DownloadManager if available
+    if (window.DownloadManager) {
+        window.DownloadManager.start({
+            name: 'Excel Spreadsheet',
+            url: `/panel/api/table/${tableId}/cards/download-xlsx/`,
+            body: Object.assign({ card_ids: cardIds, status: _getCurrentStatus() }, _getActiveFilters()),
+            fallbackExt: 'xlsx',
+            completeMessage: 'Excel file downloaded successfully!',
+            onComplete: function() {
+                _moveCardsToDownloadIfApproved(cardIds);
+            },
+            onError: function(msg) {
+                console.error('XLSX download error:', msg);
+            }
+        });
+        return;
+    }
+
+    // Legacy fallback
     if (typeof showProgressToast === 'function') showProgressToast('Preparing Excel file...', -1);
     
     const xhr = new XMLHttpRequest();
@@ -344,7 +372,6 @@ function downloadXlsx(cardIds) {
             document.body.removeChild(a);
             
             if (typeof showDownloadComplete === 'function') showDownloadComplete('Excel file downloaded successfully!');
-            // Move exported cards from approved → download
             _moveCardsToDownloadIfApproved(cardIds);
         } else {
             if (typeof hideProgressToast === 'function') hideProgressToast();
@@ -371,6 +398,7 @@ function downloadXlsx(cardIds) {
 
 // ==========================================
 // DOWNLOAD PDF
+// Uses DownloadManager for blob-based response
 // ==========================================
 
 function downloadPdf(cardIds, templateId) {
@@ -381,9 +409,26 @@ function downloadPdf(cardIds, templateId) {
         if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
         return;
     }
-    
-    // Note: If cardIds is empty, backend will fetch all cards for current status
-    
+
+    // Use DownloadManager if available
+    if (window.DownloadManager) {
+        window.DownloadManager.start({
+            name: 'PDF Document',
+            url: `/panel/api/table/${tableId}/cards/download-pdf/`,
+            body: Object.assign({ card_ids: cardIds, status: _getCurrentStatus(), template_id: templateId || '' }, _getActiveFilters()),
+            fallbackExt: 'pdf',
+            completeMessage: 'PDF file downloaded successfully!',
+            onComplete: function() {
+                // PDF export: do NOT move cards to download list
+            },
+            onError: function(msg) {
+                console.error('PDF download error:', msg);
+            }
+        });
+        return;
+    }
+
+    // Legacy fallback
     if (typeof showProgressToast === 'function') showProgressToast('Preparing PDF file...', -1);
     
     const xhr = new XMLHttpRequest();
@@ -417,7 +462,6 @@ function downloadPdf(cardIds, templateId) {
             document.body.removeChild(a);
             
             if (typeof showDownloadComplete === 'function') showDownloadComplete('PDF file downloaded successfully!');
-            // PDF export: do NOT move cards to download list
         } else {
             if (typeof hideProgressToast === 'function') hideProgressToast();
             const reader = new FileReader();
@@ -439,6 +483,24 @@ function downloadPdf(cardIds, templateId) {
     };
     
     xhr.send(JSON.stringify(Object.assign({ card_ids: cardIds, status: _getCurrentStatus(), template_id: templateId || '' }, _getActiveFilters())));
+}
+
+/**
+ * Extract filename from Content-Disposition header, or use fallback.
+ * (Legacy helper — used only by fallback XHR paths)
+ */
+function _getDownloadFilename(xhr, fallbackExt) {
+    const disposition = xhr.getResponseHeader('Content-Disposition');
+    if (disposition) {
+        let match = disposition.match(/filename\*?=(?:UTF-8''|"?)([^";]+)"?/i);
+        if (match && match[1]) return decodeURIComponent(match[1]);
+    }
+    const clientName = (typeof CLIENT_NAME !== 'undefined' ? CLIENT_NAME : '').replace(/\s+/g, '');
+    const tableName = (typeof TABLE_NAME !== 'undefined' ? TABLE_NAME : '').replace(/\s+/g, '');
+    const status = (typeof CURRENT_STATUS !== 'undefined' ? CURRENT_STATUS : 'pending');
+    const statusCap = status.charAt(0).toUpperCase() + status.slice(1);
+    const parts = [clientName, tableName, statusCap].filter(Boolean);
+    return (parts.length ? parts.join('_') : 'export') + '.' + fallbackExt;
 }
 
 // ==========================================

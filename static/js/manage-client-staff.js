@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (csOptionsLoaded) return;
         try {
             var resp = await fetch('/panel/client/api/class-section-options/', { credentials: 'same-origin' });
+            if (!resp.ok) return;
             var data = await resp.json();
             if (data.success) {
                 allClasses = data.classes || [];

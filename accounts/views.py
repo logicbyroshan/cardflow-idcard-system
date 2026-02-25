@@ -12,6 +12,7 @@ from django.views import View
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.utils.decorators import method_decorator
 from django.contrib.auth import login, logout
+from django.urls import reverse
 from core.services.activity_service import ActivityService
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -61,6 +62,11 @@ class LogoutView(View):
         if request.user.is_authenticated:
             ActivityService.log_logout(request, request.user)
         logout(request)
+        # Respect ?next= or POST body next (e.g. from PWA logout)
+        next_url = request.POST.get('next', '') or request.GET.get('next', '')
+        if next_url and next_url.startswith('/') and not next_url.startswith('//'):
+            login_url = reverse('accounts:login') + '?next=' + next_url
+            return redirect(login_url)
         return redirect('accounts:login')
 
 

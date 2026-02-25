@@ -37,7 +37,12 @@
                 'X-CSRFToken': '{{ csrf_token }}'
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok || !(response.headers.get('content-type') || '').includes('application/json')) {
+                throw new Error('Server error');
+            }
+            return response.json();
+        })
         .then(data => {
             msg.style.display = 'block';
             msg.innerText = data.message;
@@ -49,6 +54,12 @@
                 msg.style.backgroundColor = '#f8d7da';
                 msg.style.color = '#721c24';
             }
+        })
+        .catch(() => {
+            msg.style.display = 'block';
+            msg.innerText = 'Something went wrong. Please try again.';
+            msg.style.backgroundColor = '#f8d7da';
+            msg.style.color = '#721c24';
         })
         .finally(() => {
             btn.disabled = false;

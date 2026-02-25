@@ -81,7 +81,7 @@ function initIdcardGroup(config) {
       method: 'POST',
       headers: { 'X-CSRFToken': window.getCSRFToken ? window.getCSRFToken() : '' }
     })
-      .then(function(r) { if (!r.ok) console.error('generate-delete-code status:', r.status); return r.json(); })
+      .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       .then(function(data) {
         if (data.success) {
           deleteAllExpectedCode = data.code;
@@ -127,7 +127,7 @@ function initIdcardGroup(config) {
           confirmation_code: deleteAllCodeInput.value.trim()
         })
       })
-      .then(function(r) { if (!r.ok) console.error('bulk-delete status:', r.status); return r.json(); })
+      .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       .then(function(data) {
         closeDeleteAllModal();
         if (data.success) {
@@ -211,7 +211,7 @@ function initIdcardGroup(config) {
       },
       body: JSON.stringify({}),
     })
-    .then(function(res) { if (!res.ok) console.error('download-all status:', res.status); return res.json(); })
+    .then(function(res) { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
     .then(function(data) {
       progressTimers.forEach(function(t) { clearTimeout(t); });
       if (data.success && data.files && data.files.length > 0) {
@@ -422,7 +422,7 @@ function initIdcardGroup(config) {
       method: 'POST',
       headers: { 'X-CSRFToken': window.getCSRFToken ? window.getCSRFToken() : '' }
     })
-      .then(function(r) { if (!r.ok) console.error('generate-upgrade-code status:', r.status); return r.json(); })
+      .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       .then(function(data) {
         if (data.success) {
           upgradeAllExpectedCode = data.code;
@@ -467,7 +467,7 @@ function initIdcardGroup(config) {
           confirmation_code: upgradeAllCodeInput.value.trim()
         })
       })
-      .then(function(r) { if (!r.ok) console.error('upgrade-classes status:', r.status); return r.json(); })
+      .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       .then(function(data) {
         closeUpgradeAllModal();
         if (data.success) {

@@ -76,11 +76,12 @@
     };
   </script>
 
-  <!-- Core Modules (Load Order: api → toast → modal → utils → init) -->
+  <!-- Core Modules (Load Order: api → toast → modal → utils → download-manager → init) -->
   <script defer src="{% static 'js/core/api.js' %}"></script>
   <script defer src="{% static 'js/core/toast.js' %}"></script>
   <script defer src="{% static 'js/core/modal.js' %}"></script>
   <script defer src="{% static 'js/core/utils.js' %}"></script>
+  <script defer src="{% static 'js/core/download-manager.js' %}"></script>
   <script defer src="{% static 'js/init.js' %}"></script>
   
   <!-- Global Search (available on all pages via Ctrl+K) -->

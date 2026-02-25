@@ -32,6 +32,7 @@
             const res = await fetch(API + 'api/reels/' + id + '/', {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
+            if (!res.ok) { window.showToast?.('Error loading reel (HTTP ' + res.status + ')', 'error'); return; }
             const json = await res.json();
             if (json.success) openReelModal(json.reel);
             else window.showToast?.(json.message || 'Error loading reel', 'error');
@@ -45,6 +46,7 @@
                 method: 'POST',
                 headers: { 'X-CSRFToken': csrf, 'X-Requested-With': 'XMLHttpRequest' }
             });
+            if (!res.ok) { window.showToast?.('Toggle failed (HTTP ' + res.status + ')', 'error'); return; }
             const json = await res.json();
             if (json.success) {
                 el.textContent = json.is_active ? 'Active' : 'Inactive';
@@ -68,6 +70,7 @@
                 method: 'POST',
                 headers: { 'X-CSRFToken': csrf, 'X-Requested-With': 'XMLHttpRequest' }
             });
+            if (!res.ok) { window.showToast?.('Delete failed (HTTP ' + res.status + ')', 'error'); return; }
             const json = await res.json();
             if (json.success) {
                 const row = document.querySelector('#reelsBody tr[data-id="' + id + '"]');
@@ -92,6 +95,7 @@
                 headers: { 'X-CSRFToken': csrf, 'X-Requested-With': 'XMLHttpRequest' },
                 body: fd
             });
+            if (!res.ok) { window.showToast?.('Save failed (HTTP ' + res.status + ')', 'error'); return; }
             const json = await res.json();
             if (json.success) {
                 window.showToast?.(json.message || 'Saved', 'success');

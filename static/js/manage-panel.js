@@ -31,6 +31,7 @@ async function loadNotifications(append) {
   try {
     const search = document.getElementById('notifSearch')?.value || '';
     const res = await fetch(`/panel/api/notifications/admin/list/?limit=${PANEL_LIMIT}&offset=${panelOffset}&search=${encodeURIComponent(search)}`);
+    if (!res.ok) { console.error('Failed to load notifications: HTTP', res.status); return; }
     const data = await res.json();
     if (!data.success) return;
 
@@ -122,6 +123,7 @@ async function deleteNotification(id) {
       method: 'DELETE',
       headers: { 'X-CSRFToken': getCSRFToken() },
     });
+    if (!res.ok) { if (window.showToast) showToast('Delete failed (HTTP ' + res.status + ')', 'error'); return; }
     const data = await res.json();
     if (data.success) {
       if (window.showToast) showToast('Notification deleted', 'success');
@@ -174,6 +176,7 @@ async function loadTargetUsers() {
   }
   try {
     const res = await fetch('/panel/api/notifications/admin/target-users/');
+    if (!res.ok) { console.error('Failed to load users: HTTP', res.status); return; }
     const data = await res.json();
     if (data.success) {
       allUsers = data.users;
@@ -292,6 +295,10 @@ async function handleCreateNotif(e) {
       },
       body: JSON.stringify(payload),
     });
+    if (!res.ok && !(res.headers.get('content-type') || '').includes('application/json')) {
+      if (window.showToast) showToast('Server error (' + res.status + '). Please try again.', 'error');
+      return false;
+    }
     const data = await res.json();
     if (data.success) {
       if (window.showToast) showToast(data.message || 'Notification sent!', 'success');

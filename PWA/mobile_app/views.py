@@ -43,23 +43,36 @@ def is_mobile(request):
 
 
 def require_mobile_client(view_func):
-    """Decorator: login + client role + perm_mobile_app + mobile UA."""
+    """Decorator: login + any valid role + perm_mobile_app + mobile UA.
+    Supports all 4 roles: super_admin, admin_staff, client, client_staff.
+    """
     @wraps(view_func)
     @login_required(login_url='/panel/auth/login/')
     def wrapper(request, *args, **kwargs):
         user = request.user
-        if not PermissionService.is_client_role(user):
+        # Allow all 4 valid roles; reject unknown/empty roles
+        valid_roles = ('super_admin', 'admin_staff', 'client', 'client_staff')
+        if not hasattr(user, 'role') or user.role not in valid_roles:
             return redirect('/panel/auth/login/')
-        if not PermissionService.has(user, 'perm_mobile_app'):
-            return render(request, 'mobile_app/no_access.html', status=403)
+        # super_admin always has access; others need perm_mobile_app
+        if not PermissionService.is_super_admin(user):
+            if not PermissionService.has(user, 'perm_mobile_app'):
+                return render(request, 'mobile_app/no_access.html', status=403)
         # Desktop users see a block page (rendered client-side in base.html)
         return view_func(request, *args, **kwargs)
     return wrapper
 
 
 def _client_ctx(user):
-    """Return (client, permissions_dict) for the current user."""
+    """Return (client, permissions_dict) for the current user.
+    For admin roles (super_admin/admin_staff) that have no client profile,
+    returns the first active client so PWA views can function.
+    """
     client = ClientAccessService.get_client_for_user(user)
+    if client is None and PermissionService.is_any_admin(user):
+        # Admins can access all clients — pick the first active one
+        from client.models import Client
+        client = Client.objects.filter(is_active=True).first()
     perms = PermissionService.get_permission_context(user)
     return client, perms
 
@@ -154,7 +167,8 @@ def card_list(request, table_id, status):
         return redirect('/panel/auth/login/')
 
     table = get_object_or_404(IDCardTable.objects.select_related('group__client'), id=table_id)
-    if not ClientAccessService.can_access_table(user, table):
+    # Admin roles can access any table; client roles only their own
+    if not PermissionService.is_any_admin(user) and not ClientAccessService.can_access_table(user, table):
         return redirect('mobile_app:home')
 
     status_perm = PermissionService.STATUS_LIST_PERM_MAP.get(status)
@@ -227,7 +241,7 @@ def camera_capture(request, table_id):
         return redirect('/panel/auth/login/')
 
     table = get_object_or_404(IDCardTable.objects.select_related('group__client'), id=table_id)
-    if not ClientAccessService.can_access_table(user, table):
+    if not PermissionService.is_any_admin(user) and not ClientAccessService.can_access_table(user, table):
         return redirect('mobile_app:home')
 
     return render(request, 'mobile_app/camera.html', {
@@ -291,9 +305,14 @@ def profile(request):
         'user_name': user.get_full_name() or user.username,
         'user_email': user.email or '',
         'user_phone': getattr(user, 'phone', '') or '',
-        'user_role': 'Client Admin' if PermissionService.is_client(user) else 'Client Staff',
+        'user_role': {
+            'super_admin': 'Super Admin',
+            'admin_staff': 'Admin Staff',
+            'client': 'Client Admin',
+            'client_staff': 'Client Staff',
+        }.get(getattr(user, 'role', ''), 'User'),
         'client': client,
-        'client_name': client.name,
+        'client_name': client.name if client else '',
         **perms,
     })
 
@@ -345,7 +364,7 @@ def api_upload_photo(request, table_id):
         return JsonResponse({'success': False, 'message': 'photo and card_id required'}, status=400)
     try:
         card = IDCard.objects.select_related('table__group').get(id=card_id)
-        if not ClientAccessService.can_access_card(request.user, card):
+        if not PermissionService.is_any_admin(request.user) and not ClientAccessService.can_access_card(request.user, card):
             return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
         import os, uuid
         ext = os.path.splitext(photo.name)[1][:10] or '.jpg'

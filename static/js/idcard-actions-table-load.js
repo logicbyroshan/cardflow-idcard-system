@@ -28,12 +28,22 @@ async function loadMoreData() {
         if (data.cards && data.cards.length > 0) {
             const tableBody = document.getElementById('cardsTableBody');
             
+            var dbSelectActive = window.IDCardApp.allDbCardIds && window.IDCardApp.allDbCardIds.length > 0;
             data.cards.forEach((card, index) => {
                 // Prevent duplicates — skip if card already in DOM
                 if (document.querySelector(`tr[data-card-id="${card.id}"]`)) return;
                 const row = window.IDCardApp._createRowFromCard(card, index);
                 tableBody.appendChild(row);
                 _ts.allRows.push(row);
+
+                // If "Select All DB" is active, auto-check newly loaded rows
+                if (dbSelectActive) {
+                    var cb = row.querySelector('.rowCheckbox');
+                    if (cb) {
+                        cb.checked = true;
+                        row.classList.add('selected');
+                    }
+                }
             });
             
             _ts.lazyLoadState.loadedCount += data.cards.length;

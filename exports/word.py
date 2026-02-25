@@ -58,7 +58,7 @@ class WordExporter:
     - Landscape orientation for data tables
     - Exports both text and image fields
     - Professional formatting with headers/footers
-    - 7 entries per page
+    - 6 entries per page (safe for wrapped column headers)
     
     Usage:
         exporter = WordExporter()
@@ -67,10 +67,16 @@ class WordExporter:
             return result.response
     """
     
-    ENTRIES_PER_PAGE = 7
+    ENTRIES_PER_PAGE = 6
     IMAGE_HEIGHT_CM = 2.5
+    IMAGE_DEFAULT_WIDTH_CM = 1.9  # 3:4 portrait default
     ROW_HEIGHT_CM = 2.5
     PAGE_WIDTH_CM = 27.5  # Landscape A4 with margins
+    # Page height budget (landscape A4 = 21cm)
+    PAGE_HEIGHT_CM = 21.0
+    TOP_MARGIN_CM = 0.8
+    BOTTOM_MARGIN_CM = 0.3
+    FOOTER_EFFECTIVE_CM = 1.0  # footer_distance setting
     # Phase 3: DOCX always uses ORIGINAL images for full quality print.
     # PDF uses thumbnails. ZIP uses originals.
     
@@ -482,6 +488,14 @@ class WordExporter:
         rows_on_current_page = 0
         prev_class_val = None
 
+        # Pre-compute fixed image widths per image field (once for all rows)
+        image_fixed_widths = {}
+        for field in ordered_fields:
+            if field['is_image']:
+                image_fixed_widths[field['name']] = self._get_image_render_width_cm(
+                    cards_list, field['name']
+                )
+
         # Create ONE table with a header row
         table_obj = doc.add_table(rows=1, cols=num_cols)
         table_obj.style = 'Table Grid'
@@ -512,7 +526,7 @@ class WordExporter:
             self._add_data_row(
                 table_obj, card, ordered_fields, column_widths, sr_no,
                 Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls,
-                Image, ImageOps
+                Image, ImageOps, image_fixed_widths=image_fixed_widths
             )
 
             # If a page break is needed, set it on the FIRST paragraph
@@ -550,7 +564,7 @@ class WordExporter:
     
     def _style_header_cell(self, cell, width, Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH,
                            parse_xml, nsdecls):
-        """Apply styling to a header cell."""
+        """Apply styling to a header cell with wrapping and padding."""
         para = cell.paragraphs[0]
         if para.runs:
             run = para.runs[0]
@@ -559,29 +573,39 @@ class WordExporter:
             run.font.size = Pt(9)
             run.font.color.rgb = RGBColor(0, 0, 0)
         para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        self._set_cell_margins(cell, parse_xml, nsdecls, 0, 0, 14, 14)
+        # Generous left/right padding (57 twips ~1mm) so text never touches border
+        self._set_cell_margins(cell, parse_xml, nsdecls, 28, 28, 57, 57)
         self._set_cell_vertical_align(cell, parse_xml, nsdecls)
         self._set_para_spacing(para, parse_xml, nsdecls)
         cell.width = Cm(width)
+        # Ensure cell allows text wrapping (no nowrap)
+        tcPr = cell._tc.get_or_add_tcPr()
+        # Remove any noWrap flags
+        from lxml import etree
+        from docx.oxml.ns import qn as _qn
+        for nw in tcPr.findall(_qn('w:noWrap')):
+            tcPr.remove(nw)
     
     def _add_data_row(self, table, card, ordered_fields, column_widths, sr_no,
                       Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls,
-                      Image, ImageOps):
+                      Image, ImageOps, image_fixed_widths=None):
         """Add a data row to the table."""
         new_row = table.add_row()
         cells = new_row.cells
         
-        # Set row height
+        # Set row height — "atLeast" so text can wrap and expand if needed
         tr = new_row._tr
         trPr = tr.get_or_add_trPr()
         row_height_twips = int(Cm(self.ROW_HEIGHT_CM).twips)
         trHeight = parse_xml(
-            r'<w:trHeight {} w:val="{}" w:hRule="exact"/>'.format(nsdecls('w'), row_height_twips)
+            r'<w:trHeight {} w:val="{}" w:hRule="atLeast"/>'.format(nsdecls('w'), row_height_twips)
         )
         trPr.append(trHeight)
         
         col_idx = 0
         field_data = card.field_data or {}
+        if image_fixed_widths is None:
+            image_fixed_widths = {}
         
         # Sr No
         cells[col_idx].text = str(sr_no)
@@ -603,10 +627,11 @@ class WordExporter:
                     prefer_thumbnail=False,
                     fallback_to_field_data=True
                 )
+                img_fixed_w = image_fixed_widths.get(field['name'], self.IMAGE_DEFAULT_WIDTH_CM)
                 self._add_image_to_cell(
                     cell, image_path or '',
                     Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls,
-                    Image, ImageOps
+                    Image, ImageOps, fixed_width_cm=img_fixed_w
                 )
             else:
                 value = format_field_value(field_data.get(field['name'], ''), uppercase=True)
@@ -617,13 +642,20 @@ class WordExporter:
             col_idx += 1
     
     def _add_image_to_cell(self, cell, img_path, Cm, Pt, RGBColor,
-                           WD_ALIGN_PARAGRAPH, parse_xml, nsdecls, Image, ImageOps):
+                           WD_ALIGN_PARAGRAPH, parse_xml, nsdecls, Image, ImageOps,
+                           fixed_width_cm=None):
         """Add an image to a cell using VML for Word 97-2003 compatibility.
         
         Uses VML (Vector Markup Language) instead of DrawingML to ensure
         images are visible in Normal/Draft view and compatible with
         Word 97-2003 format.
+        
+        For missing/pending images: draws an empty bordered rectangle
+        (no placeholder image, no text).
         """
+        if fixed_width_cm is None:
+            fixed_width_cm = self.IMAGE_DEFAULT_WIDTH_CM
+
         self._set_cell_margins(cell, parse_xml, nsdecls, 0, 0, 0, 0)
         self._set_cell_vertical_align(cell, parse_xml, nsdecls)
         
@@ -658,8 +690,12 @@ class WordExporter:
                             
                             para = cell.paragraphs[0]
                             run = para.add_run()
-                            # Add picture (creates relationship), then convert to VML
-                            inline_shape = run.add_picture(img_stream, height=Cm(self.IMAGE_HEIGHT_CM))
+                            # Fixed dimensions: height=IMAGE_HEIGHT_CM, width=fixed_width_cm
+                            inline_shape = run.add_picture(
+                                img_stream,
+                                height=Cm(self.IMAGE_HEIGHT_CM),
+                                width=Cm(fixed_width_cm)
+                            )
                             img_stream.close()
                             self._convert_to_vml(run, inline_shape)
                             para.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -672,15 +708,53 @@ class WordExporter:
             except Exception as e:
                 logger.warning("Word export: Image load error for %s: %s", img_path, e)
         
-        # Placeholder for missing/invalid image — reserve cell space
+        # Missing/pending image → draw an empty bordered rectangle
+        # (no placeholder image, no text — just empty space with a border)
+        self._add_empty_image_box(cell, Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH,
+                                   parse_xml, nsdecls, fixed_width_cm)
+
+    def _add_empty_image_box(self, cell, Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH,
+                              parse_xml, nsdecls, fixed_width_cm):
+        """Draw an empty bordered rectangle for missing/pending images.
+        
+        Uses a 1-row, 1-col inner table with fixed dimensions and
+        a thin black border to represent an empty image placeholder.
+        """
+        from docx.enum.table import WD_TABLE_ALIGNMENT
+
         para = cell.paragraphs[0]
         para.alignment = WD_ALIGN_PARAGRAPH.CENTER
         self._set_para_spacing(para, parse_xml, nsdecls)
-        # Add "NO IMAGE" placeholder text so column width/height is maintained
-        run = para.add_run('NO IMAGE')
-        run.font.size = Pt(7)
-        run.font.color.rgb = RGBColor(180, 180, 180)
-        run.font.name = 'Arial'
+
+        # Clear any default text
+        for run in para.runs:
+            run.clear()
+
+        # Create a tiny inline table as the bordered box
+        # We use VML rectangle via a Run for better compatibility
+        from docx.oxml.ns import qn as _qn
+        from docx.oxml import OxmlElement
+
+        # Width/Height in EMU (1 cm = 360000 EMU)
+        box_w_emu = int(fixed_width_cm * 360000)
+        box_h_emu = int(self.IMAGE_HEIGHT_CM * 360000)
+        box_w_pt = fixed_width_cm * 28.3465
+        box_h_pt = self.IMAGE_HEIGHT_CM * 28.3465
+
+        # Create VML rectangle shape directly
+        run = para.add_run()
+        pict_xml = (
+            '<w:pict '
+            'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
+            'xmlns:v="urn:schemas-microsoft-com:vml" '
+            'xmlns:o="urn:schemas-microsoft-com:office:office">'
+            f'<v:rect style="width:{box_w_pt:.1f}pt;height:{box_h_pt:.1f}pt" '
+            f'filled="f" strokecolor="black" strokeweight="0.5pt">'
+            '</v:rect></w:pict>'
+        )
+        from lxml import etree
+        pict_elem = etree.fromstring(pict_xml)
+        run._r.append(pict_elem)
     
     def _convert_to_vml(self, run, inline_shape):
         """Convert an inline DrawingML image to VML for backward compatibility.
@@ -755,11 +829,12 @@ class WordExporter:
     
     def _style_data_cell(self, cell, width, is_image, Cm, Pt, RGBColor,
                          WD_ALIGN_PARAGRAPH, parse_xml, nsdecls):
-        """Apply styling to a data cell."""
+        """Apply styling to a data cell with proper wrapping and padding."""
         if is_image:
             self._set_cell_margins(cell, parse_xml, nsdecls, 0, 0, 0, 0)
         else:
-            self._set_cell_margins(cell, parse_xml, nsdecls, 0, 0, 28, 28)
+            # Generous left/right padding (57 twips ~1mm) so text never touches border
+            self._set_cell_margins(cell, parse_xml, nsdecls, 0, 0, 57, 57)
         
         self._set_cell_vertical_align(cell, parse_xml, nsdecls)
         
@@ -772,6 +847,14 @@ class WordExporter:
         
         self._set_para_spacing(para, parse_xml, nsdecls)
         cell.width = Cm(width)
+        
+        # Ensure cell allows text wrapping (remove noWrap flags)
+        if not is_image:
+            from lxml import etree
+            from docx.oxml.ns import qn as _qn
+            tcPr = cell._tc.get_or_add_tcPr()
+            for nw in tcPr.findall(_qn('w:noWrap')):
+                tcPr.remove(nw)
     
     def _set_table_borders(self, table, parse_xml, nsdecls):
         """Set table borders to 0.5pt."""

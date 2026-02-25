@@ -8,14 +8,14 @@
          * Edge padding: 0.5cm all sides
          * Header frame: 0.8cm at top (inside 0.5cm edge padding)
          * Content top margin: 1.5cm = 0.5cm edge + 0.8cm header + 0.2cm gap
-         * Content bottom margin: 0.5cm = edge padding only (footer is inline)
-         * Content area: 21 − 1.5 − 0.5 = 19cm
-         * Table: thead ~0.5cm + 6 × 2.7cm = 16.7cm
-         * Remaining 2.3cm: inline footer (0.2cm gap + ~1cm text + spare)
+         * Content bottom margin: 0.3cm (tight — footer is inline)
+         * Content area height: 21 − 1.5 − 0.3 = 19.2cm
+         * Table: thead ~0.6–1.2cm + 6 × 2.7cm = ~17.4cm max
+         * Remaining ~1.8cm: inline footer
          */
         @page {
             size: A4 landscape;
-            margin: 1.5cm 0.5cm 0.5cm 0.5cm;
+            margin: 1.5cm 0.5cm 0.3cm 0.5cm;
 
             @frame header_frame {
                 -pdf-frame-content: header_content;
@@ -54,14 +54,14 @@
 
         table.data-table th {
             border: 0.5pt solid #000;
-            padding: 3px 6px;
+            padding: 4px 6px;
             font-size: 7pt;
             font-weight: bold;
             text-align: center;
             vertical-align: middle;
             word-wrap: break-word;
             overflow-wrap: break-word;
-            word-break: break-all;
+            word-break: normal;
         }
 
         table.data-table td {
@@ -78,51 +78,43 @@
             height: 2.7cm;
         }
 
-        /* Cells with non-wrappable content (mobile, DOB, Aadhar, etc.) */
-        table.data-table td.nowrap-cell {
-            white-space: nowrap;
-            word-break: keep-all;
-        }
-
         /* Image cells — 1mm padding inside cell */
         table.data-table td.img-cell {
             padding: 1mm;
         }
 
-        /* Image sizing — 2.5cm height to match Word export exactly */
+        /* Image sizing — fixed height AND width per column */
         .card-pic {
             height: 2.5cm;
-            width: auto;
             display: block;
             margin: 0 auto;
             border: 0.5pt solid #000;
             padding: 0;
         }
 
-        /* Placeholder images — no border */
+        /* Placeholder images — same fixed size, no border */
         .card-pic-placeholder {
             height: 2.5cm;
-            width: auto;
             display: block;
             margin: 0 auto;
             padding: 0;
         }
 
-        /* Inline footer — flows after table, 0.2cm gap */
+        /* Inline footer — compact, flows after table */
         .page-footer {
-            margin-top: 0.3cm;
+            margin-top: 0.15cm;
             border-top: none;
             padding-top: 0;
-            font-size: 7pt;
+            font-size: 6.5pt;
             color: #000;
-            line-height: 1.1;
+            line-height: 1.05;
         }
         .page-footer table { width: 100%; border-collapse: collapse; }
         .page-footer td { border: none; padding: 0; vertical-align: top; }
-        .footer-note  { font-size: 7pt; }
-        .footer-meta  { font-size: 7pt; }
-        .footer-copy  { font-size: 7pt; }
-        .footer-page  { text-align: right; font-size: 7.5pt; font-weight: bold; white-space: nowrap; vertical-align: middle; }
+        .footer-note  { font-size: 6.5pt; }
+        .footer-meta  { font-size: 6.5pt; }
+        .footer-copy  { font-size: 6.5pt; }
+        .footer-page  { text-align: right; font-size: 7pt; font-weight: bold; white-space: nowrap; vertical-align: middle; }
     </style>
 </head>
 <body>
@@ -153,12 +145,12 @@
             {% for row in page_rows %}
             <tr>
                 {% for cell in row %}
-                <td{% if cell.is_image %} class="img-cell"{% elif cell.nowrap %} class="nowrap-cell"{% endif %} style="text-align: {{ cell.align }};">
+                <td{% if cell.is_image %} class="img-cell"{% endif %} style="text-align: {{ cell.align }};">
                     {% if cell.is_image %}
                         {% if cell.is_placeholder %}
-                            <img src="{{ cell.content }}" class="card-pic-placeholder" alt="Card photo placeholder">
+                            <img src="{{ cell.content }}" class="card-pic-placeholder" style="width: {{ cell.image_width_cm }}cm;" alt="Placeholder">
                         {% else %}
-                            <img src="{{ cell.content }}" class="card-pic" alt="Card photo">
+                            <img src="{{ cell.content }}" class="card-pic" style="width: {{ cell.image_width_cm }}cm;" alt="Photo">
                         {% endif %}
                     {% else %}
                         {{ cell.content|safe }}

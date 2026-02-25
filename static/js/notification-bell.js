@@ -60,6 +60,7 @@
   async function pollUnreadCount() {
     try {
       const res = await fetch('/panel/api/notifications/unread-count/');
+      if (!res.ok) return;
       const data = await res.json();
       if (data.success) {
         updateBadge(data.unread_count);
@@ -88,6 +89,7 @@
 
     try {
       const res = await fetch('/panel/api/notifications/list/?limit=15');
+      if (!res.ok) return;
       const data = await res.json();
       if (!data.success) return;
 

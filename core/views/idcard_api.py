@@ -339,15 +339,43 @@ def api_create_table_from_xlsx(request, group_id):
                        f'Your file has {len(headers)} columns.'
         }, status=400)
 
-    # ── 3. Infer field definitions ──────────────────────────────────
+    # ── 3. Infer field definitions (or use client-provided config) ──
+    field_config_json = request.POST.get('field_config', '')
+    client_field_config = None
+    if field_config_json:
+        try:
+            import json as _json
+            client_field_config = _json.loads(field_config_json)
+            if not isinstance(client_field_config, list):
+                client_field_config = None
+        except (ValueError, TypeError):
+            client_field_config = None
+
+    VALID_FIELD_TYPES = {
+        'text', 'class', 'section', 'email', 'photo',
+        'mother_photo', 'father_photo', 'signature', 'barcode', 'qr_code',
+    }
+
     fields = []
     for idx, header in enumerate(headers):
+        # Default: auto-infer
         field_type = _infer_field_type(header)
+        mandatory = False
+
+        # Override with client-provided config if available and valid
+        if client_field_config and idx < len(client_field_config):
+            cfg = client_field_config[idx]
+            if isinstance(cfg, dict):
+                cfg_type = cfg.get('type', '')
+                if cfg_type in VALID_FIELD_TYPES:
+                    field_type = cfg_type
+                mandatory = bool(cfg.get('mandatory', False))
+
         fields.append({
             'name': header.strip().upper(),
             'type': field_type,
             'order': idx,
-            'mandatory': False,
+            'mandatory': mandatory,
         })
 
     # ── 4. Create the table ─────────────────────────────────────────
@@ -466,11 +494,14 @@ def api_idcard_list(request, table_id):
     sort_order = request.GET.get('sort', 'sr-asc').strip()
     image_column = request.GET.get('image_column', '').strip()
     image_condition = request.GET.get('image_condition', '').strip()
+    from_date = request.GET.get('from', '').strip()
+    to_date = request.GET.get('to', '').strip()
 
     result = IDCardService.list_cards(
         table_id, status_filter, offset, limit,
         search=search, class_filter=class_filter, section_filter=section_filter,
         sort_order=sort_order, image_column=image_column, image_condition=image_condition,
+        from_date=from_date, to_date=to_date,
     )
     return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
 
@@ -543,8 +574,13 @@ def api_idcard_cards_json(request, table_id):
     except (ValueError, TypeError):
         offset, limit = 0, 100
 
-    # Base queryset — newest first, defer heavy photo ImageField column
-    qs = IDCard.objects.filter(table=table).defer('photo').order_by('-id')
+    # Base queryset — show recently moved cards first, defer heavy photo ImageField column
+    if status_filter == 'download':
+        qs = IDCard.objects.filter(table=table).defer('photo').order_by('-downloaded_at', '-id')
+    elif status_filter == 'pool':
+        qs = IDCard.objects.filter(table=table).defer('photo').order_by('-deleted_at', '-id')
+    else:
+        qs = IDCard.objects.filter(table=table).defer('photo').order_by('-updated_at', '-id')
 
     if status_filter and status_filter in IDCardService.VALID_STATUSES:
         qs = qs.filter(status=status_filter)

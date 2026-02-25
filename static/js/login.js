@@ -49,6 +49,37 @@ document.addEventListener('DOMContentLoaded', function() {
         return cookie ? cookie.split('=')[1] : '';
     }
 
+    /**
+     * Safe JSON POST — handles redirects, non-JSON responses, and CSRF errors
+     * gracefully instead of showing a generic "Network error".
+     */
+    async function safePost(url, body) {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
+            body: JSON.stringify(body)
+        });
+        const ct = response.headers.get('content-type') || '';
+        if (!ct.includes('application/json')) {
+            // Server returned HTML instead of JSON
+            if (response.redirected) {
+                throw new Error('Session expired. Please refresh the page.');
+            }
+            if (response.status === 403) {
+                throw new Error('Request was blocked (CSRF). Please refresh the page and try again.');
+            }
+            throw new Error('Server error (' + response.status + '). Please refresh and try again.');
+        }
+        const data = await response.json();
+        if (response.status === 429) {
+            throw new Error(data.message || 'Too many requests. Please wait and try again.');
+        }
+        if (response.status >= 500) {
+            throw new Error(data.message || 'Server error. Please try again.');
+        }
+        return data;
+    }
+
     function showMessage(message, type = 'error') {
         messageBox.textContent = message;
         messageBox.className = 'message ' + type;
@@ -112,14 +143,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setButtonLoading(this, true);
         
         try {
-            const response = await fetch('/panel/api/auth/check-email/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
-                body: JSON.stringify({ email, role: selectedRole })
-            });
-            
-            const data = await response.json();
-            
+            const data = await safePost('/panel/api/auth/check-email/', { email, role: selectedRole });
             if (data.success) {
                 userName = data.user_name;
                 document.getElementById('displayUserName').textContent = userName;
@@ -130,7 +154,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 showMessage(data.message);
             }
         } catch (error) {
-            showMessage('Network error. Please try again.');
+            showMessage(error.message || 'Network error. Please try again.');
         }
         
         setButtonLoading(this, false);
@@ -161,14 +185,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setButtonLoading(this, true);
         
         try {
-            const response = await fetch('/panel/api/auth/login/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
-                body: JSON.stringify({ email, password, role: selectedRole })
-            });
-            
-            const data = await response.json();
-            
+            const data = await safePost('/panel/api/auth/login/', { email, password, role: selectedRole });
             if (data.success) {
                 showMessage('Login successful! Redirecting...', 'success');
                 // Respect ?next= param (e.g. from PWA → login redirect)
@@ -182,7 +199,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 setButtonLoading(this, false);
             }
         } catch (error) {
-            showMessage('Network error. Please try again.');
+            showMessage(error.message || 'Network error. Please try again.');
             setButtonLoading(this, false);
         }
     });
@@ -201,14 +218,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setButtonLoading(btnLogin, true);
         
         try {
-            const response = await fetch('/panel/api/auth/forgot-password/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
-                body: JSON.stringify({ email, role: selectedRole })
-            });
-            
-            const data = await response.json();
-            
+            const data = await safePost('/panel/api/auth/forgot-password/', { email, role: selectedRole });
             if (data.success) {
                 // Show OTP step
                 goToStep(4);
@@ -224,7 +234,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 showMessage(data.message);
             }
         } catch (error) {
-            showMessage('Network error. Please try again.');
+            showMessage(error.message || 'Network error. Please try again.');
         }
         
         setButtonLoading(btnLogin, false);
@@ -276,14 +286,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     btnResendOtp.addEventListener('click', async function() {
         try {
-            const response = await fetch('/panel/api/auth/forgot-password/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
-                body: JSON.stringify({ email, role: selectedRole })
-            });
-            
-            const data = await response.json();
-            
+            const data = await safePost('/panel/api/auth/forgot-password/', { email, role: selectedRole });
             if (data.success) {
                 showMessage('OTP sent successfully!', 'success');
                 startResendTimer();
@@ -293,7 +296,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         } catch (error) {
-            showMessage('Failed to resend OTP');
+            showMessage(error.message || 'Failed to resend OTP');
         }
     });
     
@@ -307,14 +310,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setButtonLoading(this, true);
         
         try {
-            const response = await fetch('/panel/api/auth/verify-otp/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
-                body: JSON.stringify({ email, otp })
-            });
-            
-            const data = await response.json();
-            
+            const data = await safePost('/panel/api/auth/verify-otp/', { email, otp });
             if (data.success) {
                 resetToken = data.reset_token;
                 goToStep(5);
@@ -323,7 +319,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 showMessage(data.message);
             }
         } catch (error) {
-            showMessage('Network error. Please try again.');
+            showMessage(error.message || 'Network error. Please try again.');
         }
         
         setButtonLoading(this, false);
@@ -364,19 +360,12 @@ document.addEventListener('DOMContentLoaded', function() {
         setButtonLoading(this, true);
         
         try {
-            const response = await fetch('/panel/api/auth/reset-password/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
-                body: JSON.stringify({
-                    email,
-                    reset_token: resetToken,
-                    new_password: newPassword,
-                    confirm_password: confirmPassword
-                })
+            const data = await safePost('/panel/api/auth/reset-password/', {
+                email,
+                reset_token: resetToken,
+                new_password: newPassword,
+                confirm_password: confirmPassword
             });
-            
-            const data = await response.json();
-            
             if (data.success) {
                 showMessage(data.message, 'success');
                 setTimeout(() => {
@@ -390,7 +379,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 showMessage(data.message);
             }
         } catch (error) {
-            showMessage('Network error. Please try again.');
+            showMessage(error.message || 'Network error. Please try again.');
         }
         
         setButtonLoading(this, false);

@@ -234,6 +234,11 @@ function _buildFilterParams() {
         params.set('image_column', IDCardApp._activeImageSort.column || '');
         params.set('image_condition', IDCardApp._activeImageSort.condition || '');
     }
+    // DateTime range (download list) — read from Flatpickr inputs
+    var fromDate = document.getElementById('fromDateFilter');
+    var toDate = document.getElementById('toDateFilter');
+    if (fromDate && fromDate.value) params.set('from', fromDate.value);
+    if (toDate && toDate.value) params.set('to', toDate.value);
     return params.toString();
 }
 

@@ -693,8 +693,13 @@ def build_idcard_actions_context(request, table, *, default_per_page=100,
     class_filter = request.GET.get('class', '').strip()
     section_filter = request.GET.get('section', '').strip()
 
-    # ── Base queryset ──
-    id_cards_query = IDCard.objects.filter(table=table).defer('photo').order_by('-id')
+    # ── Base queryset — show recently moved cards first ──
+    if status_filter == 'download':
+        id_cards_query = IDCard.objects.filter(table=table).defer('photo').order_by('-downloaded_at', '-id')
+    elif status_filter == 'pool':
+        id_cards_query = IDCard.objects.filter(table=table).defer('photo').order_by('-deleted_at', '-id')
+    else:
+        id_cards_query = IDCard.objects.filter(table=table).defer('photo').order_by('-updated_at', '-id')
     if status_filter and status_filter in _VALID_STATUSES:
         id_cards_query = id_cards_query.filter(status=status_filter)
 

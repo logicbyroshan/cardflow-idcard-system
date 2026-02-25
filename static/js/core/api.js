@@ -27,8 +27,31 @@
 (function () {
     'use strict';
     var _originalFetch = window.fetch;
+
+    /** True when the current page is the login page itself. */
+    var _isLoginPage = window.location.pathname.indexOf('/auth/login') !== -1;
+
     window.fetch = function () {
         return _originalFetch.apply(this, arguments).then(function (response) {
+            // ── Redirect detection ──
+            // If the server redirected (302 → login page) and we're NOT
+            // already on the login page, the session is expired/invalid.
+            if (response.redirected && !_isLoginPage) {
+                var finalUrl = response.url || '';
+                if (finalUrl.indexOf('/auth/login') !== -1 || finalUrl.indexOf('/login') !== -1) {
+                    window.location.href = '/panel/auth/login/';
+                    // Return a synthetic "session expired" JSON so callers
+                    // don't fail with a JSON-parse error on the HTML body.
+                    return new Response(JSON.stringify({
+                        success: false,
+                        message: 'Session expired. Redirecting to login…'
+                    }), {
+                        status: 401,
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                }
+            }
+
             if (response.status === 401) {
                 // Session expired (e.g., logged out in another tab)
                 response.clone().json()

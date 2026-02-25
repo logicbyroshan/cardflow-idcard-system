@@ -19,6 +19,8 @@
   <script defer src="{% static 'js/alpine-state.js' %}"></script>
   <!-- Alpine.js -->
   <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
+  <!-- SheetJS for Excel parsing (used by Create with XLSX) -->
+  <script defer src="{% static 'js/vendor/xlsx.full.min.js' %}"></script>
 </head>
 <body x-data="layoutState()" x-init="init()">
 
