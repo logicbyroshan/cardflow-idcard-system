@@ -50,8 +50,6 @@ PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 UninstallDisplayName={#MyAppName}
-WizardImageFile=compiler:WizModernImage-IS.bmp
-WizardSmallImageFile=compiler:WizModernSmallImage-IS.bmp
 CreateUninstallRegKey=yes
 Uninstallable=yes
 
@@ -97,6 +95,10 @@ Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} ObjectName LocalSy
 Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} AppExit Default Restart"; \
     Flags: runhidden
 Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} AppRestartDelay 5000"; \
+    Flags: runhidden
+
+; ── Environment ──────────────────────────────────────────────────────
+Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} AppEnvironmentExtra PASSPORT_ENGINE_MODE=service"; \
     Flags: runhidden
 
 ; ── Logging ──────────────────────────────────────────────────────────
