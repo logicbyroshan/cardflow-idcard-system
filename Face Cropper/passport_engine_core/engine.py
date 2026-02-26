@@ -125,6 +125,7 @@ def _empty_summary(cropped_dir: Path, failed_dir: Path) -> Dict[str, Any]:
 def process_zip(
     zip_path: str,
     original_path: str | None = None,
+    output_folder: str | None = None,
 ) -> Dict[str, Any]:
     """
     Process a ZIP file of portrait images through the passport crop
@@ -153,10 +154,15 @@ def process_zip(
     if not zip_file.is_file():
         raise FileNotFoundError(f"ZIP file not found: {zip_path}")
 
-    # Decide where output dirs go: beside the *original* file when
-    # provided, otherwise use the user-configured default output dir,
-    # otherwise beside the zip_path itself.
-    if original_path:
+    # Decide where output dirs go:
+    #   1. Explicit output_folder from the UI
+    #   2. Beside the original_path (when ZIP was uploaded via browser)
+    #   3. User-configured DEFAULT_OUTPUT_DIR from output_config.ini
+    #   4. Beside the zip_path itself (last resort)
+    if output_folder:
+        output_base = Path(output_folder).resolve()
+        output_stem = zip_file.stem
+    elif original_path:
         origin = Path(original_path).resolve()
         output_base = origin.parent
         output_stem = origin.stem

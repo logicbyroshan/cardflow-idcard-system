@@ -281,6 +281,7 @@ def health():
 async def process_zip_endpoint(
     file: UploadFile = File(...),
     original_path: str | None = Form(None),
+    output_folder: str | None = Form(None),
 ):
     """
     Accept a ZIP upload, process it, return summary JSON.
@@ -313,7 +314,11 @@ async def process_zip_endpoint(
                 total_bytes += len(chunk)
 
         logger.info("Processing uploaded ZIP: %s (%d bytes)", file.filename, total_bytes)
-        summary = process_zip(str(tmp_path), original_path=original_path)
+        summary = process_zip(
+            str(tmp_path),
+            original_path=original_path,
+            output_folder=output_folder,
+        )
         return JSONResponse(content=summary)
 
     except FileNotFoundError as exc:

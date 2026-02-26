@@ -37,6 +37,7 @@ function cropperApp() {
       uptime: '',
       memory: '',
       direct: false,  // true when connected directly to local engine
+      url: '',         // base URL when direct-connected
     },
 
     // ── UI state ──
@@ -141,6 +142,7 @@ function cropperApp() {
 
           this.engine.connected = true;
           this.engine.direct = true;
+          this.engine.url = ENGINE_DIRECT_URL;
           this.engine.version = healthData.version || statusData.version || '?';
 
           var secs = healthData.uptime_seconds || 0;
@@ -369,7 +371,6 @@ function cropperApp() {
             throw new Error(errBody.message || errBody.detail || 'Engine error ' + resp.status);
           }
           data = await resp.json();
-          data.success = true;
         } else {
           // ── Django proxy fallback ─────────────────────────────────
           data = await ApiClient.upload(
@@ -388,7 +389,7 @@ function cropperApp() {
 
         this._hideProgress();
 
-        if (data && data.success !== false) {
+        if (data && data.total != null) {
           this._updateProgress(100, 'Complete!');
           this._showResult(data);
           this.clearFile();
@@ -439,7 +440,6 @@ function cropperApp() {
             throw new Error(errBody.message || errBody.detail || 'Engine error ' + resp.status);
           }
           data = await resp.json();
-          data.success = true;
         } else {
           // ── Django proxy fallback ─────────────────────────────────
           data = await ApiClient.post(
@@ -450,7 +450,7 @@ function cropperApp() {
 
         this._hideProgress();
 
-        if (data && data.success !== false) {
+        if (data && data.total != null) {
           this._updateProgress(100, 'Complete!');
           this._showResult(data);
           if (typeof Toast !== 'undefined') Toast.success('Processing complete!');
