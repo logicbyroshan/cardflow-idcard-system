@@ -84,6 +84,33 @@
     </a>
     {% endif %}
     
+    {% if is_super_admin or is_admin_staff %}
+    <!-- Services Dropdown — Admin & Admin Staff only -->
+    <div class="nav-section">
+      <div class="nav-section-line"></div>
+      <span class="nav-section-title">Tools</span>
+      <div class="nav-section-line"></div>
+    </div>
+    <div class="sidebar-dropdown" x-data="{ open: false }">
+      <button class="sidebar-dropdown-toggle" @click="open = !open" type="button">
+        <i class="fa-solid fa-screwdriver-wrench"></i>
+        <span>Services</span>
+        <i class="fa-solid fa-chevron-down sidebar-dropdown-arrow" :class="{ 'rotated': open }"></i>
+      </button>
+      <div class="sidebar-dropdown-menu" x-show="open" x-collapse x-cloak>
+        <a href="{% url 'adarsh_cropper' %}" class="{% if active_page == 'adarsh_cropper' %}active{% endif %}">
+          <i class="fa-solid fa-crop"></i><span>Adarsh Cropper</span>
+        </a>
+        <a href="#" class="{% if active_page == 'adarsh_bg_remover' %}active{% endif %}">
+          <i class="fa-solid fa-eraser"></i><span>Adarsh BG Remover</span>
+        </a>
+        <a href="#" class="{% if active_page == 'adarsh_card_printer' %}active{% endif %}">
+          <i class="fa-solid fa-print"></i><span>Adarsh Card Printer</span>
+        </a>
+      </div>
+    </div>
+    {% endif %}
+
     {% if is_super_admin or perm_website_view %}
     <!-- Site Management Section -->
     <div class="nav-section">

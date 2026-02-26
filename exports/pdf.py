@@ -210,7 +210,7 @@ class PdfExporter:
                     message='No fields found in table configuration!'
                 )
 
-            # Sort cards for export (Class → Name, or Name only)
+            # Sort cards for export (Class → Section → Name)
             cards_list = sort_cards_for_export(list(cards[:MAX_PDF_CARDS]), table.fields)
             column_configs = self._build_column_configs(ordered_fields, cards_list)
 

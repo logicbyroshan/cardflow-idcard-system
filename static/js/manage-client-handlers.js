@@ -215,12 +215,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
       // Permission label mapping
       var permissionLabels = {
-        'perm_idcard_client_list': 'Manage Staff',
-        'perm_idcard_setting_list': 'View Templates',
-        'perm_idcard_setting_add': 'Add Template',
+        'perm_idcard_client_list': 'Access Clients Page',
+        'perm_idcard_setting_list': 'View Template List',
+        'perm_idcard_setting_add': 'Create New Template',
         'perm_idcard_setting_edit': 'Edit Template',
         'perm_idcard_setting_delete': 'Delete Template',
-        'perm_idcard_setting_status': 'Toggle Template Status'
+        'perm_idcard_setting_status': 'Enable / Disable Template'
       };
 
       async function fetchClientStaff(clientId) {

@@ -21,6 +21,20 @@ function initIdcardGroup(config) {
     });
   }
 
+  // ==================== DOUBLE-CLICK → PENDING LIST ====================
+  if (tableBody) {
+    tableBody.addEventListener('dblclick', function(e) {
+      var row = e.target.closest('tr[data-table-id]');
+      if (!row) return;
+      var tableId = row.getAttribute('data-table-id');
+      if (!tableId) return;
+      var basePath = isClientRole
+        ? '/panel/client/table/' + tableId + '/actions/'
+        : '/panel/table/' + tableId + '/cards/';
+      window.location.href = basePath + '?status=pending';
+    });
+  }
+
   // ==================== SEARCH ====================
   if (searchInput) {
     searchInput.addEventListener('input', function(e) {

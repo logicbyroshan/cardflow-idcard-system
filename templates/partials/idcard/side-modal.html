@@ -72,7 +72,8 @@ id="sideModalOverlay"
                       <span class="upload-hint-text">JPG, PNG (Max 2MB)</span>
                     </div>
                   </div>
-                  <!-- Bottom row: Full-width path input -->
+                  {% if is_super_admin or is_admin_staff %}
+                  <!-- Bottom row: Full-width path input — Admin only -->
                   <div class="image-field-path">
                     <input type="text" 
                            class="image-path-input" 
@@ -81,6 +82,7 @@ id="sideModalOverlay"
                            placeholder="Enter image filename..."
                            autocomplete="off">
                   </div>
+                  {% endif %}
                 </div>
               </div>
               {% endif %}

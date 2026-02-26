@@ -763,3 +763,111 @@ body[style*="overflow:hidden"] {
 
 /* Alpine modal transitions + overlay are in tailwind-input.css (global). */
 
+/* ===========================================
+   SIDEBAR DROPDOWN (Services menu)
+   =========================================== */
+.sidebar-dropdown {
+  position: relative;
+}
+
+.sidebar-dropdown-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 8px;
+  color: rgba(255, 255, 255, 0.55);
+  background: none;
+  border: none;
+  border-radius: 0;
+  font-size: 13px;
+  font-weight: 400;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+}
+
+.sidebar-dropdown-toggle:hover {
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.sidebar-dropdown-toggle i:first-child {
+  text-align: center;
+  flex-shrink: 0;
+  justify-content: center;
+  align-items: center;
+  width: 16px;
+  height: 16px;
+  font-size: 13px;
+  display: inline-flex;
+}
+
+.sidebar-dropdown-arrow {
+  margin-left: auto;
+  font-size: 10px !important;
+  width: 12px !important;
+  transition: transform 0.2s ease;
+}
+
+.sidebar-dropdown-arrow.rotated {
+  transform: rotate(180deg);
+}
+
+.sidebar-dropdown-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px 0 2px 0;
+  margin-top: 1px;
+  margin-left: 0;
+}
+
+.sidebar-dropdown-menu a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 13px;
+  font-weight: 400;
+  text-decoration: none;
+  border-radius: 0;
+  transition: all 0.15s;
+}
+
+.sidebar-dropdown-menu a:hover {
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.sidebar-dropdown-menu a.active {
+  color: #fff;
+  background: rgba(102, 126, 234, 0.2);
+  font-weight: 500;
+}
+
+.sidebar-dropdown-menu a i {
+  text-align: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  font-size: 13px;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Hide dropdown text when sidebar is collapsed */
+.sidebar.collapsed .sidebar-dropdown-toggle span,
+.sidebar.collapsed .sidebar-dropdown-arrow {
+  display: none;
+}
+
+.sidebar.collapsed .sidebar-dropdown-menu {
+  padding-left: 0;
+  margin-left: 0;
+  border-left: none;
+}
+

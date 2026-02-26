@@ -1,0 +1,326 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Adarsh Cropper - Services{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/adarsh-cropper.css' %}">
+{% endblock %}
+
+{% block breadcrumb %}
+<span class="breadcrumb-item"><i class="fa-solid fa-screwdriver-wrench"></i> Services</span>
+<span class="breadcrumb-separator">/</span>
+<span class="breadcrumb-item active">Adarsh Cropper</span>
+{% endblock %}
+
+{% block topbar_right %}
+<div class="nav-right" style="display:flex;align-items:center;gap:10px;">
+  <button class="btn btn-icon" title="Refresh engine status"
+          @click="$dispatch('engine-refresh')">
+    <i class="fa-solid fa-arrows-rotate"></i>
+  </button>
+  <div class="engine-badge"
+       :class="{ 'connected': engine.connected, 'disconnected': engine.checked && !engine.connected }">
+    <template x-if="engine.loading">
+      <span><i class="fa-solid fa-circle-notch fa-spin"></i> Checking…</span>
+    </template>
+    <template x-if="!engine.loading && engine.connected">
+      <span><i class="fa-solid fa-circle-check"></i> Engine v<span x-text="engine.version"></span></span>
+    </template>
+    <template x-if="!engine.loading && engine.checked && !engine.connected">
+      <span><i class="fa-solid fa-circle-xmark"></i> Offline</span>
+    </template>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="cropper-page" x-data="cropperApp()" x-init="init()"
+     @engine-refresh.window="checkEngine()">
+
+  {# ═══════════ SECTION A — Engine Status Card ═══════════ #}
+  <div class="engine-status-card">
+
+    {# Loading #}
+    <div class="engine-loading" x-show="engine.loading" x-cloak>
+      <i class="fa-solid fa-circle-notch fa-spin"></i>
+      <span>Detecting engine…</span>
+    </div>
+
+    {# Connected #}
+    <div class="engine-connected" x-show="engine.connected" x-cloak x-transition>
+      <div class="engine-info-row">
+        <div class="engine-status-indicator connected">
+          <i class="fa-solid fa-check-circle"></i>
+          <span>Engine Connected</span>
+        </div>
+        <div class="engine-meta">
+          <span><i class="fa-solid fa-code-branch"></i> v<span x-text="engine.version"></span></span>
+          <span x-show="engine.uptime"><i class="fa-solid fa-clock"></i> <span x-text="engine.uptime"></span></span>
+          <span x-show="engine.memory"><i class="fa-solid fa-microchip"></i> <span x-text="engine.memory"></span> MB</span>
+        </div>
+      </div>
+    </div>
+
+    {# Disconnected #}
+    <div class="engine-disconnected" x-show="engine.checked && !engine.connected && !engine.loading" x-cloak x-transition>
+      <div class="engine-error-content">
+        <div class="engine-status-indicator disconnected">
+          <i class="fa-solid fa-circle-xmark"></i>
+          <span>Engine Not Detected</span>
+        </div>
+        <p class="engine-help-text">
+          The local PassportEngine service is not running on this machine.
+          Download and install it to enable photo cropping.
+        </p>
+        <div class="engine-actions">
+          <a href="{% static 'engine/PassportEngineSetup.exe' %}" class="btn btn-primary" download>
+            <i class="fa-solid fa-download"></i> Download Installer
+          </a>
+        </div>
+        <p class="engine-note">
+          <i class="fa-solid fa-info-circle"></i>
+          After installing, refresh this page to connect.
+        </p>
+      </div>
+    </div>
+
+  </div>
+
+  {# ═══════════ PROCESSING SECTIONS (visible when connected) ═══════════ #}
+  <template x-if="engine.connected">
+    <div class="processing-sections">
+
+      {# Mode Switcher #}
+      <div class="mode-switcher">
+        <button class="mode-btn" :class="{ active: mode === 'zip' }" @click="mode = 'zip'" type="button">
+          <i class="fa-solid fa-file-zipper"></i> ZIP Upload
+        </button>
+        <button class="mode-btn" :class="{ active: mode === 'folder' }" @click="mode = 'folder'" type="button">
+          <i class="fa-solid fa-folder-open"></i> Folder Path
+        </button>
+      </div>
+
+      {# ──── ZIP Upload ──── #}
+      <div class="process-card" x-show="mode === 'zip'" x-transition>
+        <div class="card-header">
+          <h3><i class="fa-solid fa-file-zipper"></i> Upload ZIP File</h3>
+          <p class="card-desc">Upload a ZIP archive containing passport photos for automatic cropping.</p>
+        </div>
+
+        {# Drop Zone #}
+        <div class="drop-zone" :class="{ 'drag-over': dragOver, 'has-file': !!file }"
+             @dragover.prevent="dragOver = true"
+             @dragleave.prevent="dragOver = false"
+             @drop.prevent="handleDrop($event)"
+             @click="!file && $refs.fileInput.click()">
+
+          {# Empty state #}
+          <div class="drop-zone-content" x-show="!file">
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+            <p class="drop-zone-text">Drag & drop your <strong>.zip</strong> file here</p>
+            <span class="drop-zone-divider">or</span>
+            <label class="btn btn-primary btn-sm" @click.stop>
+              <i class="fa-solid fa-folder-open"></i> Browse Files
+              <input type="file" accept=".zip" x-ref="fileInput" @change="handleFileSelect($event)" style="display:none;">
+            </label>
+          </div>
+
+          {# File selected preview #}
+          <div class="selected-file" x-show="file" x-cloak>
+            <div class="file-info">
+              <i class="fa-solid fa-file-zipper"></i>
+              <div class="file-details">
+                <span class="file-name" x-text="file?.name"></span>
+                <span class="file-size" x-text="formatSize(file?.size)"></span>
+              </div>
+            </div>
+            <button class="btn-clear-file" @click.stop="clearFile()" title="Remove file" type="button">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+        </div>
+
+        {# Output folder (optional) #}
+        <div class="output-folder-group">
+          <label class="output-folder-label">
+            <i class="fa-solid fa-folder-tree"></i> Save cropped photos to <span class="optional-tag">(optional)</span>
+          </label>
+          <div class="input-wrapper">
+            <i class="fa-solid fa-folder"></i>
+            <input type="text" x-model="outputFolder" placeholder="C:\Users\Name\Desktop" autocomplete="off">
+          </div>
+          <p class="input-hint">
+            <i class="fa-solid fa-info-circle"></i>
+            Leave empty to save in system temp. A <em>_cropped</em> folder will be created at this location.
+          </p>
+        </div>
+
+        <div class="card-actions">
+          <button class="btn btn-primary" :disabled="!file || processing" @click="processZip()" type="button">
+            <template x-if="!processing">
+              <span><i class="fa-solid fa-crop"></i> Process ZIP</span>
+            </template>
+            <template x-if="processing">
+              <span><i class="fa-solid fa-spinner fa-spin"></i> Processing…</span>
+            </template>
+          </button>
+        </div>
+      </div>
+
+      {# ──── Folder Path ──── #}
+      <div class="process-card" x-show="mode === 'folder'" x-transition>
+        <div class="card-header">
+          <h3><i class="fa-solid fa-folder-open"></i> Process Folder</h3>
+          <p class="card-desc">Enter a local folder path containing passport photos. The cropped photos will be saved in a <em>_cropped</em> folder next to it.</p>
+        </div>
+
+        <div class="folder-input-group">
+          <div class="input-wrapper">
+            <i class="fa-solid fa-folder"></i>
+            <input type="text" x-model="folderPath" placeholder="C:\Users\Name\Photos" autocomplete="off"
+                   @keydown.enter="processFolder()">
+          </div>
+          <p class="input-hint">
+            <i class="fa-solid fa-info-circle"></i>
+            The folder must be accessible on this computer. Output: <em>&lt;folder&gt;_cropped</em> alongside it.
+          </p>
+        </div>
+
+        <div class="card-actions">
+          <button class="btn btn-primary" :disabled="!folderPath.trim() || processing" @click="processFolder()" type="button">
+            <template x-if="!processing">
+              <span><i class="fa-solid fa-crop"></i> Process Folder</span>
+            </template>
+            <template x-if="processing">
+              <span><i class="fa-solid fa-spinner fa-spin"></i> Processing…</span>
+            </template>
+          </button>
+        </div>
+      </div>
+
+      {# ══════════ Progress Bar ══════════ #}
+      <div class="progress-section" x-show="progress.visible" x-transition x-cloak>
+        <div class="progress-header">
+          <span class="progress-label" x-text="progress.label"></span>
+          <span class="progress-percent" x-text="progress.percent + '%'"></span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" :style="{ width: progress.percent + '%' }"></div>
+        </div>
+        <p class="progress-detail" x-text="progress.detail"></p>
+      </div>
+
+      {# ══════════ Result Summary ══════════ #}
+      <div class="result-section" x-show="result.visible" x-transition x-cloak>
+        <div class="result-header">
+          <h3><i class="fa-solid fa-chart-bar"></i> Processing Results</h3>
+          <button class="btn btn-neutral btn-sm" @click="result.visible = false; preview.visible = false" type="button">
+            <i class="fa-solid fa-xmark"></i> Clear
+          </button>
+        </div>
+        <div class="result-grid">
+          <div class="result-item">
+            <span class="result-value" x-text="result.total"></span>
+            <span class="result-label">Total</span>
+          </div>
+          <div class="result-item success">
+            <span class="result-value" x-text="result.success"></span>
+            <span class="result-label">Success</span>
+          </div>
+          <div class="result-item danger">
+            <span class="result-value" x-text="result.failed"></span>
+            <span class="result-label">Failed</span>
+          </div>
+          <div class="result-item info">
+            <span class="result-value" x-text="result.accuracy"></span>
+            <span class="result-label">Accuracy</span>
+          </div>
+          <div class="result-item">
+            <span class="result-value" x-text="result.time"></span>
+            <span class="result-label">Time</span>
+          </div>
+        </div>
+
+        {# Output folder path #}
+        <div class="result-paths" x-show="result.outputFolder" x-cloak>
+          <div class="result-path-row">
+            <span class="path-label"><i class="fa-solid fa-folder-open"></i> Cropped:</span>
+            <span class="path-value" x-text="result.outputFolder"></span>
+            <button class="btn btn-neutral btn-sm btn-icon" @click="openFolder(result.outputFolder)" title="Copy path" type="button">
+              <i class="fa-solid fa-copy"></i>
+            </button>
+          </div>
+          <div class="result-path-row" x-show="result.failedFolder && result.failed > 0">
+            <span class="path-label"><i class="fa-solid fa-folder-open"></i> Failed:</span>
+            <span class="path-value" x-text="result.failedFolder"></span>
+            <button class="btn btn-neutral btn-sm btn-icon" @click="openFolder(result.failedFolder)" title="Copy path" type="button">
+              <i class="fa-solid fa-copy"></i>
+            </button>
+          </div>
+        </div>
+
+        {# Error details #}
+        <div class="result-errors" x-show="result.errors.length > 0" x-cloak>
+          <h4><i class="fa-solid fa-triangle-exclamation"></i> Failed Items</h4>
+          <ul class="error-list">
+            <template x-for="err in result.errors" :key="err">
+              <li x-text="err"></li>
+            </template>
+          </ul>
+        </div>
+      </div>
+
+      {# ══════════ Image Preview Grid ══════════ #}
+      <div class="preview-section" x-show="preview.visible" x-transition x-cloak>
+        <div class="preview-header">
+          <h3><i class="fa-solid fa-images"></i> Cropped Photos</h3>
+          <span class="preview-count" x-text="preview.images.length + ' photos'"></span>
+        </div>
+
+        {# Loading #}
+        <div class="preview-loading" x-show="preview.loading" x-cloak>
+          <i class="fa-solid fa-circle-notch fa-spin"></i>
+          <span>Loading previews…</span>
+        </div>
+
+        {# Grid #}
+        <div class="preview-grid" x-show="!preview.loading && preview.images.length > 0" x-cloak>
+          <template x-for="img in preview.images" :key="img.name">
+            <div class="preview-card">
+              <div class="preview-img-wrap">
+                <img :src="img.url" :alt="img.name" loading="lazy">
+              </div>
+              <span class="preview-name" x-text="img.name" :title="img.name"></span>
+            </div>
+          </template>
+        </div>
+
+        {# No images #}
+        <div class="preview-empty" x-show="!preview.loading && preview.images.length === 0" x-cloak>
+          <p>No cropped images found in the output folder.</p>
+        </div>
+      </div>
+
+      {# ══════════ Error Message ══════════ #}
+      <div class="error-section" x-show="error.visible" x-transition x-cloak>
+        <div class="error-content">
+          <i class="fa-solid fa-circle-exclamation"></i>
+          <div>
+            <span class="error-title" x-text="error.title"></span>
+            <p class="error-message" x-text="error.message"></p>
+          </div>
+        </div>
+        <button class="btn-dismiss-error" @click="error.visible = false" type="button">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+    </div>
+  </template>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/adarsh-cropper.js' %}"></script>
+{% endblock %}

@@ -4,6 +4,7 @@
 from .base import (
     get_user_role,
     super_admin_required,
+    adarsh_cropper,
     dashboard,
     api_global_search,
     api_recent_client_updates,
@@ -129,6 +130,14 @@ from .task_api import (
 
 from .monitoring_api import (
     api_client_errors,
+)
+
+from .engine_api import (
+    api_engine_status,
+    api_engine_process_zip,
+    api_engine_process_folder,
+    api_engine_preview,
+    api_engine_serve_image,
 )
 
 from .notification_api import (

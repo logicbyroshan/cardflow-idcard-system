@@ -381,6 +381,7 @@ def is_valid_image_path(path: Optional[str]) -> bool:
 
 # Field name patterns used to detect sort-relevant columns
 _CLASS_PATTERNS = ['CLASS']
+_SECTION_PATTERNS = ['SECTION', 'SEC']
 _NAME_PATTERNS = ['NAME', 'STUDENT', 'EMPNAME', 'STUDENT NAME', 'EMP NAME']
 
 
@@ -424,10 +425,9 @@ def sort_cards_for_export(
     Sort cards for export output.
 
     Sorting rules (applied to field_data values, case-insensitive):
-      • If a CLASS field exists  → primary sort by Class (A→Z),
-                                    secondary sort by Name (A→Z)
-      • If CLASS does NOT exist  → sort only by Name  (A→Z)
-      • If neither is found      → return original order
+      • If CLASS exists → Class (A→Z), then Section (A→Z), then Name (A→Z)
+      • If CLASS absent  → Name (A→Z) only
+      • If none found    → original order
 
     This function is the SINGLE source of export sort logic.
     Called by Word, Excel, and PDF exporters.
@@ -445,20 +445,22 @@ def sort_cards_for_export(
     field_names = [f.get('name', '') for f in table_fields]
 
     class_field = _find_field_name(field_names, _CLASS_PATTERNS)
+    section_field = _find_field_name(field_names, _SECTION_PATTERNS)
     name_field = _find_field_name(field_names, _NAME_PATTERNS)
 
     # Nothing to sort by
-    if not class_field and not name_field:
+    if not class_field and not section_field and not name_field:
         return cards_list
 
     def _sort_key(card):
         fd = card.field_data or {}
 
         cls_val = str(fd.get(class_field, '') or '').strip().upper() if class_field else ''
+        sec_val = str(fd.get(section_field, '') or '').strip().upper() if section_field else ''
         name_val = str(fd.get(name_field, '') or '').strip().upper() if name_field else ''
 
         if class_field:
-            return (cls_val, name_val)
+            return (cls_val, sec_val, name_val)
         return (name_val,)
 
     return sorted(cards_list, key=_sort_key)

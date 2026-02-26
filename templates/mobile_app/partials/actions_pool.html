@@ -26,9 +26,11 @@
         <i class="fa-solid fa-file-pdf"></i>
         <span class="action-btn-text">PDF</span>
     </button>
+    {% if not is_client and not is_client_staff %}
     <button @click="downloadIMG()" class="action-btn flex-1 action-btn-blue">
         <i class="fa-solid fa-image"></i>
         <span class="action-btn-text">IMG</span>
     </button>
+    {% endif %}
     {% endif %}
 </div>

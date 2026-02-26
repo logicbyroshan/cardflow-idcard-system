@@ -14,6 +14,7 @@ from django.db.models import QuerySet
 
 from .utils import (
     get_text_fields,
+    get_image_fields,
     generate_export_filename,
     format_field_value,
     sort_cards_for_export,
@@ -98,11 +99,13 @@ class ExcelExporter:
         try:
             # Get text fields only (exclude images)
             text_fields = get_text_fields(table.fields or [])
+            # Get image fields (for filename-only columns)
+            image_fields = get_image_fields(table.fields or [])
             
-            if not text_fields:
+            if not text_fields and not image_fields:
                 return ExcelExportResult(
                     success=False,
-                    message='No text fields found in table configuration!'
+                    message='No fields found in table configuration!'
                 )
             
             # Create workbook
@@ -116,8 +119,8 @@ class ExcelExporter:
             # Track column widths
             column_widths = {}
             
-            # Write header row
-            headers = [f['name'] for f in text_fields]
+            # Write header row — text fields first, then image fields
+            headers = [f['name'] for f in text_fields] + [f['name'] for f in image_fields]
             for col_idx, header in enumerate(headers, 1):
                 cell = ws.cell(row=1, column=col_idx, value=header)
                 cell.font = styles['header_font']
@@ -125,14 +128,16 @@ class ExcelExporter:
                 cell.border = styles['border']
                 column_widths[col_idx] = len(str(header)) + 2
             
-            # Sort cards for export (Class → Name, or Name only)
+            # Sort cards for export (Class → Section → Name)
             sorted_cards = sort_cards_for_export(list(cards[:self.MAX_EXCEL_CARDS]), table.fields)
 
             # Write data rows
             row_count = 0
+            text_col_count = len(text_fields)
             for row_idx, card in enumerate(sorted_cards, 2):
                 field_data = card.field_data or {}
                 
+                # Text field columns
                 for col_idx, field in enumerate(text_fields, 1):
                     value = field_data.get(field['name'], '')
                     formatted_value = format_field_value(value, uppercase=uppercase_values)
@@ -144,6 +149,23 @@ class ExcelExporter:
                     
                     # Track max width
                     current_width = min(len(formatted_value) + 2, self.MAX_COLUMN_WIDTH)
+                    column_widths[col_idx] = max(
+                        column_widths.get(col_idx, self.MIN_COLUMN_WIDTH),
+                        current_width
+                    )
+                
+                # Image field columns — show filename without extension
+                for img_idx, img_field in enumerate(image_fields):
+                    col_idx = text_col_count + img_idx + 1
+                    raw_value = field_data.get(img_field['name'], '')
+                    filename_stem = self._extract_image_filename(raw_value)
+                    
+                    cell = ws.cell(row=row_idx, column=col_idx, value=filename_stem)
+                    cell.font = styles['data_font']
+                    cell.alignment = styles['data_alignment']
+                    cell.border = styles['border']
+                    
+                    current_width = min(len(filename_stem) + 2, self.MAX_COLUMN_WIDTH)
                     column_widths[col_idx] = max(
                         column_widths.get(col_idx, self.MIN_COLUMN_WIDTH),
                         current_width
@@ -210,6 +232,29 @@ class ExcelExporter:
                 bottom=Side(style='thin', color='CCCCCC')
             )
         }
+
+    @staticmethod
+    def _extract_image_filename(raw_value: str) -> str:
+        """Extract image filename without extension from a field_data value.
+
+        Handles these formats:
+          • 'clients_imgs/Client/table/1234.jpg'  → '1234'
+          • 'PENDING:filename.jpg'                → 'filename'
+          • 'NOT_FOUND'                           → ''
+          • ''                                    → ''
+        """
+        import os as _os
+
+        if not raw_value or raw_value in ('NOT_FOUND', ''):
+            return ''
+        val = str(raw_value).strip()
+        # Strip PENDING: prefix
+        if val.upper().startswith('PENDING:'):
+            val = val[8:]
+        # Get basename, then strip extension
+        basename = _os.path.basename(val)
+        name, _ = _os.path.splitext(basename)
+        return name
 
 
 # =============================================================================

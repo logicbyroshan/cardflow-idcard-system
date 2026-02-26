@@ -795,7 +795,7 @@ def client_idcard_group(request):
             download_count=Count('id_cards', filter=Q(id_cards__status='download')),
             reprint_count=Count('id_cards', filter=Q(id_cards__status='reprint')),
             total_cards=Count('id_cards')
-        )
+        ).order_by('-updated_at')
     else:
         tables = IDCardTable.objects.none()
 
@@ -885,7 +885,7 @@ def client_group_settings(request):
         group = IDCardService.ensure_default_group(client)
         tables = IDCardTable.objects.filter(group=group).annotate(
             total_cards=Count('id_cards')
-        )
+        ).order_by('-updated_at')
     else:
         group = None
         tables = IDCardTable.objects.none()

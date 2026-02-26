@@ -39,41 +39,41 @@ from core.utils.email_utils import generate_secure_password, send_welcome_email
 # These map to Django permission codenames
 ADMIN_STAFF_PERMISSIONS = {
     # Client Management
-    'can_view_clients': 'Can view client list',
-    'can_add_clients': 'Can add new clients',
-    'can_edit_clients': 'Can edit client details',
-    'can_delete_clients': 'Can delete clients',
-    'can_toggle_client_status': 'Can activate/deactivate clients',
+    'can_view_clients': 'Can access Clients page',
+    'can_add_clients': 'Can create new Client',
+    'can_edit_clients': 'Can modify Client details',
+    'can_delete_clients': 'Can remove Client',
+    'can_toggle_client_status': 'Can toggle Client active status',
     
     # ID Card Data Management
-    'can_view_idcard_data': 'Can view ID card data',
-    'can_add_idcard_data': 'Can add ID card data',
-    'can_edit_idcard_data': 'Can edit ID card data',
-    'can_delete_idcard_data': 'Can delete ID card data',
-    'can_verify_idcard': 'Can verify ID cards',
-    'can_approve_idcard': 'Can approve ID cards',
+    'can_view_idcard_data': 'Can access Card data',
+    'can_add_idcard_data': 'Can add new Card entry',
+    'can_edit_idcard_data': 'Can edit Card data',
+    'can_delete_idcard_data': 'Can delete Card entry',
+    'can_verify_idcard': 'Can verify Card data',
+    'can_approve_idcard': 'Can approve Card status',
     
     # ID Card Settings
-    'can_view_idcard_settings': 'Can view ID card settings',
-    'can_add_idcard_settings': 'Can add ID card settings',
-    'can_edit_idcard_settings': 'Can edit ID card settings',
-    'can_delete_idcard_settings': 'Can delete ID card settings',
+    'can_view_idcard_settings': 'Can view Template list',
+    'can_add_idcard_settings': 'Can create new Template',
+    'can_edit_idcard_settings': 'Can modify Template settings',
+    'can_delete_idcard_settings': 'Can remove Template',
     
     # Image Management
-    'can_upload_images': 'Can upload ID card images',
-    'can_reupload_images': 'Can re-upload ID card images',
+    'can_upload_images': 'Can upload Card photos',
+    'can_reupload_images': 'Can replace Card photos',
     
     # Bulk Operations
-    'can_bulk_upload': 'Can perform bulk upload',
-    'can_bulk_download': 'Can perform bulk download',
+    'can_bulk_upload': 'Can use Excel / ZIP bulk upload',
+    'can_bulk_download': 'Can download Cards as ZIP',
     
     # Exports
-    'can_export_data': 'Can export data',
-    'can_download_cards': 'Can download rendered cards',
+    'can_export_data': 'Can export data (Excel / Word / PDF)',
+    'can_download_cards': 'Can download rendered Card images',
     
     # Workflow
-    'can_view_workflow': 'Can view workflow status',
-    'can_manage_workflow': 'Can manage workflow',
+    'can_view_workflow': 'Can view workflow dashboard',
+    'can_manage_workflow': 'Can manage workflow settings',
 }
 
 # Admin Staff Django Group name

@@ -233,3 +233,26 @@ test_*.py
 CODE_REVIEW_REPORT.md
 FRONTEND_PERFORMANCE_REPORT.md
 REDIS.md
+
+# ── Face Cropper / PassportEngine ──
+# Build artifacts (PyInstaller)
+Face Cropper/build/
+Face Cropper/dist/
+Face Cropper/Output/
+
+# Virtual environment
+Face Cropper/venv/
+
+# Logs
+Face Cropper/logs/
+
+# Media / temp files created during processing
+Face Cropper/media/
+
+# Installer binaries (large, reproducible)
+Face Cropper/installer/PassportEngine.exe
+Face Cropper/installer/PassportEngineSetup.exe
+Face Cropper/installer/nssm.exe
+
+# ICO generated from PNG
+Face Cropper/app_icon.ico

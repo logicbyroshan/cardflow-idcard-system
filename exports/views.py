@@ -199,15 +199,28 @@ def _check_export_client_scope(request, table_id):
     return None
 
 
-def _acquire_export_lock(user_id, table_id, ttl=300):
-    """Prevent concurrent exports by the same user on the same table.
-    TTL=300s (5 min) to handle large exports with many images."""
-    lock_key = f'export_lock:{user_id}:{table_id}'
-    return django_cache.add(lock_key, 1, ttl), lock_key
+def _acquire_export_lock(user_id, table_id, export_type='generic', max_concurrent=3, ttl=300):
+    """Allow up to max_concurrent concurrent exports per user/table/type.
+
+    Each export type (pdf, xlsx, docx, images, download_all) gets its own
+    set of lock slots so that e.g. 3 PDF downloads can run at the same time
+    while an XLSX export is also in progress.
+
+    TTL=300s (5 min) safety net — locks are always released in the finally
+    block, but TTL handles crashes / timeouts gracefully.
+
+    Returns (acquired: bool, lock_key: str).
+    """
+    for slot in range(max_concurrent):
+        lock_key = f'export_lock:{user_id}:{table_id}:{export_type}:{slot}'
+        if django_cache.add(lock_key, 1, ttl):
+            return True, lock_key
+    return False, ''
 
 def _release_export_lock(lock_key):
     """Release export lock."""
-    django_cache.delete(lock_key)
+    if lock_key:
+        django_cache.delete(lock_key)
 
 
 # =============================================================================
@@ -250,9 +263,9 @@ def api_export_xlsx(request, table_id: int) -> HttpResponse:
         }, status=400)
     
     # Concurrent export guard
-    acquired, lock_key = _acquire_export_lock(request.user.id, table_id)
+    acquired, lock_key = _acquire_export_lock(request.user.id, table_id, 'xlsx')
     if not acquired:
-        return JsonResponse({'success': False, 'message': 'An export is already in progress. Please wait.'}, status=429)
+        return JsonResponse({'success': False, 'message': 'Too many Excel exports running. Please wait.'}, status=429)
     try:
         service = ExportService(request.user)
         result = service.export_excel(table_id, card_ids, status=_get_status_from_request(request))
@@ -334,9 +347,9 @@ def api_export_docx(request, table_id: int) -> HttpResponse:
         doc_format = 'docx'
     
     # Concurrent export guard
-    acquired, lock_key = _acquire_export_lock(request.user.id, table_id)
+    acquired, lock_key = _acquire_export_lock(request.user.id, table_id, 'docx')
     if not acquired:
-        return JsonResponse({'success': False, 'message': 'An export is already in progress. Please wait.'}, status=429)
+        return JsonResponse({'success': False, 'message': 'Too many Word exports running. Please wait.'}, status=429)
     try:
         service = ExportService(request.user)
         result = service.export_word(table_id, card_ids, doc_format=doc_format, status=_get_status_from_request(request), template_id=template_id)
@@ -416,9 +429,9 @@ def api_export_pdf(request, table_id: int) -> HttpResponse:
             pass
     
     # Concurrent export guard
-    acquired, lock_key = _acquire_export_lock(request.user.id, table_id)
+    acquired, lock_key = _acquire_export_lock(request.user.id, table_id, 'pdf')
     if not acquired:
-        return JsonResponse({'success': False, 'message': 'An export is already in progress. Please wait.'}, status=429)
+        return JsonResponse({'success': False, 'message': 'Too many PDF exports running. Please wait.'}, status=429)
     try:
         service = ExportService(request.user)
         result = service.export_pdf(table_id, card_ids, status=_get_status_from_request(request), template_id=template_id)
@@ -498,9 +511,9 @@ def api_export_images(request, table_id: int) -> JsonResponse:
         card_ids = card_ids[:MAX_ZIP_EXPORT_CARD_IDS]
     
     # Concurrent export guard
-    acquired, lock_key = _acquire_export_lock(request.user.id, table_id)
+    acquired, lock_key = _acquire_export_lock(request.user.id, table_id, 'images')
     if not acquired:
-        return JsonResponse({'success': False, 'message': 'An export is already in progress. Please wait.'}, status=429)
+        return JsonResponse({'success': False, 'message': 'Too many image exports running. Please wait.'}, status=429)
     try:
         service = ExportService(request.user)
         result = service.export_images(table_id, card_ids, status=_get_status_from_request(request))
@@ -643,10 +656,10 @@ def api_download_all_cards(request, table_id: int) -> JsonResponse:
     except Exception:
         return JsonResponse({'success': False, 'message': 'Table not found'}, status=404)
     
-    # Concurrent export guard
-    acquired, lock_key = _acquire_export_lock(request.user.id, table_id)
+    # Concurrent export guard — download-all is heavy, keep max_concurrent=1
+    acquired, lock_key = _acquire_export_lock(request.user.id, table_id, 'download_all', max_concurrent=1)
     if not acquired:
-        return JsonResponse({'success': False, 'message': 'An export is already in progress. Please wait.'}, status=429)
+        return JsonResponse({'success': False, 'message': 'A bulk download is already in progress. Please wait.'}, status=429)
     try:
         service = ExportService(request.user)
         excel_exporter = ExcelExporter()

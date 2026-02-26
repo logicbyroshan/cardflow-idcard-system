@@ -33,6 +33,21 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             GSP.updateActionButtons();
         });
+
+        // Double-click on a row → navigate to that table's pending cards
+        gsTableContainer.addEventListener('dblclick', function(e) {
+            var row = e.target.closest('tr[data-table-id]');
+            if (!row || row.classList.contains('no-data-row')) return;
+            // Don't navigate when double-clicking action buttons
+            if (e.target.closest('.download-btn')) return;
+            var tableId = row.dataset.tableId;
+            // Detect client vs admin from URL
+            var isClient = window.location.pathname.indexOf('/client/') !== -1;
+            var basePath = isClient
+                ? '/panel/client/table/' + tableId + '/actions/'
+                : '/panel/table/' + tableId + '/cards/';
+            window.location.href = basePath + '?status=pending';
+        });
     }
 
     // ==================== BUTTON HANDLERS ====================

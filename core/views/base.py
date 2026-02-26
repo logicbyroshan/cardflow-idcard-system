@@ -20,7 +20,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.db.models import Count, Q
+from django.db.models import Count, F, Max, Q
 from django.utils import timezone
 from ..models import Client, Staff, IDCardGroup, IDCard, IDCardTable, ReprintRequest, User, SystemSettings, Notification
 from ..services import IDCardService
@@ -120,6 +120,18 @@ def super_admin_required(view_func):
     return _require_super_admin(view_func)
 
 
+# ── Services ─────────────────────────────────────────────────────────────
+@login_required
+@require_any_admin
+def adarsh_cropper(request):
+    """Adarsh Cropper service page — admin & admin staff only."""
+    context = {
+        'active_page': 'adarsh_cropper',
+        'user_role': get_user_role(request.user),
+    }
+    return render(request, 'services/adarsh-cropper.html', context)
+
+
 # Dashboard
 @login_required
 @require_any_admin
@@ -215,9 +227,15 @@ def api_recent_client_updates(request):
         user = request.user
         
         # Get recent active clients - scoped by PermissionService
+        # Order by most-recently-approved card data (latest approved card update first)
         clients = PermissionService.get_accessible_clients(
             user, Client.objects.filter(status='active')
-        ).order_by('-updated_at')[:limit]
+        ).annotate(
+            latest_approved=Max(
+                'id_card_groups__tables__id_cards__updated_at',
+                filter=Q(id_card_groups__tables__id_cards__status='approved')
+            )
+        ).order_by(F('latest_approved').desc(nulls_last=True))[:limit]
         
         results = []
         
@@ -639,7 +657,7 @@ def idcard_group(request, client_id):
         download_count=Count('id_cards', filter=Q(id_cards__status='download')),
         reprint_count=Count('id_cards', filter=Q(id_cards__status='reprint')),
         total_cards=Count('id_cards')
-    )
+    ).order_by('-updated_at')
 
     # Get default group for Create with XLSX button
     group = IDCardService.ensure_default_group(client)

@@ -61,6 +61,16 @@ urlpatterns = [
     path('api/table/<int:table_id>/reprint/download-list/', views.api_reprint_download_list, name='api_reprint_download_list'),
     path('api/table/<int:table_id>/reprint/mark-downloaded/', views.api_reprint_mark_downloaded, name='api_reprint_mark_downloaded'),
 
+    # ==================== SERVICES ====================
+    path('services/adarsh-cropper/', views.adarsh_cropper, name='adarsh_cropper'),
+
+    # Engine Proxy APIs (browser → Django → PassportEngine, avoids CORS)
+    path('api/engine/status/', views.api_engine_status, name='api_engine_status'),
+    path('api/engine/process-zip/', views.api_engine_process_zip, name='api_engine_process_zip'),
+    path('api/engine/process-folder/', views.api_engine_process_folder, name='api_engine_process_folder'),
+    path('api/engine/preview/', views.api_engine_preview, name='api_engine_preview'),
+    path('api/engine/serve-image/', views.api_engine_serve_image, name='api_engine_serve_image'),
+
     # Website Management → redirect to new website admin dashboard
     path('manage-website/', views.manage_website, name='manage_website'),
     

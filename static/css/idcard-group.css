@@ -28,9 +28,9 @@
     vertical-align: middle;
 }
 
-/* Override generic row selection cursor — this page doesn't use row selection */
-.idcard-table tbody tr {
-    cursor: default;
+/* Override generic row selection cursor — double-click opens pending list */
+.idcard-table tbody tr[data-table-id] {
+    cursor: pointer;
     user-select: auto;
 }
 .idcard-table tbody tr:nth-child(odd) {
