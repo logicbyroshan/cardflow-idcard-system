@@ -73,7 +73,7 @@ def _client_ctx(user):
     if client is None and PermissionService.is_any_admin(user):
         # Admins can access all clients — pick the first active one
         from client.models import Client
-        client = Client.objects.filter(is_active=True).first()
+        client = Client.objects.filter(status='active').first()
     perms = PermissionService.get_permission_context(user)
     return client, perms
 
