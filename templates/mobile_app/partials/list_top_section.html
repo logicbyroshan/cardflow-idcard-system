@@ -20,6 +20,9 @@
         <span class="bg-white/20 text-white text-xs font-bold px-2.5 py-1 rounded-full">
             {{ total_count }}
         </span>
+        <a href="{% url 'mobile_app:camera_capture' table_id=table.id %}" class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all ml-1">
+            <i class="fa-solid fa-camera text-sm"></i>
+        </a>
     </div>
 
     <!-- Search Bar -->

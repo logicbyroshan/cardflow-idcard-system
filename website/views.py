@@ -81,6 +81,19 @@ def home(request):
         }
         cache.set('home_sections', home_sections, 60)
     context.update(home_sections)
+
+    # Split products into 2 rows so they show different images in each scroll row
+    all_products = home_sections.get('featured_portfolio') or home_sections.get('recent_portfolio') or []
+    if all_products:
+        context['row1_portfolio'] = all_products[::2]     # even-indexed items
+        context['row2_portfolio'] = all_products[1::2]    # odd-indexed items
+        # If only 1 item, duplicate to row2
+        if not context['row2_portfolio']:
+            context['row2_portfolio'] = list(reversed(all_products))
+    else:
+        context['row1_portfolio'] = []
+        context['row2_portfolio'] = []
+
     return render(request, 'website/index.html', context)
 
 

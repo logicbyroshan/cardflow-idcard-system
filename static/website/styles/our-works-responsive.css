@@ -81,7 +81,7 @@
     }
 
     .portfolio-grid {
-        gap: 25px;
+        column-gap: 25px;
     }
 }
 
@@ -110,12 +110,7 @@
     }
 
     .portfolio-grid {
-        grid-template-columns: repeat(3, 1fr);
-    }
-
-    .portfolio-item.featured {
-        grid-column: span 2;
-        grid-row: span 2;
+        columns: 3 200px;
     }
 
     .process-connector {
@@ -163,22 +158,6 @@
         font-size: 0.85rem;
     }
 
-    .reels-section {
-        padding: 60px 0;
-    }
-
-    .reels-wrapper {
-        padding: 0;
-    }
-
-    .reel-card {
-        flex: 0 0 240px;
-    }
-
-    .reel-video {
-        height: 340px;
-    }
-
     .portfolio-section {
         padding: 60px 0;
     }
@@ -197,22 +176,8 @@
     }
 
     .portfolio-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 15px;
-    }
-
-    .portfolio-item.featured {
-        grid-column: span 2;
-        grid-row: span 1;
-        aspect-ratio: 2/1;
-    }
-
-    .portfolio-item.portrait {
-        grid-row: span 2;
-    }
-
-    .portfolio-item.landscape {
-        grid-column: span 2;
+        columns: 2 180px;
+        column-gap: 15px;
     }
 
     .process-section {
@@ -308,32 +273,6 @@
         padding: 12px 15px;
     }
 
-    .reels-section {
-        padding: 50px 0;
-    }
-
-    .reels-wrapper {
-        padding: 0;
-    }
-
-    .reels-scroll {
-        padding: 20px 30px;
-    }
-
-    .reel-card {
-        flex: 0 0 260px;
-    }
-
-    .reel-video {
-        height: 350px;
-    }
-
-    .play-reel-btn {
-        width: 60px;
-        height: 60px;
-        font-size: 1.3rem;
-    }
-
     .portfolio-section {
         padding: 50px 0;
     }
@@ -354,21 +293,8 @@
     }
 
     .portfolio-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 10px;
-    }
-
-    .portfolio-item.featured {
-        grid-column: span 2;
-        aspect-ratio: 16/9;
-    }
-
-    .portfolio-item.portrait {
-        grid-row: span 2;
-    }
-
-    .portfolio-item.landscape {
-        grid-column: span 2;
+        columns: 2 140px;
+        column-gap: 10px;
     }
 
     .overlay-content {
@@ -515,34 +441,6 @@
         font-size: 0.9rem;
     }
 
-    .reels-section {
-        padding: 40px 0;
-    }
-
-    .reels-wrapper {
-        overflow: hidden;
-    }
-
-    .reel-card {
-        flex: 0 0 240px;
-    }
-
-    .reel-video {
-        height: 320px;
-    }
-
-    .reel-content {
-        padding: 15px;
-    }
-
-    .reel-content h4 {
-        font-size: 0.9rem;
-    }
-
-    .reel-content p {
-        font-size: 0.8rem;
-    }
-
     .portfolio-section {
         padding: 40px 0;
     }
@@ -553,7 +451,11 @@
     }
 
     .portfolio-grid {
-        gap: 8px;
+        column-gap: 8px;
+    }
+
+    .portfolio-item {
+        margin-bottom: 8px;
     }
 
     .featured-badge {
@@ -629,17 +531,13 @@
         font-size: 1.2rem;
     }
 
-    .reel-card {
-        flex: 0 0 180px;
-    }
-
-    .reel-video {
-        height: 250px;
-    }
-
     .portfolio-grid {
-        grid-template-columns: 1fr 1fr;
-        gap: 6px;
+        columns: 2;
+        column-gap: 6px;
+    }
+
+    .portfolio-item {
+        margin-bottom: 6px;
     }
 }
 
@@ -666,7 +564,7 @@
     }
 
     .portfolio-grid {
-        grid-template-columns: repeat(3, 1fr);
+        columns: 3 140px;
     }
 
     .process-timeline {
@@ -710,10 +608,6 @@
         transform: translateY(0);
     }
 
-    .reel-card:hover {
-        transform: none;
-    }
-
     .mini-category:hover {
         transform: none;
     }
@@ -738,8 +632,7 @@
     }
 
     .explore-btn,
-    .overlay-content,
-    .reel-card {
+    .overlay-content {
         transition: none;
         transform: none;
     }

@@ -44,8 +44,8 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{% static 'mobile/css/mobile.css' %}">
 
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="{% static 'mobile/manifest.json' %}">
+    <!-- PWA Manifest (dynamic — served by Django with correct scope) -->
+    <link rel="manifest" href="/app/manifest.json">
 
     {% block extra_head %}{% endblock %}
 

@@ -139,8 +139,8 @@ function listApp() {
         async submitAddForm() {
             if (!this.form.name.trim()) { this.showToast('Name is required', 'error'); return; }
             const url = this.editMode
-                ? '/panel/client/api/table/' + TABLE_ID + '/card/' + this.editingId + '/update/'
-                : '/panel/client/api/table/' + TABLE_ID + '/card/add/';
+                ? '/app/api/table/' + TABLE_ID + '/card/' + this.editingId + '/update/'
+                : '/app/api/table/' + TABLE_ID + '/card/add/';
             const fd = new FormData();
             const fieldData = {
                 'NAME': this.form.name,

@@ -1251,9 +1251,7 @@ h2 {
     .bento-card-1,
     .bento-card-2,
     .bento-card-3,
-    .bento-card-4,
-    .bento-card-5,
-    .bento-card-6 {
+    .bento-card-4 {
         grid-column: span 1;
     }
 

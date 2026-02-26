@@ -43,7 +43,7 @@ def is_mobile(request):
 
 
 def require_mobile_client(view_func):
-    """Decorator: login + any valid role + perm_mobile_app + mobile UA.
+    """Decorator: login + any valid role + mobile UA.
     Supports all 4 roles: super_admin, admin_staff, client, client_staff.
     After login, redirects back to /app/ (PWA) via ?next= parameter.
     """
@@ -55,10 +55,6 @@ def require_mobile_client(view_func):
         valid_roles = ('super_admin', 'admin_staff', 'client', 'client_staff')
         if not hasattr(user, 'role') or user.role not in valid_roles:
             return redirect('/panel/auth/login/?next=/panel/app/')
-        # super_admin always has access; others need perm_mobile_app
-        if not PermissionService.is_super_admin(user):
-            if not PermissionService.has(user, 'perm_mobile_app'):
-                return render(request, 'mobile_app/no_access.html', status=403)
         # Desktop users see a block page (rendered client-side in base.html)
         return view_func(request, *args, **kwargs)
     return wrapper
@@ -239,26 +235,35 @@ def card_list(request, table_id, status):
 
 
 @require_mobile_client
-def camera_capture(request, table_id):
+def camera_capture(request, table_id, card_id=None):
     """Camera page for capturing ID-card photos."""
     user = request.user
     client, perms = _client_ctx(user)
     if not client:
         return redirect('/panel/auth/login/')
 
-    # Camera requires image upload permission
-    if not PermissionService.has(user, 'perm_reupload_idcard_image'):
-        return redirect('mobile_app:home')
-
     table = get_object_or_404(IDCardTable.objects.select_related('group__client'), id=table_id)
     if not PermissionService.is_any_admin(user) and not ClientAccessService.can_access_table(user, table):
         return redirect('mobile_app:home')
+
+    # If no specific card_id provided, show card picker with cards missing photos
+    cards_without_photo = []
+    if card_id is None:
+        cards_qs = IDCard.objects.filter(table=table).exclude(
+            photo__isnull=False
+        ).exclude(photo='').order_by('id')[:100]
+        for card in cards_qs:
+            fd = card.field_data or {}
+            name = fd.get('NAME') or fd.get('name') or fd.get('Name') or f'Card #{card.id}'
+            cards_without_photo.append({'id': card.id, 'name': name})
 
     return render(request, 'mobile_app/camera.html', {
         'user_name': user.get_full_name() or user.username,
         'client': client,
         'table': table,
         'table_id': table.id,
+        'card_id': card_id or 0,
+        'cards_without_photo': json.dumps(cards_without_photo),
         **perms,
     })
 
@@ -368,9 +373,6 @@ def api_bulk_status(request, table_id):
 @require_http_methods(["POST"])
 def api_upload_photo(request, table_id):
     """Upload photo for a card."""
-    # Check upload permission
-    if not PermissionService.has(request.user, 'perm_reupload_idcard_image'):
-        return JsonResponse({'success': False, 'message': 'No permission to upload images'}, status=403)
     card_id = request.POST.get('card_id')
     photo = request.FILES.get('photo')
     if not photo or not card_id:
@@ -423,3 +425,69 @@ def api_cards(request, table_id):
     if result.success:
         return JsonResponse({'success': True, 'data': result.data})
     return JsonResponse({'success': False, 'message': result.message}, status=400)
+
+
+@require_mobile_client
+@require_http_methods(["POST"])
+def api_card_add(request, table_id):
+    """Add a new card to a table."""
+    try:
+        table = get_object_or_404(IDCardTable, id=table_id, is_active=True)
+        if not PermissionService.is_any_admin(request.user) and not ClientAccessService.can_access_table(request.user, table):
+            return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+
+        field_data_raw = request.POST.get('field_data', '{}')
+        try:
+            field_data = json.loads(field_data_raw)
+        except json.JSONDecodeError:
+            field_data = {}
+
+        card = IDCard.objects.create(table=table, field_data=field_data, status='pending')
+
+        photo = request.FILES.get('photo')
+        if photo:
+            import os, uuid
+            ext = os.path.splitext(photo.name)[1][:10] or '.jpg'
+            safe_name = f'{uuid.uuid4().hex}{ext}'
+            card.photo.save(safe_name, photo, save=True)
+
+        return JsonResponse({'success': True, 'message': 'Card added successfully', 'card_id': card.id})
+    except Exception:
+        import logging as _log
+        _log.getLogger(__name__).exception('Card add error')
+        return JsonResponse({'success': False, 'message': 'An error occurred'}, status=500)
+
+
+@require_mobile_client
+@require_http_methods(["POST"])
+def api_card_update(request, table_id, card_id):
+    """Update an existing card."""
+    try:
+        card = get_object_or_404(IDCard.objects.select_related('table__group'), id=card_id, table_id=table_id)
+        if not PermissionService.is_any_admin(request.user) and not ClientAccessService.can_access_card(request.user, card):
+            return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+
+        field_data_raw = request.POST.get('field_data', '{}')
+        try:
+            field_data = json.loads(field_data_raw)
+        except json.JSONDecodeError:
+            field_data = {}
+
+        if field_data:
+            existing = card.field_data or {}
+            existing.update(field_data)
+            card.field_data = existing
+
+        photo = request.FILES.get('photo')
+        if photo:
+            import os, uuid
+            ext = os.path.splitext(photo.name)[1][:10] or '.jpg'
+            safe_name = f'{uuid.uuid4().hex}{ext}'
+            card.photo.save(safe_name, photo, save=False)
+
+        card.save()
+        return JsonResponse({'success': True, 'message': 'Card updated successfully'})
+    except Exception:
+        import logging as _log
+        _log.getLogger(__name__).exception('Card update error')
+        return JsonResponse({'success': False, 'message': 'An error occurred'}, status=500)

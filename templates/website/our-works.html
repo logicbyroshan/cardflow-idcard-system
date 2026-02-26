@@ -4,8 +4,8 @@
 {% block title %}Our Works{% endblock %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'website/styles/our-works.css' %}?v=135">
-    <link rel="stylesheet" href="{% static 'website/styles/our-works-responsive.css' %}?v=135">
+    <link rel="stylesheet" href="{% static 'website/styles/our-works.css' %}?v=136">
+    <link rel="stylesheet" href="{% static 'website/styles/our-works-responsive.css' %}?v=136">
 {% endblock %}
 
 {% block content %}
@@ -73,149 +73,6 @@
     {{ category_images|json_script:"categoryImagesData" }}
     {{ category_items|json_script:"categoryItemsData" }}
 
-    <!-- Video Reels Section -->
-    <section class="reels-section" id="reels">
-        <div class="container">
-            <div class="section-header">
-                <span class="section-badge">Behind The Scenes</span>
-                <h2>Watch Our <span class="highlight">Reels</span></h2>
-                <p>See our creative process and product showcases in action</p>
-            </div>
-            <div class="reels-wrapper" data-total-reels="{{ total_reels|default:0 }}" data-loaded-count="{{ reels|length }}" data-reels-url="{% url 'website:load_more_reels' %}">
-                <div class="reels-scroll" id="reelsScroll">
-                    {% if reels %}
-                        {% for reel in reels %}
-                        <div class="reel-card" data-index="{{ forloop.counter0 }}" data-reel-id="{{ reel.id }}">
-                            <div class="reel-video">
-                                {% if reel.video_file %}
-                                    <video class="reel-video-player" muted playsinline loop preload="metadata" {% if reel.thumbnail %}poster="{{ reel.thumbnail.url }}"{% endif %}>
-                                        <source src="{{ reel.video_file.url }}" type="video/mp4">
-                                    </video>
-                                {% elif reel.video_url %}
-                                    <video class="reel-video-player" muted playsinline loop preload="metadata" {% if reel.thumbnail %}poster="{{ reel.thumbnail.url }}"{% endif %}>
-                                        <source src="{{ reel.video_url }}" type="video/mp4">
-                                    </video>
-                                {% elif reel.thumbnail %}
-                                    <img src="{{ reel.thumbnail.url }}" alt="{{ reel.title }}" class="reel-thumbnail">
-                                {% else %}
-                                    <div class="reel-placeholder"></div>
-                                {% endif %}
-                                <div class="reel-play-overlay">
-                                    <button class="play-reel-btn">
-                                        <i class="fas fa-play"></i>
-                                    </button>
-                                </div>
-                                <div class="reel-info">
-                                    <span class="reel-views"><i class="fas fa-eye"></i> {{ reel.views_count }}</span>
-                                    <span class="reel-likes"><i class="fas fa-heart"></i> {{ reel.likes_count }}</span>
-                                </div>
-                            </div>
-                            <div class="reel-content">
-                                <h4>{{ reel.title }}</h4>
-                                <p>{{ reel.description|default:"Watch our showcase" }}</p>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    {% else %}
-                        <!-- Placeholder reels when no data -->
-                        <div class="reel-card" data-index="0">
-                            <div class="reel-video">
-                                <div class="reel-placeholder"></div>
-                                <div class="reel-play-overlay">
-                                    <button class="play-reel-btn"><i class="fas fa-play"></i></button>
-                                </div>
-                                <div class="reel-info">
-                                    <span class="reel-views"><i class="fas fa-eye"></i> 12.5K</span>
-                                    <span class="reel-likes"><i class="fas fa-heart"></i> 890</span>
-                                </div>
-                            </div>
-                            <div class="reel-content">
-                                <h4>ID Card Printing Process</h4>
-                                <p>Watch how we create premium ID cards</p>
-                            </div>
-                        </div>
-                        <div class="reel-card" data-index="1">
-                            <div class="reel-video">
-                                <div class="reel-placeholder"></div>
-                                <div class="reel-play-overlay">
-                                    <button class="play-reel-btn"><i class="fas fa-play"></i></button>
-                                </div>
-                                <div class="reel-info">
-                                    <span class="reel-views"><i class="fas fa-eye"></i> 8.2K</span>
-                                    <span class="reel-likes"><i class="fas fa-heart"></i> 654</span>
-                                </div>
-                            </div>
-                            <div class="reel-content">
-                                <h4>Lanyard Customization</h4>
-                                <p>Custom lanyards for every occasion</p>
-                            </div>
-                        </div>
-                        <div class="reel-card" data-index="2">
-                            <div class="reel-video">
-                                <div class="reel-placeholder"></div>
-                                <div class="reel-play-overlay">
-                                    <button class="play-reel-btn"><i class="fas fa-play"></i></button>
-                                </div>
-                                <div class="reel-info">
-                                    <span class="reel-views"><i class="fas fa-eye"></i> 15.8K</span>
-                                    <span class="reel-likes"><i class="fas fa-heart"></i> 1.2K</span>
-                                </div>
-                            </div>
-                            <div class="reel-content">
-                                <h4>Certificate Design Showcase</h4>
-                                <p>Elegant certificates for achievements</p>
-                            </div>
-                        </div>
-                        <div class="reel-card" data-index="3">
-                            <div class="reel-video">
-                                <div class="reel-placeholder"></div>
-                                <div class="reel-play-overlay">
-                                    <button class="play-reel-btn"><i class="fas fa-play"></i></button>
-                                </div>
-                                <div class="reel-info">
-                                    <span class="reel-views"><i class="fas fa-eye"></i> 6.4K</span>
-                                    <span class="reel-likes"><i class="fas fa-heart"></i> 432</span>
-                                </div>
-                            </div>
-                            <div class="reel-content">
-                                <h4>Invitation Card Collection</h4>
-                                <p>Beautiful invites for your events</p>
-                            </div>
-                        </div>
-                    {% endif %}
-
-                    {% comment %} Portfolio items of type reel also show here {% endcomment %}
-                    {% for item in portfolio_reels %}
-                    <div class="reel-card" data-index="{{ forloop.counter|add:reels|length }}" data-portfolio-reel="true">
-                        <div class="reel-video">
-                            {% if item.video_file %}
-                                <video class="reel-video-player" muted playsinline loop preload="metadata" {% if item.image %}poster="{{ item.image.url }}"{% endif %}>
-                                    <source src="{{ item.video_file.url }}" type="video/mp4">
-                                </video>
-                            {% elif item.video_url %}
-                                <video class="reel-video-player" muted playsinline loop preload="metadata" {% if item.image %}poster="{{ item.image.url }}"{% endif %}>
-                                    <source src="{{ item.video_url }}" type="video/mp4">
-                                </video>
-                            {% elif item.image %}
-                                <img src="{{ item.image.url }}" alt="{{ item.title }}" class="reel-thumbnail">
-                            {% else %}
-                                <div class="reel-placeholder"></div>
-                            {% endif %}
-                            <div class="reel-play-overlay">
-                                <button class="play-reel-btn"><i class="fas fa-play"></i></button>
-                            </div>
-                        </div>
-                        <div class="reel-content">
-                            <h4>{{ item.title }}</h4>
-                            <p>{{ item.description|default:"Watch our showcase" }}</p>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-        </div>
-    </section>
-
     <!-- Portfolio Gallery Section -->
     <section class="portfolio-section" id="portfolio">
         <div class="container">
@@ -274,7 +131,7 @@
                     </div>
                 </div>
                 {% empty %}
-                <div class="empty-portfolio-message" style="grid-column: 1 / -1; text-align: center; padding: 60px 20px;">
+                <div class="empty-portfolio-message" style="column-span: all; text-align: center; padding: 60px 20px; width: 100%;">
                     <p style="color: #94a3b8; font-size: 1.1rem; margin: 0;">No works uploaded yet.</p>
                 </div>
                 {% endfor %}
@@ -315,5 +172,5 @@
 {% endblock %}
 
 {% block extra_js %}
-    <script src="{% static 'website/scripts/our-works.js' %}?v=135"></script>
+    <script src="{% static 'website/scripts/our-works.js' %}?v=136"></script>
 {% endblock %}

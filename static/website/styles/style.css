@@ -94,43 +94,60 @@ body {
 
 /* Copy icon in top-bar */
 .copy-icon {
-    font-size: 0.7rem !important;
-    width: auto !important;
-    height: auto !important;
-    background: none !important;
+    font-size: 0.65rem !important;
+    width: 20px !important;
+    height: 20px !important;
+    background: rgba(10, 146, 221, 0.08) !important;
     box-shadow: none !important;
-    color: var(--text-light) !important;
+    color: var(--primary-color) !important;
     opacity: 0 !important;
-    transition: opacity 0.3s ease;
+    transition: all 0.3s ease;
     margin-left: 6px;
+    border-radius: 4px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 
 .top-bar-item:hover .copy-icon {
-    opacity: 0.7 !important;
+    opacity: 1 !important;
+    background: rgba(10, 146, 221, 0.15) !important;
 }
 
 .copy-tooltip {
     position: absolute;
-    top: -28px;
+    top: calc(100% + 8px);
     left: 50%;
     transform: translateX(-50%);
-    background: #10b981;
+    background: #100F57;
     color: #fff;
-    padding: 4px 12px;
-    border-radius: 6px;
+    padding: 5px 14px;
+    border-radius: 8px;
     font-size: 0.75rem;
     font-weight: 600;
     white-space: nowrap;
     pointer-events: none;
-    animation: tooltipFade 1.5s ease forwards;
-    z-index: 100;
+    animation: tooltipFadeDown 1.5s ease forwards;
+    z-index: 1100;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
-@keyframes tooltipFade {
-    0% { opacity: 0; transform: translateX(-50%) translateY(4px); }
+.copy-tooltip::before {
+    content: '';
+    position: absolute;
+    top: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-bottom: 5px solid #100F57;
+}
+
+@keyframes tooltipFadeDown {
+    0% { opacity: 0; transform: translateX(-50%) translateY(-4px); }
     15% { opacity: 1; transform: translateX(-50%) translateY(0); }
     70% { opacity: 1; }
-    100% { opacity: 0; transform: translateX(-50%) translateY(-4px); }
+    100% { opacity: 0; transform: translateX(-50%) translateY(4px); }
 }
 
 .top-bar-item {
@@ -453,7 +470,7 @@ body {
     margin-bottom: 20px;
     line-height: 1.2;
     color: #fff;
-    min-height: 4.2em;
+    min-height: 1.4em;
     display: block;
     text-align: center;
 }
@@ -933,16 +950,6 @@ body {
 .bento-card-4 {
     grid-column: span 2;
     background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
-}
-
-.bento-card-5 {
-    grid-column: span 1;
-    background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%);
-}
-
-.bento-card-6 {
-    grid-column: span 2;
-    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
 }
 
 .bento-card::before {
@@ -2043,8 +2050,6 @@ body {
 .bento-card:nth-child(2) { transition-delay: 0.08s; }
 .bento-card:nth-child(3) { transition-delay: 0.16s; }
 .bento-card:nth-child(4) { transition-delay: 0.24s; }
-.bento-card:nth-child(5) { transition-delay: 0.32s; }
-.bento-card:nth-child(6) { transition-delay: 0.40s; }
 
 /* Staggered reveal for testimonial cards */
 .testimonial-card:nth-child(1) { transition-delay: 0s; }

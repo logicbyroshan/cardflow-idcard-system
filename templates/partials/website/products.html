@@ -4,10 +4,10 @@
     <div class="container">
         <h2 class="section-title">Our Products</h2>
         
-        <!-- Row 1: Scroll Left to Right (Featured items, fallback to recent) -->
+        <!-- Row 1: Scroll Left to Right -->
         <div class="works-carousel">
             <div class="works-track scroll-left-right">
-                {% with row1_items=featured_portfolio|default:recent_portfolio %}
+                {% with row1_items=row1_portfolio|default:featured_portfolio|default:recent_portfolio %}
                     {% for item in row1_items %}
                         <div class="work-item">
                             {% if item.image %}<img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy" decoding="async">{% endif %}
@@ -31,10 +31,10 @@
             </div>
         </div>
 
-        <!-- Row 2: Scroll Right to Left (Recent items, fallback to featured) -->
+        <!-- Row 2: Scroll Right to Left (different set of images) -->
         <div class="works-carousel">
             <div class="works-track scroll-right-left">
-                {% with row2_items=recent_portfolio|default:featured_portfolio %}
+                {% with row2_items=row2_portfolio|default:recent_portfolio|default:featured_portfolio %}
                     {% for item in row2_items %}
                         <div class="work-item">
                             {% if item.image %}<img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy" decoding="async">{% endif %}
