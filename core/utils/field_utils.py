@@ -17,18 +17,26 @@ NUMERIC_TO_ROMAN = {
     '11': 'XI', '12': 'XII',
 }
 
-# Valid Roman class values (preserved as-is during import)
+# Valid class values (preserved as-is during import)
+# KG1 = LKG and KG2 = UKG — different schools use different names for the same level.
 VALID_CLASS_VALUES = {
     'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII',
-    'KG', 'KG1', 'KG2', 'LKG', 'UKG', 'NURSERY',
+    'KG1', 'KG2', 'LKG', 'UKG', 'NURSERY', 'PRE-NURSERY', 'UG',
 }
 
 # Class upgrade progression: current → next
+# Hierarchy: PRE-NURSERY → NURSERY → KG1/LKG → KG2/UKG → I → II → ... → XII → UG
+# Schools using LKG/UKG naming: NURSERY → LKG → UKG → I
+# Schools using KG1/KG2 naming: NURSERY → KG1 → KG2 → I
 CLASS_UPGRADE_MAP = {
-    'NURSERY': 'LKG',
+    'PRE-NURSERY': 'NURSERY',
+    'PRE NURSERY': 'NURSERY',
+    'PRENURSERY': 'NURSERY',
+    'NURSERY': 'KG1',
     'LKG': 'UKG',
-    'UKG': 'KG',
-    'KG': 'I',
+    'KG1': 'KG2',
+    'UKG': 'I',
+    'KG2': 'I',
     'I': 'II',
     'II': 'III',
     'III': 'IV',
@@ -40,8 +48,31 @@ CLASS_UPGRADE_MAP = {
     'IX': 'X',
     'X': 'XI',
     'XI': 'XII',
-    # XII is max — stays as XII
+    'XII': 'UG',
 }
+
+# Logical class ordering (lower index = earlier). Used for sorting/filtering.
+# KG1=LKG and KG2=UKG are at the same level (aliases).
+CLASS_ORDER = {
+    'PRE-NURSERY': 0, 'PRE NURSERY': 0, 'PRENURSERY': 0,
+    'NURSERY': 1, 'NUR': 1,
+    'LKG': 2, 'KG1': 2, 'L.K.G': 2, 'L.K.G.': 2,
+    'UKG': 3, 'KG2': 3, 'U.K.G': 3, 'U.K.G.': 3,
+    'I': 4, '1': 4,
+    'II': 5, '2': 5,
+    'III': 6, '3': 6,
+    'IV': 7, '4': 7,
+    'V': 8, '5': 8,
+    'VI': 9, '6': 9,
+    'VII': 10, '7': 10,
+    'VIII': 11, '8': 11,
+    'IX': 12, '9': 12,
+    'X': 13, '10': 13,
+    'XI': 14, '11': 14,
+    'XII': 15, '12': 15,
+    'UG': 16,
+}
+CLASS_ORDER_UNKNOWN = 99
 
 
 # ==================== CONVERSION FUNCTIONS ====================

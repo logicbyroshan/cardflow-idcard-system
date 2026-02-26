@@ -27,6 +27,12 @@ urlpatterns = [
     # PDF export
     path('pdf/<int:table_id>/', views.api_export_pdf, name='pdf'),
     
+    # Async PDF export (background generation for large datasets)
+    path('pdf-async/<int:table_id>/', views.api_export_pdf_async, name='pdf_async'),
+    
+    # Export task status (polling endpoint)
+    path('status/<str:task_id>/', views.api_export_status, name='export_status'),
+    
     # Image ZIP export
     path('images/<int:table_id>/', views.api_export_images, name='images'),
     

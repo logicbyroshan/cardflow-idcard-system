@@ -5,12 +5,13 @@ Application-specific constants for the standalone passport crop engine.
 All paths are resolved relative to this package via ``__file__``.
 """
 
+import configparser
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # Version
 # ---------------------------------------------------------------------------
-ENGINE_VERSION = "2.0.0"
+ENGINE_VERSION = "2.1.8"
 
 # ---------------------------------------------------------------------------
 # Path Configuration
@@ -26,7 +27,7 @@ BASE_DIR = _PKG_DIR.parent
 # ---------------------------------------------------------------------------
 
 # Maximum number of images allowed in a single ZIP upload.
-MAX_IMAGES_PER_ZIP = 1000
+MAX_IMAGES_PER_ZIP = 50000
 
 # Final passport photo dimensions in pixels (width × height).
 # ISO/IEC 19794-5 common size used by many countries.
@@ -55,11 +56,11 @@ ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".
 MIN_IMAGE_WIDTH = 200
 MIN_IMAGE_HEIGHT = 200
 
-# Maximum file size for a single image inside the ZIP (bytes).  10 MB.
-MAX_IMAGE_FILE_SIZE = 10 * 1024 * 1024
+# Maximum file size for a single image inside the ZIP (bytes).  50 MB.
+MAX_IMAGE_FILE_SIZE = 50 * 1024 * 1024
 
-# Maximum total ZIP file size accepted for upload (bytes).  1000 MB.
-MAX_ZIP_FILE_SIZE = 1000 * 1024 * 1024
+# Maximum total ZIP file size accepted for upload (bytes).  5 GB.
+MAX_ZIP_FILE_SIZE = 5 * 1024 * 1024 * 1024
 
 # ---------------------------------------------------------------------------
 # MediaPipe Model Paths
@@ -73,3 +74,26 @@ MODELS_DIR = (
 FACE_LANDMARKER_MODEL = MODELS_DIR / "face_landmarker.task"
 FACE_DETECTOR_MODEL = MODELS_DIR / "blaze_face_short_range.tflite"
 SELFIE_SEGMENTER_MODEL = MODELS_DIR / "selfie_segmenter.tflite"
+
+# ---------------------------------------------------------------------------
+# User-configured Default Output Directory
+# ---------------------------------------------------------------------------
+# The installer saves a config file at {app}/output_config.ini with the
+# user's chosen output directory.  If present, this path is used as the
+# default output location when no explicit output folder is provided.
+
+_OUTPUT_CONFIG_FILE = BASE_DIR / "output_config.ini"
+
+DEFAULT_OUTPUT_DIR: Path | None = None
+
+if _OUTPUT_CONFIG_FILE.is_file():
+    _cp = configparser.ConfigParser()
+    try:
+        _cp.read(str(_OUTPUT_CONFIG_FILE), encoding="utf-8")
+        _raw = _cp.get("output", "directory", fallback="").strip()
+        if _raw:
+            _candidate = Path(_raw)
+            _candidate.mkdir(parents=True, exist_ok=True)
+            DEFAULT_OUTPUT_DIR = _candidate
+    except Exception:
+        pass  # Ignore malformed config — use default behaviour

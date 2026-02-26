@@ -384,6 +384,10 @@ _CLASS_PATTERNS = ['CLASS']
 _SECTION_PATTERNS = ['SECTION', 'SEC']
 _NAME_PATTERNS = ['NAME', 'STUDENT', 'EMPNAME', 'STUDENT NAME', 'EMP NAME']
 
+# Logical class ordering for exports (lower index = earlier in sort order)
+# Uses the canonical CLASS_ORDER from field_utils.py.
+from core.utils.field_utils import CLASS_ORDER as _CLASS_ORDER, CLASS_ORDER_UNKNOWN as _CLASS_ORDER_UNKNOWN
+
 
 def _find_field_name(field_names: List[str], patterns: List[str]) -> Optional[str]:
     """
@@ -460,7 +464,9 @@ def sort_cards_for_export(
         name_val = str(fd.get(name_field, '') or '').strip().upper() if name_field else ''
 
         if class_field:
-            return (cls_val, sec_val, name_val)
+            # Use logical class ordering (NURSERY < LKG < ... < XII < UG)
+            cls_order = _CLASS_ORDER.get(cls_val, _CLASS_ORDER_UNKNOWN)
+            return (cls_order, cls_val, sec_val, name_val)
         return (name_val,)
 
     return sorted(cards_list, key=_sort_key)

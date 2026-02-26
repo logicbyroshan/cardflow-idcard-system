@@ -1117,9 +1117,15 @@ class IDCardService(BaseService):
     def upgrade_all_classes(cls, table_id: int) -> ServiceResult:
         """
         Upgrade the class field value for all download-status cards in a table.
-        Each class value is bumped to the next level (e.g. V → VI).
-        Cards at XII remain unchanged.
-        Returns: ServiceResult with data={'upgraded', 'skipped', 'total'}
+        Each class value is bumped to the next level (e.g. V → VI, XII → UG).
+
+        After upgrading:
+        - Cards upgraded to UG are moved to 'pool' status.
+        - All other upgraded cards are moved to 'pending' status.
+        - Cards with unrecognized class values remain in 'download' status.
+
+        Returns: ServiceResult with data={'upgraded', 'skipped', 'moved_to_pool',
+                 'moved_to_pending', 'total'}
         """
         from core.utils.field_utils import CLASS_UPGRADE_MAP
         try:
@@ -1150,6 +1156,8 @@ class IDCardService(BaseService):
 
             upgraded = 0
             skipped = 0
+            ug_card_ids = []        # Cards upgraded to UG → move to pool
+            pending_card_ids = []   # All other upgraded cards → move to pending
             with transaction.atomic():
                 BATCH_SIZE = 500
                 cards_to_update = []
@@ -1157,10 +1165,16 @@ class IDCardService(BaseService):
                     field_data = card.field_data or {}
                     current_val = str(field_data.get(class_field_name, '')).strip().upper()
                     if current_val in CLASS_UPGRADE_MAP:
-                        field_data[class_field_name] = CLASS_UPGRADE_MAP[current_val]
+                        new_val = CLASS_UPGRADE_MAP[current_val]
+                        field_data[class_field_name] = new_val
                         card.field_data = field_data
                         cards_to_update.append(card)
                         upgraded += 1
+                        # Track cards by their new class for status moves
+                        if new_val == 'UG':
+                            ug_card_ids.append(card.id)
+                        else:
+                            pending_card_ids.append(card.id)
                     else:
                         skipped += 1
                     # Flush batch to DB periodically to limit memory
@@ -1170,12 +1184,36 @@ class IDCardService(BaseService):
                 if cards_to_update:
                     IDCard.objects.bulk_update(cards_to_update, ['field_data', 'updated_at'], batch_size=BATCH_SIZE)
 
+                # Move UG students to pool
+                moved_to_pool = 0
+                if ug_card_ids:
+                    moved_to_pool = IDCard.objects.filter(
+                        id__in=ug_card_ids
+                    ).update(status='pool')
+
+                # Move all other upgraded students to pending
+                moved_to_pending = 0
+                if pending_card_ids:
+                    moved_to_pending = IDCard.objects.filter(
+                        id__in=pending_card_ids
+                    ).update(status='pending')
+
+            parts = [f'Upgraded {upgraded} card(s).']
+            if moved_to_pending:
+                parts.append(f'{moved_to_pending} moved to Pending.')
+            if moved_to_pool:
+                parts.append(f'{moved_to_pool} UG student(s) moved to Pool.')
+            if skipped:
+                parts.append(f'{skipped} skipped (unrecognized class value).')
+
             return ServiceResult(
                 success=True,
-                message=f'Upgraded {upgraded} card(s). {skipped} skipped (already XII or unknown value).',
+                message=' '.join(parts),
                 data={
                     'upgraded': upgraded,
                     'skipped': skipped,
+                    'moved_to_pool': moved_to_pool,
+                    'moved_to_pending': moved_to_pending,
                     'total': total,
                     'client_name': getattr(table.group.client, 'name', ''),
                 }

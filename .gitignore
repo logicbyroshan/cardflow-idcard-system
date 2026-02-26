@@ -234,7 +234,7 @@ CODE_REVIEW_REPORT.md
 FRONTEND_PERFORMANCE_REPORT.md
 REDIS.md
 
-# ── Face Cropper / PassportEngine ──
+# ── Face Cropper / Adarsh Cropper ──
 # Build artifacts (PyInstaller)
 Face Cropper/build/
 Face Cropper/dist/
@@ -252,7 +252,10 @@ Face Cropper/media/
 # Installer binaries (large, reproducible)
 Face Cropper/installer/PassportEngine.exe
 Face Cropper/installer/PassportEngineSetup.exe
+Face Cropper/installer/AdarshCropper.exe
+Face Cropper/installer/AdarshCropperSetup.exe
 Face Cropper/installer/nssm.exe
 
 # ICO generated from PNG
 Face Cropper/app_icon.ico
+Face Cropper/adarsh_cropper.ico

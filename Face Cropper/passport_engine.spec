@@ -100,7 +100,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name="PassportEngine",
+    name="AdarshCropper",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -113,6 +113,6 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=os.path.join(PROJECT_DIR, "app_icon.ico"),
+    icon=os.path.join(PROJECT_DIR, "adarsh_cropper.ico"),
     version_info=None,      # version_info set via icon / manifest
 )

@@ -452,6 +452,118 @@ def api_export_pdf(request, table_id: int) -> HttpResponse:
 
 
 # =============================================================================
+# ASYNC PDF EXPORT (Background generation with polling)
+# =============================================================================
+
+# Threshold: exports with more cards than this use background generation
+_ASYNC_PDF_THRESHOLD = 500
+
+@login_required
+@require_POST
+@rate_limit(max_requests=10, window_seconds=60, key_prefix='export')
+def api_export_pdf_async(request, table_id: int) -> JsonResponse:
+    """
+    Start a background PDF export for large datasets.
+    
+    Returns a task_id immediately. Client polls api_export_status()
+    until state='completed', then downloads the file.
+    
+    POST /api/table/<table_id>/export/pdf-async/
+    
+    Body:
+        { "card_ids": [1, 2, 3], "template_id": 5 }
+    
+    Returns:
+        { "success": true, "task_id": "abc123", "async": true }
+    """
+    perm_error = _check_export_permission(request)
+    if perm_error:
+        return perm_error
+    
+    scope_error = _check_export_client_scope(request, table_id)
+    if scope_error:
+        return scope_error
+    
+    card_ids = _get_card_ids_from_request(request, table_id=table_id)
+    if not card_ids:
+        return JsonResponse({
+            'success': False,
+            'message': 'No cards selected for export'
+        }, status=400)
+    
+    if len(card_ids) > MAX_PDF_EXPORT_CARD_IDS:
+        card_ids = card_ids[:MAX_PDF_EXPORT_CARD_IDS]
+    
+    template_id = None
+    if request.content_type == 'application/json':
+        try:
+            data = json.loads(request.body)
+            tpl_val = data.get('template_id', '')
+            if tpl_val:
+                try:
+                    template_id = int(tpl_val)
+                except (ValueError, TypeError):
+                    pass
+        except (json.JSONDecodeError, ValueError):
+            pass
+    
+    from .tasks import BackgroundExportManager
+    
+    task_id = BackgroundExportManager.start_pdf_export(
+        user=request.user,
+        table_id=table_id,
+        card_ids=card_ids,
+        status=_get_status_from_request(request),
+        template_id=template_id,
+    )
+    
+    logger.info("Export PDF (async): user=%s table=%d cards=%d task=%s",
+                request.user.id, table_id, len(card_ids), task_id)
+    
+    return JsonResponse({
+        'success': True,
+        'task_id': task_id,
+        'async': True,
+        'card_count': len(card_ids),
+    })
+
+
+@login_required
+def api_export_status(request, task_id: str) -> JsonResponse:
+    """
+    Check the status of a background export task.
+    
+    GET /api/export/status/<task_id>/
+    
+    Returns:
+        {
+            "success": true,
+            "state": "processing|completed|failed",
+            "progress": 50,
+            "message": "Generating PDF for 2000 cards...",
+            "download_url": "/media/temp/exports/abc123_file.pdf"  (when completed)
+        }
+    """
+    from .tasks import BackgroundExportManager
+    
+    status = BackgroundExportManager.get_status(task_id)
+    if status is None:
+        return JsonResponse({
+            'success': False,
+            'message': 'Export task not found or expired'
+        }, status=404)
+    
+    return JsonResponse({
+        'success': True,
+        'state': status['state'],
+        'progress': status['progress'],
+        'message': status['message'],
+        'download_url': status.get('download_url', ''),
+        'filename': status.get('filename', ''),
+    })
+
+
+# =============================================================================
 # IMAGE ZIP EXPORT
 # =============================================================================
 

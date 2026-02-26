@@ -767,7 +767,7 @@
     async function _fetchFilterOptions() {
         if (!_tableId) return;
         try {
-            var url = '/panel/api/table/' + _tableId + '/filter-options/?status=' + encodeURIComponent(_status);
+            var url = '/panel/api/table/' + _tableId + '/filter-options/';
             var response;
             if (typeof ApiClient !== 'undefined' && typeof ApiClient.get === 'function') {
                 response = await ApiClient.get(url);

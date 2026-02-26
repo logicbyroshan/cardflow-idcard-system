@@ -771,6 +771,7 @@ def api_idcard_filter_options(request, table_id):
     from django.db.models.fields.json import KeyTextTransform
     from django.db.models.functions import Cast
     from django.db.models import CharField
+    from core.utils.field_utils import CLASS_ORDER, CLASS_ORDER_UNKNOWN
 
     table, err = _check_client_scope_by_table(request.user, table_id)
     if err:
@@ -797,7 +798,7 @@ def api_idcard_filter_options(request, table_id):
             .exclude(_cv__isnull=True).exclude(_cv='')
             .order_by()
             .values_list('_cv', flat=True).distinct(),
-            key=lambda v: (not v.isdigit(), int(v) if v.isdigit() else v),
+            key=lambda v: (CLASS_ORDER.get(v.upper(), CLASS_ORDER_UNKNOWN), v),
         )
 
     if section_field_name:

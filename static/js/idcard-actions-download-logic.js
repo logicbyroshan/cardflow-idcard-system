@@ -341,6 +341,10 @@ function downloadXlsx(cardIds) {
             fallbackExt: 'xlsx',
             completeMessage: 'Excel file downloaded successfully!',
             onComplete: function() {
+                // From Approved: also trigger separate ZIP photo download, then move to Download list
+                if (_getCurrentStatus() === 'approved') {
+                    downloadImages(cardIds);
+                }
                 _moveCardsToDownloadIfApproved(cardIds);
             },
             onError: function(msg) {
@@ -385,6 +389,10 @@ function downloadXlsx(cardIds) {
             document.body.removeChild(a);
             
             if (typeof showDownloadComplete === 'function') showDownloadComplete('Excel file downloaded successfully!');
+            // From Approved: also trigger separate ZIP photo download, then move to Download list
+            if (_getCurrentStatus() === 'approved') {
+                downloadImages(cardIds);
+            }
             _moveCardsToDownloadIfApproved(cardIds);
         } else {
             if (typeof hideProgressToast === 'function') hideProgressToast();
@@ -417,7 +425,19 @@ function downloadXlsx(cardIds) {
 // ==========================================
 // DOWNLOAD PDF
 // Uses DownloadManager for blob-based response
+// For large exports (500+ cards or no selection), uses async background generation
 // ==========================================
+
+/**
+ * Threshold: if exporting more cards than this (or all cards),
+ * use async/background PDF generation to avoid proxy timeouts.
+ */
+var _ASYNC_PDF_THRESHOLD = 500;
+
+/**
+ * Poll interval for checking async export status (ms).
+ */
+var _POLL_INTERVAL = 2000;
 
 function downloadPdf(cardIds, templateId) {
     templateId = templateId || '';
@@ -428,7 +448,20 @@ function downloadPdf(cardIds, templateId) {
         return;
     }
 
-    // Use DownloadManager if available
+    // Determine card count for async decision
+    // If cardIds is empty, it means "all cards" — use async to be safe
+    var totalCards = (window.IDCardApp && window.IDCardApp.lazyLoadState)
+        ? (window.IDCardApp.lazyLoadState.totalCards || 0)
+        : 0;
+    var effectiveCount = (cardIds && cardIds.length > 0) ? cardIds.length : totalCards;
+
+    // Use async export for large datasets to avoid Cloudflare timeout
+    if (effectiveCount >= _ASYNC_PDF_THRESHOLD) {
+        _downloadPdfAsync(tableId, cardIds, templateId);
+        return;
+    }
+
+    // Use DownloadManager if available (small exports)
     if (window.DownloadManager) {
         window.DownloadManager.start({
             name: 'PDF Document',
@@ -446,9 +479,143 @@ function downloadPdf(cardIds, templateId) {
         return;
     }
 
-    // Legacy fallback
+    // Legacy fallback for small exports
+    _downloadPdfLegacy(tableId, cardIds, templateId);
+}
+
+/**
+ * Async PDF export: starts background generation + polls for completion.
+ * Used for large datasets (500+ cards) to avoid Cloudflare's ~100s timeout.
+ */
+function _downloadPdfAsync(tableId, cardIds, templateId) {
+    if (typeof showProgressToast === 'function') {
+        showProgressToast('Starting PDF generation...', 5);
+    }
+
+    var body = Object.assign({
+        card_ids: cardIds,
+        status: _getCurrentStatus(),
+        template_id: templateId || ''
+    }, _getActiveFilters());
+
+    // Start async export
+    if (typeof apiCall === 'function') {
+        apiCall('/panel/api/table/' + tableId + '/cards/download-pdf-async/', 'POST', body, { timeout: 30000 })
+            .then(function(data) {
+                if (!data.success) {
+                    if (typeof hideProgressToast === 'function') hideProgressToast();
+                    if (typeof showToast === 'function') showToast(data.message || 'Failed to start PDF export', false);
+                    return;
+                }
+                // Start polling for completion
+                _pollExportStatus(data.task_id, data.card_count || 0);
+            })
+            .catch(function(err) {
+                if (typeof hideProgressToast === 'function') hideProgressToast();
+                if (typeof showToast === 'function') showToast('Failed to start PDF export. Please try again.', false);
+                console.error('Async PDF start error:', err);
+            });
+    } else {
+        // Fallback: use fetch
+        fetch('/panel/api/table/' + tableId + '/cards/download-pdf-async/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': typeof getCSRFToken === 'function' ? getCSRFToken() : ''
+            },
+            body: JSON.stringify(body)
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data.success) {
+                if (typeof hideProgressToast === 'function') hideProgressToast();
+                if (typeof showToast === 'function') showToast(data.message || 'Failed to start PDF export', false);
+                return;
+            }
+            _pollExportStatus(data.task_id, data.card_count || 0);
+        })
+        .catch(function(err) {
+            if (typeof hideProgressToast === 'function') hideProgressToast();
+            if (typeof showToast === 'function') showToast('Failed to start PDF export. Please try again.', false);
+            console.error('Async PDF start error:', err);
+        });
+    }
+}
+
+/**
+ * Poll the export status endpoint until the PDF is ready or fails.
+ */
+function _pollExportStatus(taskId, cardCount) {
+    var pollCount = 0;
+    var maxPolls = 300; // 300 * 2s = 10 minutes max
+
+    function poll() {
+        pollCount++;
+        if (pollCount > maxPolls) {
+            if (typeof hideProgressToast === 'function') hideProgressToast();
+            if (typeof showToast === 'function') showToast('PDF generation timed out. Please try again with fewer cards.', false);
+            return;
+        }
+
+        fetch('/panel/api/export/status/' + taskId + '/', {
+            headers: {
+                'X-CSRFToken': typeof getCSRFToken === 'function' ? getCSRFToken() : ''
+            }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data.success) {
+                if (typeof hideProgressToast === 'function') hideProgressToast();
+                if (typeof showToast === 'function') showToast(data.message || 'Export task not found', false);
+                return;
+            }
+
+            if (data.state === 'completed') {
+                if (typeof showProgressToast === 'function') {
+                    showProgressToast('PDF ready! Starting download...', 100);
+                }
+                // Trigger download
+                setTimeout(function() {
+                    var a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = data.download_url;
+                    a.download = data.filename || 'export.pdf';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    if (typeof showDownloadComplete === 'function') {
+                        showDownloadComplete('PDF file downloaded successfully!');
+                    }
+                }, 500);
+            } else if (data.state === 'failed') {
+                if (typeof hideProgressToast === 'function') hideProgressToast();
+                if (typeof showToast === 'function') showToast(data.message || 'PDF generation failed', false);
+            } else {
+                // Still processing — show progress and poll again
+                var msg = data.message || ('Generating PDF' + (cardCount ? ' (' + cardCount + ' cards)' : '') + '...');
+                if (typeof showProgressToast === 'function') {
+                    showProgressToast(msg, data.progress || -1);
+                }
+                setTimeout(poll, _POLL_INTERVAL);
+            }
+        })
+        .catch(function(err) {
+            console.error('Export status poll error:', err);
+            // Retry on network error (server might be busy)
+            setTimeout(poll, _POLL_INTERVAL * 2);
+        });
+    }
+
+    // Start polling after a short delay (give server time to start)
+    setTimeout(poll, 1000);
+}
+
+/**
+ * Legacy synchronous PDF download (for small exports without DownloadManager).
+ */
+function _downloadPdfLegacy(tableId, cardIds, templateId) {
     if (typeof showProgressToast === 'function') showProgressToast('Preparing PDF file...', -1);
-    
+
     const xhr = new XMLHttpRequest();
     xhr.open('POST', `/panel/api/table/${tableId}/cards/download-pdf/`, true);
     xhr.timeout = 600000;

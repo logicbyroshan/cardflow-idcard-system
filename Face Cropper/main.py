@@ -27,15 +27,16 @@ import os
 import signal
 import socket
 import sys
+import mimetypes
 import tempfile
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, UploadFile, HTTPException, Request
+from fastapi import FastAPI, File, Form, UploadFile, HTTPException, Request, Query
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from pydantic import BaseModel
 
 from passport_engine_core import process_zip, process_folder
@@ -79,7 +80,7 @@ def _port_in_use(host: str, port: int) -> bool:
 # Early double-start guard — before any file I/O that could fail
 if __name__ == "__main__" and _port_in_use(HOST, PORT):
     print(
-        f"PassportEngine is already running on {HOST}:{PORT} \u2014 exiting.",
+        f"AdarshCropper is already running on {HOST}:{PORT} \u2014 exiting.",
         file=sys.stderr,
     )
     sys.exit(0)
@@ -104,7 +105,7 @@ def _configure_logging() -> None:
 
     # ── Rotating file ────────────────────────────────────────────────
     if SERVICE_MODE:
-        log_dir = Path(r"C:\Program Files\PassportEngine\logs")
+        log_dir = Path(r"C:\Program Files\Adarsh Cropper\logs")
     elif getattr(sys, "frozen", False):
         # PyInstaller exe – put logs next to the .exe, not in temp dir
         log_dir = Path(sys.executable).resolve().parent / "logs"
@@ -113,7 +114,7 @@ def _configure_logging() -> None:
 
     try:
         log_dir.mkdir(parents=True, exist_ok=True)
-        log_file = log_dir / "passport_engine.log"
+        log_file = log_dir / "adarsh_cropper.log"
         file_handler = logging.handlers.RotatingFileHandler(
             log_file,
             maxBytes=5 * 1024 * 1024,   # 5 MB
@@ -122,9 +123,9 @@ def _configure_logging() -> None:
         )
     except PermissionError:
         # Fallback: user ran exe outside service context without write perms
-        fallback = Path(tempfile.gettempdir()) / "PassportEngine" / "logs"
+        fallback = Path(tempfile.gettempdir()) / "AdarshCropper" / "logs"
         fallback.mkdir(parents=True, exist_ok=True)
-        log_file = fallback / "passport_engine.log"
+        log_file = fallback / "adarsh_cropper.log"
         file_handler = logging.handlers.RotatingFileHandler(
             log_file,
             maxBytes=5 * 1024 * 1024,
@@ -152,15 +153,15 @@ async def lifespan(app: FastAPI):
     global _start_time
     _start_time = time.monotonic()
     logger.info(
-        "PassportEngine v%s started on %s:%d", ENGINE_VERSION, HOST, PORT
+        "AdarshCropper v%s started on %s:%d", ENGINE_VERSION, HOST, PORT
     )
     yield
-    logger.info("PassportEngine v%s shut down.", ENGINE_VERSION)
+    logger.info("AdarshCropper v%s shut down.", ENGINE_VERSION)
 
 
 # ── App ──────────────────────────────────────────────────────────────────
 app = FastAPI(
-    title="PassportEngine",
+    title="AdarshCropper",
     version=ENGINE_VERSION,
     lifespan=lifespan,
     docs_url=None,
@@ -242,13 +243,22 @@ def status():
     return {"status": "running", "version": ENGINE_VERSION}
 
 
+@app.get("/config")
+def config_endpoint():
+    """Return the engine's user-configured settings (e.g. default output dir)."""
+    from passport_engine_core.config import DEFAULT_OUTPUT_DIR
+    return {
+        "default_output_dir": str(DEFAULT_OUTPUT_DIR) if DEFAULT_OUTPUT_DIR else "",
+    }
+
+
 @app.get("/health")
 def health():
     """Lightweight health probe with uptime and optional memory usage."""
     uptime = round(time.monotonic() - _start_time, 2) if _start_time else 0.0
 
     info: dict = {
-        "engine": "PassportEngine",
+        "engine": "AdarshCropper",
         "version": ENGINE_VERSION,
         "status": "healthy",
         "uptime_seconds": uptime,
@@ -278,6 +288,9 @@ async def process_zip_endpoint(
     Pass *original_path* (form field) so that output folders are
     created beside the original ZIP file instead of in the temp
     directory.
+
+    Streams the upload to disk in chunks to avoid loading the entire
+    file into RAM (supports multi-GB uploads).
     """
     if not file.filename or not file.filename.lower().endswith(".zip"):
         raise HTTPException(status_code=400, detail="Only .zip files are accepted.")
@@ -290,10 +303,16 @@ async def process_zip_endpoint(
             delete=False, suffix=suffix, prefix="upload_"
         ) as tmp:
             tmp_path = Path(tmp.name)
-            content = await file.read()
-            tmp.write(content)
+            # Stream to disk in 4 MB chunks — never hold full file in RAM
+            total_bytes = 0
+            while True:
+                chunk = await file.read(4 * 1024 * 1024)  # 4 MB
+                if not chunk:
+                    break
+                tmp.write(chunk)
+                total_bytes += len(chunk)
 
-        logger.info("Processing uploaded ZIP: %s (%d bytes)", file.filename, len(content))
+        logger.info("Processing uploaded ZIP: %s (%d bytes)", file.filename, total_bytes)
         summary = process_zip(str(tmp_path), original_path=original_path)
         return JSONResponse(content=summary)
 
@@ -336,6 +355,53 @@ async def process_folder_endpoint(body: FolderRequest):
     except Exception:
         logger.exception("Unexpected error during folder processing.")
         raise HTTPException(status_code=500, detail="Internal processing error.")
+
+
+# ── Image preview endpoints ──────────────────────────────────────────────
+
+_IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp"}
+
+
+@app.get("/preview")
+async def preview_endpoint(folder: str = Query("", description="Folder path to list images from")):
+    """
+    Return a JSON list of image filenames inside a local folder.
+    Used by the panel to populate the preview grid after processing.
+    """
+    folder = folder.strip()
+    if not folder:
+        return JSONResponse(content={"files": []})
+
+    folder_path = Path(folder)
+    if not folder_path.is_dir():
+        return JSONResponse(content={"files": []})
+
+    files = sorted(
+        f.name for f in folder_path.iterdir()
+        if f.is_file() and f.suffix.lower() in _IMAGE_EXTS
+    )
+    return JSONResponse(content={"files": files, "folder": str(folder_path)})
+
+
+@app.get("/serve-image")
+async def serve_image_endpoint(path: str = Query("", description="Full path to image file")):
+    """
+    Serve a single image file from the local filesystem.
+    Security: only serves files with image extensions.
+    """
+    path = path.strip()
+    if not path:
+        raise HTTPException(status_code=400, detail="path parameter required")
+
+    file_path = Path(path)
+    if not file_path.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    if file_path.suffix.lower() not in _IMAGE_EXTS:
+        raise HTTPException(status_code=400, detail="Not an image file")
+
+    content_type = mimetypes.guess_type(str(file_path))[0] or "application/octet-stream"
+    return FileResponse(str(file_path), media_type=content_type)
 
 
 # ── Graceful shutdown (SIGTERM / SIGINT) ─────────────────────────────────

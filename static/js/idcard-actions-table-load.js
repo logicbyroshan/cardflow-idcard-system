@@ -18,12 +18,20 @@ async function loadMoreData() {
     }
     
     _ts.lazyLoadState.isLoading = true;
+    var mySeq = _ts._loadRequestSeq;   // capture sequence to detect stale responses
     window.IDCardApp._showLazyLoadIndicator(true);
     
     try {
         const url = `/panel/api/table/${_ts.lazyLoadState.tableId}/cards/?${window.IDCardApp._buildFilterParams()}`;
         
         const data = await ApiClient.get(url);
+        
+        // Guard against stale responses after a resetAndReload / search change
+        if (mySeq !== _ts._loadRequestSeq) return;
+
+        // Always update pagination state from server (even for empty results)
+        _ts.lazyLoadState.hasMore = data.has_more !== undefined ? data.has_more : false;
+        _ts.lazyLoadState.totalCount = data.total_count !== undefined ? data.total_count : 0;
         
         if (data.cards && data.cards.length > 0) {
             const tableBody = document.getElementById('cardsTableBody');
@@ -47,8 +55,6 @@ async function loadMoreData() {
             });
             
             _ts.lazyLoadState.loadedCount += data.cards.length;
-            _ts.lazyLoadState.hasMore = data.has_more;
-            _ts.lazyLoadState.totalCount = data.total_count;
             
             _ts.filteredRows = [..._ts.allRows];
             if (_ts.endlessScrollMode) {
@@ -73,6 +79,10 @@ async function loadMoreData() {
                 // Overwriting it caused loadedCount=100 on reinit, making
                 // the first lazy-load fetch offset=100 (sr_no 101+).
             }
+        } else {
+            // No results — update pagination UI with zero state
+            _ts.filteredRows = [];
+            window.IDCardApp.updateLazyLoadPaginationInfo();
         }
         
     } catch (error) {
@@ -228,6 +238,25 @@ async function _sequencedLoadMore() {
  * Used when a server-side filter/sort changes (search, class, section, sort, image).
  */
 async function resetAndReload() {
+    // Bump sequence so any in-flight loadMoreData calls are discarded
+    _ts._loadRequestSeq = (_ts._loadRequestSeq || 0) + 1;
+
+    // ── Clear selection state so stale "select all" doesn't persist ──
+    window.IDCardApp.allDbCardIds = null;
+    var selectAllCb = document.getElementById('selectAll');
+    if (selectAllCb) selectAllCb.checked = false;
+    // Uncheck any still-checked row checkboxes (about to be removed, but be safe)
+    document.querySelectorAll('#cardsTableBody .rowCheckbox:checked').forEach(function(cb) {
+        cb.checked = false;
+        var row = cb.closest('tr');
+        if (row) row.classList.remove('selected');
+    });
+    // Reset shift-click anchor
+    if (typeof window.IDCardApp.resetShiftClickIndex === 'function') {
+        window.IDCardApp.resetShiftClickIndex();
+    }
+    updateButtonStates();
+
     // Clear all loaded rows from DOM
     var tableBody = document.getElementById('cardsTableBody');
     if (tableBody) {

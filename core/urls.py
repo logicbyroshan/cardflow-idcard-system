@@ -147,6 +147,8 @@ urlpatterns = [
     path('api/table/<int:table_id>/cards/download-docx/', export_views.api_export_docx, name='api_idcard_download_docx'),
     path('api/table/<int:table_id>/cards/download-xlsx/', export_views.api_export_xlsx, name='api_idcard_download_xlsx'),
     path('api/table/<int:table_id>/cards/download-pdf/', export_views.api_export_pdf, name='api_idcard_download_pdf'),
+    path('api/table/<int:table_id>/cards/download-pdf-async/', export_views.api_export_pdf_async, name='api_idcard_download_pdf_async'),
+    path('api/export/status/<str:task_id>/', export_views.api_export_status, name='api_export_status'),
     path('api/table/<int:table_id>/cards/download-all/', export_views.api_download_all_cards, name='api_idcard_download_all'),
     
     # Background Task APIs (for async bulk operations)

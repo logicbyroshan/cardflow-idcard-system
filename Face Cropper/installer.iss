@@ -1,13 +1,13 @@
 ; ═══════════════════════════════════════════════════════════════════════
 ;  installer.iss
 ;  ─────────────
-;  Inno Setup script for Photo Cropper (PassportEngine) installer.
+;  Inno Setup script for Adarsh Cropper installer.
 ;
 ;  Company  : Adarsh ID Card
 ;  Developer: Roshan Damor
 ;
 ;  Prerequisites:
-;    - Build PassportEngine.exe via PyInstaller first.
+;    - Build AdarshCropper.exe via PyInstaller first.
 ;    - Place nssm.exe (64-bit) alongside this script OR in dist/.
 ;    - Inno Setup 6.x: https://jrsoftware.org/isinfo.php
 ;
@@ -15,15 +15,15 @@
 ;    iscc installer.iss
 ;
 ;  Output:
-;    Output/PhotoCropperSetup.exe
+;    Output/AdarshCropperSetup.exe
 ; ═══════════════════════════════════════════════════════════════════════
 
-#define MyAppName "Photo Cropper"
-#define MyAppVersion "2.0.0"
+#define MyAppName "Adarsh Cropper"
+#define MyAppVersion "2.1.8"
 #define MyAppPublisher "Adarsh ID Card"
 #define MyAppCopyright "© 2026 Adarsh ID Card. Developed by Roshan Damor."
-#define MyAppExeName "PassportEngine.exe"
-#define MyServiceName "PassportEngine"
+#define MyAppExeName "AdarshCropper.exe"
+#define MyServiceName "AdarshCropper"
 
 [Setup]
 AppId={{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}
@@ -32,17 +32,17 @@ AppVersion={#MyAppVersion}
 AppVerName={#MyAppName} {#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 AppCopyright={#MyAppCopyright}
-VersionInfoVersion=2.0.0.0
+VersionInfoVersion=2.1.8.0
 VersionInfoCompany={#MyAppPublisher}
-VersionInfoDescription=Passport Photo Cropping Engine by Adarsh ID Card
+VersionInfoDescription=Adarsh Cropper — Photo Processing Engine by Adarsh ID Card
 VersionInfoProductName={#MyAppName}
 VersionInfoCopyright={#MyAppCopyright}
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 OutputDir=Output
-OutputBaseFilename=PhotoCropperSetup
-SetupIconFile=app_icon.ico
+OutputBaseFilename=AdarshCropperSetup
+SetupIconFile=adarsh_cropper.ico
 UninstallDisplayIcon={app}\{#MyAppExeName},0
 Compression=lzma2/ultra64
 SolidCompression=yes
@@ -70,23 +70,68 @@ Source: "nssm.exe"; DestDir: "{app}"; Flags: ignoreversion
 [Dirs]
 Name: "{app}\logs"
 
+[Code]
+var
+  OutputDirPage: TInputDirWizardPage;
+
+procedure InitializeWizard();
+begin
+  { Custom page: let user choose where cropped photos are saved }
+  OutputDirPage := CreateInputDirPage(
+    wpSelectDir,
+    'Output Folder for Cropped Photos',
+    'Where should cropped photos be saved?',
+    'Select the folder where Adarsh Cropper will save cropped photos by default.' + #13#10 +
+    'You can change this later from the panel.',
+    False, ''
+  );
+  OutputDirPage.Add('');
+  OutputDirPage.Values[0] := ExpandConstant('{userdocs}\AdarshCropper Output');
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  ConfigFile: String;
+  OutputDir: String;
+begin
+  if CurStep = ssPostInstall then
+  begin
+    { Write the chosen output directory to config file }
+    OutputDir := OutputDirPage.Values[0];
+    if OutputDir <> '' then
+    begin
+      ForceDirectories(OutputDir);
+      ConfigFile := ExpandConstant('{app}\output_config.ini');
+      SaveStringToFile(ConfigFile, '[output]' + #13#10 + 'directory = ' + OutputDir + #13#10, False);
+    end;
+  end;
+end;
+
 [Run]
 ; ── Stop old service (if upgrading) ──────────────────────────────────
 Filename: "{app}\nssm.exe"; Parameters: "stop {#MyServiceName}"; \
     Flags: runhidden nowait; StatusMsg: "Stopping existing service..."
 
+; ── Also stop legacy service name if upgrading from old version ──────
+Filename: "{app}\nssm.exe"; Parameters: "stop PassportEngine"; \
+    Flags: runhidden nowait; StatusMsg: "Stopping legacy service..."
+
 ; ── Remove old service (if upgrading) ────────────────────────────────
 Filename: "{app}\nssm.exe"; Parameters: "remove {#MyServiceName} confirm"; \
     Flags: runhidden; StatusMsg: "Removing old service..."
+
+; ── Remove legacy service name if present ────────────────────────────
+Filename: "{app}\nssm.exe"; Parameters: "remove PassportEngine confirm"; \
+    Flags: runhidden; StatusMsg: "Removing legacy service..."
 
 ; ── Install service ──────────────────────────────────────────────────
 Filename: "{app}\nssm.exe"; Parameters: "install {#MyServiceName} ""{app}\{#MyAppExeName}"""; \
     Flags: runhidden; StatusMsg: "Installing service..."
 
 ; ── Configure service ────────────────────────────────────────────────
-Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} DisplayName ""Passport Photo Processing Engine"""; \
+Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} DisplayName ""Adarsh Cropper — Photo Processing Engine"""; \
     Flags: runhidden
-Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} Description ""Local Passport Photo Processing Engine - API on 127.0.0.1:4765"""; \
+Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} Description ""Adarsh Cropper — Local Photo Processing Engine - API on 127.0.0.1:4765"""; \
     Flags: runhidden
 Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} Start SERVICE_AUTO_START"; \
     Flags: runhidden

@@ -20,7 +20,11 @@ function initSearchHandlers() {
         
         function updateClearButton() {
             if (searchClearBtn) {
-                searchClearBtn.style.display = searchInput.value.trim() ? 'flex' : 'none';
+                if (searchInput.value.trim()) {
+                    searchClearBtn.classList.add('visible');
+                } else {
+                    searchClearBtn.classList.remove('visible');
+                }
             }
         }
         

@@ -90,7 +90,23 @@ function cropperApp() {
     //  INIT
     // ══════════════════════════════════════════════════════════════════
     init() {
-      this.checkEngine();
+      this._checkEngineWithRetry();
+    },
+
+    /**
+     * Retry engine detection up to 3 times (1s apart) so a hard-refresh
+     * doesn't falsely show "not installed" when the engine is just slow
+     * to respond.
+     */
+    async _checkEngineWithRetry(attempt) {
+      attempt = attempt || 1;
+      var MAX_RETRIES = 3;
+      await this.checkEngine();
+      if (!this.engine.connected && attempt < MAX_RETRIES) {
+        console.log('[Cropper] Engine not detected, retry ' + attempt + '/' + MAX_RETRIES + '…');
+        await new Promise(function (r) { setTimeout(r, 1500); });
+        await this._checkEngineWithRetry(attempt + 1);
+      }
     },
 
     // ══════════════════════════════════════════════════════════════════
@@ -104,7 +120,7 @@ function cropperApp() {
       // ── Attempt 1: Direct connection to local engine ──────────────
       try {
         var controller = new AbortController();
-        var timer = setTimeout(function () { controller.abort(); }, 3000);
+        var timer = setTimeout(function () { controller.abort(); }, 6000);
 
         var statusResp = await fetch(ENGINE_DIRECT_URL + '/status', {
           signal: controller.signal,
@@ -118,7 +134,7 @@ function cropperApp() {
           var healthData = {};
           try {
             var hResp = await fetch(ENGINE_DIRECT_URL + '/health', {
-              signal: AbortSignal.timeout ? AbortSignal.timeout(3000) : undefined,
+              signal: AbortSignal.timeout ? AbortSignal.timeout(5000) : undefined,
             });
             if (hResp.ok) healthData = await hResp.json();
           } catch (_ignore) {}
@@ -142,6 +158,12 @@ function cropperApp() {
           this.engine.loading = false;
           this.engine.checked = true;
           console.log('[Cropper] Connected directly to local engine v' + this.engine.version);
+
+          // Broadcast state to topbar badge (separate x-data scope)
+          this._broadcastEngineState();
+
+          // Fetch engine config for default output directory
+          this._fetchEngineConfig();
           return;
         }
       } catch (_directErr) {
@@ -178,6 +200,45 @@ function cropperApp() {
       } finally {
         this.engine.loading = false;
         this.engine.checked = true;
+        this._broadcastEngineState();
+      }
+    },
+
+    /**
+     * Dispatch engine state to the topbar badge (which lives in a
+     * separate x-data scope outside this component).
+     */
+    _broadcastEngineState() {
+      window.dispatchEvent(new CustomEvent('engine-state', {
+        detail: {
+          loading: this.engine.loading,
+          checked: this.engine.checked,
+          connected: this.engine.connected,
+          version: this.engine.version,
+        },
+      }));
+    },
+
+    // ══════════════════════════════════════════════════════════════════
+    //  ENGINE CONFIG — fetch default output directory
+    // ══════════════════════════════════════════════════════════════════
+    async _fetchEngineConfig() {
+      try {
+        var url = this.engine.direct
+          ? ENGINE_DIRECT_URL + '/config'
+          : '/panel/api/engine/config/';
+        var resp = this.engine.direct
+          ? await fetch(url, { headers: { 'X-ENGINE-KEY': ENGINE_API_KEY } })
+          : null;
+        var data = this.engine.direct
+          ? await resp.json()
+          : await ApiClient.get(url);
+
+        if (data && data.default_output_dir && !this.outputFolder) {
+          this.outputFolder = data.default_output_dir;
+        }
+      } catch (_e) {
+        // Config fetch is optional — ignore errors
       }
     },
 
@@ -292,11 +353,16 @@ function cropperApp() {
 
         if (this.engine.direct) {
           // ── Direct to local engine ────────────────────────────────
+          var zipController = new AbortController();
+          // 30-minute timeout for large ZIP uploads + processing
+          var zipTimer = setTimeout(function () { zipController.abort(); }, 1800000);
           var resp = await fetch(ENGINE_DIRECT_URL + '/process-zip', {
             method: 'POST',
             headers: { 'X-ENGINE-KEY': ENGINE_API_KEY },
             body: formData,
+            signal: zipController.signal,
           });
+          clearTimeout(zipTimer);
           if (!resp.ok) {
             var errBody = {};
             try { errBody = await resp.json(); } catch (_) {}
@@ -447,23 +513,32 @@ function cropperApp() {
       this.preview.images = [];
       this.preview.folder = folderPath;
 
-      // In direct mode, files are on the user's local machine.
-      // The Django proxy endpoints (preview/serve-image) can't access them
-      // in production, so we skip image preview and just show the folder path.
-      if (this.engine.direct) {
-        this.preview.loading = false;
-        return;
-      }
-
       try {
-        var data = await ApiClient.get(
-          '/panel/api/engine/preview/?folder=' + encodeURIComponent(folderPath)
-        );
+        var data;
+        if (this.engine.direct) {
+          // Direct mode: engine is on the same machine — use engine's preview endpoint
+          var previewUrl = this.engine.url + '/preview?folder=' + encodeURIComponent(folderPath);
+          var resp = await fetch(previewUrl, {
+            headers: { 'X-ENGINE-KEY': 'passport-engine-local-key' },
+          });
+          data = await resp.json();
+        } else {
+          data = await ApiClient.get(
+            '/panel/api/engine/preview/?folder=' + encodeURIComponent(folderPath)
+          );
+        }
 
         if (data && data.files && data.files.length > 0) {
           var folder = data.folder || folderPath;
+          var self = this;
           this.preview.images = data.files.map(function (name) {
             var fullPath = folder + '\\' + name;
+            if (self.engine.direct) {
+              return {
+                name: name,
+                url: self.engine.url + '/serve-image?path=' + encodeURIComponent(fullPath),
+              };
+            }
             return {
               name: name,
               url: '/panel/api/engine/serve-image/?path=' + encodeURIComponent(fullPath),

@@ -128,6 +128,28 @@
     background: transparent;
 }
 
+/* Search clear button — vertical centering fix (absolute inside relative search-box) */
+.idcard-actions-page .search-box .search-clear-btn {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    color: var(--gray-400, #9ca3af);
+    background: transparent;
+    border: none;
+    padding: 0;
+    z-index: 2;
+}
+.idcard-actions-page .search-box .search-clear-btn.visible {
+    display: flex;
+}
+
 .idcard-actions-page .search-box:focus-within {
     border-color: var(--primary);
     box-shadow: 0 0 0 1px rgba(var(--primary-rgb), 0.1);

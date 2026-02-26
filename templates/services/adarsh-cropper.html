@@ -14,16 +14,18 @@
 {% endblock %}
 
 {% block topbar_right %}
-<div class="nav-right" style="display:flex;align-items:center;gap:8px;">
+<div class="nav-right" style="display:flex;align-items:center;gap:8px;"
+     x-data="{ eng: { loading: true, checked: false, connected: false, version: '' } }"
+     @engine-state.window="eng = $event.detail">
   <div class="engine-badge"
-       :class="{ 'connected': engine.connected, 'disconnected': engine.checked && !engine.connected }">
-    <template x-if="engine.loading">
+       :class="{ 'connected': eng.connected, 'disconnected': eng.checked && !eng.connected }">
+    <template x-if="eng.loading">
       <span><i class="fa-solid fa-circle-notch fa-spin"></i> Checking…</span>
     </template>
-    <template x-if="!engine.loading && engine.connected">
-      <span><i class="fa-solid fa-circle-check"></i> Engine v<span x-text="engine.version"></span></span>
+    <template x-if="!eng.loading && eng.connected">
+      <span><i class="fa-solid fa-circle-check"></i> Engine v<span x-text="eng.version"></span></span>
     </template>
-    <template x-if="!engine.loading && engine.checked && !engine.connected">
+    <template x-if="!eng.loading && eng.checked && !eng.connected">
       <span><i class="fa-solid fa-circle-xmark"></i> Offline</span>
     </template>
   </div>
@@ -70,11 +72,11 @@
           <span>Engine Not Detected</span>
         </div>
         <p class="engine-help-text">
-          The local PassportEngine service is not running on this machine.
+          The local Adarsh Cropper service is not running on this machine.
           Download and install it to enable photo cropping.
         </p>
         <div class="engine-actions">
-          <a href="{% static 'engine/PassportEngineSetup.exe' %}" class="btn btn-primary" download>
+          <a href="{% static 'engine/AdarshCropperSetup.exe' %}" class="btn btn-primary" download>
             <i class="fa-solid fa-download"></i> Download Installer
           </a>
         </div>

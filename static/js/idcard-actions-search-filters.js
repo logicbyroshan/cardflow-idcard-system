@@ -157,10 +157,10 @@ function populateFilterOptions() {
                   (typeof TABLE_ID !== 'undefined' ? TABLE_ID : null);
     if (!tableId) return;
 
-    var status = (IDCardApp.lazyLoadState && IDCardApp.lazyLoadState.currentStatus) ||
-                 (typeof CURRENT_STATUS !== 'undefined' ? CURRENT_STATUS : '');
-
-    ApiClient.get('/panel/api/table/' + tableId + '/filter-options/?status=' + encodeURIComponent(status))
+    // Fetch filter options for ALL statuses (no status param) so users can
+    // see every class/section value across the entire table, not just the
+    // current list.
+    ApiClient.get('/panel/api/table/' + tableId + '/filter-options/')
         .then(function(data) {
             if (!data || !data.success) return;
 

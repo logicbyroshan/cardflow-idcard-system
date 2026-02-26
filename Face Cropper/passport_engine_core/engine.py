@@ -154,11 +154,15 @@ def process_zip(
         raise FileNotFoundError(f"ZIP file not found: {zip_path}")
 
     # Decide where output dirs go: beside the *original* file when
-    # provided, otherwise beside the zip_path itself.
+    # provided, otherwise use the user-configured default output dir,
+    # otherwise beside the zip_path itself.
     if original_path:
         origin = Path(original_path).resolve()
         output_base = origin.parent
         output_stem = origin.stem
+    elif config.DEFAULT_OUTPUT_DIR:
+        output_base = config.DEFAULT_OUTPUT_DIR
+        output_stem = zip_file.stem
     else:
         output_base = zip_file.parent
         output_stem = zip_file.stem
