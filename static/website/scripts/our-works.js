@@ -538,8 +538,9 @@ function initReelsCarousel() {
 }
 
 /**
- * Initialize Category Card Background Images with Sliding Effect
- * Creates an infinite sliding carousel within each bento card
+ * Initialize Category Card Background Images with Fade Carousel
+ * Shows one image at a time, stays for 3 seconds, then fades to the next.
+ * Top 10 images rotate per card.
  */
 function initCategoryBackgrounds() {
     const dataElement = document.getElementById('categoryImagesData');
@@ -561,29 +562,29 @@ function initCategoryBackgrounds() {
                 const placeholder = card.querySelector('.bg-placeholder');
                 if (placeholder) placeholder.style.display = 'none';
                 
-                // Create slider track with duplicated images for infinite effect
-                const sliderTrack = document.createElement('div');
-                sliderTrack.className = 'slider-track';
+                // Use top 10 images max
+                const displayImages = images.slice(0, 10);
                 
-                // Create images - duplicate for seamless infinite loop
-                const allImages = [...images, ...images];
-                allImages.forEach((url, index) => {
+                // Create image elements directly inside slider
+                displayImages.forEach((url, index) => {
                     const img = document.createElement('img');
                     img.src = url;
                     img.alt = `Sample ${index + 1}`;
                     img.className = 'slider-img';
-                    img.loading = 'lazy';
-                    sliderTrack.appendChild(img);
+                    img.loading = index === 0 ? 'eager' : 'lazy';
+                    if (index === 0) img.classList.add('active');
+                    slider.appendChild(img);
                 });
 
-                slider.appendChild(sliderTrack);
-
-                // Start animation only if we have multiple images
-                if (images.length > 1) {
-                    // Calculate animation duration based on number of images
-                    const duration = images.length * 4; // 4 seconds per image
-                    sliderTrack.style.animationDuration = `${duration}s`;
-                    sliderTrack.classList.add('sliding');
+                // Start auto-rotation if multiple images
+                if (displayImages.length > 1) {
+                    let currentIndex = 0;
+                    setInterval(() => {
+                        const imgs = slider.querySelectorAll('.slider-img');
+                        imgs[currentIndex].classList.remove('active');
+                        currentIndex = (currentIndex + 1) % imgs.length;
+                        imgs[currentIndex].classList.add('active');
+                    }, 3000); // 3 seconds per image
                 }
             }
         });

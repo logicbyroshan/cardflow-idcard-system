@@ -108,30 +108,20 @@ body.modal-open {
     transform: rotate(90deg);
 }
 
-/* Pinterest-style Masonry Grid */
+/* Responsive Grid Gallery */
 .product-gallery-grid {
     flex: 1;
     padding: 20px;
     overflow-y: auto;
-    column-count: 4;
-    column-gap: 16px;
-}
-
-@media (max-width: 1200px) {
-    .product-gallery-grid {
-        column-count: 3;
-    }
-}
-
-@media (max-width: 900px) {
-    .product-gallery-grid {
-        column-count: 2;
-    }
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+    align-content: start;
 }
 
 @media (max-width: 600px) {
     .product-gallery-grid {
-        column-count: 1;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     }
 }
 
@@ -156,9 +146,6 @@ body.modal-open {
     background: #f8f9fa;
     cursor: pointer;
     transition: all 0.3s ease;
-    margin-bottom: 16px;
-    break-inside: avoid;
-    display: inline-block;
     width: 100%;
 }
 
@@ -289,7 +276,7 @@ body.modal-open {
     background: linear-gradient(135deg, #100F57 0%, #1a1980 50%, #0a92dd 100%);
 }
 
-/* Category Slider for Bento Cards */
+/* Category Slider for Bento Cards — Fade Carousel */
 .category-slider {
     position: absolute;
     top: 0;
@@ -299,47 +286,25 @@ body.modal-open {
     overflow: hidden;
 }
 
-.category-slider .slider-track {
-    display: flex;
-    height: 100%;
-    will-change: transform;
-}
-
-.category-slider .slider-track.sliding {
-    animation: slideImages linear infinite;
-}
-
 .category-slider .slider-img {
-    flex-shrink: 0;
-    min-width: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
+    opacity: 0;
+    transition: opacity 1s ease-in-out;
 }
 
-/* Single image - no animation needed */
-.category-slider .slider-track:not(.sliding) .slider-img {
-    min-width: 100%;
-}
-
-/* Pause animation on hover */
-.category-card:hover .slider-track.sliding {
-    animation-play-state: paused;
+.category-slider .slider-img.active {
+    opacity: 1;
 }
 
 /* Scale effect on hover */
-.category-card:hover .slider-track {
+.category-card:hover .category-slider {
     transform: scale(1.05);
     transition: transform 0.5s ease;
-}
-
-@keyframes slideImages {
-    0% {
-        transform: translateX(0);
-    }
-    100% {
-        transform: translateX(-50%);
-    }
 }
 
 .category-bg .category-bg-img {
