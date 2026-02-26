@@ -11,7 +11,7 @@
                 {% if business.hero_title %}
                     {{ business.hero_title|safe_html }}
                 {% else %}
-                    <span id="typingLine"></span><span class="typing-cursor">|</span>
+                    <span class="typing-wrapper"><span id="typingLine"></span><span class="typing-cursor">|</span></span>
                 {% endif %}
             </h1>
             <p class="hero-subtitle">

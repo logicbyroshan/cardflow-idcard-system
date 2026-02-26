@@ -108,20 +108,31 @@ body.modal-open {
     transform: rotate(90deg);
 }
 
-/* Responsive Grid Gallery */
+/* Pinterest / Masonry Grid Gallery */
 .product-gallery-grid {
     flex: 1;
     padding: 20px;
     overflow-y: auto;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 16px;
-    align-content: start;
+    columns: 4 240px;
+    column-gap: 16px;
+}
+
+.product-gallery-grid .gallery-item {
+    break-inside: avoid;
+    margin-bottom: 16px;
+    display: inline-block;
+    width: 100%;
+}
+
+@media (max-width: 900px) {
+    .product-gallery-grid {
+        columns: 3 200px;
+    }
 }
 
 @media (max-width: 600px) {
     .product-gallery-grid {
-        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        columns: 2 150px;
     }
 }
 
@@ -154,11 +165,19 @@ body.modal-open {
     box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
 }
 
-.gallery-item img,
+.gallery-item img {
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: contain;
+}
+
 .gallery-item video {
     width: 100%;
     height: auto;
     display: block;
+    aspect-ratio: 16/9;
+    object-fit: cover;
 }
 
 /* Video item play button overlay (handled by .gallery-video-overlay) */

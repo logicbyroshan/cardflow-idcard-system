@@ -195,7 +195,7 @@ function initScrollEffects() {
         });
     }, { threshold: 0.1 });
 
-    document.querySelectorAll('.bento-card, .work-item, .testimonial-card, .info-box, .download-app-wrapper').forEach(el => {
+    document.querySelectorAll('.bento-card, .work-item, .testimonial-card, .info-box, .download-app-wrapper, .section-title, .contact-wrapper, .trusted-schools, .faq-item, .page-hero, .section-header, .filter-tabs, .rating-card, .gallery-item').forEach(el => {
         el.classList.add('reveal-on-scroll');
         observer.observe(el);
     });
@@ -271,6 +271,45 @@ function triggerPwaInstall() {
     }
 }
 
+// ===== 8. Logo Spin Animation (repeat every 10 seconds) =====
+function initLogoSpin() {
+    const logoImg = document.querySelector('.logo-img');
+    if (!logoImg) return;
+
+    function spin() {
+        logoImg.style.animation = 'none';
+        // Force reflow
+        void logoImg.offsetHeight;
+        logoImg.style.animation = 'logoSpin 1s ease-in-out';
+    }
+
+    // First spin after 5 seconds, then every 10 seconds
+    setTimeout(function() {
+        spin();
+        setInterval(spin, 10000);
+    }, 5000);
+}
+
+// ===== 9. Glowing Border Rotation (fallback for browsers without @property) =====
+function initGlowBorder() {
+    const slideCard = document.querySelector('.slide-card');
+    if (!slideCard) return;
+    // Check if @property is supported
+    if (!CSS.registerProperty) {
+        let angle = 0;
+        function updateAngle() {
+            angle = (angle + 2) % 360;
+            slideCard.style.setProperty('--glow-angle', angle + 'deg');
+            requestAnimationFrame(updateAngle);
+        }
+        slideCard.style.animation = 'none';
+        if (slideCard.querySelector('::before')) {
+            // Can't directly style pseudo, so we use a CSS variable approach
+        }
+        requestAnimationFrame(updateAngle);
+    }
+}
+
 // ===== Initialize Everything =====
 document.addEventListener('DOMContentLoaded', () => {
     initHeroSlider();
@@ -280,4 +319,6 @@ document.addEventListener('DOMContentLoaded', () => {
     createScrollTopButton();
     initPhoneSlideshow();
     initQrCode();
+    initLogoSpin();
+    initGlowBorder();
 });

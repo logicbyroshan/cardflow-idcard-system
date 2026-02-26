@@ -658,6 +658,12 @@ h2 {
         gap: 1.2rem;
     }
 
+    .bento-card-1,
+    .bento-card-4,
+    .bento-card-6 {
+        grid-column: span 2;
+    }
+
     .bento-card {
         padding: 1.8rem;
         border-radius: 16px;
@@ -1240,6 +1246,15 @@ h2 {
     .bento-grid {
         grid-template-columns: 1fr;
         gap: 1rem;
+    }
+
+    .bento-card-1,
+    .bento-card-2,
+    .bento-card-3,
+    .bento-card-4,
+    .bento-card-5,
+    .bento-card-6 {
+        grid-column: span 1;
     }
 
     .bento-card {

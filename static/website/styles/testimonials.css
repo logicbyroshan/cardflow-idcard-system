@@ -263,6 +263,41 @@
     border-radius: 50%;
 }
 
+.reviewer-avatar .avatar-3d {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15), inset 0 -2px 4px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+.reviewer-avatar .avatar-3d svg {
+    width: 38px;
+    height: 38px;
+}
+.reviewer-avatar .avatar-3d-1 {
+    background: linear-gradient(145deg, #6366f1, #4f46e5);
+    color: #a5b4fc;
+}
+.reviewer-avatar .avatar-3d-2 {
+    background: linear-gradient(145deg, #f472b6, #ec4899);
+    color: #fbcfe8;
+}
+.reviewer-avatar .avatar-3d-3 {
+    background: linear-gradient(145deg, #34d399, #10b981);
+    color: #a7f3d0;
+}
+.reviewer-avatar .avatar-3d-4 {
+    background: linear-gradient(145deg, #fbbf24, #f59e0b);
+    color: #fde68a;
+}
+.reviewer-avatar .avatar-3d-5 {
+    background: linear-gradient(145deg, #60a5fa, #3b82f6);
+    color: #bfdbfe;
+}
+
 .reviewer-info {
     flex: 1;
 }

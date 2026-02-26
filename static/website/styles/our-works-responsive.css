@@ -10,7 +10,7 @@
     }
     
     .product-gallery-grid {
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        columns: 3 180px;
         gap: 15px;
         padding: 20px;
     }
@@ -32,14 +32,17 @@
     }
     
     .product-gallery-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
+        columns: 2 140px;
+        column-gap: 12px;
         padding: 15px;
     }
     
-    .gallery-item img,
+    .gallery-item img {
+        height: auto;
+    }
+    
     .gallery-item video {
-        height: 150px;
+        aspect-ratio: 16/9;
     }
     
     .gallery-item-info {
@@ -57,12 +60,15 @@
 
 @media (max-width: 400px) {
     .product-gallery-grid {
-        grid-template-columns: 1fr;
+        columns: 1;
     }
     
-    .gallery-item img,
+    .gallery-item img {
+        height: auto;
+    }
+    
     .gallery-item video {
-        height: 180px;
+        aspect-ratio: 16/9;
     }
 }
 

@@ -30,7 +30,7 @@ class BusinessDetailsAdmin(admin.ModelAdmin):
             'fields': ('facebook_url', 'instagram_url', 'twitter_url', 'whatsapp_number'),
         }),
         ('Hero Section', {
-            'fields': ('hero_title', 'hero_description', 'hero_image1', 'hero_image2', 'hero_image3', 'hero_image4')
+            'fields': ('hero_title', 'hero_description')
         }),
         ('SEO Meta Tags', {
             'classes': ('collapse',),

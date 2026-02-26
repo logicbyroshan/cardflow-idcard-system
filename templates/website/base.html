@@ -80,15 +80,17 @@
         <div class="container">
             <div class="top-bar-content">
                 {% if business.phone %}
-                    <a href="tel:{{ business.phone }}" class="top-bar-item">
+                    <a href="javascript:void(0)" class="top-bar-item copy-btn" data-copy="{{ business.phone }}" title="Click to copy phone number">
                         <i class="fas fa-phone-alt"></i>
                         <span>{{ business.phone }}</span>
+                        <i class="fas fa-copy copy-icon"></i>
                     </a>
                 {% endif %}
                 {% if business.email %}
-                    <a href="mailto:{{ business.email }}" class="top-bar-item">
+                    <a href="javascript:void(0)" class="top-bar-item copy-btn" data-copy="{{ business.email }}" title="Click to copy email">
                         <i class="fas fa-envelope"></i>
                         <span>{{ business.email }}</span>
+                        <i class="fas fa-copy copy-icon"></i>
                     </a>
                 {% endif %}
             </div>
@@ -101,7 +103,9 @@
             <div class="navbar-content">
                 <div class="logo">
                     <a href="{% url 'website:home' %}" style="display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit;">
-                        <img src="{% static 'website/images/adarsh.png' %}" alt="Adarsh Logo" class="logo-img">
+                        <div class="logo-box">
+                            <img src="{% static 'website/images/adarsh.png' %}" alt="Adarsh Logo" class="logo-img">
+                        </div>
                         <span class="logo-text">{{ site_name }}</span>
                     </a>
                 </div>
@@ -208,6 +212,40 @@
 
     <!-- Global Scripts -->
     <script src="{% static 'website/scripts/main.js' %}" defer></script>
+
+    <!-- Copy to clipboard for top-bar items -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.copy-btn').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                var text = this.getAttribute('data-copy');
+                navigator.clipboard.writeText(text).then(function() {
+                    var tooltip = document.createElement('span');
+                    tooltip.className = 'copy-tooltip';
+                    tooltip.textContent = 'Copied!';
+                    btn.appendChild(tooltip);
+                    setTimeout(function() { tooltip.remove(); }, 1500);
+                }).catch(function() {
+                    // Fallback
+                    var ta = document.createElement('textarea');
+                    ta.value = text;
+                    ta.style.position = 'fixed';
+                    ta.style.left = '-9999px';
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                    var tooltip = document.createElement('span');
+                    tooltip.className = 'copy-tooltip';
+                    tooltip.textContent = 'Copied!';
+                    btn.appendChild(tooltip);
+                    setTimeout(function() { tooltip.remove(); }, 1500);
+                });
+            });
+        });
+    });
+    </script>
 
     <!-- PWA: Register service worker + capture install prompt -->
     <script>

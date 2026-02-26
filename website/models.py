@@ -67,10 +67,6 @@ class BusinessDetails(models.Model):
     # Hero Section
     hero_title = models.CharField(max_length=255, blank=True)
     hero_description = models.TextField(blank=True)
-    hero_image1 = models.ImageField(upload_to='images/Hero/', null=True, blank=True)
-    hero_image2 = models.ImageField(upload_to='images/Hero/', null=True, blank=True)
-    hero_image3 = models.ImageField(upload_to='images/Hero/', null=True, blank=True)
-    hero_image4 = models.ImageField(upload_to='images/Hero/', null=True, blank=True)
     
     # SEO
     meta_description = models.TextField(blank=True)

@@ -48,7 +48,15 @@
                             {% if t.reviewer_avatar %}
                                 <img src="{{ t.reviewer_avatar.url }}" alt="{{ t.reviewer_name }}" loading="lazy" decoding="async">
                             {% else %}
-                                <div class="avatar-init">{{ t.reviewer_name|slice:":1" }}</div>
+                                <div class="avatar-3d avatar-3d-{% cycle '1' '2' '3' '4' '5' %}">
+                                    <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <circle cx="40" cy="30" r="16" fill="currentColor" opacity="0.9"/>
+                                        <circle cx="34" cy="27" r="2.5" fill="#fff"/>
+                                        <circle cx="46" cy="27" r="2.5" fill="#fff"/>
+                                        <path d="M35 34 Q40 39 45 34" stroke="#fff" stroke-width="2" stroke-linecap="round" fill="none"/>
+                                        <path d="M40 46 C20 46 15 65 15 75 L65 75 C65 65 60 46 40 46Z" fill="currentColor" opacity="0.7"/>
+                                    </svg>
+                                </div>
                             {% endif %}
                         </div>
                         <div class="reviewer-info">
