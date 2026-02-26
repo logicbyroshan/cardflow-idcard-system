@@ -9,16 +9,12 @@
 
 {% block breadcrumb %}
 <span class="breadcrumb-item"><i class="fa-solid fa-screwdriver-wrench"></i> Services</span>
-<span class="breadcrumb-separator">/</span>
+<i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
 <span class="breadcrumb-item active">Adarsh Cropper</span>
 {% endblock %}
 
 {% block topbar_right %}
-<div class="nav-right" style="display:flex;align-items:center;gap:10px;">
-  <button class="btn btn-icon" title="Refresh engine status"
-          @click="$dispatch('engine-refresh')">
-    <i class="fa-solid fa-arrows-rotate"></i>
-  </button>
+<div class="nav-right" style="display:flex;align-items:center;gap:8px;">
   <div class="engine-badge"
        :class="{ 'connected': engine.connected, 'disconnected': engine.checked && !engine.connected }">
     <template x-if="engine.loading">
@@ -31,6 +27,10 @@
       <span><i class="fa-solid fa-circle-xmark"></i> Offline</span>
     </template>
   </div>
+  <button class="cropper-refresh-btn" title="Refresh engine status"
+          @click="$dispatch('engine-refresh')">
+    <i class="fa-solid fa-arrows-rotate"></i>
+  </button>
 </div>
 {% endblock %}
 
@@ -117,11 +117,12 @@
 
           {# Empty state #}
           <div class="drop-zone-content" x-show="!file">
-            <i class="fa-solid fa-cloud-arrow-up"></i>
+            <i class="fa-solid fa-cloud-arrow-up drop-zone-icon"></i>
             <p class="drop-zone-text">Drag & drop your <strong>.zip</strong> file here</p>
             <span class="drop-zone-divider">or</span>
-            <label class="btn btn-primary btn-sm" @click.stop>
-              <i class="fa-solid fa-folder-open"></i> Browse Files
+            <label class="browse-btn" @click.stop>
+              <i class="fa-solid fa-folder-open"></i>
+              <span>Browse Files</span>
               <input type="file" accept=".zip" x-ref="fileInput" @change="handleFileSelect($event)" style="display:none;">
             </label>
           </div>
