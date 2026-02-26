@@ -196,9 +196,9 @@ def _validate_frontal_face(
             FaceLandmarker,
             FaceLandmarkerOptions,
         )
-    except ImportError:
+    except ImportError as e:
         # MediaPipe unavailable — skip validation (pass through).
-        logger.debug("mediapipe unavailable — skipping frontal check.")
+        logger.warning("mediapipe unavailable — skipping frontal check: %s", e)
         return True, "", ""
 
     model_path = str(config.FACE_LANDMARKER_MODEL)
@@ -352,8 +352,8 @@ def _segment_hair_top(image: Image.Image) -> Optional[int]:
             ImageSegmenter,
             ImageSegmenterOptions,
         )
-    except ImportError:
-        logger.warning("mediapipe not installed — segmentation disabled.")
+    except ImportError as e:
+        logger.warning("mediapipe not installed — segmentation disabled: %s", e)
         return None
 
     model_path = str(config.SELFIE_SEGMENTER_MODEL)
@@ -445,8 +445,8 @@ def _face_via_mesh(image: Image.Image) -> Optional[Dict[str, float]]:
             FaceLandmarker,
             FaceLandmarkerOptions,
         )
-    except ImportError:
-        logger.warning("mediapipe not installed — FaceMesh disabled.")
+    except ImportError as e:
+        logger.warning("mediapipe not installed — FaceMesh disabled: %s", e)
         return None
 
     model_path = str(config.FACE_LANDMARKER_MODEL)
@@ -517,7 +517,8 @@ def _face_via_detector(image: Image.Image) -> Optional[Dict[str, float]]:
             FaceDetector,
             FaceDetectorOptions,
         )
-    except ImportError:
+    except ImportError as e:
+        logger.warning("mediapipe not installed — FaceDetector disabled: %s", e)
         return None
 
     model_path = str(config.FACE_DETECTOR_MODEL)
