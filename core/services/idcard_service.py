@@ -122,6 +122,40 @@ class IDCardService(BaseService):
         return class_field, section_field
 
     @classmethod
+    def _apply_class_filter(cls, qs, class_filter, class_field_name):
+        """Apply class filter with canonical normalization.
+
+        Finds all raw variants that normalize to the same canonical class
+        and matches them all.  E.g. filtering by 'KG1' also finds
+        'KG-I', 'KGI', 'LKG', 'kgI', etc.
+        """
+        from django.db.models.fields.json import KeyTextTransform
+        from django.db.models.functions import Cast
+        from django.db.models import CharField, Q
+        from core.utils.field_utils import normalize_class_value
+
+        norm_filter = normalize_class_value(class_filter)
+
+        # Get all distinct raw class values
+        all_raw = list(
+            qs.annotate(_cv_raw=Cast(KeyTextTransform(class_field_name, 'field_data'), CharField()))
+            .exclude(_cv_raw__isnull=True).exclude(_cv_raw='')
+            .order_by()
+            .values_list('_cv_raw', flat=True).distinct()
+        )
+
+        matching_raw = [r for r in all_raw if normalize_class_value(r) == norm_filter]
+
+        if not matching_raw:
+            return qs.none()
+
+        qs = qs.annotate(_cls=KeyTextTransform(class_field_name, 'field_data'))
+        q = Q()
+        for raw in matching_raw:
+            q |= Q(_cls=raw)
+        return qs.filter(q)
+
+    @classmethod
     def _get_name_field(cls, table):
         """Get the name/text field from table definitions for sorting."""
         if not table.fields:
@@ -436,13 +470,11 @@ class IDCardService(BaseService):
             if search:
                 cards_query = cards_query.filter(field_data__icontains=search)
             
-            # --- Class / Section filters ---
+            # --- Class / Section filters (with canonical normalization) ---
             if class_filter or section_filter:
                 class_field_name, section_field_name = cls._get_class_section_field_names(table)
                 if class_filter and class_field_name:
-                    cards_query = cards_query.annotate(
-                        _cls=KeyTextTransform(class_field_name, 'field_data')
-                    ).filter(_cls__iexact=class_filter)
+                    cards_query = cls._apply_class_filter(cards_query, class_filter, class_field_name)
                 if section_filter and section_field_name:
                     cards_query = cards_query.annotate(
                         _sec=KeyTextTransform(section_field_name, 'field_data')
@@ -584,13 +616,11 @@ class IDCardService(BaseService):
             if search:
                 cards_query = cards_query.filter(field_data__icontains=search)
 
-            # Apply class/section with precise KeyTextTransform (not icontains)
+            # Apply class/section with canonical normalization
             if class_filter or section_filter:
                 class_field_name, section_field_name = cls._get_class_section_field_names(table)
                 if class_filter and class_field_name:
-                    cards_query = cards_query.annotate(
-                        _cls=KeyTextTransform(class_field_name, 'field_data')
-                    ).filter(_cls__iexact=class_filter)
+                    cards_query = cls._apply_class_filter(cards_query, class_filter, class_field_name)
                 if section_filter and section_field_name:
                     cards_query = cards_query.annotate(
                         _sec=KeyTextTransform(section_field_name, 'field_data')
@@ -1119,17 +1149,30 @@ class IDCardService(BaseService):
         Upgrade the class field value for all download-status cards in a table.
         Each class value is bumped to the next level (e.g. V → VI, XII → UG).
 
+        Uses normalize_class_value() to handle ALL input variants:
+        KG-I / KGI / KG1 / kgI / LKG / kg-1 → all recognized as KG1.
+
         After upgrading:
         - Cards upgraded to UG are moved to 'pool' status.
         - All other upgraded cards are moved to 'pending' status.
         - Cards with unrecognized class values remain in 'download' status.
 
+        Output format respects the school's naming convention (LKG/UKG vs KG-I/KG-II).
+
         Returns: ServiceResult with data={'upgraded', 'skipped', 'moved_to_pool',
                  'moved_to_pending', 'total'}
         """
-        from core.utils.field_utils import CLASS_UPGRADE_MAP
+        from core.utils.field_utils import (
+            CLASS_UPGRADE_MAP, normalize_class_value,
+            detect_kg_convention, format_class_for_output,
+        )
         try:
             from django.db import transaction
+            from django.db.models.fields.json import KeyTextTransform
+            from django.db.models.functions import Cast
+            from django.db.models import CharField, Count
+            from collections import defaultdict
+
             table = get_object_or_404(IDCardTable, id=table_id)
             fields = table.fields or []
 
@@ -1154,6 +1197,25 @@ class IDCardService(BaseService):
                     message='No cards in the Download list to upgrade'
                 )
 
+            # ── Phase 1: Pre-scan to detect KG naming convention ──
+            raw_values_with_counts = (
+                cards.annotate(
+                    _cv=Cast(KeyTextTransform(class_field_name, 'field_data'), CharField())
+                )
+                .exclude(_cv__isnull=True).exclude(_cv='')
+                .values('_cv')
+                .annotate(cnt=Count('id'))
+                .order_by()
+            )
+            raw_format_counts = defaultdict(lambda: defaultdict(int))
+            for entry in raw_values_with_counts:
+                raw = entry['_cv'].strip()
+                norm = normalize_class_value(raw)
+                raw_format_counts[norm][raw] += entry['cnt']
+
+            kg_conv = detect_kg_convention(raw_format_counts)
+
+            # ── Phase 2: Upgrade each card ──
             upgraded = 0
             skipped = 0
             ug_card_ids = []        # Cards upgraded to UG → move to pool
@@ -1163,15 +1225,20 @@ class IDCardService(BaseService):
                 cards_to_update = []
                 for card in cards.iterator(chunk_size=BATCH_SIZE):
                     field_data = card.field_data or {}
-                    current_val = str(field_data.get(class_field_name, '')).strip().upper()
-                    if current_val in CLASS_UPGRADE_MAP:
-                        new_val = CLASS_UPGRADE_MAP[current_val]
+                    raw_val = str(field_data.get(class_field_name, '')).strip()
+
+                    # Normalize to canonical form, then look up upgrade
+                    canonical = normalize_class_value(raw_val)
+                    if canonical in CLASS_UPGRADE_MAP:
+                        next_canonical = CLASS_UPGRADE_MAP[canonical]
+                        # Format output using the school's convention
+                        new_val = format_class_for_output(next_canonical, kg_conv)
                         field_data[class_field_name] = new_val
                         card.field_data = field_data
                         cards_to_update.append(card)
                         upgraded += 1
                         # Track cards by their new class for status moves
-                        if new_val == 'UG':
+                        if next_canonical == 'UG':
                             ug_card_ids.append(card.id)
                         else:
                             pending_card_ids.append(card.id)

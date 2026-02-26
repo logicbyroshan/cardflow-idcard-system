@@ -41,8 +41,8 @@ document.addEventListener('DOMContentLoaded', function() {
             // Don't navigate when double-clicking action buttons
             if (e.target.closest('.download-btn')) return;
             var tableId = row.dataset.tableId;
-            // Detect client vs admin from URL
-            var isClient = window.location.pathname.indexOf('/client/') !== -1;
+            // Use template-set flag (URL-based detection fails for admin on /client/<id>/settings/)
+            var isClient = typeof IS_CLIENT_ROLE !== 'undefined' ? IS_CLIENT_ROLE : false;
             var basePath = isClient
                 ? '/panel/client/table/' + tableId + '/actions/'
                 : '/panel/table/' + tableId + '/cards/';

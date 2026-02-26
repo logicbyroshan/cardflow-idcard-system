@@ -44,6 +44,14 @@
                     <span class="breadcrumb-item active">{% if is_admin_staff %}Assigned Clients{% else %}Active Clients{% endif %}</span>
                 </div>
             </div>
+            <div class="nav-right" style="display:flex;align-items:center;gap:6px;">
+                <button class="global-search-btn" id="globalSearchBtn">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <span>Search ID cards...</span>
+                    <kbd>Ctrl+K</kbd>
+                </button>
+                {% include 'partials/notification-bell.html' %}
+            </div>
         </header>
 
         <!-- Page Content -->
@@ -73,6 +81,7 @@
     <script defer src="{% static 'js/init.js' %}"></script>
     <script defer src="{% static 'js/active-client.js' %}"></script>
     <script defer src="{% static 'js/global-search.js' %}"></script>
+    <script defer src="{% static 'js/notification-bell.js' %}"></script>
     {% include 'partials/htmx-config.html' %}
     <script>
       document.addEventListener('DOMContentLoaded', function() {

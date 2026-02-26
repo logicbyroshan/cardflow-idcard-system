@@ -21,10 +21,6 @@
   color: #fff;
 }
 
-.reprint-requests-tab .tab-step-num {
-  background: rgba(139, 92, 246, 0.2);
-}
-
 .reprint-requests-tab.active {
   background: #8b5cf6;
   color: #fff;
@@ -35,10 +31,6 @@
 .reprint-requests-tab.active .tab-count {
   background: #fff;
   color: #8b5cf6;
-}
-
-.reprint-requests-tab.active .tab-step-num {
-  background: rgba(255,255,255,0.25);
 }
 
 /* ===========================================
@@ -59,10 +51,6 @@
   color: #fff;
 }
 
-.reprint-confirm-tab .tab-step-num {
-  background: rgba(245, 158, 11, 0.2);
-}
-
 .reprint-confirm-tab.active {
   background: #f59e0b;
   color: #fff;
@@ -73,10 +61,6 @@
 .reprint-confirm-tab.active .tab-count {
   background: #fff;
   color: #f59e0b;
-}
-
-.reprint-confirm-tab.active .tab-step-num {
-  background: rgba(255,255,255,0.25);
 }
 
 /* ===========================================
@@ -97,10 +81,6 @@
   color: #fff;
 }
 
-.reprint-download-tab .tab-step-num {
-  background: rgba(16, 185, 129, 0.2);
-}
-
 .reprint-download-tab.active {
   background: #10b981;
   color: #fff;
@@ -111,10 +91,6 @@
 .reprint-download-tab.active .tab-count {
   background: #fff;
   color: #10b981;
-}
-
-.reprint-download-tab.active .tab-step-num {
-  background: rgba(255,255,255,0.25);
 }
 
 /* ===========================================

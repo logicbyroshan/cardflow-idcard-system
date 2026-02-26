@@ -64,22 +64,22 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
             {% if perm_idcard_bulk_download %}
             <div class="action-divider"></div>
             {% if not is_client and not is_client_staff %}
-            <button class="btn action-btn btn-purple" id="downloadImgBtn" title="Export images as ZIP">
+            <button class="btn action-btn btn-purple" id="downloadImgBtn" title="Download images as ZIP">
                 <i class="fa-solid fa-image"></i>
-                <span class="btn-text">Export Images</span>
+                <span class="btn-text">Download Images</span>
             </button>
-            <button class="btn action-btn btn-purple" id="downloadDocxBtn" title="Export as Word document">
+            <button class="btn action-btn btn-purple" id="downloadDocxBtn" title="Download as Word document">
                 <i class="fa-solid fa-file-word"></i>
-                <span class="btn-text">Export Word</span>
+                <span class="btn-text">Download Word</span>
             </button>
-            <button class="btn action-btn btn-purple" id="downloadXlsxBtn" title="Export as Excel file">
+            <button class="btn action-btn btn-purple" id="downloadXlsxBtn" title="Download as Excel file">
                 <i class="fa-solid fa-file-excel"></i>
-                <span class="btn-text">Export Excel</span>
+                <span class="btn-text">Download Excel</span>
             </button>
             {% endif %}
-            <button class="btn action-btn btn-purple" id="downloadPdfBtn" title="Export as PDF">
+            <button class="btn action-btn btn-purple" id="downloadPdfBtn" title="Download as PDF">
                 <i class="fa-solid fa-file-pdf"></i>
-                <span class="btn-text">Export PDF</span>
+                <span class="btn-text">Download PDF</span>
             </button>
             {% endif %}
 
@@ -95,6 +95,12 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
             <button class="btn action-btn btn-gray" id="viewBtnV" disabled title="View selected card">
                 <i class="fa-solid fa-eye"></i>
                 <span class="btn-text">View</span>
+            </button>
+            {% endif %}
+            {% if perm_idcard_delete %}
+            <button class="btn action-btn btn-red" id="deleteBtnV" disabled title="Move to pool">
+                <i class="fa-solid fa-trash"></i>
+                <span class="btn-text">Delete</span>
             </button>
             {% endif %}
             {% if perm_idcard_verify %}
@@ -118,22 +124,22 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
             {% if perm_idcard_bulk_download %}
             <div class="action-divider"></div>
             {% if not is_client and not is_client_staff %}
-            <button class="btn action-btn btn-purple" id="downloadImgBtnV" title="Export images as ZIP">
+            <button class="btn action-btn btn-purple" id="downloadImgBtnV" title="Download images as ZIP">
                 <i class="fa-solid fa-image"></i>
-                <span class="btn-text">Export Images</span>
+                <span class="btn-text">Download Images</span>
             </button>
-            <button class="btn action-btn btn-purple" id="downloadDocxBtnV" title="Export as Word document">
+            <button class="btn action-btn btn-purple" id="downloadDocxBtnV" title="Download as Word document">
                 <i class="fa-solid fa-file-word"></i>
-                <span class="btn-text">Export Word</span>
+                <span class="btn-text">Download Word</span>
             </button>
-            <button class="btn action-btn btn-purple" id="downloadXlsxBtnV" title="Export as Excel file">
+            <button class="btn action-btn btn-purple" id="downloadXlsxBtnV" title="Download as Excel file">
                 <i class="fa-solid fa-file-excel"></i>
-                <span class="btn-text">Export Excel</span>
+                <span class="btn-text">Download Excel</span>
             </button>
             {% endif %}
-            <button class="btn action-btn btn-purple" id="downloadPdfBtnV" title="Export as PDF">
+            <button class="btn action-btn btn-purple" id="downloadPdfBtnV" title="Download as PDF">
                 <i class="fa-solid fa-file-pdf"></i>
-                <span class="btn-text">Export PDF</span>
+                <span class="btn-text">Download PDF</span>
             </button>
             {% endif %}
 
@@ -153,6 +159,12 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
                 <span class="btn-text">Edit</span>
             </button>
             {% endif %}
+            {% if perm_idcard_delete %}
+            <button class="btn action-btn btn-red" id="deleteBtnA" disabled title="Move to pool">
+                <i class="fa-solid fa-trash"></i>
+                <span class="btn-text">Delete</span>
+            </button>
+            {% endif %}
             {% if perm_idcard_approve %}
             <button class="btn action-btn btn-red" id="disapproveBtn" disabled title="Move selected back to pending">
                 <i class="fa-solid fa-circle-xmark"></i>
@@ -168,22 +180,22 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
             {% if perm_idcard_bulk_download %}
             <div class="action-divider"></div>
             {% if not is_client and not is_client_staff %}
-            <button class="btn action-btn btn-purple" id="downloadImgBtnA" title="Export images as ZIP">
+            <button class="btn action-btn btn-purple" id="downloadImgBtnA" title="Download images as ZIP">
                 <i class="fa-solid fa-image"></i>
-                <span class="btn-text">Export Images</span>
+                <span class="btn-text">Download Images</span>
             </button>
-            <button class="btn action-btn btn-purple" id="downloadDocxBtnA" title="Export as Word document">
+            <button class="btn action-btn btn-purple" id="downloadDocxBtnA" title="Download as Word document">
                 <i class="fa-solid fa-file-word"></i>
-                <span class="btn-text">Export Word</span>
+                <span class="btn-text">Download Word</span>
             </button>
-            <button class="btn action-btn btn-purple" id="downloadXlsxBtnA" title="Export as Excel file">
+            <button class="btn action-btn btn-purple" id="downloadXlsxBtnA" title="Download as Excel file">
                 <i class="fa-solid fa-file-excel"></i>
-                <span class="btn-text">Export Excel</span>
+                <span class="btn-text">Download Excel</span>
             </button>
             {% endif %}
-            <button class="btn action-btn btn-purple" id="downloadPdfBtnA" title="Export as PDF">
+            <button class="btn action-btn btn-purple" id="downloadPdfBtnA" title="Download as PDF">
                 <i class="fa-solid fa-file-pdf"></i>
-                <span class="btn-text">Export PDF</span>
+                <span class="btn-text">Download PDF</span>
             </button>
             {% endif %}
             {% endif %}
@@ -203,6 +215,12 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
                 <span class="btn-text">Edit</span>
             </button>
             {% endif %}
+            {% if perm_idcard_delete %}
+            <button class="btn action-btn btn-red" id="deleteBtnD" disabled title="Move to pool">
+                <i class="fa-solid fa-trash"></i>
+                <span class="btn-text">Delete</span>
+            </button>
+            {% endif %}
             {% if perm_idcard_retrieve %}
             <button class="btn action-btn btn-green" id="retrieveBtnD" disabled title="Retrieve to pending">
                 <i class="fa-solid fa-rotate-left"></i>
@@ -220,20 +238,20 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
             {% if not is_client and not is_client_staff %}
             <button class="btn action-btn btn-purple" id="downloadImgBtnD" title="Download images as ZIP">
                 <i class="fa-solid fa-images"></i>
-                <span class="btn-text">Export Images</span>
+                <span class="btn-text">Download Images</span>
             </button>
             <button class="btn action-btn btn-purple" id="downloadDocxBtnD" title="Download as Word document">
                 <i class="fa-solid fa-file-word"></i>
-                <span class="btn-text">Export Word</span>
+                <span class="btn-text">Download Word</span>
             </button>
             <button class="btn action-btn btn-purple" id="downloadXlsxBtnD" title="Download as Excel file">
                 <i class="fa-solid fa-file-excel"></i>
-                <span class="btn-text">Export Excel</span>
+                <span class="btn-text">Download Excel</span>
             </button>
             {% endif %}
             <button class="btn action-btn btn-purple" id="downloadPdfBtnD" title="Download as PDF">
                 <i class="fa-solid fa-file-pdf"></i>
-                <span class="btn-text">Export PDF</span>
+                <span class="btn-text">Download PDF</span>
             </button>
             {% endif %}
             {% endif %}
@@ -261,22 +279,22 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
             {% if perm_idcard_bulk_download %}
             <div class="action-divider"></div>
             {% if not is_client and not is_client_staff %}
-            <button class="btn action-btn btn-purple" id="downloadImgBtnP" title="Export images as ZIP">
+            <button class="btn action-btn btn-purple" id="downloadImgBtnP" title="Download images as ZIP">
                 <i class="fa-solid fa-image"></i>
-                <span class="btn-text">Export Images</span>
+                <span class="btn-text">Download Images</span>
             </button>
-            <button class="btn action-btn btn-purple" id="downloadDocxBtnP" title="Export as Word document">
+            <button class="btn action-btn btn-purple" id="downloadDocxBtnP" title="Download as Word document">
                 <i class="fa-solid fa-file-word"></i>
-                <span class="btn-text">Export Word</span>
+                <span class="btn-text">Download Word</span>
             </button>
-            <button class="btn action-btn btn-purple" id="downloadXlsxBtnP" title="Export as Excel file">
+            <button class="btn action-btn btn-purple" id="downloadXlsxBtnP" title="Download as Excel file">
                 <i class="fa-solid fa-file-excel"></i>
-                <span class="btn-text">Export Excel</span>
+                <span class="btn-text">Download Excel</span>
             </button>
             {% endif %}
-            <button class="btn action-btn btn-purple" id="downloadPdfBtnP" title="Export as PDF">
+            <button class="btn action-btn btn-purple" id="downloadPdfBtnP" title="Download as PDF">
                 <i class="fa-solid fa-file-pdf"></i>
-                <span class="btn-text">Export PDF</span>
+                <span class="btn-text">Download PDF</span>
             </button>
             {% endif %}
         {% endif %}

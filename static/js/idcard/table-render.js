@@ -811,7 +811,9 @@
         _fillDropdown('sectionFilterOptions', sections, IDCardApp.currentSectionFilter || '');
     }
 
-    /** Fill dropdown from a pre-sorted array (returned by filter-options API). */
+    /** Fill dropdown from a pre-sorted array (returned by filter-options API).
+     *  Supports both old format (array of strings) and new format (array of {value, display} objects).
+     */
     function _fillDropdownFromArray(elId, valuesArr, activeVal) {
         var el = document.getElementById(elId);
         if (!el) return;
@@ -825,10 +827,14 @@
         el.appendChild(allOpt);
 
         for (var i = 0; i < valuesArr.length; i++) {
+            var item = valuesArr[i];
             var opt = document.createElement('div');
-            opt.className = 'dropdown-option' + (valuesArr[i] === activeVal ? ' selected' : '');
-            opt.dataset.value = valuesArr[i];
-            opt.textContent = valuesArr[i];
+            // Support objects with {value, display} or plain strings
+            var val = (typeof item === 'object' && item !== null) ? (item.value || '') : item;
+            var display = (typeof item === 'object' && item !== null) ? (item.display || val) : item;
+            opt.className = 'dropdown-option' + (val === activeVal ? ' selected' : '');
+            opt.dataset.value = val;
+            opt.textContent = display;
             el.appendChild(opt);
         }
     }

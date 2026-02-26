@@ -50,20 +50,23 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
-    background: transparent;
-    border: none;
-    font-size: 18px;
-    color: #94a3b8;
+    width: 30px;
+    height: 30px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    font-size: 14px;
+    color: #64748b;
     cursor: pointer;
-    border-radius: 6px;
-    transition: all 0.15s;
+    border-radius: 50%;
+    transition: all 0.2s;
     line-height: 1;
+    flex-shrink: 0;
 }
 .wa-modal-close:hover {
-    color: #1e293b;
-    background: #e2e8f0;
+    color: #ef4444;
+    background: #fef2f2;
+    border-color: #fecaca;
+    transform: rotate(90deg);
 }
 .wa-modal form {
     padding: 18px 20px 20px;

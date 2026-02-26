@@ -129,7 +129,7 @@
     <div class="wa-modal">
         <div class="wa-modal-header">
             <h3 id="categoryModalTitle">Add Category</h3>
-            <button class="wa-modal-close" onclick="closeCategoryModal()">&times;</button>
+            <button class="wa-modal-close" onclick="closeCategoryModal()" title="Close"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <form id="categoryForm">
             {% csrf_token %}
@@ -179,7 +179,7 @@
     <div class="wa-modal">
         <div class="wa-modal-header">
             <h3 id="portfolioModalTitle">Add Portfolio Item</h3>
-            <button class="wa-modal-close" onclick="closePortfolioModal()">&times;</button>
+            <button class="wa-modal-close" onclick="closePortfolioModal()" title="Close"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <form id="portfolioForm" enctype="multipart/form-data">
             {% csrf_token %}

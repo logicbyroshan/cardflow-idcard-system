@@ -127,7 +127,7 @@ class BusinessDetailsService:
     EDITABLE_FIELDS = [
         'site_name', 'tagline', 'address', 'phone', 'email', 'working_hours',
         'facebook_url', 'instagram_url', 'twitter_url', 'whatsapp_number',
-        'hero_title', 'hero_description', 'meta_description', 'meta_keywords',
+        'meta_description', 'meta_keywords',
         'footer_text',
     ]
 

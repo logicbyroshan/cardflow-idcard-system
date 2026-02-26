@@ -60,7 +60,8 @@
       </div>
 
       <!-- Right - Page Switch Buttons -->
-      <div class="nav-right">
+      <div class="nav-right" style="display:flex;align-items:center;gap:6px;">
+        {% include 'partials/notification-bell.html' %}
         <div class="page-switch-btns">
           {% if client %}
           <a href="{% if is_client or is_client_staff %}{% url 'client:idcard_group' %}{% else %}{% url 'idcard_group' client.id %}{% endif %}" class="btn btn-md btn-neutral" title="ID Card Group">
@@ -241,6 +242,7 @@
 
   <script>
     const GROUP_ID = {% if group %}{{ group.id }}{% else %}null{% endif %};
+    const IS_CLIENT_ROLE = {% if is_client or is_client_staff %}true{% else %}false{% endif %};
   </script>
   
   <!-- Core Modules (Load Order: api → toast → modal → utils → init) -->
@@ -253,6 +255,7 @@
   <script defer src="{% static 'js/group-setting-ui.js' %}"></script>
   <script defer src="{% static 'js/group-setting-events.js' %}"></script>
   <script defer src="{% static 'js/global-search.js' %}"></script>
+  <script defer src="{% static 'js/notification-bell.js' %}"></script>
   {% include 'partials/htmx-config.html' %}
   <script>
     document.addEventListener('DOMContentLoaded', function() {

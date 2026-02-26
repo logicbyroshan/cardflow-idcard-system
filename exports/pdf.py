@@ -412,11 +412,15 @@ class PdfExporter:
     ) -> List[Dict[str, Any]]:
         """
         Calculate dynamic column widths based on data content.
-        
-        Image columns: fixed percentage = (rendered_width + 0.1cm) / page_width
-        Text columns: share remaining percentage proportionally
-        Non-wrappable columns (mobile, DOB, Aadhar): boosted width to avoid
-        text touching cell borders.
+
+        Algorithm:
+        - Image columns: fixed percentage from subtype dimensions.
+        - Text columns: share remaining width proportionally based on
+          content character lengths.
+        - Uses 90th-percentile length (not max) to avoid outlier skew.
+        - Name/address fields get a 1.4× boost, nowrap fields (phone,
+          DOB, Aadhar) get a 1.35× boost to keep content away from borders.
+        - All text columns respect MIN_COL_WIDTH / MAX_COL_WIDTH bounds.
         """
         # Build column metadata
         configs = [{
@@ -460,13 +464,12 @@ class PdfExporter:
                 cfg['nowrap'] = True
 
         # Step 1: Fix image column percentages from subtype dimensions
-        # ~1px padding each side
         IMAGE_CELL_PADDING_CM = 0.1
         image_indices = set()
         for i, cfg in enumerate(configs):
             if cfg['is_image']:
                 image_indices.add(i)
-                field = ordered_fields[i - 1]  # offset for Sr No at index 0
+                field = ordered_fields[i - 1]
                 render_w = field.get('image_width_cm', 1.95)
                 render_h = field.get('image_height_cm', 2.5)
                 cfg['width'] = ((render_w + IMAGE_CELL_PADDING_CM) / self.PAGE_CONTENT_WIDTH_CM) * 100
@@ -477,29 +480,41 @@ class PdfExporter:
         image_pct = sum(configs[i]['width'] for i in image_indices)
         remaining_pct = max(100.0 - image_pct, 20.0)
 
-        # Step 3: Proportional text column weights
+        # Step 3: Collect value lengths per text column, compute P90 weight
         text_indices = [i for i in range(len(configs)) if i not in image_indices]
         text_weights = []
         for i in text_indices:
             if i == 0:
-                text_weights.append(len('SR NO'))
-            else:
-                field = ordered_fields[i - 1]
-                name = field['name']
-                is_nowrap = configs[i]['nowrap']
-                max_len = len(name.upper())
-                for card in cards:
-                    fd = card.field_data or {}
-                    val = fd.get(name, '')
-                    length = len(str(val)) if val else 0
-                    if any(w in name.lower() for w in ['name', 'address', 'email']):
-                        length = int(length * self.NAME_ADDRESS_BOOST)
-                    elif is_nowrap:
-                        # Boost non-wrappable fields so the full value fits
-                        # without touching cell borders
-                        length = int(length * self.NOWRAP_BOOST)
-                    max_len = max(max_len, length)
-                text_weights.append(max_len)
+                # Sr No column — fixed small weight
+                text_weights.append(max(len('SR NO'), 4))
+                continue
+
+            field = ordered_fields[i - 1]
+            name = field['name']
+            is_nowrap = configs[i]['nowrap']
+            is_name_addr = any(w in name.lower() for w in ['name', 'address', 'email'])
+
+            # Collect all value lengths
+            lengths = [len(name.upper())]  # header length as baseline
+            for card in cards:
+                fd = card.field_data or {}
+                val = fd.get(name, '')
+                raw_len = len(str(val)) if val else 0
+                if raw_len > 0:
+                    lengths.append(raw_len)
+
+            # Use 90th percentile to avoid outlier skew
+            lengths.sort()
+            p90_idx = max(0, int(len(lengths) * 0.9) - 1)
+            representative_len = lengths[p90_idx] if lengths else len(name)
+
+            # Apply field-type boosts
+            if is_name_addr:
+                representative_len = int(representative_len * self.NAME_ADDRESS_BOOST)
+            elif is_nowrap:
+                representative_len = int(representative_len * self.NOWRAP_BOOST)
+
+            text_weights.append(max(representative_len, 3))
 
         total_tw = sum(text_weights) or 1
         for idx, i in enumerate(text_indices):
@@ -510,7 +525,7 @@ class PdfExporter:
         # Normalize text columns so text + image = 100%
         text_actual = sum(configs[i]['width'] for i in text_indices) or 1
         for i in text_indices:
-            configs[i]['width'] = (configs[i]['width'] / text_actual) * remaining_pct
+            configs[i]['width'] = round((configs[i]['width'] / text_actual) * remaining_pct, 2)
 
         return configs
 
@@ -518,9 +533,15 @@ class PdfExporter:
     def _wrap_text_for_pdf(cls, text: str, nowrap: bool = False) -> 'mark_safe':
         """Insert word-break opportunities in text for PDF column wrapping.
 
-        xhtml2pdf has limited CSS word-wrap support, so we insert HTML
-        break-opportunity hints (<wbr>) after natural boundaries (commas,
-        slashes, spaces) so long values wrap without breaking mid-word.
+        Wrapping rules:
+        1. Words ≤ 6 chars: NEVER wrap (kept intact).
+        2. Words 7+ chars: insert a zero-width space (&#8203;) near the middle
+           so the word can break roughly half-above / half-below.
+        3. Phone-like tokens (≥60% digits): insert &#8203; every 5 chars
+           so a 10-digit number can split 5-above / 5-below.
+        4. Natural break opportunities after commas, slashes, colons.
+        5. Spaces themselves are break opportunities (replaced with
+           space + &#8203;).
 
         Returns a mark_safe string so Django templates render the HTML.
         """
@@ -529,14 +550,55 @@ class PdfExporter:
             return mark_safe('')
         # Escape HTML entities first to avoid XSS
         safe_text = html_escape(text)
-        # Short values don't need break hints
-        if len(text) <= 14:
+        # Very short values don't need break hints
+        if len(text) <= 6:
             return mark_safe(safe_text)
-        # Insert <wbr> after natural break characters: , / ; :
-        safe_text = _re.sub(r'([,/;:])', r'\1<wbr>', safe_text)
-        # Insert <wbr> after spaces for long wrappable text
-        safe_text = safe_text.replace(' ', ' <wbr>')
-        return mark_safe(safe_text)
+
+        def _is_phone_like(token):
+            """Check if a token is primarily digits (phone, Aadhar, etc.)."""
+            if not token:
+                return False
+            digits = sum(1 for c in token if c.isdigit())
+            return digits >= len(token) * 0.6 and digits >= 4
+
+        def _insert_breaks_in_word(word):
+            """Insert break opportunities in a single long word.
+            Word is already HTML-escaped at this point.
+            """
+            if len(word) <= 6:
+                return word
+            if _is_phone_like(word):
+                # Phone/numeric: insert break every 5 chars
+                parts = []
+                for i in range(0, len(word), 5):
+                    parts.append(word[i:i+5])
+                return '&#8203;'.join(parts)
+            # Long word: insert break near the middle
+            mid = len(word) // 2
+            return word[:mid] + '&#8203;' + word[mid:]
+
+        # Split by spaces first, then process each token
+        tokens = safe_text.split(' ')
+        processed = []
+        for token in tokens:
+            if not token:
+                processed.append('')
+                continue
+            # Handle tokens with natural break chars (commas, slashes, etc.)
+            # Split on natural boundaries and process sub-parts
+            sub_parts = _re.split(r'([,/;:\-])', token)
+            result_parts = []
+            for sp in sub_parts:
+                if sp in (',', '/', ';', ':', '-'):
+                    result_parts.append(sp + '&#8203;')
+                elif len(sp) > 6:
+                    result_parts.append(_insert_breaks_in_word(sp))
+                else:
+                    result_parts.append(sp)
+            processed.append(''.join(result_parts))
+
+        # Join words with space + zero-width space (break opportunity after space)
+        return mark_safe(' &#8203;'.join(processed))
 
     def _build_rows(
         self,

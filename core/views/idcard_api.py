@@ -47,6 +47,42 @@ def _safe_error(e, fallback='An error occurred. Please try again.'):
     return fallback
 
 
+def _build_class_filter_q(qs, class_filter, class_field_name):
+    """Apply class filter with canonical normalization.
+
+    Finds ALL raw variants in the DB that normalize to the same canonical
+    value as the filter, then matches them with __in.  This ensures
+    'KG-I', 'KG1', 'KGI', 'LKG' are all captured when filtering by 'KG1'.
+    """
+    from django.db.models.fields.json import KeyTextTransform
+    from django.db.models.functions import Cast
+    from django.db.models import CharField, Q
+    from core.utils.field_utils import normalize_class_value
+
+    norm_filter = normalize_class_value(class_filter)
+
+    # Get all distinct raw class values in the queryset
+    all_raw = list(
+        qs.annotate(_cv_raw=Cast(KeyTextTransform(class_field_name, 'field_data'), CharField()))
+        .exclude(_cv_raw__isnull=True).exclude(_cv_raw='')
+        .order_by()
+        .values_list('_cv_raw', flat=True).distinct()
+    )
+
+    # Find raw values that normalize to the same canonical
+    matching_raw = [r for r in all_raw if normalize_class_value(r) == norm_filter]
+
+    if not matching_raw:
+        return qs.none()
+
+    # Build filter: match any of the raw variants
+    qs = qs.annotate(_cls=KeyTextTransform(class_field_name, 'field_data'))
+    q = Q()
+    for raw in matching_raw:
+        q |= Q(_cls=raw)
+    return qs.filter(q)
+
+
 def _get_class_section_field_names(table):
     """Extract class and section field names from a table's field definitions.
 
@@ -596,13 +632,12 @@ def api_idcard_cards_json(request, table_id):
     if search:
         qs = qs.filter(field_data__icontains=search)
 
-    # Exact key-value match for class/section using JSON key extraction
+    # Class/section filter with canonical normalization
     if class_filter or section_filter:
         from django.db.models.fields.json import KeyTextTransform
         class_field_name, section_field_name = _get_class_section_field_names(table)
         if class_filter and class_field_name:
-            qs = qs.annotate(_cls=KeyTextTransform(class_field_name, 'field_data'))
-            qs = qs.filter(_cls__iexact=class_filter)
+            qs = _build_class_filter_q(qs, class_filter, class_field_name)
         if section_filter and section_field_name:
             qs = qs.annotate(_sec=KeyTextTransform(section_field_name, 'field_data'))
             qs = qs.filter(_sec__iexact=section_filter)
@@ -765,13 +800,21 @@ def api_idcard_all_ids(request, table_id):
 def api_idcard_filter_options(request, table_id):
     """Return distinct class/section values for filter dropdowns.
 
-    Uses KeyTextTransform for efficient single-column extraction —
-    much lighter than loading all field_data into Python.
+    Groups class variants by their canonical form (normalize_class_value).
+    E.g. 'KG-I', 'KGI', 'KG1', 'kgI' all map to canonical 'KG1' and show
+    the most-used raw format as the display label.
+
+    Response shape:
+        class_values:   [{value: "KG1", display: "KG-I"}, ...]
+        section_values: ["A", "B", ...]
     """
     from django.db.models.fields.json import KeyTextTransform
     from django.db.models.functions import Cast
-    from django.db.models import CharField
-    from core.utils.field_utils import CLASS_ORDER, CLASS_ORDER_UNKNOWN
+    from django.db.models import CharField, Count
+    from core.utils.field_utils import (
+        CLASS_ORDER, CLASS_ORDER_UNKNOWN, normalize_class_value,
+    )
+    from collections import defaultdict
 
     table, err = _check_client_scope_by_table(request.user, table_id)
     if err:
@@ -788,17 +831,35 @@ def api_idcard_filter_options(request, table_id):
     class_values = []
     section_values = []
 
-    # NOTE: Cast() wraps KeyTextTransform so that .exclude(_cv='') uses
-    # plain-text comparison instead of JSON_EXTRACT('', '$') which crashes
-    # on SQLite (empty string is not valid JSON).
-    # .order_by() clears IDCard's default ordering so DISTINCT is clean.
     if class_field_name:
-        class_values = sorted(
+        # Get distinct raw values WITH counts
+        raw_with_counts = (
             qs.annotate(_cv=Cast(KeyTextTransform(class_field_name, 'field_data'), CharField()))
             .exclude(_cv__isnull=True).exclude(_cv='')
             .order_by()
-            .values_list('_cv', flat=True).distinct(),
-            key=lambda v: (CLASS_ORDER.get(v.upper(), CLASS_ORDER_UNKNOWN), v),
+            .values('_cv')
+            .annotate(cnt=Count('id'))
+        )
+
+        # Group by canonical form → pick most common raw as display
+        groups = defaultdict(list)  # canonical → [(raw, count)]
+        for entry in raw_with_counts:
+            raw = entry['_cv'].strip()
+            canonical = normalize_class_value(raw)
+            groups[canonical].append((raw, entry['cnt']))
+
+        for canonical, variants in groups.items():
+            best_display = max(variants, key=lambda x: x[1])[0]
+            total_count = sum(v[1] for v in variants)
+            class_values.append({
+                'value': canonical,
+                'display': best_display,
+                'count': total_count,
+            })
+
+        # Sort by class order
+        class_values.sort(
+            key=lambda x: (CLASS_ORDER.get(x['value'], CLASS_ORDER_UNKNOWN), x['value'])
         )
 
     if section_field_name:
@@ -811,7 +872,7 @@ def api_idcard_filter_options(request, table_id):
 
     return JsonResponse({
         'success': True,
-        'class_values': list(class_values),
+        'class_values': class_values,
         'section_values': list(section_values),
         'class_field': class_field_name,
         'section_field': section_field_name,

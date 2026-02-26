@@ -258,7 +258,31 @@ function initBulkActionHandlers() {
             bulkDelete(selectedIds);
         }
     });
-    
+
+    // Delete button — Verified list
+    document.getElementById('deleteBtnV')?.addEventListener('click', function() {
+        const selectedIds = _getIds();
+        if (selectedIds.length > 0) {
+            bulkDelete(selectedIds);
+        }
+    });
+
+    // Delete button — Approved list
+    document.getElementById('deleteBtnA')?.addEventListener('click', function() {
+        const selectedIds = _getIds();
+        if (selectedIds.length > 0) {
+            bulkDelete(selectedIds);
+        }
+    });
+
+    // Delete button — Download list
+    document.getElementById('deleteBtnD')?.addEventListener('click', function() {
+        const selectedIds = _getIds();
+        if (selectedIds.length > 0) {
+            bulkDelete(selectedIds);
+        }
+    });
+
     // Approve Selected button
     document.getElementById('approveBtn')?.addEventListener('click', function() {
         const selectedIds = _getIds();

@@ -427,46 +427,87 @@ class WordExporter:
     
     def _calculate_column_widths(self, ordered_fields, cards, num_cols):
         """Calculate optimal column widths based on content.
-        
-        Image columns: fixed width from subtype dimensions + 0.1 cm
-        Text columns: share remaining page width proportionally
+
+        Algorithm:
+        - Image columns: fixed width from subtype dimensions + 0.1 cm.
+        - Text columns: share remaining page width proportionally.
+        - Uses 90th-percentile of value lengths (not max) to avoid outlier skew.
+        - Name/address fields get a 1.4× boost.
+        - Non-wrappable fields (phone, DOB, Aadhar) get a 1.35× boost.
         """
-        # Step 1: Compute fixed widths for image columns (from subtype dimensions)
+        # Step 1: Compute fixed widths for image columns
         image_widths = {}
         for idx, field in enumerate(ordered_fields):
             if field['is_image']:
                 render_w = field.get('image_width_cm', self.IMAGE_DEFAULT_WIDTH_CM)
                 image_widths[1 + idx] = render_w + 0.1
-        
+
         # Step 2: Remaining page width for text + Sr No columns
         used_by_images = sum(image_widths.values())
         remaining = max(self.PAGE_WIDTH_CM - used_by_images, 5.0)
-        
-        # Step 3: Proportional text column weights
-        text_weights = {0: 5}  # Sr No column
+
+        # Step 3: Collect P90 value lengths per text column
+        text_weights = {0: max(len('Sr No.'), 4)}  # Sr No column
         for idx, field in enumerate(ordered_fields):
             if not field['is_image']:
-                max_len = len(field['name'])
+                name = field['name']
+                is_nowrap = self._is_nowrap_field_word(name)
+                is_name_addr = any(w in name.lower() for w in ['name', 'address', 'email'])
+
+                lengths = [len(name)]  # header length as baseline
                 for card in cards:
                     fd = card.field_data or {}
-                    value = str(fd.get(field['name'], ''))
-                    max_len = max(max_len, len(value))
-                text_weights[1 + idx] = min(max_len, 50)
-        
+                    val = str(fd.get(name, '') or '')
+                    if val:
+                        lengths.append(len(val))
+
+                # 90th percentile
+                lengths.sort()
+                p90_idx = max(0, int(len(lengths) * 0.9) - 1)
+                representative = lengths[p90_idx] if lengths else len(name)
+
+                # Field-type boosts
+                if is_name_addr:
+                    representative = int(representative * 1.4)
+                elif is_nowrap:
+                    representative = int(representative * 1.35)
+
+                text_weights[1 + idx] = max(representative, 3)
+
         total_text_w = sum(text_weights.values()) or 1
-        
-        # Step 4: Build final widths
+
+        # Step 4: Build final widths with sensible min/max
         column_widths = {}
         for col_idx in range(num_cols):
             if col_idx in image_widths:
                 column_widths[col_idx] = image_widths[col_idx]
             elif col_idx in text_weights:
                 w = (text_weights[col_idx] / total_text_w) * remaining
-                column_widths[col_idx] = max(1.5, min(w, 8.0))
+                column_widths[col_idx] = max(1.2, min(w, 10.0))
             else:
                 column_widths[col_idx] = 1.5
-        
+
+        # Normalize text column widths so they exactly fill remaining space
+        text_total = sum(column_widths[k] for k in text_weights)
+        if text_total > 0:
+            scale = remaining / text_total
+            for k in text_weights:
+                column_widths[k] = round(column_widths[k] * scale, 2)
+
         return column_widths
+
+    @classmethod
+    def _is_nowrap_field_word(cls, field_name: str) -> bool:
+        """Check if a field contains non-wrappable data (phone, DOB, etc.)."""
+        NOWRAP_KEYWORDS = [
+            'mobile', 'phone', 'contact', 'tel', 'cell',
+            'dob', 'date', 'birth', 'joining',
+            'aadhar', 'aadhaar', 'pan', 'pincode', 'pin',
+            'roll', 'enrollment', 'reg', 'uid',
+            'account', 'ifsc', 'bank',
+        ]
+        name_lower = field_name.lower().replace(' ', '').replace('_', '').replace('.', '')
+        return any(kw.replace(' ', '') in name_lower for kw in NOWRAP_KEYWORDS)
     
     def _create_data_tables(self, doc, cards_list, ordered_fields, column_widths,
                             num_cols, Cm, Pt, RGBColor, WD_TABLE_ALIGNMENT,
@@ -580,8 +621,8 @@ class WordExporter:
             run.font.size = Pt(9)
             run.font.color.rgb = RGBColor(0, 0, 0)
         para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        # Minimal padding (~1px = 14 twips) so text doesn't touch border
-        self._set_cell_margins(cell, parse_xml, nsdecls, 14, 14, 14, 14)
+        # Adequate padding so header text never touches cell borders
+        self._set_cell_margins(cell, parse_xml, nsdecls, 28, 28, 42, 42)
         self._set_cell_vertical_align(cell, parse_xml, nsdecls)
         self._set_para_spacing(para, parse_xml, nsdecls)
         cell.width = Cm(width)
@@ -648,12 +689,67 @@ class WordExporter:
                 )
             else:
                 value = format_field_value(field_data.get(field['name'], ''), uppercase=True)
+                value = self._prepare_text_for_word(value)
                 cell.text = value
                 self._style_data_cell(cell, column_widths[col_idx], False,
                                       Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls)
             
             col_idx += 1
     
+    @staticmethod
+    def _prepare_text_for_word(text: str) -> str:
+        """Insert soft hyphens in long words so Word can break them gracefully.
+
+        Rules:
+        1. Words ≤ 6 chars: NEVER break.
+        2. Words 7+ chars: insert soft hyphen (U+00AD) near the middle
+           so Word breaks half-above / half-below when the column is narrow.
+        3. Phone-like tokens (≥60% digits, ≥4 digits): insert soft hyphen
+           every 5 chars (5 above / 5 below in rare cases).
+        4. Natural separators (,  /  ;  :) already act as break opportunities.
+        """
+        import re as _re
+        if not text or len(text) <= 6:
+            return text
+
+        SOFT_HYPHEN = '\u00AD'
+
+        def _is_phone_like(token):
+            if not token:
+                return False
+            digits = sum(1 for c in token if c.isdigit())
+            return digits >= len(token) * 0.6 and digits >= 4
+
+        def _break_word(word):
+            if len(word) <= 6:
+                return word
+            if _is_phone_like(word):
+                parts = []
+                for i in range(0, len(word), 5):
+                    parts.append(word[i:i+5])
+                return SOFT_HYPHEN.join(parts)
+            mid = len(word) // 2
+            return word[:mid] + SOFT_HYPHEN + word[mid:]
+
+        tokens = text.split(' ')
+        processed = []
+        for token in tokens:
+            if not token or len(token) <= 6:
+                processed.append(token)
+                continue
+            # Split on natural separators, process sub-parts
+            sub_parts = _re.split(r'([,/;:\-])', token)
+            result = []
+            for sp in sub_parts:
+                if sp in (',', '/', ';', ':', '-'):
+                    result.append(sp)
+                elif len(sp) > 6:
+                    result.append(_break_word(sp))
+                else:
+                    result.append(sp)
+            processed.append(''.join(result))
+        return ' '.join(processed)
+
     def _add_image_to_cell(self, cell, img_path, Cm, Pt, RGBColor,
                            WD_ALIGN_PARAGRAPH, parse_xml, nsdecls, Image, ImageOps,
                            fixed_width_cm=None, fixed_height_cm=None):
@@ -849,8 +945,9 @@ class WordExporter:
         if is_image:
             self._set_cell_margins(cell, parse_xml, nsdecls, 0, 0, 0, 0)
         else:
-            # Minimal padding (~1px = 14 twips) so text doesn't touch border
-            self._set_cell_margins(cell, parse_xml, nsdecls, 0, 0, 14, 14)
+            # Adequate padding so text never touches cell borders
+            # top=28, bottom=28, left=42, right=42 twips (~0.5mm vert, ~0.75mm horiz)
+            self._set_cell_margins(cell, parse_xml, nsdecls, 28, 28, 42, 42)
         
         self._set_cell_vertical_align(cell, parse_xml, nsdecls)
         
