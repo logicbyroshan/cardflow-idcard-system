@@ -209,7 +209,12 @@ async def verify_localhost_and_key(request: Request, call_next):
     """
     1. Reject requests not from the loopback interface.
     2. Require a valid X-ENGINE-KEY header on mutating endpoints.
+    Skip checks for CORS preflight (OPTIONS) requests.
     """
+    # ── Skip CORS preflight requests ─────────────────────────────────
+    if request.method == "OPTIONS":
+        return await call_next(request)
+
     # ── Localhost-only guard ─────────────────────────────────────────
     client_host = request.client.host if request.client else None
     if client_host not in ("127.0.0.1", "::1", "localhost"):

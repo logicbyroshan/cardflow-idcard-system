@@ -1,24 +1,30 @@
 /**
  * Adarsh Cropper — Alpine.js Component
  * ─────────────────────────────────────
- * Communicates with PassportEngine via Django proxy endpoints
- * (avoids CORS issues with the local engine service).
+ * Connects directly to the local PassportEngine service running on the
+ * user's machine at http://127.0.0.1:4765.  Falls back to Django proxy
+ * endpoints when running on localhost (dev mode).
  *
- * Proxy routes:
- *   GET  /panel/api/engine/status/          → engine /status + /health
- *   POST /panel/api/engine/process-zip/     → engine /process-zip
- *   POST /panel/api/engine/process-folder/  → engine /process-folder
- *   GET  /panel/api/engine/preview/         → list output images
- *   GET  /panel/api/engine/serve-image/     → serve one image
+ * Direct engine routes:
+ *   GET  http://127.0.0.1:4765/status          → engine status
+ *   GET  http://127.0.0.1:4765/health          → engine health probe
+ *   POST http://127.0.0.1:4765/process-zip     → process ZIP
+ *   POST http://127.0.0.1:4765/process-folder  → process folder
  *
- * Uses project patterns:
- *   - Alpine.js x-data component
- *   - ApiClient for all network IO
- *   - Toast module for notifications
+ * Fallback Django proxy routes (dev only):
+ *   GET  /panel/api/engine/status/
+ *   POST /panel/api/engine/process-zip/
+ *   POST /panel/api/engine/process-folder/
+ *   GET  /panel/api/engine/preview/
+ *   GET  /panel/api/engine/serve-image/
  *
  * @module adarsh-cropper
- * @version 3.0.0
+ * @version 4.0.0
  */
+
+// ── Engine connection constants ──────────────────────────────────────────
+var ENGINE_DIRECT_URL = 'http://127.0.0.1:4765';
+var ENGINE_API_KEY    = 'passport-engine-local-key';
 
 function cropperApp() {
   return {
@@ -30,6 +36,7 @@ function cropperApp() {
       version: '',
       uptime: '',
       memory: '',
+      direct: false,  // true when connected directly to local engine
     },
 
     // ── UI state ──
@@ -87,12 +94,61 @@ function cropperApp() {
     },
 
     // ══════════════════════════════════════════════════════════════════
-    //  ENGINE DETECTION (via Django proxy)
+    //  ENGINE DETECTION — try direct first, then Django proxy fallback
     // ══════════════════════════════════════════════════════════════════
     async checkEngine() {
       this.engine.loading = true;
       this.engine.connected = false;
+      this.engine.direct = false;
 
+      // ── Attempt 1: Direct connection to local engine ──────────────
+      try {
+        var controller = new AbortController();
+        var timer = setTimeout(function () { controller.abort(); }, 3000);
+
+        var statusResp = await fetch(ENGINE_DIRECT_URL + '/status', {
+          signal: controller.signal,
+        });
+        clearTimeout(timer);
+
+        if (statusResp.ok) {
+          var statusData = await statusResp.json();
+
+          // Try health endpoint too (optional)
+          var healthData = {};
+          try {
+            var hResp = await fetch(ENGINE_DIRECT_URL + '/health', {
+              signal: AbortSignal.timeout ? AbortSignal.timeout(3000) : undefined,
+            });
+            if (hResp.ok) healthData = await hResp.json();
+          } catch (_ignore) {}
+
+          this.engine.connected = true;
+          this.engine.direct = true;
+          this.engine.version = healthData.version || statusData.version || '?';
+
+          var secs = healthData.uptime_seconds || 0;
+          if (secs >= 3600) {
+            this.engine.uptime = Math.floor(secs / 3600) + 'h ' + Math.floor((secs % 3600) / 60) + 'm';
+          } else if (secs > 0) {
+            this.engine.uptime = Math.floor(secs / 60) + 'm ' + Math.floor(secs % 60) + 's';
+          } else {
+            this.engine.uptime = '';
+          }
+          this.engine.memory = healthData.memory_usage_mb != null
+            ? String(healthData.memory_usage_mb)
+            : '';
+
+          this.engine.loading = false;
+          this.engine.checked = true;
+          console.log('[Cropper] Connected directly to local engine v' + this.engine.version);
+          return;
+        }
+      } catch (_directErr) {
+        // Direct connection failed — try Django proxy
+      }
+
+      // ── Attempt 2: Django proxy (works on localhost dev) ──────────
       try {
         var data = await ApiClient.get('/panel/api/engine/status/');
 
@@ -101,9 +157,9 @@ function cropperApp() {
           var health = data.health || {};
 
           this.engine.connected = true;
+          this.engine.direct = false;
           this.engine.version = health.version || status.version || '?';
 
-          // Format uptime
           var secs = health.uptime_seconds || 0;
           if (secs >= 3600) {
             this.engine.uptime = Math.floor(secs / 3600) + 'h ' + Math.floor((secs % 3600) / 60) + 'm';
@@ -112,12 +168,12 @@ function cropperApp() {
           } else {
             this.engine.uptime = '';
           }
-
           this.engine.memory = health.memory_usage_mb != null
             ? String(health.memory_usage_mb)
             : '';
+          console.log('[Cropper] Connected via Django proxy v' + this.engine.version);
         }
-      } catch (_e) {
+      } catch (_proxyErr) {
         this.engine.connected = false;
       } finally {
         this.engine.loading = false;
@@ -204,7 +260,7 @@ function cropperApp() {
     },
 
     // ══════════════════════════════════════════════════════════════════
-    //  PROCESS ZIP (via Django proxy)
+    //  PROCESS ZIP — direct engine or Django proxy
     // ══════════════════════════════════════════════════════════════════
     async processZip() {
       if (!this.file || this.processing) return;
@@ -224,23 +280,45 @@ function cropperApp() {
         var outFolder = this.outputFolder.trim();
         if (outFolder) {
           formData.append('output_folder', outFolder);
+          // For direct engine: synthesise original_path
+          var zipStem = this.file.name.replace(/\.zip$/i, '');
+          formData.append('original_path', outFolder + '\\' + zipStem + '.zip');
         }
 
         this._updateProgress(30, 'Sending to engine…');
         this._startProgressSimulation();
 
-        var data = await ApiClient.upload(
-          '/panel/api/engine/process-zip/',
-          formData,
-          {
-            onProgress: (pct) => {
-              if (pct < 50) {
-                this._updateProgress(pct, 'Uploading ZIP file…');
-              }
-            },
-            timeout: 300000,
+        var data;
+
+        if (this.engine.direct) {
+          // ── Direct to local engine ────────────────────────────────
+          var resp = await fetch(ENGINE_DIRECT_URL + '/process-zip', {
+            method: 'POST',
+            headers: { 'X-ENGINE-KEY': ENGINE_API_KEY },
+            body: formData,
+          });
+          if (!resp.ok) {
+            var errBody = {};
+            try { errBody = await resp.json(); } catch (_) {}
+            throw new Error(errBody.message || errBody.detail || 'Engine error ' + resp.status);
           }
-        );
+          data = await resp.json();
+          data.success = true;
+        } else {
+          // ── Django proxy fallback ─────────────────────────────────
+          data = await ApiClient.upload(
+            '/panel/api/engine/process-zip/',
+            formData,
+            {
+              onProgress: (pct) => {
+                if (pct < 50) {
+                  this._updateProgress(pct, 'Uploading ZIP file…');
+                }
+              },
+              timeout: 300000,
+            }
+          );
+        }
 
         this._hideProgress();
 
@@ -262,7 +340,7 @@ function cropperApp() {
     },
 
     // ══════════════════════════════════════════════════════════════════
-    //  PROCESS FOLDER (via Django proxy)
+    //  PROCESS FOLDER — direct engine or Django proxy
     // ══════════════════════════════════════════════════════════════════
     async processFolder() {
       var path = this.folderPath.trim();
@@ -277,10 +355,32 @@ function cropperApp() {
         this._updateProgress(10, 'Sending folder path to engine…');
         this._startProgressSimulation();
 
-        var data = await ApiClient.post(
-          '/panel/api/engine/process-folder/',
-          { folder_path: path }
-        );
+        var data;
+
+        if (this.engine.direct) {
+          // ── Direct to local engine ────────────────────────────────
+          var resp = await fetch(ENGINE_DIRECT_URL + '/process-folder', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-ENGINE-KEY': ENGINE_API_KEY,
+            },
+            body: JSON.stringify({ folder_path: path }),
+          });
+          if (!resp.ok) {
+            var errBody = {};
+            try { errBody = await resp.json(); } catch (_) {}
+            throw new Error(errBody.message || errBody.detail || 'Engine error ' + resp.status);
+          }
+          data = await resp.json();
+          data.success = true;
+        } else {
+          // ── Django proxy fallback ─────────────────────────────────
+          data = await ApiClient.post(
+            '/panel/api/engine/process-folder/',
+            { folder_path: path }
+          );
+        }
 
         this._hideProgress();
 
@@ -346,6 +446,14 @@ function cropperApp() {
       this.preview.visible = true;
       this.preview.images = [];
       this.preview.folder = folderPath;
+
+      // In direct mode, files are on the user's local machine.
+      // The Django proxy endpoints (preview/serve-image) can't access them
+      // in production, so we skip image preview and just show the folder path.
+      if (this.engine.direct) {
+        this.preview.loading = false;
+        return;
+      }
 
       try {
         var data = await ApiClient.get(
