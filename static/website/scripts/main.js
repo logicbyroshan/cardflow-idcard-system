@@ -241,11 +241,28 @@ function initQrCode() {
 
 // ===== 7. PWA Install Trigger =====
 function triggerPwaInstall() {
-    var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    // Try native install prompt first (works on both mobile + desktop Chrome)
+    if (window.__pwaInstallPrompt) {
+        window.__pwaInstallPrompt.prompt();
+        window.__pwaInstallPrompt.userChoice.then(function(choice) {
+            if (choice.outcome === 'accepted') {
+                console.log('PWA install accepted');
+            }
+            window.__pwaInstallPrompt = null;
+        });
+        return;
+    }
 
-    // Mobile: always redirect to the panel subdomain mobile app.
-    // The website manifest doesn't work cross-origin, so mobile users
-    // install the PWA from panel.adarshbhopal.in/app/ instead.
+    var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+    if (isIOS) {
+        // iOS doesn't support beforeinstallprompt — show manual instructions
+        alert('To install this app on your iPhone/iPad:\n\n1. Tap the Share button (box with arrow)\n2. Scroll down and tap "Add to Home Screen"\n3. Tap "Add" to confirm');
+        return;
+    }
+
+    // Fallback: redirect to mobile app page where PWA can be installed
     if (isMobile) {
         if (window.__panelUrl) {
             window.location.href = window.__panelUrl + '/app/';
@@ -255,16 +272,8 @@ function triggerPwaInstall() {
         return;
     }
 
-    // Desktop: use native install prompt if available
-    if (window.__pwaInstallPrompt) {
-        window.__pwaInstallPrompt.prompt();
-        window.__pwaInstallPrompt.userChoice.then(function(choice) {
-            if (choice.outcome === 'accepted') {
-                console.log('PWA install accepted');
-            }
-            window.__pwaInstallPrompt = null;
-        });
-    } else if (window.__panelUrl) {
+    // Desktop fallback
+    if (window.__panelUrl) {
         window.location.href = window.__panelUrl + '/app/';
     } else {
         window.location.href = window.location.origin + '/panel/app/';

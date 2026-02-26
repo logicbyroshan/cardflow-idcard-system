@@ -18,7 +18,16 @@
         <div class="snap-section flex flex-col" style="min-height: calc(100vh - 60px); min-height: calc(100dvh - 60px); scroll-snap-align: start;">
 
             <!-- Search Bar -->
-            {% include "mobile_app/partials/searchbar.html" %}
+            <div class="px-4 py-2">
+                <a href="{% url 'mobile_app:search_page' %}" class="block">
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                        <div class="w-full pl-10 pr-10 py-2.5 bg-gray-100 border border-gray-200 rounded-lg text-sm text-gray-400 cursor-pointer">
+                            Search students, ID cards...
+                        </div>
+                    </div>
+                </a>
+            </div>
 
             <!-- Hero Carousel -->
             {% include "mobile_app/partials/hero_carousel.html" %}
@@ -117,6 +126,85 @@
                     </a>
                     {% endif %}
                 </div>
+
+                <!-- Admin Management Section (Super Admin & Admin Staff only) -->
+                {% if is_super_admin or is_admin_staff %}
+                <div class="pb-3">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 px-1">Management</p>
+                    <div class="grid grid-cols-2 gap-2">
+                        <!-- Clients -->
+                        <a href="/panel/clients/" class="flex items-center gap-2.5 rounded-xl p-2.5 active:scale-[0.98] transition-all" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 1px solid #bae6fd;">
+                            <div class="w-9 h-9 rounded-lg bg-sky-400/15 flex items-center justify-center">
+                                <i class="fa-solid fa-building text-sky-500 text-sm"></i>
+                            </div>
+                            <div>
+                                <p class="text-[11px] font-bold text-gray-700">Clients</p>
+                                <p class="text-[9px] text-gray-400">{{ admin_client_count|default:0 }} active</p>
+                            </div>
+                        </a>
+                        <!-- Staff -->
+                        <a href="{% url 'mobile_app:staff_manage' %}" class="flex items-center gap-2.5 rounded-xl p-2.5 active:scale-[0.98] transition-all" style="background: linear-gradient(135deg, #fefce8 0%, #fef9c3 100%); border: 1px solid #fde68a;">
+                            <div class="w-9 h-9 rounded-lg bg-yellow-400/15 flex items-center justify-center">
+                                <i class="fa-solid fa-users text-yellow-500 text-sm"></i>
+                            </div>
+                            <div>
+                                <p class="text-[11px] font-bold text-gray-700">Staff</p>
+                                <p class="text-[9px] text-gray-400">{{ admin_staff_count|default:0 }} members</p>
+                            </div>
+                        </a>
+                        <!-- All Tables -->
+                        <a href="{% url 'mobile_app:groups_overview' %}" class="flex items-center gap-2.5 rounded-xl p-2.5 active:scale-[0.98] transition-all" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1px solid #bbf7d0;">
+                            <div class="w-9 h-9 rounded-lg bg-green-400/15 flex items-center justify-center">
+                                <i class="fa-solid fa-table-list text-green-500 text-sm"></i>
+                            </div>
+                            <div>
+                                <p class="text-[11px] font-bold text-gray-700">Tables</p>
+                                <p class="text-[9px] text-gray-400">{{ admin_table_count|default:0 }} active</p>
+                            </div>
+                        </a>
+                        <!-- Settings -->
+                        <a href="{% url 'mobile_app:settings_page' %}" class="flex items-center gap-2.5 rounded-xl p-2.5 active:scale-[0.98] transition-all" style="background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%); border: 1px solid #e9d5ff;">
+                            <div class="w-9 h-9 rounded-lg bg-violet-400/15 flex items-center justify-center">
+                                <i class="fa-solid fa-gear text-violet-500 text-sm"></i>
+                            </div>
+                            <div>
+                                <p class="text-[11px] font-bold text-gray-700">Settings</p>
+                                <p class="text-[9px] text-gray-400">Configuration</p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Client Staff Management (Client role only) -->
+                {% if is_client %}
+                <div class="pb-3">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 px-1">Management</p>
+                    <div class="grid grid-cols-2 gap-2">
+                        <!-- Staff -->
+                        <a href="{% url 'mobile_app:staff_manage' %}" class="flex items-center gap-2.5 rounded-xl p-2.5 active:scale-[0.98] transition-all" style="background: linear-gradient(135deg, #fefce8 0%, #fef9c3 100%); border: 1px solid #fde68a;">
+                            <div class="w-9 h-9 rounded-lg bg-yellow-400/15 flex items-center justify-center">
+                                <i class="fa-solid fa-users text-yellow-500 text-sm"></i>
+                            </div>
+                            <div>
+                                <p class="text-[11px] font-bold text-gray-700">My Staff</p>
+                                <p class="text-[9px] text-gray-400">Manage team</p>
+                            </div>
+                        </a>
+                        <!-- Groups -->
+                        <a href="{% url 'mobile_app:groups_overview' %}" class="flex items-center gap-2.5 rounded-xl p-2.5 active:scale-[0.98] transition-all" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1px solid #bbf7d0;">
+                            <div class="w-9 h-9 rounded-lg bg-green-400/15 flex items-center justify-center">
+                                <i class="fa-solid fa-layer-group text-green-500 text-sm"></i>
+                            </div>
+                            <div>
+                                <p class="text-[11px] font-bold text-gray-700">Groups</p>
+                                <p class="text-[9px] text-gray-400">Tables & cards</p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+
             </div>
         </div>
 
@@ -163,6 +251,9 @@
         </div>
 
     </div><!-- end snap container -->
+
+    <!-- Bottom Nav -->
+    {% include "mobile_app/partials/bottom_nav.html" %}
 
 </div>
 

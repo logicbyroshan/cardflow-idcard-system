@@ -1,0 +1,34 @@
+<!-- Bottom Navigation Bar -->
+<div class="fixed bottom-0 left-0 right-0 z-50">
+    <div class="max-w-[430px] mx-auto bg-white border-t border-gray-200 shadow-[0_-2px_10px_rgba(0,0,0,0.06)]">
+        <div class="flex items-center justify-around px-2 py-1.5">
+            <!-- Home -->
+            <a href="{% url 'mobile_app:home' %}" class="flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-all active:scale-95 {% if request.resolver_match.url_name == 'home' %}text-brand-light{% else %}text-gray-400 hover:text-gray-600{% endif %}">
+                <i class="fa-solid fa-house text-base"></i>
+                <span class="text-[9px] font-semibold">Home</span>
+            </a>
+            <!-- Search -->
+            <a href="{% url 'mobile_app:search_page' %}" class="flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-all active:scale-95 {% if request.resolver_match.url_name == 'search_page' %}text-brand-light{% else %}text-gray-400 hover:text-gray-600{% endif %}">
+                <i class="fa-solid fa-magnifying-glass text-base"></i>
+                <span class="text-[9px] font-semibold">Search</span>
+            </a>
+            <!-- Groups -->
+            <a href="{% url 'mobile_app:groups_overview' %}" class="flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-all active:scale-95 {% if request.resolver_match.url_name == 'groups_overview' %}text-brand-light{% else %}text-gray-400 hover:text-gray-600{% endif %}">
+                <i class="fa-solid fa-layer-group text-base"></i>
+                <span class="text-[9px] font-semibold">Groups</span>
+            </a>
+            <!-- Notifications -->
+            <a href="{% url 'mobile_app:notifications' %}" class="flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-all active:scale-95 {% if request.resolver_match.url_name == 'notifications' %}text-brand-light{% else %}text-gray-400 hover:text-gray-600{% endif %}">
+                <i class="fa-solid fa-bell text-base"></i>
+                <span class="text-[9px] font-semibold">Activity</span>
+            </a>
+            <!-- Settings -->
+            <a href="{% url 'mobile_app:settings_page' %}" class="flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-all active:scale-95 {% if request.resolver_match.url_name == 'settings_page' %}text-brand-light{% else %}text-gray-400 hover:text-gray-600{% endif %}">
+                <i class="fa-solid fa-gear text-base"></i>
+                <span class="text-[9px] font-semibold">Settings</span>
+            </a>
+        </div>
+        <!-- Safe area padding for phones with home indicator -->
+        <div class="h-[env(safe-area-inset-bottom,0px)]"></div>
+    </div>
+</div>

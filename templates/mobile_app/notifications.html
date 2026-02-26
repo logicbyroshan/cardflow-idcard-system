@@ -4,7 +4,7 @@
 {% block title %}Notifications - ID Card Manager{% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-gray-50">
+<div class="min-h-screen bg-gray-50 pb-20">
     <!-- Header -->
     <div class="sticky top-0 z-40 flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-brand-light to-brand-dark">
         <a href="{% url 'mobile_app:home' %}" class="text-white">
@@ -48,5 +48,8 @@
         </div>
         {% endfor %}
     </div>
+
+    <!-- Bottom Nav -->
+    {% include "mobile_app/partials/bottom_nav.html" %}
 </div>
 {% endblock %}

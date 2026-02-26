@@ -4,13 +4,16 @@
 {% block title %}Profile - ID Card Manager{% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-gray-50">
+<div class="min-h-screen bg-gray-50 pb-20" x-data="profileApp()">
     <!-- Header -->
     <div class="sticky top-0 z-40 flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-brand-light to-brand-dark">
         <a href="{% url 'mobile_app:home' %}" class="text-white">
             <i class="fa-solid fa-arrow-left text-lg"></i>
         </a>
         <h1 class="text-white font-bold text-base flex-1">Profile</h1>
+        <button @click="toggleEdit()" class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all">
+            <i class="text-sm" :class="editing ? 'fa-solid fa-xmark' : 'fa-solid fa-pen'"></i>
+        </button>
     </div>
 
     <!-- Profile Card -->
@@ -21,20 +24,20 @@
                 <div class="w-20 h-20 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white text-2xl font-bold mx-auto mb-3 border-4 border-white/30">
                     {{ user_name|truncatechars:2|upper }}
                 </div>
-                <h2 class="text-white font-bold text-lg">{{ user_name }}</h2>
+                <h2 class="text-white font-bold text-lg" x-show="!editing">{{ user_name }}</h2>
                 <p class="text-white/70 text-sm">{{ user_role }}</p>
                 {% if client_name %}<p class="text-white/50 text-xs mt-1">{{ client_name }}</p>{% endif %}
             </div>
 
-            <!-- Details -->
-            <div class="p-5 space-y-4">
+            <!-- View Mode Details -->
+            <div x-show="!editing" class="p-5 space-y-4">
                 <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
                     <div class="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500">
                         <i class="fa-solid fa-envelope text-sm"></i>
                     </div>
                     <div>
                         <p class="text-[10px] text-gray-400 uppercase tracking-wider">Email</p>
-                        <p class="text-sm text-gray-800 font-medium">{{ user_email }}</p>
+                        <p class="text-sm text-gray-800 font-medium">{{ user_email|default:"Not set" }}</p>
                     </div>
                 </div>
 
@@ -44,7 +47,7 @@
                     </div>
                     <div>
                         <p class="text-[10px] text-gray-400 uppercase tracking-wider">Phone</p>
-                        <p class="text-sm text-gray-800 font-medium">{{ user_phone }}</p>
+                        <p class="text-sm text-gray-800 font-medium">{{ user_phone|default:"Not set" }}</p>
                     </div>
                 </div>
 
@@ -56,6 +59,28 @@
                         <p class="text-[10px] text-gray-400 uppercase tracking-wider">Role</p>
                         <p class="text-sm text-gray-800 font-medium">{{ user_role }}</p>
                     </div>
+                </div>
+            </div>
+
+            <!-- Edit Mode -->
+            <div x-show="editing" x-transition class="p-5 space-y-3">
+                <div class="space-y-1">
+                    <label class="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Full Name</label>
+                    <input type="text" x-model="editForm.name" placeholder="Your name"
+                        class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Phone</label>
+                    <input type="tel" x-model="editForm.phone" placeholder="Phone number"
+                        class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button @click="editing = false" class="flex-1 py-2.5 text-xs font-semibold text-gray-600 bg-gray-100 border border-gray-200 rounded-lg">Cancel</button>
+                    <button @click="saveProfile()" :disabled="saving"
+                        class="flex-[2] py-2.5 text-xs font-semibold text-white bg-gradient-to-r from-brand-light to-brand-dark rounded-lg shadow active:scale-[0.98] transition-all flex items-center justify-center gap-1">
+                        <i class="fa-solid fa-spinner fa-spin text-[10px]" x-show="saving"></i>
+                        <span>Save Changes</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -92,6 +117,35 @@
         </div>
     </div>
 
+    <!-- Quick Links -->
+    <div class="px-4 pb-2">
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-50">
+            {% if is_client %}
+            <a href="{% url 'mobile_app:staff_manage' %}" class="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-users text-gray-400"></i>
+                    <span class="text-sm text-gray-700">Manage Staff</span>
+                </div>
+                <i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
+            </a>
+            {% endif %}
+            <a href="{% url 'mobile_app:groups_overview' %}" class="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-layer-group text-gray-400"></i>
+                    <span class="text-sm text-gray-700">Groups & Tables</span>
+                </div>
+                <i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
+            </a>
+            <a href="{% url 'mobile_app:settings_page' %}" class="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-gear text-gray-400"></i>
+                    <span class="text-sm text-gray-700">Settings</span>
+                </div>
+                <i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
+            </a>
+        </div>
+    </div>
+
     <!-- Logout -->
     <div class="px-4 pb-6">
         <form method="post" action="/panel/auth/logout/">
@@ -102,5 +156,74 @@
             </button>
         </form>
     </div>
+
+    <!-- Toast -->
+    <div x-show="toast.show" x-transition class="fixed top-4 left-1/2 -translate-x-1/2 z-[80] max-w-[380px] w-full px-4">
+        <div class="rounded-xl px-4 py-3 shadow-lg text-xs font-medium text-white"
+             :class="toast.type === 'success' ? 'bg-green-500' : toast.type === 'error' ? 'bg-red-500' : 'bg-brand-light'"
+             x-text="toast.message"></div>
+    </div>
+
+    <!-- Bottom Nav -->
+    {% include "mobile_app/partials/bottom_nav.html" %}
 </div>
+
+{% csrf_token %}
+<script>
+function getCookie(name) {
+    let v = null;
+    document.cookie.split(';').forEach(c => {
+        c = c.trim();
+        if (c.startsWith(name+'=')) v = decodeURIComponent(c.substring(name.length+1));
+    });
+    return v;
+}
+const CSRF = getCookie('csrftoken') || document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+
+function profileApp() {
+    return {
+        editing: false,
+        saving: false,
+        toast: { show: false, message: '', type: 'info' },
+        editForm: {
+            name: '{{ user_name|escapejs }}',
+            phone: '{{ user_phone|escapejs }}',
+        },
+
+        toggleEdit() {
+            this.editing = !this.editing;
+            if (this.editing) {
+                this.editForm.name = '{{ user_name|escapejs }}';
+                this.editForm.phone = '{{ user_phone|escapejs }}';
+            }
+        },
+
+        showToast(msg, type='info') {
+            this.toast = { show: true, message: msg, type };
+            setTimeout(() => { this.toast.show = false; }, 2500);
+        },
+
+        async saveProfile() {
+            if (!this.editForm.name.trim()) { this.showToast('Name is required', 'error'); return; }
+            this.saving = true;
+            try {
+                const res = await fetch('/app/api/profile/update/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+                    body: JSON.stringify({ name: this.editForm.name, phone: this.editForm.phone }),
+                });
+                const data = await res.json();
+                if (data.success) {
+                    this.showToast(data.message || 'Profile updated!', 'success');
+                    this.editing = false;
+                    setTimeout(() => location.reload(), 800);
+                } else {
+                    this.showToast(data.message || 'Update failed', 'error');
+                }
+            } catch (e) { this.showToast('Network error', 'error'); }
+            this.saving = false;
+        }
+    }
+}
+</script>
 {% endblock %}

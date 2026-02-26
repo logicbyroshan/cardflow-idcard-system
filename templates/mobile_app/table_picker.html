@@ -17,7 +17,7 @@
     </div>
 
     <!-- Table List -->
-    <div class="p-4 space-y-3">
+    <div class="p-4 pb-24 space-y-3">
         {% for table in tables %}
         <a href="{% url 'mobile_app:card_list' table_id=table.id status=status %}"
            class="block bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md active:scale-[0.98] transition-all">
@@ -52,5 +52,7 @@
         </div>
         {% endfor %}
     </div>
+
+    {% include "mobile_app/partials/bottom_nav.html" %}
 </div>
 {% endblock %}

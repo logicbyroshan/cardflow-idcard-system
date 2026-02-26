@@ -50,11 +50,13 @@
     {% block extra_head %}{% endblock %}
 
     <script>
-        // Block non-mobile devices
+        // Block non-mobile devices (but allow PWA standalone mode)
         function checkDevice() {
             const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
                 || (window.innerWidth <= 768);
-            if (!isMobile) {
+            const isStandalone = window.navigator.standalone === true
+                || window.matchMedia('(display-mode: standalone)').matches;
+            if (!isMobile && !isStandalone) {
                 document.getElementById('mobile-app').style.display = 'none';
                 document.getElementById('desktop-block').style.display = 'flex';
             } else {

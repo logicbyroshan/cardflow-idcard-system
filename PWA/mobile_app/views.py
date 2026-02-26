@@ -3,18 +3,19 @@ PWA Mobile App Views — real backend integration.
 
 All views enforce:
   1. Login required
-  2. Client role (client or client_staff)
-  3. perm_mobile_app permission enabled
-  4. Mobile device user-agent (desktop gets block page)
+  2. Valid role (super_admin, admin_staff, client, client_staff)
+  3. Mobile device user-agent (desktop gets block page)
 
 No new backend logic — delegates entirely to existing services.
 """
 import json
 import re
+import logging
 from functools import wraps
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 from django.db.models import Count, Q
@@ -24,9 +25,13 @@ from client.services import (
     ClientDashboardService,
     ClientCardService,
     ClientImageService,
+    ClientStaffService,
 )
 from core.services.permission_service import PermissionService
 from core.models import IDCardTable, IDCard, IDCardGroup
+from staff.models import Staff
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -101,6 +106,15 @@ def home(request):
         'table_count': tables.count(),
         **perms,
     }
+
+    # Admin-specific counts for dashboard management section
+    if PermissionService.is_any_admin(user):
+        from client.models import Client
+        from staff.models import Staff
+        ctx['admin_client_count'] = Client.objects.filter(status='active').count()
+        ctx['admin_staff_count'] = Staff.objects.count()
+        ctx['admin_table_count'] = IDCardTable.objects.filter(is_active=True).count()
+        ctx['admin_total_cards'] = IDCard.objects.count()
 
     if result.success:
         data = result.data
@@ -195,7 +209,13 @@ def card_list(request, table_id, status):
         if not photo_url:
             for val in fd.values():
                 if isinstance(val, str) and ('adarshimg/' in val or val.endswith(('.jpg', '.jpeg', '.png', '.webp'))):
-                    photo_url = val
+                    # Ensure the path has proper /media/ prefix
+                    if val.startswith('/'):
+                        photo_url = val
+                    elif val.startswith('http'):
+                        photo_url = val
+                    else:
+                        photo_url = settings.MEDIA_URL + val
                     break
 
         cards.append({
@@ -488,6 +508,406 @@ def api_card_update(request, table_id, card_id):
         card.save()
         return JsonResponse({'success': True, 'message': 'Card updated successfully'})
     except Exception:
-        import logging as _log
-        _log.getLogger(__name__).exception('Card update error')
+        logger.exception('Card update error')
         return JsonResponse({'success': False, 'message': 'An error occurred'}, status=500)
+
+
+# ---------------------------------------------------------------------------
+# NEW PAGE VIEWS — Card detail, Staff, Groups, Settings, Search
+# ---------------------------------------------------------------------------
+
+@require_mobile_client
+def card_detail(request, card_id):
+    """Full card detail page with all field data."""
+    user = request.user
+    client, perms = _client_ctx(user)
+    if not client:
+        return redirect('/panel/auth/login/')
+
+    result = ClientCardService.get_card_detail(user, card_id)
+    if not result.success:
+        return redirect('mobile_app:home')
+
+    card_data = result.data
+
+    return render(request, 'mobile_app/card_detail.html', {
+        'user_name': user.get_full_name() or user.username,
+        'client': client,
+        'card': card_data,
+        'card_json': json.dumps(card_data, default=str),
+        **perms,
+    })
+
+
+@require_mobile_client
+def staff_manage(request):
+    """Staff management page (client role only — manages client_staff)."""
+    user = request.user
+    client, perms = _client_ctx(user)
+    if not client:
+        return redirect('/panel/auth/login/')
+
+    # Only client role can manage staff
+    if not PermissionService.is_client(user) and not PermissionService.is_any_admin(user):
+        return redirect('mobile_app:home')
+
+    # For client role, use the service; for admins, show all staff
+    staff_list = []
+    if PermissionService.is_client(user):
+        result = ClientStaffService.list_staff(user)
+        if result.success:
+            staff_list = result.data.get('staff', [])
+    elif PermissionService.is_any_admin(user):
+        # Admin can see all staff
+        all_staff = Staff.objects.select_related('user').order_by('-created_at')[:200]
+        for s in all_staff:
+            staff_list.append({
+                'id': s.id,
+                'name': s.user.get_full_name() or s.user.username,
+                'email': s.user.email,
+                'phone': getattr(s.user, 'phone', '') or '',
+                'department': s.department or '',
+                'designation': s.designation or '',
+                'is_active': s.user.is_active,
+                'staff_type': s.get_staff_type_display(),
+                'created_at': s.created_at.strftime('%d %b %Y'),
+            })
+
+    # Get groups for assignment dropdown
+    groups = IDCardGroup.objects.filter(client=client).values('id', 'name')
+
+    return render(request, 'mobile_app/staff_manage.html', {
+        'user_name': user.get_full_name() or user.username,
+        'client': client,
+        'staff_list': staff_list,
+        'staff_json': json.dumps(staff_list, default=str),
+        'groups': list(groups),
+        'groups_json': json.dumps(list(groups), default=str),
+        **perms,
+    })
+
+
+@require_mobile_client
+def groups_overview(request):
+    """Groups & tables overview page."""
+    user = request.user
+    client, perms = _client_ctx(user)
+    if not client:
+        return redirect('/panel/auth/login/')
+
+    groups = IDCardGroup.objects.filter(client=client).annotate(
+        table_count=Count('tables'),
+        total_cards=Count('tables__id_cards'),
+        pending_cards=Count('tables__id_cards', filter=Q(tables__id_cards__status='pending')),
+        verified_cards=Count('tables__id_cards', filter=Q(tables__id_cards__status='verified')),
+        approved_cards=Count('tables__id_cards', filter=Q(tables__id_cards__status='approved')),
+        download_cards=Count('tables__id_cards', filter=Q(tables__id_cards__status='download')),
+    ).order_by('name')
+
+    tables = IDCardTable.objects.filter(group__client=client).select_related('group').annotate(
+        total_cards=Count('id_cards'),
+        pending_cards=Count('id_cards', filter=Q(id_cards__status='pending')),
+        verified_cards=Count('id_cards', filter=Q(id_cards__status='verified')),
+        approved_cards=Count('id_cards', filter=Q(id_cards__status='approved')),
+        download_cards=Count('id_cards', filter=Q(id_cards__status='download')),
+    ).order_by('group__name', 'name')
+
+    return render(request, 'mobile_app/groups.html', {
+        'user_name': user.get_full_name() or user.username,
+        'client': client,
+        'groups': groups,
+        'tables': tables,
+        **perms,
+    })
+
+
+@require_mobile_client
+def settings_page(request):
+    """Settings / admin overview page."""
+    user = request.user
+    client, perms = _client_ctx(user)
+    if not client:
+        return redirect('/panel/auth/login/')
+
+    ctx = {
+        'user_name': user.get_full_name() or user.username,
+        'client': client,
+        **perms,
+    }
+
+    # Counts
+    ctx['table_count'] = IDCardTable.objects.filter(group__client=client, is_active=True).count()
+    ctx['group_count'] = IDCardGroup.objects.filter(client=client).count()
+    ctx['total_cards'] = IDCard.objects.filter(table__group__client=client).count()
+
+    # Admin-specific
+    if PermissionService.is_any_admin(user):
+        from client.models import Client
+        ctx['admin_client_count'] = Client.objects.filter(status='active').count()
+        ctx['admin_staff_count'] = Staff.objects.count()
+        ctx['admin_table_count'] = IDCardTable.objects.filter(is_active=True).count()
+        ctx['admin_total_cards'] = IDCard.objects.count()
+
+    return render(request, 'mobile_app/settings.html', ctx)
+
+
+@require_mobile_client
+def search_page(request):
+    """Search page — search across all cards in client's tables."""
+    user = request.user
+    client, perms = _client_ctx(user)
+    if not client:
+        return redirect('/panel/auth/login/')
+
+    query = request.GET.get('q', '').strip()
+    results = []
+
+    if query and len(query) >= 2:
+        cards_qs = IDCard.objects.filter(
+            table__group__client=client,
+        ).select_related('table', 'table__group').order_by('-updated_at')
+
+        # Search in field_data
+        cards_qs = cards_qs.filter(
+            Q(field_data__NAME__icontains=query) |
+            Q(field_data__name__icontains=query) |
+            Q(field_data__Name__icontains=query) |
+            Q(field_data__ROLL_NO__icontains=query) |
+            Q(field_data__roll_no__icontains=query) |
+            Q(field_data__ID__icontains=query)
+        )[:50]
+
+        for card in cards_qs:
+            fd = card.field_data or {}
+            name = fd.get('NAME') or fd.get('name') or fd.get('Name') or f'Card #{card.id}'
+            roll_no = fd.get('ROLL NO') or fd.get('ROLL_NO') or fd.get('roll_no') or ''
+            photo_url = card.photo.url if card.photo else None
+            if not photo_url:
+                for val in fd.values():
+                    if isinstance(val, str) and ('adarshimg/' in val or val.endswith(('.jpg', '.jpeg', '.png', '.webp'))):
+                        photo_url = (settings.MEDIA_URL + val) if not val.startswith(('/','http')) else val
+                        break
+
+            results.append({
+                'id': card.id,
+                'name': name,
+                'roll_no': roll_no,
+                'status': card.status,
+                'table_name': card.table.name,
+                'group_name': card.table.group.name,
+                'photo_url': photo_url,
+            })
+
+    return render(request, 'mobile_app/search.html', {
+        'user_name': user.get_full_name() or user.username,
+        'client': client,
+        'query': query,
+        'results': results,
+        'result_count': len(results),
+        **perms,
+    })
+
+
+# ---------------------------------------------------------------------------
+# NEW API VIEWS
+# ---------------------------------------------------------------------------
+
+@require_mobile_client
+@require_http_methods(["POST"])
+def api_card_delete(request, card_id):
+    """Delete a single card (move to pool or permanently delete)."""
+    try:
+        card = get_object_or_404(IDCard.objects.select_related('table__group'), id=card_id)
+        user = request.user
+        if not PermissionService.is_any_admin(user) and not ClientAccessService.can_access_card(user, card):
+            return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+        if not PermissionService.has(user, 'perm_idcard_delete'):
+            return JsonResponse({'success': False, 'message': 'No delete permission'}, status=403)
+
+        data = json.loads(request.body) if request.body else {}
+        permanent = data.get('permanent', False)
+
+        if permanent and card.status == 'pool':
+            if not PermissionService.has(user, 'perm_idcard_delete_from_pool'):
+                return JsonResponse({'success': False, 'message': 'No pool delete permission'}, status=403)
+            card.delete()
+            return JsonResponse({'success': True, 'message': 'Card permanently deleted'})
+        else:
+            card.status = 'pool'
+            card.save(update_fields=['status'])
+            return JsonResponse({'success': True, 'message': 'Card moved to pool'})
+    except Exception:
+        logger.exception('Card delete error')
+        return JsonResponse({'success': False, 'message': 'An error occurred'}, status=500)
+
+
+@require_mobile_client
+@require_http_methods(["GET"])
+def api_staff_list(request):
+    """List staff for the client."""
+    user = request.user
+    if PermissionService.is_client(user):
+        result = ClientStaffService.list_staff(user)
+        if result.success:
+            return JsonResponse({'success': True, 'data': result.data})
+        return JsonResponse({'success': False, 'message': result.message}, status=400)
+    elif PermissionService.is_any_admin(user):
+        all_staff = Staff.objects.select_related('user').order_by('-created_at')[:200]
+        staff_data = []
+        for s in all_staff:
+            staff_data.append({
+                'id': s.id,
+                'name': s.user.get_full_name() or s.user.username,
+                'email': s.user.email,
+                'phone': getattr(s.user, 'phone', '') or '',
+                'department': s.department or '',
+                'designation': s.designation or '',
+                'is_active': s.user.is_active,
+                'staff_type': s.get_staff_type_display(),
+            })
+        return JsonResponse({'success': True, 'data': {'staff': staff_data}})
+    return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
+
+
+@require_mobile_client
+@require_http_methods(["POST"])
+def api_staff_create(request):
+    """Create a new staff member."""
+    user = request.user
+    if not PermissionService.is_client(user):
+        return JsonResponse({'success': False, 'message': 'Only clients can create staff'}, status=403)
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
+
+    result = ClientStaffService.create_staff(user, data)
+    if result.success:
+        return JsonResponse({'success': True, 'message': result.message, **(result.data or {})})
+    return JsonResponse({'success': False, 'message': result.message}, status=400)
+
+
+@require_mobile_client
+@require_http_methods(["POST"])
+def api_staff_update(request, staff_id):
+    """Update a staff member."""
+    user = request.user
+    if not PermissionService.is_client(user):
+        return JsonResponse({'success': False, 'message': 'Only clients can update staff'}, status=403)
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
+
+    result = ClientStaffService.update_staff(user, staff_id, data)
+    if result.success:
+        return JsonResponse({'success': True, 'message': result.message})
+    return JsonResponse({'success': False, 'message': result.message}, status=400)
+
+
+@require_mobile_client
+@require_http_methods(["POST"])
+def api_staff_toggle(request, staff_id):
+    """Toggle staff active/inactive."""
+    user = request.user
+    if not PermissionService.is_client(user):
+        return JsonResponse({'success': False, 'message': 'Only clients can manage staff'}, status=403)
+
+    result = ClientStaffService.toggle_staff_status(user, staff_id)
+    if result.success:
+        return JsonResponse({'success': True, 'message': result.message, **(result.data or {})})
+    return JsonResponse({'success': False, 'message': result.message}, status=400)
+
+
+@require_mobile_client
+@require_http_methods(["POST"])
+def api_staff_delete(request, staff_id):
+    """Delete a staff member."""
+    user = request.user
+    if not PermissionService.is_client(user):
+        return JsonResponse({'success': False, 'message': 'Only clients can delete staff'}, status=403)
+
+    result = ClientStaffService.delete_staff(user, staff_id)
+    if result.success:
+        return JsonResponse({'success': True, 'message': result.message})
+    return JsonResponse({'success': False, 'message': result.message}, status=400)
+
+
+@require_mobile_client
+@require_http_methods(["POST"])
+def api_profile_update(request):
+    """Update current user's profile."""
+    user = request.user
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
+
+    try:
+        if 'first_name' in data:
+            user.first_name = data['first_name'].strip()
+        if 'last_name' in data:
+            user.last_name = data['last_name'].strip()
+        if 'phone' in data and hasattr(user, 'phone'):
+            user.phone = data['phone'].strip()
+
+        # Handle combined name field
+        name = data.get('name', '').strip()
+        if name and 'first_name' not in data:
+            parts = name.split()
+            user.first_name = parts[0] if parts else ''
+            user.last_name = ' '.join(parts[1:]) if len(parts) > 1 else ''
+
+        user.save()
+        return JsonResponse({
+            'success': True,
+            'message': 'Profile updated successfully',
+            'name': user.get_full_name() or user.username,
+        })
+    except Exception:
+        logger.exception('Profile update error')
+        return JsonResponse({'success': False, 'message': 'An error occurred'}, status=500)
+
+
+@require_mobile_client
+@require_http_methods(["GET"])
+def api_search(request):
+    """Global search API across all client cards."""
+    user = request.user
+    client, _ = _client_ctx(user)
+    if not client:
+        return JsonResponse({'success': False, 'message': 'No client'}, status=400)
+
+    query = request.GET.get('q', '').strip()
+    if not query or len(query) < 2:
+        return JsonResponse({'success': True, 'data': {'results': [], 'count': 0}})
+
+    cards_qs = IDCard.objects.filter(
+        table__group__client=client,
+    ).select_related('table', 'table__group').order_by('-updated_at')
+
+    cards_qs = cards_qs.filter(
+        Q(field_data__NAME__icontains=query) |
+        Q(field_data__name__icontains=query) |
+        Q(field_data__Name__icontains=query) |
+        Q(field_data__ROLL_NO__icontains=query) |
+        Q(field_data__roll_no__icontains=query) |
+        Q(field_data__ID__icontains=query)
+    )[:30]
+
+    results = []
+    for card in cards_qs:
+        fd = card.field_data or {}
+        name = fd.get('NAME') or fd.get('name') or fd.get('Name') or f'Card #{card.id}'
+        roll_no = fd.get('ROLL NO') or fd.get('ROLL_NO') or fd.get('roll_no') or ''
+        photo_url = card.photo.url if card.photo else None
+        results.append({
+            'id': card.id,
+            'name': name,
+            'roll_no': roll_no,
+            'status': card.status,
+            'table_name': card.table.name,
+            'photo_url': photo_url,
+        })
+
+    return JsonResponse({'success': True, 'data': {'results': results, 'count': len(results)}})
