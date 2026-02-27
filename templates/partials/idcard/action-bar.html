@@ -159,12 +159,6 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
                 <span class="btn-text">Edit</span>
             </button>
             {% endif %}
-            {% if perm_idcard_delete %}
-            <button class="btn action-btn btn-red" id="deleteBtnA" disabled title="Move to pool">
-                <i class="fa-solid fa-trash"></i>
-                <span class="btn-text">Delete</span>
-            </button>
-            {% endif %}
             {% if perm_idcard_approve %}
             <button class="btn action-btn btn-red" id="disapproveBtn" disabled title="Move selected back to pending">
                 <i class="fa-solid fa-circle-xmark"></i>
@@ -213,12 +207,6 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
             <button class="btn action-btn btn-blue" id="editBtnD" disabled title="Edit selected card">
                 <i class="fa-solid fa-pen-to-square"></i>
                 <span class="btn-text">Edit</span>
-            </button>
-            {% endif %}
-            {% if perm_idcard_delete %}
-            <button class="btn action-btn btn-red" id="deleteBtnD" disabled title="Move to pool">
-                <i class="fa-solid fa-trash"></i>
-                <span class="btn-text">Delete</span>
             </button>
             {% endif %}
             {% if perm_idcard_retrieve %}

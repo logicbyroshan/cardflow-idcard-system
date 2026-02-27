@@ -1,11 +1,5 @@
 <!-- Download List Actions -->
 <div class="flex items-end w-full">
-    {% if perm_idcard_delete %}
-    <button @click="deleteSelected()" class="action-btn flex-1 action-btn-red">
-        <i class="fa-solid fa-trash-can"></i>
-        <span class="action-btn-text">Delete</span>
-    </button>
-    {% endif %}
     {% if perm_idcard_approve %}
     <button @click="downloadAgain()" class="action-btn flex-1 action-btn-teal">
         <i class="fa-solid fa-arrows-rotate"></i>
