@@ -664,7 +664,10 @@ class PdfExporter:
         # Split on whitespace tokens, inject &#8203; (zero-width space)
         # inside any "word" longer than chars_per_line so the PDF engine
         # can wrap it.  For numbers/dates keep them whole if they fit.
-        ZWSP = '&#8203;'
+        # NOTE: Do NOT use &#8203; (zero-width space U+200B) — xhtml2pdf/
+        # Helvetica renders it as ■.  Use <wbr> instead, which xhtml2pdf
+        # treats as a break-opportunity without rendering anything visible.
+        WBR = '<wbr>'
         parts = safe_text.split(' ')
         wrapped_parts = []
         for part in parts:
@@ -672,7 +675,7 @@ class PdfExporter:
             raw = part.replace('<wbr>', '').replace('&amp;', '&')
             visible_len = len(html_escape(raw)) if '&' in part else len(part)
             if visible_len > chars_per_line:
-                # Force-break: insert ZWSP every chars_per_line characters
+                # Force-break: insert <wbr> every chars_per_line characters
                 out = []
                 count = 0
                 i = 0
@@ -685,20 +688,20 @@ class PdfExporter:
                             count += 1
                             i = end + 1
                             if count >= chars_per_line:
-                                out.append(ZWSP)
+                                out.append(WBR)
                                 count = 0
                             continue
                     out.append(part[i])
                     count += 1
                     if count >= chars_per_line:
-                        out.append(ZWSP)
+                        out.append(WBR)
                         count = 0
                     i += 1
                 wrapped_parts.append(''.join(out))
             else:
                 wrapped_parts.append(part)
 
-        safe_text = (' ' + ZWSP).join(wrapped_parts)
+        safe_text = ' '.join(wrapped_parts)
 
         # ── Step 5: Insert <wbr> at natural break characters: , / ; :
         safe_text = _re.sub(r'([,/;:])', r'\1<wbr>', safe_text)
