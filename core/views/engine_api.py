@@ -1,7 +1,7 @@
 """
-Engine Proxy API Views — forward browser requests to the local PassportEngine.
+Engine Proxy API Views — forward browser requests to the local Adarsh Engine.
 
-The PassportEngine runs as a Windows service on 127.0.0.1:4765.
+The Adarsh Engine runs as a Windows service on 127.0.0.1:4765.
 The installed binary's CORS list doesn't include the Django dev-server origin,
 so we proxy every call through Django (same-origin → no CORS issues).
 This also keeps the engine API key server-side.
@@ -82,7 +82,7 @@ def api_engine_status(request):
     except http_client.ConnectionError:
         return JsonResponse({
             "connected": False,
-            "error": "Engine not reachable. Is the PassportEngine service running?",
+            "error": "Engine not reachable. Is the Adarsh Engine service running?",
         })
     except http_client.Timeout:
         return JsonResponse({
@@ -130,7 +130,7 @@ def api_engine_process_folder(request):
     except http_client.ConnectionError:
         return JsonResponse({
             "success": False,
-            "message": "Cannot connect to PassportEngine. Is the service running?",
+            "message": "Cannot connect to Adarsh Engine. Is the service running?",
         }, status=502)
     except http_client.Timeout:
         return JsonResponse({

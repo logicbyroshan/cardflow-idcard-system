@@ -53,7 +53,7 @@ urlpatterns = [
     # ==================== SERVICES ==
     path('services/adarsh-cropper/', views.adarsh_cropper, name='adarsh_cropper'),
 
-    # Engine Proxy APIs (browser → Django → PassportEngine, avoids CORS)
+    # Engine Proxy APIs (browser → Django → Adarsh Engine, avoids CORS)
     path('api/engine/status/', views.api_engine_status, name='api_engine_status'),
     path('api/engine/process-folder/', views.api_engine_process_folder, name='api_engine_process_folder'),
     path('api/engine/preview/', views.api_engine_preview, name='api_engine_preview'),
