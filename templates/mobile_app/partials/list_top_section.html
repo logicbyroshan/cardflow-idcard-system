@@ -40,10 +40,11 @@
             </div>
             <button
                 @click="showFilters = !showFilters"
-                :class="showFilters ? 'bg-brand-light text-white' : 'bg-gray-50 text-gray-600 border border-gray-200'"
-                class="p-2 rounded-lg transition-all"
+                :class="showFilters ? 'bg-brand-light text-white' : filtersActive ? 'bg-brand-light/20 text-brand-light border border-brand-light' : 'bg-gray-50 text-gray-600 border border-gray-200'"
+                class="relative p-2 rounded-lg transition-all"
             >
                 <i class="fa-solid fa-sliders text-sm"></i>
+                <span x-show="filtersActive" class="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full"></span>
             </button>
         </div>
     </div>

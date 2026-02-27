@@ -119,6 +119,7 @@ def home(request):
     if result.success:
         data = result.data
         counts = data.get('counts', data.get('card_counts', {}))
+        recent = data.get('recent_activity', [])
         ctx.update({
             'pending_count': counts.get('pending', 0),
             'verified_count': counts.get('verified', 0),
@@ -126,7 +127,8 @@ def home(request):
             'download_count': counts.get('download', 0),
             'pool_count': counts.get('pool', 0),
             'total_cards': data.get('total_cards', 0),
-            'recent_activities': data.get('recent_activity', []),
+            'recent_activities': recent,
+            'has_new_activity': len(recent) > 0,
         })
     else:
         ctx.update({
@@ -134,9 +136,40 @@ def home(request):
             'approved_count': 0, 'download_count': 0,
             'pool_count': 0, 'total_cards': 0,
             'recent_activities': [],
+            'has_new_activity': False,
         })
 
     return render(request, 'mobile_app/home.html', ctx)
+
+
+@require_mobile_client
+def clients_list(request):
+    """In-app client list for admin roles — switch active client context."""
+    user = request.user
+    _, perms = _client_ctx(user)
+    if not PermissionService.is_any_admin(user):
+        return redirect('mobile_app:home')
+
+    from client.models import Client
+    clients = Client.objects.filter(status='active').order_by('name')
+    client_data = []
+    for c in clients:
+        tables_count = IDCardTable.objects.filter(group__client=c, is_active=True).count()
+        cards_count = IDCard.objects.filter(table__group__client=c).count()
+        client_data.append({
+            'id': c.id,
+            'name': c.name,
+            'tables_count': tables_count,
+            'cards_count': cards_count,
+            'status': c.status,
+        })
+
+    return render(request, 'mobile_app/clients_list.html', {
+        'user_name': user.get_full_name() or user.username,
+        'clients': client_data,
+        'client_count': len(client_data),
+        **perms,
+    })
 
 
 @require_mobile_client
@@ -201,6 +234,7 @@ def card_list(request, table_id, status):
         name = fd.get('NAME') or fd.get('name') or fd.get('Name') or f'Card #{card.id}'
         roll_no = fd.get('ROLL NO') or fd.get('ROLL_NO') or fd.get('roll_no') or fd.get('ID') or ''
         father_name = fd.get('FATHER NAME') or fd.get("FATHER'S NAME") or fd.get('FATHER_NAME') or fd.get('father_name') or ''
+        mother_name = fd.get('MOTHER NAME') or fd.get("MOTHER'S NAME") or fd.get('MOTHER_NAME') or fd.get('mother_name') or ''
         class_name = fd.get('CLASS') or fd.get('class') or fd.get('DESIGNATION') or ''
         section = fd.get('SECTION') or fd.get('section') or ''
         dob = fd.get('DOB') or fd.get('dob') or fd.get('DATE OF BIRTH') or fd.get('DATE_OF_BIRTH') or ''
@@ -224,6 +258,7 @@ def card_list(request, table_id, status):
             'name': name,
             'roll_no': roll_no,
             'father_name': father_name,
+            'mother_name': mother_name,
             'class_name': class_name,
             'section': section,
             'dob': dob,

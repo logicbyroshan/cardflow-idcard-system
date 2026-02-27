@@ -1,4 +1,5 @@
 import logging
+import re
 
 from django.conf import settings
 from django.db import models
@@ -8,6 +9,52 @@ from client.models import Client
 from mediafiles.constants import IMAGE_FIELD_TYPES
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+#   Text sanitizer — strips non-Latin-1 characters that cause ■ in PDF
+# ---------------------------------------------------------------------------
+_MULTI_SPACE_RE = re.compile(r' {2,}')
+
+# Image-like values that should NOT be sanitized (contain paths/markers)
+_IMAGE_PREFIXES = ('PENDING:', 'NOT_FOUND', 'adarshimg/', 'clients_imgs/',
+                   'id_card_images/', 'id_photos/', 'staff_imgs/')
+
+
+def sanitize_text_for_storage(value: str) -> str:
+    """Strip characters outside Helvetica's renderable range (0x20-0xFF).
+
+    Called during IDCard.save() so that *every* write path is covered.
+    Image paths / PENDING markers are passed through unchanged.
+
+    Only TEXT values are cleaned — this keeps the stored data in a safe
+    subset (Basic Latin + Latin-1 Supplement) that fonts used in PDF,
+    Word and Excel exports can render without ■ black boxes.
+    """
+    if not value or not isinstance(value, str):
+        return value
+
+    # Don't touch image paths / pending markers
+    for prefix in _IMAGE_PREFIXES:
+        if value.startswith(prefix) or '/' in value:
+            return value
+
+    cleaned = []
+    for ch in value:
+        cp = ord(ch)
+        if ch in ('\t', '\n', '\r', '\x0b', '\x0c'):
+            cleaned.append(' ')
+        elif cp <= 0x1F:
+            continue                      # C0 control characters
+        elif 0x20 <= cp <= 0x7E:
+            cleaned.append(ch)            # Basic Latin (safe)
+        elif 0x80 <= cp <= 0x9F:
+            cleaned.append(' ')           # C1 control characters
+        elif 0xA0 <= cp <= 0xFF:
+            cleaned.append(ch)            # Latin-1 Supplement (safe)
+        else:
+            cleaned.append(' ')           # Everything else → space
+    return _MULTI_SPACE_RE.sub(' ', ''.join(cleaned)).strip()
 
 
 class IDCardGroup(models.Model):
@@ -252,6 +299,18 @@ class IDCard(models.Model):
         # Delete images before deleting card
         self.delete_images()
         super().delete(*args, **kwargs)
+
+    def save(self, *args, **kwargs):
+        """Auto-sanitize field_data text values before every save.
+        
+        Strips characters outside the Helvetica-safe Latin range (0x20-0xFF)
+        so PDFs never render ■ black boxes.  Image paths are left untouched.
+        """
+        if self.field_data and isinstance(self.field_data, dict):
+            for key, value in self.field_data.items():
+                if isinstance(value, str):
+                    self.field_data[key] = sanitize_text_for_storage(value)
+        super().save(*args, **kwargs)
     
     class Meta:
         app_label = 'core'  # Keep migration compatibility - model stays in core migrations

@@ -3,7 +3,9 @@
      Include in any page's nav-right area.
      Requires: tailwind.css (has .notif-* classes),
                notification-bell.js
+     Hidden for admin users (super_admin / admin_staff).
      ================================================= -->
+{% if not is_super_admin and not is_admin_staff %}
 <div class="notif-wrapper" id="notifWrapper">
   <button class="notif-btn" id="notifBtn" title="Notifications" aria-label="Notifications" onclick="toggleNotifDropdown()">
     <i class="fa-solid fa-bell"></i>
@@ -22,3 +24,4 @@
     </div>
   </div>
 </div>
+{% endif %}

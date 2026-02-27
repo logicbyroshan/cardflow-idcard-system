@@ -25,6 +25,7 @@
             <tbody class="divide-y divide-gray-50 bg-white">
                 {% for student in students %}
                 <tr
+                    data-sid="{{ student.id }}"
                     class="hover:bg-brand-light/5 transition-colors cursor-pointer"
                     :class="selectedIds.includes({{ student.id }}) ? 'bg-blue-50/80 !border-l-2 !border-l-brand-light' : ''"
                     @click="toggleSelect({{ student.id }})"
@@ -38,7 +39,11 @@
                     <td class="px-1 py-2 text-gray-400 font-medium">{{ forloop.counter }}</td>
                     <td class="px-1 py-2">
                         {% if student.has_photo %}
-                        <img src="{{ student.photo_url }}" class="w-7 h-7 rounded-md object-cover" alt="" loading="lazy">
+                        <img src="{{ student.photo_url }}" class="w-7 h-7 rounded-md object-cover" alt="" loading="lazy"
+                             onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                        <div class="w-7 h-7 rounded-md bg-red-50 items-center justify-center text-red-300 text-[10px]" style="display:none;">
+                            <i class="fa-solid fa-image-slash"></i>
+                        </div>
                         {% else %}
                         <div class="w-7 h-7 rounded-md bg-gray-100 flex items-center justify-center text-gray-400 text-[10px]">
                             <i class="fa-solid fa-image"></i>
@@ -62,6 +67,8 @@
                         <span class="status-badge bg-blue-50 text-blue-700 border-blue-200">Approved</span>
                         {% elif student.status == 'download' %}
                         <span class="status-badge bg-purple-50 text-purple-700 border-purple-200">Download</span>
+                        {% elif student.status == 'pool' %}
+                        <span class="status-badge bg-red-50 text-red-700 border-red-200">Pool</span>
                         {% endif %}
                     </td>
                     <td class="px-1 py-2 text-center">

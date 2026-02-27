@@ -220,8 +220,9 @@ SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin'
 # ── Cookie hardening (always applied, both dev and prod) ──
 SESSION_COOKIE_HTTPONLY = True          # JS cannot read session cookie
 SESSION_COOKIE_SAMESITE = 'Lax'        # CSRF mitigation
-SESSION_COOKIE_AGE = 60 * 60 * 24 * 3  # 3-day sessions
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 30  # 30-day sessions (better for PWA)
 CSRF_COOKIE_SAMESITE = 'Lax'           # CSRF cookie SameSite
+SESSION_SAVE_EVERY_REQUEST = True       # Extend session on every page load
 # Note: CSRF_COOKIE_HTTPONLY left False (Django default) because JS reads
 # the csrftoken cookie via getCSRFToken() for AJAX requests.
 
@@ -242,12 +243,13 @@ if _csrf_cookie_domain:
 
 # ── Session idle timeout (seconds) ──
 # If a user has no requests for this period, session expires on next request.
-# Set to 0 to disable. Default: 3 days (matches SESSION_COOKIE_AGE).
-SESSION_IDLE_TIMEOUT = int(os.getenv('SESSION_IDLE_TIMEOUT', str(60 * 60 * 24 * 3)))
+# Set to 0 to disable. Default: 30 days (matches SESSION_COOKIE_AGE).
+SESSION_IDLE_TIMEOUT = int(os.getenv('SESSION_IDLE_TIMEOUT', str(60 * 60 * 24 * 30)))
 
 # ── Permissions-Policy header ──
 # Restricts browser APIs not needed by this app.
-PERMISSIONS_POLICY = 'camera=(), microphone=(), geolocation=(), payment=(), usb=()'
+# camera and microphone are allowed (self) for the PWA photo capture feature.
+PERMISSIONS_POLICY = 'camera=(self), microphone=(self), geolocation=(), payment=(), usb=()'
 
 
 # =============================================================================

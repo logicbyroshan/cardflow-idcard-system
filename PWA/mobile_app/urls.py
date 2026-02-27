@@ -6,6 +6,7 @@ app_name = 'mobile_app'
 urlpatterns = [
     # Page views
     path('', views.home, name='home'),
+    path('clients/', views.clients_list, name='clients_list'),
     path('tables/<str:status>/', views.table_picker, name='table_picker'),
     path('table/<int:table_id>/<str:status>/', views.card_list, name='card_list'),
     path('camera/<int:table_id>/', views.camera_capture, name='camera_capture'),

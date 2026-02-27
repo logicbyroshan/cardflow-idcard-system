@@ -133,29 +133,19 @@
             <div class="grid grid-cols-2 gap-3">
                 <div class="space-y-1">
                     <label class="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Class <span class="text-red-400">*</span></label>
-                    <select x-model="form.className"
-                        class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition appearance-none">
-                        <option value="">Select</option>
-                        <option value="1A">1A</option><option value="1B">1B</option>
-                        <option value="2A">2A</option><option value="2B">2B</option>
-                        <option value="3A">3A</option><option value="3B">3B</option>
-                        <option value="4A">4A</option><option value="4B">4B</option>
-                        <option value="5A">5A</option><option value="5B">5B</option>
-                        <option value="6A">6A</option><option value="7A">7A</option>
-                        <option value="8A">8A</option><option value="9A">9A</option>
-                        <option value="9B">9B</option><option value="10A">10A</option>
-                        <option value="10B">10B</option>
-                    </select>
+                    <input type="text" x-model="form.className" list="class-options" placeholder="e.g. 5A"
+                        class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
+                    <datalist id="class-options">
+                        {% for cls in classes %}<option value="{{ cls }}">{% endfor %}
+                    </datalist>
                 </div>
                 <div class="space-y-1">
                     <label class="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Section <span class="text-red-400">*</span></label>
-                    <select x-model="form.section"
-                        class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition appearance-none">
-                        <option value="">Select</option>
-                        <option value="Section A">Section A</option>
-                        <option value="Section B">Section B</option>
-                        <option value="Section C">Section C</option>
-                    </select>
+                    <input type="text" x-model="form.section" list="section-options" placeholder="e.g. A"
+                        class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
+                    <datalist id="section-options">
+                        {% for sec in sections %}<option value="{{ sec }}">{% endfor %}
+                    </datalist>
                 </div>
             </div>
 

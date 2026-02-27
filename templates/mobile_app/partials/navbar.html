@@ -12,7 +12,7 @@
             </div>
         </a>
         <!-- Right: Notification Bell -->
-        <a href="{% url 'mobile_app:notifications' %}" class="relative p-2" x-data="{ hasNew: true }">
+        <a href="{% url 'mobile_app:notifications' %}" class="relative p-2" x-data="{ hasNew: {{ has_new_activity|yesno:'true,false' }} }">
             <i class="fa-solid fa-bell text-xl text-gray-600"></i>
             <span x-show="hasNew" class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
         </a>

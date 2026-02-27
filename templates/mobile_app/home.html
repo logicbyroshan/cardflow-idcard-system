@@ -133,7 +133,7 @@
                     <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 px-1">Management</p>
                     <div class="grid grid-cols-2 gap-2">
                         <!-- Clients -->
-                        <a href="/panel/clients/" class="flex items-center gap-2.5 rounded-xl p-2.5 active:scale-[0.98] transition-all" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 1px solid #bae6fd;">
+                        <a href="{% url 'mobile_app:clients_list' %}" class="flex items-center gap-2.5 rounded-xl p-2.5 active:scale-[0.98] transition-all" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 1px solid #bae6fd;">
                             <div class="w-9 h-9 rounded-lg bg-sky-400/15 flex items-center justify-center">
                                 <i class="fa-solid fa-building text-sky-500 text-sm"></i>
                             </div>
@@ -217,7 +217,7 @@
                         <i class="fa-solid fa-clock-rotate-left text-brand-light mr-1.5"></i>
                         Recent Activity
                     </h3>
-                    <span class="text-xs text-brand-light font-medium">View All</span>
+                    <a href="{% url 'mobile_app:notifications' %}" class="text-xs text-brand-light font-medium">View All</a>
                 </div>
                 <!-- Activity List -->
                 <div class="divide-y divide-gray-50 flex-1 overflow-y-auto">
@@ -257,18 +257,34 @@
 
 </div>
 
-<!-- Hero images for carousel -->
+<!-- Hero images for carousel — branded cards -->
 <script>
     window.__heroImages = [
-        {"url": "https://images.unsplash.com/photo-1523050854058-8df90110c476?w=800&h=300&fit=crop", "title": "ID Card Management"},
-        {"url": "https://images.unsplash.com/photo-1606761568499-6d2451b23c66?w=800&h=300&fit=crop", "title": "Smart Solutions"},
-        {"url": "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=800&h=300&fit=crop", "title": "Efficient Workflow"}
+        {"url": "", "title": "ID Card Management", "gradient": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"},
+        {"url": "", "title": "Smart Solutions", "gradient": "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)"},
+        {"url": "", "title": "Efficient Workflow", "gradient": "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)"}
     ];
 </script>
 
 <script>
 function homeApp() {
-    return {}
+    return {
+        init() {
+            // Quick card count animation
+            document.querySelectorAll('[data-count]').forEach(el => {
+                const target = parseInt(el.getAttribute('data-count')) || 0;
+                if (target > 0) {
+                    let current = 0;
+                    const step = Math.max(1, Math.ceil(target / 20));
+                    const timer = setInterval(() => {
+                        current = Math.min(current + step, target);
+                        el.textContent = current;
+                        if (current >= target) clearInterval(timer);
+                    }, 30);
+                }
+            });
+        }
+    }
 }
 </script>
 {% endblock %}

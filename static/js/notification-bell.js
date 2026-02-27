@@ -13,6 +13,9 @@
 
   /* ── Init ── */
   document.addEventListener('DOMContentLoaded', function() {
+    // Skip polling entirely when the bell partial is not rendered (e.g. admin users)
+    if (!document.getElementById('notifWrapper')) return;
+
     pollUnreadCount();
     setInterval(pollUnreadCount, POLL_INTERVAL);
 
