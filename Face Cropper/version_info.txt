@@ -37,12 +37,12 @@ VSVersionInfo(
           u'040904B0',  # Language: English US, Charset: Unicode
           [
             StringStruct(u'CompanyName',      u'Adarsh ID Card'),
-            StringStruct(u'FileDescription',  u'Adarsh Cropper \u2014 Photo Processing Engine'),
+            StringStruct(u'FileDescription',  u'Adarsh Engine \u2014 Photo Processing Engine'),
             StringStruct(u'FileVersion',      u'2.1.8.0'),
             StringStruct(u'InternalName',     u'AdarshCropper'),
             StringStruct(u'LegalCopyright',   u'\u00a9 2026 Adarsh ID Card. Developed by Roshan Damor.'),
             StringStruct(u'OriginalFilename', u'AdarshCropper.exe'),
-            StringStruct(u'ProductName',      u'Adarsh Cropper'),
+            StringStruct(u'ProductName',      u'Adarsh Engine'),
             StringStruct(u'ProductVersion',   u'2.1.8.0'),
             StringStruct(u'LegalTrademarks',  u'Adarsh ID Card'),
           ]

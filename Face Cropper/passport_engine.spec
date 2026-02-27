@@ -2,13 +2,13 @@
 """
 passport_engine.spec
 ────────────────────
-PyInstaller spec for building PassportEngine.exe
+PyInstaller spec for building AdarshCropper.exe (Adarsh Engine)
 
 Build command:
     pyinstaller passport_engine.spec
 
 Output:
-    dist/PassportEngine.exe   (single-file, no console)
+    dist/AdarshCropper.exe   (single-file, no console)
 
 Prerequisites:
     pip install pyinstaller

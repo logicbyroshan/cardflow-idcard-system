@@ -1,7 +1,7 @@
 """
 passport_engine_core/config.py
 ──────────────────────────────
-Application-specific constants for the standalone passport crop engine.
+Application-specific constants for the Adarsh Engine (photo crop engine).
 All paths are resolved relative to this package via ``__file__``.
 """
 

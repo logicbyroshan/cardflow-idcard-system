@@ -1,7 +1,7 @@
 """
 main.py
 ───────
-Production-ready FastAPI entry point for the Passport Photo Processing Engine.
+Production-ready FastAPI entry point for the Adarsh Engine — Photo Processing Engine.
 
 Binds only to localhost (127.0.0.1:4765). Designed to run as a
 Windows background service via NSSM + PyInstaller.
@@ -18,7 +18,7 @@ Environment variables:
 
 Run:
     python main.py
-    PassportEngine.exe          (after PyInstaller build)
+    AdarshCropper.exe          (after PyInstaller build)
 """
 
 import logging
