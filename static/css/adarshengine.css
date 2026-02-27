@@ -1,0 +1,627 @@
+/* ============================================
+   AdarshEngine v1 — Photo Correction Engine
+   Professional dark-themed editor modal.
+   Uses project design tokens where possible.
+   Phase 15 + 16: Dark UI + Branding
+   ============================================ */
+
+/* ── Modal Backdrop ─────────────────────────────────────────────── */
+
+.ae-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+.ae-backdrop.ae-open {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* ── Modal Container ────────────────────────────────────────────── */
+
+.ae-modal {
+  width: 90vw;
+  height: 90vh;
+  max-width: 1600px;
+  max-height: 960px;
+  background: #1a1a2e;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+  transform: scale(0.96);
+  transition: transform 0.25s ease;
+}
+
+.ae-backdrop.ae-open .ae-modal {
+  transform: scale(1);
+}
+
+/* ── Header ─────────────────────────────────────────────────────── */
+
+.ae-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: #16162a;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+.ae-header-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #e2e8f0;
+  letter-spacing: 0.3px;
+}
+
+.ae-header-title i {
+  color: #818cf8;
+  font-size: 16px;
+}
+
+.ae-header-filename {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 400;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ae-close-btn {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.15s;
+}
+
+.ae-close-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* ── Body (Controls + Canvas) ───────────────────────────────────── */
+
+.ae-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ── Controls Panel (Left — 260px) ──────────────────────────────── */
+
+.ae-controls {
+  width: 260px;
+  flex-shrink: 0;
+  background: #16162a;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Scrollbar styling */
+.ae-controls::-webkit-scrollbar {
+  width: 4px;
+}
+.ae-controls::-webkit-scrollbar-track {
+  background: transparent;
+}
+.ae-controls::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+
+/* ── Control Groups ─────────────────────────────────────────────── */
+
+.ae-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ae-group-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: #818cf8;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ── Slider Control ─────────────────────────────────────────────── */
+
+.ae-slider-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ae-slider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ae-slider-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: #cbd5e1;
+}
+
+.ae-slider-value {
+  font-size: 11px;
+  font-weight: 600;
+  color: #818cf8;
+  font-family: 'Consolas', 'Courier New', monospace;
+  min-width: 36px;
+  text-align: right;
+}
+
+/* Range input — custom dark theme */
+
+.ae-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: #2d2d4a;
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+  margin: 2px 0;
+}
+
+.ae-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  background: #818cf8;
+  border-radius: 50%;
+  border: 2px solid #1a1a2e;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+  box-shadow: 0 0 6px rgba(129, 140, 248, 0.4);
+}
+
+.ae-slider::-webkit-slider-thumb:hover {
+  background: #a5b4fc;
+  transform: scale(1.15);
+}
+
+.ae-slider::-webkit-slider-thumb:active {
+  transform: scale(1.2);
+}
+
+.ae-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: #818cf8;
+  border-radius: 50%;
+  border: 2px solid #1a1a2e;
+  cursor: pointer;
+}
+
+.ae-slider::-moz-range-track {
+  height: 4px;
+  background: #2d2d4a;
+  border-radius: 2px;
+}
+
+/* ── Crop Button ────────────────────────────────────────────────── */
+
+.ae-crop-btn {
+  width: 100%;
+  padding: 10px 14px;
+  background: rgba(129, 140, 248, 0.12);
+  border: 1px solid rgba(129, 140, 248, 0.2);
+  border-radius: 6px;
+  color: #a5b4fc;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.15s;
+}
+
+.ae-crop-btn:hover {
+  background: rgba(129, 140, 248, 0.2);
+  border-color: rgba(129, 140, 248, 0.4);
+}
+
+.ae-crop-btn:active {
+  transform: scale(0.98);
+}
+
+.ae-crop-btn.ae-active {
+  background: rgba(34, 197, 94, 0.15);
+  border-color: rgba(34, 197, 94, 0.3);
+  color: #86efac;
+}
+
+/* ── Crop Toolbar (shown when crop is active) ───────────────────── */
+
+.ae-crop-toolbar {
+  display: none;
+  gap: 6px;
+}
+
+.ae-crop-toolbar.ae-visible {
+  display: flex;
+}
+
+.ae-crop-apply,
+.ae-crop-cancel {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 5px;
+  border: none;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  transition: all 0.15s;
+}
+
+.ae-crop-apply {
+  background: rgba(34, 197, 94, 0.2);
+  color: #86efac;
+}
+.ae-crop-apply:hover {
+  background: rgba(34, 197, 94, 0.3);
+}
+
+.ae-crop-cancel {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+}
+.ae-crop-cancel:hover {
+  background: rgba(239, 68, 68, 0.25);
+}
+
+/* ── Canvas Area (Right) ────────────────────────────────────────── */
+
+.ae-canvas-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0f0f23;
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.ae-canvas-area canvas {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  image-rendering: auto;
+}
+
+/* Checkerboard transparency background */
+.ae-canvas-area::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(45deg, #1a1a2e 25%, transparent 25%),
+    linear-gradient(-45deg, #1a1a2e 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #1a1a2e 75%),
+    linear-gradient(-45deg, transparent 75%, #1a1a2e 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+/* Cropper.js integration — position over canvas area */
+.ae-canvas-area .ae-crop-container {
+  position: absolute;
+  inset: 0;
+  display: none;
+  z-index: 2;
+}
+
+.ae-canvas-area .ae-crop-container.ae-visible {
+  display: block;
+}
+
+.ae-crop-container img {
+  max-width: 100%;
+  max-height: 100%;
+  display: block;
+}
+
+/* Loading spinner inside canvas area */
+.ae-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 3;
+  background: rgba(15, 15, 35, 0.85);
+}
+
+.ae-loading i {
+  font-size: 28px;
+  color: #818cf8;
+}
+
+.ae-loading span {
+  font-size: 12px;
+  color: #64748b;
+}
+
+/* ── Phase 8: Error Overlay ─────────────────────────────────────── */
+
+.ae-error-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 4;
+  background: rgba(15, 15, 35, 0.92);
+}
+
+.ae-error-overlay i.ae-error-icon {
+  font-size: 36px;
+  color: #f87171;
+}
+
+.ae-error-overlay .ae-error-text {
+  font-size: 13px;
+  color: #fca5a5;
+  max-width: 340px;
+  text-align: center;
+  line-height: 1.5;
+}
+
+.ae-error-overlay .ae-error-dismiss {
+  padding: 6px 16px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 5px;
+  color: #fca5a5;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.ae-error-overlay .ae-error-dismiss:hover {
+  background: rgba(239, 68, 68, 0.25);
+  color: #fecaca;
+}
+
+/* ── Phase 16: Version Badge ────────────────────────────────────── */
+
+.ae-version-badge {
+  font-size: 9px;
+  color: #475569;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  font-family: 'Consolas', 'Courier New', monospace;
+}
+
+/* ── Footer ─────────────────────────────────────────────────────── */
+
+.ae-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: #16162a;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+  gap: 12px;
+}
+
+.ae-footer-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ae-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Info badge */
+.ae-info-badge {
+  font-size: 10px;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ae-info-badge i {
+  font-size: 11px;
+}
+
+/* Footer buttons */
+.ae-btn {
+  padding: 8px 18px;
+  border-radius: 6px;
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s;
+  letter-spacing: 0.2px;
+}
+
+.ae-btn:active {
+  transform: scale(0.97);
+}
+
+.ae-btn-reset {
+  background: rgba(255, 255, 255, 0.06);
+  color: #94a3b8;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ae-btn-reset:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+}
+
+.ae-btn-save {
+  background: linear-gradient(135deg, #818cf8, #6366f1);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
+}
+
+.ae-btn-save:hover {
+  background: linear-gradient(135deg, #a5b4fc, #818cf8);
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.5);
+}
+
+.ae-btn-save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ae-btn-close {
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.15);
+}
+
+.ae-btn-close:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fecaca;
+}
+
+/* ── Edit Button Overlay (on preview cards) ─────────────────────── */
+
+.preview-card {
+  position: relative;
+}
+
+.ae-edit-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+  z-index: 2;
+  border-radius: 6px 6px 0 0;
+}
+
+.preview-card:hover .ae-edit-overlay {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.ae-edit-btn {
+  padding: 6px 14px;
+  background: rgba(129, 140, 248, 0.9);
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.ae-edit-btn:hover {
+  background: rgba(165, 180, 252, 0.95);
+  transform: scale(1.05);
+}
+
+/* ── Responsive ─────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .ae-modal {
+    width: 98vw;
+    height: 96vh;
+    border-radius: 8px;
+  }
+
+  .ae-body {
+    flex-direction: column;
+  }
+
+  .ae-controls {
+    width: 100%;
+    max-height: 200px;
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 12px;
+    overflow-x: auto;
+  }
+
+  .ae-group {
+    min-width: 180px;
+    flex: 1;
+  }
+
+  .ae-canvas-area {
+    min-height: 300px;
+  }
+
+  .ae-footer {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
