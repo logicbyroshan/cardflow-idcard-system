@@ -602,43 +602,39 @@ class PdfExporter:
         Returns a mark_safe string so Django templates render the HTML.
         """
         import re as _re
-        import unicodedata as _ud
         if not text:
             return mark_safe('')
 
         # ── Step 1: Strip characters unsupported by Helvetica/PDF core fonts.
-        # Keep: printable ASCII (0x20-0x7E), printable Latin-1 Supplement
-        # (0xA0-0xFF), Latin Extended-A/B (0x100-0x024F).
-        # STRIP: C0 control chars (0x00-0x1F except 0x20 space),
-        # C1 control chars (0x80-0x9F), zero-width/formatting Unicode,
-        # Devanagari, CJK, etc.  Replace with a space.
+        # Helvetica only supports Basic Latin (0x20-0x7E) and Latin-1
+        # Supplement (0xA0-0xFF).  EVERYTHING else renders as ■ black
+        # boxes in xhtml2pdf.  Replace unsupported characters with a
+        # space so the stored data is never modified — cleaning happens
+        # only at PDF render time.
         cleaned_chars = []
         for ch in text:
             cp = ord(ch)
             # Tab / newline / carriage-return → space
             if ch in ('\t', '\n', '\r', '\x0b', '\x0c'):
                 cleaned_chars.append(' ')
-            # Drop other C0 control characters (0x00-0x1F)
+            # Drop C0 control characters (0x00-0x1F)
             elif cp <= 0x1F:
                 continue
-            # Drop C1 control characters (0x80-0x9F) — common in
-            # Windows-1252 copy-paste; Helvetica renders them as ■
+            # Printable Basic Latin — always safe
+            elif 0x20 <= cp <= 0x7E:
+                cleaned_chars.append(ch)
+            # Drop C1 control characters (0x80-0x9F) — Windows-1252
+            # copy-paste artefacts; Helvetica renders them as ■
             elif 0x80 <= cp <= 0x9F:
                 cleaned_chars.append(' ')
-            # Drop zero-width / formatting Unicode characters
-            elif cp in (0x200B, 0x200C, 0x200D, 0x200E, 0x200F,
-                        0x2028, 0x2029, 0x202A, 0x202B, 0x202C,
-                        0x202D, 0x202E, 0x2060, 0x2061, 0x2062,
-                        0x2063, 0x2064, 0xFEFF, 0x00AD):
-                continue
-            # Keep printable Latin range (0x20-0x7E, 0xA0-0x024F)
-            elif cp < 0x0250:
-                cleaned_chars.append(ch)
-            # Keep common currency/math symbols
-            elif _ud.category(ch) in ('Sc', 'Sm', 'So') and cp < 0x2200:
+            # Latin-1 Supplement printable (0xA0-0xFF) — all in Helvetica
+            elif 0xA0 <= cp <= 0xFF:
                 cleaned_chars.append(ch)
             else:
-                # Replace unsupported chars with a space (collapse later)
+                # Everything above U+00FF (Latin Extended, Devanagari,
+                # Arabic, CJK, Geometric Shapes ■, zero-width chars,
+                # etc.) → replace with space.  This prevents black
+                # boxes without altering the database.
                 cleaned_chars.append(' ')
         cleaned = ''.join(cleaned_chars)
         # Collapse multiple spaces into one
