@@ -405,6 +405,63 @@ class PdfExporter:
         digits_seps = sum(1 for c in value if c.isdigit() or c in '/-.:+ ')
         return digits_seps >= len(value) * 0.6
 
+    @staticmethod
+    def _humanize_label(name: str) -> str:
+        """Insert spaces into concatenated field names for readable PDF headers.
+
+        Examples:
+            PERMANENTADDRESS → PERMANENT ADDRESS
+            FATHERNAME       → FATHER NAME
+            MOTHERMOBILENO   → MOTHER MOBILE NO
+            STUDENTNAME      → STUDENT NAME
+            DOB              → DOB  (short words unchanged)
+        """
+        import re as _re
+        # Common word fragments found in Indian school/ID card field names
+        # Order matters: longer fragments first to avoid partial matches
+        _KNOWN_WORDS = [
+            'ADMISSION', 'PERMANENT', 'TEMPORARY', 'PRESENT', 'RESIDENTIAL',
+            'STUDENT', 'FATHER', 'MOTHER', 'GUARDIAN', 'HUSBAND',
+            'ADDRESS', 'VILLAGE', 'DISTRICT', 'MOBILE', 'CONTACT', 'PHONE',
+            'NUMBER', 'SECTION', 'CLASS', 'NAME', 'EMAIL', 'BIRTH',
+            'AADHAR', 'AADHAAR', 'PINCODE', 'STATE', 'CITY', 'COUNTRY',
+            'BLOOD', 'GROUP', 'GENDER', 'PHOTO', 'IMAGE', 'DATE',
+            'JOINING', 'ENROL', 'ROLL', 'CATEGORY', 'CASTE',
+            'OCCUPATION', 'QUALIFICATION', 'DESIGNATION', 'RELIGION',
+            'NATIONALITY', 'HOUSE', 'WARD', 'BLOCK', 'POST', 'OFFICE',
+            'TEHSIL', 'TALUK', 'MANDAL',
+            'NEW', 'OLD', 'SR', 'NO', 'ID', 'OF', 'THE',
+        ]
+        # If the label already has spaces, return as-is
+        if ' ' in name.strip():
+            return name
+        upper = name.upper().strip()
+        if len(upper) <= 4:
+            return upper
+        # Greedy match: repeatedly pull the longest known word from the front
+        result_words = []
+        remaining = upper
+        while remaining:
+            matched = False
+            for word in _KNOWN_WORDS:
+                if remaining.startswith(word):
+                    result_words.append(word)
+                    remaining = remaining[len(word):]
+                    matched = True
+                    break
+            if not matched:
+                # No known word matched — take one character and keep going
+                result_words.append(remaining[0])
+                remaining = remaining[1:]
+        # Merge single leftover characters back into adjacent words
+        merged = []
+        for w in result_words:
+            if len(w) == 1 and merged:
+                merged[-1] += w
+            else:
+                merged.append(w)
+        return ' '.join(merged)
+
     def _build_column_configs(
         self,
         ordered_fields: List[Dict[str, Any]],
@@ -437,7 +494,7 @@ class PdfExporter:
             align = 'left' if any(w in name.lower() for w in ['name', 'address']) else 'center'
             nowrap = (not is_image) and self._is_nowrap_field(name)
             configs.append({
-                'label': name.upper(),
+                'label': self._humanize_label(name.upper()),
                 'width': 0,
                 'align': align,
                 'is_image': is_image,
@@ -550,13 +607,32 @@ class PdfExporter:
             return mark_safe('')
 
         # ── Step 1: Strip characters unsupported by Helvetica/PDF core fonts.
-        # Keep: Basic Latin, Latin-1 Supplement, Latin Extended-A, common punct.
-        # Replace everything else (Devanagari, CJK, symbols, etc.) with a space.
+        # Keep: printable ASCII (0x20-0x7E), printable Latin-1 Supplement
+        # (0xA0-0xFF), Latin Extended-A/B (0x100-0x024F).
+        # STRIP: C0 control chars (0x00-0x1F except 0x20 space),
+        # C1 control chars (0x80-0x9F), zero-width/formatting Unicode,
+        # Devanagari, CJK, etc.  Replace with a space.
         cleaned_chars = []
         for ch in text:
             cp = ord(ch)
-            # Keep printable ASCII + Latin-1 Supplement + Latin Extended-A/B
-            if cp < 0x0250:
+            # Tab / newline / carriage-return → space
+            if ch in ('\t', '\n', '\r', '\x0b', '\x0c'):
+                cleaned_chars.append(' ')
+            # Drop other C0 control characters (0x00-0x1F)
+            elif cp <= 0x1F:
+                continue
+            # Drop C1 control characters (0x80-0x9F) — common in
+            # Windows-1252 copy-paste; Helvetica renders them as ■
+            elif 0x80 <= cp <= 0x9F:
+                cleaned_chars.append(' ')
+            # Drop zero-width / formatting Unicode characters
+            elif cp in (0x200B, 0x200C, 0x200D, 0x200E, 0x200F,
+                        0x2028, 0x2029, 0x202A, 0x202B, 0x202C,
+                        0x202D, 0x202E, 0x2060, 0x2061, 0x2062,
+                        0x2063, 0x2064, 0xFEFF, 0x00AD):
+                continue
+            # Keep printable Latin range (0x20-0x7E, 0xA0-0x024F)
+            elif cp < 0x0250:
                 cleaned_chars.append(ch)
             # Keep common currency/math symbols
             elif _ud.category(ch) in ('Sc', 'Sm', 'So') and cp < 0x2200:
