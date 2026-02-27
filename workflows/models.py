@@ -124,10 +124,9 @@ class IDCardTable(models.Model):
         return [f.get('name') for f in self.fields if f.get('type') in IMAGE_FIELD_TYPES]
     
     def delete_all_card_images(self):
-        """Delete all images associated with cards in this table"""
-        from django.core.files.storage import default_storage
-        
-        for card in self.id_cards.all():
+        """Delete all images associated with cards in this table.
+        Uses .iterator() to avoid loading all cards into memory at once."""
+        for card in self.id_cards.all().iterator(chunk_size=200):
             card.delete_images()
     
     def delete(self, *args, **kwargs):

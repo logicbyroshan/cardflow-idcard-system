@@ -17,6 +17,11 @@ let currentSectionFilter = '';
 IDCardApp.currentClassFilter = '';
 IDCardApp.currentSectionFilter = '';
 
+// HTML-escape helper to prevent XSS in filter dropdown values
+function _escFilterHtml(s) {
+    return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+
 function initFilterHandlers() {
     initClassFilterDropdown();
     initSectionFilterDropdown();
@@ -102,9 +107,13 @@ function initClassFilterDropdown() {
         applyClassSectionFilters();
     });
 
-    document.addEventListener('click', function(e) {
-        if (!dropdown.contains(e.target)) dropdown.classList.remove('open');
-    });
+    // Guard: only add one document-level close listener per dropdown
+    if (!dropdown._docClickInit) {
+        dropdown._docClickInit = true;
+        document.addEventListener('click', function(e) {
+            if (!dropdown.contains(e.target)) dropdown.classList.remove('open');
+        });
+    }
 }
 
 function initSectionFilterDropdown() {
@@ -136,9 +145,13 @@ function initSectionFilterDropdown() {
         applyClassSectionFilters();
     });
 
-    document.addEventListener('click', function(e) {
-        if (!dropdown.contains(e.target)) dropdown.classList.remove('open');
-    });
+    // Guard: only add one document-level close listener per dropdown
+    if (!dropdown._docClickInit) {
+        dropdown._docClickInit = true;
+        document.addEventListener('click', function(e) {
+            if (!dropdown.contains(e.target)) dropdown.classList.remove('open');
+        });
+    }
 }
 
 /**
@@ -172,9 +185,11 @@ function populateFilterOptions() {
             if (classOptions) {
                 var sorted = classValues; // Already sorted by server
                 classOptions.innerHTML = '<div class="dropdown-option selected" data-value="">All Classes</div>' +
-                    sorted.map(function(v) { return '<div class="dropdown-option" data-value="' + v + '">' + v + '</div>'; }).join('');
+                    sorted.map(function(v) { var s = (typeof v === 'object' && v !== null) ? (v.name || v.value || v.text || JSON.stringify(v)) : String(v); return '<div class="dropdown-option" data-value="' + _escFilterHtml(s) + '">' + _escFilterHtml(s) + '</div>'; }).join('');
                 if (currentClassFilter) {
-                    var match = classOptions.querySelector('[data-value="' + currentClassFilter + '"]');
+                    // Safe querySelector: use attribute selector with CSS.escape
+                    var escapedVal = CSS.escape(currentClassFilter);
+                    var match = classOptions.querySelector('[data-value="' + escapedVal + '"]');
                     if (match) {
                         classOptions.querySelectorAll('.dropdown-option').forEach(function(o) { o.classList.remove('selected'); });
                         match.classList.add('selected');
@@ -192,9 +207,10 @@ function populateFilterOptions() {
             if (sectionOptions) {
                 var sortedS = sectionValues;
                 sectionOptions.innerHTML = '<div class="dropdown-option selected" data-value="">All Sections</div>' +
-                    sortedS.map(function(v) { return '<div class="dropdown-option" data-value="' + v + '">' + v + '</div>'; }).join('');
+                    sortedS.map(function(v) { var s = (typeof v === 'object' && v !== null) ? (v.name || v.value || v.text || JSON.stringify(v)) : String(v); return '<div class="dropdown-option" data-value="' + _escFilterHtml(s) + '">' + _escFilterHtml(s) + '</div>'; }).join('');
                 if (currentSectionFilter) {
-                    var matchS = sectionOptions.querySelector('[data-value="' + currentSectionFilter + '"]');
+                    var escapedValS = CSS.escape(currentSectionFilter);
+                    var matchS = sectionOptions.querySelector('[data-value="' + escapedValS + '"]');
                     if (matchS) {
                         sectionOptions.querySelectorAll('.dropdown-option').forEach(function(o) { o.classList.remove('selected'); });
                         matchS.classList.add('selected');

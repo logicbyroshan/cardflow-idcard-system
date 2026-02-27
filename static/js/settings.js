@@ -15,13 +15,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Validate file type
                 const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
                 if (!allowedTypes.includes(file.type)) {
-                    showToast('Invalid file type. Please use JPEG, PNG, GIF, or WebP.', 'error');
+                    showToast('Invalid file type. Please use JPEG, PNG, GIF, or WebP.', 'warning');
                     return;
                 }
                 
                 // Validate file size (5MB max)
                 if (file.size > 5 * 1024 * 1024) {
-                    showToast('File size too large. Maximum 5MB allowed.', 'error');
+                    showToast('File size too large. Maximum 5MB allowed.', 'warning');
                     return;
                 }
                 

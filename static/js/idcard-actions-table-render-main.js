@@ -31,9 +31,13 @@ function renderTable() {
         // Avoids the old hide-all-then-show pattern that briefly collapsed
         // the table, triggering scroll-position jumps and observer re-fires.
         const filteredSet = new Set(_ts.filteredRows);
+        let visCount = 0;
         _ts.allRows.forEach(row => {
-            row.style.display = filteredSet.has(row) ? '' : 'none';
+            const vis = filteredSet.has(row);
+            row.style.display = vis ? '' : 'none';
+            if (vis) visCount++;
         });
+        _ts._cachedVisibleCount = visCount;
         updatePaginationInfoEndless(totalRows);
     } else {
         _ts.allRows.forEach(row => row.style.display = 'none');
@@ -97,8 +101,8 @@ function updatePaginationInfoEndless(totalLoaded) {
 }
 
 function updatePageNumbersForEndless(totalLoaded) {
-    // Calculate total pages from visible rows (not server total count)
-    const visibleCount = _ts.filteredRows.filter(r => r.style.display !== 'none').length || totalLoaded;
+    // Use cached visible count (updated in renderTable / applyFilters) for O(1)
+    const visibleCount = (_ts._cachedVisibleCount != null ? _ts._cachedVisibleCount : totalLoaded) || totalLoaded;
     const totalPages = Math.ceil(visibleCount / _ts.rowsPerPage) || 1;
     
     const tableContainer = document.querySelector('.idcard-table');

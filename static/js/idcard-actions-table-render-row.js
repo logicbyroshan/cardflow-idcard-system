@@ -119,7 +119,9 @@ function createRowFromCard(card, index) {
                     const originalSrc = `/media/${fieldValue}${cacheBuster}`;
                     
                     // Use onError fallback to original if thumbnail doesn't exist
-                    const fallbackAttr = thumbPath ? `onerror="this.onerror=null; this.src='${originalSrc}';"` : '';
+                    // Escape originalSrc for safe use inside the inline onerror attribute
+                    const safeOriginalSrc = originalSrc.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                    const fallbackAttr = thumbPath ? `onerror="this.onerror=null; this.src='${safeOriginalSrc}';"` : '';
                     const imageSrc = thumbPath ? thumbSrc : originalSrc;
                     imageHtml = `<img src="${imageSrc}" alt="${safeFieldName}" class="table-image ${imageTypeClass}" loading="lazy" decoding="async" ${fallbackAttr}>`;
                 } else {

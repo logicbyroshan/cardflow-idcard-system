@@ -232,7 +232,24 @@ function initIdcardGroup(config) {
     .then(function(res) { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
     .then(function(data) {
       progressTimers.forEach(function(t) { clearTimeout(t); });
-      if (data.success && data.files && data.files.length > 0) {
+      if (data.success && data.download_url) {
+        // New streaming mode: single combined ZIP on disk
+        dlBar.style.width = '90%';
+        dlStatus.textContent = 'Downloading ' + (data.filename || 'AllCards.zip') + '...';
+        
+        var a = document.createElement('a');
+        a.href = data.download_url;
+        a.download = data.filename || 'AllCards.zip';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
+        dlBar.style.width = '100%';
+        dlStatus.textContent = 'Download complete! (' + (data.total_cards || 0) + ' cards, ' + (data.total_files || 0) + ' files)';
+        dlActions.style.display = '';
+        window.showToast('Download started: ' + (data.filename || 'AllCards.zip'), 'success');
+      } else if (data.success && data.files && data.files.length > 0) {
+        // Legacy base64 mode (backward compatibility)
         dlBar.style.width = '85%';
         dlStatus.textContent = 'Downloading ' + data.total_files + ' file(s)...';
 
@@ -269,7 +286,7 @@ function initIdcardGroup(config) {
       dlBar.style.background = '#ef4444';
       dlStatus.textContent = errMsg;
       dlActions.style.display = '';
-      window.showToast(errMsg, 'error');
+      window.showToast(errMsg, err.name === 'AbortError' ? 'warning' : 'error');
     })
     .finally(function() {
       if (btn) {
@@ -339,7 +356,7 @@ function initIdcardGroup(config) {
         reuploadFileInput.files = e.dataTransfer.files;
         reuploadFileInput.dispatchEvent(new Event('change'));
       } else {
-        window.showToast('Only ZIP files are allowed', 'error');
+        window.showToast('Only ZIP files are allowed', 'warning');
       }
     });
   }
@@ -349,7 +366,7 @@ function initIdcardGroup(config) {
       if (this.files.length) {
         var file = this.files[0];
         if (!file.name.toLowerCase().endsWith('.zip')) {
-          window.showToast('Only ZIP files are allowed', 'error');
+          window.showToast('Only ZIP files are allowed', 'warning');
           this.value = '';
           reuploadFileName.textContent = 'Click or drag & drop a ZIP file';
           reuploadConfirmBtn.disabled = true;
@@ -416,13 +433,13 @@ function initIdcardGroup(config) {
               }, 5000);
             } else {
               reuploadStatus.textContent = 'Server busy. Please try later.';
-              window.showToast('Server is busy. Please try again in a minute.', 'error');
+              window.showToast('Server is busy. Please try again in a minute.', 'warning');
               reuploadConfirmBtn.disabled = false;
               reuploadConfirmBtn.textContent = 'Upload & Match';
             }
           } else {
             reuploadStatus.textContent = data.message || 'Failed';
-            window.showToast(data.message || 'Reupload failed', 'error');
+            window.showToast(data.message || 'Reupload failed', data.level || 'error');
             reuploadConfirmBtn.disabled = false;
             reuploadConfirmBtn.textContent = 'Upload & Match';
           }
@@ -433,7 +450,7 @@ function initIdcardGroup(config) {
           else if (xhr.status === 502 || xhr.status === 504) errMsg = 'Server timeout — try a smaller ZIP file.';
           else if (xhr.status === 500) errMsg = 'Server error. Please try again.';
           else if (xhr.status === 0) errMsg = 'Connection lost. Check your internet.';
-          window.showToast(errMsg, 'error');
+          window.showToast(errMsg, (xhr.status === 413 || xhr.status === 502 || xhr.status === 504) ? 'warning' : 'error');
           reuploadConfirmBtn.disabled = false;
           reuploadConfirmBtn.textContent = 'Upload & Match';
         }
@@ -467,7 +484,7 @@ function initIdcardGroup(config) {
       };
 
       xhr.ontimeout = function() {
-        window.showToast('Reupload timed out — server took too long. Try a smaller ZIP.', 'error');
+        window.showToast('Reupload timed out — server took too long. Try a smaller ZIP.', 'warning');
         reuploadConfirmBtn.disabled = false;
         reuploadConfirmBtn.textContent = 'Upload & Match';
         reuploadProgress.style.display = 'none';

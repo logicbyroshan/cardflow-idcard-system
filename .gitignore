@@ -235,27 +235,5 @@ FRONTEND_PERFORMANCE_REPORT.md
 REDIS.md
 
 # ── Face Cropper / Adarsh Cropper ──
-# Build artifacts (PyInstaller)
-Face Cropper/build/
-Face Cropper/dist/
-Face Cropper/Output/
-
-# Virtual environment
-Face Cropper/venv/
-
-# Logs
-Face Cropper/logs/
-
-# Media / temp files created during processing
-Face Cropper/media/
-
-# Installer binaries (large, reproducible)
-Face Cropper/installer/PassportEngine.exe
-Face Cropper/installer/PassportEngineSetup.exe
-Face Cropper/installer/AdarshCropper.exe
-Face Cropper/installer/AdarshCropperSetup.exe
-Face Cropper/installer/nssm.exe
-
-# ICO generated from PNG
-Face Cropper/app_icon.ico
-Face Cropper/adarsh_cropper.ico
+# Entire Face Cropper directory (separate repo / local-only)
+Face Cropper/

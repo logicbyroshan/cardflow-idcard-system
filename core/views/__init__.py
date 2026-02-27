@@ -134,10 +134,14 @@ from .monitoring_api import (
 
 from .engine_api import (
     api_engine_status,
-    api_engine_process_zip,
     api_engine_process_folder,
     api_engine_preview,
     api_engine_serve_image,
+)
+
+from .cropper_api import (
+    api_cropper_release_webhook,
+    api_cropper_latest_version,
 )
 
 from .notification_api import (

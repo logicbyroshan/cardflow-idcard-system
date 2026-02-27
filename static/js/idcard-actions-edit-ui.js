@@ -201,7 +201,9 @@ function startCellEdit(cell) {
     
     // Handle blur - save on focus out (saveCellEdit is in edit-logic sub-module)
     editElement.addEventListener('blur', function() {
-        const newVal = editElement.tagName === 'SELECT' ? editElement.value : editElement.value;
+        const newVal = editElement.tagName === 'SELECT'
+            ? editElement.options[editElement.selectedIndex].value
+            : editElement.value;
         IDCardApp.saveCellEdit(cell, newVal, cardId, field);
     });
     

@@ -91,7 +91,7 @@ function initXlsxUpload() {
             var isValid = validTypes.some(function(ext) { return fileName.endsWith(ext); });
 
             if (!isValid) {
-                if (typeof showToast === 'function') showToast('Please upload an Excel (.xlsx, .xls) or CSV file', false);
+                if (typeof showToast === 'function') showToast('Please upload an Excel (.xlsx, .xls) or CSV file', 'warning');
                 this.value = '';
                 return;
             }
@@ -269,6 +269,8 @@ function initXlsxUpload() {
                 formData.append('unified_zip_count', unifiedZips.length.toString());
             }
 
+            // ── Reusable upload sender (supports retry with fresh XHR) ──
+            function _createAndSendXhr() {
             var xhr = new XMLHttpRequest();
             var startTime = Date.now();
 
@@ -315,6 +317,26 @@ function initXlsxUpload() {
                 if (progressBar) progressBar.classList.add('processing');
             });
 
+            // ── Retry helper: creates a fresh XHR with all handlers ──
+            function _retryUpload(reason) {
+                _uploadRetryCount = (_uploadRetryCount || 0) + 1;
+                if (_uploadRetryCount > 2) {
+                    if (reason === 'network') {
+                        if (typeof showToast === 'function') showToast('Upload failed after multiple retries. Please check your connection and try again.', false);
+                    }
+                    resetUploadState();
+                    return;
+                }
+                var delayMsg = reason === 'network' ? 'Network error. Retrying in 5s...' : 'Server is busy. Retrying...';
+                if (timeText) timeText.textContent = delayMsg;
+                if (reason === 'network' && typeof showToast === 'function') showToast('Network error. Retrying automatically...', false);
+                setTimeout(function() {
+                    if (timeText) timeText.textContent = 'Retrying upload...';
+                    if (progressBar) { progressBar.style.width = '0%'; progressBar.classList.remove('processing'); }
+                    _createAndSendXhr();  // Create a completely fresh XHR with all handlers
+                }, 5000);
+            }
+
             xhr.addEventListener('load', function() {
                 try {
                     var result = JSON.parse(xhr.responseText);
@@ -338,27 +360,8 @@ function initXlsxUpload() {
                     } else if (xhr.status === 429) {
                         // Rate limited or duplicate request — retry after delay
                         var retryMsg = result.message || 'Server is busy. Retrying...';
-                        if (timeText) timeText.textContent = retryMsg;
-                        if (typeof showToast === 'function') showToast(retryMsg, false);
-                        _uploadRetryCount = (_uploadRetryCount || 0) + 1;
-                        if (_uploadRetryCount <= 2) {
-                            setTimeout(function() {
-                                if (timeText) timeText.textContent = 'Retrying upload...';
-                                if (progressBar) { progressBar.style.width = '0%'; progressBar.classList.remove('processing'); }
-                                var retryXhr = new XMLHttpRequest();
-                                retryXhr.open('POST', '/panel/api/table/' + (typeof TABLE_ID !== 'undefined' ? TABLE_ID : '') + '/cards/bulk-upload/');
-                                retryXhr.setRequestHeader('X-CSRFToken', typeof getCSRFToken === 'function' ? getCSRFToken() : '');
-                                retryXhr.timeout = 600000;
-                                retryXhr.onload = xhr.onload;
-                                retryXhr.onerror = xhr.onerror;
-                                retryXhr.ontimeout = xhr.ontimeout;
-                                retryXhr.upload.onprogress = xhr.upload.onprogress;
-                                retryXhr.upload.onload = xhr.upload.onload;
-                                retryXhr.send(formData);
-                            }, 5000);
-                        } else {
-                            resetUploadState();
-                        }
+                        if (typeof showToast === 'function') showToast(retryMsg, 'warning');
+                        _retryUpload('ratelimit');
                     } else {
                         var errorMessage = result.message || 'Upload failed (status: ' + xhr.status + ')';
                         if (result.errors && Array.isArray(result.errors) && result.errors.length > 0) {
@@ -368,7 +371,7 @@ function initXlsxUpload() {
                                 errorMessage += '\n... and ' + (result.errors.length - 3) + ' more errors';
                             }
                         }
-                        if (typeof showToast === 'function') showToast(errorMessage, false);
+                        if (typeof showToast === 'function') showToast(errorMessage, result.level || false);
                         resetUploadState();
                     }
                 } catch (error) {
@@ -379,42 +382,28 @@ function initXlsxUpload() {
                     else if (xhr.status === 500) parseErrorMsg = 'Server error while processing upload. Please try again.';
                     else if (xhr.status === 0) parseErrorMsg = 'Connection lost. Please check your internet and try again.';
                     else parseErrorMsg = 'Failed to process server response (HTTP ' + xhr.status + ')';
-                    if (typeof showToast === 'function') showToast(parseErrorMsg, false);
+                    if (typeof showToast === 'function') showToast(parseErrorMsg, (xhr.status === 413 || xhr.status === 502 || xhr.status === 504) ? 'warning' : false);
                     resetUploadState();
                 }
             });
 
             xhr.addEventListener('error', function() {
                 console.error('Upload XHR error — network failure');
-                _uploadRetryCount = (_uploadRetryCount || 0) + 1;
-                if (_uploadRetryCount <= 2) {
-                    if (timeText) timeText.textContent = 'Network error. Retrying in 5s...';
-                    if (typeof showToast === 'function') showToast('Network error. Retrying automatically...', false);
-                    setTimeout(function() {
-                        if (timeText) timeText.textContent = 'Retrying upload...';
-                        if (progressBar) { progressBar.style.width = '0%'; progressBar.classList.remove('processing'); }
-                        var retryXhr = new XMLHttpRequest();
-                        retryXhr.open('POST', '/panel/api/table/' + (typeof TABLE_ID !== 'undefined' ? TABLE_ID : '') + '/cards/bulk-upload/');
-                        retryXhr.setRequestHeader('X-CSRFToken', typeof getCSRFToken === 'function' ? getCSRFToken() : '');
-                        retryXhr.timeout = 600000;
-                        retryXhr.onload = xhr.onload;
-                        retryXhr.onerror = xhr.onerror;
-                        retryXhr.ontimeout = xhr.ontimeout;
-                        retryXhr.upload.onprogress = xhr.upload.onprogress;
-                        retryXhr.upload.onload = xhr.upload.onload;
-                        retryXhr.send(formData);
-                    }, 5000);
-                } else {
-                    if (typeof showToast === 'function') showToast('Upload failed after multiple retries. Please check your connection and try again.', false);
-                    resetUploadState();
-                }
+                _retryUpload('network');
             });
 
             xhr.addEventListener('timeout', function() {
                 console.error('Upload XHR timeout after 10 minutes');
-                if (typeof showToast === 'function') showToast('Upload timed out — the server took too long to respond. Please try with a smaller file.', false);
+                if (typeof showToast === 'function') showToast('Upload timed out — the server took too long to respond. Please try with a smaller file.', 'warning');
                 resetUploadState();
             });
+
+            var tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : null;
+            xhr.open('POST', '/panel/api/table/' + tableId + '/cards/bulk-upload/');
+            xhr.setRequestHeader('X-CSRFToken', typeof getCSRFToken === 'function' ? getCSRFToken() : '');
+            xhr.timeout = 600000; // 10-minute timeout for large uploads
+            xhr.send(formData);
+            }  // end _createAndSendXhr
 
             function resetUploadState() {
                 if (progressSection) progressSection.style.display = 'none';
@@ -426,11 +415,7 @@ function initXlsxUpload() {
             }
 
             var _uploadRetryCount = 0;
-            var tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : null;
-            xhr.open('POST', '/panel/api/table/' + tableId + '/cards/bulk-upload/');
-            xhr.setRequestHeader('X-CSRFToken', typeof getCSRFToken === 'function' ? getCSRFToken() : '');
-            xhr.timeout = 600000; // 10-minute timeout for large uploads
-            xhr.send(formData);
+            _createAndSendXhr();  // Initial send
         });
     }
 }
@@ -454,7 +439,7 @@ function initUnifiedZipUpload() {
         for (var i = 0; i < files.length; i++) {
             var file = files[i];
             if (!file.name.toLowerCase().endsWith('.zip')) {
-                if (typeof showToast === 'function') showToast(file.name + ' is not a ZIP file', 'error');
+                if (typeof showToast === 'function') showToast(file.name + ' is not a ZIP file', 'warning');
                 continue;
             }
             if (_us.unifiedZipFiles.some(function(f) { return f.name === file.name; })) {

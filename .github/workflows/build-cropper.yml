@@ -1,0 +1,211 @@
+# =============================================================================
+# Build & Release Adarsh Cropper (Face Cropper)
+#
+# Triggered by pushing a tag like:  cropper-v3.0.1
+# The version is extracted from the tag automatically.
+#
+# Steps:
+#   1. Extract version from tag → update VERSION.txt, config.py, installer.iss
+#   2. Build AdarshCropper.exe with PyInstaller (Windows runner)
+#   3. Build AdarshCropperSetup.exe with Inno Setup
+#   4. Create a GitHub Release with the installer as an asset
+#   5. Notify the production Django server via webhook
+#
+# Required GitHub Repository Secrets:
+#   CROPPER_WEBHOOK_URL     — e.g. https://adarshbhopal.in/panel/api/cropper/release-webhook/
+#   CROPPER_WEBHOOK_SECRET  — shared secret matching the server's env var
+# =============================================================================
+
+name: Build Adarsh Cropper
+
+on:
+  push:
+    tags:
+      - "cropper-v*"    # e.g.  cropper-v3.0.1
+
+# Cancel previous runs for the same tag
+concurrency:
+  group: cropper-build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write     # needed to create GitHub Releases
+
+jobs:
+  build:
+    name: Build & Release
+    runs-on: windows-latest
+
+    steps:
+      # ── 1. Checkout ────────────────────────────────────────────────
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ── 2. Extract version from tag ────────────────────────────────
+      - name: Extract version
+        id: version
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          # cropper-v3.0.1 → 3.0.1
+          $ver = $tag -replace '^cropper-v', ''
+          Write-Host "Extracted version: $ver"
+          echo "VERSION=$ver" >> $env:GITHUB_OUTPUT
+          echo "VERSION_DOTTED=$ver.0" >> $env:GITHUB_OUTPUT
+
+      # ── 3. Stamp version into source files ─────────────────────────
+      - name: Update version in source files
+        shell: pwsh
+        run: |
+          $ver = "${{ steps.version.outputs.VERSION }}"
+          $ver4 = "${{ steps.version.outputs.VERSION_DOTTED }}"
+          
+          # VERSION.txt
+          Set-Content -Path "Face Cropper/VERSION.txt" -Value $ver -NoNewline
+          
+          # config.py
+          $cfg = Get-Content "Face Cropper/passport_engine_core/config.py" -Raw
+          $cfg = $cfg -replace 'ENGINE_VERSION\s*=\s*"[^"]*"', "ENGINE_VERSION = `"$ver`""
+          Set-Content -Path "Face Cropper/passport_engine_core/config.py" -Value $cfg -NoNewline
+          
+          # installer.iss — #define MyAppVersion
+          $iss = Get-Content "Face Cropper/installer.iss" -Raw
+          $iss = $iss -replace '#define MyAppVersion\s+"[^"]*"', "#define MyAppVersion `"$ver`""
+          $iss = $iss -replace 'VersionInfoVersion=[^\r\n]*', "VersionInfoVersion=$ver4"
+          Set-Content -Path "Face Cropper/installer.iss" -Value $iss -NoNewline
+          
+          Write-Host "Stamped version $ver into all source files"
+
+      # ── 4. Set up Python ───────────────────────────────────────────
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: "Face Cropper/requirements.txt"
+
+      - name: Install Python dependencies
+        shell: pwsh
+        run: |
+          pip install --upgrade pip
+          pip install -r "Face Cropper/requirements.txt"
+          pip install pyinstaller
+
+      # ── 5. Build EXE with PyInstaller ──────────────────────────────
+      - name: Build AdarshCropper.exe
+        shell: pwsh
+        working-directory: Face Cropper
+        run: |
+          pyinstaller passport_engine.spec --noconfirm
+          
+          if (-not (Test-Path "dist/AdarshCropper.exe")) {
+            Write-Error "PyInstaller build failed — AdarshCropper.exe not found"
+            exit 1
+          }
+          
+          $size = (Get-Item "dist/AdarshCropper.exe").Length / 1MB
+          Write-Host "Built AdarshCropper.exe ($([math]::Round($size, 1)) MB)"
+
+      # ── 6. Build installer with Inno Setup ─────────────────────────
+      - name: Build installer with Inno Setup
+        shell: pwsh
+        working-directory: Face Cropper
+        run: |
+          # Inno Setup is pre-installed on windows-latest runners
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          
+          if (-not (Test-Path $iscc)) {
+            Write-Error "Inno Setup not found at $iscc"
+            exit 1
+          }
+          
+          & $iscc installer.iss
+          
+          if (-not (Test-Path "Output/AdarshCropperSetup.exe")) {
+            Write-Error "Inno Setup build failed — AdarshCropperSetup.exe not found"
+            exit 1
+          }
+          
+          $size = (Get-Item "Output/AdarshCropperSetup.exe").Length / 1MB
+          Write-Host "Built AdarshCropperSetup.exe ($([math]::Round($size, 1)) MB)"
+
+      # ── 7. Create GitHub Release ───────────────────────────────────
+      - name: Create GitHub Release
+        id: release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "Adarsh Cropper v${{ steps.version.outputs.VERSION }}"
+          body: |
+            ## Adarsh Cropper v${{ steps.version.outputs.VERSION }}
+            
+            **Download the installer below and run it.** The installer will
+            automatically stop the old service, replace files, and restart.
+            
+            ### Installation
+            1. Download `AdarshCropperSetup.exe` below
+            2. Run the installer (accept admin prompt)
+            3. The service restarts automatically
+            
+            ---
+            _Built automatically by CI/CD on ${{ github.event.head_commit.timestamp }}_
+          files: |
+            Face Cropper/Output/AdarshCropperSetup.exe
+          draft: false
+          prerelease: false
+
+      # ── 8. Notify Django server (webhook) ──────────────────────────
+      - name: Notify production server
+        if: success()
+        shell: pwsh
+        env:
+          WEBHOOK_URL: ${{ secrets.CROPPER_WEBHOOK_URL }}
+          WEBHOOK_SECRET: ${{ secrets.CROPPER_WEBHOOK_SECRET }}
+        run: |
+          if (-not $env:WEBHOOK_URL) {
+            Write-Host "CROPPER_WEBHOOK_URL not set — skipping webhook notification"
+            exit 0
+          }
+          
+          $ver = "${{ steps.version.outputs.VERSION }}"
+          
+          # Get the download URL of the installer asset from the release
+          $downloadUrl = ""
+          $assets = "${{ steps.release.outputs.assets }}" | ConvertFrom-Json -ErrorAction SilentlyContinue
+          if ($assets) {
+            $asset = $assets | Where-Object { $_.name -eq "AdarshCropperSetup.exe" } | Select-Object -First 1
+            if ($asset) {
+              $downloadUrl = $asset.browser_download_url
+            }
+          }
+          
+          # Fallback: construct URL from known pattern
+          if (-not $downloadUrl) {
+            $repo = "${{ github.repository }}"
+            $tag = "${{ github.ref_name }}"
+            $downloadUrl = "https://github.com/$repo/releases/download/$tag/AdarshCropperSetup.exe"
+          }
+          
+          $payload = @{
+            version      = $ver
+            download_url = $downloadUrl
+            changelog    = "Adarsh Cropper v$ver — automated build from CI/CD."
+          } | ConvertTo-Json -Compress
+          
+          Write-Host "Notifying server at $($env:WEBHOOK_URL) for v$ver ..."
+          
+          try {
+            $response = Invoke-RestMethod -Uri $env:WEBHOOK_URL `
+              -Method POST `
+              -ContentType "application/json" `
+              -Headers @{ "X-Webhook-Secret" = $env:WEBHOOK_SECRET } `
+              -Body $payload `
+              -TimeoutSec 30
+            
+            Write-Host "Webhook response: $($response | ConvertTo-Json -Compress)"
+          } catch {
+            Write-Warning "Webhook notification failed: $_"
+            Write-Warning "The release was created successfully but the server was not notified."
+            Write-Warning "You can manually add the release via Django Admin."
+            # Don't fail the build — the release artifact is already uploaded
+          }

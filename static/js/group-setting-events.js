@@ -161,7 +161,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Handle Class & Section: auto-add two fields
             if (type === 'class_section') {
                 if (GSP.currentFields.length + 2 > GSP.MAX_FIELDS) {
-                    showToast(`Not enough room! Need 2 slots but only ${GSP.MAX_FIELDS - GSP.currentFields.length} left.`, 'error');
+                    showToast(`Not enough room! Need 2 slots but only ${GSP.MAX_FIELDS - GSP.currentFields.length} left.`, 'warning');
                     return;
                 }
                 if (GSP.currentFields.some(f => f.name.toLowerCase() === 'class' || f.name.toLowerCase() === 'section')) {
@@ -181,7 +181,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const name = GSP.newFieldName.value.trim();
 
             if (!name) { showToast('Please enter a field name!', 'error'); GSP.newFieldName.focus(); return; }
-            if (GSP.currentFields.length >= GSP.MAX_FIELDS) { showToast(`Maximum ${GSP.MAX_FIELDS} fields allowed!`, 'error'); return; }
+            if (GSP.currentFields.length >= GSP.MAX_FIELDS) { showToast(`Maximum ${GSP.MAX_FIELDS} fields allowed!`, 'warning'); return; }
             if (GSP.currentFields.some(f => f.name.toLowerCase() === name.toLowerCase())) { showToast('Field with this name already exists!', 'error'); return; }
 
             // Auto-detect field type from name when type is left as default "text"

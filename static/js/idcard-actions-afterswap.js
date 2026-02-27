@@ -66,24 +66,9 @@ document.body.addEventListener('htmx:afterSwap', function(evt) {
       });
     }
 
-    // Row action buttons — event delegation on new #cardsTableBody
-    var tableBody = document.getElementById('cardsTableBody');
-    if (tableBody && !tableBody._rowActionHandlersInit) {
-      tableBody._rowActionHandlersInit = true;
-      tableBody.addEventListener('click', function(e) {
-        var btn = e.target.closest('.row-action-btn');
-        if (!btn) return;
-        e.stopPropagation();
-        var cardId = btn.getAttribute('data-card-id');
-        if (!cardId) return;
-        if (btn.classList.contains('verify-row-btn') && window.IDCardApp && typeof window.IDCardApp.verifyCard === 'function') window.IDCardApp.verifyCard(cardId);
-        else if (btn.classList.contains('approve-row-btn') && window.IDCardApp && typeof window.IDCardApp.approveCard === 'function') window.IDCardApp.approveCard(cardId);
-        else if (btn.classList.contains('unapprove-row-btn') && window.IDCardApp && typeof window.IDCardApp.disapproveCard === 'function') window.IDCardApp.disapproveCard(cardId);
-        else if (btn.classList.contains('unverify-row-btn') && window.IDCardApp && typeof window.IDCardApp.unverifyCard === 'function') window.IDCardApp.unverifyCard(cardId);
-        else if (btn.classList.contains('download-row-btn') && window.IDCardApp && typeof window.IDCardApp.moveToDownload === 'function') window.IDCardApp.moveToDownload(cardId);
-        else if (btn.classList.contains('retrieve-row-btn') && window.IDCardApp && typeof window.IDCardApp.retrieveCard === 'function') window.IDCardApp.retrieveCard(cardId);
-        else if (btn.classList.contains('download-single-row-btn') && window.IDCardApp && typeof window.IDCardApp.moveToDownload === 'function') window.IDCardApp.moveToDownload(cardId);
-      });
-    }
+    // Row action buttons — delegation is already handled by
+    // initTableModule() → _initTableBodyDelegation().  Do NOT add
+    // a duplicate listener here; the old block caused double-fire.
+    // (Bug #2 fix: removed duplicate _rowActionHandlersInit block)
   }
 });

@@ -44,7 +44,8 @@ async function loadNotifications(append) {
 
     renderTable();
     updateStats();
-    document.getElementById('totalNotifCount').textContent = panelTotal;
+    var totalEl = document.getElementById('totalNotifCount');
+    if (totalEl) totalEl.textContent = panelTotal;
 
     const loadMoreEl = document.getElementById('notifLoadMore');
     if (loadMoreEl) {

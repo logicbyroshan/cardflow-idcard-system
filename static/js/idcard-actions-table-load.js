@@ -89,8 +89,12 @@ async function loadMoreData() {
         console.error('Error loading more data:', error);
         if (typeof showToast === 'function') showToast('Failed to load more data', false);
     } finally {
-        _ts.lazyLoadState.isLoading = false;
-        window.IDCardApp._showLazyLoadIndicator(false);
+        // Only reset isLoading if this is still the active request sequence.
+        // Prevents stale responses from clearing isLoading for a newer load.
+        if (mySeq === _ts._loadRequestSeq) {
+            _ts.lazyLoadState.isLoading = false;
+            window.IDCardApp._showLazyLoadIndicator(false);
+        }
     }
 }
 
@@ -300,6 +304,7 @@ function initTableModule() {
     if (_ts._sentinelObserver) { _ts._sentinelObserver.disconnect(); _ts._sentinelObserver = null; }
     _ts._loadCooldown = false;
     _ts._loadRequestSeq = 0;
+    _ts.lazyLoadState.isLoading = false;  // Reset so stale in-flight loads don't block new fetches
 
     // ── Clear stale rows from DOM (prevents loadedCount=100 on re-init) ──
     var tableBody = document.getElementById('cardsTableBody');
@@ -332,9 +337,8 @@ function initTableModule() {
     window.IDCardApp._earlyInitLazyLoadState();
     window.IDCardApp.initializeRows();
     _ts.lazyLoadState.loadedCount = _ts.allRows.length;
-    window.IDCardApp.renderTable();
     window.IDCardApp._initLazyLoadState();
-    window.IDCardApp.renderTable();
+    window.IDCardApp.renderTable();  // Single render after full init
     window.IDCardApp._highlightSearchResult();
     
     // Handle broken images after table render

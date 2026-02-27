@@ -238,7 +238,7 @@ function displaySearchResults(results, query, container, closeModalFn) {
             : `<div class="search-result-photo-placeholder"><i class="fa-solid fa-user"></i></div>`;
         
         html += `
-            <div class="search-result-item" data-card-id="${result.id}" data-status="${_esc(result.status)}">
+            <div class="search-result-item" data-card-id="${_esc(String(result.id))}" data-status="${_esc(result.status)}">
                 ${photoHtml}
                 <div class="search-result-info">
                     <div class="search-result-name">${_esc(result.display_name)}</div>

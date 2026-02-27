@@ -37,7 +37,10 @@
 
       <!-- Panel Tabs -->
       <div class="panel-tabs">
-        <button class="panel-tab active" data-tab="system" onclick="switchTab('system')">
+        <button class="panel-tab active" data-tab="notifications" onclick="switchTab('notifications')">
+          <i class="fa-solid fa-bell"></i> Notifications
+        </button>
+        <button class="panel-tab" data-tab="system" onclick="switchTab('system')">
           <i class="fa-solid fa-server"></i> System Info
         </button>
         <button class="panel-tab" data-tab="quick-actions" onclick="switchTab('quick-actions')">
@@ -45,8 +48,11 @@
         </button>
       </div>
 
+      {% include 'partials/panel/tab-notifications.html' %}
       {% include 'partials/panel/tab-system.html' %}
       {% include 'partials/panel/tab-quick-actions.html' %}
+
+      {% include 'partials/panel/create-notification-modal.html' %}
 
     </div><!-- /.panel-content -->
   </main>
@@ -60,14 +66,6 @@
   <script defer src="{% static 'js/core/utils.js' %}"></script>
   <script defer src="{% static 'js/init.js' %}"></script>
   <script defer src="{% static 'js/global-search.js' %}"></script>
-  <script defer src="{% static 'js/notification-bell.js' %}"></script>
-  <script>
-    function switchTab(tabName) {
-      document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.panel-tab-content').forEach(c => c.classList.remove('active'));
-      document.querySelector('[data-tab="' + tabName + '"]').classList.add('active');
-      document.getElementById('tab-' + tabName).classList.add('active');
-    }
-  </script>
+  <script defer src="{% static 'js/manage-panel.js' %}"></script>
 </body>
 </html>

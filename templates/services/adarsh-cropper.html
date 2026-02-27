@@ -76,7 +76,7 @@
           Download and install it to enable photo cropping.
         </p>
         <div class="engine-actions">
-          <a href="{% static 'engine/AdarshCropperSetup.exe' %}" class="btn btn-primary" download>
+          <a :href="update.downloadUrl || '{% static 'engine/AdarshCropperSetup.exe' %}'" class="btn btn-primary" download>
             <i class="fa-solid fa-download"></i> Download Installer
           </a>
         </div>
@@ -89,93 +89,39 @@
 
   </div>
 
+  {# ═══════════ UPDATE AVAILABLE BANNER ═══════════ #}
+  <div class="update-banner" x-show="update.available" x-transition x-cloak>
+    <div class="update-banner-content">
+      <div class="update-banner-info">
+        <i class="fa-solid fa-arrow-up-from-bracket"></i>
+        <div>
+          <strong>Update Available — v<span x-text="update.version"></span></strong>
+          <p x-show="update.changelog" x-text="update.changelog" class="update-changelog"></p>
+        </div>
+      </div>
+      <div class="update-banner-actions">
+        <span class="update-current-version">Installed: v<span x-text="engine.version"></span></span>
+        <a :href="update.downloadUrl" class="btn btn-primary btn-sm" download>
+          <i class="fa-solid fa-download"></i> Download v<span x-text="update.version"></span>
+        </a>
+        <button class="btn btn-neutral btn-sm" @click="update.available = false" title="Dismiss" type="button">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
   {# ═══════════ PROCESSING SECTIONS (visible when connected) ═══════════ #}
   <template x-if="engine.connected">
     <div class="processing-sections">
 
-      {# Mode Switcher #}
-      <div class="mode-switcher">
-        <button class="mode-btn" :class="{ active: mode === 'zip' }" @click="mode = 'zip'" type="button">
-          <i class="fa-solid fa-file-zipper"></i> ZIP Upload
-        </button>
-        <button class="mode-btn" :class="{ active: mode === 'folder' }" @click="mode = 'folder'" type="button">
-          <i class="fa-solid fa-folder-open"></i> Folder Path
-        </button>
-      </div>
-
-      {# ──── ZIP Upload ──── #}
-      <div class="process-card" x-show="mode === 'zip'" x-transition>
-        <div class="card-header">
-          <h3><i class="fa-solid fa-file-zipper"></i> Upload ZIP File</h3>
-          <p class="card-desc">Upload a ZIP archive containing passport photos for automatic cropping.</p>
-        </div>
-
-        {# Drop Zone #}
-        <div class="drop-zone" :class="{ 'drag-over': dragOver, 'has-file': !!file }"
-             @dragover.prevent="dragOver = true"
-             @dragleave.prevent="dragOver = false"
-             @drop.prevent="handleDrop($event)"
-             @click="!file && $refs.fileInput.click()">
-
-          {# Empty state #}
-          <div class="drop-zone-content" x-show="!file">
-            <i class="fa-solid fa-cloud-arrow-up drop-zone-icon"></i>
-            <p class="drop-zone-text">Drag & drop your <strong>.zip</strong> file here</p>
-            <span class="drop-zone-divider">or</span>
-            <label class="browse-btn" @click.stop>
-              <i class="fa-solid fa-folder-open"></i>
-              <span>Browse Files</span>
-              <input type="file" accept=".zip" x-ref="fileInput" @change="handleFileSelect($event)" style="display:none;">
-            </label>
-          </div>
-
-          {# File selected preview #}
-          <div class="selected-file" x-show="file" x-cloak>
-            <div class="file-info">
-              <i class="fa-solid fa-file-zipper"></i>
-              <div class="file-details">
-                <span class="file-name" x-text="file?.name"></span>
-                <span class="file-size" x-text="formatSize(file?.size)"></span>
-              </div>
-            </div>
-            <button class="btn-clear-file" @click.stop="clearFile()" title="Remove file" type="button">
-              <i class="fa-solid fa-xmark"></i>
-            </button>
-          </div>
-        </div>
-
-        {# Output folder (optional) #}
-        <div class="output-folder-group">
-          <label class="output-folder-label">
-            <i class="fa-solid fa-folder-tree"></i> Save cropped photos to <span class="optional-tag">(optional)</span>
-          </label>
-          <div class="input-wrapper">
-            <i class="fa-solid fa-folder"></i>
-            <input type="text" x-model="outputFolder" placeholder="C:\Users\Name\Desktop" autocomplete="off">
-          </div>
-          <p class="input-hint">
-            <i class="fa-solid fa-info-circle"></i>
-            Leave empty to save in system temp. A <em>_cropped</em> folder will be created at this location.
-          </p>
-        </div>
-
-        <div class="card-actions">
-          <button class="btn btn-primary" :disabled="!file || processing" @click="processZip()" type="button">
-            <template x-if="!processing">
-              <span><i class="fa-solid fa-crop"></i> Process ZIP</span>
-            </template>
-            <template x-if="processing">
-              <span><i class="fa-solid fa-spinner fa-spin"></i> Processing…</span>
-            </template>
-          </button>
-        </div>
-      </div>
-
-      {# ──── Folder Path ──── #}
-      <div class="process-card" x-show="mode === 'folder'" x-transition>
+      {# ──── Folder Path Input ──── #}
+      <div class="process-card">
         <div class="card-header">
           <h3><i class="fa-solid fa-folder-open"></i> Process Folder</h3>
-          <p class="card-desc">Enter a local folder path containing passport photos. The cropped photos will be saved in a <em>_cropped</em> folder next to it.</p>
+          <p class="card-desc">Enter a local folder path containing passport photos. Cropped and failed images
+            will be placed inside <em>cropped/</em> and <em>failed/</em> sub-folders within the same directory.
+            No size limit — large folders are processed in batches automatically.</p>
         </div>
 
         <div class="folder-input-group">
@@ -186,7 +132,7 @@
           </div>
           <p class="input-hint">
             <i class="fa-solid fa-info-circle"></i>
-            The folder must be accessible on this computer. Output: <em>&lt;folder&gt;_cropped</em> alongside it.
+            The folder must be accessible on this computer. Output: <em>&lt;folder&gt;/cropped/</em> and <em>&lt;folder&gt;/failed/</em> inside it.
           </p>
         </div>
 
@@ -214,34 +160,47 @@
         <p class="progress-detail" x-text="progress.detail"></p>
       </div>
 
-      {# ══════════ Result Summary ══════════ #}
+      {# ══════════ Result Summary with Chart ══════════ #}
       <div class="result-section" x-show="result.visible" x-transition x-cloak>
         <div class="result-header">
           <h3><i class="fa-solid fa-chart-bar"></i> Processing Results</h3>
-          <button class="btn btn-neutral btn-sm" @click="result.visible = false; preview.visible = false" type="button">
+          <button class="btn btn-neutral btn-sm" @click="clearResults()" type="button">
             <i class="fa-solid fa-xmark"></i> Clear
           </button>
         </div>
-        <div class="result-grid">
-          <div class="result-item">
-            <span class="result-value" x-text="result.total"></span>
-            <span class="result-label">Total</span>
+
+        {# ── Stats Grid + Donut Chart side by side ── #}
+        <div class="result-body">
+          {# Stats grid (left) #}
+          <div class="result-grid">
+            <div class="result-item">
+              <span class="result-value" x-text="result.total"></span>
+              <span class="result-label">Total</span>
+            </div>
+            <div class="result-item success">
+              <span class="result-value" x-text="result.success"></span>
+              <span class="result-label">Cropped</span>
+            </div>
+            <div class="result-item danger">
+              <span class="result-value" x-text="result.failed"></span>
+              <span class="result-label">Failed</span>
+            </div>
+            <div class="result-item info">
+              <span class="result-value" x-text="result.accuracy"></span>
+              <span class="result-label">Accuracy</span>
+            </div>
+            <div class="result-item">
+              <span class="result-value" x-text="result.time"></span>
+              <span class="result-label">Time</span>
+            </div>
           </div>
-          <div class="result-item success">
-            <span class="result-value" x-text="result.success"></span>
-            <span class="result-label">Success</span>
-          </div>
-          <div class="result-item danger">
-            <span class="result-value" x-text="result.failed"></span>
-            <span class="result-label">Failed</span>
-          </div>
-          <div class="result-item info">
-            <span class="result-value" x-text="result.accuracy"></span>
-            <span class="result-label">Accuracy</span>
-          </div>
-          <div class="result-item">
-            <span class="result-value" x-text="result.time"></span>
-            <span class="result-label">Time</span>
+
+          {# Donut chart (right) #}
+          <div class="result-chart" x-show="result.total > 0">
+            <canvas x-ref="chartCanvas" width="180" height="180"></canvas>
+            <div class="chart-center-label">
+              <span class="chart-pct" x-text="result.accuracy"></span>
+            </div>
           </div>
         </div>
 
@@ -250,23 +209,26 @@
           <div class="result-path-row">
             <span class="path-label"><i class="fa-solid fa-folder-open"></i> Cropped:</span>
             <span class="path-value" x-text="result.outputFolder"></span>
-            <button class="btn btn-neutral btn-sm btn-icon" @click="openFolder(result.outputFolder)" title="Copy path" type="button">
+            <button class="btn btn-neutral btn-sm btn-icon" @click="copyPath(result.outputFolder)" title="Copy path" type="button">
               <i class="fa-solid fa-copy"></i>
             </button>
           </div>
           <div class="result-path-row" x-show="result.failedFolder && result.failed > 0">
             <span class="path-label"><i class="fa-solid fa-folder-open"></i> Failed:</span>
             <span class="path-value" x-text="result.failedFolder"></span>
-            <button class="btn btn-neutral btn-sm btn-icon" @click="openFolder(result.failedFolder)" title="Copy path" type="button">
+            <button class="btn btn-neutral btn-sm btn-icon" @click="copyPath(result.failedFolder)" title="Copy path" type="button">
               <i class="fa-solid fa-copy"></i>
             </button>
           </div>
         </div>
 
-        {# Error details #}
+        {# Error details (collapsible) #}
         <div class="result-errors" x-show="result.errors.length > 0" x-cloak>
-          <h4><i class="fa-solid fa-triangle-exclamation"></i> Failed Items</h4>
-          <ul class="error-list">
+          <button class="result-errors-toggle" @click="result.errorsExpanded = !result.errorsExpanded" type="button">
+            <i class="fa-solid" :class="result.errorsExpanded ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
+            <span x-text="'Failed Items (' + result.errors.length + ')'"></span>
+          </button>
+          <ul class="error-list" x-show="result.errorsExpanded" x-transition x-cloak>
             <template x-for="err in result.errors" :key="err">
               <li x-text="err"></li>
             </template>

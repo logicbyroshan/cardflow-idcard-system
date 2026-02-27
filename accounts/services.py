@@ -194,8 +194,15 @@ class OTPService:
     
     @staticmethod
     def generate_reset_token():
-        """Generate a cryptographically secure reset token."""
-        return secrets.token_urlsafe(32)
+        """Generate a cryptographically secure reset token with HMAC signature."""
+        raw_token = secrets.token_urlsafe(32)
+        # Sign the token with SECRET_KEY to prevent forgery
+        signature = hmac.new(
+            settings.SECRET_KEY.encode(),
+            raw_token.encode(),
+            hashlib.sha256
+        ).hexdigest()[:16]
+        return f"{raw_token}.{signature}"
     
     @classmethod
     def send_otp(cls, email):
@@ -376,6 +383,25 @@ Adarsh Admin Team''',
                     'message': 'Invalid reset token. Please start again.'
                 }
             
+            # Verify HMAC signature on the token to prevent forgery
+            token_parts = reset_token.split('.')
+            if len(token_parts) != 2:
+                return {
+                    'success': False,
+                    'message': 'Invalid reset token format. Please start again.'
+                }
+            raw_token, provided_sig = token_parts
+            expected_sig = hmac.new(
+                settings.SECRET_KEY.encode(),
+                raw_token.encode(),
+                hashlib.sha256
+            ).hexdigest()[:16]
+            if not hmac.compare_digest(provided_sig, expected_sig):
+                return {
+                    'success': False,
+                    'message': 'Tampered reset token. Please start again.'
+                }
+            
             # Get user and update password
             user = User.objects.filter(email__iexact=email).first()
             if not user:
@@ -384,14 +410,17 @@ Adarsh Admin Team''',
                     'message': 'User not found'
                 }
             
-            # Validate password against Django AUTH_PASSWORD_VALIDATORS
+            # Validate password (using AUTH_PASSWORD_VALIDATORS from settings —
+            # currently only MinimumLengthValidator, so mobile numbers etc. are allowed)
             from django.contrib.auth.password_validation import validate_password
             try:
                 validate_password(new_password, user=user)
             except Exception as validation_error:
+                # Collect all error messages from validators
+                msgs = getattr(validation_error, 'messages', [str(validation_error)])
                 return {
                     'success': False,
-                    'message': '; '.join(validation_error.messages)
+                    'message': '; '.join(msgs)
                 }
 
             # Set new password

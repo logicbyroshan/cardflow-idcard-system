@@ -15,7 +15,7 @@ import logging
 
 from django.core.exceptions import ValidationError
 from django.shortcuts import render, get_object_or_404
-from django.http import JsonResponse
+from django.http import Http404, JsonResponse
 from django.views.decorators.http import require_POST, require_GET
 
 from core.services.permission_service import (
@@ -349,7 +349,7 @@ def api_client_get(request, pk):
     """Get a single trusted client."""
     try:
         c = TrustedClientService.get(pk)
-    except Exception:
+    except Http404:
         return JsonResponse({'success': False, 'message': 'Client not found'}, status=404)
     return JsonResponse({
         'success': True,
@@ -454,7 +454,7 @@ def api_review_get(request, pk):
     """Get a single review."""
     try:
         r = TestimonialService.get(pk)
-    except Exception:
+    except Http404:
         return JsonResponse({'success': False, 'message': 'Review not found'}, status=404)
     return JsonResponse({
         'success': True,
@@ -569,7 +569,7 @@ def api_portfolio_get(request, pk):
     """Get a single portfolio item."""
     try:
         p = PortfolioItemService.get(pk)
-    except Exception:
+    except Http404:
         return JsonResponse({'success': False, 'message': 'Portfolio item not found'}, status=404)
     return JsonResponse({
         'success': True,

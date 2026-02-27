@@ -504,8 +504,8 @@ def export_images_to_disk(
                         part_images += 1
 
                         del img_data
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.warning("Failed to add image to ZIP (card field): %s", e)
 
                     current_progress += 1
                     if progress_callback:

@@ -451,7 +451,7 @@ function downloadPdf(cardIds, templateId) {
     // Determine card count for async decision
     // If cardIds is empty, it means "all cards" — use async to be safe
     var totalCards = (window.IDCardApp && window.IDCardApp.lazyLoadState)
-        ? (window.IDCardApp.lazyLoadState.totalCards || 0)
+        ? (window.IDCardApp.lazyLoadState.totalCount || 0)
         : 0;
     var effectiveCount = (cardIds && cardIds.length > 0) ? cardIds.length : totalCards;
 

@@ -530,75 +530,108 @@ class PdfExporter:
         return configs
 
     @classmethod
-    def _wrap_text_for_pdf(cls, text: str, nowrap: bool = False) -> 'mark_safe':
-        """Insert word-break opportunities in text for PDF column wrapping.
+    def _wrap_text_for_pdf(cls, text: str, nowrap: bool = False, col_width_pct: float = 0) -> 'mark_safe':
+        """Context-aware text wrapping for PDF columns.
 
-        Wrapping rules:
-        1. Words ≤ 6 chars: NEVER wrap (kept intact).
-        2. Words 7+ chars: insert a zero-width space (&#8203;) near the middle
-           so the word can break roughly half-above / half-below.
-        3. Phone-like tokens (≥60% digits): insert &#8203; every 5 chars
-           so a 10-digit number can split 5-above / 5-below.
-        4. Natural break opportunities after commas, slashes, colons.
-        5. Spaces themselves are break opportunities (replaced with
-           space + &#8203;).
+        xhtml2pdf has very limited CSS word-wrap support, so we:
+        1. Strip characters that Helvetica can't render (→ black boxes).
+        2. Insert zero-width spaces (&#8203;) inside long unbreakable runs
+           so the PDF renderer can break them at column boundaries.
+        3. Insert <wbr> at natural boundaries (commas, spaces, slashes).
+
+        The column width percentage is used to estimate how many characters
+        fit on one line, so we know when to force-break long words.
 
         Returns a mark_safe string so Django templates render the HTML.
         """
         import re as _re
+        import unicodedata as _ud
         if not text:
             return mark_safe('')
-        # Escape HTML entities first to avoid XSS
-        safe_text = html_escape(text)
-        # Very short values don't need break hints
-        if len(text) <= 6:
+
+        # ── Step 1: Strip characters unsupported by Helvetica/PDF core fonts.
+        # Keep: Basic Latin, Latin-1 Supplement, Latin Extended-A, common punct.
+        # Replace everything else (Devanagari, CJK, symbols, etc.) with a space.
+        cleaned_chars = []
+        for ch in text:
+            cp = ord(ch)
+            # Keep printable ASCII + Latin-1 Supplement + Latin Extended-A/B
+            if cp < 0x0250:
+                cleaned_chars.append(ch)
+            # Keep common currency/math symbols
+            elif _ud.category(ch) in ('Sc', 'Sm', 'So') and cp < 0x2200:
+                cleaned_chars.append(ch)
+            else:
+                # Replace unsupported chars with a space (collapse later)
+                cleaned_chars.append(' ')
+        cleaned = ''.join(cleaned_chars)
+        # Collapse multiple spaces into one
+        cleaned = _re.sub(r' {2,}', ' ', cleaned).strip()
+
+        if not cleaned:
+            return mark_safe('')
+
+        # ── Step 2: Escape HTML entities (XSS prevention)
+        safe_text = html_escape(cleaned)
+
+        # ── nowrap columns (phone, DOB, Aadhaar, etc.): skip break injection
+        if nowrap:
             return mark_safe(safe_text)
 
-        def _is_phone_like(token):
-            """Check if a token is primarily digits (phone, Aadhar, etc.)."""
-            if not token:
-                return False
-            digits = sum(1 for c in token if c.isdigit())
-            return digits >= len(token) * 0.6 and digits >= 4
+        # ── Step 3: Estimate chars-per-line from column width.
+        # Landscape A4 content width ≈ 28.7cm.  At 7.5pt bold Helvetica,
+        # one uppercase char ≈ 0.14cm.
+        if col_width_pct > 0:
+            col_cm = (col_width_pct / 100) * 28.7
+            usable_cm = col_cm - 0.15  # subtract ~1px+1px padding + border
+            chars_per_line = max(3, int(usable_cm / 0.14))
+        else:
+            chars_per_line = 18  # conservative default
 
-        def _insert_breaks_in_word(word):
-            """Insert break opportunities in a single long word.
-            Word is already HTML-escaped at this point.
-            """
-            if len(word) <= 6:
-                return word
-            if _is_phone_like(word):
-                # Phone/numeric: insert break every 5 chars
-                parts = []
-                for i in range(0, len(word), 5):
-                    parts.append(word[i:i+5])
-                return '&#8203;'.join(parts)
-            # Long word: insert break near the middle
-            mid = len(word) // 2
-            return word[:mid] + '&#8203;' + word[mid:]
+        # ── Step 4: Force-break long unbreakable runs.
+        # Split on whitespace tokens, inject &#8203; (zero-width space)
+        # inside any "word" longer than chars_per_line so the PDF engine
+        # can wrap it.  For numbers/dates keep them whole if they fit.
+        ZWSP = '&#8203;'
+        parts = safe_text.split(' ')
+        wrapped_parts = []
+        for part in parts:
+            # Strip any stale <wbr> tags from the part
+            raw = part.replace('<wbr>', '').replace('&amp;', '&')
+            visible_len = len(html_escape(raw)) if '&' in part else len(part)
+            if visible_len > chars_per_line:
+                # Force-break: insert ZWSP every chars_per_line characters
+                out = []
+                count = 0
+                i = 0
+                while i < len(part):
+                    # Skip over HTML entities (e.g. &amp;)
+                    if part[i] == '&':
+                        end = part.find(';', i)
+                        if end != -1:
+                            out.append(part[i:end+1])
+                            count += 1
+                            i = end + 1
+                            if count >= chars_per_line:
+                                out.append(ZWSP)
+                                count = 0
+                            continue
+                    out.append(part[i])
+                    count += 1
+                    if count >= chars_per_line:
+                        out.append(ZWSP)
+                        count = 0
+                    i += 1
+                wrapped_parts.append(''.join(out))
+            else:
+                wrapped_parts.append(part)
 
-        # Split by spaces first, then process each token
-        tokens = safe_text.split(' ')
-        processed = []
-        for token in tokens:
-            if not token:
-                processed.append('')
-                continue
-            # Handle tokens with natural break chars (commas, slashes, etc.)
-            # Split on natural boundaries and process sub-parts
-            sub_parts = _re.split(r'([,/;:\-])', token)
-            result_parts = []
-            for sp in sub_parts:
-                if sp in (',', '/', ';', ':', '-'):
-                    result_parts.append(sp + '&#8203;')
-                elif len(sp) > 6:
-                    result_parts.append(_insert_breaks_in_word(sp))
-                else:
-                    result_parts.append(sp)
-            processed.append(''.join(result_parts))
+        safe_text = (' ' + ZWSP).join(wrapped_parts)
 
-        # Join words with space + zero-width space (break opportunity after space)
-        return mark_safe(' &#8203;'.join(processed))
+        # ── Step 5: Insert <wbr> at natural break characters: , / ; :
+        safe_text = _re.sub(r'([,/;:])', r'\1<wbr>', safe_text)
+
+        return mark_safe(safe_text)
 
     def _build_rows(
         self,
@@ -673,7 +706,11 @@ class PdfExporter:
                         cell['is_placeholder'] = True
                 else:
                     formatted = format_field_value(val, uppercase=True)
-                    cell['content'] = self._wrap_text_for_pdf(formatted)
+                    # Pass column width so wrapping can estimate chars-per-line
+                    col_cfg_idx = field_idx + 1  # +1 because configs[0] = Sr No
+                    col_w = column_configs[col_cfg_idx]['width'] if column_configs and col_cfg_idx < len(column_configs) else 0
+                    is_nowrap = column_configs[col_cfg_idx].get('nowrap', False) if column_configs and col_cfg_idx < len(column_configs) else False
+                    cell['content'] = self._wrap_text_for_pdf(formatted, nowrap=is_nowrap, col_width_pct=col_w)
 
                 row_cells.append(cell)
 

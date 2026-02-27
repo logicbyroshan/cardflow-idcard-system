@@ -30,8 +30,7 @@ def update_existing_clients(apps, schema_editor):
     ]
     update_kwargs = {field: True for field in fields_to_enable}
     count = Client.objects.update(**update_kwargs)
-    if count:
-        print(f"\n  Updated {count} existing client(s) with new permission defaults.")
+    # Note: migration output is intentionally silent; check via Django admin if needed.
 
 
 def reverse_update(apps, schema_editor):

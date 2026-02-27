@@ -255,18 +255,14 @@ PERMISSIONS_POLICY = 'camera=(), microphone=(), geolocation=(), payment=(), usb=
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 # =============================================================================
 
+# Password validation relaxed: passwords can be simple (e.g., mobile numbers).
+# Only enforce minimum length of 8 characters.
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        'OPTIONS': {
+            'min_length': 8,
+        }
     },
 ]
 
@@ -364,14 +360,13 @@ else:
         }
     }
 
-# Warn operators if production is using per-process LocMemCache
+# CRITICAL: Block production from running with per-process LocMemCache.
+# Rate limiting, OTP storage, and export locks are silently broken without Redis.
 if not DEBUG and CACHES['default']['BACKEND'].endswith('LocMemCache'):
-    import warnings
-    warnings.warn(
-        'LocMemCache is per-process: rate limiting and OTP storage are NOT shared '
-        'between Gunicorn workers. Set REDIS_URL in .env for production.',
-        UserWarning,
-        stacklevel=1,
+    raise ImproperlyConfigured(
+        'LocMemCache is per-process: rate limiting, OTP storage, and export locks '
+        'are NOT shared between Gunicorn workers. '
+        'Set REDIS_URL in .env for production (e.g. REDIS_URL=redis://127.0.0.1:6379/1).'
     )
 
 

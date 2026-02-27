@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import Permission
-from .models import User, Client, Staff, IDCardGroup, IDCard, IDCardTable, SystemSettings, ExportTemplate, ActivityLog, Notification, NotificationRead
+from .models import User, Client, Staff, IDCardGroup, IDCard, IDCardTable, SystemSettings, ExportTemplate, ActivityLog, Notification, NotificationRead, CropperRelease
 
 
 # Register Permission model for admin visibility (moved from deprecated client_staff app)
@@ -116,3 +116,12 @@ class NotificationReadAdmin(admin.ModelAdmin):
     list_filter = ('read_at',)
     raw_id_fields = ('user', 'notification')
     readonly_fields = ('read_at',)
+
+
+@admin.register(CropperRelease)
+class CropperReleaseAdmin(admin.ModelAdmin):
+    list_display = ('version', 'is_latest', 'download_url', 'released_at')
+    list_filter = ('is_latest',)
+    search_fields = ('version', 'changelog')
+    readonly_fields = ('released_at',)
+    list_editable = ('is_latest',)

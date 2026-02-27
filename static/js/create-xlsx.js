@@ -133,11 +133,11 @@ function initCreateWithXlsx(opts) {
     if (!file) return;
     var name = file.name.toLowerCase();
     if (!name.endsWith('.xlsx') && !name.endsWith('.xls') && !name.endsWith('.csv')) {
-      if (window.showToast) showToast('Only .xlsx, .xls, .csv files are supported.', 'error');
+      if (window.showToast) showToast('Only .xlsx, .xls, .csv files are supported.', 'warning');
       return;
     }
     if (file.size > 50 * 1024 * 1024) {
-      if (window.showToast) showToast('File must be under 50 MB.', 'error');
+      if (window.showToast) showToast('File must be under 50 MB.', 'warning');
       return;
     }
     selectedFile = file;
@@ -331,7 +331,7 @@ function initCreateWithXlsx(opts) {
           progressText.textContent = (result.data.message || 'Server busy') + ' Retrying...';
           setTimeout(attemptUpload, 5000);
         } else {
-          if (window.showToast) showToast(result.data.message || 'Failed to create table.', 'error');
+          if (window.showToast) showToast(result.data.message || 'Failed to create table.', result.data.level || 'error');
           showStep(1);
         }
       })

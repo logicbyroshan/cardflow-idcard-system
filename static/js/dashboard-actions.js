@@ -254,7 +254,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
         ApiClient.post(`/panel/api/table/${tableId}/cards/download-all/`)
         .then(data => {
-            if (data.success && data.files && data.files.length > 0) {
+            if (data.success && data.download_url) {
+                // New streaming mode: single combined ZIP on disk
+                if (typeof showToast === 'function') showToast(`Downloading ${data.filename || 'AllCards.zip'}...`, 'success');
+                const a = document.createElement('a');
+                a.href = data.download_url;
+                a.download = data.filename || 'AllCards.zip';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            } else if (data.success && data.files && data.files.length > 0) {
+                // Legacy base64 mode (backward compatibility)
                 if (typeof showToast === 'function') showToast(`Downloading ${data.total_files} file(s)...`, 'success');
                 data.files.forEach((file, i) => {
                     setTimeout(() => {

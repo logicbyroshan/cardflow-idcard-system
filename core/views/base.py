@@ -344,6 +344,10 @@ def api_global_search(request):
         user = request.user
         base_cards = IDCard.objects.select_related(
             'table', 'table__group', 'table__group__client'
+        ).only(
+            'id', 'field_data', 'status', 'photo',
+            'table__id', 'table__name', 'table__fields',
+            'table__group__id', 'table__group__client__id', 'table__group__client__name',
         ).filter(
             field_data__icontains=query
         )

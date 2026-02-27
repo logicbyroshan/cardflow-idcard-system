@@ -64,31 +64,65 @@
             'box-shadow:0 4px 20px rgba(0,0,0,.25);font-size:13px;opacity:0;transform:translateY(10px);' +
             'transition:opacity .25s,transform .25s;';
 
-        el.innerHTML =
-            '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">' +
-            '  <i class="fa-solid fa-spinner fa-spin" style="font-size:16px;flex-shrink:0;"></i>' +
-            '  <span class="dl-toast-name" style="flex:1;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' +
-                 _escHtml(name) +
-            '  </span>' +
-            '  <span class="dl-toast-pct" style="min-width:40px;text-align:right;font-weight:700;font-size:14px;">0%</span>' +
-            '  <button class="dl-toast-cancel" title="Cancel" style="background:rgba(255,255,255,.2);border:none;' +
-            '    color:#fff;width:24px;height:24px;border-radius:50%;cursor:pointer;display:flex;' +
-            '    align-items:center;justify-content:center;flex-shrink:0;font-size:12px;transition:background .15s;"' +
-            '    onmouseenter="this.style.background=\'rgba(255,255,255,.35)\'"' +
-            '    onmouseleave="this.style.background=\'rgba(255,255,255,.2)\'">' +
-            '    <i class="fa-solid fa-xmark"></i>' +
-            '  </button>' +
-            '</div>' +
-            '<div style="display:flex;align-items:center;gap:8px;">' +
-            '  <div class="dl-toast-bar-bg" style="flex:1;background:rgba(255,255,255,.25);border-radius:3px;height:6px;overflow:hidden;">' +
-            '    <div class="dl-toast-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#fff,#fffc);' +
-            '      border-radius:3px;transition:width .2s;box-shadow:0 0 6px rgba(255,255,255,.4);"></div>' +
-            '  </div>' +
-            '  <span class="dl-toast-eta" style="font-size:11px;opacity:.7;min-width:48px;text-align:right;">--</span>' +
-            '</div>';
+        // Build toast DOM safely (no innerHTML with dynamic data)
+        var topRow = document.createElement('div');
+        topRow.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:6px;';
+
+        var spinner = document.createElement('i');
+        spinner.className = 'fa-solid fa-spinner fa-spin';
+        spinner.style.cssText = 'font-size:16px;flex-shrink:0;';
+        topRow.appendChild(spinner);
+
+        var nameSpan = document.createElement('span');
+        nameSpan.className = 'dl-toast-name';
+        nameSpan.style.cssText = 'flex:1;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+        nameSpan.textContent = name;
+        topRow.appendChild(nameSpan);
+
+        var pctSpan = document.createElement('span');
+        pctSpan.className = 'dl-toast-pct';
+        pctSpan.style.cssText = 'min-width:40px;text-align:right;font-weight:700;font-size:14px;';
+        pctSpan.textContent = '0%';
+        topRow.appendChild(pctSpan);
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.className = 'dl-toast-cancel';
+        cancelBtn.title = 'Cancel';
+        cancelBtn.style.cssText = 'background:rgba(255,255,255,.2);border:none;color:#fff;width:24px;height:24px;' +
+            'border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;' +
+            'flex-shrink:0;font-size:12px;transition:background .15s;';
+        var cancelIcon = document.createElement('i');
+        cancelIcon.className = 'fa-solid fa-xmark';
+        cancelBtn.appendChild(cancelIcon);
+        cancelBtn.addEventListener('mouseenter', function () { this.style.background = 'rgba(255,255,255,.35)'; });
+        cancelBtn.addEventListener('mouseleave', function () { this.style.background = 'rgba(255,255,255,.2)'; });
+        topRow.appendChild(cancelBtn);
+
+        el.appendChild(topRow);
+
+        var bottomRow = document.createElement('div');
+        bottomRow.style.cssText = 'display:flex;align-items:center;gap:8px;';
+
+        var barBg = document.createElement('div');
+        barBg.className = 'dl-toast-bar-bg';
+        barBg.style.cssText = 'flex:1;background:rgba(255,255,255,.25);border-radius:3px;height:6px;overflow:hidden;';
+
+        var bar = document.createElement('div');
+        bar.className = 'dl-toast-bar';
+        bar.style.cssText = 'height:100%;width:0%;background:linear-gradient(90deg,#fff,#fffc);' +
+            'border-radius:3px;transition:width .2s;box-shadow:0 0 6px rgba(255,255,255,.4);';
+        barBg.appendChild(bar);
+        bottomRow.appendChild(barBg);
+
+        var eta = document.createElement('span');
+        eta.className = 'dl-toast-eta';
+        eta.style.cssText = 'font-size:11px;opacity:.7;min-width:48px;text-align:right;';
+        eta.textContent = '--';
+        bottomRow.appendChild(eta);
+
+        el.appendChild(bottomRow);
 
         // Wire cancel button
-        var cancelBtn = el.querySelector('.dl-toast-cancel');
         cancelBtn.addEventListener('click', function (e) {
             e.stopPropagation();
             _cancel(id);

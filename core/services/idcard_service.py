@@ -37,7 +37,7 @@ class IDCardService(BaseService):
     - Bulk operations
     """
     
-    MAX_FIELDS_PER_TABLE = 20
+    MAX_FIELDS_PER_TABLE = 30
     VALID_FIELD_TYPES = ['text', 'number', 'date', 'email', 'image', 'textarea', 'class', 'section',
                          'photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature']
     VALID_STATUSES = ['pending', 'verified', 'pool', 'approved', 'download', 'reprint']

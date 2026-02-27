@@ -8,7 +8,6 @@ This also keeps the engine API key server-side.
 
 Public surface:
     api_engine_status(request)          GET  → engine /status + /health
-    api_engine_process_zip(request)     POST → engine /process-zip
     api_engine_process_folder(request)  POST → engine /process-folder
     api_engine_preview(request)         GET  → list cropped images in a folder
     api_engine_serve_image(request)     GET  → serve a single image file
@@ -30,7 +29,7 @@ logger = logging.getLogger(__name__)
 # ── Engine connection constants ──────────────────────────────────────────
 ENGINE_BASE = "http://127.0.0.1:4765"
 ENGINE_API_KEY = "passport-engine-local-key"
-ENGINE_TIMEOUT = 300  # seconds — large ZIPs need time
+ENGINE_TIMEOUT = 600  # seconds — large batch folders need time
 
 
 def _engine_headers():
@@ -91,69 +90,6 @@ def api_engine_status(request):
             "connected": False,
             "error": str(exc),
         })
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-#  POST  /api/engine/process-zip/
-# ═══════════════════════════════════════════════════════════════════════════
-@login_required
-@require_any_admin
-@require_POST
-def api_engine_process_zip(request):
-    """
-    Proxy POST → engine /process-zip.
-    Expects a multipart file upload with key 'file'.
-    Optionally accepts 'output_folder' — if provided, an original_path
-    is synthesised so the engine saves output beside that location.
-    """
-    uploaded = request.FILES.get("file")
-    if not uploaded:
-        return JsonResponse({"success": False, "message": "No file uploaded."}, status=400)
-
-    if not uploaded.name.lower().endswith(".zip"):
-        return JsonResponse({"success": False, "message": "Only .zip files are accepted."}, status=400)
-
-    # Build the form data to send to the engine.
-    form_data = {}
-    output_folder = request.POST.get("output_folder", "").strip()
-    if output_folder:
-        # Synthesise original_path = output_folder / <zip_stem>.zip
-        # so engine creates <zip_stem>_cropped inside output_folder.
-        zip_stem = Path(uploaded.name).stem
-        form_data["original_path"] = str(Path(output_folder) / f"{zip_stem}.zip")
-
-    try:
-        resp = http_client.post(
-            f"{ENGINE_BASE}/process-zip",
-            headers=_engine_headers(),
-            files={"file": (uploaded.name, uploaded.read(), uploaded.content_type or "application/zip")},
-            data=form_data,
-            timeout=ENGINE_TIMEOUT,
-        )
-        resp.raise_for_status()
-        return JsonResponse({"success": True, **resp.json()})
-
-    except http_client.ConnectionError:
-        return JsonResponse({
-            "success": False,
-            "message": "Cannot connect to PassportEngine. Is the service running?",
-        }, status=502)
-    except http_client.Timeout:
-        return JsonResponse({
-            "success": False,
-            "message": "Engine processing timed out.",
-        }, status=504)
-    except http_client.HTTPError as exc:
-        body = {}
-        try:
-            body = exc.response.json()
-        except Exception:
-            pass
-        msg = body.get("message") or body.get("detail") or f"Engine error {exc.response.status_code}"
-        return JsonResponse({"success": False, "message": msg}, status=exc.response.status_code)
-    except Exception as exc:
-        logger.exception("process-zip proxy error")
-        return JsonResponse({"success": False, "message": str(exc)}, status=500)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -223,12 +159,24 @@ def api_engine_preview(request):
     Return a JSON list of image filenames inside a local folder.
     Query param: ?folder=C:\\path\\to\\folder
     Used to populate the preview grid after processing.
+    Security: folder must be under MEDIA_ROOT.
     """
+    from django.conf import settings
+
     folder = request.GET.get("folder", "").strip()
     if not folder:
         return JsonResponse({"files": []})
 
-    folder_path = Path(folder)
+    folder_path = Path(folder).resolve()
+    media_root = Path(settings.MEDIA_ROOT).resolve()
+
+    # Path-traversal guard: only allow listing inside MEDIA_ROOT
+    try:
+        folder_path.relative_to(media_root)
+    except ValueError:
+        logger.warning("Path traversal attempt blocked (preview): %s", folder)
+        return JsonResponse({"files": [], "error": "Invalid folder path"}, status=403)
+
     if not folder_path.is_dir():
         return JsonResponse({"files": []})
 
@@ -249,13 +197,24 @@ def api_engine_serve_image(request):
     """
     Serve a single image file from the local filesystem.
     Query param: ?path=C:\\path\\to\\image.jpg
-    Security: only serves files with image extensions.
+    Security: only serves files with image extensions and under MEDIA_ROOT.
     """
+    from django.conf import settings
+
     file_path = request.GET.get("path", "").strip()
     if not file_path:
         return JsonResponse({"error": "path parameter required"}, status=400)
 
-    path = Path(file_path)
+    path = Path(file_path).resolve()
+    media_root = Path(settings.MEDIA_ROOT).resolve()
+
+    # Path-traversal guard: only serve files under MEDIA_ROOT
+    try:
+        path.relative_to(media_root)
+    except ValueError:
+        logger.warning("Path traversal attempt blocked (serve-image): %s", file_path)
+        return JsonResponse({"error": "Access denied"}, status=403)
+
     if not path.is_file():
         return JsonResponse({"error": "File not found"}, status=404)
 
@@ -263,4 +222,5 @@ def api_engine_serve_image(request):
         return JsonResponse({"error": "Not an image file"}, status=400)
 
     content_type = mimetypes.guess_type(str(path))[0] or "application/octet-stream"
+    # FileResponse manages the file handle lifecycle properly
     return FileResponse(open(path, "rb"), content_type=content_type)

@@ -164,7 +164,7 @@ function initReuploadHandlers() {
                 reuploadActionsFileInput.files = e.dataTransfer.files;
                 reuploadActionsFileInput.dispatchEvent(new Event('change'));
             } else {
-                if (typeof showToast === 'function') showToast('Only ZIP files are allowed', false);
+                if (typeof showToast === 'function') showToast('Only ZIP files are allowed', 'warning');
             }
         });
     }
@@ -175,7 +175,7 @@ function initReuploadHandlers() {
             if (this.files.length) {
                 const file = this.files[0];
                 if (!file.name.toLowerCase().endsWith('.zip')) {
-                    if (typeof showToast === 'function') showToast('Only ZIP files are allowed', false);
+                    if (typeof showToast === 'function') showToast('Only ZIP files are allowed', 'warning');
                     this.value = '';
                     if (reuploadActionsFileName) reuploadActionsFileName.textContent = 'Click or drag & drop a ZIP file';
                     if (reuploadActionsConfirmBtn) {
@@ -269,13 +269,13 @@ function initReuploadHandlers() {
                                 retryXhr.send(formData);
                             }, 5000);
                         } else {
-                            if (typeof showToast === 'function') showToast('Server is busy. Please try again in a minute.', false);
+                            if (typeof showToast === 'function') showToast('Server is busy. Please try again in a minute.', 'warning');
                             reuploadActionsConfirmBtn.disabled = false;
                             reuploadActionsConfirmBtn.textContent = 'Upload & Match';
                         }
                     } else {
                         if (reuploadActionsStatus) reuploadActionsStatus.textContent = result.message || 'Failed';
-                        if (typeof showToast === 'function') showToast(result.message || 'Reupload failed', false);
+                        if (typeof showToast === 'function') showToast(result.message || 'Reupload failed', result.level || false);
                         reuploadActionsConfirmBtn.disabled = false;
                         reuploadActionsConfirmBtn.textContent = 'Upload & Match';
                     }
@@ -287,7 +287,7 @@ function initReuploadHandlers() {
                     else if (xhr.status === 500) errMsg = 'Server error during reupload. Please try again.';
                     else if (xhr.status === 0) errMsg = 'Connection lost. Check your internet and try again.';
                     else errMsg = 'Error processing response (HTTP ' + xhr.status + ')';
-                    if (typeof showToast === 'function') showToast(errMsg, false);
+                    if (typeof showToast === 'function') showToast(errMsg, (xhr.status === 413 || xhr.status === 502 || xhr.status === 504) ? 'warning' : false);
                     reuploadActionsConfirmBtn.disabled = false;
                     reuploadActionsConfirmBtn.textContent = 'Upload & Match';
                 }
@@ -320,7 +320,7 @@ function initReuploadHandlers() {
             };
 
             xhr.ontimeout = function() {
-                if (typeof showToast === 'function') showToast('Reupload timed out — the server took too long. Please try with a smaller ZIP.', false);
+                if (typeof showToast === 'function') showToast('Reupload timed out — the server took too long. Please try with a smaller ZIP.', 'warning');
                 reuploadActionsConfirmBtn.disabled = false;
                 reuploadActionsConfirmBtn.textContent = 'Upload & Match';
                 if (reuploadActionsProgress) reuploadActionsProgress.style.display = 'none';

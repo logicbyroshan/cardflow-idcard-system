@@ -63,6 +63,7 @@ def rate_limit(max_requests=5, window_seconds=60, key_prefix='rl'):
                 logger.warning('Rate limit hit: %s from %s', view_func.__name__, ip)
                 return JsonResponse({
                     'success': False,
+                    'level': 'warning',
                     'message': 'Too many requests. Please try again later.',
                 }, status=429)
             return view_func(request, *args, **kwargs)

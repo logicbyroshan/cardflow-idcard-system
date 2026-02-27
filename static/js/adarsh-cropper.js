@@ -1,30 +1,22 @@
 /**
- * Adarsh Cropper — Alpine.js Component
- * ─────────────────────────────────────
- * Connects directly to the local PassportEngine service running on the
- * user's machine at http://127.0.0.1:4765.  Falls back to Django proxy
- * endpoints when running on localhost (dev mode).
+ * Adarsh Cropper — Alpine.js Component  v5.0.0
+ * ──────────────────────────────────────────────
+ * Folder-only processing.  No ZIP upload.
  *
- * Direct engine routes:
- *   GET  http://127.0.0.1:4765/status          → engine status
- *   GET  http://127.0.0.1:4765/health          → engine health probe
- *   POST http://127.0.0.1:4765/process-zip     → process ZIP
- *   POST http://127.0.0.1:4765/process-folder  → process folder
- *
- * Fallback Django proxy routes (dev only):
- *   GET  /panel/api/engine/status/
- *   POST /panel/api/engine/process-zip/
- *   POST /panel/api/engine/process-folder/
- *   GET  /panel/api/engine/preview/
- *   GET  /panel/api/engine/serve-image/
+ * Features:
+ *   - Direct engine connection at http://127.0.0.1:4765 (fallback: Django proxy)
+ *   - Keepalive polling every 30 s — auto-reconnects if engine restarts
+ *   - Donut chart showing cropped vs failed counts
+ *   - Image preview grid always available after processing
  *
  * @module adarsh-cropper
- * @version 4.0.0
+ * @version 5.0.0
  */
 
 // ── Engine connection constants ──────────────────────────────────────────
 var ENGINE_DIRECT_URL = 'http://127.0.0.1:4765';
 var ENGINE_API_KEY    = 'passport-engine-local-key';
+var KEEPALIVE_MS      = 30000;  // poll engine status every 30 s
 
 function cropperApp() {
   return {
@@ -36,16 +28,12 @@ function cropperApp() {
       version: '',
       uptime: '',
       memory: '',
-      direct: false,  // true when connected directly to local engine
-      url: '',         // base URL when direct-connected
+      direct: false,
+      url: '',
     },
 
     // ── UI state ──
-    mode: 'zip',          // 'zip' | 'folder'
-    file: null,           // selected File object
     folderPath: '',
-    outputFolder: '',     // where to save cropped (ZIP mode)
-    dragOver: false,
     processing: false,
 
     // ── Progress ──
@@ -67,13 +55,14 @@ function cropperApp() {
       outputFolder: '',
       failedFolder: '',
       errors: [],
+      errorsExpanded: false,
     },
 
     // ── Preview ──
     preview: {
       visible: false,
       loading: false,
-      images: [],     // [{name, url}]
+      images: [],
       folder: '',
     },
 
@@ -86,18 +75,28 @@ function cropperApp() {
 
     // ── Internal ──
     _progressTimer: null,
+    _keepaliveId: null,
+
+    // ── Update state ──
+    update: {
+      available: false,
+      version: '',
+      downloadUrl: '',
+      changelog: '',
+    },
 
     // ══════════════════════════════════════════════════════════════════
     //  INIT
     // ══════════════════════════════════════════════════════════════════
     init() {
       this._checkEngineWithRetry();
+      // Start keepalive polling — silently re-checks every 30 s
+      this._keepaliveId = setInterval(() => { this._keepalivePoll(); }, KEEPALIVE_MS);
     },
 
     /**
-     * Retry engine detection up to 3 times (1s apart) so a hard-refresh
-     * doesn't falsely show "not installed" when the engine is just slow
-     * to respond.
+     * Retry engine detection up to 3 times (1.5 s apart) so a hard-refresh
+     * doesn't falsely show "not detected" when the engine is slow to respond.
      */
     async _checkEngineWithRetry(attempt) {
       attempt = attempt || 1;
@@ -107,6 +106,52 @@ function cropperApp() {
         console.log('[Cropper] Engine not detected, retry ' + attempt + '/' + MAX_RETRIES + '…');
         await new Promise(function (r) { setTimeout(r, 1500); });
         await this._checkEngineWithRetry(attempt + 1);
+      }
+    },
+
+    // ══════════════════════════════════════════════════════════════════
+    //  KEEPALIVE POLLING — detect disconnect / reconnect silently
+    // ══════════════════════════════════════════════════════════════════
+    async _keepalivePoll() {
+      // Don't poll while processing (engine is busy)
+      if (this.processing) return;
+      var wasConnected = this.engine.connected;
+
+      try {
+        var controller = new AbortController();
+        var timer = setTimeout(function () { controller.abort(); }, 4000);
+        var resp = await fetch(ENGINE_DIRECT_URL + '/status', { signal: controller.signal });
+        clearTimeout(timer);
+
+        if (resp.ok) {
+          var data = await resp.json();
+          if (!this.engine.connected) {
+            // Reconnected — refresh full engine info
+            console.log('[Cropper] Engine reconnected');
+            await this.checkEngine();
+          }
+          return;
+        }
+      } catch (_) { /* direct failed */ }
+
+      // Try proxy fallback
+      try {
+        var data = await ApiClient.get('/panel/api/engine/status/');
+        if (data && data.connected) {
+          if (!this.engine.connected) {
+            console.log('[Cropper] Engine reconnected via proxy');
+            await this.checkEngine();
+          }
+          return;
+        }
+      } catch (_) { /* proxy failed too */ }
+
+      // Engine went offline
+      if (wasConnected) {
+        console.warn('[Cropper] Engine disconnected — will auto-reconnect when available');
+        this.engine.connected = false;
+        this.engine.checked = true;
+        this._broadcastEngineState();
       }
     },
 
@@ -144,15 +189,7 @@ function cropperApp() {
           this.engine.direct = true;
           this.engine.url = ENGINE_DIRECT_URL;
           this.engine.version = healthData.version || statusData.version || '?';
-
-          var secs = healthData.uptime_seconds || 0;
-          if (secs >= 3600) {
-            this.engine.uptime = Math.floor(secs / 3600) + 'h ' + Math.floor((secs % 3600) / 60) + 'm';
-          } else if (secs > 0) {
-            this.engine.uptime = Math.floor(secs / 60) + 'm ' + Math.floor(secs % 60) + 's';
-          } else {
-            this.engine.uptime = '';
-          }
+          this._parseUptime(healthData.uptime_seconds || 0);
           this.engine.memory = healthData.memory_usage_mb != null
             ? String(healthData.memory_usage_mb)
             : '';
@@ -160,19 +197,14 @@ function cropperApp() {
           this.engine.loading = false;
           this.engine.checked = true;
           console.log('[Cropper] Connected directly to local engine v' + this.engine.version);
-
-          // Broadcast state to topbar badge (separate x-data scope)
           this._broadcastEngineState();
-
-          // Fetch engine config for default output directory
-          this._fetchEngineConfig();
           return;
         }
       } catch (_directErr) {
-        // Direct connection failed — try Django proxy
+        // Direct failed — try Django proxy
       }
 
-      // ── Attempt 2: Django proxy (works on localhost dev) ──────────
+      // ── Attempt 2: Django proxy ───────────────────────────────────
       try {
         var data = await ApiClient.get('/panel/api/engine/status/');
 
@@ -183,15 +215,7 @@ function cropperApp() {
           this.engine.connected = true;
           this.engine.direct = false;
           this.engine.version = health.version || status.version || '?';
-
-          var secs = health.uptime_seconds || 0;
-          if (secs >= 3600) {
-            this.engine.uptime = Math.floor(secs / 3600) + 'h ' + Math.floor((secs % 3600) / 60) + 'm';
-          } else if (secs > 0) {
-            this.engine.uptime = Math.floor(secs / 60) + 'm ' + Math.floor(secs % 60) + 's';
-          } else {
-            this.engine.uptime = '';
-          }
+          this._parseUptime(health.uptime_seconds || 0);
           this.engine.memory = health.memory_usage_mb != null
             ? String(health.memory_usage_mb)
             : '';
@@ -206,10 +230,16 @@ function cropperApp() {
       }
     },
 
-    /**
-     * Dispatch engine state to the topbar badge (which lives in a
-     * separate x-data scope outside this component).
-     */
+    _parseUptime(secs) {
+      if (secs >= 3600) {
+        this.engine.uptime = Math.floor(secs / 3600) + 'h ' + Math.floor((secs % 3600) / 60) + 'm';
+      } else if (secs > 0) {
+        this.engine.uptime = Math.floor(secs / 60) + 'm ' + Math.floor(secs % 60) + 's';
+      } else {
+        this.engine.uptime = '';
+      }
+    },
+
     _broadcastEngineState() {
       window.dispatchEvent(new CustomEvent('engine-state', {
         detail: {
@@ -219,72 +249,54 @@ function cropperApp() {
           version: this.engine.version,
         },
       }));
+      // Check for updates once engine version is known
+      if (this.engine.connected && this.engine.version) {
+        this._checkForUpdates();
+      }
     },
 
     // ══════════════════════════════════════════════════════════════════
-    //  ENGINE CONFIG — fetch default output directory
+    //  AUTO-UPDATE CHECK — compare installed version vs latest release
     // ══════════════════════════════════════════════════════════════════
-    async _fetchEngineConfig() {
+    async _checkForUpdates() {
       try {
-        var url = this.engine.direct
-          ? ENGINE_DIRECT_URL + '/config'
-          : '/panel/api/engine/config/';
-        var resp = this.engine.direct
-          ? await fetch(url, { headers: { 'X-ENGINE-KEY': ENGINE_API_KEY } })
-          : null;
-        var data = this.engine.direct
-          ? await resp.json()
-          : await ApiClient.get(url);
-
-        if (data && data.default_output_dir && !this.outputFolder) {
-          this.outputFolder = data.default_output_dir;
-        }
-      } catch (_e) {
-        // Config fetch is optional — ignore errors
-      }
-    },
-
-    // ══════════════════════════════════════════════════════════════════
-    //  FILE HANDLING
-    // ══════════════════════════════════════════════════════════════════
-    handleDrop(event) {
-      this.dragOver = false;
-      var files = event.dataTransfer.files;
-      if (!files || files.length === 0) return;
-
-      var f = files[0];
-      if (!f.name.toLowerCase().endsWith('.zip')) {
-        this._showError('Invalid File', 'Only .zip files are accepted.');
-        return;
-      }
-      this.file = f;
-    },
-
-    handleFileSelect(event) {
-      var input = event.target;
-      if (input.files && input.files[0]) {
-        var f = input.files[0];
-        if (!f.name.toLowerCase().endsWith('.zip')) {
-          this._showError('Invalid File', 'Only .zip files are accepted.');
-          input.value = '';
+        var data = await ApiClient.get('/panel/api/cropper/latest-version/');
+        if (!data || !data.available) {
+          this.update.available = false;
           return;
         }
-        this.file = f;
+
+        var installedVersion = this.engine.version || '0.0.0';
+        var latestVersion = data.version || '0.0.0';
+
+        if (this._semverCompare(latestVersion, installedVersion) > 0) {
+          this.update.available = true;
+          this.update.version = latestVersion;
+          this.update.downloadUrl = data.download_url || '';
+          this.update.changelog = data.changelog || '';
+          console.log('[Cropper] Update available: v' + latestVersion + ' (installed: v' + installedVersion + ')');
+        } else {
+          this.update.available = false;
+        }
+      } catch (err) {
+        console.warn('[Cropper] Update check failed:', err);
+        // Silently ignore — update check is non-critical
       }
     },
 
-    clearFile() {
-      this.file = null;
-      // Reset file input
-      var input = this.$refs.fileInput;
-      if (input) input.value = '';
-    },
-
-    formatSize(bytes) {
-      if (!bytes) return '';
-      if (bytes < 1024) return bytes + ' B';
-      if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-      return (bytes / 1048576).toFixed(1) + ' MB';
+    /**
+     * Compare two semver strings (e.g. "3.0.1" vs "3.0.0").
+     * Returns: >0 if a > b, <0 if a < b, 0 if equal.
+     */
+    _semverCompare(a, b) {
+      var pa = (a || '0.0.0').split('.').map(Number);
+      var pb = (b || '0.0.0').split('.').map(Number);
+      for (var i = 0; i < 3; i++) {
+        var va = pa[i] || 0;
+        var vb = pb[i] || 0;
+        if (va !== vb) return va - vb;
+      }
+      return 0;
     },
 
     // ══════════════════════════════════════════════════════════════════
@@ -311,7 +323,6 @@ function cropperApp() {
     },
 
     _startProgressSimulation() {
-      // Gradually increase progress while waiting for server
       this._progressTimer = setInterval(() => {
         if (this.progress.percent < 85) {
           this._updateProgress(
@@ -323,91 +334,7 @@ function cropperApp() {
     },
 
     // ══════════════════════════════════════════════════════════════════
-    //  PROCESS ZIP — direct engine or Django proxy
-    // ══════════════════════════════════════════════════════════════════
-    async processZip() {
-      if (!this.file || this.processing) return;
-      this.processing = true;
-      this.result.visible = false;
-      this.preview.visible = false;
-      this.error.visible = false;
-      this._showProgress('Processing…');
-
-      try {
-        this._updateProgress(10, 'Uploading ZIP file…');
-
-        var formData = new FormData();
-        formData.append('file', this.file);
-
-        // Pass output folder if user specified one
-        var outFolder = this.outputFolder.trim();
-        if (outFolder) {
-          formData.append('output_folder', outFolder);
-          // For direct engine: synthesise original_path
-          var zipStem = this.file.name.replace(/\.zip$/i, '');
-          formData.append('original_path', outFolder + '\\' + zipStem + '.zip');
-        }
-
-        this._updateProgress(30, 'Sending to engine…');
-        this._startProgressSimulation();
-
-        var data;
-
-        if (this.engine.direct) {
-          // ── Direct to local engine ────────────────────────────────
-          var zipController = new AbortController();
-          // 30-minute timeout for large ZIP uploads + processing
-          var zipTimer = setTimeout(function () { zipController.abort(); }, 1800000);
-          var resp = await fetch(ENGINE_DIRECT_URL + '/process-zip', {
-            method: 'POST',
-            headers: { 'X-ENGINE-KEY': ENGINE_API_KEY },
-            body: formData,
-            signal: zipController.signal,
-          });
-          clearTimeout(zipTimer);
-          if (!resp.ok) {
-            var errBody = {};
-            try { errBody = await resp.json(); } catch (_) {}
-            throw new Error(errBody.message || errBody.detail || 'Engine error ' + resp.status);
-          }
-          data = await resp.json();
-        } else {
-          // ── Django proxy fallback ─────────────────────────────────
-          data = await ApiClient.upload(
-            '/panel/api/engine/process-zip/',
-            formData,
-            {
-              onProgress: (pct) => {
-                if (pct < 50) {
-                  this._updateProgress(pct, 'Uploading ZIP file…');
-                }
-              },
-              timeout: 300000,
-            }
-          );
-        }
-
-        this._hideProgress();
-
-        if (data && data.total != null) {
-          this._updateProgress(100, 'Complete!');
-          this._showResult(data);
-          this.clearFile();
-          if (typeof Toast !== 'undefined') Toast.success('Processing complete!');
-        } else {
-          throw new Error((data && data.message) || 'Processing failed');
-        }
-
-      } catch (err) {
-        this._hideProgress();
-        this._handleProcessError(err);
-      } finally {
-        this.processing = false;
-      }
-    },
-
-    // ══════════════════════════════════════════════════════════════════
-    //  PROCESS FOLDER — direct engine or Django proxy
+    //  PROCESS FOLDER
     // ══════════════════════════════════════════════════════════════════
     async processFolder() {
       var path = this.folderPath.trim();
@@ -467,7 +394,7 @@ function cropperApp() {
     },
 
     // ══════════════════════════════════════════════════════════════════
-    //  RESULT DISPLAY
+    //  RESULT DISPLAY + DONUT CHART
     // ══════════════════════════════════════════════════════════════════
     _showResult(data) {
       var total   = data.total   || 0;
@@ -489,8 +416,8 @@ function cropperApp() {
 
       this.result.outputFolder = data.output_folder || '';
       this.result.failedFolder = data.failed_folder || '';
+      this.result.errorsExpanded = false;
 
-      // Collect error items
       var errs = data.errors || [];
       this.result.errors = errs.map(function (e) {
         return typeof e === 'string' ? e : (e.file || e.filename || JSON.stringify(e));
@@ -498,14 +425,88 @@ function cropperApp() {
 
       this.result.visible = true;
 
+      // Draw donut chart after DOM update
+      var self = this;
+      this.$nextTick(function () { self._drawDonutChart(success, failed); });
+
       // Auto-load preview if there are successful images
       if (success > 0 && this.result.outputFolder) {
         this._loadPreview(this.result.outputFolder);
       }
     },
 
+    /**
+     * Draw a simple donut chart on the canvas element.
+     * Pure canvas — no external chart library needed.
+     */
+    _drawDonutChart(success, failed) {
+      var canvas = this.$refs.chartCanvas;
+      if (!canvas) return;
+
+      var ctx = canvas.getContext('2d');
+      var W = canvas.width;
+      var H = canvas.height;
+      var cx = W / 2;
+      var cy = H / 2;
+      var outerR = Math.min(cx, cy) - 4;
+      var innerR = outerR * 0.62;  // donut hole
+
+      ctx.clearRect(0, 0, W, H);
+
+      var total = success + failed;
+      if (total === 0) return;
+
+      var slices = [
+        { value: success, color: '#22c55e' },  // green
+        { value: failed,  color: '#ef4444' },  // red
+      ];
+
+      var startAngle = -Math.PI / 2;  // 12 o'clock
+
+      slices.forEach(function (slice) {
+        if (slice.value === 0) return;
+        var sweep = (slice.value / total) * 2 * Math.PI;
+        var endAngle = startAngle + sweep;
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, outerR, startAngle, endAngle);
+        ctx.arc(cx, cy, innerR, endAngle, startAngle, true);
+        ctx.closePath();
+        ctx.fillStyle = slice.color;
+        ctx.fill();
+
+        startAngle = endAngle;
+      });
+
+      // Draw count labels on the slices
+      startAngle = -Math.PI / 2;
+      var midR = (outerR + innerR) / 2;
+      ctx.font = 'bold 12px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#fff';
+
+      slices.forEach(function (slice) {
+        if (slice.value === 0) return;
+        var sweep = (slice.value / total) * 2 * Math.PI;
+        var midAngle = startAngle + sweep / 2;
+        var lx = cx + midR * Math.cos(midAngle);
+        var ly = cy + midR * Math.sin(midAngle);
+        // Only draw label if slice is big enough
+        if (sweep > 0.3) {
+          ctx.fillText(String(slice.value), lx, ly);
+        }
+        startAngle += sweep;
+      });
+    },
+
+    clearResults() {
+      this.result.visible = false;
+      this.preview.visible = false;
+    },
+
     // ══════════════════════════════════════════════════════════════════
-    //  IMAGE PREVIEW
+    //  IMAGE PREVIEW — always available after processing
     // ══════════════════════════════════════════════════════════════════
     async _loadPreview(folderPath) {
       this.preview.loading = true;
@@ -516,10 +517,9 @@ function cropperApp() {
       try {
         var data;
         if (this.engine.direct) {
-          // Direct mode: engine is on the same machine — use engine's preview endpoint
           var previewUrl = this.engine.url + '/preview?folder=' + encodeURIComponent(folderPath);
           var resp = await fetch(previewUrl, {
-            headers: { 'X-ENGINE-KEY': 'passport-engine-local-key' },
+            headers: { 'X-ENGINE-KEY': ENGINE_API_KEY },
           });
           data = await resp.json();
         } else {
@@ -545,15 +545,15 @@ function cropperApp() {
             };
           });
         }
-      } catch (_e) {
-        // Preview is optional — don't show error
+      } catch (err) {
+        console.warn('[Cropper] Preview load failed:', err);
+        // Preview is optional — don't block the flow
       } finally {
         this.preview.loading = false;
       }
     },
 
-    openFolder(folderPath) {
-      // Copy path to clipboard for user convenience
+    copyPath(folderPath) {
       if (folderPath && navigator.clipboard) {
         navigator.clipboard.writeText(folderPath).then(function () {
           if (typeof Toast !== 'undefined') Toast.success('Path copied to clipboard!');
@@ -568,13 +568,14 @@ function cropperApp() {
       var title = 'Processing Error';
       var message = (err && err.message) || 'An unknown error occurred.';
 
-      // More specific messages based on error shape
       if (err && err.data && err.data.message) {
         message = err.data.message;
       }
 
       if (message.indexOf('not reachable') !== -1 || message.indexOf('Cannot connect') !== -1) {
         title = 'Engine Not Reachable';
+        // Trigger a check — engine may have gone offline mid-process
+        this.checkEngine();
       } else if (message.indexOf('Permission') !== -1 || message.indexOf('EACCES') !== -1) {
         title = 'Permission Denied';
         message = 'The engine does not have permission to access the specified path.';

@@ -66,10 +66,13 @@ urlpatterns = [
 
     # Engine Proxy APIs (browser → Django → PassportEngine, avoids CORS)
     path('api/engine/status/', views.api_engine_status, name='api_engine_status'),
-    path('api/engine/process-zip/', views.api_engine_process_zip, name='api_engine_process_zip'),
     path('api/engine/process-folder/', views.api_engine_process_folder, name='api_engine_process_folder'),
     path('api/engine/preview/', views.api_engine_preview, name='api_engine_preview'),
     path('api/engine/serve-image/', views.api_engine_serve_image, name='api_engine_serve_image'),
+
+    # Cropper Auto-Update APIs
+    path('api/cropper/release-webhook/', views.api_cropper_release_webhook, name='api_cropper_release_webhook'),
+    path('api/cropper/latest-version/', views.api_cropper_latest_version, name='api_cropper_latest_version'),
 
     # Website Management → redirect to new website admin dashboard
     path('manage-website/', views.manage_website, name='manage_website'),
