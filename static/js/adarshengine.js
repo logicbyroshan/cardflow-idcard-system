@@ -1,6 +1,6 @@
 /**
- * AdarshEngine v1 — Photo Correction Engine
- * ═══════════════════════════════════════════
+ * AdarshEngine v2 — Intelligent Passport Photo Correction Engine
+ * ═══════════════════════════════════════════════════════════════
  *
  * Professional ID-photo correction tool that runs entirely in the browser.
  * Built as a modular class for maintainability and clean lifecycle management.
@@ -10,7 +10,9 @@
  *   2. Vibrance           (Skin-safe, protects saturated colours)
  *   3. Manual Crop        (Reuses existing Cropper.js in vendor/)
  *   4. Full-resolution save pipeline
- *   5. Auto-levels placeholder (Phase 12)
+ *   5. Auto Levels        (Histogram-based intelligent auto-correction)
+ *   6. Save to /edited/   (Edited images saved to dedicated folder)
+ *   7. Future placeholders (Skin balance, background whitening, sharpness)
  *
  * Architecture:
  *   - ALL image processing happens on an HTML5 Canvas (no backend).
@@ -20,14 +22,16 @@
  *   - No CDN, no WebGL, no external dependencies — 100% offline.
  *   - Event listeners tracked for clean destroy (Phase 14).
  *   - Optional debug logging (Phase 13).
+ *   - Auto Levels analyses luminance histogram with 0.5% outlier
+ *     clipping for optimal shadow/highlight/gamma detection.
  *
  * Integration:
  *   - window.AdarshEngine.open(srcUrl, filename, onSave)
- *   - Does NOT modify existing cropper files, save endpoints, or
- *     preview logic.
+ *   - Edited images saved to /edited/ subfolder via backend endpoint.
+ *   - Does NOT modify existing cropper files or preview logic.
  *
  * @module adarshengine
- * @version 1.0.0
+ * @version 2.0.0
  */
 ;(function () {
   'use strict';
@@ -82,8 +86,14 @@
     this.onSaveCallback = null;
     this.currentFilename = '';
 
+    // ── v2: Source URL for /edited/ save routing ──────────────────
+    this.sourceUrl = '';
+
     // ── Phase 13: Debug logging ───────────────────────────────────
     this.debug = false;
+
+    // ── Production hardening: guards ──────────────────────────────
+    this._saving = false;
 
     // ── Phase 14: Tracked event listeners for clean destroy ───────
     this._listeners = [];  // Array of { el, event, handler }
@@ -102,7 +112,23 @@
   AdarshEngine.DEBOUNCE_MS = 50;
 
   /** Engine version string (Phase 16). */
-  AdarshEngine.VERSION = '1.0.0';
+  AdarshEngine.VERSION = '2.0.0';
+
+  /** JPEG export quality — studio-grade (Phase 4 hardening). */
+  AdarshEngine.EXPORT_QUALITY = 0.95;
+
+  /** Maximum image dimension for full-res export canvas. */
+  AdarshEngine.MAX_EXPORT_DIM = 8192;
+
+  /** Minimum accepted image dimension. */
+  AdarshEngine.MIN_IMAGE_DIM = 10;
+
+  /**
+   * Production mode flag.
+   * When true: suppresses all console output.
+   * Set to false during development for debug logging.
+   */
+  AdarshEngine.IS_PRODUCTION = false;
 
   // ═══════════════════════════════════════════════════════════════════
   //  PHASE 14: TRACKED EVENT LISTENER MANAGEMENT
@@ -140,15 +166,16 @@
    * @param {...*} args - Arguments forwarded to console.log.
    */
   AdarshEngine.prototype._log = function () {
-    if (!this.debug) return;
+    if (AdarshEngine.IS_PRODUCTION || !this.debug) return;
     var args = ['[AdarshEngine]'].concat(Array.prototype.slice.call(arguments));
     console.log.apply(console, args);
   };
 
   /**
-   * Log a warning (always, regardless of debug flag).
+   * Log a warning. Suppressed in production mode.
    */
   AdarshEngine.prototype._warn = function () {
+    if (AdarshEngine.IS_PRODUCTION) return;
     var args = ['[AdarshEngine]'].concat(Array.prototype.slice.call(arguments));
     console.warn.apply(console, args);
   };
@@ -189,6 +216,7 @@
     e.closeBottom   = document.getElementById('aeCloseBottom');
     e.reset         = document.getElementById('aeReset');
     e.save          = document.getElementById('aeSave');
+    e.autoFix       = document.getElementById('aeAutoFix');
     e.cropBtn       = document.getElementById('aeCropBtn');
     e.cropApply     = document.getElementById('aeCropApply');
     e.cropCancel    = document.getElementById('aeCropCancel');
@@ -238,6 +266,9 @@
     // Save (Phase 6)
     this._on(e.save, 'click', function () { self._save(); });
 
+    // Auto Fix (v2)
+    this._on(e.autoFix, 'click', function () { self.autoLevels(); });
+
     // Manual crop (Phase 5)
     this._on(e.cropBtn,    'click', function () { self._toggleCrop(); });
     this._on(e.cropApply,  'click', function () { self._applyCrop(); });
@@ -260,8 +291,20 @@
     var self = this;
     var e = this._els;
 
+    // Guard: close any existing session first
+    if (e.backdrop && e.backdrop.classList.contains('ae-open')) {
+      this.close();
+    }
+
+    // Guard: validate srcUrl
+    if (!srcUrl || typeof srcUrl !== 'string') {
+      this._warn('open() called with invalid srcUrl');
+      return;
+    }
+
     this.currentFilename = filename || 'image.jpg';
     this.onSaveCallback = onSave || null;
+    this.sourceUrl = srcUrl || '';
 
     e.filename.textContent = this.currentFilename;
     this._resetSliders();
@@ -307,10 +350,11 @@
     // Phase 14: Release memory
     this.originalImageData = null;
     this.previewScaledImage = null;
-    // Keep originalFullResolutionImage reference for potential re-open
     this.originalFullResolutionImage = null;
     this.onSaveCallback = null;
     this.currentFilename = '';
+    this.sourceUrl = '';
+    this._saving = false;
 
     // Phase 7: Cancel pending renders
     if (this.pendingRender) {
@@ -322,9 +366,11 @@
       this.debounceTimer = null;
     }
 
-    // Phase 14: Clear canvas to free GPU memory
+    // Phase 14: Clear canvas + reset dimensions to free GPU memory
     if (this.canvas && this.ctx) {
       this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      this.canvas.width = 1;
+      this.canvas.height = 1;
     }
 
     this._log('Editor closed, memory released');
@@ -346,9 +392,16 @@
       return;
     }
 
-    this.originalFullResolutionImage = imageElement;
     var w = imageElement.naturalWidth;
     var h = imageElement.naturalHeight;
+
+    // Guard: reject images below minimum dimension
+    if (w < AdarshEngine.MIN_IMAGE_DIM || h < AdarshEngine.MIN_IMAGE_DIM) {
+      this._showError('Image is too small (' + w + '×' + h + '). Minimum ' + AdarshEngine.MIN_IMAGE_DIM + 'px required.');
+      return;
+    }
+
+    this.originalFullResolutionImage = imageElement;
 
     // Phase 7: Scale down for preview if > 2000px (cap at 1200px)
     var pw = w;
@@ -394,13 +447,13 @@
   AdarshEngine.prototype._onSliderInput = function () {
     var e = this._els;
 
-    // Read raw values
-    var bp = parseInt(e.black.value, 10);
-    var wp = parseInt(e.white.value, 10);
-    var vib = parseInt(e.vibrance.value, 10);
+    // Read raw values (NaN-safe)
+    var bp = parseInt(e.black.value, 10) || 0;
+    var wp = parseInt(e.white.value, 10) || 255;
+    var vib = parseInt(e.vibrance.value, 10) || 0;
 
-    // Phase 8: Gamma slider 10–300 → 0.1–3.0. Guard against 0.
-    var rawGamma = parseInt(e.gamma.value, 10);
+    // Phase 8: Gamma slider 10–300 → 0.1–3.0. Guard against 0/NaN.
+    var rawGamma = parseInt(e.gamma.value, 10) || 100;
     if (rawGamma < 1) rawGamma = 1;  // Prevent gamma = 0
     var gamma = rawGamma / 100;
 
@@ -618,28 +671,191 @@
   };
 
   // ═══════════════════════════════════════════════════════════════════
-  //  PHASE 12: AUTO LEVELS (Placeholder — NOT implemented)
+  //  v2: AUTO LEVELS — Histogram-based intelligent correction
   // ═══════════════════════════════════════════════════════════════════
 
   /**
    * Auto-detect optimal black point, white point, and gamma by
-   * analysing the image histogram.
+   * analysing the image luminance histogram.
    *
-   * PLACEHOLDER — will be implemented in a future release.
+   * Production-hardened algorithm:
+   *   1. Build a luminance histogram (256 bins) from originalImageData.
+   *   2. Compute cumulative distribution.
+   *   3. Find shadow boundary (bottom 1% outlier clip) → black point.
+   *   4. Find highlight boundary (top 1% outlier clip) → white point.
+   *   5. Compute average luminance → derive gamma for balanced midtones.
+   *   6. Apply safety clamps: min range 30, gamma 0.5–2.0, skin-safe.
+   *   7. Update slider DOM + params, trigger render.
    *
-   * Future algorithm:
-   *   1. Build histogram for R, G, B channels.
-   *   2. Find min pixel (ignore bottom 0.5% outliers) → black point.
-   *   3. Find max pixel (ignore top 0.5% outliers) → white point.
-   *   4. Compute mean luminance → derive gamma for balanced midtones.
-   *   5. Apply values to sliders and trigger render().
+   * Designed to improve:
+   *   - Underexposed indoor photos
+   *   - Slight yellow/dull lighting
+   * Without:
+   *   - Overexposing backgrounds
+   *   - Crushing shadows
+   *   - Distorting skin colour
    */
   AdarshEngine.prototype.autoLevels = function () {
-    this._log('autoLevels() called — not yet implemented');
-    // TODO: Implement histogram analysis
-    // TODO: Set this.params.blackPoint, whitePoint, gamma
-    // TODO: Update slider DOM elements
-    // TODO: Call this.render()
+    if (!this.originalImageData) {
+      this._warn('autoLevels: No image data loaded');
+      return;
+    }
+
+    // Guard: don't run during active crop — canvas state is invalid
+    if (this.cropActive) {
+      this._warn('autoLevels: Cannot run while crop is active');
+      return;
+    }
+
+    var data = this.originalImageData.data;
+    var totalPixels = data.length / 4;
+
+    if (totalPixels < 1) return;
+
+    // ── Step 1: Build luminance histogram ────────────────────────
+    var hist = new Uint32Array(256);
+    var lumSum = 0;
+
+    for (var i = 0; i < data.length; i += 4) {
+      // ITU-R BT.601 luminance: 0.299R + 0.587G + 0.114B
+      var lum = (data[i] * 299 + data[i + 1] * 587 + data[i + 2] * 114 + 500) / 1000 | 0;
+      if (lum < 0) lum = 0;
+      if (lum > 255) lum = 255;
+      hist[lum]++;
+      lumSum += lum;
+    }
+
+    // ── Step 2: Cumulative distribution for outlier clipping ─────
+    // Using 1% clip (wider buffer than 0.5%) to prevent shadow crush
+    // and highlight washout on passport photos.
+    var clipPercent = 0.01; // 1%
+    var clipLow  = Math.floor(totalPixels * clipPercent);
+    var clipHigh = Math.floor(totalPixels * (1 - clipPercent));
+
+    var cumulative = 0;
+    var blackPoint = 0;
+    var whitePoint = 255;
+
+    // Find shadow boundary (skip bottom 1%)
+    for (var s = 0; s < 256; s++) {
+      cumulative += hist[s];
+      if (cumulative >= clipLow) {
+        blackPoint = s;
+        break;
+      }
+    }
+
+    // Find highlight boundary (skip top 1%)
+    cumulative = 0;
+    for (var h = 0; h < 256; h++) {
+      cumulative += hist[h];
+      if (cumulative >= clipHigh) {
+        whitePoint = h;
+        break;
+      }
+    }
+
+    // ── Step 3: Safety — enforce minimum range ──────────────────
+    // Minimum 30-unit range prevents over-stretch on narrow histograms
+    // (e.g., fully white backgrounds, very low contrast images).
+    if (whitePoint - blackPoint < 30) {
+      var mid = ((blackPoint + whitePoint) / 2) | 0;
+      blackPoint = Math.max(0, mid - 15);
+      whitePoint = Math.min(255, mid + 15);
+    }
+
+    // Hard ceiling: never set black above 60 (preserves shadow detail)
+    if (blackPoint > 60) blackPoint = 60;
+
+    // Hard floor: never set white below 200 (preserves highlight detail)
+    if (whitePoint < 200) whitePoint = 200;
+
+    // ── Step 4: Derive gamma from average luminance ─────────────
+    // Map the average brightness to a gamma correction.
+    // Target midpoint = 128. If avg < 128, gamma > 1 (brighten).
+    var avgLum = lumSum / totalPixels;
+    var range = whitePoint - blackPoint;
+    if (range < 1) range = 1;
+
+    // Normalise average to 0–1 within the detected range
+    var normAvg = (avgLum - blackPoint) / range;
+    if (normAvg < 0.02) normAvg = 0.02;
+    if (normAvg > 0.98) normAvg = 0.98;
+
+    // Target: midtone should map to 0.5 → solve gamma
+    // 0.5 = normAvg ^ (1/gamma) → gamma = -ln(2) / ln(normAvg)
+    var rawGamma = -Math.log(2) / Math.log(normAvg);
+
+    // Guard NaN/Infinity from edge-case log values
+    if (!isFinite(rawGamma) || isNaN(rawGamma)) rawGamma = 1.0;
+
+    // Blend: 50% calculated, 50% neutral — gentle correction
+    // preserves natural skin tones and prevents over-correction
+    var gamma = rawGamma * 0.5 + 1.0 * 0.5;
+
+    // ── Step 5: Safety clamps ───────────────────────────────────
+    // Tighter range (0.5–2.0) than v1 — prevents unnatural contrast
+    if (gamma < 0.5) gamma = 0.5;
+    if (gamma > 2.0) gamma = 2.0;
+
+    // Round for clean slider values
+    blackPoint = Math.round(blackPoint);
+    whitePoint = Math.round(whitePoint);
+    gamma = Math.round(gamma * 100) / 100;
+
+    this._log(
+      'Auto Levels: BP=' + blackPoint,
+      'WP=' + whitePoint,
+      'Gamma=' + gamma.toFixed(2),
+      'AvgLum=' + avgLum.toFixed(1)
+    );
+
+    // ── Step 6: Apply to sliders and parameters ─────────────────
+    this.params.blackPoint = blackPoint;
+    this.params.whitePoint = whitePoint;
+    this.params.gamma = gamma;
+
+    var e = this._els;
+    if (e.black) {
+      e.black.value    = blackPoint;
+      e.white.value    = whitePoint;
+      e.gamma.value    = Math.round(gamma * 100);
+
+      e.blackVal.textContent = blackPoint;
+      e.whiteVal.textContent = whitePoint;
+      e.gammaVal.textContent = gamma.toFixed(2);
+    }
+
+    // ── Step 7: Re-render with new values ───────────────────────
+    this.render();
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  v2: FUTURE PLACEHOLDERS
+  // ═══════════════════════════════════════════════════════════════════
+
+  /**
+   * Auto skin-tone balance — placeholder for future implementation.
+   * Will detect skin-tone regions and balance colour temperature.
+   */
+  AdarshEngine.prototype.autoSkinBalance = function () {
+    this._log('autoSkinBalance() — not yet implemented (future release)');
+  };
+
+  /**
+   * Background whitening — placeholder for future implementation.
+   * Will detect and whiten passport photo backgrounds.
+   */
+  AdarshEngine.prototype.backgroundWhitening = function () {
+    this._log('backgroundWhitening() — not yet implemented (future release)');
+  };
+
+  /**
+   * Sharpness enhancement — placeholder for future implementation.
+   * Will apply unsharp mask for improved detail clarity.
+   */
+  AdarshEngine.prototype.sharpnessEnhancement = function () {
+    this._log('sharpnessEnhancement() — not yet implemented (future release)');
   };
 
   // ═══════════════════════════════════════════════════════════════════
@@ -794,23 +1010,56 @@
   };
 
   // ═══════════════════════════════════════════════════════════════════
-  //  PHASE 6: SAVE — Re-apply pipeline at full resolution
+  //  PHASE 6 + v2: SAVE — Re-apply pipeline at full resolution
   // ═══════════════════════════════════════════════════════════════════
+
+  /**
+   * Extract the filesystem path from a serve-image URL.
+   * Works with both proxy URLs (/panel/api/engine/serve-image/?path=...)
+   * and direct engine URLs (/serve-image?path=...).
+   * Returns null if not a serve-image URL.
+   * @param {string} url
+   * @returns {string|null}
+   */
+  AdarshEngine.prototype._extractPathFromUrl = function (url) {
+    if (!url || typeof url !== 'string') return null;
+    try {
+      // Handle relative URLs by making them absolute
+      var fullUrl = url;
+      if (url.startsWith('/')) {
+        fullUrl = window.location.origin + url;
+      }
+      var parsed = new URL(fullUrl);
+      return parsed.searchParams.get('path') || null;
+    } catch (e) {
+      // Fallback: regex for ?path= parameter
+      var match = url.match(/[?&]path=([^&]+)/);
+      if (match) return decodeURIComponent(match[1]);
+      return null;
+    }
+  };
 
   /**
    * Save the edited image:
    *  1. Apply levels + vibrance to FULL resolution image.
-   *  2. Export full-res canvas as data URL.
-   *  3. Call onSaveCallback (replaces preview, triggers existing save).
+   *  2. Export full-res canvas as data URL (0.95 quality).
+   *  3. If source was a filesystem image, POST to /edited/ via backend.
+   *  4. Call onSaveCallback (replaces preview, triggers existing save).
    *
    * Ensures no resolution loss (Phase 6).
+   * v2: Also saves to /edited/ subfolder via backend endpoint.
+   * Production-hardened: double-save guard, dimension cap, error recovery.
    */
   AdarshEngine.prototype._save = function () {
     if (!this.originalFullResolutionImage) return;
+    if (this._saving) return; // Guard: prevent concurrent saves
+    this._saving = true;
+
     var self = this;
     var e = this._els;
 
     e.save.disabled = true;
+    e.save.classList.add('ae-saving');
     e.save.innerHTML =
       '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Saving…';
 
@@ -820,6 +1069,14 @@
         var fullImg = self.originalFullResolutionImage;
         var fw = fullImg.naturalWidth;
         var fh = fullImg.naturalHeight;
+
+        // Guard: cap export dimensions to prevent browser crash
+        if (fw > AdarshEngine.MAX_EXPORT_DIM || fh > AdarshEngine.MAX_EXPORT_DIM) {
+          var scale = AdarshEngine.MAX_EXPORT_DIM / Math.max(fw, fh);
+          fw = Math.round(fw * scale);
+          fh = Math.round(fh * scale);
+          self._log('Export capped to:', fw, '×', fh);
+        }
 
         self._log('Saving at full resolution:', fw, '×', fh);
         var t0 = self.debug ? performance.now() : 0;
@@ -840,19 +1097,29 @@
 
         offCtx.putImageData(dstData, 0, 0);
 
-        // Export as JPEG data URL (high quality)
-        var dataUrl = offscreen.toDataURL('image/jpeg', 0.92);
+        // Export as JPEG data URL (studio-grade quality)
+        var dataUrl = offscreen.toDataURL('image/jpeg', AdarshEngine.EXPORT_QUALITY);
 
         if (self.debug) {
           var dt = (performance.now() - t0).toFixed(0);
           self._log('Full-res pipeline:', dt + 'ms');
         }
 
-        // Phase 14: Clean up offscreen canvas
-        offscreen.width = 0;
-        offscreen.height = 0;
+        // Phase 14: Clean up offscreen canvas immediately
+        offscreen.width = 1;
+        offscreen.height = 1;
         offscreen = null;
         offCtx = null;
+        srcData = null;
+        dstData = null;
+
+        // ── v2: Save to /edited/ folder via backend ─────────────
+        var originalPath = self._extractPathFromUrl(self.sourceUrl);
+        if (originalPath) {
+          self._saveToEditedFolder(dataUrl, originalPath, self.currentFilename);
+        } else {
+          self._log('No filesystem path detected — skipping /edited/ save');
+        }
 
         // Phase 6: Call the callback (replaces preview + triggers save)
         if (typeof self.onSaveCallback === 'function') {
@@ -871,13 +1138,77 @@
         self._warn('Save failed:', err);
         self._showError('Save failed: ' + (err.message || 'Unknown error'));
       } finally {
+        self._saving = false;
         if (e.save) {
           e.save.disabled = false;
+          e.save.classList.remove('ae-saving');
           e.save.innerHTML =
             '<i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Save';
         }
       }
     }, 50);
+  };
+
+  /**
+   * v2: POST the edited image to the backend for /edited/ folder save.
+   * Non-blocking — errors are logged but don't prevent the callback save.
+   *
+   * @param {string} dataUrl      - The full-res JPEG data URL.
+   * @param {string} originalPath - Filesystem path of the original image.
+   * @param {string} filename     - Original filename.
+   */
+  AdarshEngine.prototype._saveToEditedFolder = function (dataUrl, originalPath, filename) {
+    var self = this;
+
+    // CSRF token for Django POST
+    var csrfToken = '';
+    var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    if (csrfMeta) {
+      csrfToken = csrfMeta.getAttribute('content');
+    } else {
+      // Fallback: read from cookie
+      var match = document.cookie.match(/csrftoken=([^;]+)/);
+      if (match) csrfToken = match[1];
+    }
+
+    var payload = {
+      image_data: dataUrl,
+      original_path: originalPath,
+      filename: filename,
+    };
+
+    self._log('Saving to /edited/ folder:', originalPath);
+
+    fetch('/panel/api/engine/save-edited/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken,
+      },
+      body: JSON.stringify(payload),
+    })
+    .then(function (resp) {
+      if (!resp.ok) {
+        self._warn('Backend save-edited HTTP', resp.status);
+        return null;
+      }
+      return resp.json().catch(function () {
+        self._warn('Backend save-edited: invalid JSON response');
+        return null;
+      });
+    })
+    .then(function (data) {
+      if (!data) return;
+      if (data.success) {
+        self._log('Saved to /edited/:', data.saved_path);
+      } else {
+        self._warn('Backend save-edited failed:', data.message);
+      }
+    })
+    .catch(function (err) {
+      // Network error — non-blocking, just log
+      self._warn('Save to /edited/ request failed:', err.message || err);
+    });
   };
 
   // ═══════════════════════════════════════════════════════════════════
@@ -950,6 +1281,8 @@
     this.previewScaledImage = null;
     this.originalImageData = null;
     this.onSaveCallback = null;
+    this.sourceUrl = '';
+    this._saving = false;
     this._els = {};
     this._bound = false;
 
@@ -1009,18 +1342,42 @@
 
     /**
      * Enable or disable debug logging (Phase 13).
+     * Ignored when IS_PRODUCTION is true.
      * @param {boolean} enabled
      */
     setDebug: function (enabled) {
+      if (AdarshEngine.IS_PRODUCTION) return;
       _getInstance().debug = !!enabled;
     },
 
     /**
-     * Auto-levels placeholder (Phase 12).
-     * Will be implemented in a future release.
+     * v2: Auto Levels — histogram-based intelligent correction.
+     * Analyses luminance histogram with 0.5% outlier clipping
+     * to find optimal black point, white point, and gamma.
      */
     autoLevels: function () {
       _getInstance().autoLevels();
+    },
+
+    /**
+     * v2: Future placeholder — auto skin-tone balance.
+     */
+    autoSkinBalance: function () {
+      _getInstance().autoSkinBalance();
+    },
+
+    /**
+     * v2: Future placeholder — background whitening.
+     */
+    backgroundWhitening: function () {
+      _getInstance().backgroundWhitening();
+    },
+
+    /**
+     * v2: Future placeholder — sharpness enhancement.
+     */
+    sharpnessEnhancement: function () {
+      _getInstance().sharpnessEnhancement();
     },
 
     /** Access the underlying class for advanced usage. */

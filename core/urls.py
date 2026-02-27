@@ -58,6 +58,7 @@ urlpatterns = [
     path('api/engine/process-folder/', views.api_engine_process_folder, name='api_engine_process_folder'),
     path('api/engine/preview/', views.api_engine_preview, name='api_engine_preview'),
     path('api/engine/serve-image/', views.api_engine_serve_image, name='api_engine_serve_image'),
+    path('api/engine/save-edited/', views.api_engine_save_edited, name='api_engine_save_edited'),
 
     # Cropper Auto-Update APIs
     path('api/cropper/release-webhook/', views.api_cropper_release_webhook, name='api_cropper_release_webhook'),

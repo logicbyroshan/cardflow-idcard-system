@@ -11,10 +11,15 @@ Public surface:
     api_engine_process_folder(request)  POST → engine /process-folder
     api_engine_preview(request)         GET  → list cropped images in a folder
     api_engine_serve_image(request)     GET  → serve a single image file
+    api_engine_save_edited(request)     POST → save edited image to /edited/ subfolder
 """
+import base64
 import json
 import logging
 import mimetypes
+import os
+import re
+import time
 from pathlib import Path
 
 import requests as http_client
@@ -224,3 +229,200 @@ def api_engine_serve_image(request):
     content_type = mimetypes.guess_type(str(path))[0] or "application/octet-stream"
     # FileResponse manages the file handle lifecycle properly
     return FileResponse(open(path, "rb"), content_type=content_type)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  POST  /api/engine/save-edited/
+#  v2: Save edited image to /edited/ subfolder (production-hardened)
+# ═══════════════════════════════════════════════════════════════════════════
+# Maximum accepted image data size (15 MB base64 ≈ ~11 MB raw image)
+_MAX_EDITED_PAYLOAD_BYTES = 15 * 1024 * 1024
+
+# Characters forbidden in Windows filenames
+_WIN_UNSAFE_RE = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
+
+
+def _sanitize_filename(name: str) -> str:
+    """
+    Sanitize a filename for safe use on Windows.
+    Strips path separators, control chars, and reserved characters.
+    Falls back to 'edited' if result is empty.
+    """
+    # Take only the basename (strip any path components)
+    name = os.path.basename(name)
+    # Remove Windows-unsafe characters
+    name = _WIN_UNSAFE_RE.sub('_', name)
+    # Strip leading/trailing dots and spaces (Windows reserved)
+    name = name.strip('. ')
+    # Fallback
+    if not name:
+        name = 'edited'
+    return name
+
+
+@login_required
+@require_any_admin
+@require_POST
+def api_engine_save_edited(request):
+    """
+    Receive an edited image (base64 data URL) and save it to an /edited/
+    subfolder adjacent to the original image's parent folder.
+
+    Expects JSON body:
+        {
+            "image_data":    "data:image/jpeg;base64,...",
+            "original_path": "C:\\path\\to\\folder\\cropped\\image.jpg",
+            "filename":      "image.jpg"
+        }
+
+    Saves to:  <parent_of_cropped>/edited/<sanitized_stem>_edited_<HHMMSSfff>.jpg
+
+    Security:
+        - original_path must be under MEDIA_ROOT.
+        - Only image data URLs are accepted.
+        - Payload size capped at 15 MB.
+        - Filename sanitized for Windows.
+        - Collision-safe millisecond timestamps.
+    """
+    from django.conf import settings
+
+    # ── Size guard ───────────────────────────────────────────────────
+    content_length = request.META.get('CONTENT_LENGTH')
+    if content_length:
+        try:
+            if int(content_length) > _MAX_EDITED_PAYLOAD_BYTES:
+                return JsonResponse({
+                    "success": False,
+                    "message": "Payload too large. Maximum 15 MB.",
+                }, status=413)
+        except (ValueError, TypeError):
+            pass
+
+    try:
+        body = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({"success": False, "message": "Invalid JSON body."}, status=400)
+
+    image_data = body.get("image_data", "")
+    original_path = body.get("original_path", "").strip()
+    filename = body.get("filename", "").strip()
+
+    if not image_data or not original_path:
+        return JsonResponse({
+            "success": False,
+            "message": "image_data and original_path are required.",
+        }, status=400)
+
+    # ── Validate the data URL format ─────────────────────────────────
+    if not image_data.startswith("data:image/"):
+        return JsonResponse({
+            "success": False,
+            "message": "Invalid image data format.",
+        }, status=400)
+
+    # ── Secondary size check on actual data ──────────────────────────
+    if len(image_data) > _MAX_EDITED_PAYLOAD_BYTES:
+        return JsonResponse({
+            "success": False,
+            "message": "Image data too large.",
+        }, status=413)
+
+    # ── Path-traversal guard ─────────────────────────────────────────
+    try:
+        orig = Path(original_path).resolve()
+    except (OSError, ValueError):
+        return JsonResponse({
+            "success": False,
+            "message": "Invalid file path.",
+        }, status=400)
+
+    media_root = Path(settings.MEDIA_ROOT).resolve()
+
+    try:
+        orig.relative_to(media_root)
+    except ValueError:
+        logger.warning("Path traversal attempt blocked (save-edited): %s", original_path)
+        return JsonResponse({
+            "success": False,
+            "message": "Access denied — path outside allowed directory.",
+        }, status=403)
+
+    # ── Determine the /edited/ folder ────────────────────────────────
+    # original_path is like: .../some_folder/cropped/image.jpg
+    # edited folder should be: .../some_folder/edited/
+    parent_folder = orig.parent  # e.g. .../cropped/
+    grandparent = parent_folder.parent  # e.g. .../some_folder/
+
+    # Safety: if grandparent IS media_root (file is at top level),
+    # create /edited/ inside the same folder instead
+    try:
+        grandparent.relative_to(media_root)
+    except ValueError:
+        grandparent = parent_folder
+
+    edited_folder = grandparent / "edited"
+
+    # Create /edited/ folder if it doesn't exist
+    try:
+        edited_folder.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        logger.exception("Failed to create /edited/ folder: %s", edited_folder)
+        return JsonResponse({
+            "success": False,
+            "message": f"Failed to create edited folder: {exc}",
+        }, status=500)
+
+    # ── Build collision-safe output filename ──────────────────────────
+    if not filename:
+        filename = orig.stem + ".jpg"
+
+    stem = _sanitize_filename(Path(filename).stem)
+    # Use HHMMSS + milliseconds for collision safety
+    timestamp = time.strftime("%H%M%S") + f"{int(time.time() * 1000) % 1000:03d}"
+    output_name = f"{stem}_edited_{timestamp}.jpg"
+    output_path = edited_folder / output_name
+
+    # Final collision check — append counter if file somehow exists
+    counter = 1
+    while output_path.exists() and counter < 100:
+        output_name = f"{stem}_edited_{timestamp}_{counter}.jpg"
+        output_path = edited_folder / output_name
+        counter += 1
+
+    # ── Decode base64 and save ───────────────────────────────────────
+    try:
+        # Strip the data URL prefix: "data:image/jpeg;base64,..."
+        _header, base64_data = image_data.split(",", 1)
+        image_bytes = base64.b64decode(base64_data)
+    except Exception as exc:
+        logger.warning("Base64 decode failed: %s", exc)
+        return JsonResponse({
+            "success": False,
+            "message": "Failed to decode image data.",
+        }, status=400)
+
+    # ── Validate decoded size (must be > 0 and reasonable) ───────────
+    if len(image_bytes) < 100:
+        return JsonResponse({
+            "success": False,
+            "message": "Decoded image is too small — likely corrupt.",
+        }, status=400)
+
+    try:
+        with open(output_path, "wb") as f:
+            f.write(image_bytes)
+    except OSError as exc:
+        logger.exception("Failed to write edited image: %s", output_path)
+        return JsonResponse({
+            "success": False,
+            "message": f"Failed to save image: {exc}",
+        }, status=500)
+
+    logger.info("Saved edited image: %s (%d bytes)", output_path, len(image_bytes))
+
+    return JsonResponse({
+        "success": True,
+        "saved_path": str(output_path),
+        "edited_folder": str(edited_folder),
+        "filename": output_name,
+    })
