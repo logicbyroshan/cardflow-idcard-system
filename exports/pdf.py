@@ -100,6 +100,39 @@ def _link_callback(uri, rel):
     return path if os.path.isfile(path) else uri
 
 
+def _register_arial_font():
+    """Register bundled Arial TTF with reportlab so xhtml2pdf can use it.
+
+    Called once before the first PDF render.  Uses arial.ttf and
+    arialbd.ttf from static/fonts/ so it works on both Windows and Linux.
+    """
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    from reportlab.lib.fonts import addMapping
+
+    font_dir = os.path.join(settings.BASE_DIR, 'static', 'fonts')
+    regular = os.path.join(font_dir, 'arial.ttf')
+    bold = os.path.join(font_dir, 'arialbd.ttf')
+    if not os.path.isfile(regular):
+        logger.warning('Arial font not found at %s — PDF will fall back to Helvetica', regular)
+        return
+    try:
+        pdfmetrics.registerFont(TTFont('Arial', regular))
+        if os.path.isfile(bold):
+            pdfmetrics.registerFont(TTFont('Arial-Bold', bold))
+            addMapping('Arial', 0, 0, 'Arial')
+            addMapping('Arial', 1, 0, 'Arial-Bold')
+        else:
+            addMapping('Arial', 0, 0, 'Arial')
+            addMapping('Arial', 1, 0, 'Arial')
+    except Exception as exc:
+        logger.warning('Could not register Arial font: %s', exc)
+
+
+# Register Arial once at module load
+_register_arial_font()
+
+
 class PdfExporter:
     """
     Handles PDF export operations.
@@ -111,6 +144,7 @@ class PdfExporter:
     - UPPERCASE text for printing clarity
     - Image height fixed at 2.5cm (matches Word export)
     - 1cm margins on all 4 sides
+    - Uses bundled Arial TTF font for better Unicode support
 
     Usage:
         exporter = PdfExporter()
@@ -120,7 +154,7 @@ class PdfExporter:
     """
 
     # Width boost multiplier for name/address fields
-    NAME_ADDRESS_BOOST = 1.4
+    NAME_ADDRESS_BOOST = 1.5
     # Width boost for non-wrappable fields (mobile, DOB, Aadhar, etc.)
     NOWRAP_BOOST = 1.35
     # Image column weight (fixed)
@@ -142,8 +176,8 @@ class PdfExporter:
     # Safety margin to account for xhtml2pdf rendering differences
     PAGE_SAFETY_MARGIN_CM = 0.15
     # Header row: base padding + per-line text height
-    HEADER_BASE_CM = 0.12  # ~1px top + 1px bottom padding
-    HEADER_LINE_CM = 0.24  # ~7pt text + leading per line
+    HEADER_BASE_CM = 0.10  # ~1px top + 1px bottom padding
+    HEADER_LINE_CM = 0.22  # ~6.5pt text + leading per line
 
     # Field name keywords that indicate non-wrappable content
     NOWRAP_KEYWORDS = [
@@ -353,8 +387,8 @@ class PdfExporter:
             usable_cm = col_width_cm - 0.15
             if usable_cm <= 0:
                 usable_cm = 0.4
-            # At 7pt Helvetica, ~1 uppercase char ≈ 0.13cm
-            chars_per_line = max(2, int(usable_cm / 0.13))
+            # At 6.5pt Arial, ~1 uppercase char ≈ 0.145cm
+            chars_per_line = max(2, int(usable_cm / 0.145))
             # Simulate word-wrap
             words = label.split()
             lines = 1
@@ -591,8 +625,8 @@ class PdfExporter:
         """Context-aware text wrapping for PDF columns.
 
         xhtml2pdf has very limited CSS word-wrap support, so we:
-        1. Strip characters that Helvetica can't render (→ black boxes).
-        2. Insert zero-width spaces (&#8203;) inside long unbreakable runs
+        1. Strip characters outside the Latin-1 range (0x20-0xFF).
+        2. Insert <wbr> inside long unbreakable runs
            so the PDF renderer can break them at column boundaries.
         3. Insert <wbr> at natural boundaries (commas, spaces, slashes).
 
@@ -605,12 +639,12 @@ class PdfExporter:
         if not text:
             return mark_safe('')
 
-        # ── Step 1: Strip characters unsupported by Helvetica/PDF core fonts.
-        # Helvetica only supports Basic Latin (0x20-0x7E) and Latin-1
-        # Supplement (0xA0-0xFF).  EVERYTHING else renders as ■ black
-        # boxes in xhtml2pdf.  Replace unsupported characters with a
-        # space so the stored data is never modified — cleaning happens
-        # only at PDF render time.
+        # ── Step 1: Strip characters outside the safe Latin-1 range.
+        # With bundled Arial TTF we get better coverage than Helvetica,
+        # but we still restrict to 0x20-0xFF to be safe across all PDF
+        # viewers.  Replace unsupported characters with a space so the
+        # stored data is never modified — cleaning happens only at
+        # PDF render time.
         cleaned_chars = []
         for ch in text:
             cp = ord(ch)
@@ -624,7 +658,7 @@ class PdfExporter:
             elif 0x20 <= cp <= 0x7E:
                 cleaned_chars.append(ch)
             # Drop C1 control characters (0x80-0x9F) — Windows-1252
-            # copy-paste artefacts; Helvetica renders them as ■
+            # copy-paste artefacts
             elif 0x80 <= cp <= 0x9F:
                 cleaned_chars.append(' ')
             # Latin-1 Supplement printable (0xA0-0xFF) — all in Helvetica
@@ -651,22 +685,20 @@ class PdfExporter:
             return mark_safe(safe_text)
 
         # ── Step 3: Estimate chars-per-line from column width.
-        # Landscape A4 content width ≈ 28.7cm.  At 7.5pt bold Helvetica,
-        # one uppercase char ≈ 0.14cm.
+        # Landscape A4 content width ≈ 28.7cm.  At 7pt bold Arial,
+        # one uppercase char ≈ 0.155cm (slightly wider than Helvetica).
         if col_width_pct > 0:
             col_cm = (col_width_pct / 100) * 28.7
-            usable_cm = col_cm - 0.15  # subtract ~1px+1px padding + border
-            chars_per_line = max(3, int(usable_cm / 0.14))
+            usable_cm = col_cm - 0.12  # subtract padding + border
+            chars_per_line = max(3, int(usable_cm / 0.155))
         else:
-            chars_per_line = 18  # conservative default
+            chars_per_line = 16  # conservative default
 
         # ── Step 4: Force-break long unbreakable runs.
-        # Split on whitespace tokens, inject &#8203; (zero-width space)
-        # inside any "word" longer than chars_per_line so the PDF engine
-        # can wrap it.  For numbers/dates keep them whole if they fit.
-        # NOTE: Do NOT use &#8203; (zero-width space U+200B) — xhtml2pdf/
-        # Helvetica renders it as ■.  Use <wbr> instead, which xhtml2pdf
-        # treats as a break-opportunity without rendering anything visible.
+        # Split on whitespace tokens, inject <wbr> inside any "word"
+        # longer than chars_per_line so the PDF engine can wrap it.
+        # NOTE: Do NOT use &#8203; (zero-width space U+200B) — xhtml2pdf
+        # renders it as ■.  Use <wbr> instead.
         WBR = '<wbr>'
         parts = safe_text.split(' ')
         wrapped_parts = []

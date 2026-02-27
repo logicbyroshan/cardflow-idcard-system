@@ -221,9 +221,9 @@ class ExcelExporter:
     def _get_styles(self, Font, Alignment, Border, Side) -> Dict[str, Any]:
         """Get style definitions for Excel export."""
         return {
-            'header_font': Font(name='Calibri', size=11, bold=True),
+            'header_font': Font(name='Arial', size=11, bold=True),
             'header_alignment': Alignment(horizontal='center', vertical='center'),
-            'data_font': Font(name='Calibri', size=10),
+            'data_font': Font(name='Arial', size=10),
             'data_alignment': Alignment(horizontal='left', vertical='center', wrap_text=False),
             'border': Border(
                 left=Side(style='thin', color='CCCCCC'),
