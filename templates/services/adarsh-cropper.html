@@ -5,6 +5,8 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/adarsh-cropper.css' %}">
+<link rel="stylesheet" href="{% static 'css/vendor/cropper.min.css' %}">
+<link rel="stylesheet" href="{% static 'css/adarshengine.css' %}">
 {% endblock %}
 
 {% block breadcrumb %}
@@ -255,6 +257,12 @@
             <div class="preview-card">
               <div class="preview-img-wrap">
                 <img :src="img.url" :alt="img.name" loading="lazy">
+                <div class="ae-edit-overlay">
+                  <button class="ae-edit-btn" type="button"
+                          @click.stop="window.AdarshEngine.open(img.url, img.name, function(dataUrl, name) { img.url = dataUrl; })">
+                    <i class="fa-solid fa-sliders" aria-hidden="true"></i> Edit
+                  </button>
+                </div>
               </div>
               <span class="preview-name" x-text="img.name" :title="img.name"></span>
             </div>
@@ -284,8 +292,13 @@
     </div>
   </template>
 </div>
+
+{# ═══════════ AdarshEngine Photo Correction Modal ═══════════ #}
+{% include 'engine_modal.html' %}
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'js/vendor/cropper.min.js' %}"></script>
+<script src="{% static 'js/adarshengine.js' %}"></script>
 <script src="{% static 'js/adarsh-cropper.js' %}"></script>
 {% endblock %}

@@ -1,0 +1,176 @@
+{# ═══════════════════════════════════════════════════════════════════════
+   AdarshEngine v1.0.0 — Photo Correction Modal
+   ─────────────────────────────────────────
+   Include this template once on the page. The JS class AdarshEngine
+   will manage opening/closing and all canvas operations.
+
+   Phases covered:
+     1  – Edit button overlay & open/close
+     2  – Canvas + image loading
+     3  – Levels (Black/Gamma/White)
+     4  – Vibrance slider
+     5  – Manual Crop (Cropper.js)
+     6  – Full-res save pipeline
+     7  – Debounced rAF rendering
+     8  – Error handling (guards + error overlay)
+     9  – Reset system
+     10 – Modular file layout
+     11 – Offline safe (no CDN)
+     12 – Auto-levels placeholder
+     13 – Debug logging
+     14 – Clean destroy / listener tracking
+     15 – Dark professional UI
+     16 – Branding + version badge
+
+   Dependencies:
+     - static/css/adarshengine.css
+     - static/js/adarshengine.js
+     - static/js/vendor/cropper.min.js  (already in project)
+     - static/css/vendor/cropper.min.css (already in project)
+   ═══════════════════════════════════════════════════════════════════════ #}
+
+{% load static %}
+
+{# ── Backdrop + Modal ─────────────────────────────────────────────── #}
+<div id="aeBackdrop" class="ae-backdrop" role="dialog" aria-modal="true" aria-label="Photo Correction Editor">
+
+  <div class="ae-modal">
+
+    {# ── Header ─────────────────────────────────────────────────────── #}
+    <div class="ae-header">
+      <div class="ae-header-title">
+        <i class="fa-solid fa-sliders" aria-hidden="true"></i>
+        <span>AdarshEngine</span>
+        <span class="ae-version-badge">v1.0.0</span>
+        <span id="aeFilename" class="ae-header-filename"></span>
+      </div>
+      <button id="aeCloseTop" class="ae-close-btn" type="button" aria-label="Close editor">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    {# ── Body: Controls (left) + Canvas (right) ────────────────────── #}
+    <div class="ae-body">
+
+      {# ── Controls Panel ────────────────────────────────────────────── #}
+      <div class="ae-controls">
+
+        {# ── Levels Group ─────────────────────────────────────────────── #}
+        <div class="ae-group">
+          <div class="ae-group-label">Levels</div>
+
+          {# Black Point #}
+          <div class="ae-slider-row">
+            <div class="ae-slider-header">
+              <span class="ae-slider-name">Black Point</span>
+              <span id="aeBlackVal" class="ae-slider-value">0</span>
+            </div>
+            <input id="aeBlack" class="ae-slider" type="range" min="0" max="255" value="0" step="1">
+          </div>
+
+          {# Midtone / Gamma #}
+          <div class="ae-slider-row">
+            <div class="ae-slider-header">
+              <span class="ae-slider-name">Midtone (Gamma)</span>
+              <span id="aeGammaVal" class="ae-slider-value">1.00</span>
+            </div>
+            <input id="aeGamma" class="ae-slider" type="range" min="10" max="300" value="100" step="1">
+          </div>
+
+          {# White Point #}
+          <div class="ae-slider-row">
+            <div class="ae-slider-header">
+              <span class="ae-slider-name">White Point</span>
+              <span id="aeWhiteVal" class="ae-slider-value">255</span>
+            </div>
+            <input id="aeWhite" class="ae-slider" type="range" min="0" max="255" value="255" step="1">
+          </div>
+        </div>
+
+        {# ── Vibrance Group ───────────────────────────────────────────── #}
+        <div class="ae-group">
+          <div class="ae-group-label">Vibrance</div>
+
+          <div class="ae-slider-row">
+            <div class="ae-slider-header">
+              <span class="ae-slider-name">Vibrance</span>
+              <span id="aeVibranceVal" class="ae-slider-value">0</span>
+            </div>
+            <input id="aeVibrance" class="ae-slider" type="range" min="-100" max="100" value="0" step="1">
+          </div>
+        </div>
+
+        {# ── Manual Crop Group ────────────────────────────────────────── #}
+        <div class="ae-group">
+          <div class="ae-group-label">Crop</div>
+
+          <button id="aeCropBtn" class="ae-crop-btn" type="button">
+            <i class="fa-solid fa-crop-simple" aria-hidden="true"></i>
+            Manual Crop
+          </button>
+
+          <div id="aeCropToolbar" class="ae-crop-toolbar">
+            <button id="aeCropApply" class="ae-crop-apply" type="button">
+              <i class="fa-solid fa-check" aria-hidden="true"></i> Apply
+            </button>
+            <button id="aeCropCancel" class="ae-crop-cancel" type="button">
+              <i class="fa-solid fa-xmark" aria-hidden="true"></i> Cancel
+            </button>
+          </div>
+        </div>
+
+      </div><!-- /.ae-controls -->
+
+      {# ── Canvas Area ───────────────────────────────────────────────── #}
+      <div class="ae-canvas-area">
+        {# Main preview canvas — engine renders here #}
+        <canvas id="aeCanvas"></canvas>
+
+        {# Cropper.js container — shown only during manual crop #}
+        <div id="aeCropContainer" class="ae-crop-container">
+          <img id="aeCropImage" alt="Crop preview">
+        </div>
+
+        {# Loading overlay #}
+        <div id="aeLoading" class="ae-loading" style="display:none;">
+          <i class="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i>
+          <span>Loading image…</span>
+        </div>
+
+        {# Phase 8: Error overlay — shown when image fails to load or save fails #}
+        <div id="aeError" class="ae-error-overlay" style="display:none;">
+          <i class="fa-solid fa-triangle-exclamation ae-error-icon" aria-hidden="true"></i>
+          <span id="aeErrorMsg" class="ae-error-text"></span>
+          <button type="button" class="ae-error-dismiss"
+                  onclick="this.closest('.ae-error-overlay').style.display='none'">
+            Dismiss
+          </button>
+        </div>
+      </div>
+
+    </div><!-- /.ae-body -->
+
+    {# ── Footer ─────────────────────────────────────────────────────── #}
+    <div class="ae-footer">
+      <div class="ae-footer-left">
+        <span id="aeDimensions" class="ae-info-badge">
+          <i class="fa-solid fa-expand" aria-hidden="true"></i>
+          <span id="aeDimText">—</span>
+        </span>
+      </div>
+      <div class="ae-footer-right">
+        <button id="aeReset" class="ae-btn ae-btn-reset" type="button">
+          <i class="fa-solid fa-rotate-left" aria-hidden="true"></i> Reset
+        </button>
+        <button id="aeSave" class="ae-btn ae-btn-save" type="button">
+          <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Save
+        </button>
+        <button id="aeCloseBottom" class="ae-btn ae-btn-close" type="button">
+          <i class="fa-solid fa-xmark" aria-hidden="true"></i> Close
+        </button>
+      </div>
+    </div>
+
+  </div><!-- /.ae-modal -->
+
+</div><!-- /#aeBackdrop -->

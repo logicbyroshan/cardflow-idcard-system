@@ -74,6 +74,16 @@ jobs:
           $iss = $iss -replace 'VersionInfoVersion=[^\r\n]*', "VersionInfoVersion=$ver4"
           Set-Content -Path "Face Cropper/installer.iss" -Value $iss -NoNewline
           
+          # version_info.txt — PyInstaller version resource (EXE metadata)
+          $vparts = $ver.Split('.')
+          $major = $vparts[0]; $minor = $vparts[1]; $patch = $vparts[2]
+          $vi = Get-Content "Face Cropper/version_info.txt" -Raw
+          $vi = $vi -replace "filevers=\([^)]+\)", "filevers=($major, $minor, $patch, 0)"
+          $vi = $vi -replace "prodvers=\([^)]+\)", "prodvers=($major, $minor, $patch, 0)"
+          $vi = $vi -replace "u'FileVersion',\s*u'[^']*'", "u'FileVersion',      u'$ver4'"
+          $vi = $vi -replace "u'ProductVersion',\s*u'[^']*'", "u'ProductVersion',   u'$ver4'"
+          Set-Content -Path "Face Cropper/version_info.txt" -Value $vi -NoNewline
+          
           Write-Host "Stamped version $ver into all source files"
 
       # ── 4. Set up Python ───────────────────────────────────────────
@@ -106,6 +116,56 @@ jobs:
           $size = (Get-Item "dist/AdarshCropper.exe").Length / 1MB
           Write-Host "Built AdarshCropper.exe ($([math]::Round($size, 1)) MB)"
 
+      # ── 5b. Code-sign the EXE (if certificate is configured) ──────
+      #
+      # To enable signing, add these GitHub Repository Secrets:
+      #   SIGN_CERT_BASE64   — your .pfx file encoded with:
+      #                        [Convert]::ToBase64String([IO.File]::ReadAllBytes("cert.pfx"))
+      #   SIGN_CERT_PASSWORD — the password for the .pfx
+      #
+      # Recommended certificates (cheapest):
+      #   - Certum Open Source Code Signing: ~$27/yr (OSS projects)
+      #   - SSL.com Basic Code Signing:     ~$75/yr
+      #   - Sectigo / Comodo:               ~$85/yr
+      #   - EV Code Signing (instant trust): ~$300+/yr (hardware token)
+      #
+      - name: Sign AdarshCropper.exe
+        if: env.SIGN_CERT_BASE64 != ''
+        shell: pwsh
+        working-directory: Face Cropper
+        env:
+          SIGN_CERT_BASE64: ${{ secrets.SIGN_CERT_BASE64 }}
+          SIGN_CERT_PASSWORD: ${{ secrets.SIGN_CERT_PASSWORD }}
+        run: |
+          # Decode certificate from base64
+          $certBytes = [Convert]::FromBase64String($env:SIGN_CERT_BASE64)
+          $certPath = "$env:RUNNER_TEMP\code_sign.pfx"
+          [IO.File]::WriteAllBytes($certPath, $certBytes)
+          
+          # Sign the EXE with SHA-256 + timestamp
+          & signtool sign `
+            /f $certPath `
+            /p $env:SIGN_CERT_PASSWORD `
+            /fd sha256 `
+            /tr http://timestamp.digicert.com `
+            /td sha256 `
+            /d "Adarsh Cropper — Photo Processing Engine" `
+            /du "https://adarshbhopal.in" `
+            "dist\AdarshCropper.exe"
+          
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Code signing failed!"
+            exit 1
+          }
+          
+          Write-Host "AdarshCropper.exe signed successfully"
+          
+          # Verify signature
+          & signtool verify /pa "dist\AdarshCropper.exe"
+          
+          # Clean up certificate
+          Remove-Item -Path $certPath -Force
+
       # ── 6. Build installer with Inno Setup ─────────────────────────
       - name: Build installer with Inno Setup
         shell: pwsh
@@ -128,6 +188,38 @@ jobs:
           
           $size = (Get-Item "Output/AdarshCropperSetup.exe").Length / 1MB
           Write-Host "Built AdarshCropperSetup.exe ($([math]::Round($size, 1)) MB)"
+
+      # ── 6b. Code-sign the installer (if certificate is configured) ─
+      - name: Sign AdarshCropperSetup.exe
+        if: env.SIGN_CERT_BASE64 != ''
+        shell: pwsh
+        working-directory: Face Cropper
+        env:
+          SIGN_CERT_BASE64: ${{ secrets.SIGN_CERT_BASE64 }}
+          SIGN_CERT_PASSWORD: ${{ secrets.SIGN_CERT_PASSWORD }}
+        run: |
+          $certBytes = [Convert]::FromBase64String($env:SIGN_CERT_BASE64)
+          $certPath = "$env:RUNNER_TEMP\code_sign.pfx"
+          [IO.File]::WriteAllBytes($certPath, $certBytes)
+          
+          & signtool sign `
+            /f $certPath `
+            /p $env:SIGN_CERT_PASSWORD `
+            /fd sha256 `
+            /tr http://timestamp.digicert.com `
+            /td sha256 `
+            /d "Adarsh Cropper Installer" `
+            /du "https://adarshbhopal.in" `
+            "Output\AdarshCropperSetup.exe"
+          
+          if ($LASTEXITCODE -ne 0) {
+            Write-Warning "Installer signing failed — continuing without signature"
+          } else {
+            Write-Host "AdarshCropperSetup.exe signed successfully"
+            & signtool verify /pa "Output\AdarshCropperSetup.exe"
+          }
+          
+          Remove-Item -Path $certPath -Force
 
       # ── 7. Create GitHub Release ───────────────────────────────────
       - name: Create GitHub Release
