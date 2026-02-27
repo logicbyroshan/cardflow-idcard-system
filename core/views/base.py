@@ -137,6 +137,12 @@ def adarsh_cropper(request):
 @require_any_admin
 def dashboard(request):
     """Main dashboard view - Super Admin & Admin Staff"""
+    # Mobile users should use the PWA mobile app, not the desktop dashboard
+    import re
+    ua = request.META.get('HTTP_USER_AGENT', '')
+    if re.search(r'Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini', ua, re.I):
+        return redirect('/panel/app/')
+
     # Scope cache keys per user for admin_staff (they only see assigned clients)
     user = request.user
     is_scoped = PermissionService.is_admin_staff(user)

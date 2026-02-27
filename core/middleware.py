@@ -210,6 +210,8 @@ class PermissionValidationMiddleware:
         '/robots.txt',
         '/manifest.json',
         '/sw.js',
+        '/app/sw.js',
+        '/app/manifest.json',
     ]
     
     def __init__(self, get_response):
@@ -239,8 +241,11 @@ class PermissionValidationMiddleware:
         # Safety net: redirect unauthenticated users away from panel routes
         if not request.user.is_authenticated:
             if self._is_panel_path(request):
+                from urllib.parse import quote
                 prefix = self._panel_prefix(request)
-                return redirect(f'{prefix}/auth/login/')
+                # Preserve the original URL in ?next= so user returns here after login
+                next_url = request.get_full_path()
+                return redirect(f'{prefix}/auth/login/?next={quote(next_url, safe="/")}')
             return self.get_response(request)
         
         # Re-fetch user from database to get latest state

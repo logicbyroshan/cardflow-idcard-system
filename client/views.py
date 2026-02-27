@@ -90,6 +90,12 @@ def dashboard(request):
     """
     Client Dashboard - shows summary of card data and quick actions.
     """
+    # Mobile users should use the PWA mobile app, not the desktop dashboard
+    import re
+    ua = request.META.get('HTTP_USER_AGENT', '')
+    if re.search(r'Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini', ua, re.I):
+        return redirect('/panel/app/')
+
     user = request.user
     client = ClientAccessService.get_client_for_user(user)
     
