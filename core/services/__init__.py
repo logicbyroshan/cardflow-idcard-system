@@ -30,7 +30,7 @@ from .staff_service import StaffService
 from .idcard_service import IDCardService
 from .permission_service import PermissionService
 from .activity_service import ActivityService
-from .workflow_service import WorkflowService, ReprintWorkflowService
+from .workflow_service import WorkflowService
 from .notification_service import NotificationService
 
 __all__ = [
@@ -43,6 +43,13 @@ __all__ = [
     'PermissionService',
     'ActivityService',
     'WorkflowService',
-    'ReprintWorkflowService',
     'NotificationService',
 ]
+
+
+# Lazy re-export for ReprintWorkflowService (avoids circular import)
+def __getattr__(name):
+    if name == 'ReprintWorkflowService':
+        from reprintcard.services import ReprintWorkflowService
+        return ReprintWorkflowService
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

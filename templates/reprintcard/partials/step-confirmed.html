@@ -1,21 +1,21 @@
 {% load static %}
 {% load custom_filters %}
-<!-- ===== STEP 1: REPRINT REQUESTS ===== -->
+<!-- ===== STEP 2: CONFIRMED LIST ===== -->
 
 <!-- Action Bar -->
-<div class="action-bar action-buttons-bar" id="reprintRequestsActionBar">
+<div class="action-bar action-buttons-bar" id="confirmedListActionBar">
     <div class="action-buttons-group">
         {% if not is_client and not is_client_staff %}
-        <button class="btn action-btn btn-purple" id="reprintRequestBtn" disabled title="Request reprint for selected cards">
+        <button class="btn action-btn btn-blue" id="sendToPrintBtn" disabled title="Send selected to Print List">
             <i class="fa-solid fa-print"></i>
-            <span class="btn-text">Request Reprint</span>
+            <span class="btn-text">Print Selected</span>
         </button>
-        <button class="btn action-btn btn-gray" id="reprintEditBtn" disabled title="Edit selected card">
-            <i class="fa-solid fa-pen-to-square"></i>
-            <span class="btn-text">Edit</span>
+        <button class="btn action-btn btn-green" id="markDownloadedBtn" disabled title="Mark selected as downloaded">
+            <i class="fa-solid fa-download"></i>
+            <span class="btn-text">Mark Downloaded</span>
         </button>
         {% endif %}
-        <button class="btn action-btn btn-gray" id="reprintViewBtn" disabled title="View selected card">
+        <button class="btn action-btn btn-gray" id="confirmedViewBtn" disabled title="View selected card">
             <i class="fa-solid fa-eye"></i>
             <span class="btn-text">View</span>
         </button>
@@ -27,8 +27,8 @@
     <div class="action-left">
         <div class="search-box">
             <i class="fa-solid fa-magnifying-glass search-icon"></i>
-            <input type="text" id="reprintSearchInput" placeholder="Search cards..." class="search-input" autocomplete="off">
-            <button class="search-clear-btn" id="reprintSearchClearBtn" type="button" title="Clear search" aria-label="Clear search">
+            <input type="text" id="confirmedSearchInput" placeholder="Search confirmed list..." class="search-input" autocomplete="off">
+            <button class="search-clear-btn" id="confirmedSearchClearBtn" type="button" title="Clear search" aria-label="Clear search">
                 <i class="fa-solid fa-xmark"></i>
             </button>
         </div>
@@ -43,17 +43,15 @@
     </div>
 </div>
 
-<!-- Cards Table -->
+<!-- Confirmed Table -->
 <div class="table-wrapper">
     <div class="table-container idcard-table">
-        <table id="reprint-data-table">
+        <table id="confirmedList-data-table">
             <thead class="sticky top-0 z-20">
                 <tr>
-                    <!-- Checkbox — 24px -->
                     <th class="w-[24px] min-w-[24px] text-center px-[1px]">
-                        <input type="checkbox" id="reprintSelectAll" title="Select all" aria-label="Select all">
+                        <input type="checkbox" id="confirmedSelectAll" title="Select all" aria-label="Select all">
                     </th>
-                    <!-- SR NO — 36px, 2-line -->
                     <th class="w-[36px] min-w-[36px] px-[1px] py-1 text-center align-middle">
                         <div class="leading-tight">
                             <div>SR</div>
@@ -68,21 +66,21 @@
                     <th class="{{ field|get_column_width_class }} px-[1px] py-1 {{ field|get_column_align_class }} align-middle" data-field-name="{{ field.name }}" data-field-type="{{ field.type }}">{{ field.name }}</th>
                     {% endif %}
                     {% endfor %}
-                    <!-- Action — fit buttons -->
-                    <th class="w-[60px] min-w-[60px] px-[1px] py-1 text-center align-middle">Action</th>
+                    <th class="min-w-[80px] px-[1px] py-1 text-center align-middle">Reason</th>
+                    <th class="w-[65px] min-w-[65px] px-[1px] py-1 text-center align-middle">Requested By</th>
+                    <th class="w-[90px] min-w-[90px] px-[1px] py-1 text-center align-middle">Confirmed At</th>
+                    <th class="w-[80px] min-w-[80px] px-[1px] py-1 text-center align-middle">Action</th>
                     <th class="w-[65px] min-w-[65px] px-[1px] py-1 text-center align-middle">Status</th>
-                    <th class="w-[90px] min-w-[90px] px-[1px] py-1 text-center align-middle">Last Updated</th>
-                    <th class="w-[65px] min-w-[65px] px-[1px] py-1 text-center align-middle">Updated By</th>
                 </tr>
             </thead>
-            <tbody id="reprintTableBody" class="divide-y divide-gray-200">
-                {% for card in id_cards %}
-                <tr data-card-id="{{ card.id }}" data-sr-no="{{ card.sr_no }}" {% if card.has_reprint %}class="reprint-requested"{% endif %}>
+            <tbody id="confirmedTableBody" class="divide-y divide-gray-200">
+                {% for item in confirmed_items %}
+                <tr data-rr-id="{{ item.rr_id }}" data-card-id="{{ item.card_id }}" data-sr-no="{{ item.sr_no }}">
                     <td class="w-[24px] px-[1px] py-1 text-center align-middle checkbox-cell">
-                        <input type="checkbox" class="reprintRowCheckbox" {% if card.has_reprint %}disabled title="Already requested"{% endif %}>
+                        <input type="checkbox" class="confirmedRowCheckbox">
                     </td>
-                    <td class="w-[36px] px-[1px] py-1 text-center align-middle sr-no-cell">{{ card.sr_no }}</td>
-                    {% for field in card.ordered_fields|reorder_card_fields_for_display %}
+                    <td class="w-[36px] px-[1px] py-1 text-center align-middle sr-no-cell">{{ item.sr_no }}</td>
+                    {% for field in item.ordered_fields|reorder_card_fields_for_display %}
                     {% check_image_field field.type field.name as is_img %}
                     {% if is_img %}
                     <td class="w-[28px] px-[1px] py-1 text-center align-middle image-field image-cell {{ field.name|get_image_class }}"
@@ -119,29 +117,29 @@
                     </td>
                     {% endif %}
                     {% endfor %}
-                    <td class="w-[60px] px-[1px] py-1 text-center align-middle action-cell">
-                        {% if card.has_reprint %}
-                        <span class="reprint-badge-requested" title="Reprint already requested">
-                            <i class="fa-solid fa-check-circle"></i> Requested
-                        </span>
-                        {% else %}
-                        <button class="btn-reprint-single" data-card-id="{{ card.id }}" title="Request reprint for this card" aria-label="Request reprint for this card">
-                            <i class="fa-solid fa-print"></i>
-                        </button>
-                        {% endif %}
+                    <td class="min-w-[80px] px-[1px] py-1 align-middle reason-cell whitespace-normal break-words text-left" title="{{ item.reason }}">{{ item.reason|truncatewords:8 }}</td>
+                    <td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center">{{ item.requested_by_name }}</td>
+                    <td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">{{ item.confirmed_at|date:"d-M-Y H:i" }}</td>
+                    <td class="w-[80px] px-[1px] py-1 text-center align-middle action-cell">
+                        <div class="confirm-action-btns">
+                            <button class="btn-send-to-print-single" data-rr-id="{{ item.rr_id }}" title="Send to Print List" aria-label="Send to Print List">
+                                <i class="fa-solid fa-print"></i>
+                            </button>
+                            <button class="btn-markdl-single" data-rr-id="{{ item.rr_id }}" title="Mark as downloaded" aria-label="Mark as downloaded">
+                                <i class="fa-solid fa-download"></i>
+                            </button>
+                        </div>
                     </td>
                     <td class="w-[65px] px-[1px] py-1 align-middle text-center">
-                        <span class="status-badge status-{{ card.status }}">{{ card.get_status_display }}</span>
+                        <span class="status-badge status-{{ item.status }}">{{ item.get_status_display }}</span>
                     </td>
-                    <td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">{{ card.updated_at|date:"d-M-Y H:i" }}</td>
-                    <td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center">Admin</td>
                 </tr>
                 {% empty %}
                 <tr class="no-data-row">
                     <td colspan="50" class="no-data-cell">
                         <div class="no-data">
-                            <i class="fa-solid fa-id-card"></i>
-                            <span>No cards in this table</span>
+                            <i class="fa-solid fa-clipboard-check"></i>
+                            <span>No confirmed reprints</span>
                         </div>
                     </td>
                 </tr>
@@ -152,34 +150,34 @@
 </div>
 
 <!-- Pagination -->
-{% if total_count > 0 %}
-<div class="pagination-bar" id="reprintPaginationBar"
-     data-total-count="{{ total_count }}"
-     data-initial-loaded="{{ id_cards|length }}"
-     data-has-more="{{ has_more|yesno:'true,false' }}">
+{% if confirmed_total > 0 %}
+<div class="pagination-bar" id="confirmedPaginationBar"
+     data-total-count="{{ confirmed_total }}"
+     data-initial-loaded="{{ confirmed_items|length }}"
+     data-has-more="{{ confirmed_has_more|yesno:'true,false' }}">
     <div class="pagination-left">
         <span class="pagination-info">
-            Showing <strong id="reprintShowingRange">1-{{ id_cards|length }}</strong> of <strong id="reprintTotalCount">{{ total_count }}</strong> results
+            Showing <strong id="confirmedShowingRange">1-{{ confirmed_items|length }}</strong> of <strong id="confirmedTotalCount">{{ confirmed_total }}</strong> results
         </span>
-        <span class="pagination-selected" id="reprintSelectionInfo" style="display: none;">
-            (<strong id="reprintSelectedCount">0</strong> selected)
+        <span class="pagination-selected" id="confirmedSelectionInfo" style="display: none;">
+            (<strong id="confirmedSelectedCount">0</strong> selected)
         </span>
     </div>
     <div class="pagination-center">
-        <button class="pagination-btn" id="reprintFirstPage" title="Go to first page" aria-label="First page"><i class="fa-solid fa-angles-left"></i></button>
-        <button class="pagination-btn" id="reprintPrevPage" title="Previous page" aria-label="Previous page"><i class="fa-solid fa-chevron-left"></i></button>
-        <span class="page-numbers" id="reprintPageNumbers"><button class="page-num active">1</button></span>
-        <button class="pagination-btn" id="reprintNextPage" title="Next page" aria-label="Next page"><i class="fa-solid fa-chevron-right"></i></button>
-        <button class="pagination-btn" id="reprintLastPage" title="Go to last page" aria-label="Last page"><i class="fa-solid fa-angles-right"></i></button>
+        <button class="pagination-btn" id="confirmedFirstPage" title="Go to first page" aria-label="First page"><i class="fa-solid fa-angles-left"></i></button>
+        <button class="pagination-btn" id="confirmedPrevPage" title="Previous page" aria-label="Previous page"><i class="fa-solid fa-chevron-left"></i></button>
+        <span class="page-numbers" id="confirmedPageNumbers"><button class="page-num active">1</button></span>
+        <button class="pagination-btn" id="confirmedNextPage" title="Next page" aria-label="Next page"><i class="fa-solid fa-chevron-right"></i></button>
+        <button class="pagination-btn" id="confirmedLastPage" title="Go to last page" aria-label="Last page"><i class="fa-solid fa-angles-right"></i></button>
     </div>
     <div class="pagination-right">
-        <label for="reprintRowsToggle">Rows per page:</label>
-        <div class="custom-dropdown rows-dropdown" id="reprintRowsDropdown">
-            <button class="dropdown-toggle" id="reprintRowsToggle" type="button" aria-expanded="false">
-                <span id="reprintRowsSelectedText">50</span>
+        <label for="confirmedRowsToggle">Rows per page:</label>
+        <div class="custom-dropdown rows-dropdown" id="confirmedRowsDropdown">
+            <button class="dropdown-toggle" id="confirmedRowsToggle" type="button" aria-expanded="false">
+                <span id="confirmedRowsSelectedText">50</span>
                 <i class="fa-solid fa-chevron-down"></i>
             </button>
-            <div class="dropdown-options" id="reprintRowsOptions">
+            <div class="dropdown-options" id="confirmedRowsOptions">
                 <div class="dropdown-option selected" data-value="50">50</div>
                 <div class="dropdown-option" data-value="100">100</div>
                 <div class="dropdown-option" data-value="all">All</div>

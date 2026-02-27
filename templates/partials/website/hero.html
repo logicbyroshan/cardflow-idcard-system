@@ -4,14 +4,14 @@
     <div class="hero-inner">
         <div class="hero-content">
             <div class="hero-badge">
-                <i class="fas fa-award"></i>
+                <i class="fas fa-award" aria-hidden="true"></i>
                 <span>20+ Years of Trust</span>
             </div>
             <h1>
                 {% if business.hero_title %}
                     {{ business.hero_title|safe_html }}
                 {% else %}
-                    <span class="typing-wrapper"><span id="typingLine"></span><span class="typing-cursor">|</span></span>
+                    <span class="typing-wrapper"><span id="typingLine"></span><span class="typing-cursor" aria-hidden="true">|</span></span>
                 {% endif %}
             </h1>
             <p class="hero-subtitle">
@@ -50,11 +50,11 @@
             </div>
         </div>
         <!-- Slider Dots (dynamic from HeroImage model) -->
-        <div class="slider-dots">
+        <div class="slider-dots" role="group" aria-label="Hero image slides">
             {% for hero in hero_images %}
-            <span class="dot{% if forloop.first %} active{% endif %}" data-index="{{ forloop.counter }}" data-url="{{ hero.image.url }}" data-title="{{ hero.title|default:'' }}" data-subtitle="{{ hero.subtitle|default:'' }}"></span>
+            <button type="button" class="dot{% if forloop.first %} active{% endif %}" data-index="{{ forloop.counter }}" data-url="{{ hero.image.url }}" data-title="{{ hero.title|default:'' }}" data-subtitle="{{ hero.subtitle|default:'' }}" aria-label="Go to slide {{ forloop.counter }}"></button>
             {% empty %}
-            <span class="dot active" data-index="1" data-url="{% static 'website/images/Hero/Hero1.jpg' %}" data-title="Premium Quality" data-subtitle="Trusted by 500+ Schools"></span>
+            <button type="button" class="dot active" data-index="1" data-url="{% static 'website/images/Hero/Hero1.jpg' %}" data-title="Premium Quality" data-subtitle="Trusted by 500+ Schools" aria-label="Go to slide 1"></button>
             {% endfor %}
         </div>
     </div>

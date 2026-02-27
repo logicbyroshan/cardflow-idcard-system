@@ -93,6 +93,8 @@ urlpatterns = [
     path('panel/images/', include('mediafiles.urls')),
     path('panel/staff/', include('staff.urls')),
     path('panel/work/', include('workflows.urls')),
+    path('panel/print/', include('cardprint.urls')),
+    path('panel/reprint/', include('reprintcard.urls')),
     path('panel/website/', include('website.admin_urls')),
 
     # ==================== PWA MOBILE APP (/app/) ====================

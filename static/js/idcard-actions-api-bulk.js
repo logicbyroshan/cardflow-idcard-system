@@ -196,6 +196,32 @@ function bulkDeletePermanent(cardIds) {
     }
 }
 
+function bulkPrintSend(cardIds) {
+    IDCardApp.showWorkflowConfirm(`Send ${cardIds.length} selected card(s) to the print list?`, function() {
+        const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
+        if (!tableId) {
+            if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
+            return;
+        }
+        if (typeof apiCall === 'function') {
+            apiCall(`/panel/print/api/table/${tableId}/send/`, 'POST', { card_ids: cardIds }, { timeout: 120000 })
+                .then(data => {
+                    if (data.status === 'error') {
+                        if (typeof showToast === 'function') showToast(data.message || 'Cannot send to print', false);
+                        return;
+                    }
+                    if (typeof showToast === 'function') {
+                        showToast(data.message || `${data.created} card(s) sent to print list`, true);
+                    }
+                    IDCardApp.refreshCardTable();
+                })
+                .catch(err => {
+                    if (typeof showToast === 'function') showToast(err.message || 'Print send failed', false);
+                });
+        }
+    }, { actionType: 'print', count: cardIds.length });
+}
+
 // ==========================================
 // ROW ACTION BUTTON HANDLERS
 // ==========================================
@@ -223,6 +249,8 @@ function initRowActionHandlers() {
                 IDCardApp.unverifyCard(cardId);
             } else if (btn.classList.contains('retrieve-row-btn')) {
                 IDCardApp.retrieveCard(cardId);
+            } else if (btn.classList.contains('print-row-btn')) {
+                bulkPrintSend([parseInt(cardId)]);
             }
         });
     }
@@ -330,6 +358,14 @@ function initBulkActionHandlers() {
             bulkDeletePermanent(selectedIds);
         }
     });
+
+    // Print Selected button (Approved list)
+    document.getElementById('printSelectedBtn')?.addEventListener('click', function() {
+        const selectedIds = _getIds();
+        if (selectedIds.length > 0) {
+            bulkPrintSend(selectedIds);
+        }
+    });
 }
 
 // ==========================================
@@ -353,5 +389,6 @@ IDCardApp.bulkDisapprove = bulkDisapprove;
 IDCardApp.bulkDelete = bulkDelete;
 IDCardApp.bulkRetrieve = bulkRetrieve;
 IDCardApp.bulkDeletePermanent = bulkDeletePermanent;
+IDCardApp.bulkPrintSend = bulkPrintSend;
 
 })();

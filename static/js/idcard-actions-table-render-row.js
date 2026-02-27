@@ -166,7 +166,12 @@ function createRowFromCard(card, index) {
     // Status-dependent last column(s)
     const status = _ts.lazyLoadState.currentStatus;
     if (status === 'approved') {
-        // Approved list: no action column
+        // Approved list: Print action column
+        html += `<td class="w-[60px] px-[1px] py-1 text-center align-middle action-cell">
+            <div class="action-buttons inline-flex flex-col gap-[2px]">
+                <button class="row-action-btn print-row-btn" data-card-id="${card.id}" title="Send to print list"><span>Print</span></button>
+            </div>
+        </td>`;
     } else if (status === 'download') {
         // Downloaded list: show downloaded_at timestamp
         html += `<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">${card.downloaded_at || '-'}</td>`;

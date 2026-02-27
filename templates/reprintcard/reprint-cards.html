@@ -1,0 +1,50 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Reprint ID Cards - Adarsh ID Cards</title>
+  <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
+  <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
+  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
+  <link rel="stylesheet" href="{% static 'css/common.css' %}">
+  <link rel="stylesheet" href="{% static 'css/idcard-actions.css' %}">
+  <link rel="stylesheet" href="{% static 'css/idcard-actions-enhanced.css' %}">
+  <link rel="stylesheet" href="{% static 'css/reprint-cards.css' %}">
+  <link rel="stylesheet" href="{% static 'css/global-search.css' %}">
+  <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
+  <script defer src="{% static 'js/alpine-state.js' %}"></script>
+  <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
+  <script>
+    var TABLE_ID = {{ table.id }};
+    var CLIENT_ID = {{ client.id }};
+    var CLIENT_NAME = '{{ client.name|escapejs }}';
+    var TABLE_NAME = '{{ table.name|escapejs }}';
+    var CURRENT_STEP = '{{ current_step|default:"reprint_list"|escapejs }}';
+  </script>
+</head>
+<body x-data="layoutState()" x-init="init()">
+  {% include 'partials/sidebar.html' %}
+  <main class="main idcard-actions-page reprint-cards-page">
+    {% include 'reprintcard/partials/topbar.html' %}
+    <div class="main-content">
+      {% include 'reprintcard/partials/content.html' %}
+    </div>
+  </main>
+  {% include 'partials/idcard/side-modal.html' %}
+  {% include 'partials/components/toast.html' %}
+  <script defer src="{% static 'js/core/api.js' %}"></script>
+  <script defer src="{% static 'js/core/toast.js' %}"></script>
+  <script defer src="{% static 'js/core/modal.js' %}"></script>
+  <script defer src="{% static 'js/core/utils.js' %}"></script>
+  <script defer src="{% static 'js/init.js' %}"></script>
+  <script defer src="{% static 'js/global-search.js' %}"></script>
+  <script defer src="{% static 'js/notification-bell.js' %}"></script>
+  <script defer src="{% static 'js/idcard-actions-modal-view-helpers.js' %}"></script>
+  <script defer src="{% static 'js/idcard-actions-modal-view-render.js' %}"></script>
+  <script defer src="{% static 'js/reprintcard/reprint-cards.js' %}"></script>
+  {% include 'partials/htmx-config.html' %}
+</body>
+</html>

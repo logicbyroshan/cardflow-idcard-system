@@ -700,20 +700,11 @@ body.modal-open {
 }
 
 .portfolio-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.9) 100%);
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    display: flex;
-    align-items: flex-end;
+    display: none;
 }
 
 .portfolio-item:hover .portfolio-overlay {
-    opacity: 1;
+    display: none;
 }
 
 .overlay-content {

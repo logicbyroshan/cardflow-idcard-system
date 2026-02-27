@@ -22,7 +22,6 @@ from .base import (
     group_settings,
     manage_website,
     manage_panel,
-    reprint_cards,
     settings,
     api_export_settings_get,
     api_export_settings_update,
@@ -106,16 +105,7 @@ from .settings_api import (
     api_remove_profile_image,
 )
 
-from .reprint_api import (
-    api_reprint_list_cards,
-    api_reprint_request_create,
-    api_reprint_step_counts,
-    api_reprint_confirm_list,
-    api_reprint_confirm,
-    api_reprint_reject,
-    api_reprint_download_list,
-    api_reprint_mark_downloaded,
-)
+# NOTE: Reprint API views moved to 'reprintcard' app
 
 from .task_api import (
     api_task_status,

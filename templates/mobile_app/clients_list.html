@@ -29,7 +29,7 @@
             <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-3.5 hover:shadow-md active:scale-[0.99] transition-all">
                 <div class="flex items-center gap-3">
                     <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-sky-400 to-blue-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm">
-                        {{ client.name|truncatechars:2|upper }}
+                        {{ client.name|make_list|first|upper }}
                     </div>
                     <div class="flex-1 min-w-0">
                         <p class="text-sm font-bold text-gray-800 truncate">{{ client.name }}</p>

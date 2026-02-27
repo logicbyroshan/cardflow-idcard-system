@@ -73,6 +73,11 @@ body {
     font-size: 0.9rem;
     text-decoration: none;
     transition: all 0.3s ease;
+    border: none;
+    background: none;
+    padding: 0;
+    cursor: pointer;
+    font-family: inherit;
 }
 
 .top-bar-item:hover {
@@ -355,6 +360,9 @@ body {
     flex-direction: column;
     cursor: pointer;
     gap: 5px;
+    border: none;
+    background: none;
+    padding: 0;
 }
 
 .hamburger span {
@@ -714,6 +722,8 @@ body {
     background: rgba(255, 255, 255, 0.5);
     cursor: pointer;
     transition: var(--transition);
+    border: none;
+    padding: 0;
 }
 
 .dot.active {
@@ -1089,33 +1099,8 @@ body {
     transition: var(--transition);
 }
 
-.work-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(41, 128, 185, 0.95);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    color: white;
-    opacity: 0;
-    transition: var(--transition);
-}
-
 .work-item:hover img {
-    transform: scale(1.1);
-}
-
-.work-item:hover .work-overlay {
-    opacity: 1;
-}
-
-.work-overlay h3 {
-    font-size: 1.5rem;
-    margin-bottom: 0.5rem;
+    transform: scale(1.05);
 }
 
 /* ===== Testimonials Section ===== */

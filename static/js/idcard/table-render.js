@@ -162,7 +162,7 @@
         // Total <td> count per row
         _totalCols = 2 + _cols.length; // checkbox + srno + fields
         if (_status === 'download' || _status === 'pool') _totalCols += 1;
-        else if (_status !== 'approved') _totalCols += 1; // action
+        else _totalCols += 1; // action column (pending/verified/approved all have it now)
         if (_perms.idcard_updated_at) _totalCols += 2;
 
         // Compact mode for tables with many columns (16+)

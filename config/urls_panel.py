@@ -181,6 +181,8 @@ urlpatterns = [
     path('staff/', include('staff.urls')),
     path('work/', include('workflows.urls')),
     path('website/', include('website.admin_urls')),
+    path('print/', include('cardprint.urls')),
+    path('reprint/', include('reprintcard.urls')),
 
     # ==================== PWA MOBILE APP (/app/) ====================
     # Mobile manifest & SW served via Django for correct headers

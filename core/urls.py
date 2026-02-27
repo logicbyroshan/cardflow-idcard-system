@@ -47,21 +47,10 @@ urlpatterns = [
     
     # Group Settings for a client (manage tables)
     path('client/<int:client_id>/settings/', views.group_settings, name='group_settings'),
-    
-    # Reprint Cards for a table
-    path('table/<int:table_id>/reprint/', views.reprint_cards, name='reprint_cards'),
 
-    # Reprint APIs
-    path('api/table/<int:table_id>/reprint/cards/', views.api_reprint_list_cards, name='api_reprint_list_cards'),
-    path('api/table/<int:table_id>/reprint/request/', views.api_reprint_request_create, name='api_reprint_request_create'),
-    path('api/table/<int:table_id>/reprint/step-counts/', views.api_reprint_step_counts, name='api_reprint_step_counts'),
-    path('api/table/<int:table_id>/reprint/confirm-list/', views.api_reprint_confirm_list, name='api_reprint_confirm_list'),
-    path('api/table/<int:table_id>/reprint/confirm/', views.api_reprint_confirm, name='api_reprint_confirm'),
-    path('api/table/<int:table_id>/reprint/reject/', views.api_reprint_reject, name='api_reprint_reject'),
-    path('api/table/<int:table_id>/reprint/download-list/', views.api_reprint_download_list, name='api_reprint_download_list'),
-    path('api/table/<int:table_id>/reprint/mark-downloaded/', views.api_reprint_mark_downloaded, name='api_reprint_mark_downloaded'),
+    # NOTE: Reprint Cards moved to 'reprintcard' app — see config/urls.py
 
-    # ==================== SERVICES ====================
+    # ==================== SERVICES ==
     path('services/adarsh-cropper/', views.adarsh_cropper, name='adarsh_cropper'),
 
     # Engine Proxy APIs (browser → Django → PassportEngine, avoids CORS)

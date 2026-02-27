@@ -75,30 +75,31 @@
     {% block extra_structured_data %}{% endblock %}
 </head>
 <body>
+    <a href="#main-content" class="skip-link" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;z-index:9999;" onfocus="this.style.cssText='position:fixed;top:0;left:0;width:auto;height:auto;padding:8px 16px;background:#0A92DD;color:#fff;z-index:9999;font-size:1rem;text-decoration:none;'">Skip to main content</a>
     <!-- Top Bar -->
     <div class="top-bar">
         <div class="container">
             <div class="top-bar-content">
                 {% if business.phone %}
-                    <a href="javascript:void(0)" class="top-bar-item copy-btn" data-copy="{{ business.phone }}" title="Click to copy phone number">
-                        <i class="fas fa-phone-alt"></i>
+                    <button type="button" class="top-bar-item copy-btn" data-copy="{{ business.phone }}" aria-label="Copy phone number {{ business.phone }}">
+                        <i class="fas fa-phone-alt" aria-hidden="true"></i>
                         <span>{{ business.phone }}</span>
-                        <i class="fas fa-copy copy-icon"></i>
-                    </a>
+                        <i class="fas fa-copy copy-icon" aria-hidden="true"></i>
+                    </button>
                 {% endif %}
                 {% if business.email %}
-                    <a href="javascript:void(0)" class="top-bar-item copy-btn" data-copy="{{ business.email }}" title="Click to copy email">
-                        <i class="fas fa-envelope"></i>
+                    <button type="button" class="top-bar-item copy-btn" data-copy="{{ business.email }}" aria-label="Copy email {{ business.email }}">
+                        <i class="fas fa-envelope" aria-hidden="true"></i>
                         <span>{{ business.email }}</span>
-                        <i class="fas fa-copy copy-icon"></i>
-                    </a>
+                        <i class="fas fa-copy copy-icon" aria-hidden="true"></i>
+                    </button>
                 {% endif %}
             </div>
         </div>
     </div>
 
     <!-- Navbar -->
-    <nav class="navbar">
+    <nav class="navbar" aria-label="Main navigation">
         <div class="container">
             <div class="navbar-content">
                 <div class="logo">
@@ -116,20 +117,20 @@
                     <li><a href="{% url 'website:testimonials' %}">Testimonials</a></li>
                     <li><a href="{% url 'website:home' %}#contact">Contact</a></li>
                     <li class="nav-btn-group">
-                        <a href="{% if PANEL_URL %}{{ PANEL_URL }}/auth/login/{% else %}{% url 'accounts:login' %}{% endif %}" class="btn-cta btn-login"><i class="fas fa-sign-in-alt"></i> Login</a>
+                        <a href="{% if PANEL_URL %}{{ PANEL_URL }}/auth/login/{% else %}{% url 'accounts:login' %}{% endif %}" class="btn-cta btn-login"><i class="fas fa-user-shield" aria-hidden="true"></i> Admin</a>
                     </li>
                 </ul>
-                <div class="hamburger">
+                <button type="button" class="hamburger" aria-label="Toggle navigation menu" aria-expanded="false">
                     <span></span>
                     <span></span>
                     <span></span>
-                </div>
+                </button>
             </div>
         </div>
     </nav>
 
     <!-- Main Content Block -->
-    <main>
+    <main id="main-content">
         {% block content %}{% endblock %}
     </main>
 
@@ -142,17 +143,17 @@
                     <h4>Adarsh ID Cards</h4>
                     <p>Your trusted partner for professional ID card solutions with 20+ years of excellence.</p>
                     <div class="social-links">
-                        <a href="{{ business.facebook_url|default:'#' }}" target="_blank" rel="noopener noreferrer" title="Facebook" {% if not business.facebook_url %}style="pointer-events: none; opacity: 0.5;"{% endif %}>
-                            <i class="fab fa-facebook-f"></i>
+                        <a href="{{ business.facebook_url|default:'#' }}" target="_blank" rel="noopener noreferrer" aria-label="Facebook" {% if not business.facebook_url %}aria-disabled="true" tabindex="-1" style="pointer-events: none; opacity: 0.5;"{% endif %}>
+                            <i class="fab fa-facebook-f" aria-hidden="true"></i>
                         </a>
-                        <a href="{{ business.instagram_url|default:'#' }}" target="_blank" rel="noopener noreferrer" title="Instagram" {% if not business.instagram_url %}style="pointer-events: none; opacity: 0.5;"{% endif %}>
-                            <i class="fab fa-instagram"></i>
+                        <a href="{{ business.instagram_url|default:'#' }}" target="_blank" rel="noopener noreferrer" aria-label="Instagram" {% if not business.instagram_url %}aria-disabled="true" tabindex="-1" style="pointer-events: none; opacity: 0.5;"{% endif %}>
+                            <i class="fab fa-instagram" aria-hidden="true"></i>
                         </a>
-                        <a href="{{ business.twitter_url|default:'#' }}" target="_blank" rel="noopener noreferrer" title="Twitter" {% if not business.twitter_url %}style="pointer-events: none; opacity: 0.5;"{% endif %}>
-                            <i class="fab fa-twitter"></i>
+                        <a href="{{ business.twitter_url|default:'#' }}" target="_blank" rel="noopener noreferrer" aria-label="Twitter" {% if not business.twitter_url %}aria-disabled="true" tabindex="-1" style="pointer-events: none; opacity: 0.5;"{% endif %}>
+                            <i class="fab fa-twitter" aria-hidden="true"></i>
                         </a>
-                        <a href="{% if business.whatsapp_number %}https://wa.me/{{ business.whatsapp_number }}{% else %}#{% endif %}" target="_blank" rel="noopener noreferrer" title="WhatsApp" {% if not business.whatsapp_number %}style="pointer-events: none; opacity: 0.5;"{% endif %}>
-                            <i class="fab fa-whatsapp"></i>
+                        <a href="{% if business.whatsapp_number %}https://wa.me/{{ business.whatsapp_number }}{% else %}#{% endif %}" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" {% if not business.whatsapp_number %}aria-disabled="true" tabindex="-1" style="pointer-events: none; opacity: 0.5;"{% endif %}>
+                            <i class="fab fa-whatsapp" aria-hidden="true"></i>
                         </a>
                     </div>
                 </div>
@@ -193,11 +194,12 @@
                             style="border:0; border-radius: 8px;" 
                             allowfullscreen="" 
                             loading="lazy"
-                            referrerpolicy="no-referrer-when-downgrade">
+                            referrerpolicy="no-referrer-when-downgrade"
+                            title="Google Maps - Adarsh ID Cards location">
                         </iframe>
                         {% if business.address %}
                         <p style="margin-top: 1rem; font-size: 0.85rem; line-height: 1.4;">
-                            <i class="fas fa-map-marker-alt"></i> {{ business.address }}
+                            <i class="fas fa-map-marker-alt" aria-hidden="true"></i> {{ business.address }}
                         </p>
                         {% endif %}
                     </div>

@@ -597,7 +597,7 @@ function initIdcardGroup(config) {
         if (isClientRole) {
           window.location.href = '/panel/client/table/' + tableId + '/reprint/';
         } else {
-          window.location.href = '/panel/table/' + tableId + '/reprint/';
+          window.location.href = '/panel/reprint/table/' + tableId + '/';
         }
       } else {
         window.showToast('This action is not available yet.', 'info');

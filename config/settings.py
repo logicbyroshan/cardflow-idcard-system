@@ -83,6 +83,8 @@ INSTALLED_APPS = [
     'staff',
     'workflows',
     'website',
+    'cardprint',
+    'reprintcard',
 ]
 
 # Custom User Model - Keep pointing to core.User for database compatibility

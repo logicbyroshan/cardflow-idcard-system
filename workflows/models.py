@@ -35,8 +35,10 @@ def sanitize_text_for_storage(value: str) -> str:
         return value
 
     # Don't touch image paths / pending markers
+    if '/' in value and any(value.startswith(p) for p in _IMAGE_PREFIXES):
+        return value
     for prefix in _IMAGE_PREFIXES:
-        if value.startswith(prefix) or '/' in value:
+        if value.startswith(prefix):
             return value
 
     cleaned = []
@@ -329,40 +331,6 @@ class IDCard(models.Model):
         ]
 
 
-class ReprintRequest(models.Model):
-    """
-    Tracks reprint requests for ID cards.
-    References the original card without modifying it.
-    Workflow: requested → confirmed → downloaded
-    """
-    REPRINT_STATUS_CHOICES = [
-        ('requested', 'Requested'),
-        ('confirmed', 'Confirmed'),
-        ('downloaded', 'Downloaded'),
-    ]
-
-    card = models.ForeignKey(IDCard, on_delete=models.CASCADE, related_name='reprint_requests')
-    table = models.ForeignKey(IDCardTable, on_delete=models.CASCADE, related_name='reprint_requests')
-    status = models.CharField(max_length=20, choices=REPRINT_STATUS_CHOICES, default='requested', db_index=True)
-    reason = models.TextField(blank=True, default='')
-    requested_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True, blank=True,
-        related_name='reprint_requests',
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"Reprint #{self.id} — Card #{self.card_id} ({self.status})"
-
-    class Meta:
-        app_label = 'core'
-        ordering = ['-created_at']
-        indexes = [
-            models.Index(fields=['table', 'status']),
-            models.Index(fields=['table', 'status', '-created_at']),  # ordered reprint queries
-            models.Index(fields=['card']),  # card_id__in lookups
-            models.Index(fields=['created_at']),
-        ]
+# ReprintRequest has been moved to the 'reprintcard' app.
+# Import kept for backward compatibility.
+from reprintcard.models import ReprintRequest  # noqa: F401

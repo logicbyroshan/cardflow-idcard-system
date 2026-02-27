@@ -242,73 +242,51 @@ document.addEventListener('DOMContentLoaded', function() {
         lightbox.classList.add('active');
     }
 
-    const zoomBtns = document.querySelectorAll('.zoom-btn');
-    zoomBtns.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            openLightbox(btn.dataset.src, btn.dataset.title);
-        });
-    });
-
-    // --- 4. Video Inline Play in Portfolio ---
-    const playBtns = document.querySelectorAll('.play-portfolio-btn');
-    const videoModal = document.getElementById('videoModal');
-    const modalVideo = document.getElementById('modalVideo');
-
-    playBtns.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const videoUrl = btn.dataset.videoUrl;
-            if (!videoUrl) return;
-            
-            const portfolioItem = btn.closest('.portfolio-item');
-            const portfolioImage = portfolioItem.querySelector('.portfolio-image');
-            
-            // Check if video already exists inline
-            let inlineVideo = portfolioImage.querySelector('.inline-portfolio-video');
-            if (inlineVideo) {
-                // Toggle play/pause
-                if (inlineVideo.paused) {
-                    inlineVideo.play();
-                    portfolioItem.classList.add('playing');
-                } else {
-                    inlineVideo.pause();
-                    portfolioItem.classList.remove('playing');
+    // Click on any portfolio item opens lightbox (image) or plays video
+    document.querySelectorAll('.portfolio-item').forEach(item => {
+        function handleActivation() {
+            const videoUrl = item.dataset.videoUrl;
+            if (videoUrl) {
+                // Video item — play inline
+                const portfolioImage = item.querySelector('.portfolio-image');
+                let inlineVideo = portfolioImage.querySelector('.inline-portfolio-video');
+                if (inlineVideo) {
+                    if (inlineVideo.paused) { inlineVideo.play(); item.classList.add('playing'); }
+                    else { inlineVideo.pause(); item.classList.remove('playing'); }
+                    return;
                 }
+                inlineVideo = document.createElement('video');
+                inlineVideo.className = 'inline-portfolio-video';
+                inlineVideo.src = videoUrl;
+                inlineVideo.controls = true;
+                inlineVideo.autoplay = true;
+                inlineVideo.playsInline = true;
+                inlineVideo.style.cssText = 'width:100%;height:auto;display:block;position:relative;z-index:4;border-radius:14px;';
+                const img = portfolioImage.querySelector('img');
+                const playIcon = portfolioImage.querySelector('.portfolio-play-icon');
+                if (img) img.style.display = 'none';
+                if (playIcon) playIcon.style.display = 'none';
+                portfolioImage.insertBefore(inlineVideo, portfolioImage.firstChild);
+                item.classList.add('playing');
+                inlineVideo.addEventListener('ended', () => item.classList.remove('playing'));
+                inlineVideo.addEventListener('pause', () => item.classList.remove('playing'));
+                inlineVideo.addEventListener('play', () => item.classList.add('playing'));
                 return;
             }
-            
-            // Create inline video
-            inlineVideo = document.createElement('video');
-            inlineVideo.className = 'inline-portfolio-video';
-            inlineVideo.src = videoUrl;
-            inlineVideo.controls = true;
-            inlineVideo.autoplay = true;
-            inlineVideo.playsInline = true;
-            inlineVideo.style.cssText = 'width:100%;height:auto;display:block;position:relative;z-index:4;border-radius:14px;';
-            
-            // Hide the image/thumbnail and play icon
-            const img = portfolioImage.querySelector('img');
-            const playIcon = portfolioImage.querySelector('.portfolio-play-icon');
-            if (img) img.style.display = 'none';
-            if (playIcon) playIcon.style.display = 'none';
-            
-            portfolioImage.insertBefore(inlineVideo, portfolioImage.firstChild);
-            portfolioItem.classList.add('playing');
-            
-            inlineVideo.addEventListener('ended', () => {
-                portfolioItem.classList.remove('playing');
-            });
-            
-            inlineVideo.addEventListener('pause', () => {
-                portfolioItem.classList.remove('playing');
-            });
-            
-            inlineVideo.addEventListener('play', () => {
-                portfolioItem.classList.add('playing');
-            });
+            const src = item.dataset.src;
+            if (src) {
+                openLightbox(src, item.dataset.title);
+            }
+        }
+        item.addEventListener('click', handleActivation);
+        item.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleActivation(); }
         });
     });
+
+    // Video modal references (kept for close logic)
+    const videoModal = document.getElementById('videoModal');
+    const modalVideo = document.getElementById('modalVideo');
 
     // --- 5. Global Modal Close Logic ---
     function closeAllModals() {
@@ -328,15 +306,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (e.target.classList.contains('lightbox') || e.target.classList.contains('video-modal')) {
             closeAllModals();
         }
-    });
-
-    // --- 7. Like Button Animation ---
-    document.querySelectorAll('.like-btn').forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            this.classList.toggle('liked');
-            this.querySelector('i').style.color = this.classList.contains('liked') ? '#e74c3c' : '';
-        });
     });
 });
 

@@ -23,7 +23,8 @@
                 {% endif %}
                 {% endfor %}
                 {% if current_status == 'approved' %}
-                {# Approved list: no action column #}
+                <!-- Approved list: Print action column -->
+                <th class="w-[60px] min-w-[60px] text-center">Action</th>
                 {% elif current_status == 'download' %}
                 <th class="w-[90px] min-w-[90px] text-center">Downloaded At</th>
                 {% elif current_status == 'pool' %}

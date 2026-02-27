@@ -157,12 +157,14 @@ function initMobileMenu() {
         e.stopPropagation();
         navLinks.classList.toggle('active');
         hamburger.classList.toggle('active');
+        hamburger.setAttribute('aria-expanded', hamburger.classList.contains('active'));
     });
 
     document.querySelectorAll('.nav-links a').forEach(link => {
         link.addEventListener('click', () => {
             navLinks.classList.remove('active');
             hamburger.classList.remove('active');
+            hamburger.setAttribute('aria-expanded', 'false');
         });
     });
 
@@ -170,6 +172,7 @@ function initMobileMenu() {
         if (!hamburger.contains(e.target) && !navLinks.contains(e.target)) {
             navLinks.classList.remove('active');
             hamburger.classList.remove('active');
+            hamburger.setAttribute('aria-expanded', 'false');
         }
     });
 }

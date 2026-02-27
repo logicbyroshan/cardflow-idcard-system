@@ -1,5 +1,5 @@
 {% load static %}
-<!-- Reprint Cards - Top Navbar -->
+<!-- Reprint Cards - Top Navbar (4-Step Workflow) -->
 <header class="topbar">
   <!-- Left - Breadcrumb -->
   <div class="nav-left">
@@ -34,20 +34,24 @@
     {% include 'partials/notification-bell.html' %}
   </div>
 
-  <!-- Right - 3-Step Workflow Tabs -->
+  <!-- Right - 4-Step Workflow Tabs -->
   <div class="nav-right">
     <div class="action-tabs">
-      <a href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table.id %}{% else %}{% url 'reprint_cards' table.id %}{% endif %}?step=requests" class="action-tab reprint-requests-tab {% if current_step == 'requests' %}active{% endif %}">
-        <span class="tab-label">Reprint Requests</span>
-        <span class="tab-count">{{ step_counts.requests }}</span>
+      <a href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table.id %}{% else %}{% url 'reprintcard:reprint_cards' table.id %}{% endif %}?step=reprint_list" class="action-tab reprint-requests-tab {% if current_step == 'reprint_list' %}active{% endif %}">
+        <span class="tab-label">Reprint List</span>
+        <span class="tab-count">{{ step_counts.reprint_list }}</span>
       </a>
-      <a href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table.id %}{% else %}{% url 'reprint_cards' table.id %}{% endif %}?step=confirm" class="action-tab reprint-confirm-tab {% if current_step == 'confirm' %}active{% endif %}">
-        <span class="tab-label">Confirm Reprint</span>
-        <span class="tab-count">{{ step_counts.confirm }}</span>
+      <a href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table.id %}{% else %}{% url 'reprintcard:reprint_cards' table.id %}{% endif %}?step=confirmed" class="action-tab reprint-confirm-tab {% if current_step == 'confirmed' %}active{% endif %}">
+        <span class="tab-label">Confirmed List</span>
+        <span class="tab-count">{{ step_counts.confirmed }}</span>
       </a>
-      <a href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table.id %}{% else %}{% url 'reprint_cards' table.id %}{% endif %}?step=download" class="action-tab reprint-download-tab {% if current_step == 'download' %}active{% endif %}">
-        <span class="tab-label">Download Reprints</span>
+      <a href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table.id %}{% else %}{% url 'reprintcard:reprint_cards' table.id %}{% endif %}?step=download" class="action-tab reprint-download-tab {% if current_step == 'download' %}active{% endif %}">
+        <span class="tab-label">Download</span>
         <span class="tab-count">{{ step_counts.download }}</span>
+      </a>
+      <a href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table.id %}{% else %}{% url 'reprintcard:reprint_cards' table.id %}{% endif %}?step=pool" class="action-tab reprint-pool-tab {% if current_step == 'pool' %}active{% endif %}">
+        <span class="tab-label">Pool</span>
+        <span class="tab-count">{{ step_counts.pool }}</span>
       </a>
     </div>
   </div>

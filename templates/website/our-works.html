@@ -14,7 +14,7 @@
         <div class="container">
             <div class="hero-content">
                 <div class="hero-badge">
-                    <i class="fas fa-palette"></i>
+                    <i class="fas fa-palette" aria-hidden="true"></i>
                     <span>Our Creative Portfolio</span>
                 </div>
                 <h1>Crafting <span class="gradient-text">Identity</span> Solutions</h1>
@@ -41,14 +41,14 @@
                     </div>
                     <div class="category-content">
                         <div class="category-icon">
-                            <i class="{{ cat.icon }}"></i>
+                            <i class="{{ cat.icon }}" aria-hidden="true"></i>
                         </div>
                         <h3>{{ cat.name }}</h3>
                         <p>{% if cat.description %}{{ cat.description }}{% else %}Premium {{ cat.name }} designs for institutions.{% endif %}</p>
                     </div>
                     <div class="category-overlay">
                         <button class="explore-btn" data-filter="{{ cat.id }}">
-                            View Samples <i class="fas fa-arrow-right"></i>
+                            View Samples <i class="fas fa-arrow-right" aria-hidden="true"></i>
                         </button>
                     </div>
                 </div>
@@ -60,7 +60,7 @@
             <div class="extra-categories-bar">
                 {% for cat in extra_categories %}
                 <button class="extra-category-tag explore-btn" data-filter="{{ cat.id }}" data-category="{{ cat.id }}" data-slug="{{ cat.slug }}">
-                    <i class="{{ cat.icon }}"></i>
+                    <i class="{{ cat.icon }}" aria-hidden="true"></i>
                     <span>{{ cat.name }}</span>
                 </button>
                 {% endfor %}
@@ -82,7 +82,7 @@
 
             <!-- Filter Tabs -->
             <div class="portfolio-filters">
-                <button class="filter-tab active" data-filter="all"><i class="fas fa-th"></i> All</button>
+                <button class="filter-tab active" data-filter="all"><i class="fas fa-th" aria-hidden="true"></i> All</button>
                 {% for cat in categories %}
                     <button class="filter-tab" data-filter="{{ cat.id }}">{{ cat.name }}</button>
                 {% endfor %}
@@ -91,43 +91,26 @@
             <!-- Portfolio Grid -->
             <div class="portfolio-grid" id="portfolioGrid">
                 {% for item in portfolio_items %}
-                <div class="portfolio-item {{ item.orientation|default:'square' }} {% if item.item_type == 'video' or item.item_type == 'reel' %}video-type{% endif %}" data-category="{{ item.category_id|default:'' }}">
+                <div class="portfolio-item {{ item.orientation|default:'square' }} {% if item.item_type == 'video' or item.item_type == 'reel' %}video-type{% endif %}" data-category="{{ item.category_id|default:'' }}"
+                     role="button" tabindex="0" aria-label="{{ item.title }}"
+                     {% if item.item_type == 'video' or item.item_type == 'reel' %}
+                     data-video-url="{{ item.video_file.url|default:item.video_url }}"
+                     {% endif %}
+                     {% if item.image %}data-src="{{ item.image.url }}"{% endif %}
+                     data-title="{{ item.title }}">
                     <div class="portfolio-image">
                         {% if item.item_type == 'video' or item.item_type == 'reel' %}
                             {% if item.image %}
                                 <img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy">
                             {% else %}
-                                <div class="portfolio-video-placeholder"><i class="fas fa-video"></i></div>
+                                <div class="portfolio-video-placeholder"><i class="fas fa-video" aria-hidden="true"></i></div>
                             {% endif %}
-                            <div class="portfolio-play-icon"><i class="fas fa-play-circle"></i></div>
+                            <div class="portfolio-play-icon" aria-hidden="true"><i class="fas fa-play-circle"></i></div>
                         {% else %}
                             {% if item.image %}
                                 <img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy">
                             {% endif %}
                         {% endif %}
-                        <div class="portfolio-overlay">
-                            <div class="overlay-content">
-                                <span class="portfolio-category">{{ item.category.name|default:"Portfolio" }}</span>
-                                <h4>{{ item.title }}</h4>
-                                <div class="overlay-actions">
-                                    {% if item.item_type == 'video' or item.item_type == 'reel' %}
-                                    <button class="action-btn play-portfolio-btn"
-                                            data-video-url="{{ item.video_file.url|default:item.video_url }}"
-                                            data-title="{{ item.title }}">
-                                        <i class="fas fa-play"></i>
-                                    </button>
-                                    {% endif %}
-                                    {% if item.image %}
-                                    <button class="action-btn zoom-btn" data-src="{{ item.image.url }}" data-title="{{ item.title }}">
-                                        <i class="fas fa-search-plus"></i>
-                                    </button>
-                                    {% endif %}
-                                    <button class="action-btn like-btn">
-                                        <i class="fas fa-heart"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
                 {% empty %}
@@ -140,32 +123,32 @@
     </section>
 
     <!-- Modals (Gallery, Lightbox, Video) -->
-    <div class="product-gallery-modal" id="productGalleryModal">
+    <div class="product-gallery-modal" id="productGalleryModal" role="dialog" aria-modal="true" aria-labelledby="productGalleryTitle">
         <div class="product-gallery-content">
             <div class="product-gallery-header">
                 <h3 id="productGalleryTitle">Items</h3>
                 <div class="product-gallery-header-actions">
-                    <button class="product-gallery-share" id="productGalleryShare" title="Copy link to this gallery">
-                        <i class="fas fa-share-alt"></i>
+                    <button class="product-gallery-share" id="productGalleryShare" aria-label="Share gallery">
+                        <i class="fas fa-share-alt" aria-hidden="true"></i>
                     </button>
-                    <button class="product-gallery-close" id="productGalleryClose"><i class="fas fa-times"></i></button>
+                    <button class="product-gallery-close" id="productGalleryClose" aria-label="Close gallery"><i class="fas fa-times" aria-hidden="true"></i></button>
                 </div>
             </div>
             <div class="product-gallery-grid" id="productGalleryGrid"></div>
         </div>
     </div>
 
-    <div class="lightbox" id="lightbox">
-        <button class="lightbox-close" id="lightboxClose"><i class="fas fa-times"></i></button>
+    <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Image preview">
+        <button class="lightbox-close" id="lightboxClose" aria-label="Close image preview"><i class="fas fa-times" aria-hidden="true"></i></button>
         <div class="lightbox-content">
-            <img src="" id="lightboxImage" alt="Lightbox preview image">
+            <img src="" id="lightboxImage" alt="Image preview">
             <div class="lightbox-caption" id="lightboxCaption"></div>
         </div>
     </div>
 
-    <div class="video-modal" id="videoModal">
+    <div class="video-modal" id="videoModal" role="dialog" aria-modal="true" aria-label="Video player">
         <div class="video-modal-content">
-            <button class="video-modal-close" id="videoModalClose"><i class="fas fa-times"></i></button>
+            <button class="video-modal-close" id="videoModalClose" aria-label="Close video"><i class="fas fa-times" aria-hidden="true"></i></button>
             <video id="modalVideo" controls src=""></video>
         </div>
     </div>

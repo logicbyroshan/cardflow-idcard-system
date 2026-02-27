@@ -1,8 +1,8 @@
 {% load static %}
 <!-- Our Products Section -->
-<section class="our-works" id="products">
+<section class="our-works" id="products" aria-labelledby="products-title">
     <div class="container">
-        <h2 class="section-title">Our Products</h2>
+        <h2 class="section-title" id="products-title">Our Products</h2>
         
         <!-- Row 1: Scroll Left to Right -->
         <div class="works-carousel">
@@ -11,20 +11,12 @@
                     {% for item in row1_items %}
                         <div class="work-item">
                             {% if item.image %}<img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy" decoding="async">{% endif %}
-                            <div class="work-overlay">
-                                <h3>{{ item.title }}</h3>
-                                <p>{{ item.category.name|default:"Portfolio" }}</p>
-                            </div>
                         </div>
                     {% endfor %}
                     <!-- Duplicate for seamless loop -->
                     {% for item in row1_items %}
-                        <div class="work-item">
-                            {% if item.image %}<img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy" decoding="async">{% endif %}
-                            <div class="work-overlay">
-                                <h3>{{ item.title }}</h3>
-                                <p>{{ item.category.name|default:"Portfolio" }}</p>
-                            </div>
+                        <div class="work-item" aria-hidden="true">
+                            {% if item.image %}<img src="{{ item.image.url }}" alt="" loading="lazy" decoding="async">{% endif %}
                         </div>
                     {% endfor %}
                 {% endwith %}
@@ -38,20 +30,12 @@
                     {% for item in row2_items %}
                         <div class="work-item">
                             {% if item.image %}<img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy" decoding="async">{% endif %}
-                            <div class="work-overlay">
-                                <h3>{{ item.title }}</h3>
-                                <p>{{ item.category.name|default:"Portfolio" }}</p>
-                            </div>
                         </div>
                     {% endfor %}
                     <!-- Duplicate for seamless loop -->
                     {% for item in row2_items %}
-                        <div class="work-item">
-                            {% if item.image %}<img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy" decoding="async">{% endif %}
-                            <div class="work-overlay">
-                                <h3>{{ item.title }}</h3>
-                                <p>{{ item.category.name|default:"Portfolio" }}</p>
-                            </div>
+                        <div class="work-item" aria-hidden="true">
+                            {% if item.image %}<img src="{{ item.image.url }}" alt="" loading="lazy" decoding="async">{% endif %}
                         </div>
                     {% endfor %}
                 {% endwith %}

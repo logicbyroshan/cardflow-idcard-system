@@ -151,16 +151,25 @@ def clients_list(request):
         return redirect('mobile_app:home')
 
     from client.models import Client
-    clients = Client.objects.filter(status='active').order_by('name')
+    from django.db.models import Count, Q
+    clients = Client.objects.filter(status='active').annotate(
+        tables_count=Count(
+            'id_card_groups__tables',
+            filter=Q(id_card_groups__tables__is_active=True),
+            distinct=True,
+        ),
+        cards_count=Count(
+            'id_card_groups__tables__id_cards',
+            distinct=True,
+        ),
+    ).order_by('name')
     client_data = []
     for c in clients:
-        tables_count = IDCardTable.objects.filter(group__client=c, is_active=True).count()
-        cards_count = IDCard.objects.filter(table__group__client=c).count()
         client_data.append({
             'id': c.id,
             'name': c.name,
-            'tables_count': tables_count,
-            'cards_count': cards_count,
+            'tables_count': c.tables_count,
+            'cards_count': c.cards_count,
             'status': c.status,
         })
 

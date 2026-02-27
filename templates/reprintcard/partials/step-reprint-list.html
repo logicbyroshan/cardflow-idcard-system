@@ -1,21 +1,21 @@
 {% load static %}
 {% load custom_filters %}
-<!-- ===== STEP 2: CONFIRM REPRINT ===== -->
+<!-- ===== STEP 1: REPRINT LIST (requested) ===== -->
 
 <!-- Action Bar -->
-<div class="action-bar action-buttons-bar" id="reprintConfirmActionBar">
+<div class="action-bar action-buttons-bar" id="reprintListActionBar">
     <div class="action-buttons-group">
         {% if not is_client and not is_client_staff %}
-        <button class="btn action-btn btn-amber" id="confirmReprintBtn" disabled title="Confirm selected reprints">
+        <button class="btn action-btn btn-amber" id="confirmSelectedBtn" disabled title="Confirm selected reprints">
             <i class="fa-solid fa-check-double"></i>
-            <span class="btn-text">Confirm</span>
+            <span class="btn-text">Confirm Selected</span>
         </button>
-        <button class="btn action-btn btn-gray" id="rejectReprintBtn" disabled title="Reject selected reprints">
+        <button class="btn action-btn btn-gray" id="rejectSelectedBtn" disabled title="Reject selected reprints">
             <i class="fa-solid fa-xmark"></i>
-            <span class="btn-text">Reject</span>
+            <span class="btn-text">Reject Selected</span>
         </button>
         {% endif %}
-        <button class="btn action-btn btn-gray" id="confirmViewBtn" disabled title="View selected card">
+        <button class="btn action-btn btn-gray" id="reprintListViewBtn" disabled title="View selected card">
             <i class="fa-solid fa-eye"></i>
             <span class="btn-text">View</span>
         </button>
@@ -27,8 +27,8 @@
     <div class="action-left">
         <div class="search-box">
             <i class="fa-solid fa-magnifying-glass search-icon"></i>
-            <input type="text" id="confirmSearchInput" placeholder="Search reprints..." class="search-input" autocomplete="off">
-            <button class="search-clear-btn" id="confirmSearchClearBtn" type="button" title="Clear search" aria-label="Clear search">
+            <input type="text" id="reprintListSearchInput" placeholder="Search reprint list..." class="search-input" autocomplete="off">
+            <button class="search-clear-btn" id="reprintListSearchClearBtn" type="button" title="Clear search" aria-label="Clear search">
                 <i class="fa-solid fa-xmark"></i>
             </button>
         </div>
@@ -43,17 +43,15 @@
     </div>
 </div>
 
-<!-- Confirm Table -->
+<!-- Reprint List Table -->
 <div class="table-wrapper">
     <div class="table-container idcard-table">
-        <table id="confirm-data-table">
+        <table id="reprintList-data-table">
             <thead class="sticky top-0 z-20">
                 <tr>
-                    <!-- Checkbox — 24px -->
                     <th class="w-[24px] min-w-[24px] text-center px-[1px]">
-                        <input type="checkbox" id="confirmSelectAll" title="Select all" aria-label="Select all">
+                        <input type="checkbox" id="reprintListSelectAll" title="Select all" aria-label="Select all">
                     </th>
-                    <!-- SR NO — 36px, 2-line -->
                     <th class="w-[36px] min-w-[36px] px-[1px] py-1 text-center align-middle">
                         <div class="leading-tight">
                             <div>SR</div>
@@ -75,11 +73,11 @@
                     <th class="w-[65px] min-w-[65px] px-[1px] py-1 text-center align-middle">Status</th>
                 </tr>
             </thead>
-            <tbody id="confirmTableBody" class="divide-y divide-gray-200">
+            <tbody id="reprintListTableBody" class="divide-y divide-gray-200">
                 {% for item in reprint_items %}
                 <tr data-rr-id="{{ item.rr_id }}" data-card-id="{{ item.card_id }}" data-sr-no="{{ item.sr_no }}">
                     <td class="w-[24px] px-[1px] py-1 text-center align-middle checkbox-cell">
-                        <input type="checkbox" class="confirmRowCheckbox">
+                        <input type="checkbox" class="reprintListRowCheckbox">
                     </td>
                     <td class="w-[36px] px-[1px] py-1 text-center align-middle sr-no-cell">{{ item.sr_no }}</td>
                     {% for field in item.ordered_fields|reorder_card_fields_for_display %}
@@ -140,8 +138,8 @@
                 <tr class="no-data-row">
                     <td colspan="50" class="no-data-cell">
                         <div class="no-data">
-                            <i class="fa-solid fa-clipboard-check"></i>
-                            <span>No reprints pending confirmation</span>
+                            <i class="fa-solid fa-rotate"></i>
+                            <span>No reprint requests</span>
                         </div>
                     </td>
                 </tr>
@@ -153,33 +151,33 @@
 
 <!-- Pagination -->
 {% if reprint_total > 0 %}
-<div class="pagination-bar" id="confirmPaginationBar"
+<div class="pagination-bar" id="reprintListPaginationBar"
      data-total-count="{{ reprint_total }}"
      data-initial-loaded="{{ reprint_items|length }}"
      data-has-more="{{ reprint_has_more|yesno:'true,false' }}">
     <div class="pagination-left">
         <span class="pagination-info">
-            Showing <strong id="confirmShowingRange">1-{{ reprint_items|length }}</strong> of <strong id="confirmTotalCount">{{ reprint_total }}</strong> results
+            Showing <strong id="reprintListShowingRange">1-{{ reprint_items|length }}</strong> of <strong id="reprintListTotalCount">{{ reprint_total }}</strong> results
         </span>
-        <span class="pagination-selected" id="confirmSelectionInfo" style="display: none;">
-            (<strong id="confirmSelectedCount">0</strong> selected)
+        <span class="pagination-selected" id="reprintListSelectionInfo" style="display: none;">
+            (<strong id="reprintListSelectedCount">0</strong> selected)
         </span>
     </div>
     <div class="pagination-center">
-        <button class="pagination-btn" id="confirmFirstPage" title="Go to first page" aria-label="First page"><i class="fa-solid fa-angles-left"></i></button>
-        <button class="pagination-btn" id="confirmPrevPage" title="Previous page" aria-label="Previous page"><i class="fa-solid fa-chevron-left"></i></button>
-        <span class="page-numbers" id="confirmPageNumbers"><button class="page-num active">1</button></span>
-        <button class="pagination-btn" id="confirmNextPage" title="Next page" aria-label="Next page"><i class="fa-solid fa-chevron-right"></i></button>
-        <button class="pagination-btn" id="confirmLastPage" title="Go to last page" aria-label="Last page"><i class="fa-solid fa-angles-right"></i></button>
+        <button class="pagination-btn" id="reprintListFirstPage" title="Go to first page" aria-label="First page"><i class="fa-solid fa-angles-left"></i></button>
+        <button class="pagination-btn" id="reprintListPrevPage" title="Previous page" aria-label="Previous page"><i class="fa-solid fa-chevron-left"></i></button>
+        <span class="page-numbers" id="reprintListPageNumbers"><button class="page-num active">1</button></span>
+        <button class="pagination-btn" id="reprintListNextPage" title="Next page" aria-label="Next page"><i class="fa-solid fa-chevron-right"></i></button>
+        <button class="pagination-btn" id="reprintListLastPage" title="Go to last page" aria-label="Last page"><i class="fa-solid fa-angles-right"></i></button>
     </div>
     <div class="pagination-right">
-        <label for="confirmRowsToggle">Rows per page:</label>
-        <div class="custom-dropdown rows-dropdown" id="confirmRowsDropdown">
-            <button class="dropdown-toggle" id="confirmRowsToggle" type="button" aria-expanded="false">
-                <span id="confirmRowsSelectedText">50</span>
+        <label for="reprintListRowsToggle">Rows per page:</label>
+        <div class="custom-dropdown rows-dropdown" id="reprintListRowsDropdown">
+            <button class="dropdown-toggle" id="reprintListRowsToggle" type="button" aria-expanded="false">
+                <span id="reprintListRowsSelectedText">50</span>
                 <i class="fa-solid fa-chevron-down"></i>
             </button>
-            <div class="dropdown-options" id="confirmRowsOptions">
+            <div class="dropdown-options" id="reprintListRowsOptions">
                 <div class="dropdown-option selected" data-value="50">50</div>
                 <div class="dropdown-option" data-value="100">100</div>
                 <div class="dropdown-option" data-value="all">All</div>
