@@ -39,8 +39,10 @@
 .dashboard-middle-scroll {
     flex: 1;
     min-height: 0;             /* allow flex child to shrink below content */
-    overflow-y: auto;
+    overflow-y: hidden;
     overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 /* ── Fixed Bottom: content-driven height, pinned at bottom ── */
@@ -63,9 +65,7 @@
     grid-template-rows: 1fr;
     gap: 0;
     min-height: 0;
-    /* 60% of viewport, capped at 650px */
-    height: clamp(350px, 60vh, 650px);
-    flex-shrink: 0;
+    flex: 1;
 }
 
 .dashboard-grid-3col {
@@ -81,8 +81,7 @@
     grid-template-columns: 40fr 60fr;
     gap: 0;
     min-height: 0;
-    height: clamp(350px, 60vh, 650px);
-    flex-shrink: 0;
+    flex: 1;
 }
 
 .dashboard-card {

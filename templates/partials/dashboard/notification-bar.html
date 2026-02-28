@@ -1,0 +1,223 @@
+{% load static %}
+<!-- === DASHBOARD NOTIFICATION BAR === -->
+<div class="notif-bar" id="dashboardNotifBar">
+  <div class="notif-bar-header">
+    <div class="notif-bar-title">
+      <i class="fa-solid fa-bell"></i>
+      <span>Notifications</span>
+      <span class="notif-bar-badge" id="notifBarCount" style="display:none;">0</span>
+    </div>
+    <a href="{% url 'notifications_page' %}" class="notif-bar-link">
+      View All <i class="fa-solid fa-arrow-right"></i>
+    </a>
+  </div>
+  <div class="notif-bar-list" id="notifBarList">
+    <div class="notif-bar-empty">
+      <i class="fa-solid fa-check-circle"></i> You're all caught up!
+    </div>
+  </div>
+</div>
+
+<style>
+.notif-bar {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+.notif-bar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f8fafc;
+}
+.notif-bar-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+}
+.notif-bar-title i { color: #667eea; font-size: 14px; }
+.notif-bar-badge {
+  font-size: 10px;
+  font-weight: 700;
+  background: #ef4444;
+  color: #fff;
+  padding: 1px 6px;
+  border-radius: 8px;
+  min-width: 18px;
+  text-align: center;
+  line-height: 16px;
+}
+.notif-bar-link {
+  font-size: 12px;
+  color: #667eea;
+  text-decoration: none;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.notif-bar-link:hover { text-decoration: underline; }
+.notif-bar-list {
+  max-height: 140px;
+  overflow-y: auto;
+}
+.notif-bar-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+  transition: background .1s;
+}
+.notif-bar-item:last-child { border-bottom: none; }
+.notif-bar-item:hover { background: #f8fafc; }
+.notif-bar-item.unread { background: #eff6ff; }
+.notif-bar-item.unread:hover { background: #dbeafe; }
+.notif-bar-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 12px;
+  margin-top: 2px;
+}
+.notif-bar-icon.general    { background: #eff6ff; color: #3b82f6; }
+.notif-bar-icon.announcement { background: #fef3c7; color: #d97706; }
+.notif-bar-icon.update     { background: #ecfdf5; color: #059669; }
+.notif-bar-icon.maintenance { background: #fef2f2; color: #dc2626; }
+.notif-bar-icon.alert      { background: #fef2f2; color: #ef4444; }
+.notif-bar-body { flex: 1; min-width: 0; }
+.notif-bar-body-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.notif-bar-body-msg {
+  font-size: 11.5px;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+.notif-bar-time {
+  font-size: 10.5px;
+  color: #94a3b8;
+  white-space: nowrap;
+  margin-top: 3px;
+}
+.notif-bar-empty {
+  padding: 16px;
+  text-align: center;
+  font-size: 12.5px;
+  color: #94a3b8;
+}
+.notif-bar-empty i { color: #22c55e; margin-right: 4px; }
+
+@media (max-width: 640px) {
+  .notif-bar-list { max-height: 100px; }
+}
+</style>
+
+<script>
+(function() {
+  function loadNotifBar() {
+    fetch('/panel/api/notifications/list/?limit=5')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data || !data.success) return;
+        const list = document.getElementById('notifBarList');
+        const badge = document.getElementById('notifBarCount');
+        const items = data.notifications || [];
+        const unread = data.unread_count || 0;
+
+        if (badge) {
+          if (unread > 0) {
+            badge.textContent = unread;
+            badge.style.display = '';
+          } else {
+            badge.style.display = 'none';
+          }
+        }
+
+        if (!items.length) {
+          list.innerHTML = '<div class="notif-bar-empty"><i class="fa-solid fa-check-circle"></i> You\'re all caught up!</div>';
+          return;
+        }
+
+        const categoryIcons = {
+          general: 'fa-circle-info',
+          announcement: 'fa-bullhorn',
+          update: 'fa-arrow-up-right-dots',
+          maintenance: 'fa-wrench',
+          alert: 'fa-triangle-exclamation',
+        };
+
+        list.innerHTML = items.map(n => {
+          const icon = categoryIcons[n.category] || 'fa-bell';
+          const cat = n.category || 'general';
+          const unreadCls = n.is_read ? '' : ' unread';
+          const msgPreview = (n.message || '').length > 80 ? n.message.substring(0, 80) + '...' : (n.message || '');
+          return `<div class="notif-bar-item${unreadCls}" onclick="markNotifRead(${n.id}, this)">
+            <div class="notif-bar-icon ${cat}"><i class="fa-solid ${icon}"></i></div>
+            <div class="notif-bar-body">
+              <div class="notif-bar-body-title">${escNotif(n.title)}</div>
+              <div class="notif-bar-body-msg">${escNotif(msgPreview)}</div>
+            </div>
+            <div class="notif-bar-time">${n.time_ago || ''}</div>
+          </div>`;
+        }).join('');
+      })
+      .catch(() => {});
+  }
+
+  function escNotif(s) {
+    const d = document.createElement('div');
+    d.textContent = s || '';
+    return d.innerHTML;
+  }
+
+  window.markNotifRead = function(id, el) {
+    if (el && el.classList.contains('unread')) {
+      fetch(`/panel/api/notifications/${id}/read/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCsrf() },
+      }).then(() => {
+        el.classList.remove('unread');
+        const badge = document.getElementById('notifBarCount');
+        if (badge) {
+          let c = parseInt(badge.textContent) - 1;
+          if (c <= 0) { badge.style.display = 'none'; c = 0; }
+          badge.textContent = c;
+        }
+      }).catch(() => {});
+    }
+  };
+
+  function getCsrf() {
+    const c = document.cookie.split(';').find(c => c.trim().startsWith('csrftoken='));
+    if (c) return c.split('=')[1];
+    const m = document.querySelector('meta[name="csrf-token"]');
+    return m ? m.getAttribute('content') : '';
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadNotifBar);
+  } else {
+    loadNotifBar();
+  }
+})();
+</script>

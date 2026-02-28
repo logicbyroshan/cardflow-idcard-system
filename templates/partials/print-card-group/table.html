@@ -12,41 +12,23 @@
         </thead>
         <tbody>
             {% for table in tables %}
-            {% with total_count=table.pending_count|add:table.verified_count|add:table.approved_count|add:table.download_count|add:table.pool_count %}
+            {% with total_count=table.pending_count|add:table.verified_count|add:table.approved_count|add:table.download_count %}
             <tr data-table-id="{{ table.id }}" data-total-count="{{ total_count }}">
                 <td>
                     {{ table.name }}
                 </td>
                 <td class="action-cell">
                     <div class="action-buttons">
-                        {% if is_super_admin or perm_idcard_pending_list %}
-                        <a href="{% if is_client or is_client_staff %}{% url 'client:idcard_actions' table.id %}{% else %}{% url 'idcard_actions' table.id %}{% endif %}?status=pending" class="list-btn pending-btn">
-                            <i class="fa-solid fa-clock"></i> Pending
-                            <span class="count-badge">{{ table.pending_count }}</span>
+                        {% if is_super_admin or perm_idcard_print_list %}
+                        <a href="{% url 'cardprint:print_cards' table.id %}" class="list-btn pending-btn">
+                            <i class="fa-solid fa-print"></i> Print Cards
+                            <span class="count-badge">{{ table.print_count|default:0 }}</span>
                         </a>
                         {% endif %}
-                        {% if is_super_admin or perm_idcard_verified_list %}
-                        <a href="{% if is_client or is_client_staff %}{% url 'client:idcard_actions' table.id %}{% else %}{% url 'idcard_actions' table.id %}{% endif %}?status=verified" class="list-btn verified-btn">
-                            <i class="fa-solid fa-check-circle"></i> Verified
-                            <span class="count-badge">{{ table.verified_count }}</span>
-                        </a>
-                        {% endif %}
-                        {% if is_super_admin or perm_idcard_approved_list %}
-                        <a href="{% if is_client or is_client_staff %}{% url 'client:idcard_actions' table.id %}{% else %}{% url 'idcard_actions' table.id %}{% endif %}?status=approved" class="list-btn approved-btn">
-                            <i class="fa-solid fa-thumbs-up"></i> Approved
-                            <span class="count-badge">{{ table.approved_count }}</span>
-                        </a>
-                        {% endif %}
-                        {% if is_super_admin or perm_idcard_download_list %}
-                        <a href="{% if is_client or is_client_staff %}{% url 'client:idcard_actions' table.id %}{% else %}{% url 'idcard_actions' table.id %}{% endif %}?status=download" class="list-btn download-btn">
-                            <i class="fa-solid fa-download"></i> Downloaded
-                            <span class="count-badge">{{ table.download_count }}</span>
-                        </a>
-                        {% endif %}
-                        {% if is_super_admin or perm_idcard_pool_list %}
-                        <a href="{% if is_client or is_client_staff %}{% url 'client:idcard_actions' table.id %}{% else %}{% url 'idcard_actions' table.id %}{% endif %}?status=pool" class="list-btn pool-btn">
-                            <i class="fa-solid fa-layer-group"></i> Pool
-                            <span class="count-badge">{{ table.pool_count }}</span>
+                        {% if is_super_admin or perm_idcard_reprint_list %}
+                        <a href="{% url 'reprintcard:reprint_cards' table.id %}" class="list-btn verified-btn">
+                            <i class="fa-solid fa-arrows-rotate"></i> Reprint Cards
+                            <span class="count-badge">{{ table.reprint_count|default:0 }}</span>
                         </a>
                         {% endif %}
                     </div>
@@ -82,12 +64,12 @@
             {% empty %}
             <tr>
                 <td colspan="{% if is_client or is_client_staff %}2{% else %}3{% endif %}" class="text-center p-4">
-                    <div class=\"empty-state\" style=\"display:block;\">
-                        <i class=\"fa-solid fa-table-list\"></i>
+                    <div class="empty-state" style="display:block;">
+                        <i class="fa-solid fa-table-list"></i>
                         <h3>No Tables Found</h3>
                         <p>This client has no ID card tables yet. Go to Group Settings to create tables.</p>
-                        <a href=\"{% if is_client or is_client_staff %}{% url 'client:group_settings' %}{% else %}{% url 'group_settings' client.id %}{% endif %}\" class=\"btn btn-md btn-primary mt-2\">
-                            <i class=\"fa-solid fa-gear\"></i> Go to Group Settings
+                        <a href="{% if is_client or is_client_staff %}{% url 'client:group_settings' %}{% else %}{% url 'group_settings' client.id %}{% endif %}" class="btn btn-md btn-primary mt-2">
+                            <i class="fa-solid fa-gear"></i> Go to Group Settings
                         </a>
                     </div>
                 </td>

@@ -57,12 +57,12 @@
                     {% if is_img %}
                     <th class="w-[30px] min-w-[30px] px-[1px] py-1 text-center align-middle" data-field-name="{{ field.name }}" data-field-type="image">{{ field.name|wrap_header }}</th>
                     {% else %}
-                    <th class="{{ field|get_column_width_class }} px-[1px] py-1 {{ field|get_column_align_class }} align-middle" data-field-name="{{ field.name }}" data-field-type="{{ field.type }}">{{ field.name }}</th>
+                    <th class="{{ field|get_column_width_class }} px-[1px] py-1 {{ field|get_column_align_class }} align-middle" data-field-name="{{ field.name }}" data-field-type="{{ field.type }}">{{ field.name|humanize_header }}</th>
                     {% endif %}
                     {% endfor %}
                     <th class="w-[65px] min-w-[65px] px-[1px] py-1 text-center align-middle">Requested By</th>
                     <th class="w-[90px] min-w-[90px] px-[1px] py-1 text-center align-middle">Finalized At</th>
-                    <th class="w-[60px] min-w-[60px] px-[1px] py-1 text-center align-middle">Action</th>
+                    <th class="w-[120px] min-w-[120px] px-[1px] py-1 text-center align-middle">Action</th>
                     <th class="w-[65px] min-w-[65px] px-[1px] py-1 text-center align-middle">Status</th>
                 </tr>
             </thead>
@@ -112,10 +112,10 @@
                     {% endfor %}
                     <td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center">{{ item.requested_by_name }}</td>
                     <td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">{{ item.finalized_at|date:"d-M-Y H:i" }}</td>
-                    <td class="w-[60px] px-[1px] py-1 text-center align-middle action-cell">
+                    <td class="w-[120px] px-[1px] py-1 text-center align-middle action-cell">
                         <div class="confirm-action-btns">
                             <button class="btn-pool-single" data-pr-id="{{ item.pr_id }}" title="Move to pool" aria-label="Move to pool">
-                                <i class="fa-solid fa-layer-group"></i>
+                                <i class="fa-solid fa-layer-group"></i> <span>Pool</span>
                             </button>
                         </div>
                     </td>

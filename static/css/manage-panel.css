@@ -583,6 +583,41 @@ textarea.panel-form-input {
 .system-value-small  { font-size: 11px; }
 
 /* ================================
+   LOG HISTORY TAB
+   ================================ */
+.log-action-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+.log-action-badge.add    { background: #ecfdf5; color: #047857; }
+.log-action-badge.edit   { background: #eff6ff; color: #1d4ed8; }
+.log-action-badge.delete { background: #fef2f2; color: #b91c1c; }
+.log-action-badge.verify { background: #fefce8; color: #a16207; }
+.log-action-badge.approve{ background: #f0fdf4; color: #15803d; }
+
+/* Filter select */
+.form-select-sm {
+  font-size: 12px;
+  padding: 5px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  background: #f8fafc;
+  color: #334155;
+  font-family: inherit;
+  cursor: pointer;
+}
+.form-select-sm:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px #667eea;
+}
+
+/* ================================
    RESPONSIVE
    ================================ */
 @media (max-width: 900px) {

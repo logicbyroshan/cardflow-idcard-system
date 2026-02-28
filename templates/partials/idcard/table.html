@@ -19,7 +19,7 @@
                 <th class="w-[50px] min-w-[50px] text-center" data-field-name="{{ field.name }}" data-field-type="image">{{ field.name|wrap_header }}</th>
                 {% else %}
                 <!-- Dynamic columns — intelligent width -->
-                <th class="{{ field|get_column_width_class }} {{ field|get_column_align_class }}" data-field-name="{{ field.name }}" data-field-type="{{ field.type }}">{{ field.name }}</th>
+                <th class="{{ field|get_column_width_class }} {{ field|get_column_align_class }}" data-field-name="{{ field.name }}" data-field-type="{{ field.type }}">{{ field.name|humanize_header }}</th>
                 {% endif %}
                 {% endfor %}
                 {% if current_status == 'approved' %}

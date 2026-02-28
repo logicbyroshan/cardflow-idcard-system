@@ -49,17 +49,8 @@
     <!-- Dashboard Content -->
     <div class="dashboard-content">
 
-      <!-- Welcome Banner -->
-      <div class="welcome-banner">
-        <div class="welcome-text">
-          <h2>Welcome back, {{ user.get_full_name|default:user.username|default:"Staff Member" }}! 👋</h2>
-          <p>View your ID card status and manage your profile.</p>
-        </div>
-        <div class="welcome-date">
-          <div class="date" id="welcomeDate">Sunday, Feb 01, 2026</div>
-          <div class="time" id="welcomeTime">00:00:00</div>
-        </div>
-      </div>
+      <!-- Notification Bar -->
+      {% include 'partials/dashboard/notification-bar.html' %}
 
       <!-- Stats Cards -->
       <div class="stats-cards">

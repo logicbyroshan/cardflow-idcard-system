@@ -77,6 +77,12 @@ document.addEventListener('DOMContentLoaded', function() {
         document.body.style.overflow = 'hidden';
     });
 
+    document.getElementById('heroWriteReviewBtn')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        reviewModal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    });
+
     document.getElementById('reviewModalClose')?.addEventListener('click', () => {
         reviewModal.classList.remove('active');
         document.body.style.overflow = '';

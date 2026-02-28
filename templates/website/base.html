@@ -22,8 +22,7 @@
     
     <meta name="theme-color" content="#3498db">
     
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="/manifest.json">
+    <!-- PWA Manifest removed - landing site should not be installable as PWA -->
     
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="{% static 'website/images/favicon.ico' %}">
@@ -117,7 +116,7 @@
                     <li><a href="{% url 'website:testimonials' %}">Testimonials</a></li>
                     <li><a href="{% url 'website:home' %}#contact">Contact</a></li>
                     <li class="nav-btn-group">
-                        <a href="{% if PANEL_URL %}{{ PANEL_URL }}/auth/login/{% else %}{% url 'accounts:login' %}{% endif %}" class="btn-cta btn-login"><i class="fas fa-user-shield" aria-hidden="true"></i> Admin</a>
+                        <a href="{% if PANEL_URL %}{{ PANEL_URL }}/auth/login/{% else %}{% url 'accounts:login' %}{% endif %}" class="btn-cta btn-login"><i class="fas fa-user-shield" aria-hidden="true"></i> Panel</a>
                     </li>
                 </ul>
                 <button type="button" class="hamburger" aria-label="Toggle navigation menu" aria-expanded="false">
@@ -249,36 +248,28 @@
     });
     </script>
 
-    <!-- PWA: Register service worker + capture install prompt -->
+    <!-- PWA disabled for landing website - only panel supports PWA install -->
     <script>
     // Panel URL for cross-subdomain redirects
     window.__panelUrl = '{{ PANEL_URL }}' || '';
 
+    // Unregister any existing service workers for the landing website
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js', { scope: '/' })
-            .then(function(reg) { console.log('SW registered, scope:', reg.scope); })
-            .catch(function(err) { console.warn('SW registration failed:', err); });
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            registrations.forEach(function(reg) {
+                // Only unregister website SW, not panel SW
+                if (reg.scope === window.location.origin + '/') {
+                    reg.unregister();
+                }
+            });
+        });
     }
 
-    // Capture the beforeinstallprompt event for the Install App button
-    window.__pwaInstallPrompt = null;
+    // Block PWA install prompt on the landing website
     window.addEventListener('beforeinstallprompt', function(e) {
         e.preventDefault();
-        window.__pwaInstallPrompt = e;
-        // Show install buttons (they start hidden until prompt is available)
-        document.querySelectorAll('.pwa-install-btn').forEach(function(btn) {
-            btn.classList.add('pwa-ready');
-        });
-    });
-
-    // Detect if already installed as PWA
-    window.addEventListener('appinstalled', function() {
-        window.__pwaInstallPrompt = null;
-        document.querySelectorAll('.pwa-install-btn').forEach(function(btn) {
-            btn.textContent = 'App Installed \u2713';
-            btn.classList.add('pwa-installed');
-            btn.style.pointerEvents = 'none';
-        });
+        // Do not store the prompt - landing site should not be installable
+        return false;
     });
     </script>
     

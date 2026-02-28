@@ -22,7 +22,7 @@
       <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
       <span class="breadcrumb-item">{{ client.name }}{% if client.status != 'active' %} <span class="status-badge inactive" style="font-size:11px;margin-left:4px;">{{ client.get_status_display }}</span>{% endif %}</span>
       <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
-      <a href="{% url 'idcard_group' client.id %}" class="breadcrumb-item">ID Card Group</a>
+      <a href="{% url 'print_card_group' client.id %}" class="breadcrumb-item">Print Card Group</a>
       {% endif %}
       <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
       <span class="breadcrumb-item active">Reprint — {{ table.name }}</span>
@@ -48,10 +48,6 @@
       <a href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table.id %}{% else %}{% url 'reprintcard:reprint_cards' table.id %}{% endif %}?step=download" class="action-tab reprint-download-tab {% if current_step == 'download' %}active{% endif %}">
         <span class="tab-label">Download</span>
         <span class="tab-count">{{ step_counts.download }}</span>
-      </a>
-      <a href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table.id %}{% else %}{% url 'reprintcard:reprint_cards' table.id %}{% endif %}?step=pool" class="action-tab reprint-pool-tab {% if current_step == 'pool' %}active{% endif %}">
-        <span class="tab-label">Pool</span>
-        <span class="tab-count">{{ step_counts.pool }}</span>
       </a>
     </div>
   </div>

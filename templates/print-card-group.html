@@ -1,0 +1,72 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Print Card Group - {{ client.name }} - Adarsh ID Cards</title>
+  <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
+  <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
+  <!-- Tailwind CSS (primary) -->
+  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
+  <!-- Page-specific: ID card group UI (reuses same styles) -->
+  <link rel="stylesheet" href="{% static 'css/idcard-group.css' %}">
+  <link rel="stylesheet" href="{% static 'css/common.css' %}">
+  <link rel="stylesheet" href="{% static 'css/global-search.css' %}">
+  <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
+  <!-- Alpine.js State Module (MUST load before Alpine) -->
+  <script defer src="{% static 'js/alpine-state.js' %}"></script>
+  <!-- Alpine.js -->
+  <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
+</head>
+<body x-data="layoutState()" x-init="init()">
+
+  {% include 'partials/sidebar.html' %}
+
+  <!-- Main -->
+  <main class="main">
+
+    {% include 'partials/print-card-group/topbar.html' %}
+
+    <div class="main-content">
+
+    {% include 'partials/print-card-group/action-bar.html' %}
+    {% include 'partials/print-card-group/table.html' %}
+
+    </div>
+
+  </main>
+
+  <!-- Toast notification -->
+  {% include 'partials/components/toast.html' %}
+
+  <!-- Modals (reuse from idcard-group) -->
+  {% include 'partials/idcard-group/modal-download-all.html' %}
+  {% include 'partials/idcard-group/modal-delete-all.html' %}
+  {% include 'partials/idcard-group/modal-upgrade-all.html' %}
+  {% include 'partials/idcard-group/modal-reupload.html' %}
+
+  <!-- Core Modules (Load Order: api → toast → modal → utils → init) -->
+  <script defer src="{% static 'js/core/api.js' %}"></script>
+  <script defer src="{% static 'js/core/toast.js' %}"></script>
+  <script defer src="{% static 'js/core/modal.js' %}"></script>
+  <script defer src="{% static 'js/core/utils.js' %}"></script>
+  <script defer src="{% static 'js/init.js' %}"></script>
+
+  <!-- Reuse ID Card Group page logic for bulk actions -->
+  <script defer src="{% static 'js/idcard-group.js' %}"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      initIdcardGroup({
+        clientId: {{ client.id }},
+        isClientRole: {% if is_client or is_client_staff %}true{% else %}false{% endif %}
+      });
+    });
+  </script>
+
+  <script defer src="{% static 'js/global-search.js' %}"></script>
+  <script defer src="{% static 'js/notification-bell.js' %}"></script>
+  {% include 'partials/htmx-config.html' %}
+</body>
+</html>

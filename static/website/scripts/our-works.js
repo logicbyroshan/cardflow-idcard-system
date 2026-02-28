@@ -289,22 +289,77 @@ document.addEventListener('DOMContentLoaded', function() {
     const modalVideo = document.getElementById('modalVideo');
 
     // --- 5. Global Modal Close Logic ---
-    function closeAllModals() {
-        document.querySelectorAll('.product-gallery-modal, .lightbox, .video-modal').forEach(m => m.classList.remove('active'));
+    // Save scroll position when opening modals
+    let savedScrollPosition = 0;
+
+    function closeGalleryModal() {
+        productModal.classList.remove('active');
         document.body.classList.remove('modal-open');
         document.body.style.overflow = '';
-        if (modalVideo) { modalVideo.pause(); modalVideo.src = ''; }
+        // Restore scroll position
+        window.scrollTo(0, savedScrollPosition);
         // Pause all gallery videos
         document.querySelectorAll('#productGalleryGrid video').forEach(v => { v.pause(); v.muted = true; });
     }
 
-    document.querySelectorAll('.product-gallery-close, .lightbox-close, .video-modal-close').forEach(btn => {
-        btn.addEventListener('click', closeAllModals);
+    function closeLightbox() {
+        lightbox.classList.remove('active');
+        lightboxImg.src = '';
+        // Don't touch body overflow if gallery modal is still open
+        if (!productModal.classList.contains('active')) {
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+        }
+    }
+
+    function closeVideoModal() {
+        videoModal.classList.remove('active');
+        if (modalVideo) { modalVideo.pause(); modalVideo.src = ''; }
+        if (!productModal.classList.contains('active')) {
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+        }
+    }
+
+    // Save scroll when opening gallery
+    exploreButtons.forEach(btn => {
+        const origClick = btn.onclick;
+        btn.addEventListener('click', () => {
+            savedScrollPosition = window.scrollY || window.pageYOffset;
+        }, true); // capture phase, before the main handler
     });
 
-    window.addEventListener('click', (e) => {
-        if (e.target.classList.contains('lightbox') || e.target.classList.contains('video-modal')) {
-            closeAllModals();
+    // Close buttons
+    document.getElementById('productGalleryClose').addEventListener('click', closeGalleryModal);
+    document.getElementById('lightboxClose').addEventListener('click', closeLightbox);
+    const videoCloseBtn = document.getElementById('videoModalClose');
+    if (videoCloseBtn) videoCloseBtn.addEventListener('click', closeVideoModal);
+
+    // Clicking backdrop
+    productModal.addEventListener('click', (e) => {
+        if (e.target === productModal) closeGalleryModal();
+    });
+
+    lightbox.addEventListener('click', (e) => {
+        if (e.target === lightbox) closeLightbox();
+    });
+
+    if (videoModal) {
+        videoModal.addEventListener('click', (e) => {
+            if (e.target === videoModal) closeVideoModal();
+        });
+    }
+
+    // ESC key handling - close topmost modal first
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            if (lightbox.classList.contains('active')) {
+                closeLightbox();
+            } else if (videoModal && videoModal.classList.contains('active')) {
+                closeVideoModal();
+            } else if (productModal.classList.contains('active')) {
+                closeGalleryModal();
+            }
         }
     });
 });

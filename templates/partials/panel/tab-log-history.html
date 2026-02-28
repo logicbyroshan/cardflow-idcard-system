@@ -1,0 +1,73 @@
+<!-- === LOG HISTORY TAB === -->
+<div class="panel-tab-content" id="tab-log-history">
+
+  <!-- Header bar -->
+  <div class="notif-actions-bar">
+    <div class="notif-actions-left">
+      <div class="notif-search-box">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="logSearch" placeholder="Search logs..." oninput="debounceLogSearch()">
+      </div>
+      <select id="logActionFilter" class="form-select-sm" onchange="loadLogs()">
+        <option value="">All Actions</option>
+        <option value="login">Login</option>
+        <option value="logout">Logout</option>
+        <option value="client_create">Client Created</option>
+        <option value="client_update">Client Updated</option>
+        <option value="client_delete">Client Deleted</option>
+        <option value="staff_create">Staff Created</option>
+        <option value="staff_update">Staff Updated</option>
+        <option value="card_create">Cards Added</option>
+        <option value="card_update">Card Updated</option>
+        <option value="card_delete">Card Deleted</option>
+        <option value="card_status">Card Status</option>
+        <option value="card_bulk_status">Bulk Status</option>
+        <option value="card_bulk_upload">Bulk Upload</option>
+        <option value="card_bulk_download">Bulk Download</option>
+        <option value="image_upload">Image Upload</option>
+        <option value="image_reupload">Image Re-upload</option>
+        <option value="reprint_request">Reprint Request</option>
+        <option value="reprint_status">Reprint Status</option>
+        <option value="settings_update">Settings Updated</option>
+      </select>
+    </div>
+    <div class="notif-actions-right">
+      <span class="text-xs text-gray-400" id="logCountLabel">—</span>
+    </div>
+  </div>
+
+  <!-- Logs Table -->
+  <div class="notif-table-wrap" style="max-height:calc(100vh - 260px); overflow-y:auto;">
+    <table class="notif-table">
+      <thead>
+        <tr>
+          <th scope="col" style="width:5%">#</th>
+          <th scope="col" style="width:14%">User</th>
+          <th scope="col" style="width:12%">Action</th>
+          <th scope="col" style="width:35%">Description</th>
+          <th scope="col" style="width:12%">Target</th>
+          <th scope="col" style="width:10%">IP Address</th>
+          <th scope="col" style="width:12%">Time</th>
+        </tr>
+      </thead>
+      <tbody id="logTableBody">
+        <tr class="notif-table-empty">
+          <td colspan="7">
+            <div class="empty-state">
+              <i class="fa-solid fa-clock-rotate-left"></i>
+              <p>No logs found</p>
+              <span>Activity logs will appear here</span>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Load More -->
+  <div class="notif-load-more" id="logLoadMore" style="display:none;">
+    <button class="btn btn-md btn-neutral" onclick="loadMoreLogs()">
+      <i class="fa-solid fa-arrow-down"></i> Load More
+    </button>
+  </div>
+</div>

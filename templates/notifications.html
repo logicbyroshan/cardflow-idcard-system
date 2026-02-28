@@ -1,0 +1,213 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>Notifications - Adarsh Admin</title>
+  <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
+  <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
+  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
+  <link rel="stylesheet" href="{% static 'css/common.css' %}">
+  <link rel="stylesheet" href="{% static 'css/global-search.css' %}">
+  <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
+  <script defer src="{% static 'js/alpine-state.js' %}"></script>
+  <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
+  <style>
+    .notif-page { padding: 0; display: flex; flex-direction: column; height: calc(100vh - var(--spacing-topbar, 40px)); overflow-y: auto; }
+    .notif-page-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px 12px; border-bottom: 1px solid #e5e7eb; background: #fff; }
+    .notif-page-title { font-size: 15px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 8px; }
+    .notif-page-title i { color: #667eea; font-size: 16px; }
+    .notif-page-subtitle { font-size: 12px; color: #64748b; margin-top: 2px; }
+    .notif-page-actions { display: flex; gap: 8px; }
+    .notif-page-body { flex: 1; padding: 16px 18px; overflow-y: auto; }
+    .notif-list { display: flex; flex-direction: column; gap: 0; }
+    .notif-item { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; margin-top: -1px; background: #fff; transition: background .1s; cursor: pointer; }
+    .notif-item:first-child { margin-top: 0; }
+    .notif-item:hover { background: #f8fafc; }
+    .notif-item.unread { background: #eff6ff; border-left: 3px solid #667eea; }
+    .notif-item.unread:hover { background: #dbeafe; }
+    .notif-icon-wrap { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 14px; }
+    .notif-icon-wrap.general { background: #eff6ff; color: #3b82f6; }
+    .notif-icon-wrap.announcement { background: #fef3c7; color: #d97706; }
+    .notif-icon-wrap.update { background: #ecfdf5; color: #059669; }
+    .notif-icon-wrap.maintenance { background: #fef2f2; color: #dc2626; }
+    .notif-icon-wrap.alert { background: #fef2f2; color: #ef4444; }
+    .notif-body { flex: 1; min-width: 0; }
+    .notif-body-title { font-size: 13.5px; font-weight: 600; color: #1e293b; }
+    .notif-body-msg { font-size: 12.5px; color: #64748b; margin-top: 3px; line-height: 1.5; }
+    .notif-body-meta { display: flex; align-items: center; gap: 12px; margin-top: 6px; }
+    .notif-body-meta span { font-size: 11px; color: #94a3b8; display: flex; align-items: center; gap: 4px; }
+    .notif-priority { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 3px; text-transform: uppercase; }
+    .notif-priority.low { background: #f0fdf4; color: #15803d; }
+    .notif-priority.normal { background: #eff6ff; color: #1d4ed8; }
+    .notif-priority.high { background: #fef3c7; color: #b45309; }
+    .notif-priority.urgent { background: #fef2f2; color: #b91c1c; }
+    .notif-empty-state { text-align: center; padding: 60px 20px; color: #94a3b8; }
+    .notif-empty-state i { font-size: 40px; margin-bottom: 12px; display: block; }
+    .notif-empty-state p { font-size: 14px; font-weight: 600; color: #64748b; }
+    .notif-empty-state span { font-size: 12px; }
+    .notif-load-more { padding: 12px 18px; text-align: center; }
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; font-size: 12.5px; font-weight: 600; border: none; border-radius: 4px; cursor: pointer; transition: background .15s, opacity .15s; font-family: inherit; }
+    .btn-primary { background: #667eea; color: #fff; }
+    .btn-primary:hover { background: #5a6fd6; }
+    .btn-neutral { background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0; }
+    .btn-neutral:hover { background: #e2e8f0; }
+    @media (max-width: 640px) {
+      .notif-page-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+      .notif-item { padding: 10px 12px; }
+    }
+  </style>
+</head>
+<body x-data="layoutState()" x-init="init()">
+  <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:z-[9999] focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-gray-900 focus:shadow-lg">Skip to main content</a>
+  {% include 'partials/sidebar.html' %}
+
+  <main class="main" id="main-content">
+    {% include 'partials/panel/topbar.html' %}
+
+    <div class="notif-page">
+      <!-- Header -->
+      <div class="notif-page-header">
+        <div>
+          <h1 class="notif-page-title"><i class="fa-solid fa-bell"></i> Notifications</h1>
+          <p class="notif-page-subtitle">All your notifications in one place</p>
+        </div>
+        <div class="notif-page-actions">
+          <button class="btn btn-neutral" id="markAllReadBtn" onclick="markAllRead()">
+            <i class="fa-solid fa-check-double"></i> Mark All Read
+          </button>
+        </div>
+      </div>
+
+      <!-- Body -->
+      <div class="notif-page-body">
+        <div class="notif-list" id="notifPageList">
+          <div class="notif-empty-state">
+            <i class="fa-solid fa-spinner fa-spin"></i>
+            <p>Loading...</p>
+          </div>
+        </div>
+
+        <div class="notif-load-more" id="notifPageLoadMore" style="display:none;">
+          <button class="btn btn-neutral" onclick="loadMorePage()">
+            <i class="fa-solid fa-arrow-down"></i> Load More
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  {% include 'partials/panel/global-search-overlay.html' %}
+  {% include 'components/toast.html' %}
+
+  <script defer src="{% static 'js/core/api.js' %}"></script>
+  <script defer src="{% static 'js/core/toast.js' %}"></script>
+  <script defer src="{% static 'js/core/modal.js' %}"></script>
+  <script defer src="{% static 'js/core/utils.js' %}"></script>
+  <script defer src="{% static 'js/init.js' %}"></script>
+  <script defer src="{% static 'js/global-search.js' %}"></script>
+
+  <script>
+  let pageOffset = 0;
+  const PAGE_LIMIT = 20;
+  let pageTotal = 0;
+  let pageNotifs = [];
+
+  const categoryIcons = {
+    general: 'fa-circle-info',
+    announcement: 'fa-bullhorn',
+    update: 'fa-arrow-up-right-dots',
+    maintenance: 'fa-wrench',
+    alert: 'fa-triangle-exclamation',
+  };
+
+  document.addEventListener('DOMContentLoaded', () => loadPage());
+
+  function loadPage(append) {
+    if (!append) pageOffset = 0;
+    fetch(`/panel/api/notifications/list/?limit=${PAGE_LIMIT}&offset=${pageOffset}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data || !data.success) return;
+        if (append) {
+          pageNotifs = pageNotifs.concat(data.notifications || []);
+        } else {
+          pageNotifs = data.notifications || [];
+        }
+        pageTotal = data.total || 0;
+        renderPage();
+        const more = document.getElementById('notifPageLoadMore');
+        if (more) more.style.display = pageNotifs.length < pageTotal ? '' : 'none';
+      })
+      .catch(() => {});
+  }
+
+  function loadMorePage() {
+    pageOffset += PAGE_LIMIT;
+    loadPage(true);
+  }
+
+  function renderPage() {
+    const list = document.getElementById('notifPageList');
+    if (!pageNotifs.length) {
+      list.innerHTML = `<div class="notif-empty-state">
+        <i class="fa-solid fa-bell-slash"></i>
+        <p>No notifications</p>
+        <span>You'll see notifications here when they arrive</span>
+      </div>`;
+      return;
+    }
+    list.innerHTML = pageNotifs.map(n => {
+      const icon = categoryIcons[n.category] || 'fa-bell';
+      const cat = n.category || 'general';
+      const cls = n.is_read ? '' : ' unread';
+      return `<div class="notif-item${cls}" data-id="${n.id}" onclick="markRead(${n.id}, this)">
+        <div class="notif-icon-wrap ${cat}"><i class="fa-solid ${icon}"></i></div>
+        <div class="notif-body">
+          <div class="notif-body-title">${esc(n.title)}</div>
+          <div class="notif-body-msg">${esc(n.message)}</div>
+          <div class="notif-body-meta">
+            <span><i class="fa-solid fa-clock"></i> ${n.time_ago || ''}</span>
+            ${n.priority && n.priority !== 'normal' ? `<span class="notif-priority ${n.priority}">${n.priority}</span>` : ''}
+            <span><i class="fa-solid fa-tag"></i> ${esc(n.category_display || n.category)}</span>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function markRead(id, el) {
+    if (!el.classList.contains('unread')) return;
+    fetch(`/panel/api/notifications/${id}/read/`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': getCsrf() },
+    }).then(() => {
+      el.classList.remove('unread');
+    }).catch(() => {});
+  }
+
+  function markAllRead() {
+    fetch('/panel/api/notifications/mark-all-read/', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': getCsrf() },
+    }).then(r => r.json()).then(d => {
+      if (d.success) {
+        document.querySelectorAll('.notif-item.unread').forEach(el => el.classList.remove('unread'));
+        if (window.showToast) showToast('All notifications marked as read', 'success');
+      }
+    }).catch(() => {});
+  }
+
+  function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+  function getCsrf() {
+    const c = document.cookie.split(';').find(c => c.trim().startsWith('csrftoken='));
+    if (c) return c.split('=')[1];
+    const m = document.querySelector('meta[name="csrf-token"]');
+    return m ? m.getAttribute('content') : '';
+  }
+  </script>
+</body>
+</html>

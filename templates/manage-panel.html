@@ -40,17 +40,21 @@
         <button class="panel-tab active" data-tab="notifications" onclick="switchTab('notifications')">
           <i class="fa-solid fa-bell"></i> Notifications
         </button>
+        <button class="panel-tab" data-tab="download-templates" onclick="switchTab('download-templates')">
+          <i class="fa-solid fa-file-arrow-down"></i> Download Templates
+        </button>
+        <button class="panel-tab" data-tab="log-history" onclick="switchTab('log-history')">
+          <i class="fa-solid fa-clock-rotate-left"></i> Log History
+        </button>
         <button class="panel-tab" data-tab="system" onclick="switchTab('system')">
           <i class="fa-solid fa-server"></i> System Info
-        </button>
-        <button class="panel-tab" data-tab="quick-actions" onclick="switchTab('quick-actions')">
-          <i class="fa-solid fa-bolt"></i> Quick Actions
         </button>
       </div>
 
       {% include 'partials/panel/tab-notifications.html' %}
+      {% include 'partials/panel/tab-download-templates.html' %}
+      {% include 'partials/panel/tab-log-history.html' %}
       {% include 'partials/panel/tab-system.html' %}
-      {% include 'partials/panel/tab-quick-actions.html' %}
 
       {% include 'partials/panel/create-notification-modal.html' %}
 

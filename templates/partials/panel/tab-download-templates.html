@@ -1,0 +1,75 @@
+{% load static %}
+<!-- === DOWNLOAD TEMPLATES TAB === -->
+<div class="panel-tab-content" id="tab-download-templates">
+
+  <!-- Header bar -->
+  <div class="notif-actions-bar">
+    <div class="notif-actions-left">
+      <p class="text-xs text-gray-500">Manage export templates used in PDF & Word downloads</p>
+    </div>
+    <div class="notif-actions-right">
+      <button class="btn btn-md btn-primary" onclick="openCreateTemplateModal()">
+        <i class="fa-solid fa-plus"></i> New Template
+      </button>
+    </div>
+  </div>
+
+  <!-- Templates Table -->
+  <div class="notif-table-wrap">
+    <table class="notif-table">
+      <thead>
+        <tr>
+          <th scope="col" style="width:5%">#</th>
+          <th scope="col" style="width:20%">Name</th>
+          <th scope="col" style="width:45%">Instructions / Footer Text</th>
+          <th scope="col" style="width:10%">Default</th>
+          <th scope="col" style="width:10%">Created</th>
+          <th scope="col" style="width:10%">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="templateTableBody">
+        <tr class="notif-table-empty">
+          <td colspan="6">
+            <div class="empty-state">
+              <i class="fa-solid fa-file-lines"></i>
+              <p>No templates yet</p>
+              <span>Create your first export template to get started</span>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Create / Edit Template Modal -->
+<div class="modal-overlay" id="templateModal" style="display:none;">
+  <div class="modal-container" style="max-width:540px;">
+    <div class="modal-header">
+      <h3 id="templateModalTitle"><i class="fa-solid fa-file-lines"></i> New Template</h3>
+      <button class="modal-close" onclick="closeTemplateModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="templateEditId" value="">
+      <div class="form-group" style="margin-bottom:14px;">
+        <label class="form-label">Template Name</label>
+        <input type="text" id="templateName" class="form-input" placeholder="e.g. School ID Card Footer" maxlength="100">
+      </div>
+      <div class="form-group" style="margin-bottom:14px;">
+        <label class="form-label">Instructions / Footer Text</label>
+        <textarea id="templateInstructions" class="form-input" rows="5" placeholder="Footer text printed at the bottom of PDF/Word exports..." maxlength="5000" style="resize:vertical;"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="flex items-center gap-2 cursor-pointer text-xs text-gray-600">
+          <input type="checkbox" id="templateIsDefault"> Set as default template
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-md btn-neutral" onclick="closeTemplateModal()">Cancel</button>
+      <button class="btn btn-md btn-primary" onclick="saveTemplate()">
+        <i class="fa-solid fa-check"></i> Save Template
+      </button>
+    </div>
+  </div>
+</div>

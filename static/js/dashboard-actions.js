@@ -542,7 +542,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                     </td>
                                     <td class="text-center"><a href="/panel/print/table/${t.id}/" class="count-badge pending">${t.print_list}</a></td>
                                     <td class="text-center"><a href="/panel/print/table/${t.id}/" class="count-badge verified">${t.finalized}</a></td>
-                                    <td class="text-center"><a href="/panel/print/table/${t.id}/" class="count-badge">${t.pool}</a></td>
                                 </tr>
                             `).join('');
                             return `
@@ -552,13 +551,12 @@ document.addEventListener('DOMContentLoaded', function() {
                                     </td>
                                     <td class="text-center"><span class="count-badge pending">${client.print_list}</span></td>
                                     <td class="text-center"><span class="count-badge verified">${client.finalized}</span></td>
-                                    <td class="text-center"><span class="count-badge">${client.pool}</span></td>
                                 </tr>
                                 ${subRows}
                             `;
                         }).join('');
                     } else {
-                        printBody.innerHTML = `<tr><td colspan="4" class="text-center" style="padding:40px;color:#888;"><i class="fa-solid fa-inbox"></i> No print records</td></tr>`;
+                        printBody.innerHTML = `<tr><td colspan="3" class="text-center" style="padding:40px;color:#888;"><i class="fa-solid fa-inbox"></i> No print records</td></tr>`;
                     }
                 }
 
@@ -576,7 +574,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <td class="text-center"><a href="/panel/reprint/table/${t.id}/" class="count-badge pending">${t.requested}</a></td>
                                     <td class="text-center"><a href="/panel/reprint/table/${t.id}/" class="count-badge verified">${t.confirmed}</a></td>
                                     <td class="text-center"><a href="/panel/reprint/table/${t.id}/" class="count-badge approved">${t.downloaded}</a></td>
-                                    <td class="text-center"><a href="/panel/reprint/table/${t.id}/" class="count-badge">${t.pool}</a></td>
                                 </tr>
                             `).join('');
                             return `
@@ -587,21 +584,20 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <td class="text-center"><span class="count-badge pending">${client.requested}</span></td>
                                     <td class="text-center"><span class="count-badge verified">${client.confirmed}</span></td>
                                     <td class="text-center"><span class="count-badge approved">${client.downloaded}</span></td>
-                                    <td class="text-center"><span class="count-badge">${client.pool}</span></td>
                                 </tr>
                                 ${subRows}
                             `;
                         }).join('');
                     } else {
-                        reprintBody.innerHTML = `<tr><td colspan="5" class="text-center" style="padding:40px;color:#888;"><i class="fa-solid fa-inbox"></i> No reprint records</td></tr>`;
+                        reprintBody.innerHTML = `<tr><td colspan="4" class="text-center" style="padding:40px;color:#888;"><i class="fa-solid fa-inbox"></i> No reprint records</td></tr>`;
                     }
                 }
             })
             .catch(err => {
                 console.error('Error loading print/reprint overview:', err);
                 const errHtml = (cols) => `<tr><td colspan="${cols}" class="text-center" style="padding:40px;color:#dc2626;"><i class="fa-solid fa-exclamation-triangle"></i> Error loading data</td></tr>`;
-                if (printBody)   printBody.innerHTML = errHtml(4);
-                if (reprintBody) reprintBody.innerHTML = errHtml(5);
+                if (printBody)   printBody.innerHTML = errHtml(3);
+                if (reprintBody) reprintBody.innerHTML = errHtml(4);
             });
     }
 

@@ -19,6 +19,7 @@ from .base import (
     manage_clients,
     active_clients,
     idcard_group,
+    print_card_group,
     idcard_actions,
     group_settings,
     manage_website,
@@ -30,6 +31,8 @@ from .base import (
     api_export_template_create,
     api_export_template_update,
     api_export_template_delete,
+    api_activity_logs,
+    notifications_page,
 )
 
 from .auth import (

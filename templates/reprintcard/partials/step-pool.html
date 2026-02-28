@@ -53,7 +53,7 @@
                     {% if is_img %}
                     <th class="w-[30px] min-w-[30px] px-[1px] py-1 text-center align-middle" data-field-name="{{ field.name }}" data-field-type="image">{{ field.name|wrap_header }}</th>
                     {% else %}
-                    <th class="{{ field|get_column_width_class }} px-[1px] py-1 {{ field|get_column_align_class }} align-middle" data-field-name="{{ field.name }}" data-field-type="{{ field.type }}">{{ field.name }}</th>
+                    <th class="{{ field|get_column_width_class }} px-[1px] py-1 {{ field|get_column_align_class }} align-middle" data-field-name="{{ field.name }}" data-field-type="{{ field.type }}">{{ field.name|humanize_header }}</th>
                     {% endif %}
                     {% endfor %}
                     <th class="min-w-[80px] px-[1px] py-1 text-center align-middle">Reason</th>

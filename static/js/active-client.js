@@ -21,6 +21,7 @@
         // Action Buttons
         groupSettingBtn: document.getElementById('group-setting-btn'),
         idcardGroupBtn: document.getElementById('idcard-group-btn'),
+        printCardGroupBtn: document.getElementById('print-card-group-btn'),
         
         // Search & Filter
         searchInput: document.getElementById('search-input'),
@@ -77,6 +78,7 @@
         const hasSelection = selectedClientId !== null;
         if (elements.groupSettingBtn) elements.groupSettingBtn.disabled = !hasSelection;
         if (elements.idcardGroupBtn) elements.idcardGroupBtn.disabled = !hasSelection;
+        if (elements.printCardGroupBtn) elements.printCardGroupBtn.disabled = !hasSelection;
     }
 
     // ==================== SEARCH & FILTER ====================
@@ -284,6 +286,15 @@
             elements.idcardGroupBtn.addEventListener('click', function() {
                 if (selectedClientId) {
                     window.location.href = `/panel/client/${selectedClientId}/groups/`;
+                }
+            });
+        }
+        
+        // Print Card Group button
+        if (elements.printCardGroupBtn) {
+            elements.printCardGroupBtn.addEventListener('click', function() {
+                if (selectedClientId) {
+                    window.location.href = `/panel/client/${selectedClientId}/print-groups/`;
                 }
             });
         }

@@ -20,7 +20,7 @@
       <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
       <span class="breadcrumb-item">{{ client.name }}{% if client.status != 'active' %} <span class="status-badge inactive" style="font-size:11px;margin-left:4px;">{{ client.get_status_display }}</span>{% endif %}</span>
       <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
-      <a href="{% url 'idcard_group' client.id %}" class="breadcrumb-item">ID Card Group</a>
+      <a href="{% url 'print_card_group' client.id %}" class="breadcrumb-item">Print Card Group</a>
       {% endif %}
       <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
       <span class="breadcrumb-item active">Print — {{ table.name }}</span>
@@ -38,10 +38,6 @@
       <a href="{% url 'cardprint:print_cards' table.id %}?step=finalized" class="action-tab print-finalized-tab {% if current_step == 'finalized' %}active{% endif %}">
         <span class="tab-label">Finalized List</span>
         <span class="tab-count">{{ step_counts.finalized }}</span>
-      </a>
-      <a href="{% url 'cardprint:print_cards' table.id %}?step=pool" class="action-tab print-pool-tab {% if current_step == 'pool' %}active{% endif %}">
-        <span class="tab-label">Pool</span>
-        <span class="tab-count">{{ step_counts.pool }}</span>
       </a>
     </div>
   </div>

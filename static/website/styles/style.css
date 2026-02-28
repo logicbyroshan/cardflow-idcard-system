@@ -97,6 +97,11 @@ body {
     box-shadow: 0 2px 8px rgba(10, 146, 221, 0.3);
 }
 
+/* Fix phone icon direction */
+.top-bar-item .fa-phone-alt {
+    transform: scaleX(-1);
+}
+
 /* Copy icon in top-bar */
 .copy-icon {
     font-size: 0.65rem !important;
@@ -208,8 +213,10 @@ body {
 
 /* Repeat the spin every 10 seconds */
 @keyframes logoSpin {
-    0% { transform: rotateY(0deg); }
-    100% { transform: rotateY(360deg); }
+    0% { transform: perspective(600px) rotateY(0deg); }
+    30% { transform: perspective(600px) rotateY(180deg) scale(1.1); }
+    60% { transform: perspective(600px) rotateY(300deg) scale(1.05); }
+    100% { transform: perspective(600px) rotateY(360deg) scale(1); }
 }
 
 /* Logo 3D box wrapper */
@@ -239,12 +246,12 @@ body {
     color: var(--white);
     letter-spacing: 0.5px;
     position: relative;
-    background: linear-gradient(90deg, #fff 0%, #e0e7ff 50%, #fff 100%);
-    background-size: 200% auto;
+    background: linear-gradient(90deg, #fff 0%, #fcd34d 25%, #fff 50%, #93c5fd 75%, #fff 100%);
+    background-size: 300% auto;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    animation: logoTextShimmer 4s ease-in-out infinite;
+    animation: logoTextShimmer 3s ease-in-out infinite;
 }
 
 @keyframes logoTextShimmer {
@@ -399,6 +406,7 @@ body {
     justify-content: flex-start;
     align-items: center;
     padding-top: 50px;
+    padding-bottom: 60px;
 }
 
 .hero::before {
@@ -514,8 +522,9 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2rem;
+    gap: 1.5rem;
     pointer-events: auto;
+    margin-top: 3rem;
 }
 
 .hero-buttons {
@@ -1570,12 +1579,23 @@ body {
 }
 
 .typing-highlight {
-    background: linear-gradient(135deg, #fbbf24, #f97316);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
     font-weight: 800;
 }
+
+/* Different gradient colors for each typing line */
+.typing-gradient-0 .typing-highlight { background: linear-gradient(135deg, #fbbf24, #f97316); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.typing-gradient-1 .typing-highlight { background: linear-gradient(135deg, #06b6d4, #3b82f6); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.typing-gradient-2 .typing-highlight { background: linear-gradient(135deg, #a855f7, #ec4899); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.typing-gradient-3 .typing-highlight { background: linear-gradient(135deg, #34d399, #059669); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.typing-gradient-4 .typing-highlight { background: linear-gradient(135deg, #f43f5e, #e11d48); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.typing-gradient-5 .typing-highlight { background: linear-gradient(135deg, #818cf8, #6366f1); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.typing-gradient-6 .typing-highlight { background: linear-gradient(135deg, #fb923c, #dc2626); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.typing-gradient-7 .typing-highlight { background: linear-gradient(135deg, #22d3ee, #8b5cf6); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.typing-gradient-8 .typing-highlight { background: linear-gradient(135deg, #facc15, #84cc16); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.typing-gradient-9 .typing-highlight { background: linear-gradient(135deg, #f472b6, #7c3aed); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
 
 .typing-cursor {
     display: inline-block;
@@ -1723,7 +1743,7 @@ body {
 .phone-screen {
     width: 100%;
     height: 100%;
-    background: linear-gradient(160deg, #0a92dd 0%, #100F57 100%);
+    background: #000;
     border-radius: 26px;
     overflow: hidden;
     display: flex;
@@ -1731,19 +1751,22 @@ body {
 }
 
 .phone-statusbar {
-    height: 32px;
+    height: 28px;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
-    padding: 0 16px;
+    padding-top: 6px;
+    position: relative;
+    z-index: 2;
 }
 
 .phone-statusbar::before {
     content: '';
-    width: 80px;
-    height: 22px;
+    width: 14px;
+    height: 14px;
     background: #1e1e2e;
-    border-radius: 0 0 14px 14px;
+    border-radius: 50%;
+    box-shadow: 0 0 0 3px rgba(30, 30, 46, 0.3);
 }
 
 .phone-content {

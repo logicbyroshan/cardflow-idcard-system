@@ -190,9 +190,18 @@ class PermissionService:
         if not user.is_active:
             return False
 
-        # --- Always-on permissions (no toggle needed) ---
-        if perm_key == 'perm_reupload_idcard_image':
-            return True
+        # --- Permissions blocked for client / client_staff roles ---
+        # Bulk actions and reupload are admin-only
+        CLIENT_BLOCKED_PERMS = {
+            'perm_idcard_bulk_upload',
+            'perm_idcard_bulk_download',
+            'perm_idcard_bulk_reupload',
+            'perm_delete_all_idcard',
+            'perm_reupload_idcard_image',
+        }
+        if perm_key in CLIENT_BLOCKED_PERMS:
+            if cls.is_client(user) or cls.is_client_staff(user):
+                return False
 
         # --- 1. Super admin always passes ---
         if cls.is_super_admin(user):

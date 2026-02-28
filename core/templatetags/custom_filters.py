@@ -389,15 +389,123 @@ def wrap_header(value):
     """
     Insert <br> between words in column headers so they wrap
     inside narrow table columns instead of being cut off.
-    Usage: {{ field.name|wrap_header }}  →  "Mother<br>Photo"
+    Also humanizes concatenated field names first.
+    Usage: {{ field.name|wrap_header }}  →  "MOTHER<br>PHOTO"
     """
     if not value:
         return value
     from django.utils.html import escape
-    parts = str(value).split()
+    # First humanize concatenated names
+    humanized = _humanize_field_name(str(value))
+    parts = humanized.split()
     if len(parts) <= 1:
-        return escape(value)
+        return escape(humanized)
     return mark_safe('<br>'.join(escape(p) for p in parts))
+
+
+# ─────────────────────────────────────────────────────────────────────
+# humanize_header — insert spaces into concatenated field names
+# ─────────────────────────────────────────────────────────────────────
+# Known words for splitting ALL-CAPS concatenated field names.
+# Sorted longest-first so greedy matching picks the longest token.
+_HEADER_KNOWN_WORDS = sorted([
+    'STUDENT', 'ADMISSION', 'PRIMARY', 'SECONDARY', 'ALTERNATE',
+    'MOBILE', 'CONTACT', 'FATHER', 'MOTHER', 'GUARDIAN', 'PARENT', 'SPOUSE',
+    'ADDRESS', 'PERMANENT', 'CURRENT', 'PRESENT', 'TEMPORARY', 'RESIDENTIAL',
+    'DATE', 'BIRTH', 'JOINING', 'EXPIRY', 'VALIDITY', 'ISSUE',
+    'NUMBER', 'NAME', 'CLASS', 'SECTION', 'ROLL', 'DIVISION',
+    'EMPLOYEE', 'CODE', 'DESIGNATION', 'DEPARTMENT', 'BRANCH', 'COMPANY',
+    'EMAIL', 'PHONE', 'BLOOD', 'GROUP', 'TYPE',
+    'GENDER', 'AGE', 'PHOTO', 'SIGNATURE', 'IMAGE', 'PICTURE',
+    'CITY', 'STATE', 'DISTRICT', 'PINCODE', 'COUNTRY', 'VILLAGE', 'TOWN',
+    'HOUSE', 'HOSTEL', 'ROOM', 'BUS', 'ROUTE', 'LIBRARY', 'LAB',
+    'FIRST', 'MIDDLE', 'LAST', 'FULL', 'SUR',
+    'AADHAAR', 'AADHAR', 'PAN', 'VOTER', 'PASSPORT', 'RATION',
+    'CARD', 'DRIVING', 'LICENSE', 'LICENCE',
+    'NATIONALITY', 'RELIGION', 'CASTE', 'CATEGORY', 'MARITAL', 'STATUS',
+    'BATCH', 'SEMESTER', 'STREAM', 'COURSE', 'YEAR',
+    'EMERGENCY', 'OFFICE', 'WORK', 'LOCATION', 'POSTING',
+    'RANK', 'SERVICE', 'ACCESS', 'LEVEL', 'GRADE', 'PAY',
+    'SHIFT', 'TIMING', 'REPORTING', 'MANAGER',
+    'MEDICAL', 'CONDITION', 'HEALTH', 'ALLERGY', 'ALLERGIES',
+    'DISABILITY', 'HANDICAP',
+    'REQUESTED', 'CREATED', 'UPDATED', 'MODIFIED',
+    'OF', 'NO', 'ID', 'AT', 'BY', 'FOR', 'THE',
+], key=len, reverse=True)
+
+
+def _split_all_caps(s):
+    """Split an ALL-CAPS concatenated string into words using known boundaries."""
+    words = []
+    remaining = s
+    while remaining:
+        matched = False
+        for word in _HEADER_KNOWN_WORDS:
+            if remaining.startswith(word):
+                words.append(word)
+                remaining = remaining[len(word):]
+                matched = True
+                break
+        if not matched:
+            # No known word matched — take one character and continue
+            words.append(remaining[0])
+            remaining = remaining[1:]
+    # Merge any single-character fragments with their neighbours
+    merged = []
+    buf = ''
+    for w in words:
+        if len(w) == 1:
+            buf += w
+        else:
+            if buf:
+                merged.append(buf)
+                buf = ''
+            merged.append(w)
+    if buf:
+        merged.append(buf)
+    return ' '.join(merged)
+
+
+def _humanize_field_name(value):
+    """
+    Convert concatenated/camelCase/underscore field names to human-readable.
+    'STUDENTNAME' → 'STUDENT NAME'
+    'dateOfBirth' → 'DATE OF BIRTH'
+    'father_name' → 'FATHER NAME'
+    'Student Name' → 'STUDENT NAME'
+    """
+    s = str(value).strip()
+    if not s:
+        return s
+
+    # If already has spaces → just uppercase
+    if ' ' in s:
+        return s.upper()
+
+    # Replace underscores / dots / hyphens with spaces
+    spaced = re.sub(r'[_.\-]+', ' ', s)
+    if ' ' in spaced:
+        return spaced.upper()
+
+    # camelCase / PascalCase — insert space before uppercase following lowercase
+    camel = re.sub(r'([a-z])([A-Z])', r'\1 \2', s)
+    if ' ' in camel:
+        return camel.upper()
+
+    # ALL-CAPS concatenated — greedy word matching
+    return _split_all_caps(s.upper())
+
+
+@register.filter(is_safe=True)
+def humanize_header(value):
+    """
+    Convert field names like 'STUDENTNAME', 'dateOfBirth', 'father_name'
+    to human-readable uppercase headers: 'STUDENT NAME', 'DATE OF BIRTH', etc.
+    Usage: {{ field.name|humanize_header }}
+    """
+    if not value:
+        return value
+    return _humanize_field_name(str(value))
 
 
 @register.filter

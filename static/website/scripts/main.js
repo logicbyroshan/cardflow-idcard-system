@@ -130,6 +130,8 @@ function initTypingEffect() {
         }
 
         typingEl.innerHTML = renderLine(currentLine, charIndex);
+        // Apply gradient class based on current line index
+        typingEl.className = 'typing-gradient-' + lineIndex;
 
         if (!isDeleting && charIndex === fullText.length) {
             speed = 2200;
@@ -295,11 +297,11 @@ function initLogoSpin() {
         logoImg.style.animation = 'logoSpin 1s ease-in-out';
     }
 
-    // First spin after 5 seconds, then every 10 seconds
+    // First spin after 3 seconds, then every 5 seconds
     setTimeout(function() {
         spin();
-        setInterval(spin, 10000);
-    }, 5000);
+        setInterval(spin, 5000);
+    }, 3000);
 }
 
 // ===== 9. Glowing Border Rotation (fallback for browsers without @property) =====

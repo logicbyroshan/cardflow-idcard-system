@@ -25,17 +25,8 @@
 {% block content %}
 <div class="dashboard-content">
 
-  <!-- Welcome Banner -->
-  <div class="welcome-banner">
-    <div class="welcome-text">
-      <h2>Welcome back, {{ client.name|default:user.get_full_name|default:"Client" }}! 👋</h2>
-      <p>Manage your organization's ID cards and staff members.</p>
-    </div>
-    <div class="welcome-date">
-      <div class="date" id="welcomeDate">Loading...</div>
-      <div class="time" id="welcomeTime">00:00:00</div>
-    </div>
-  </div>
+  <!-- Notification Bar -->
+  {% include 'partials/dashboard/notification-bar.html' %}
 
   <!-- Stats Cards -->
   <div class="stats-cards">

@@ -343,3 +343,205 @@ function escAttr(str) {
 function capitalize(s) {
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
 }
+
+
+/* ================================================================
+   DOWNLOAD TEMPLATES TAB
+   ================================================================ */
+let panelTemplates = [];
+
+async function loadTemplates() {
+  try {
+    const res = await fetch('/panel/api/export-templates/');
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.success) {
+      panelTemplates = data.templates || [];
+      renderTemplateTable();
+    }
+  } catch (err) { console.error('loadTemplates:', err); }
+}
+
+function renderTemplateTable() {
+  const tbody = document.getElementById('templateTableBody');
+  if (!tbody) return;
+  if (!panelTemplates.length) {
+    tbody.innerHTML = `<tr class="notif-table-empty"><td colspan="6">
+      <div class="empty-state"><i class="fa-solid fa-file-lines"></i>
+      <p>No templates yet</p><span>Create your first export template</span></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = panelTemplates.map((t, i) => {
+    const preview = t.instructions.length > 80 ? t.instructions.substring(0, 80) + '...' : t.instructions;
+    return `<tr>
+      <td class="text-center text-xs text-gray-400">${i + 1}</td>
+      <td><strong class="text-sm">${escHtml(t.name)}</strong></td>
+      <td><span class="text-xs text-gray-600">${escHtml(preview)}</span></td>
+      <td class="text-center">${t.is_default ? '<span class="notif-badge-priority normal">Default</span>' : '—'}</td>
+      <td class="text-center text-xs text-gray-400">${t.created_at ? new Date(t.created_at).toLocaleDateString() : '—'}</td>
+      <td>
+        <div class="notif-actions-cell">
+          <button class="btn btn-icon btn-neutral" title="Edit" onclick="editTemplate(${t.id})"><i class="fa-solid fa-pen"></i></button>
+          <button class="btn btn-icon btn-danger" title="Delete" onclick="deleteTemplate(${t.id})"><i class="fa-solid fa-trash"></i></button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function openCreateTemplateModal() {
+  document.getElementById('templateEditId').value = '';
+  document.getElementById('templateName').value = '';
+  document.getElementById('templateInstructions').value = '';
+  document.getElementById('templateIsDefault').checked = false;
+  document.getElementById('templateModalTitle').innerHTML = '<i class="fa-solid fa-file-lines"></i> New Template';
+  document.getElementById('templateModal').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function editTemplate(id) {
+  const t = panelTemplates.find(x => x.id === id);
+  if (!t) return;
+  document.getElementById('templateEditId').value = id;
+  document.getElementById('templateName').value = t.name;
+  document.getElementById('templateInstructions').value = t.instructions;
+  document.getElementById('templateIsDefault').checked = t.is_default;
+  document.getElementById('templateModalTitle').innerHTML = '<i class="fa-solid fa-file-lines"></i> Edit Template';
+  document.getElementById('templateModal').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeTemplateModal() {
+  document.getElementById('templateModal').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+async function saveTemplate() {
+  const editId = document.getElementById('templateEditId').value;
+  const name = document.getElementById('templateName').value.trim();
+  const instructions = document.getElementById('templateInstructions').value.trim();
+  const is_default = document.getElementById('templateIsDefault').checked;
+
+  if (!name) { if (window.showToast) showToast('Template name is required', 'error'); return; }
+  if (!instructions) { if (window.showToast) showToast('Instructions text is required', 'error'); return; }
+
+  const url = editId
+    ? `/panel/api/export-templates/${editId}/update/`
+    : '/panel/api/export-templates/create/';
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
+      body: JSON.stringify({ name, instructions, is_default }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      if (window.showToast) showToast(editId ? 'Template updated' : 'Template created', 'success');
+      closeTemplateModal();
+      loadTemplates();
+    } else {
+      if (window.showToast) showToast(data.message || 'Failed', 'error');
+    }
+  } catch (err) {
+    console.error('saveTemplate:', err);
+    if (window.showToast) showToast('Network error', 'error');
+  }
+}
+
+async function deleteTemplate(id) {
+  if (!confirm('Delete this template?')) return;
+  try {
+    const res = await fetch(`/panel/api/export-templates/${id}/delete/`, {
+      method: 'DELETE',
+      headers: { 'X-CSRFToken': getCSRFToken() },
+    });
+    const data = await res.json();
+    if (data.success) {
+      if (window.showToast) showToast('Template deleted', 'success');
+      loadTemplates();
+    } else {
+      if (window.showToast) showToast(data.message || 'Failed', 'error');
+    }
+  } catch (err) { console.error('deleteTemplate:', err); }
+}
+
+
+/* ================================================================
+   LOG HISTORY TAB
+   ================================================================ */
+let panelLogs = [];
+let logOffset = 0;
+const LOG_LIMIT = 30;
+let logTotal = 0;
+let logSearchTimer = null;
+
+async function loadLogs(append) {
+  if (!append) logOffset = 0;
+  try {
+    const search = document.getElementById('logSearch')?.value || '';
+    const action = document.getElementById('logActionFilter')?.value || '';
+    let url = `/panel/api/activity-logs/?limit=${LOG_LIMIT}&offset=${logOffset}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+    if (action) url += `&action=${encodeURIComponent(action)}`;
+
+    const res = await fetch(url);
+    if (!res.ok) { console.error('loadLogs HTTP', res.status); return; }
+    const data = await res.json();
+    if (!data.success) return;
+
+    if (append) {
+      panelLogs = panelLogs.concat(data.logs);
+    } else {
+      panelLogs = data.logs;
+    }
+    logTotal = data.total;
+    renderLogTable();
+    const label = document.getElementById('logCountLabel');
+    if (label) label.textContent = `${panelLogs.length} of ${logTotal} logs`;
+    const more = document.getElementById('logLoadMore');
+    if (more) more.style.display = panelLogs.length < logTotal ? '' : 'none';
+  } catch (err) { console.error('loadLogs:', err); }
+}
+
+function loadMoreLogs() {
+  logOffset += LOG_LIMIT;
+  loadLogs(true);
+}
+
+function debounceLogSearch() {
+  clearTimeout(logSearchTimer);
+  logSearchTimer = setTimeout(() => loadLogs(false), 350);
+}
+
+function renderLogTable() {
+  const tbody = document.getElementById('logTableBody');
+  if (!tbody) return;
+  if (!panelLogs.length) {
+    tbody.innerHTML = `<tr class="notif-table-empty"><td colspan="7">
+      <div class="empty-state"><i class="fa-solid fa-clock-rotate-left"></i>
+      <p>No logs found</p><span>Activity logs will appear here</span></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = panelLogs.map((l, i) => {
+    const actionLabel = l.action_display || l.action;
+    const colorClass = l.icon_color || 'edit';
+    return `<tr>
+      <td class="text-center text-xs text-gray-400">${logOffset - panelLogs.length + i + 1 + panelLogs.length}</td>
+      <td><span class="text-xs font-medium">${escHtml(l.user_name || 'System')}</span></td>
+      <td><span class="log-action-badge ${colorClass}"><i class="fa-solid ${l.icon_class || 'fa-circle-info'}"></i> ${escHtml(actionLabel)}</span></td>
+      <td><span class="text-xs text-gray-600">${escHtml(l.description || '')}</span></td>
+      <td><span class="text-xs text-gray-500">${escHtml(l.target_name || '—')}</span></td>
+      <td><span class="text-xs text-gray-400">${escHtml(l.ip_address || '—')}</span></td>
+      <td><span class="notif-time">${l.time_ago || '—'}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+/* ============ Tab switch hook — lazy-load data ============ */
+const _origSwitchTab = switchTab;
+switchTab = function(tabName) {
+  _origSwitchTab(tabName);
+  if (tabName === 'download-templates' && !panelTemplates.length) loadTemplates();
+  if (tabName === 'log-history' && !panelLogs.length) loadLogs();
+};
