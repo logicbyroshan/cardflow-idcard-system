@@ -426,7 +426,7 @@ SITE_URL = os.getenv('SITE_URL', 'http://localhost:8000')
 # APP VERSION
 # =============================================================================
 
-APP_VERSION = os.getenv('APP_VERSION', 'v1.1.0')
+APP_VERSION = os.getenv('APP_VERSION', 'v1.8.0')
 
 
 # =============================================================================
