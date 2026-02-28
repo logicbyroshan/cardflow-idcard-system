@@ -1,20 +1,19 @@
-""" 
+"""
 PDF Export Module
 
-Handles PDF file generation for ID card data using xhtml2pdf.
+Handles PDF file generation for ID card data using WeasyPrint.
 This module is READ-ONLY - it never mutates data.
-
-Adapted from new_test project's student_card_pdf view.
 
 Features:
 - Landscape A4 format
 - Dynamic column widths based on content
 - Supports text + image fields
-- Repeating header/footer on every page
+- Repeating header/footer on every page via CSS @page margin boxes
 - UPPERCASE text for printing clarity
-- Images rendered at 2.5cm height (matches Word export)
-- 1cm margins on all 4 sides (matches Word export)
-- Phase 4: Uses THUMBNAILS for optimized export file size
+- Images rendered at fixed subtype dimensions (photo: 1.95×2.5cm, etc.)
+- 0.5cm left/right, 1.5cm top/bottom page margins
+- Exactly 6 rows per page (class-break aware) via CSS page-break
+- CSS overflow-wrap / word-break / hyphens for proper Unicode wrapping
 """
 import os
 import io
@@ -30,9 +29,6 @@ from django.template.loader import render_to_string
 from django.db.models import QuerySet
 
 from mediafiles.services import ImageService
-
-from django.utils.html import escape as html_escape
-from django.utils.safestring import mark_safe
 
 from .utils import (
     separate_fields_by_type,
@@ -54,6 +50,16 @@ _PLACEHOLDER_IMAGE_PATH = os.path.join(
 )
 
 
+def _path_to_file_uri(abs_path: str) -> str:
+    """Convert an absolute filesystem path to a file:// URI for WeasyPrint."""
+    # Normalise to forward slashes
+    fwd = abs_path.replace('\\', '/')
+    if not fwd.startswith('/'):
+        # Windows: C:/... → /C:/...
+        fwd = '/' + fwd
+    return 'file://' + fwd
+
+
 @dataclass
 class PdfExportResult:
     """Result of a PDF export operation."""
@@ -62,96 +68,6 @@ class PdfExportResult:
     response: Optional[HttpResponse] = None
     filename: str = ''
     card_count: int = 0
-
-
-def _link_callback(uri, rel):
-    """
-    Resolve absolute file paths for images and static assets.
-    xhtml2pdf needs local filesystem paths to embed images.
-    """
-    if uri.startswith(settings.MEDIA_URL):
-        path = os.path.join(
-            settings.MEDIA_ROOT,
-            uri.replace(settings.MEDIA_URL, '')
-        )
-        # Guard against path traversal
-        path = os.path.realpath(path)
-        if not path.startswith(os.path.realpath(settings.MEDIA_ROOT)):
-            return uri
-    elif uri.startswith(settings.STATIC_URL):
-        static_root = getattr(settings, 'STATIC_ROOT', None)
-        if static_root:
-            path = os.path.join(static_root, uri.replace(settings.STATIC_URL, ''))
-            # Guard against path traversal
-            path = os.path.realpath(path)
-            if not path.startswith(os.path.realpath(static_root)):
-                return uri
-        else:
-            # Fallback for dev: use STATICFILES_DIRS
-            for sdir in getattr(settings, 'STATICFILES_DIRS', []):
-                candidate = os.path.join(sdir, uri.replace(settings.STATIC_URL, ''))
-                candidate = os.path.realpath(candidate)
-                if not candidate.startswith(os.path.realpath(sdir)):
-                    continue
-                if os.path.isfile(candidate):
-                    return candidate
-            return uri
-    else:
-        return uri
-
-    return path if os.path.isfile(path) else uri
-
-
-def _register_arial_font():
-    """Register bundled Arial TTF with reportlab so xhtml2pdf can use it.
-
-    Called once before the first PDF render.  Uses arial.ttf and
-    arialbd.ttf from static/fonts/ so it works on both Windows and Linux.
-    Also registers Saira Semi Condensed for dense-column mode.
-    """
-    from reportlab.pdfbase import pdfmetrics
-    from reportlab.pdfbase.ttfonts import TTFont
-    from reportlab.lib.fonts import addMapping
-
-    font_dir = os.path.join(settings.BASE_DIR, 'static', 'fonts')
-
-    # ── Arial (regular + bold) ──
-    regular = os.path.join(font_dir, 'arial.ttf')
-    bold = os.path.join(font_dir, 'arialbd.ttf')
-    if not os.path.isfile(regular):
-        logger.warning('Arial font not found at %s — PDF will fall back to Helvetica', regular)
-        return
-    try:
-        pdfmetrics.registerFont(TTFont('Arial', regular))
-        if os.path.isfile(bold):
-            pdfmetrics.registerFont(TTFont('Arial-Bold', bold))
-            addMapping('Arial', 0, 0, 'Arial')
-            addMapping('Arial', 1, 0, 'Arial-Bold')
-        else:
-            addMapping('Arial', 0, 0, 'Arial')
-            addMapping('Arial', 1, 0, 'Arial')
-    except Exception as exc:
-        logger.warning('Could not register Arial font: %s', exc)
-
-    # ── Saira Semi Condensed (for dense-column / condensed mode) ──
-    saira_regular = os.path.join(font_dir, 'saira-semi-condensed-500.ttf')
-    saira_bold = os.path.join(font_dir, 'saira-semi-condensed-700.ttf')
-    if os.path.isfile(saira_regular):
-        try:
-            pdfmetrics.registerFont(TTFont('SairaSemiCondensed', saira_regular))
-            if os.path.isfile(saira_bold):
-                pdfmetrics.registerFont(TTFont('SairaSemiCondensed-Bold', saira_bold))
-                addMapping('SairaSemiCondensed', 0, 0, 'SairaSemiCondensed')
-                addMapping('SairaSemiCondensed', 1, 0, 'SairaSemiCondensed-Bold')
-            else:
-                addMapping('SairaSemiCondensed', 0, 0, 'SairaSemiCondensed')
-                addMapping('SairaSemiCondensed', 1, 0, 'SairaSemiCondensed')
-        except Exception as exc:
-            logger.warning('Could not register Saira Semi Condensed font: %s', exc)
-
-
-# Register fonts once at module load
-_register_arial_font()
 
 
 # ── Font-mode presets ───────────────────────────────────────────────
@@ -187,16 +103,16 @@ _FONT_MODES = {
 
 class PdfExporter:
     """
-    Handles PDF export operations.
+    Handles PDF export operations using WeasyPrint.
 
     Features:
     - Landscape A4 with dynamic column widths
     - Text fields + image fields rendered side by side
-    - Repeating header and footer on every page
+    - Repeating header and footer on every page via CSS @page margin boxes
     - UPPERCASE text for printing clarity
-    - Image height fixed at 2.5cm (matches Word export)
-    - 1cm margins on all 4 sides
-    - Uses bundled Arial TTF font for better Unicode support
+    - Image dimensions fixed per subtype (photo: 1.95×2.5cm, signature: 1.9×0.5cm, etc.)
+    - 0.5cm left/right, 1.5cm top/bottom page margins
+    - Exactly 6 rows per page (class-break aware) using CSS page-break
 
     Usage:
         exporter = PdfExporter()
@@ -205,42 +121,13 @@ class PdfExporter:
             return result.response
     """
 
-    # Width boost multiplier for name/address fields
-    NAME_ADDRESS_BOOST = 1.5
-    # Width boost for non-wrappable fields (mobile, DOB, Aadhar, etc.)
-    NOWRAP_BOOST = 1.35
-    # Image column weight (fixed)
-    IMAGE_COLUMN_WEIGHT = 25
     # Column width bounds (percentage)
     MIN_COL_WIDTH = 4.0
     MAX_COL_WIDTH = 30.0
-    # Minimum width for non-wrappable fields (percentage)
+    # Minimum width for non-wrappable fields (mobile, DOB, Aadhar, etc.)
     MIN_NOWRAP_COL_WIDTH = 5.5
     # Landscape A4 content width (29.7cm page - 0.5cm left - 0.5cm right margins)
     PAGE_CONTENT_WIDTH_CM = 28.7
-
-    # ── Page height budget (all values in cm) ──
-    # A4 landscape height = 21cm
-    # @page margin: top=1.5cm, bottom=0.3cm → content height = 19.2cm
-    PAGE_CONTENT_HEIGHT_CM = 19.2
-    # Inline footer: 3 lines at 6.5pt, ~0.15cm top margin, page number
-    FOOTER_HEIGHT_CM = 0.85
-    # Safety margin to account for xhtml2pdf rendering differences
-    PAGE_SAFETY_MARGIN_CM = 0.15
-    # Header row: base padding + per-line text height
-    HEADER_BASE_CM = 0.10  # ~1px top + 1px bottom padding
-    HEADER_LINE_CM = 0.22  # ~6.5pt text + leading per line
-
-    # Field name keywords that indicate non-wrappable content
-    NOWRAP_KEYWORDS = [
-        'mobile', 'phone', 'contact', 'tel', 'cell',
-        'dob', 'date', 'birth', 'joining',
-        'aadhar', 'aadhaar', 'aadharno', 'aadhaarno',
-        'pan', 'pincode', 'pin', 'zip',
-        'roll', 'enrollment', 'enrolment', 'reg',
-        'id no', 'idno', 'sr no', 'srno', 'uid',
-        'account', 'ifsc', 'bank',
-    ]
 
     # ── Dense-table threshold ──
     # If total column count (including SR NO) exceeds this, auto-compact
@@ -269,11 +156,23 @@ class PdfExporter:
             PdfExportResult with HttpResponse if successful
         """
         try:
-            from xhtml2pdf import pisa
-        except ImportError:
+            from weasyprint import HTML as WeasyHTML
+        except (ImportError, OSError) as _wp_err:
+            # ImportError: weasyprint not installed
+            # OSError: native libraries not found (e.g. GTK/Pango missing on Windows)
+            _wp_msg = str(_wp_err)
+            if 'gobject' in _wp_msg.lower() or 'glib' in _wp_msg.lower() or 'pango' in _wp_msg.lower():
+                return PdfExportResult(
+                    success=False,
+                    message=(
+                        'PDF export requires the GTK runtime on Windows. '
+                        'Install GTK3 (https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer) '
+                        'and make sure its bin/ directory is on the PATH, or use the Linux/Docker environment.'
+                    )
+                )
             return PdfExportResult(
                 success=False,
-                message='xhtml2pdf library not installed. Run: pip install xhtml2pdf'
+                message='WeasyPrint library not installed or cannot be loaded. Run: pip install weasyprint'
             )
 
         if not cards.exists():
@@ -282,7 +181,6 @@ class PdfExporter:
                 message='No cards to export!'
             )
 
-        # Hard cap to prevent OOM — xhtml2pdf is very memory-hungry with images
         MAX_PDF_CARDS = 5000
         card_count = cards.count()
         if card_count > MAX_PDF_CARDS:
@@ -324,11 +222,9 @@ class PdfExporter:
                 if cfg.get('is_image') and 'image_height_cm' in cfg:
                     max_img_h = max(max_img_h, cfg['image_height_cm'])
             row_height_cm = round(max_img_h + 0.15, 2) if max_img_h > 0 else 0.8
-            data_row_height_cm = row_height_cm
 
-            # Build row data (with placeholder images for missing photos)
-            rows = self._build_rows(ordered_fields, cards_list, column_configs,
-                                    char_width_cm=font_preset['char_width_cm'])
+            # Build row data (file:// image URIs for WeasyPrint)
+            rows = self._build_rows(ordered_fields, cards_list, column_configs)
 
             # Get institution name
             institution_name = "Institution"
@@ -348,15 +244,15 @@ class PdfExporter:
                 except ExportTemplate.DoesNotExist:
                     pass
 
-            # Group rows into pages (dynamic RPP, class-break aware)
+            # Group rows into pages (fixed 6 rows per page, class-break aware)
             class_field_name = get_class_field_name(table.fields)
-            rpp = self._compute_records_per_page(
-                column_configs, has_instructions=bool(template_instructions),
-                data_row_height_cm=data_row_height_cm,
-                font_preset=font_preset,
-            )
             pages = self._group_rows_into_pages(
-                rows, cards_list, class_field_name, records_per_page=rpp
+                rows, cards_list, class_field_name, records_per_page=6
+            )
+
+            # Build font dir path for @font-face in CSS
+            font_dir = _path_to_file_uri(
+                os.path.join(settings.BASE_DIR, 'static', 'fonts')
             )
 
             # Render HTML
@@ -377,29 +273,17 @@ class PdfExporter:
                 'header_font_size': font_preset['header_pt'],
                 'data_font_size': font_preset['data_pt'],
                 'font_mode': resolved_font_mode,
+                'font_dir': font_dir,
             }
 
-            html = render_to_string('exports/pdf_report.html', context)
-
-            # Generate PDF into a buffer, then stream for large files
-            pdf_buffer = io.BytesIO()
+            html_string = render_to_string('exports/pdf_report.html', context)
             filename = generate_export_filename(table.name, 'pdf', client_name=institution_name, status=status)
 
-            pisa_status = pisa.CreatePDF(
-                io.BytesIO(html.encode('UTF-8')),
-                dest=pdf_buffer,
-                link_callback=_link_callback
-            )
+            # Generate PDF using WeasyPrint — no link_callback needed; images
+            # are already embedded as file:// URIs in the row cell content.
+            base_url = _path_to_file_uri(str(settings.BASE_DIR))
+            pdf_bytes = WeasyHTML(string=html_string, base_url=base_url).write_pdf()
 
-            if pisa_status.err:
-                logger.error("PDF generation error: %s", pisa_status.err)
-                return PdfExportResult(
-                    success=False,
-                    message='Error generating PDF. Check server logs.'
-                )
-
-            pdf_bytes = pdf_buffer.getvalue()
-            pdf_buffer.close()
             response = stream_file_response(pdf_bytes, filename, 'application/pdf')
 
             return PdfExportResult(
@@ -416,119 +300,20 @@ class PdfExporter:
                 message='PDF export failed. Please try again or contact support.'
             )
 
-    def _get_image_render_width_cm(self, cards_list, field_name):
-        """Compute rendered image width at 2.5cm height from first valid image.
-        
-        Used to size image columns to: rendered_width + 0.1 cm.
-        Falls back to 3:4 portrait ratio (standard ID photo) if no image found.
-        """
-        IMAGE_HEIGHT = 2.5
-        DEFAULT_RATIO = 0.75  # 3:4 portrait
-        try:
-            from PIL import Image as PILImage
-            for card in cards_list[:10]:
-                # Phase 4: Use thumbnail if available for consistent sizing
-                img_path = ImageService.get_image_path_for_export(
-                    card=card, field_name=field_name, 
-                    prefer_thumbnail=True, fallback_to_field_data=True
-                )
-                if img_path and is_valid_image_path(img_path):
-                    abs_path = os.path.join(settings.MEDIA_ROOT, img_path)
-                    if os.path.isfile(abs_path):
-                        with open(abs_path, 'rb') as f:
-                            with PILImage.open(f) as img:
-                                w, h = img.size
-                                if h > 0:
-                                    return IMAGE_HEIGHT * (w / h)
-        except Exception:
-            pass
-        return IMAGE_HEIGHT * DEFAULT_RATIO
 
     @classmethod
     def _is_nowrap_field(cls, field_name: str) -> bool:
-        """Check if a field contains non-wrappable data (phone, DOB, ID numbers, etc.).
-
-        Delegates to column_spec intelligence for semantic detection.
-        """
+        """Check if a field contains non-wrappable data (phone, DOB, ID numbers, etc.)."""
         return is_nowrap_column(field_name)
-
-    def _estimate_header_lines(self, column_configs, char_width_cm=0.155):
-        """Estimate max number of text lines the tallest column header needs.
-
-        Uses column width (%) to compute available characters per line,
-        then simulates word-boundary wrapping on each label.
-
-        Args:
-            column_configs: List of column config dicts
-            char_width_cm: Width per uppercase char at current font size
-        """
-        max_lines = 1
-        for cfg in column_configs:
-            label = cfg.get('label', '')
-            col_width_cm = (cfg['width'] / 100) * self.PAGE_CONTENT_WIDTH_CM
-            # Usable text width = column width - left/right padding (~1px each) - borders
-            usable_cm = col_width_cm - 0.15
-            if usable_cm <= 0:
-                usable_cm = 0.4
-            chars_per_line = max(2, int(usable_cm / char_width_cm))
-            # Simulate word-wrap
-            words = label.split()
-            lines = 1
-            current_len = 0
-            for word in words:
-                word_len = len(word)
-                if current_len > 0 and current_len + 1 + word_len > chars_per_line:
-                    lines += 1
-                    current_len = word_len
-                else:
-                    current_len += (1 if current_len > 0 else 0) + word_len
-            # A single very long word that exceeds the line width also wraps
-            if len(label.replace(' ', '')) > chars_per_line and lines == 1:
-                lines = max(1, -(-len(label) // chars_per_line))  # ceil div
-            max_lines = max(max_lines, lines)
-        return max_lines
-
-    def _compute_records_per_page(self, column_configs, has_instructions=False,
-                                  data_row_height_cm=None, font_preset=None):
-        """Compute how many data rows safely fit on one page.
-
-        Takes into account:
-          - Dynamic header height (based on column label wrapping)
-          - Inline footer height
-          - Instructions block on last page (optional)
-          - Safety margin for xhtml2pdf rendering quirks
-          - Dynamic row height based on tallest image column
-          - Font-mode (normal=9pt vs compact=7pt vs condensed)
-        """
-        if data_row_height_cm is None:
-            data_row_height_cm = 2.7  # fallback
-
-        if font_preset is None:
-            font_preset = _FONT_MODES['normal']
-
-        char_w = font_preset.get('char_width_cm', 0.155)
-        hdr_line = font_preset.get('header_line_cm', 0.22)
-        hdr_base = font_preset.get('header_base_cm', 0.10)
-
-        header_lines = self._estimate_header_lines(column_configs, char_width_cm=char_w)
-        header_height = hdr_base + header_lines * hdr_line
-
-        budget = (self.PAGE_CONTENT_HEIGHT_CM
-                  - self.FOOTER_HEIGHT_CM
-                  - self.PAGE_SAFETY_MARGIN_CM
-                  - header_height)
-
-        rpp = int(budget / data_row_height_cm)
-        return max(3, min(rpp, 10))
 
     @classmethod
     def _looks_numeric_or_date(cls, value: str) -> bool:
         """Check if a value is primarily numeric/date-like (shouldn't be wrapped)."""
         if not value:
             return False
-        # Count digits + separators vs letters
         digits_seps = sum(1 for c in value if c.isdigit() or c in '/-.:+ ')
         return digits_seps >= len(value) * 0.6
+
 
     @staticmethod
     def _humanize_label(name: str) -> str:
@@ -719,141 +504,21 @@ class PdfExporter:
 
         return configs
 
-    @classmethod
-    def _wrap_text_for_pdf(cls, text: str, nowrap: bool = False, col_width_pct: float = 0,
-                           char_width_cm: float = 0.18) -> 'mark_safe':
-        """Context-aware text wrapping for PDF columns.
-
-        xhtml2pdf has very limited CSS word-wrap support, so we:
-        1. Strip characters outside the Latin-1 range (0x20-0xFF).
-        2. Insert <wbr> inside long unbreakable runs
-           so the PDF renderer can break them at column boundaries.
-        3. Insert <wbr> at natural boundaries (commas, spaces, slashes).
-
-        The column width percentage is used to estimate how many characters
-        fit on one line, so we know when to force-break long words.
-
-        Returns a mark_safe string so Django templates render the HTML.
-        """
-        import re as _re
-        if not text:
-            return mark_safe('')
-
-        # ── Step 1: Strip characters outside the safe Latin-1 range.
-        # With bundled Arial TTF we get better coverage than Helvetica,
-        # but we still restrict to 0x20-0xFF to be safe across all PDF
-        # viewers.  Replace unsupported characters with a space so the
-        # stored data is never modified — cleaning happens only at
-        # PDF render time.
-        cleaned_chars = []
-        for ch in text:
-            cp = ord(ch)
-            # Tab / newline / carriage-return → space
-            if ch in ('\t', '\n', '\r', '\x0b', '\x0c'):
-                cleaned_chars.append(' ')
-            # Drop C0 control characters (0x00-0x1F)
-            elif cp <= 0x1F:
-                continue
-            # Printable Basic Latin — always safe
-            elif 0x20 <= cp <= 0x7E:
-                cleaned_chars.append(ch)
-            # Drop C1 control characters (0x80-0x9F) — Windows-1252
-            # copy-paste artefacts
-            elif 0x80 <= cp <= 0x9F:
-                cleaned_chars.append(' ')
-            # Latin-1 Supplement printable (0xA0-0xFF) — all in Helvetica
-            elif 0xA0 <= cp <= 0xFF:
-                cleaned_chars.append(ch)
-            else:
-                # Everything above U+00FF (Latin Extended, Devanagari,
-                # Arabic, CJK, Geometric Shapes ■, zero-width chars,
-                # etc.) → replace with space.  This prevents black
-                # boxes without altering the database.
-                cleaned_chars.append(' ')
-        cleaned = ''.join(cleaned_chars)
-        # Collapse multiple spaces into one
-        cleaned = _re.sub(r' {2,}', ' ', cleaned).strip()
-
-        if not cleaned:
-            return mark_safe('')
-
-        # ── Step 2: Escape HTML entities (XSS prevention)
-        safe_text = html_escape(cleaned)
-
-        # ── nowrap columns (phone, DOB, Aadhaar, etc.): skip break injection
-        if nowrap:
-            return mark_safe(safe_text)
-
-        # ── Step 3: Estimate chars-per-line from column width.
-        # Landscape A4 content width ≈ 28.7cm.
-        # char_width_cm is font-mode dependent (9pt=0.18, 7pt=0.155, condensed=0.14).
-        if col_width_pct > 0:
-            col_cm = (col_width_pct / 100) * 28.7
-            usable_cm = col_cm - 0.12  # subtract padding + border
-            chars_per_line = max(3, int(usable_cm / char_width_cm))
-        else:
-            chars_per_line = 16  # conservative default
-
-        # ── Step 4: Force-break long unbreakable runs.
-        # Split on whitespace tokens, inject <wbr> inside any "word"
-        # longer than chars_per_line so the PDF engine can wrap it.
-        # NOTE: Do NOT use &#8203; (zero-width space U+200B) — xhtml2pdf
-        # renders it as ■.  Use <wbr> instead.
-        WBR = '<wbr>'
-        parts = safe_text.split(' ')
-        wrapped_parts = []
-        for part in parts:
-            # Strip any stale <wbr> tags from the part
-            raw = part.replace('<wbr>', '').replace('&amp;', '&')
-            visible_len = len(html_escape(raw)) if '&' in part else len(part)
-            if visible_len > chars_per_line:
-                # Force-break: insert <wbr> every chars_per_line characters
-                out = []
-                count = 0
-                i = 0
-                while i < len(part):
-                    # Skip over HTML entities (e.g. &amp;)
-                    if part[i] == '&':
-                        end = part.find(';', i)
-                        if end != -1:
-                            out.append(part[i:end+1])
-                            count += 1
-                            i = end + 1
-                            if count >= chars_per_line:
-                                out.append(WBR)
-                                count = 0
-                            continue
-                    out.append(part[i])
-                    count += 1
-                    if count >= chars_per_line:
-                        out.append(WBR)
-                        count = 0
-                    i += 1
-                wrapped_parts.append(''.join(out))
-            else:
-                wrapped_parts.append(part)
-
-        safe_text = ' '.join(wrapped_parts)
-
-        # ── Step 5: Insert <wbr> at natural break characters: , / ; :
-        safe_text = _re.sub(r'([,/;:])', r'\1<wbr>', safe_text)
-
-        return mark_safe(safe_text)
-
     def _build_rows(
         self,
         ordered_fields: List[Dict[str, Any]],
         cards: list,
         column_configs: List[Dict[str, Any]] = None,
-        char_width_cm: float = 0.18,
     ) -> List[List[Dict[str, Any]]]:
         """
         Build row data for the template.
-        Each cell: { align, is_image, content, image_width_cm (for images) }
+        Each cell: { align, is_image, content, nowrap, image_width_cm, image_height_cm }
 
-        PDF-only rule: missing images get a placeholder image.
+        Image cells carry file:// URIs so WeasyPrint can resolve them directly.
+        Text cells carry plain escaped text; CSS handles overflow-wrap / hyphens.
+        Missing images fall back to the placeholder image.
         """
-        # Build a map: field_index → image_width_cm and image_height_cm from column_configs
+        # Build dimension maps: field_index → width/height from column_configs
         # column_configs[0] = Sr No, column_configs[1..] = fields
         image_width_map = {}
         image_height_map = {}
@@ -875,6 +540,7 @@ class PdfExporter:
             row_cells.append({
                 'align': 'center',
                 'is_image': False,
+                'nowrap': True,
                 'content': str(sr_no),
             })
 
@@ -884,22 +550,23 @@ class PdfExporter:
                 val = fd.get(name, '')
                 ftype = field.get('type', 'text')
 
-                # Use column_spec for semantic alignment
                 spec = get_column_spec(name, ftype)
+                col_cfg_idx = field_idx + 1  # +1 because configs[0] = Sr No
+                is_nowrap = column_configs[col_cfg_idx].get('nowrap', False) if column_configs and col_cfg_idx < len(column_configs) else False
 
                 cell = {
                     'align': spec.align,
                     'is_image': is_image,
                     'is_placeholder': False,
+                    'nowrap': is_nowrap,
                     'content': '',
                 }
 
                 if is_image:
-                    # Fixed image dimensions from column config
                     cell['image_width_cm'] = image_width_map.get(field_idx, 1.95)
                     cell['image_height_cm'] = image_height_map.get(field_idx, 2.5)
 
-                    # Phase 4: Use thumbnail if available for smaller PDF file size
+                    # Use thumbnail if available (Phase 4 optimisation)
                     img_path = ImageService.get_image_path_for_export(
                         card=card,
                         field_name=name,
@@ -909,26 +576,24 @@ class PdfExporter:
                     if img_path and is_valid_image_path(img_path):
                         abs_path = os.path.join(settings.MEDIA_ROOT, img_path)
                         if os.path.isfile(abs_path):
-                            cell['content'] = abs_path
+                            cell['content'] = _path_to_file_uri(abs_path)
                         else:
-                            cell['content'] = _PLACEHOLDER_IMAGE_PATH
+                            cell['content'] = _path_to_file_uri(_PLACEHOLDER_IMAGE_PATH)
                             cell['is_placeholder'] = True
                     else:
-                        cell['content'] = _PLACEHOLDER_IMAGE_PATH
+                        cell['content'] = _path_to_file_uri(_PLACEHOLDER_IMAGE_PATH)
                         cell['is_placeholder'] = True
                 else:
-                    formatted = format_field_value(val, uppercase=True)
-                    # Pass column width so wrapping can estimate chars-per-line
-                    col_cfg_idx = field_idx + 1  # +1 because configs[0] = Sr No
-                    col_w = column_configs[col_cfg_idx]['width'] if column_configs and col_cfg_idx < len(column_configs) else 0
-                    is_nowrap = column_configs[col_cfg_idx].get('nowrap', False) if column_configs and col_cfg_idx < len(column_configs) else False
-                    cell['content'] = self._wrap_text_for_pdf(formatted, nowrap=is_nowrap, col_width_pct=col_w, char_width_cm=char_width_cm)
+                    # WeasyPrint handles wrapping via CSS — store plain text;
+                    # Django template auto-escaping handles XSS prevention.
+                    cell['content'] = format_field_value(val, uppercase=True)
 
                 row_cells.append(cell)
 
             rows.append(row_cells)
 
         return rows
+
 
     def _group_rows_into_pages(
         self,
