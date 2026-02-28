@@ -240,10 +240,10 @@ def api_print_list(request, table_id):
     ).select_related('card', 'requested_by').order_by('-created_at')
 
     if query:
-        pr_qs = pr_qs.filter(
-            Q(card__field_data__icontains=query) |
-            Q(card__id__icontains=query)
-        )
+        search_q = Q(card__field_data__icontains=query)
+        if query.isdigit():
+            search_q |= Q(card__id=int(query))
+        pr_qs = pr_qs.filter(search_q)
 
     total = pr_qs.count()
     batch = list(pr_qs[offset:offset + limit + 1])
@@ -403,10 +403,10 @@ def api_print_finalized_list(request, table_id):
     ).select_related('card', 'requested_by').order_by('-updated_at')
 
     if query:
-        pr_qs = pr_qs.filter(
-            Q(card__field_data__icontains=query) |
-            Q(card__id__icontains=query)
-        )
+        search_q = Q(card__field_data__icontains=query)
+        if query.isdigit():
+            search_q |= Q(card__id=int(query))
+        pr_qs = pr_qs.filter(search_q)
 
     total = pr_qs.count()
     batch = list(pr_qs[offset:offset + limit + 1])
@@ -502,10 +502,10 @@ def api_print_pool_list(request, table_id):
     ).select_related('card', 'requested_by').order_by('-updated_at')
 
     if query:
-        pr_qs = pr_qs.filter(
-            Q(card__field_data__icontains=query) |
-            Q(card__id__icontains=query)
-        )
+        search_q = Q(card__field_data__icontains=query)
+        if query.isdigit():
+            search_q |= Q(card__id=int(query))
+        pr_qs = pr_qs.filter(search_q)
 
     total = pr_qs.count()
     batch = list(pr_qs[offset:offset + limit + 1])

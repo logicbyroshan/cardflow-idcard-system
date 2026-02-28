@@ -36,36 +36,29 @@
       {# ── Controls Panel ────────────────────────────────────────────── #}
       <div class="ae-controls">
 
-        {# ── Levels Group ─────────────────────────────────────────────── #}
+        {# ── Levels Group with Histogram ──────────────────────────────── #}
         <div class="ae-group">
           <div class="ae-group-label">Levels</div>
 
-          {# Black Point #}
-          <div class="ae-slider-row">
-            <div class="ae-slider-header">
-              <span class="ae-slider-name">Black Point</span>
-              <span id="aeBlackVal" class="ae-slider-value">0</span>
+          {# Histogram canvas + draggable handles #}
+          <div class="ae-histogram-wrap">
+            <canvas id="aeHistogram" width="308" height="80"></canvas>
+            <div class="ae-levels-track" id="aeLevelsTrack">
+              <div class="ae-levels-handle ae-levels-handle--black" id="aeHandleBlack" title="Black Point"></div>
+              <div class="ae-levels-handle ae-levels-handle--gamma" id="aeHandleGamma" title="Midtone (Gamma)"></div>
+              <div class="ae-levels-handle ae-levels-handle--white" id="aeHandleWhite" title="White Point"></div>
             </div>
-            <input id="aeBlack" class="ae-slider" type="range" min="0" max="255" value="0" step="1">
+          </div>
+          <div class="ae-levels-values">
+            <span id="aeBlackVal">0</span>
+            <span id="aeGammaVal">1.00</span>
+            <span id="aeWhiteVal">255</span>
           </div>
 
-          {# Midtone / Gamma #}
-          <div class="ae-slider-row">
-            <div class="ae-slider-header">
-              <span class="ae-slider-name">Midtone (Gamma)</span>
-              <span id="aeGammaVal" class="ae-slider-value">1.00</span>
-            </div>
-            <input id="aeGamma" class="ae-slider" type="range" min="10" max="300" value="100" step="1">
-          </div>
-
-          {# White Point #}
-          <div class="ae-slider-row">
-            <div class="ae-slider-header">
-              <span class="ae-slider-name">White Point</span>
-              <span id="aeWhiteVal" class="ae-slider-value">255</span>
-            </div>
-            <input id="aeWhite" class="ae-slider" type="range" min="0" max="255" value="255" step="1">
-          </div>
+          {# Hidden sliders for compatibility — driven by handles #}
+          <input id="aeBlack" type="hidden" value="0">
+          <input id="aeGamma" type="hidden" value="100">
+          <input id="aeWhite" type="hidden" value="255">
         </div>
 
         {# ── Auto Fix Group (v2) ────────────────────────────────────── #}
@@ -109,6 +102,20 @@
               <i class="fa-solid fa-xmark" aria-hidden="true"></i> Cancel
             </button>
           </div>
+        </div>
+
+        {# ── Image Navigation Group ───────────────────────────────────── #}
+        <div class="ae-nav-group">
+          <div class="ae-group-label">Navigate</div>
+          <div class="ae-nav-btns">
+            <button id="aeNavPrev" class="ae-nav-btn" type="button" title="Previous image (Shift+PageUp)">
+              <i class="fa-solid fa-chevron-left" aria-hidden="true"></i> Prev
+            </button>
+            <button id="aeNavNext" class="ae-nav-btn" type="button" title="Next image (Shift+PageDown)">
+              Next <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+            </button>
+          </div>
+          <p class="ae-nav-hint">Shift + PageUp / PageDown</p>
         </div>
 
       </div><!-- /.ae-controls -->
@@ -156,9 +163,6 @@
         </button>
         <button id="aeSave" class="ae-btn ae-btn-save" type="button">
           <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Save
-        </button>
-        <button id="aeCloseBottom" class="ae-btn ae-btn-close" type="button">
-          <i class="fa-solid fa-xmark" aria-hidden="true"></i> Close
         </button>
       </div>
     </div>

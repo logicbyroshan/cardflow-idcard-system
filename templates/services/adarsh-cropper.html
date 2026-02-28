@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Adarsh Cropper - Services{% endblock %}
+{% block title %}Adarsh Engine - Services{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/adarsh-cropper.css' %}">
@@ -12,7 +12,7 @@
 {% block breadcrumb %}
 <span class="breadcrumb-item"><i class="fa-solid fa-screwdriver-wrench"></i> Services</span>
 <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
-<span class="breadcrumb-item active">Adarsh Cropper</span>
+<span class="breadcrumb-item active">Adarsh Engine</span>
 {% endblock %}
 
 {% block topbar_right %}
@@ -74,8 +74,8 @@
           <span>Engine Not Detected</span>
         </div>
         <p class="engine-help-text">
-          The local Adarsh Cropper service is not running on this machine.
-          Download and install it to enable photo cropping.
+          The local Adarsh Engine service is not running on this machine.
+          Download and install it to enable photo processing.
         </p>
         <div class="engine-actions">
           <a :href="update.downloadUrl || '{% static 'engine/AdarshCropper.exe' %}'" class="btn btn-primary" download>
@@ -238,11 +238,31 @@
         </div>
       </div>
 
-      {# ══════════ Image Preview Grid ══════════ #}
+      {# ══════════ Image Preview Grid with Tabs ══════════ #}
       <div class="preview-section" x-show="preview.visible" x-transition x-cloak>
         <div class="preview-header">
-          <h3><i class="fa-solid fa-images"></i> Cropped Photos</h3>
-          <span class="preview-count" x-text="preview.images.length + ' photos'"></span>
+          <h3><i class="fa-solid fa-images"></i> Output Photos</h3>
+          <span class="preview-count" x-text="currentTabImages().length + ' photos'"></span>
+        </div>
+
+        {# ── Tabs ── #}
+        <div class="preview-tabs">
+          <button class="preview-tab" :class="{ active: activeTab === 'cropped' }" @click="switchTab('cropped')" type="button">
+            <i class="fa-solid fa-crop"></i> Cropped
+            <span class="tab-count" x-text="preview.images.length" x-show="preview.images.length > 0"></span>
+          </button>
+          <button class="preview-tab" :class="{ active: activeTab === 'edited' }" @click="switchTab('edited')" type="button">
+            <i class="fa-solid fa-pen-to-square"></i> Edited
+            <span class="tab-count" x-text="preview.editedImages.length" x-show="preview.editedImages.length > 0"></span>
+          </button>
+          <button class="preview-tab" :class="{ active: activeTab === 'failed' }" @click="switchTab('failed')" type="button">
+            <i class="fa-solid fa-triangle-exclamation"></i> Failed
+            <span class="tab-count" x-text="preview.failedImages.length" x-show="preview.failedImages.length > 0"></span>
+          </button>
+          <button class="preview-tab" :class="{ active: activeTab === 'deleted' }" @click="switchTab('deleted')" type="button">
+            <i class="fa-solid fa-trash-can"></i> Deleted
+            <span class="tab-count" x-text="preview.deletedImages.length" x-show="preview.deletedImages.length > 0"></span>
+          </button>
         </div>
 
         {# Loading #}
@@ -252,16 +272,24 @@
         </div>
 
         {# Grid #}
-        <div class="preview-grid" x-show="!preview.loading && preview.images.length > 0" x-cloak>
-          <template x-for="img in preview.images" :key="img.name">
+        <div class="preview-grid" x-show="!preview.loading && currentTabImages().length > 0" x-cloak>
+          <template x-for="(img, idx) in currentTabImages()" :key="img.name">
             <div class="preview-card">
               <div class="preview-img-wrap">
                 <img :src="img.url" :alt="img.name" loading="lazy">
-                <div class="ae-edit-overlay">
-                  <button class="ae-edit-btn" type="button"
-                          @click.stop="window.AdarshEngine.open(img.url, img.name, function(dataUrl, name) { img.url = dataUrl; })">
-                    <i class="fa-solid fa-sliders" aria-hidden="true"></i> Edit
-                  </button>
+                <div class="ae-overlay-btns">
+                  <template x-if="activeTab === 'cropped' || activeTab === 'edited'">
+                    <button class="ae-edit-btn" type="button"
+                            @click.stop="openEditor(img, idx)">
+                      <i class="fa-solid fa-sliders" aria-hidden="true"></i> Edit
+                    </button>
+                  </template>
+                  <template x-if="activeTab !== 'deleted'">
+                    <button class="ae-delete-btn" type="button"
+                            @click.stop="confirmDelete(img)">
+                      <i class="fa-solid fa-trash" aria-hidden="true"></i> Delete
+                    </button>
+                  </template>
                 </div>
               </div>
               <span class="preview-name" x-text="img.name" :title="img.name"></span>
@@ -270,8 +298,28 @@
         </div>
 
         {# No images #}
-        <div class="preview-empty" x-show="!preview.loading && preview.images.length === 0" x-cloak>
-          <p>No cropped images found in the output folder.</p>
+        <div class="preview-empty" x-show="!preview.loading && currentTabImages().length === 0" x-cloak>
+          <p x-text="activeTab === 'cropped' ? 'No cropped images found.' : activeTab === 'edited' ? 'No edited images yet.' : activeTab === 'failed' ? 'No failed images.' : 'No deleted images.'"></p>
+        </div>
+      </div>
+
+      {# ══════════ Delete Confirmation Modal ══════════ #}
+      <div class="delete-confirm-backdrop" x-show="deleteConfirm.visible" x-cloak x-transition.opacity @click.self="deleteConfirm.visible = false">
+        <div class="delete-confirm-modal" x-transition.scale>
+          <h4><i class="fa-solid fa-triangle-exclamation"></i> Delete Image</h4>
+          <p>Are you sure you want to delete <strong x-text="deleteConfirm.imageName"></strong>?</p>
+          <p class="delete-confirm-note">The image will be moved to the <em>deleted/</em> folder and can be viewed in the Deleted tab.</p>
+          <div class="delete-confirm-actions">
+            <button class="btn btn-neutral" @click="deleteConfirm.visible = false" type="button">Cancel</button>
+            <button class="btn btn-danger" @click="executeDelete()" :disabled="deleteConfirm.deleting" type="button">
+              <template x-if="!deleteConfirm.deleting">
+                <span><i class="fa-solid fa-trash"></i> Delete</span>
+              </template>
+              <template x-if="deleteConfirm.deleting">
+                <span><i class="fa-solid fa-spinner fa-spin"></i> Deleting…</span>
+              </template>
+            </button>
+          </div>
         </div>
       </div>
 

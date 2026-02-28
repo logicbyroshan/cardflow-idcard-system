@@ -43,6 +43,7 @@
     var tabs         = config.tabs || [];
     var staticParams = config.staticParams || {};
     var debounceMs   = config.debounceMs || 400;
+    var bindEvents   = config.bindEvents !== false; // default true
 
     // ── In-flight request guard (prevents duplicate network requests) ──
     var _inFlight    = false;
@@ -121,57 +122,60 @@
       });
     }
 
-    // ── Wire search input (debounced) ──────────────────────────────
-    var timer;
-    if (searchInput) {
-      searchInput.addEventListener('input', function () {
-        clearTimeout(timer);
-        timer = setTimeout(refresh, debounceMs);
-      });
+    // ── Wire event listeners (skipped when bindEvents is false) ───
+    if (bindEvents) {
+      // ── Wire search input (debounced) ────────────────────────────
+      var timer;
+      if (searchInput) {
+        searchInput.addEventListener('input', function () {
+          clearTimeout(timer);
+          timer = setTimeout(refresh, debounceMs);
+        });
 
-      // Clear button (inside .search-box ancestor)
-      var searchBox = searchInput.closest('.search-box');
-      if (searchBox) {
-        var clearBtn = searchBox.querySelector('.search-clear-btn');
-        if (clearBtn) {
-          clearBtn.addEventListener('click', function () {
-            // Existing JS clears the input; we just need to refresh
-            setTimeout(refresh, 10);
-          });
+        // Clear button (inside .search-box ancestor)
+        var searchBox = searchInput.closest('.search-box');
+        if (searchBox) {
+          var clearBtn = searchBox.querySelector('.search-clear-btn');
+          if (clearBtn) {
+            clearBtn.addEventListener('click', function () {
+              // Existing JS clears the input; we just need to refresh
+              setTimeout(refresh, 10);
+            });
+          }
         }
       }
-    }
 
-    // ── Wire dropdown filter option clicks (delegated) ─────────────
-    for (var i = 0; i < filters.length; i++) {
-      (function (f) {
-        var optionsEl = document.getElementById(f.optionsId);
-        if (!optionsEl) return;
-        optionsEl.addEventListener('click', function (e) {
-          if (e.target.closest('.dropdown-option')) {
-            // Let existing handler update .selected class first
-            setTimeout(refresh, 15);
-          }
-        });
-      })(filters[i]);
-    }
-
-    // ── Wire status tabs ───────────────────────────────────────────
-    for (var t = 0; t < tabs.length; t++) {
-      (function (tabConfig) {
-        var tabEls = document.querySelectorAll(tabConfig.selector);
-        tabEls.forEach(function (tab) {
-          tab.addEventListener('click', function (e) {
-            e.preventDefault();
-            // Update active class
-            tabEls.forEach(function (t) { t.classList.remove('active'); });
-            tab.classList.add('active');
-            // Refresh with new tab value
-            setTimeout(refresh, 10);
+      // ── Wire dropdown filter option clicks (delegated) ───────────
+      for (var i = 0; i < filters.length; i++) {
+        (function (f) {
+          var optionsEl = document.getElementById(f.optionsId);
+          if (!optionsEl) return;
+          optionsEl.addEventListener('click', function (e) {
+            if (e.target.closest('.dropdown-option')) {
+              // Let existing handler update .selected class first
+              setTimeout(refresh, 15);
+            }
           });
-        });
-      })(tabs[t]);
-    }
+        })(filters[i]);
+      }
+
+      // ── Wire status tabs ─────────────────────────────────────────
+      for (var t = 0; t < tabs.length; t++) {
+        (function (tabConfig) {
+          var tabEls = document.querySelectorAll(tabConfig.selector);
+          tabEls.forEach(function (tab) {
+            tab.addEventListener('click', function (e) {
+              e.preventDefault();
+              // Update active class
+              tabEls.forEach(function (t) { t.classList.remove('active'); });
+              tab.classList.add('active');
+              // Refresh with new tab value
+              setTimeout(refresh, 10);
+            });
+          });
+        })(tabs[t]);
+      }
+    } // end bindEvents
 
     return { refresh: refresh, getParams: getParams };
   }

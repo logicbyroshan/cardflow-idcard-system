@@ -33,12 +33,11 @@ function updateTabCount(sel, count) {
 function refreshStepCounts() {
   ApiClient.get('/panel/reprint/api/table/' + TABLE_ID + '/step-counts/')
     .then(function(data) {
-      if (data.status === 'success') {
-        var c = data.counts || {};
-        updateTabCount('.reprint-requests-tab .tab-count', c.reprint_list || 0);
-        updateTabCount('.reprint-confirm-tab .tab-count', c.confirmed || 0);
-        updateTabCount('.reprint-download-tab .tab-count', c.download || 0);
-        updateTabCount('.reprint-pool-tab .tab-count', c.pool || 0);
+      if (data.status === 'ok') {
+        updateTabCount('.reprint-requests-tab .tab-count', data.reprint_list || 0);
+        updateTabCount('.reprint-confirm-tab .tab-count', data.confirmed || 0);
+        updateTabCount('.reprint-download-tab .tab-count', data.download || 0);
+        updateTabCount('.reprint-pool-tab .tab-count', data.pool || 0);
       }
     }).catch(function() {});
 }
@@ -325,7 +324,7 @@ function createPaginator(opts) {
   function performConfirm(rrIds) {
     ApiClient.post('/panel/reprint/api/table/' + TABLE_ID + '/confirm/', { rr_ids: rrIds })
     .then(function(data) {
-      if (data.status === 'success') {
+      if (data.status === 'ok') {
         showToast(data.message || 'Confirmed', 'success');
         rrIds.forEach(function(id) {
           var row = tableBody.querySelector('tr[data-rr-id="' + id + '"]');
@@ -347,7 +346,7 @@ function createPaginator(opts) {
   function performReject(rrIds) {
     ApiClient.post('/panel/reprint/api/table/' + TABLE_ID + '/reject/', { rr_ids: rrIds })
     .then(function(data) {
-      if (data.status === 'success') {
+      if (data.status === 'ok') {
         showToast(data.message || 'Rejected', 'success');
         rrIds.forEach(function(id) {
           var row = tableBody.querySelector('tr[data-rr-id="' + id + '"]');
@@ -389,7 +388,7 @@ function createPaginator(opts) {
     var url = '/panel/reprint/api/table/' + TABLE_ID + '/reprint-list/?q=' + encodeURIComponent(query || '') + '&limit=200';
     ApiClient.get(url)
     .then(function(data) {
-      if (data.status === 'success') renderReprintListItems(data.items || [], data.total || 0);
+      if (data.status === 'ok') renderReprintListItems(data.items || [], data.total || 0);
     }).catch(function(err) { console.error('[ReprintList] Search failed:', err); });
   }
 
@@ -577,7 +576,7 @@ function createPaginator(opts) {
   function performMarkDownloaded(rrIds) {
     ApiClient.post('/panel/reprint/api/table/' + TABLE_ID + '/mark-downloaded/', { rr_ids: rrIds })
     .then(function(data) {
-      if (data.status === 'success') {
+      if (data.status === 'ok') {
         showToast(data.message || 'Marked as downloaded', 'success');
         rrIds.forEach(function(id) {
           var row = tableBody.querySelector('tr[data-rr-id="' + id + '"]');
@@ -619,7 +618,7 @@ function createPaginator(opts) {
     var url = '/panel/reprint/api/table/' + TABLE_ID + '/confirmed-list/?q=' + encodeURIComponent(query || '') + '&limit=200';
     ApiClient.get(url)
     .then(function(data) {
-      if (data.status === 'success') renderConfirmedItems(data.items || [], data.total || 0);
+      if (data.status === 'ok') renderConfirmedItems(data.items || [], data.total || 0);
     }).catch(function(err) { console.error('[Confirmed] Search failed:', err); });
   }
 
@@ -766,7 +765,7 @@ function createPaginator(opts) {
   function performMoveToPool(rrIds) {
     ApiClient.post('/panel/reprint/api/table/' + TABLE_ID + '/mark-pool/', { rr_ids: rrIds })
     .then(function(data) {
-      if (data.status === 'success') {
+      if (data.status === 'ok') {
         showToast(data.message || 'Moved to pool', 'success');
         rrIds.forEach(function(id) {
           var row = tableBody.querySelector('tr[data-rr-id="' + id + '"]');
@@ -808,7 +807,7 @@ function createPaginator(opts) {
     var url = '/panel/reprint/api/table/' + TABLE_ID + '/download-list/?q=' + encodeURIComponent(query || '') + '&limit=200';
     ApiClient.get(url)
     .then(function(data) {
-      if (data.status === 'success') renderDownloadItems(data.items || [], data.total || 0);
+      if (data.status === 'ok') renderDownloadItems(data.items || [], data.total || 0);
     }).catch(function(err) { console.error('[Download] Search failed:', err); });
   }
 
@@ -951,7 +950,7 @@ function createPaginator(opts) {
     var url = '/panel/reprint/api/table/' + TABLE_ID + '/pool-list/?q=' + encodeURIComponent(query || '') + '&limit=200';
     ApiClient.get(url)
     .then(function(data) {
-      if (data.status === 'success') renderPoolItems(data.items || [], data.total || 0);
+      if (data.status === 'ok') renderPoolItems(data.items || [], data.total || 0);
     }).catch(function(err) { console.error('[Pool] Search failed:', err); });
   }
 

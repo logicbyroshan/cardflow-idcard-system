@@ -8,6 +8,7 @@ from .base import (
     dashboard,
     api_global_search,
     api_recent_client_updates,
+    api_print_reprint_overview,
     api_recent_activity,
     api_health,
     api_debug_permissions,
@@ -128,6 +129,7 @@ from .engine_api import (
     api_engine_preview,
     api_engine_serve_image,
     api_engine_save_edited,
+    api_engine_delete_image,
 )
 
 from .cropper_api import (

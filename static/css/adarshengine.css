@@ -113,10 +113,10 @@
   min-height: 0;
 }
 
-/* ── Controls Panel (Left — 260px) ──────────────────────────────── */
+/* ── Controls Panel (Left — 340px, wider for histogram) ──────── */
 
 .ae-controls {
-  width: 260px;
+  width: 340px;
   flex-shrink: 0;
   background: #16162a;
   border-right: 1px solid rgba(255, 255, 255, 0.06);
@@ -363,7 +363,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #0f0f23;
+  background: #111111;
   position: relative;
   overflow: hidden;
   min-width: 0;
@@ -374,22 +374,6 @@
   max-height: 100%;
   object-fit: contain;
   image-rendering: auto;
-}
-
-/* Checkerboard transparency background */
-.ae-canvas-area::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(45deg, #1a1a2e 25%, transparent 25%),
-    linear-gradient(-45deg, #1a1a2e 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, #1a1a2e 75%),
-    linear-gradient(-45deg, transparent 75%, #1a1a2e 75%);
-  background-size: 20px 20px;
-  background-position: 0 0, 0 10px, 10px -10px, -10px 0;
-  opacity: 0.3;
-  pointer-events: none;
 }
 
 /* Cropper.js integration — position over canvas area */
@@ -710,12 +694,148 @@
     flex: 1;
   }
 
-  .ae-canvas-area {
-    min-height: 300px;
-  }
-
   .ae-footer {
     flex-wrap: wrap;
     gap: 8px;
   }
+}
+
+/* ── Histogram Canvas ───────────────────────────────────────────── */
+
+.ae-histogram-wrap {
+  width: 100%;
+  position: relative;
+  background: #0f0f1f;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.ae-histogram-wrap canvas {
+  display: block;
+  width: 100%;
+  height: 80px;
+}
+
+/* Levels handles below histogram */
+.ae-levels-track {
+  position: relative;
+  width: 100%;
+  height: 24px;
+  background: linear-gradient(to right, #000 0%, #888 50%, #fff 100%);
+  border-radius: 0 0 6px 6px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.ae-levels-handle {
+  position: absolute;
+  top: 0;
+  width: 12px;
+  height: 24px;
+  cursor: ew-resize;
+  z-index: 2;
+  transform: translateX(-50%);
+}
+
+.ae-levels-handle::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+}
+
+.ae-levels-handle--black {
+  left: 0%;
+}
+.ae-levels-handle--black::after {
+  border-top: 10px solid #000;
+}
+
+.ae-levels-handle--gamma {
+  left: 50%;
+}
+.ae-levels-handle--gamma::after {
+  border-top: 10px solid #888;
+}
+
+.ae-levels-handle--white {
+  left: 100%;
+}
+.ae-levels-handle--white::after {
+  border-top: 10px solid #fff;
+}
+
+.ae-levels-values {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 4px 0;
+  font-size: 10px;
+  color: #64748b;
+  font-family: 'Consolas', 'Courier New', monospace;
+}
+
+/* ── Navigation Buttons (prev/next image) ───────────────────────── */
+
+.ae-nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ae-nav-group .ae-group-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: #818cf8;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ae-nav-btns {
+  display: flex;
+  gap: 6px;
+}
+
+.ae-nav-btn {
+  flex: 1;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  transition: all 0.15s;
+}
+
+.ae-nav-btn:hover {
+  background: rgba(129, 140, 248, 0.15);
+  color: #a5b4fc;
+  border-color: rgba(129, 140, 248, 0.3);
+}
+
+.ae-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.ae-nav-hint {
+  font-size: 10px;
+  color: #475569;
+  text-align: center;
+  margin: 0;
 }

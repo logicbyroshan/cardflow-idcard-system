@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         return `
                         <tr class="client-row" data-idx="${i}" onclick="toggleClientExpandRow(this)">
                             <td>
-                                <span class="client-name">${esc(client.name)}</span>
+                                <a href="/panel/client/${client.client_id}/groups/" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}</a>
                             </td>
                             <td class="text-center">
                                 <span class="count-badge pending">${client.pending}</span>
@@ -514,4 +514,96 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Load bulk clients on page load
     loadBulkClients();
+
+    // ====================
+    // Load Print & Reprint Overview
+    // ====================
+    function loadPrintReprintOverview() {
+        const printBody = document.getElementById('printOverviewBody');
+        const reprintBody = document.getElementById('reprintOverviewBody');
+        if (!printBody && !reprintBody) return;
+
+        const esc = typeof escapeHtml === 'function' ? escapeHtml : (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+        ApiClient.get('/panel/api/print-reprint-overview/')
+            .then(data => {
+                if (!data.success) throw new Error(data.error || 'Failed');
+
+                // ── Render Print table ────────────────────────────────
+                if (printBody) {
+                    const clients = data.print_clients || [];
+                    if (clients.length > 0) {
+                        printBody.innerHTML = clients.map((client, i) => {
+                            const tables = client.tables || [];
+                            const subRows = tables.map(t => `
+                                <tr class="client-sub-row print-expand-group-${i}" style="display:none">
+                                    <td>
+                                        <a href="/panel/print/table/${t.id}/" class="sub-row-name"><i class="fa-solid fa-table"></i> ${esc(t.name)}</a>
+                                    </td>
+                                    <td class="text-center"><span class="count-badge pending">${t.print_list}</span></td>
+                                    <td class="text-center"><span class="count-badge verified">${t.finalized}</span></td>
+                                    <td class="text-center"><span class="count-badge">${t.pool}</span></td>
+                                </tr>
+                            `).join('');
+                            return `
+                                <tr class="client-row" data-idx="${i}" data-scope="print" onclick="toggleScopedExpandRow(this)">
+                                    <td>
+                                        <a href="/panel/client/${client.id}/groups/" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}</a>
+                                    </td>
+                                    <td class="text-center"><span class="count-badge pending">${client.print_list}</span></td>
+                                    <td class="text-center"><span class="count-badge verified">${client.finalized}</span></td>
+                                    <td class="text-center"><span class="count-badge">${client.pool}</span></td>
+                                </tr>
+                                ${subRows}
+                            `;
+                        }).join('');
+                    } else {
+                        printBody.innerHTML = `<tr><td colspan="4" class="text-center" style="padding:40px;color:#888;"><i class="fa-solid fa-inbox"></i> No print records</td></tr>`;
+                    }
+                }
+
+                // ── Render Reprint table ──────────────────────────────
+                if (reprintBody) {
+                    const clients = data.reprint_clients || [];
+                    if (clients.length > 0) {
+                        reprintBody.innerHTML = clients.map((client, i) => {
+                            const tables = client.tables || [];
+                            const subRows = tables.map(t => `
+                                <tr class="client-sub-row reprint-expand-group-${i}" style="display:none">
+                                    <td>
+                                        <a href="/panel/reprint/table/${t.id}/" class="sub-row-name"><i class="fa-solid fa-table"></i> ${esc(t.name)}</a>
+                                    </td>
+                                    <td class="text-center"><span class="count-badge pending">${t.requested}</span></td>
+                                    <td class="text-center"><span class="count-badge verified">${t.confirmed}</span></td>
+                                    <td class="text-center"><span class="count-badge approved">${t.downloaded}</span></td>
+                                    <td class="text-center"><span class="count-badge">${t.pool}</span></td>
+                                </tr>
+                            `).join('');
+                            return `
+                                <tr class="client-row" data-idx="${i}" data-scope="reprint" onclick="toggleScopedExpandRow(this)">
+                                    <td>
+                                        <a href="/panel/client/${client.id}/groups/" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}</a>
+                                    </td>
+                                    <td class="text-center"><span class="count-badge pending">${client.requested}</span></td>
+                                    <td class="text-center"><span class="count-badge verified">${client.confirmed}</span></td>
+                                    <td class="text-center"><span class="count-badge approved">${client.downloaded}</span></td>
+                                    <td class="text-center"><span class="count-badge">${client.pool}</span></td>
+                                </tr>
+                                ${subRows}
+                            `;
+                        }).join('');
+                    } else {
+                        reprintBody.innerHTML = `<tr><td colspan="5" class="text-center" style="padding:40px;color:#888;"><i class="fa-solid fa-inbox"></i> No reprint records</td></tr>`;
+                    }
+                }
+            })
+            .catch(err => {
+                console.error('Error loading print/reprint overview:', err);
+                const errHtml = (cols) => `<tr><td colspan="${cols}" class="text-center" style="padding:40px;color:#dc2626;"><i class="fa-solid fa-exclamation-triangle"></i> Error loading data</td></tr>`;
+                if (printBody)   printBody.innerHTML = errHtml(4);
+                if (reprintBody) reprintBody.innerHTML = errHtml(5);
+            });
+    }
+
+    loadPrintReprintOverview();
 });

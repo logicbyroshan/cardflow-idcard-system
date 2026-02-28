@@ -98,6 +98,15 @@
     // ── Phase 14: Tracked event listeners for clean destroy ───────
     this._listeners = [];  // Array of { el, event, handler }
 
+    // ── v3: Image navigation list ─────────────────────────────────
+    this._imageList = [];       // Array of { url, name }
+    this._imageIndex = -1;      // Current index in _imageList
+    this._onNavigate = null;    // Callback when navigating: (dataUrl, name) => void
+
+    // ── v3: Histogram state ───────────────────────────────────────
+    this._histogramData = null;
+    this._dragging = null;      // 'black' | 'gamma' | 'white' | null
+
     // ── Phase 1: DOM references (resolved on first open) ──────────
     this._els = {};
     this._bound = false;
@@ -199,7 +208,7 @@
     e.errorMsg      = document.getElementById('aeErrorMsg');
     e.dimText       = document.getElementById('aeDimText');
 
-    // Sliders
+    // Sliders (now hidden inputs driven by handles)
     e.black    = document.getElementById('aeBlack');
     e.gamma    = document.getElementById('aeGamma');
     e.white    = document.getElementById('aeWhite');
@@ -210,6 +219,17 @@
     e.gammaVal    = document.getElementById('aeGammaVal');
     e.whiteVal    = document.getElementById('aeWhiteVal');
     e.vibranceVal = document.getElementById('aeVibranceVal');
+
+    // Histogram & Level handles
+    e.histogram     = document.getElementById('aeHistogram');
+    e.levelsTrack   = document.getElementById('aeLevelsTrack');
+    e.handleBlack   = document.getElementById('aeHandleBlack');
+    e.handleGamma   = document.getElementById('aeHandleGamma');
+    e.handleWhite   = document.getElementById('aeHandleWhite');
+
+    // Navigation buttons
+    e.navPrev = document.getElementById('aeNavPrev');
+    e.navNext = document.getElementById('aeNavNext');
 
     // Buttons
     e.closeTop      = document.getElementById('aeCloseTop');
@@ -238,27 +258,33 @@
 
     // Close buttons
     this._on(e.closeTop,    'click', function () { self.close(); });
-    this._on(e.closeBottom, 'click', function () { self.close(); });
+    if (e.closeBottom) {
+      this._on(e.closeBottom, 'click', function () { self.close(); });
+    }
 
     // Backdrop click closes
     this._on(e.backdrop, 'click', function (ev) {
       if (ev.target === e.backdrop) self.close();
     });
 
-    // Escape key closes
+    // Escape key closes; Shift+PageUp/Down navigates
     this._escHandler = function (ev) {
-      if (ev.key === 'Escape' && e.backdrop.classList.contains('ae-open')) {
+      if (!e.backdrop.classList.contains('ae-open')) return;
+      if (ev.key === 'Escape') {
         self.close();
+      } else if (ev.shiftKey && ev.key === 'PageUp') {
+        ev.preventDefault();
+        self.navigatePrev();
+      } else if (ev.shiftKey && ev.key === 'PageDown') {
+        ev.preventDefault();
+        self.navigateNext();
       }
     };
     this._on(document, 'keydown', this._escHandler);
 
-    // Sliders — debounced input (Phase 3, 4, 7)
-    var sliderHandler = function () { self._onSliderInput(); };
-    this._on(e.black,    'input', sliderHandler);
-    this._on(e.gamma,    'input', sliderHandler);
-    this._on(e.white,    'input', sliderHandler);
-    this._on(e.vibrance, 'input', sliderHandler);
+    // Vibrance slider — debounced input
+    var vibranceHandler = function () { self._onSliderInput(); };
+    this._on(e.vibrance, 'input', vibranceHandler);
 
     // Reset (Phase 9)
     this._on(e.reset, 'click', function () { self.reset(); });
@@ -273,6 +299,338 @@
     this._on(e.cropBtn,    'click', function () { self._toggleCrop(); });
     this._on(e.cropApply,  'click', function () { self._applyCrop(); });
     this._on(e.cropCancel, 'click', function () { self._cancelCrop(); });
+
+    // Navigation buttons
+    this._on(e.navPrev, 'click', function () { self.navigatePrev(); });
+    this._on(e.navNext, 'click', function () { self.navigateNext(); });
+
+    // ── Histogram handle dragging ───────────────────────────────
+    this._bindLevelHandles();
+  };
+
+  /**
+   * Bind mousedown/mousemove/mouseup for the levels handles.
+   */
+  AdarshEngine.prototype._bindLevelHandles = function () {
+    var self = this;
+    var e = this._els;
+    if (!e.levelsTrack) return;
+
+    var trackEl = e.levelsTrack;
+
+    function getPercent(clientX) {
+      var rect = trackEl.getBoundingClientRect();
+      var pct = (clientX - rect.left) / rect.width;
+      return Math.max(0, Math.min(1, pct));
+    }
+
+    function onMouseDown(ev) {
+      var target = ev.target.closest('.ae-levels-handle');
+      if (!target) return;
+      ev.preventDefault();
+      if (target === e.handleBlack) self._dragging = 'black';
+      else if (target === e.handleGamma) self._dragging = 'gamma';
+      else if (target === e.handleWhite) self._dragging = 'white';
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    }
+
+    function onMouseMove(ev) {
+      if (!self._dragging) return;
+      var pct = getPercent(ev.clientX);
+      self._updateHandleFromDrag(self._dragging, pct);
+    }
+
+    function onMouseUp() {
+      self._dragging = null;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    }
+
+    this._on(trackEl, 'mousedown', onMouseDown);
+
+    // Touch support
+    function onTouchStart(ev) {
+      var target = ev.target.closest('.ae-levels-handle');
+      if (!target) return;
+      ev.preventDefault();
+      if (target === e.handleBlack) self._dragging = 'black';
+      else if (target === e.handleGamma) self._dragging = 'gamma';
+      else if (target === e.handleWhite) self._dragging = 'white';
+      trackEl.addEventListener('touchmove', onTouchMove, { passive: false });
+      trackEl.addEventListener('touchend', onTouchEnd);
+    }
+
+    function onTouchMove(ev) {
+      if (!self._dragging) return;
+      ev.preventDefault();
+      var touch = ev.touches[0];
+      var pct = getPercent(touch.clientX);
+      self._updateHandleFromDrag(self._dragging, pct);
+    }
+
+    function onTouchEnd() {
+      self._dragging = null;
+      trackEl.removeEventListener('touchmove', onTouchMove);
+      trackEl.removeEventListener('touchend', onTouchEnd);
+    }
+
+    this._on(trackEl, 'touchstart', onTouchStart);
+  };
+
+  /**
+   * Update parameters and UI when a handle is dragged.
+   * @param {string} handle - 'black' | 'gamma' | 'white'
+   * @param {number} pct    - 0..1 position on the track
+   */
+  AdarshEngine.prototype._updateHandleFromDrag = function (handle, pct) {
+    var e = this._els;
+
+    if (handle === 'black') {
+      var bp = Math.round(pct * 255);
+      // Don't let black pass white
+      if (bp >= this.params.whitePoint) bp = this.params.whitePoint - 1;
+      if (bp < 0) bp = 0;
+      this.params.blackPoint = bp;
+      e.black.value = bp;
+      e.blackVal.textContent = bp;
+      e.handleBlack.style.left = ((bp / 255) * 100) + '%';
+    } else if (handle === 'white') {
+      var wp = Math.round(pct * 255);
+      // Don't let white pass black
+      if (wp <= this.params.blackPoint) wp = this.params.blackPoint + 1;
+      if (wp > 255) wp = 255;
+      this.params.whitePoint = wp;
+      e.white.value = wp;
+      e.whiteVal.textContent = wp;
+      e.handleWhite.style.left = ((wp / 255) * 100) + '%';
+    } else if (handle === 'gamma') {
+      // Gamma track maps 0..1 → gamma 0.1..3.0 (logarithmic)
+      // pct=0 → gamma 3.0 (brighten), pct=1 → gamma 0.1 (darken), pct=0.5 → gamma 1.0
+      var gamma;
+      if (pct <= 0.5) {
+        // Left half: 3.0 → 1.0
+        gamma = 3.0 - (pct / 0.5) * 2.0;
+      } else {
+        // Right half: 1.0 → 0.1
+        gamma = 1.0 - ((pct - 0.5) / 0.5) * 0.9;
+      }
+      gamma = Math.max(0.1, Math.min(3.0, gamma));
+      gamma = Math.round(gamma * 100) / 100;
+      this.params.gamma = gamma;
+      e.gamma.value = Math.round(gamma * 100);
+      e.gammaVal.textContent = gamma.toFixed(2);
+      e.handleGamma.style.left = (pct * 100) + '%';
+    }
+
+    // Reposition gamma handle between black and white if black/white moved
+    if (handle !== 'gamma') {
+      this._repositionGammaHandle();
+    }
+
+    this._scheduleRender();
+  };
+
+  /**
+   * Reposition gamma handle to maintain relative position between black and white.
+   */
+  AdarshEngine.prototype._repositionGammaHandle = function () {
+    var e = this._els;
+    var gamma = this.params.gamma;
+    var pct;
+    if (gamma >= 1.0) {
+      pct = ((3.0 - gamma) / 2.0) * 0.5;
+    } else {
+      pct = 0.5 + ((1.0 - gamma) / 0.9) * 0.5;
+    }
+    if (e.handleGamma) {
+      e.handleGamma.style.left = (pct * 100) + '%';
+    }
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  v3: HISTOGRAM DRAWING
+  // ═══════════════════════════════════════════════════════════════════
+
+  /**
+   * Draw a luminance histogram from originalImageData onto the histogram canvas.
+   * Styled like Photoshop's Levels dialog — white histogram bars on dark background.
+   */
+  AdarshEngine.prototype._drawHistogram = function () {
+    var e = this._els;
+    if (!e.histogram || !this.originalImageData) return;
+
+    var ctx = e.histogram.getContext('2d');
+    var W = e.histogram.width;
+    var H = e.histogram.height;
+    var data = this.originalImageData.data;
+
+    // Build RGB + luminance histograms
+    var histR = new Uint32Array(256);
+    var histG = new Uint32Array(256);
+    var histB = new Uint32Array(256);
+    var histL = new Uint32Array(256);
+
+    for (var i = 0; i < data.length; i += 4) {
+      var r = data[i], g = data[i + 1], b = data[i + 2];
+      histR[r]++;
+      histG[g]++;
+      histB[b]++;
+      var lum = (r * 299 + g * 587 + b * 114 + 500) / 1000 | 0;
+      if (lum > 255) lum = 255;
+      histL[lum]++;
+    }
+
+    // Find max for scaling (ignore extremes at 0 and 255 which are often spikes)
+    var maxVal = 0;
+    for (var j = 2; j < 254; j++) {
+      if (histL[j] > maxVal) maxVal = histL[j];
+    }
+    if (maxVal === 0) maxVal = 1;
+
+    // Clear
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#0f0f1f';
+    ctx.fillRect(0, 0, W, H);
+
+    // Draw luminance as white filled area
+    var barW = W / 256;
+
+    // Draw R, G, B channels with low opacity
+    var channels = [
+      { hist: histR, color: 'rgba(239, 68, 68, 0.25)' },
+      { hist: histG, color: 'rgba(34, 197, 94, 0.25)' },
+      { hist: histB, color: 'rgba(59, 130, 246, 0.25)' },
+    ];
+
+    channels.forEach(function (ch) {
+      ctx.fillStyle = ch.color;
+      ctx.beginPath();
+      ctx.moveTo(0, H);
+      for (var k = 0; k < 256; k++) {
+        var bh = Math.min((ch.hist[k] / maxVal) * H, H);
+        var x = k * barW;
+        ctx.lineTo(x, H - bh);
+      }
+      ctx.lineTo(W, H);
+      ctx.closePath();
+      ctx.fill();
+    });
+
+    // Draw luminance on top as white
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+    ctx.beginPath();
+    ctx.moveTo(0, H);
+    for (var k = 0; k < 256; k++) {
+      var bh = Math.min((histL[k] / maxVal) * H, H);
+      var x = k * barW;
+      ctx.lineTo(x, H - bh);
+    }
+    ctx.lineTo(W, H);
+    ctx.closePath();
+    ctx.fill();
+
+    this._log('Histogram drawn');
+  };
+
+  /**
+   * Sync handle positions to current params (e.g. after reset or autoLevels).
+   */
+  AdarshEngine.prototype._syncHandlePositions = function () {
+    var e = this._els;
+    if (!e.handleBlack) return;
+
+    e.handleBlack.style.left = ((this.params.blackPoint / 255) * 100) + '%';
+    e.handleWhite.style.left = ((this.params.whitePoint / 255) * 100) + '%';
+    this._repositionGammaHandle();
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  v3: IMAGE NAVIGATION (prev/next)
+  // ═══════════════════════════════════════════════════════════════════
+
+  /**
+   * Set the image list for navigation.
+   * @param {Array<{url: string, name: string}>} images - list of images
+   * @param {number} currentIndex - index of the currently open image
+   * @param {function} onNavigate - callback(url, name) when navigating
+   */
+  AdarshEngine.prototype.setImageList = function (images, currentIndex, onNavigate) {
+    this._imageList = images || [];
+    this._imageIndex = currentIndex >= 0 ? currentIndex : -1;
+    this._onNavigate = onNavigate || null;
+    this._updateNavButtons();
+  };
+
+  /**
+   * Navigate to the previous image in the list.
+   */
+  AdarshEngine.prototype.navigatePrev = function () {
+    if (this._imageIndex <= 0 || this._imageList.length === 0) return;
+    this._imageIndex--;
+    this._navigateToCurrentIndex();
+  };
+
+  /**
+   * Navigate to the next image in the list.
+   */
+  AdarshEngine.prototype.navigateNext = function () {
+    if (this._imageIndex >= this._imageList.length - 1 || this._imageList.length === 0) return;
+    this._imageIndex++;
+    this._navigateToCurrentIndex();
+  };
+
+  /**
+   * Load the image at the current index.
+   */
+  AdarshEngine.prototype._navigateToCurrentIndex = function () {
+    var img = this._imageList[this._imageIndex];
+    if (!img) return;
+
+    this._log('Navigating to:', img.name, '(index', this._imageIndex, ')');
+
+    // Reset state and load new image
+    this._cancelCrop();
+    this._resetSliders();
+    this._syncHandlePositions();
+
+    this.currentFilename = img.name;
+    this.sourceUrl = img.url;
+    this._els.filename.textContent = img.name;
+
+    this._showLoading(true);
+    this._hideError();
+
+    var self = this;
+    this.originalFullResolutionImage = new Image();
+    this.originalFullResolutionImage.crossOrigin = 'anonymous';
+    this.originalFullResolutionImage.onload = function () {
+      self.loadImage(self.originalFullResolutionImage);
+      self._showLoading(false);
+      self._updateNavButtons();
+      if (typeof self._onNavigate === 'function') {
+        self._onNavigate(img.url, img.name);
+      }
+    };
+    this.originalFullResolutionImage.onerror = function () {
+      self._showLoading(false);
+      self._showError('Failed to load image.');
+      self._updateNavButtons();
+    };
+    this.originalFullResolutionImage.src = img.url;
+  };
+
+  /**
+   * Update prev/next button disabled states.
+   */
+  AdarshEngine.prototype._updateNavButtons = function () {
+    var e = this._els;
+    if (e.navPrev) {
+      e.navPrev.disabled = this._imageIndex <= 0 || this._imageList.length <= 1;
+    }
+    if (e.navNext) {
+      e.navNext.disabled = this._imageIndex >= this._imageList.length - 1 || this._imageList.length <= 1;
+    }
   };
 
   // ═══════════════════════════════════════════════════════════════════
@@ -325,6 +683,7 @@
       self._log('Image loaded:', this.naturalWidth, '×', this.naturalHeight);
       self.loadImage(self.originalFullResolutionImage);
       self._showLoading(false);
+      self._updateNavButtons();
     };
 
     // Phase 8: Error handling — image load failure
@@ -432,6 +791,10 @@
 
     this._log('Canvas initialized:', pw, '×', ph, '(preview),', w, '×', h, '(full)');
 
+    // Draw histogram from original image data
+    this._drawHistogram();
+    this._syncHandlePositions();
+
     // Initial render with current slider values
     this.render();
   };
@@ -523,6 +886,8 @@
     e.gammaVal.textContent    = '1.00';
     e.whiteVal.textContent    = '255';
     e.vibranceVal.textContent = '0';
+
+    this._syncHandlePositions();
   };
 
   /**
@@ -825,6 +1190,8 @@
       e.whiteVal.textContent = whitePoint;
       e.gammaVal.textContent = gamma.toFixed(2);
     }
+
+    this._syncHandlePositions();
 
     // ── Step 7: Re-render with new values ───────────────────────
     this.render();
@@ -1131,7 +1498,7 @@
           Toast.success('Image saved!');
         }
 
-        self.close();
+        // v3: Save does NOT close the editor — user uses X to close
 
       } catch (err) {
         // Phase 8: Catch save errors
@@ -1378,6 +1745,26 @@
      */
     sharpnessEnhancement: function () {
       _getInstance().sharpnessEnhancement();
+    },
+
+    /**
+     * v3: Set image list for prev/next navigation.
+     * @param {Array<{url: string, name: string}>} images
+     * @param {number} currentIndex
+     * @param {function} onNavigate - callback(url, name)
+     */
+    setImageList: function (images, currentIndex, onNavigate) {
+      _getInstance().setImageList(images, currentIndex, onNavigate);
+    },
+
+    /** v3: Navigate to previous image. */
+    navigatePrev: function () {
+      _getInstance().navigatePrev();
+    },
+
+    /** v3: Navigate to next image. */
+    navigateNext: function () {
+      _getInstance().navigateNext();
     },
 
     /** Access the underlying class for advanced usage. */

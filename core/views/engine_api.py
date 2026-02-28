@@ -18,6 +18,7 @@ import json
 import logging
 import mimetypes
 import os
+import shutil
 import re
 import time
 from pathlib import Path
@@ -32,8 +33,8 @@ from core.services.permission_service import require_any_admin
 logger = logging.getLogger(__name__)
 
 # ── Engine connection constants ──────────────────────────────────────────
-ENGINE_BASE = "http://127.0.0.1:4765"
-ENGINE_API_KEY = "passport-engine-local-key"
+ENGINE_BASE = os.getenv("ENGINE_BASE_URL", "http://127.0.0.1:4765")
+ENGINE_API_KEY = os.getenv("ENGINE_API_KEY", "passport-engine-local-key")
 ENGINE_TIMEOUT = 600  # seconds — large batch folders need time
 
 
@@ -93,7 +94,7 @@ def api_engine_status(request):
         logger.warning("Engine status check failed: %s", exc)
         return JsonResponse({
             "connected": False,
-            "error": str(exc),
+            "error": "Engine status check failed. Check server logs for details.",
         })
 
 
@@ -227,8 +228,8 @@ def api_engine_serve_image(request):
         return JsonResponse({"error": "Not an image file"}, status=400)
 
     content_type = mimetypes.guess_type(str(path))[0] or "application/octet-stream"
-    # FileResponse manages the file handle lifecycle properly
-    return FileResponse(open(path, "rb"), content_type=content_type)
+    # Let Django manage the file handle lifecycle by passing the path directly
+    return FileResponse(path, content_type=content_type)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -369,7 +370,7 @@ def api_engine_save_edited(request):
         logger.exception("Failed to create /edited/ folder: %s", edited_folder)
         return JsonResponse({
             "success": False,
-            "message": f"Failed to create edited folder: {exc}",
+            "message": "Server error while saving image.",
         }, status=500)
 
     # ── Build collision-safe output filename ──────────────────────────
@@ -415,7 +416,7 @@ def api_engine_save_edited(request):
         logger.exception("Failed to write edited image: %s", output_path)
         return JsonResponse({
             "success": False,
-            "message": f"Failed to save image: {exc}",
+            "message": "Failed to save image.",
         }, status=500)
 
     logger.info("Saved edited image: %s (%d bytes)", output_path, len(image_bytes))
@@ -425,4 +426,110 @@ def api_engine_save_edited(request):
         "saved_path": str(output_path),
         "edited_folder": str(edited_folder),
         "filename": output_name,
+    })
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  POST  /api/engine/delete-image/
+#  Move an image to a /deleted/ subfolder (soft-delete, not permanent).
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+@login_required
+@require_any_admin
+@require_POST
+def api_engine_delete_image(request):
+    """
+    Move an image file to a /deleted/ subfolder (soft-delete).
+
+    Expects JSON body:
+        {
+            "path": "C:\\path\\to\\folder\\cropped\\image.jpg"
+        }
+
+    Moves to: <parent_of_subfolder>/deleted/<original_filename>
+
+    Security:
+        - image_path must be under MEDIA_ROOT.
+        - Only image extensions allowed.
+        - Filename sanitized for safety.
+    """
+    from django.conf import settings
+
+    try:
+        body = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({"success": False, "message": "Invalid JSON body."}, status=400)
+
+    image_path = body.get("path", "").strip()
+    if not image_path:
+        return JsonResponse({"success": False, "message": "path is required."}, status=400)
+
+    # ── Resolve and validate path ────────────────────────────────
+    try:
+        src = Path(image_path).resolve()
+    except (OSError, ValueError):
+        return JsonResponse({"success": False, "message": "Invalid file path."}, status=400)
+
+    media_root = Path(settings.MEDIA_ROOT).resolve()
+
+    # Path-traversal guard
+    try:
+        src.relative_to(media_root)
+    except ValueError:
+        logger.warning("Path traversal attempt blocked (delete-image): %s", image_path)
+        return JsonResponse({"success": False, "message": "Access denied."}, status=403)
+
+    if not src.is_file():
+        return JsonResponse({"success": False, "message": "File not found."}, status=404)
+
+    if src.suffix.lower() not in _ALLOWED_EXTS:
+        return JsonResponse({"success": False, "message": "Not an image file."}, status=400)
+
+    # ── Determine the /deleted/ folder ───────────────────────────
+    parent_folder = src.parent          # e.g. .../cropped/
+    grandparent = parent_folder.parent  # e.g. .../some_folder/
+
+    try:
+        grandparent.relative_to(media_root)
+    except ValueError:
+        grandparent = parent_folder
+
+    deleted_folder = grandparent / "deleted"
+
+    try:
+        deleted_folder.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        logger.exception("Failed to create /deleted/ folder: %s", deleted_folder)
+        return JsonResponse({
+            "success": False,
+            "message": "Server error while deleting image.",
+        }, status=500)
+
+    # ── Build unique destination filename ────────────────────────
+    dest = deleted_folder / src.name
+
+    # Collision: append counter
+    counter = 1
+    while dest.exists() and counter < 1000:
+        dest = deleted_folder / f"{src.stem}_{counter}{src.suffix}"
+        counter += 1
+
+    # ── Move the file ────────────────────────────────────────────
+    try:
+        shutil.move(str(src), str(dest))
+    except OSError as exc:
+        logger.exception("Failed to move image to deleted: %s → %s", src, dest)
+        return JsonResponse({
+            "success": False,
+            "message": "Failed to delete image.",
+        }, status=500)
+
+    logger.info("Moved image to deleted: %s → %s", src, dest)
+
+    return JsonResponse({
+        "success": True,
+        "deleted_path": str(dest),
+        "deleted_folder": str(deleted_folder),
+        "filename": src.name,
     })

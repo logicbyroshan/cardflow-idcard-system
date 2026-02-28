@@ -315,6 +315,134 @@ def api_recent_client_updates(request):
 
 @require_http_methods(["GET"])
 @api_require_any_admin
+def api_print_reprint_overview(request):
+    """
+    Dashboard API: per-client counts for Card Printing and Card Reprinting stages.
+    Returns expandable table data matching the Recent Client Updates pattern.
+    """
+    try:
+        from cardprint.models import PrintRequest
+        from reprintcard.models import ReprintRequest
+
+        limit = int(request.GET.get('limit', 10))
+        user = request.user
+
+        clients = PermissionService.get_accessible_clients(
+            user, Client.objects.filter(status='active')
+        ).order_by('name')[:limit]
+
+        client_ids = list(clients.values_list('id', flat=True))
+
+        # ── Print counts per client ──────────────────────────────────
+        print_counts_qs = PrintRequest.objects.filter(
+            table__group__client_id__in=client_ids
+        ).values('table__group__client_id').annotate(
+            print_list=Count('id', filter=Q(status='print_list')),
+            finalized=Count('id', filter=Q(status='finalized')),
+            pool=Count('id', filter=Q(status='pool')),
+        )
+        print_map = {r['table__group__client_id']: r for r in print_counts_qs}
+
+        # ── Print counts per table ───────────────────────────────────
+        print_table_qs = PrintRequest.objects.filter(
+            table__group__client_id__in=client_ids
+        ).values('table__id', 'table__name', 'table__group__client_id').annotate(
+            print_list=Count('id', filter=Q(status='print_list')),
+            finalized=Count('id', filter=Q(status='finalized')),
+            pool=Count('id', filter=Q(status='pool')),
+        ).order_by('table__id')
+        print_tables_map = {}
+        for t in print_table_qs:
+            cid = t['table__group__client_id']
+            if cid not in print_tables_map:
+                print_tables_map[cid] = []
+            print_tables_map[cid].append({
+                'id': t['table__id'],
+                'name': t['table__name'],
+                'print_list': t['print_list'],
+                'finalized': t['finalized'],
+                'pool': t['pool'],
+            })
+
+        # ── Reprint counts per client ────────────────────────────────
+        reprint_counts_qs = ReprintRequest.objects.filter(
+            table__group__client_id__in=client_ids
+        ).values('table__group__client_id').annotate(
+            requested=Count('id', filter=Q(status='requested')),
+            confirmed=Count('id', filter=Q(status='confirmed')),
+            downloaded=Count('id', filter=Q(status='downloaded')),
+            pool=Count('id', filter=Q(status='pool')),
+        )
+        reprint_map = {r['table__group__client_id']: r for r in reprint_counts_qs}
+
+        # ── Reprint counts per table ─────────────────────────────────
+        reprint_table_qs = ReprintRequest.objects.filter(
+            table__group__client_id__in=client_ids
+        ).values('table__id', 'table__name', 'table__group__client_id').annotate(
+            requested=Count('id', filter=Q(status='requested')),
+            confirmed=Count('id', filter=Q(status='confirmed')),
+            downloaded=Count('id', filter=Q(status='downloaded')),
+            pool=Count('id', filter=Q(status='pool')),
+        ).order_by('table__id')
+        reprint_tables_map = {}
+        for t in reprint_table_qs:
+            cid = t['table__group__client_id']
+            if cid not in reprint_tables_map:
+                reprint_tables_map[cid] = []
+            reprint_tables_map[cid].append({
+                'id': t['table__id'],
+                'name': t['table__name'],
+                'requested': t['requested'],
+                'confirmed': t['confirmed'],
+                'downloaded': t['downloaded'],
+                'pool': t['pool'],
+            })
+
+        # ── Build per-client results ─────────────────────────────────
+        print_clients = []
+        reprint_clients = []
+
+        for c in clients:
+            pc = print_map.get(c.id, {})
+            print_total = pc.get('print_list', 0) + pc.get('finalized', 0) + pc.get('pool', 0)
+            if print_total > 0:
+                print_clients.append({
+                    'id': c.id,
+                    'name': c.name,
+                    'print_list': pc.get('print_list', 0),
+                    'finalized': pc.get('finalized', 0),
+                    'pool': pc.get('pool', 0),
+                    'tables': print_tables_map.get(c.id, []),
+                })
+
+            rc = reprint_map.get(c.id, {})
+            reprint_total = rc.get('requested', 0) + rc.get('confirmed', 0) + rc.get('downloaded', 0) + rc.get('pool', 0)
+            if reprint_total > 0:
+                reprint_clients.append({
+                    'id': c.id,
+                    'name': c.name,
+                    'requested': rc.get('requested', 0),
+                    'confirmed': rc.get('confirmed', 0),
+                    'downloaded': rc.get('downloaded', 0),
+                    'pool': rc.get('pool', 0),
+                    'tables': reprint_tables_map.get(c.id, []),
+                })
+
+        return JsonResponse({
+            'success': True,
+            'print_clients': print_clients,
+            'reprint_clients': reprint_clients,
+        })
+    except Exception as e:
+        logger.exception('api_print_reprint_overview error: %s', e)
+        return JsonResponse({
+            'success': False,
+            'error': 'An error occurred. Please try again.'
+        }, status=500)
+
+
+@require_http_methods(["GET"])
+@api_require_any_admin
 def api_recent_activity(request):
     """API endpoint for the Recent Activity feed on the dashboard."""
     try:

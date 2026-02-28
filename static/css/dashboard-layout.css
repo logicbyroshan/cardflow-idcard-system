@@ -11,7 +11,8 @@
     display: flex;
     flex-direction: column;
     height: calc(100vh - var(--spacing-topbar, 40px));
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 /* ====================
@@ -22,8 +23,10 @@
     grid-template-columns: 2fr 1fr;
     grid-template-rows: 1fr;
     gap: 0;
-    flex: 1;
     min-height: 0;
+    /* 75% of viewport minus topbar+banner+stats ≈ 75vh, capped at 750px */
+    height: clamp(400px, 75vh, 750px);
+    flex-shrink: 0;
 }
 
 .dashboard-grid-3col {
@@ -31,6 +34,16 @@
     grid-template-columns: repeat(3, 1fr);
     gap: 0;
     flex: none;
+}
+
+/* Print-Reprint row: same height rules as the main grid */
+.dashboard-grid-printreprint {
+    display: grid;
+    grid-template-columns: 40fr 60fr;
+    gap: 0;
+    min-height: 0;
+    height: clamp(400px, 75vh, 750px);
+    flex-shrink: 0;
 }
 
 .dashboard-card {

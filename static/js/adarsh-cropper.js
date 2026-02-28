@@ -63,7 +63,21 @@ function cropperApp() {
       visible: false,
       loading: false,
       images: [],
+      editedImages: [],
+      failedImages: [],
+      deletedImages: [],
       folder: '',
+    },
+
+    // ── Tabs ──
+    activeTab: 'cropped',
+
+    // ── Delete confirmation ──
+    deleteConfirm: {
+      visible: false,
+      imageName: '',
+      imagePath: '',
+      deleting: false,
     },
 
     // ── Error ──
@@ -512,7 +526,11 @@ function cropperApp() {
       this.preview.loading = true;
       this.preview.visible = true;
       this.preview.images = [];
+      this.preview.editedImages = [];
+      this.preview.failedImages = [];
+      this.preview.deletedImages = [];
       this.preview.folder = folderPath;
+      this.activeTab = 'cropped';
 
       try {
         var data;
@@ -537,11 +555,13 @@ function cropperApp() {
               return {
                 name: name,
                 url: self.engine.url + '/serve-image?path=' + encodeURIComponent(fullPath),
+                path: fullPath,
               };
             }
             return {
               name: name,
               url: '/panel/api/engine/serve-image/?path=' + encodeURIComponent(fullPath),
+              path: fullPath,
             };
           });
         }
@@ -558,6 +578,166 @@ function cropperApp() {
         navigator.clipboard.writeText(folderPath).then(function () {
           if (typeof Toast !== 'undefined') Toast.success('Path copied to clipboard!');
         });
+      }
+    },
+
+    // ══════════════════════════════════════════════════════════════════
+    //  TABS — switch between Cropped / Edited / Failed / Deleted
+    // ══════════════════════════════════════════════════════════════════
+    switchTab(tab) {
+      this.activeTab = tab;
+      // Lazy-load when switching to a tab for the first time
+      if (tab === 'edited' && this.preview.editedImages.length === 0 && this.preview.folder) {
+        this._loadTabImages('edited');
+      } else if (tab === 'failed' && this.preview.failedImages.length === 0 && this.preview.folder) {
+        this._loadTabImages('failed');
+      } else if (tab === 'deleted' && this.preview.deletedImages.length === 0 && this.preview.folder) {
+        this._loadTabImages('deleted');
+      }
+    },
+
+    /**
+     * Return the image array for the currently active tab.
+     */
+    currentTabImages() {
+      switch (this.activeTab) {
+        case 'edited':  return this.preview.editedImages;
+        case 'failed':  return this.preview.failedImages;
+        case 'deleted': return this.preview.deletedImages;
+        default:        return this.preview.images;
+      }
+    },
+
+    /**
+     * Load images for a sub-tab (edited / failed / deleted).
+     * Derives the subfolder path from the main preview folder.
+     */
+    async _loadTabImages(tab) {
+      // The main preview.folder is the cropped folder (e.g. C:\path\cropped)
+      // Sibling folders are: edited, failed, deleted — at the same level
+      var basePath = this.preview.folder;
+      if (!basePath) return;
+
+      // Go up one level from /cropped to parent, then into the tab subfolder
+      var parts = basePath.replace(/[\\/]+$/, '').split(/[\\/]/);
+      parts.pop();  // remove 'cropped'
+      var tabFolder = parts.join('\\') + '\\' + tab;
+
+      try {
+        var data;
+        if (this.engine.direct) {
+          var url = this.engine.url + '/preview?folder=' + encodeURIComponent(tabFolder);
+          var resp = await fetch(url, {
+            headers: { 'X-ENGINE-KEY': ENGINE_API_KEY },
+          });
+          data = await resp.json();
+        } else {
+          data = await ApiClient.get(
+            '/panel/api/engine/preview/?folder=' + encodeURIComponent(tabFolder)
+          );
+        }
+
+        if (data && data.files && data.files.length > 0) {
+          var folder = data.folder || tabFolder;
+          var self = this;
+          var images = data.files.map(function (name) {
+            var fullPath = folder + '\\' + name;
+            if (self.engine.direct) {
+              return {
+                name: name,
+                url: self.engine.url + '/serve-image?path=' + encodeURIComponent(fullPath),
+                path: fullPath,
+              };
+            }
+            return {
+              name: name,
+              url: '/panel/api/engine/serve-image/?path=' + encodeURIComponent(fullPath),
+              path: fullPath,
+            };
+          });
+
+          if (tab === 'edited')  this.preview.editedImages  = images;
+          if (tab === 'failed')  this.preview.failedImages   = images;
+          if (tab === 'deleted') this.preview.deletedImages  = images;
+        }
+      } catch (err) {
+        console.warn('[Cropper] Failed to load ' + tab + ' images:', err);
+      }
+    },
+
+    // ══════════════════════════════════════════════════════════════════
+    //  EDITOR INTEGRATION — open AdarshEngine with image list nav
+    // ══════════════════════════════════════════════════════════════════
+    openEditor(img, idx) {
+      var self = this;
+      var images = this.currentTabImages();
+
+      window.AdarshEngine.open(img.url, img.name, function (dataUrl, name) {
+        // Update the currently displayed image URL
+        img.url = dataUrl;
+      });
+
+      // Build image list for navigation inside the editor
+      var engineList = images.map(function (i) {
+        return { url: i.url, name: i.name };
+      });
+      window.AdarshEngine.setImageList(engineList, idx, function (url, name) {
+        // When user navigates, update reference for future save callbacks
+      });
+    },
+
+    // ══════════════════════════════════════════════════════════════════
+    //  DELETE — confirm + soft-delete (move to /deleted/ folder)
+    // ══════════════════════════════════════════════════════════════════
+    confirmDelete(img) {
+      this.deleteConfirm.imageName = img.name;
+      this.deleteConfirm.imagePath = img.path || '';
+      this.deleteConfirm.deleting = false;
+      this.deleteConfirm.visible = true;
+    },
+
+    async executeDelete() {
+      var path = this.deleteConfirm.imagePath;
+      if (!path) {
+        if (typeof Toast !== 'undefined') Toast.error('Cannot determine image path.');
+        this.deleteConfirm.visible = false;
+        return;
+      }
+
+      this.deleteConfirm.deleting = true;
+
+      try {
+        var data = await ApiClient.post('/panel/api/engine/delete-image/', {
+          path: path,
+        });
+
+        if (data && data.success) {
+          // Remove from current tab's array
+          var imgName = this.deleteConfirm.imageName;
+          var self = this;
+
+          ['images', 'editedImages', 'failedImages'].forEach(function (key) {
+            self.preview[key] = self.preview[key].filter(function (i) {
+              return i.name !== imgName || i.path !== path;
+            });
+          });
+
+          // Reload deleted tab to reflect the move
+          this.preview.deletedImages = [];
+          if (this.activeTab === 'deleted') {
+            this._loadTabImages('deleted');
+          }
+
+          if (typeof Toast !== 'undefined') Toast.success('Image moved to deleted folder.');
+        } else {
+          throw new Error((data && data.error) || 'Delete failed');
+        }
+      } catch (err) {
+        console.error('[Cropper] Delete failed:', err);
+        if (typeof Toast !== 'undefined') Toast.error('Delete failed: ' + (err.message || 'Unknown error'));
+      } finally {
+        this.deleteConfirm.visible = false;
+        this.deleteConfirm.deleting = false;
       }
     },
 

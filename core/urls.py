@@ -27,6 +27,9 @@ urlpatterns = [
     # Recent Client Updates API
     path('api/recent-client-updates/', views.api_recent_client_updates, name='api_recent_client_updates'),
     
+    # Print & Reprint Overview API (dashboard)
+    path('api/print-reprint-overview/', views.api_print_reprint_overview, name='api_print_reprint_overview'),
+    
     # Recent Activity API
     path('api/recent-activity/', views.api_recent_activity, name='api_recent_activity'),
     
@@ -59,6 +62,7 @@ urlpatterns = [
     path('api/engine/preview/', views.api_engine_preview, name='api_engine_preview'),
     path('api/engine/serve-image/', views.api_engine_serve_image, name='api_engine_serve_image'),
     path('api/engine/save-edited/', views.api_engine_save_edited, name='api_engine_save_edited'),
+    path('api/engine/delete-image/', views.api_engine_delete_image, name='api_engine_delete_image'),
 
     # Cropper Auto-Update APIs
     path('api/cropper/release-webhook/', views.api_cropper_release_webhook, name='api_cropper_release_webhook'),

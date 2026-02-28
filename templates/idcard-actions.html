@@ -61,7 +61,8 @@
         ],
         staticParams: {
           status: function() { return typeof CURRENT_STATUS !== 'undefined' ? CURRENT_STATUS : ''; }
-        }
+        },
+        bindEvents: false  // IDCardApp handles search/filter events; only getParams() needed here
       });
 
       // DateTime filter for download list — auto-apply on change (Flatpickr)

@@ -273,11 +273,10 @@ def api_reprint_list(request, table_id):
     ).select_related('card', 'requested_by').order_by('-created_at')
 
     if query:
-        rr_qs = rr_qs.filter(
-            Q(card__field_data__icontains=query) |
-            Q(reason__icontains=query) |
-            Q(card__id__icontains=query)
-        )
+        search_q = Q(card__field_data__icontains=query) | Q(reason__icontains=query)
+        if query.isdigit():
+            search_q |= Q(card__id=int(query))
+        rr_qs = rr_qs.filter(search_q)
 
     total = rr_qs.count()
     batch = list(rr_qs[offset:offset + limit + 1])

@@ -1,12 +1,12 @@
 {% comment %}
 Print & Reprint Overview Cards — Admin Dashboard
-Shows side-by-side summary cards for Print and Reprint workflows.
-Styled to match Recent Client Updates table card.
+Expandable per-client tables matching Recent Client Updates pattern.
+Data loaded dynamically via api_print_reprint_overview.
 Visible only to super_admin and admin_staff users.
 {% endcomment %}
 
 {% if is_super_admin or is_admin_staff %}
-<div class="dashboard-grid" style="grid-template-columns: 40fr 60fr;">
+<div class="dashboard-grid-printreprint">
 
   <!-- Print Workflow Card -->
   <div class="dashboard-card">
@@ -14,31 +14,22 @@ Visible only to super_admin and admin_staff users.
       <h3><i class="fa-solid fa-print"></i> Card Printing</h3>
       <a href="#" class="view-all" onclick="return false;">Print Cards <i class="fa-solid fa-arrow-right"></i></a>
     </div>
-    <div class="dashboard-card-body p-0">
+    <div class="dashboard-card-body tall-body p-0">
       <div class="recent-table-wrapper">
         <table class="recent-table">
           <thead>
             <tr>
-              <th scope="col">Stage</th>
-              <th scope="col" class="text-center">Status</th>
-              <th scope="col" class="text-center">Description</th>
+              <th scope="col">Client</th>
+              <th scope="col" class="text-center">Print List</th>
+              <th scope="col" class="text-center">Finalized</th>
+              <th scope="col" class="text-center">Pool</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="printOverviewBody">
             <tr>
-              <td><i class="fa-solid fa-list-check" style="color:#3b82f6;margin-right:6px;"></i>Print List</td>
-              <td class="text-center"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#3b82f6;"></span></td>
-              <td class="text-center" style="font-size:12px;color:#6b7280;">Cards queued for printing</td>
-            </tr>
-            <tr>
-              <td><i class="fa-solid fa-check-double" style="color:#22c55e;margin-right:6px;"></i>Finalized</td>
-              <td class="text-center"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;"></span></td>
-              <td class="text-center" style="font-size:12px;color:#6b7280;">Ready for dispatch</td>
-            </tr>
-            <tr>
-              <td><i class="fa-solid fa-box-archive" style="color:#a855f7;margin-right:6px;"></i>Pool</td>
-              <td class="text-center"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#a855f7;"></span></td>
-              <td class="text-center" style="font-size:12px;color:#6b7280;">Archived print records</td>
+              <td colspan="4" class="text-center p-8 text-gray-400">
+                <i class="fa-solid fa-spinner fa-spin"></i> Loading...
+              </td>
             </tr>
           </tbody>
         </table>
@@ -52,36 +43,23 @@ Visible only to super_admin and admin_staff users.
       <h3><i class="fa-solid fa-arrows-rotate"></i> Card Reprinting</h3>
       <a href="#" class="view-all" onclick="return false;">Reprint Cards <i class="fa-solid fa-arrow-right"></i></a>
     </div>
-    <div class="dashboard-card-body p-0">
+    <div class="dashboard-card-body tall-body p-0">
       <div class="recent-table-wrapper">
         <table class="recent-table">
           <thead>
             <tr>
-              <th scope="col">Stage</th>
-              <th scope="col" class="text-center">Status</th>
-              <th scope="col" class="text-center">Description</th>
+              <th scope="col">Client</th>
+              <th scope="col" class="text-center">Requested</th>
+              <th scope="col" class="text-center">Confirmed</th>
+              <th scope="col" class="text-center">Downloaded</th>
+              <th scope="col" class="text-center">Pool</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="reprintOverviewBody">
             <tr>
-              <td><i class="fa-solid fa-clock" style="color:#f97316;margin-right:6px;"></i>Requested</td>
-              <td class="text-center"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f97316;"></span></td>
-              <td class="text-center" style="font-size:12px;color:#6b7280;">Pending reprint requests</td>
-            </tr>
-            <tr>
-              <td><i class="fa-solid fa-thumbs-up" style="color:#3b82f6;margin-right:6px;"></i>Confirmed</td>
-              <td class="text-center"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#3b82f6;"></span></td>
-              <td class="text-center" style="font-size:12px;color:#6b7280;">Approved for reprinting</td>
-            </tr>
-            <tr>
-              <td><i class="fa-solid fa-download" style="color:#22c55e;margin-right:6px;"></i>Downloaded</td>
-              <td class="text-center"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;"></span></td>
-              <td class="text-center" style="font-size:12px;color:#6b7280;">Reprinted and downloaded</td>
-            </tr>
-            <tr>
-              <td><i class="fa-solid fa-box-archive" style="color:#a855f7;margin-right:6px;"></i>Pool</td>
-              <td class="text-center"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#a855f7;"></span></td>
-              <td class="text-center" style="font-size:12px;color:#6b7280;">Archived reprint records</td>
+              <td colspan="5" class="text-center p-8 text-gray-400">
+                <i class="fa-solid fa-spinner fa-spin"></i> Loading...
+              </td>
             </tr>
           </tbody>
         </table>
