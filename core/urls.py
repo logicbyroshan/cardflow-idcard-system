@@ -66,6 +66,7 @@ urlpatterns = [
     path('api/engine/serve-image/', views.api_engine_serve_image, name='api_engine_serve_image'),
     path('api/engine/save-edited/', views.api_engine_save_edited, name='api_engine_save_edited'),
     path('api/engine/delete-image/', views.api_engine_delete_image, name='api_engine_delete_image'),
+    path('api/engine/compress-folder/', views.api_engine_compress_folder, name='api_engine_compress_folder'),
 
     # Crop Selected Images APIs (batch crop workflow)
     path('api/table/<int:table_id>/cards/prepare-crop/', views.api_prepare_crop, name='api_prepare_crop'),

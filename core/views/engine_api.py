@@ -152,6 +152,63 @@ def api_engine_process_folder(request):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+#  POST  /api/engine/compress-folder/
+# ═══════════════════════════════════════════════════════════════════════════
+@login_required
+@require_any_admin
+@require_POST
+def api_engine_compress_folder(request):
+    """
+    Proxy POST → engine /compress-folder.
+    Expects JSON body: { "folder_path": "C:\\...", "target_kb": 100 }
+    """
+    try:
+        body = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({"success": False, "message": "Invalid JSON body."}, status=400)
+
+    folder_path = body.get("folder_path", "").strip()
+    target_kb = body.get("target_kb")
+
+    if not folder_path:
+        return JsonResponse({"success": False, "message": "folder_path is required."}, status=400)
+    if target_kb is None or not isinstance(target_kb, (int, float)) or target_kb <= 0:
+        return JsonResponse({"success": False, "message": "target_kb must be a positive number."}, status=400)
+
+    try:
+        resp = http_client.post(
+            f"{ENGINE_BASE}/compress-folder",
+            headers={**_engine_headers(), "Content-Type": "application/json"},
+            json={"folder_path": folder_path, "target_kb": float(target_kb)},
+            timeout=ENGINE_TIMEOUT,
+        )
+        resp.raise_for_status()
+        return JsonResponse({"success": True, **resp.json()})
+
+    except http_client.ConnectionError:
+        return JsonResponse({
+            "success": False,
+            "message": "Cannot connect to Adarsh Engine. Is the service running?",
+        }, status=502)
+    except http_client.Timeout:
+        return JsonResponse({
+            "success": False,
+            "message": "Engine compression timed out.",
+        }, status=504)
+    except http_client.HTTPError as exc:
+        body_data = {}
+        try:
+            body_data = exc.response.json()
+        except Exception:
+            pass
+        msg = body_data.get("message") or body_data.get("detail") or f"Engine error {exc.response.status_code}"
+        return JsonResponse({"success": False, "message": msg}, status=exc.response.status_code)
+    except Exception as exc:
+        logger.exception("compress-folder proxy error")
+        return JsonResponse({"success": False, "message": str(exc)}, status=500)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 #  GET  /api/engine/preview/
 # ═══════════════════════════════════════════════════════════════════════════
 _ALLOWED_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp"}

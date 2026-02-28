@@ -139,12 +139,20 @@
         </div>
 
         <div class="card-actions">
-          <button class="btn btn-primary" :disabled="!folderPath.trim() || processing" @click="processFolder()" type="button">
+          <button class="btn btn-primary" :disabled="!folderPath.trim() || processing || compressing" @click="processFolder()" type="button">
             <template x-if="!processing">
               <span><i class="fa-solid fa-crop"></i> Process Folder</span>
             </template>
             <template x-if="processing">
               <span><i class="fa-solid fa-spinner fa-spin"></i> Processing…</span>
+            </template>
+          </button>
+          <button class="btn btn-compress" :disabled="processing || compressing" @click="openCompressModal()" type="button">
+            <template x-if="!compressing">
+              <span><i class="fa-solid fa-compress"></i> Compress Images</span>
+            </template>
+            <template x-if="compressing">
+              <span><i class="fa-solid fa-spinner fa-spin"></i> Compressing…</span>
             </template>
           </button>
         </div>
@@ -331,6 +339,63 @@
               <template x-if="deleteConfirm.deleting">
                 <span><i class="fa-solid fa-spinner fa-spin"></i> Deleting…</span>
               </template>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {# ══════════ Compress Images Modal ══════════ #}
+      <div class="compress-modal-backdrop" x-show="compressModal.visible" x-cloak x-transition.opacity @click.self="compressModal.visible = false">
+        <div class="compress-modal" x-transition.scale>
+          <div class="compress-modal-header">
+            <h4><i class="fa-solid fa-compress"></i> Compress Images</h4>
+            <button class="btn-dismiss-error" @click="compressModal.visible = false" type="button">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+
+          <div class="compress-modal-body">
+            {# Source info #}
+            <div class="compress-source-info">
+              <template x-if="compressModal.source === 'results'">
+                <p><i class="fa-solid fa-images"></i> Compressing <strong x-text="result.success"></strong> cropped images from the last processed batch.</p>
+              </template>
+              <template x-if="compressModal.source === 'folder'">
+                <div class="compress-folder-input">
+                  <p class="compress-help-text"><i class="fa-solid fa-folder-open"></i> Enter the folder path containing images to compress:</p>
+                  <div class="input-wrapper">
+                    <i class="fa-solid fa-folder"></i>
+                    <input type="text" x-model="compressModal.folderPath" placeholder="C:\Users\Name\Photos"
+                           autocomplete="off" @keydown.enter="startCompress()">
+                  </div>
+                </div>
+              </template>
+            </div>
+
+            {# Target KB input #}
+            <div class="compress-target-group">
+              <label class="compress-label">
+                <i class="fa-solid fa-bullseye"></i> Target file size (KB)
+              </label>
+              <div class="compress-target-input">
+                <input type="number" x-model.number="compressModal.targetKB" min="1" max="10000" step="1"
+                       placeholder="100" class="compress-kb-input" @keydown.enter="startCompress()">
+                <span class="compress-kb-unit">KB</span>
+              </div>
+              <p class="compress-hint">
+                Each image will be compressed to ≤ this size while maintaining the highest quality possible.
+                Common targets: <button type="button" class="compress-preset" @click="compressModal.targetKB = 50">50 KB</button>
+                <button type="button" class="compress-preset" @click="compressModal.targetKB = 100">100 KB</button>
+                <button type="button" class="compress-preset" @click="compressModal.targetKB = 200">200 KB</button>
+                <button type="button" class="compress-preset" @click="compressModal.targetKB = 500">500 KB</button>
+              </p>
+            </div>
+          </div>
+
+          <div class="compress-modal-footer">
+            <button class="btn btn-neutral" @click="compressModal.visible = false" type="button">Cancel</button>
+            <button class="btn btn-compress" @click="startCompress()" :disabled="!compressModal.targetKB || compressModal.targetKB <= 0 || (compressModal.source === 'folder' && !compressModal.folderPath.trim())" type="button">
+              <i class="fa-solid fa-compress"></i> Start Compression
             </button>
           </div>
         </div>

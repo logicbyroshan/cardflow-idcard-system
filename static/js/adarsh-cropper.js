@@ -86,6 +86,15 @@ function cropperApp() {
       progress: '',
     },
 
+    // ── Compress state ──
+    compressing: false,
+    compressModal: {
+      visible: false,
+      source: 'folder',     // 'results' (from cropped output) or 'folder' (manual path)
+      folderPath: '',
+      targetKB: 100,
+    },
+
     // ── Error ──
     error: {
       visible: false,
@@ -1094,6 +1103,129 @@ function cropperApp() {
         this.deleteConfirm.visible = false;
         this.deleteConfirm.deleting = false;
       }
+    },
+
+    // ══════════════════════════════════════════════════════════════════
+    //  COMPRESS IMAGES — reduce file size to target KB
+    // ══════════════════════════════════════════════════════════════════
+
+    /**
+     * Open the compress modal.
+     * If there are cropped results available, offer to compress those.
+     * Otherwise, ask for a folder path (pre-fill from the main input).
+     */
+    openCompressModal() {
+      if (this.result.visible && this.result.success > 0 && this.result.outputFolder) {
+        // There are cropped images — offer to compress them directly
+        this.compressModal.source = 'results';
+        this.compressModal.folderPath = this.result.outputFolder;
+      } else {
+        // No results — ask for a folder path
+        this.compressModal.source = 'folder';
+        this.compressModal.folderPath = this.folderPath.trim();
+      }
+      this.compressModal.visible = true;
+    },
+
+    /**
+     * Start the compression process.
+     * Uses the same direct/proxy pattern as processFolder().
+     */
+    async startCompress() {
+      var targetKB = this.compressModal.targetKB;
+      var folderPath = this.compressModal.folderPath.trim();
+
+      if (!targetKB || targetKB <= 0) {
+        if (typeof Toast !== 'undefined') Toast.error('Please enter a valid target size in KB.');
+        return;
+      }
+      if (!folderPath) {
+        if (typeof Toast !== 'undefined') Toast.error('Please enter a folder path.');
+        return;
+      }
+
+      this.compressModal.visible = false;
+      this.compressing = true;
+      this.result.visible = false;
+      this.preview.visible = false;
+      this.error.visible = false;
+      this._showProgress('Compressing images…');
+
+      try {
+        this._updateProgress(10, 'Sending compression request to engine…');
+        this._startProgressSimulation();
+
+        var data;
+
+        if (this.engine.direct) {
+          // ── Direct to local engine ────────────────────────────────
+          var resp = await fetch(ENGINE_DIRECT_URL + '/compress-folder', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-ENGINE-KEY': ENGINE_API_KEY,
+            },
+            body: JSON.stringify({ folder_path: folderPath, target_kb: targetKB }),
+          });
+          if (!resp.ok) {
+            var errBody = {};
+            try { errBody = await resp.json(); } catch (_) {}
+            throw new Error(errBody.message || errBody.detail || 'Engine error ' + resp.status);
+          }
+          data = await resp.json();
+        } else {
+          // ── Django proxy fallback ─────────────────────────────────
+          data = await ApiClient.post(
+            '/panel/api/engine/compress-folder/',
+            { folder_path: folderPath, target_kb: targetKB }
+          );
+        }
+
+        this._hideProgress();
+
+        if (data && data.total != null) {
+          this._updateProgress(100, 'Compression complete!');
+          this._showResult(data);
+          if (typeof Toast !== 'undefined') {
+            Toast.success('Compression complete! ' + (data.success || 0) + '/' + (data.total || 0) + ' images compressed to ≤ ' + targetKB + ' KB');
+          }
+        } else {
+          throw new Error((data && data.message) || 'Compression failed');
+        }
+
+      } catch (err) {
+        this._hideProgress();
+        this._handleCompressError(err);
+      } finally {
+        this.compressing = false;
+      }
+    },
+
+    /**
+     * Handle compression-specific errors with friendly messages.
+     */
+    _handleCompressError(err) {
+      var title = 'Compression Error';
+      var message = (err && err.message) || 'An unknown error occurred.';
+
+      if (err && err.data && err.data.message) {
+        message = err.data.message;
+      }
+
+      if (message.indexOf('not reachable') !== -1 || message.indexOf('Cannot connect') !== -1) {
+        title = 'Engine Not Reachable';
+        this.checkEngine();
+      } else if (message.indexOf('No images found') !== -1) {
+        title = 'No Images Found';
+        message = 'The specified folder does not contain any supported image files.';
+      } else if (message.indexOf('not exist') !== -1 || message.indexOf('not found') !== -1) {
+        title = 'Path Not Found';
+        message = 'The specified folder path does not exist on this machine.';
+      } else if (message.indexOf('timed out') !== -1 || message.indexOf('timeout') !== -1) {
+        title = 'Timeout';
+      }
+
+      this._showError(title, message);
     },
 
     // ══════════════════════════════════════════════════════════════════
