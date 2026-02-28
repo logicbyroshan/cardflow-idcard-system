@@ -107,12 +107,15 @@ def _register_arial_font():
 
     Called once before the first PDF render.  Uses arial.ttf and
     arialbd.ttf from static/fonts/ so it works on both Windows and Linux.
+    Also registers Saira Semi Condensed for dense-column mode.
     """
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
     from reportlab.lib.fonts import addMapping
 
     font_dir = os.path.join(settings.BASE_DIR, 'static', 'fonts')
+
+    # ── Arial (regular + bold) ──
     regular = os.path.join(font_dir, 'arial.ttf')
     bold = os.path.join(font_dir, 'arialbd.ttf')
     if not os.path.isfile(regular):
@@ -130,9 +133,56 @@ def _register_arial_font():
     except Exception as exc:
         logger.warning('Could not register Arial font: %s', exc)
 
+    # ── Saira Semi Condensed (for dense-column / condensed mode) ──
+    saira_regular = os.path.join(font_dir, 'saira-semi-condensed-500.ttf')
+    saira_bold = os.path.join(font_dir, 'saira-semi-condensed-700.ttf')
+    if os.path.isfile(saira_regular):
+        try:
+            pdfmetrics.registerFont(TTFont('SairaSemiCondensed', saira_regular))
+            if os.path.isfile(saira_bold):
+                pdfmetrics.registerFont(TTFont('SairaSemiCondensed-Bold', saira_bold))
+                addMapping('SairaSemiCondensed', 0, 0, 'SairaSemiCondensed')
+                addMapping('SairaSemiCondensed', 1, 0, 'SairaSemiCondensed-Bold')
+            else:
+                addMapping('SairaSemiCondensed', 0, 0, 'SairaSemiCondensed')
+                addMapping('SairaSemiCondensed', 1, 0, 'SairaSemiCondensed')
+        except Exception as exc:
+            logger.warning('Could not register Saira Semi Condensed font: %s', exc)
 
-# Register Arial once at module load
+
+# Register fonts once at module load
 _register_arial_font()
+
+
+# ── Font-mode presets ───────────────────────────────────────────────
+# Each preset defines: font_family, header_font_size, data_font_size,
+#   char_width_cm (for wrap estimation), header_line_cm
+_FONT_MODES = {
+    'normal': {
+        'font_family': 'Arial, Helvetica, sans-serif',
+        'header_pt': '8pt',
+        'data_pt': '9pt',
+        'char_width_cm': 0.18,   # ~9pt bold uppercase Arial
+        'header_line_cm': 0.28,  # ~8pt text + leading
+        'header_base_cm': 0.10,
+    },
+    'compact': {
+        'font_family': 'Arial, Helvetica, sans-serif',
+        'header_pt': '6.5pt',
+        'data_pt': '7pt',
+        'char_width_cm': 0.155,  # ~7pt bold uppercase Arial
+        'header_line_cm': 0.22,  # ~6.5pt text + leading
+        'header_base_cm': 0.10,
+    },
+    'condensed': {
+        'font_family': 'SairaSemiCondensed, Arial, Helvetica, sans-serif',
+        'header_pt': '7.5pt',
+        'data_pt': '8pt',
+        'char_width_cm': 0.14,   # condensed ~8pt
+        'header_line_cm': 0.24,
+        'header_base_cm': 0.10,
+    },
+}
 
 
 class PdfExporter:
@@ -192,12 +242,17 @@ class PdfExporter:
         'account', 'ifsc', 'bank',
     ]
 
+    # ── Dense-table threshold ──
+    # If total column count (including SR NO) exceeds this, auto-compact
+    DENSE_COLUMN_THRESHOLD = 15
+
     def export_cards(
         self,
         table,
         cards: QuerySet,
         status: str = '',
-        template_id: int = None
+        template_id: int = None,
+        font_mode: str = 'auto',
     ) -> PdfExportResult:
         """
         Export cards to PDF format.
@@ -205,6 +260,10 @@ class PdfExporter:
         Args:
             table: IDCardTable instance
             cards: QuerySet of IDCard instances
+            status: Status label for filename
+            template_id: Optional ExportTemplate ID
+            font_mode: 'auto' | 'normal' | 'compact' | 'condensed'
+                       'auto' uses normal for ≤15 cols, compact for >15
 
         Returns:
             PdfExportResult with HttpResponse if successful
@@ -250,6 +309,15 @@ class PdfExporter:
             cards_list = sort_cards_for_export(list(cards[:MAX_PDF_CARDS]), table.fields)
             column_configs = self._build_column_configs(ordered_fields, cards_list)
 
+            # ── Resolve font mode ────────────────────────────────
+            total_cols = len(column_configs)  # includes SR NO
+            resolved_font_mode = font_mode
+            if resolved_font_mode == 'auto':
+                resolved_font_mode = 'compact' if total_cols > self.DENSE_COLUMN_THRESHOLD else 'normal'
+            if resolved_font_mode not in _FONT_MODES:
+                resolved_font_mode = 'normal'
+            font_preset = _FONT_MODES[resolved_font_mode]
+
             # Compute dynamic row height from tallest image column
             max_img_h = 0
             for cfg in column_configs:
@@ -259,7 +327,8 @@ class PdfExporter:
             data_row_height_cm = row_height_cm
 
             # Build row data (with placeholder images for missing photos)
-            rows = self._build_rows(ordered_fields, cards_list, column_configs)
+            rows = self._build_rows(ordered_fields, cards_list, column_configs,
+                                    char_width_cm=font_preset['char_width_cm'])
 
             # Get institution name
             institution_name = "Institution"
@@ -283,7 +352,8 @@ class PdfExporter:
             class_field_name = get_class_field_name(table.fields)
             rpp = self._compute_records_per_page(
                 column_configs, has_instructions=bool(template_instructions),
-                data_row_height_cm=data_row_height_cm
+                data_row_height_cm=data_row_height_cm,
+                font_preset=font_preset,
             )
             pages = self._group_rows_into_pages(
                 rows, cards_list, class_field_name, records_per_page=rpp
@@ -302,6 +372,11 @@ class PdfExporter:
                 'export_copyright_line': export_settings.get('export_copyright_line', '© Adarsh ID Cards Management System'),
                 'template_instructions': template_instructions,
                 'row_height_cm': row_height_cm,
+                # Font-mode context for template
+                'font_family': font_preset['font_family'],
+                'header_font_size': font_preset['header_pt'],
+                'data_font_size': font_preset['data_pt'],
+                'font_mode': resolved_font_mode,
             }
 
             html = render_to_string('exports/pdf_report.html', context)
@@ -377,11 +452,15 @@ class PdfExporter:
         """
         return is_nowrap_column(field_name)
 
-    def _estimate_header_lines(self, column_configs):
+    def _estimate_header_lines(self, column_configs, char_width_cm=0.155):
         """Estimate max number of text lines the tallest column header needs.
 
         Uses column width (%) to compute available characters per line,
         then simulates word-boundary wrapping on each label.
+
+        Args:
+            column_configs: List of column config dicts
+            char_width_cm: Width per uppercase char at current font size
         """
         max_lines = 1
         for cfg in column_configs:
@@ -391,8 +470,7 @@ class PdfExporter:
             usable_cm = col_width_cm - 0.15
             if usable_cm <= 0:
                 usable_cm = 0.4
-            # At 6.5pt Arial, ~1 uppercase char ≈ 0.145cm
-            chars_per_line = max(2, int(usable_cm / 0.145))
+            chars_per_line = max(2, int(usable_cm / char_width_cm))
             # Simulate word-wrap
             words = label.split()
             lines = 1
@@ -410,7 +488,8 @@ class PdfExporter:
             max_lines = max(max_lines, lines)
         return max_lines
 
-    def _compute_records_per_page(self, column_configs, has_instructions=False, data_row_height_cm=None):
+    def _compute_records_per_page(self, column_configs, has_instructions=False,
+                                  data_row_height_cm=None, font_preset=None):
         """Compute how many data rows safely fit on one page.
 
         Takes into account:
@@ -419,12 +498,20 @@ class PdfExporter:
           - Instructions block on last page (optional)
           - Safety margin for xhtml2pdf rendering quirks
           - Dynamic row height based on tallest image column
+          - Font-mode (normal=9pt vs compact=7pt vs condensed)
         """
         if data_row_height_cm is None:
             data_row_height_cm = 2.7  # fallback
 
-        header_lines = self._estimate_header_lines(column_configs)
-        header_height = self.HEADER_BASE_CM + header_lines * self.HEADER_LINE_CM
+        if font_preset is None:
+            font_preset = _FONT_MODES['normal']
+
+        char_w = font_preset.get('char_width_cm', 0.155)
+        hdr_line = font_preset.get('header_line_cm', 0.22)
+        hdr_base = font_preset.get('header_base_cm', 0.10)
+
+        header_lines = self._estimate_header_lines(column_configs, char_width_cm=char_w)
+        header_height = hdr_base + header_lines * hdr_line
 
         budget = (self.PAGE_CONTENT_HEIGHT_CM
                   - self.FOOTER_HEIGHT_CM
@@ -633,7 +720,8 @@ class PdfExporter:
         return configs
 
     @classmethod
-    def _wrap_text_for_pdf(cls, text: str, nowrap: bool = False, col_width_pct: float = 0) -> 'mark_safe':
+    def _wrap_text_for_pdf(cls, text: str, nowrap: bool = False, col_width_pct: float = 0,
+                           char_width_cm: float = 0.18) -> 'mark_safe':
         """Context-aware text wrapping for PDF columns.
 
         xhtml2pdf has very limited CSS word-wrap support, so we:
@@ -697,12 +785,12 @@ class PdfExporter:
             return mark_safe(safe_text)
 
         # ── Step 3: Estimate chars-per-line from column width.
-        # Landscape A4 content width ≈ 28.7cm.  At 7pt bold Arial,
-        # one uppercase char ≈ 0.155cm (slightly wider than Helvetica).
+        # Landscape A4 content width ≈ 28.7cm.
+        # char_width_cm is font-mode dependent (9pt=0.18, 7pt=0.155, condensed=0.14).
         if col_width_pct > 0:
             col_cm = (col_width_pct / 100) * 28.7
             usable_cm = col_cm - 0.12  # subtract padding + border
-            chars_per_line = max(3, int(usable_cm / 0.155))
+            chars_per_line = max(3, int(usable_cm / char_width_cm))
         else:
             chars_per_line = 16  # conservative default
 
@@ -757,6 +845,7 @@ class PdfExporter:
         ordered_fields: List[Dict[str, Any]],
         cards: list,
         column_configs: List[Dict[str, Any]] = None,
+        char_width_cm: float = 0.18,
     ) -> List[List[Dict[str, Any]]]:
         """
         Build row data for the template.
@@ -833,7 +922,7 @@ class PdfExporter:
                     col_cfg_idx = field_idx + 1  # +1 because configs[0] = Sr No
                     col_w = column_configs[col_cfg_idx]['width'] if column_configs and col_cfg_idx < len(column_configs) else 0
                     is_nowrap = column_configs[col_cfg_idx].get('nowrap', False) if column_configs and col_cfg_idx < len(column_configs) else False
-                    cell['content'] = self._wrap_text_for_pdf(formatted, nowrap=is_nowrap, col_width_pct=col_w)
+                    cell['content'] = self._wrap_text_for_pdf(formatted, nowrap=is_nowrap, col_width_pct=col_w, char_width_cm=char_width_cm)
 
                 row_cells.append(cell)
 

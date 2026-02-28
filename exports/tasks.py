@@ -56,6 +56,7 @@ class BackgroundExportManager:
         card_ids: list,
         status: str = '',
         template_id: int = None,
+        font_mode: str = 'auto',
     ) -> str:
         """
         Start a background PDF export.
@@ -80,7 +81,7 @@ class BackgroundExportManager:
         # Start background thread
         thread = threading.Thread(
             target=cls._generate_pdf_background,
-            args=(task_id, user, table_id, card_ids, status, template_id),
+            args=(task_id, user, table_id, card_ids, status, template_id, font_mode),
             daemon=True,
         )
         thread.start()
@@ -116,6 +117,7 @@ class BackgroundExportManager:
         card_ids: list,
         status: str,
         template_id: int,
+        font_mode: str = 'auto',
     ):
         """Background thread: generate PDF and save to temp file."""
         try:
@@ -138,7 +140,7 @@ class BackgroundExportManager:
 
             # Generate PDF using the existing exporter
             exporter = PdfExporter()
-            result = exporter.export_cards(table, cards, status=status, template_id=template_id)
+            result = exporter.export_cards(table, cards, status=status, template_id=template_id, font_mode=font_mode)
 
             if not result.success:
                 cls._update_task(

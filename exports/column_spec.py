@@ -398,58 +398,64 @@ _s('_default', 3, 10, 30, True, 'center',
 
 FIELD_ALIASES: List[Tuple[str, str]] = [
     # ── Serial / row ─────────────────────────────────────────────
-    (r'^sr\.?\s?no\.?$|^s\.?\s?no\.?$|^sl\.?\s?no\.?$|^serial', 'sr_no'),
+    # sr no, s.no, sl no, sr.no., serial number, sno, slno
+    (r'^sr\.?\s?no\.?$|^s\.?\s?no\.?$|^sl\.?\s?no\.?$|^serial|^sno$|^slno$', 'sr_no'),
 
     # ── Images (checked early so they don't false-match text rules)
     (r'thumb\s*imp|thumb\s*print', 'photo'),
-    (r'photograph|passport\s*size|photo|pic|picture|image', 'photo'),
+    (r'photograph|passport\s*size|photo|pic|picture|image|img', 'photo'),
     (r'signature|sign', 'signature'),
     (r'qr\s*code|barcode|rfid|nfc|smart\s*chip|hologram', 'qr_barcode'),
 
-    # ── Names ────────────────────────────────────────────────────
+    # ── Names (misspellings: fathrs, fathr, mothr, gardian, etc.) ─
     (r'husband|wife|spouse', 'spouse_name'),
-    (r'guardian', 'guardian_name'),
-    (r'father|mother|parent', 'parent_name'),
-    (r'full\s*name|first\s*name|middle\s*name|last\s*name|surname'
-     r'|student\s*name|emp\s*name|employee\s*name|^name$', 'full_name'),
-    (r'reporting\s*manager|manager\s*name', 'reporting_manager'),
+    (r'gu?a?rdi?a?n', 'guardian_name'),
+    (r'fa?the?r|mothe?r|parent|papa|maa|mata|pita', 'parent_name'),
+    (r'full\s*n(a?me?)?|first\s*n(a?me?)?|middle\s*n(a?me?)?'
+     r'|last\s*n(a?me?)?|sur\s*n(a?me?)?'
+     r'|student\s*n(a?me?)?|emp\s*n(a?me?)?|employee\s*n(a?me?)?'
+     r'|^name$|^nm$|^nme$', 'full_name'),
+    (r'reporting\s*manager|manager\s*n(a?me?)?', 'reporting_manager'),
     (r'emergency\s*contact\s*person', 'full_name'),
 
-    # ── Dates ────────────────────────────────────────────────────
-    (r'dob|date\s*of\s*birth|birth\s*date', 'date'),
-    (r'date\s*of\s*joining|joining\s*date|doj', 'date'),
-    (r'valid\s*from|valid\s*till|validity|expiry', 'validity_period'),
-    (r'\bdate\b', 'date'),
+    # ── Dates (dob, d.o.b, date of birth, birthdate, joining dt) ─
+    (r'd\.?\s*o\.?\s*b\.?|date\s*of\s*birth|birth\s*date|b\.?date', 'date'),
+    (r'date\s*of\s*join|join(ing)?\s*date|d\.?o\.?j\.?|join\s*dt', 'date'),
+    (r'valid\s*(from|till|upto)|validity|expiry|expire', 'validity_period'),
+    (r'\bdate\b|\bdt\b', 'date'),
 
     # ── Age ──────────────────────────────────────────────────────
-    (r'^age$', 'age'),
+    (r'^age$|^umar$', 'age'),
 
-    # ── Gender ───────────────────────────────────────────────────
-    (r'^gender$|^sex$', 'gender'),
+    # ── Gender (sex, gndr, gendr) ────────────────────────────────
+    (r'gender|^sex$|^gndr$|^gendr$', 'gender'),
 
-    # ── Blood Group ──────────────────────────────────────────────
-    (r'blood\s*gr|blood\s*group|^bg$|^bgroup$|^b\.?g\.?$', 'blood_group'),
+    # ── Blood Group (blood gr, bg, bgroup, b.g., bld gr, blood_grup,
+    #    bloodgrp, blod, blood grp, blud, blod group, b grp) ──────
+    (r'blo?o?d\s*gr|blo?o?d\s*gro?u?p|^bg$|^bgroup$|^b\.?g\.?$'
+     r'|^bld\s*gr|^blud|^blod|blo+d\s*grp|b\s*grp', 'blood_group'),
 
     # ── Nationality / Religion / Caste ───────────────────────────
-    (r'nationality', 'nationality'),
-    (r'religion', 'religion'),
-    (r'caste|category|gen.*obc.*sc|sc.*st', 'caste_category'),
-    (r'marital|married|unmarried', 'marital_status'),
+    (r'nat[io]+na?li?ty?|^nation$', 'nationality'),
+    (r'religi?o?n|^rlgn$', 'religion'),
+    (r'caste|catego?r?y?|^cat$|gen.*obc.*sc|sc.*st|^obc$|^gen$', 'caste_category'),
+    (r'marita?l|marri?e?d|unmarri?e?d', 'marital_status'),
 
-    # ── Aadhaar (multiple spellings) ─────────────────────────────
-    (r'aadh?a+r|uidai|uid\s*no', 'aadhaar'),
+    # ── Aadhaar (aadhar, aadhaar, adhar, adhaar, aadhr, aadar,
+    #    aadhar no, adhar number, uid no) ─────────────────────────
+    (r'a+dh?a+r|a+dhr|uidai|uid\s*no', 'aadhaar'),
 
     # ── PAN ──────────────────────────────────────────────────────
-    (r'^pan$|pan\s*no|pan\s*number|pan\s*card', 'pan'),
+    (r'^pan$|pan\s*no|pan\s*num|pan\s*card', 'pan'),
 
     # ── Voter ID ─────────────────────────────────────────────────
-    (r'voter\s*id|epic\s*no', 'voter_id'),
+    (r'voter\s*id|epic\s*no|votr', 'voter_id'),
 
-    # ── Driving License ──────────────────────────────────────────
-    (r'driving\s*li[cs]en[cs]e|dl\s*no|dl\s*number', 'driving_license'),
+    # ── Driving License (driving lisence, licence, licnse, dl no) ─
+    (r'driv\w*\s*li[cs]?en[cs]?e?|^dl$|dl\s*no|dl\s*num', 'driving_license'),
 
     # ── Passport ─────────────────────────────────────────────────
-    (r'passport\s*no|passport\s*number', 'passport_number'),
+    (r'passport\s*no|passport\s*num|^ppn$', 'passport_number'),
 
     # ── Ration Card ──────────────────────────────────────────────
     (r'ration\s*card', 'id_number'),
@@ -458,15 +464,15 @@ FIELD_ALIASES: List[Tuple[str, str]] = [
     (r'abha|ayushman|health\s*id', 'health_id'),
 
     # ── ESIC / PF / UAN ─────────────────────────────────────────
-    (r'esic|pf\s*no|uan\s*no|uan\s*number|epf', 'id_number'),
+    (r'esic|pf\s*no|uan\s*no|uan\s*num|epf', 'id_number'),
 
     # ── Generic ID numbers ───────────────────────────────────────
-    (r'id\s*card\s*no|id\s*no|idno', 'id_number'),
-    (r'roll\s*no|roll\s*number|^roll$', 'id_number'),
-    (r'emp\s*code|employee\s*code|emp\s*id', 'id_number'),
-    (r'admission\s*no|adm\s*no', 'id_number'),
-    (r'reg\s*no|registration|enrol', 'id_number'),
-    (r'service\s*no|service\s*number', 'service_number'),
+    (r'id\s*card\s*no|id\s*no|idno|^id$', 'id_number'),
+    (r'roll\s*no|roll\s*num|^roll$', 'id_number'),
+    (r'emp\s*code|employee\s*code|emp\s*id|staff\s*id', 'id_number'),
+    (r'admis?si?on\s*no|adm\s*no', 'id_number'),
+    (r'reg\s*no|registra?ti?on|enrol', 'id_number'),
+    (r'service\s*no|service\s*num', 'service_number'),
 
     # ── Misc short (BEFORE phone to prevent false matches) ─────
     (r'hostel|room\s*no', 'hostel_room'),
@@ -474,38 +480,40 @@ FIELD_ALIASES: List[Tuple[str, str]] = [
     (r'library\s*card|library\s*no', 'library_card'),
     (r'lab\s*access|lab\s*code', 'lab_access'),
 
-    # ── Phone / Mobile ───────────────────────────────────────────
-    (r'mobile|phone|cell\b|tel\b|whatsapp|^mob\b'
-     r'|emergency\s*contact\s*number|office\s*contact'
-     r'|alternate\s*mobile|alt\s*mobile|contact\s*no|contact\s*number', 'mobile'),
+    # ── Phone / Mobile (mob, mob no, ph no, fone, contact num) ───
+    (r'mobi?le?|pho?ne?|cell\b|tel\b|whatsapp|^mob\b|^ph\b|fone'
+     r'|emergency\s*contact\s*num'
+     r'|office\s*contact|alternate\s*mob|alt\s*mob'
+     r'|contact\s*no|contact\s*num', 'mobile'),
 
-    # ── Email ────────────────────────────────────────────────────
-    (r'email|e\s*mail', 'email'),
+    # ── Email (e-mail, email id, mail id, emailid) ──────────────
+    (r'e?\s*mail|mail\s*id', 'email'),
 
-    # ── Address ──────────────────────────────────────────────────
-    (r'permanent\s*addr|current\s*addr|present\s*addr|^address$|addr', 'address'),
-    (r'^city$|^town$', 'city'),
-    (r'^district$', 'district'),
+    # ── Address (addr, addrs, adress, adrs, permanent address) ───
+    (r'permane?nt?\s*addr|curre?nt?\s*addr|prese?nt?\s*addr'
+     r'|^address$|^addr|^adre?s', 'address'),
+    (r'^city$|^town$|^village$|^vill$', 'city'),
+    (r'^district$|^dist$|^distt$', 'district'),
     (r'^state$|^province$', 'state'),
-    (r'pin\s*code|^pin$|^zip$|postal\s*code', 'pincode'),
+    (r'pin\s*code|^pin$|^zip$|postal\s*code|^pincode$', 'pincode'),
     (r'^country$', 'country'),
 
     # ── Organisation / Education ─────────────────────────────────
     (r'^branch$|branch\s*name', 'branch'),
-    (r'^department$|^dept$|department\s*name', 'department'),
-    (r'^designation$|^desig$', 'designation'),
-    (r'course\s*name|^course$|course\s*duration', 'course'),
-    (r'^class$|^section$|^sec$|^div$|^division$', 'class_section'),
+    (r'^depart?me?nt$|^dept$|depart?me?nt\s*name', 'department'),
+    (r'^designa?ti?on$|^desig$', 'designation'),
+    (r'course\s*n(a?me?)?|^course$|course\s*dur', 'course'),
+    (r'^class$|^section$|^sec$|^div$|^division$|^cls$', 'class_section'),
     (r'^batch$|^batch\s*no', 'batch'),
     (r'^semester$|^sem$', 'semester'),
-    (r'^stream$|science.*commerce.*arts', 'stream'),
+    (r'^stream$|science.*commerce.*arts|^strm$', 'stream'),
 
     # ── Employment ───────────────────────────────────────────────
     (r'emp\s*type|employee\s*type|permanent.*contract|contract.*intern', 'employee_type'),
     (r'grade\s*level|^grade$|pay\s*grade', 'grade_level'),
     (r'shift|timing', 'shift_timing'),
     (r'access\s*level|security\s*level', 'access_level'),
-    (r'work\s*location|office\s*location|posting\s*location|posted\s*at', 'posting_location'),
+    (r'work\s*loc|office\s*loc|posting\s*loc|posted\s*at', 'posting_location'),
     (r'emp\s*status|employee\s*status|^status$', 'employee_status'),
 
     # ── Defence / Police ─────────────────────────────────────────
@@ -513,10 +521,10 @@ FIELD_ALIASES: List[Tuple[str, str]] = [
 
     # ── Medical ──────────────────────────────────────────────────
     (r'allerg', 'allergies'),
-    (r'medical\s*cond|medical\s*history|health\s*cond', 'medical_condition'),
-    (r'disabilit', 'disability'),
+    (r'medical\s*cond|medical\s*hist|health\s*cond', 'medical_condition'),
+    (r'disabilit|handicap|divyang', 'disability'),
 
-    (r'year\s*of\s*joining', 'date'),
+    (r'year\s*of\s*join', 'date'),
 ]
 
 # Compile patterns once

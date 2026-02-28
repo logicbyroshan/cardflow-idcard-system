@@ -12,6 +12,11 @@
          * Content area height: 21 − 1.5 − 0.3 = 19.2cm
          * Table: thead ~0.6–1.2cm + 6 × 2.7cm = ~17.4cm max
          * Remaining ~1.8cm: inline footer
+         *
+         * Font sizes are injected dynamically via template context:
+         *   {{ header_font_size }} — for <th> (e.g. 8pt, 6.5pt, 7.5pt)
+         *   {{ data_font_size }}   — for <td> (e.g. 9pt, 7pt, 8pt)
+         *   {{ font_family }}      — font family (Arial or SairaSemiCondensed)
          */
         @page {
             size: A4 landscape;
@@ -27,7 +32,7 @@
         }
 
         body {
-            font-family: Arial, Helvetica, sans-serif;
+            font-family: {{ font_family }};
             color: #000;
             text-transform: uppercase;
         }
@@ -55,19 +60,20 @@
         table.data-table th {
             border: 0.5pt solid #000;
             padding: 1px 2px;
-            font-size: 6.5pt;
+            font-size: {{ header_font_size }};
             font-weight: bold;
             text-align: center;
             vertical-align: middle;
             word-wrap: break-word;
             overflow-wrap: break-word;
             word-break: break-all;
+            overflow: hidden;
         }
 
         table.data-table td {
             border: 0.5pt solid #000;
             padding: 1px 3px;
-            font-size: 7pt;
+            font-size: {{ data_font_size }};
             font-weight: bold;
             vertical-align: middle;
             word-wrap: break-word;
@@ -77,6 +83,7 @@
             line-height: 1.1;
             height: {{ row_height_cm }}cm;
             max-width: 0;
+            overflow: hidden;
         }
 
         /* Image cells — minimal padding */

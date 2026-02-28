@@ -273,7 +273,8 @@ class ExportService:
         table_id: int,
         card_ids: Optional[List[int]] = None,
         status: str = '',
-        template_id: Optional[int] = None
+        template_id: Optional[int] = None,
+        font_mode: str = 'auto',
     ) -> PdfExportResult:
         """
         Export cards to PDF format.
@@ -283,6 +284,7 @@ class ExportService:
             card_ids: Optional list of specific card IDs
             status: Current status tab label
             template_id: Optional ExportTemplate ID for footer instructions
+            font_mode: 'auto' | 'normal' | 'compact' | 'condensed'
             
         Returns:
             PdfExportResult with HttpResponse if successful
@@ -295,7 +297,10 @@ class ExportService:
                 message=context.error_message or 'Permission denied'
             )
         
-        return self._pdf_exporter.export_cards(context.table, context.cards, status=status, template_id=template_id)
+        return self._pdf_exporter.export_cards(
+            context.table, context.cards, status=status,
+            template_id=template_id, font_mode=font_mode,
+        )
     
     # =========================================================================
     # IMAGE ZIP EXPORT

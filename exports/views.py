@@ -414,8 +414,9 @@ def api_export_pdf(request, table_id: int) -> HttpResponse:
     if len(card_ids) > MAX_PDF_EXPORT_CARD_IDS:
         card_ids = card_ids[:MAX_PDF_EXPORT_CARD_IDS]
     
-    # Extract template_id from request
+    # Extract template_id and font_mode from request
     template_id = None
+    font_mode = 'auto'
     if request.content_type == 'application/json':
         try:
             data = json.loads(request.body)
@@ -425,6 +426,9 @@ def api_export_pdf(request, table_id: int) -> HttpResponse:
                     template_id = int(tpl_val)
                 except (ValueError, TypeError):
                     pass
+            fm = (data.get('font_mode', '') or '').strip().lower()
+            if fm in ('normal', 'compact', 'condensed', 'auto'):
+                font_mode = fm
         except (json.JSONDecodeError, ValueError):
             pass
     
@@ -434,7 +438,7 @@ def api_export_pdf(request, table_id: int) -> HttpResponse:
         return JsonResponse({'success': False, 'level': 'warning', 'message': 'Too many PDF exports running. Please wait.'}, status=429)
     try:
         service = ExportService(request.user)
-        result = service.export_pdf(table_id, card_ids, status=_get_status_from_request(request), template_id=template_id)
+        result = service.export_pdf(table_id, card_ids, status=_get_status_from_request(request), template_id=template_id, font_mode=font_mode)
         
         if not result.success:
             return JsonResponse({
@@ -495,6 +499,7 @@ def api_export_pdf_async(request, table_id: int) -> JsonResponse:
         card_ids = card_ids[:MAX_PDF_EXPORT_CARD_IDS]
     
     template_id = None
+    font_mode = 'auto'
     if request.content_type == 'application/json':
         try:
             data = json.loads(request.body)
@@ -504,6 +509,9 @@ def api_export_pdf_async(request, table_id: int) -> JsonResponse:
                     template_id = int(tpl_val)
                 except (ValueError, TypeError):
                     pass
+            fm = (data.get('font_mode', '') or '').strip().lower()
+            if fm in ('normal', 'compact', 'condensed', 'auto'):
+                font_mode = fm
         except (json.JSONDecodeError, ValueError):
             pass
     
@@ -515,6 +523,7 @@ def api_export_pdf_async(request, table_id: int) -> JsonResponse:
         card_ids=card_ids,
         status=_get_status_from_request(request),
         template_id=template_id,
+        font_mode=font_mode,
     )
     
     logger.info("Export PDF (async): user=%s table=%d cards=%d task=%s",

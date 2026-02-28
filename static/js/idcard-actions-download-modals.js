@@ -278,7 +278,7 @@ function openDownloadPdfModal(cardIds) {
 
     if (!downloadPdfModal) {
         // Fallback: download directly if modal not found
-        window.IDCardApp.downloadPdf(cardIds, '');
+        window.IDCardApp.downloadPdf(cardIds, '', 'auto');
         return;
     }
 
@@ -288,6 +288,26 @@ function openDownloadPdfModal(cardIds) {
     if (listNameEl) listNameEl.textContent = _getStatusLabel() + ' List';
     // Show "All" if no specific cards selected, otherwise show the count
     if (cardCountEl) cardCountEl.textContent = cardIds.length > 0 ? cardIds.length : 'All';
+
+    // Detect column count from the displayed table header
+    var DENSE_THRESHOLD = 15;
+    var thElements = document.querySelectorAll('#id-card-table thead th, .idcard-table thead th, table.data-table thead th');
+    var colCount = thElements.length || 0;
+    var denseWarning = document.getElementById('downloadPdfDenseWarning');
+    var colCountEl2 = document.getElementById('downloadPdfColCount');
+    var fontModeSelect = document.getElementById('downloadPdfFontMode');
+    var fontModeHidden = document.getElementById('downloadPdfFontModeHidden');
+
+    if (colCount > DENSE_THRESHOLD && denseWarning) {
+        denseWarning.style.display = 'block';
+        if (colCountEl2) colCountEl2.textContent = colCount;
+        // Pre-select compact for dense tables
+        if (fontModeSelect) fontModeSelect.value = 'compact';
+    } else if (denseWarning) {
+        denseWarning.style.display = 'none';
+        // Reset hidden value to auto for non-dense tables
+        if (fontModeHidden) fontModeHidden.value = 'auto';
+    }
 
     // Load templates dynamically (from init sub-module)
     if (window.IDCardApp._loadExportTemplates) window.IDCardApp._loadExportTemplates(false);
@@ -325,8 +345,15 @@ function initDownloadPdfHandlers() {
     document.getElementById('downloadPdfConfirm')?.addEventListener('click', function() {
         const templateSelect = document.getElementById('downloadPdfTemplate');
         const templateId = templateSelect ? templateSelect.value : '';
+        // Get font mode: from visible select (dense) or hidden input (normal)
+        var denseWarning = document.getElementById('downloadPdfDenseWarning');
+        var fontMode = 'auto';
+        if (denseWarning && denseWarning.style.display !== 'none') {
+            var fontModeSelect = document.getElementById('downloadPdfFontMode');
+            fontMode = fontModeSelect ? fontModeSelect.value : 'auto';
+        }
         closeDownloadPdfModal();
-        window.IDCardApp.downloadPdf(pendingPdfCardIds, templateId);
+        window.IDCardApp.downloadPdf(pendingPdfCardIds, templateId, fontMode);
     });
 
     // Close on backdrop click

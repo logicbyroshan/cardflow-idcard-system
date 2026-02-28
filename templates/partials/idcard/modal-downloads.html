@@ -13,6 +13,24 @@
       <option value="">Default (No Footer Instructions)</option>
     </select>
     <p class="center-modal-note">Template determines the footer instructions printed on the PDF.</p>
+
+    <!-- Dense column warning — only shown when column count > 15 -->
+    <div id="downloadPdfDenseWarning" style="display:none;" class="mt-3 mb-2 p-3 rounded-lg bg-amber-50 border border-amber-300">
+      <div class="flex items-center gap-2 mb-2">
+        <i class="fa-solid fa-triangle-exclamation text-amber-500"></i>
+        <span class="font-semibold text-amber-700 text-sm">Many Columns Detected (<span id="downloadPdfColCount">0</span>)</span>
+      </div>
+      <p class="text-xs text-amber-700 mb-2">With so many columns the default font (9pt) may be too wide. Choose a mode below:</p>
+      <label class="center-modal-label text-left block text-xs">Font Mode:</label>
+      <select id="downloadPdfFontMode" class="center-modal-select text-sm">
+        <option value="auto">Auto (let system decide)</option>
+        <option value="compact" selected>Compact (7pt — fits more columns)</option>
+        <option value="condensed">Condensed (8pt narrow font)</option>
+        <option value="normal">Normal (9pt — may be tight)</option>
+      </select>
+    </div>
+    <!-- Hidden font mode for non-dense tables -->
+    <input type="hidden" id="downloadPdfFontModeHidden" value="auto">
     
     <div class="center-modal-actions">
       <button id="downloadPdfCancel" class="center-modal-btn center-modal-btn-cancel">Cancel</button>
