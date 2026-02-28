@@ -54,7 +54,7 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-      - name: Install system dependencies (for pycairo, reportlab, etc)
+      - name: Install system dependencies (for pycairo, WeasyPrint, etc)
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -63,7 +63,11 @@ jobs:
             python3-dev \
             libjpeg-dev \
             libfreetype6-dev \
-            libffi-dev
+            libffi-dev \
+            libpango-1.0-0 \
+            libpangocairo-1.0-0 \
+            libpangoft2-1.0-0 \
+            libfontconfig1
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
