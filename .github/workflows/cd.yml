@@ -27,6 +27,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SERVER_PORT }}
+          command_timeout: 30m
           script: |
             set -e
 
@@ -77,7 +78,7 @@ jobs:
             fi
 
             echo "Collecting static files..." | tee -a "$DEPLOY_LOG"
-            if ! $PYTHON manage.py collectstatic --no-input --clear; then
+            if ! $PYTHON manage.py collectstatic --no-input; then
               echo "❌ collectstatic failed. Rolling back..." | tee -a "$DEPLOY_LOG"
               git reset --hard "$PREV_COMMIT"
               exit 1
