@@ -37,6 +37,8 @@ from .utils import (
     stream_file_response,
 )
 
+from .column_spec import get_column_spec, is_nowrap_column
+
 logger = logging.getLogger(__name__)
 
 
@@ -426,14 +428,15 @@ class WordExporter:
         return self.IMAGE_HEIGHT_CM * DEFAULT_RATIO
     
     def _calculate_column_widths(self, ordered_fields, cards, num_cols):
-        """Calculate optimal column widths based on content.
+        """Calculate optimal column widths based on column_spec intelligence + data.
+
+        Uses ``column_spec`` semantic min/max bounds per field category,
+        combined with P90 content length for proportional distribution.
 
         Algorithm:
         - Image columns: fixed width from subtype dimensions + 0.1 cm.
-        - Text columns: share remaining page width proportionally.
-        - Uses 90th-percentile of value lengths (not max) to avoid outlier skew.
-        - Name/address fields get a 1.4× boost.
-        - Non-wrappable fields (phone, DOB, Aadhar) get a 1.35× boost.
+        - Text columns: share remaining page width proportionally,
+          clamped by word_min_cm / word_max_cm from column_spec.
         """
         # Step 1: Compute fixed widths for image columns
         image_widths = {}
@@ -446,13 +449,21 @@ class WordExporter:
         used_by_images = sum(image_widths.values())
         remaining = max(self.PAGE_WIDTH_CM - used_by_images, 5.0)
 
-        # Step 3: Collect P90 value lengths per text column
-        text_weights = {0: max(len('Sr No.'), 4)}  # Sr No column
+        # Step 3: Collect P90 value lengths per text column and compute weights
+        text_weights = {}
+        text_specs = {}
+
+        # Sr No column
+        sr_spec = get_column_spec('SR NO')
+        text_weights[0] = max(sr_spec.pref_chars, 4)
+        text_specs[0] = sr_spec
+
         for idx, field in enumerate(ordered_fields):
             if not field['is_image']:
                 name = field['name']
-                is_nowrap = self._is_nowrap_field_word(name)
-                is_name_addr = any(w in name.lower() for w in ['name', 'address', 'email'])
+                ftype = field.get('type', 'text')
+                spec = get_column_spec(name, ftype)
+                text_specs[1 + idx] = spec
 
                 lengths = [len(name)]  # header length as baseline
                 for card in cards:
@@ -464,26 +475,27 @@ class WordExporter:
                 # 90th percentile
                 lengths.sort()
                 p90_idx = max(0, int(len(lengths) * 0.9) - 1)
-                representative = lengths[p90_idx] if lengths else len(name)
+                representative = lengths[p90_idx] if lengths else spec.pref_chars
 
-                # Field-type boosts
-                if is_name_addr:
-                    representative = int(representative * 1.4)
-                elif is_nowrap:
-                    representative = int(representative * 1.35)
+                # Clamp to spec char range
+                representative = max(representative, spec.min_chars)
+                if spec.max_chars > 0:
+                    representative = min(representative, spec.max_chars)
 
                 text_weights[1 + idx] = max(representative, 3)
 
         total_text_w = sum(text_weights.values()) or 1
 
-        # Step 4: Build final widths with sensible min/max
+        # Step 4: Build final widths — proportional, then clamp by spec
         column_widths = {}
         for col_idx in range(num_cols):
             if col_idx in image_widths:
                 column_widths[col_idx] = image_widths[col_idx]
             elif col_idx in text_weights:
-                w = (text_weights[col_idx] / total_text_w) * remaining
-                column_widths[col_idx] = max(1.2, min(w, 10.0))
+                raw_cm = (text_weights[col_idx] / total_text_w) * remaining
+                spec = text_specs.get(col_idx, sr_spec)
+                clamped = max(spec.word_min_cm, min(raw_cm, spec.word_max_cm))
+                column_widths[col_idx] = clamped
             else:
                 column_widths[col_idx] = 1.5
 
@@ -498,16 +510,11 @@ class WordExporter:
 
     @classmethod
     def _is_nowrap_field_word(cls, field_name: str) -> bool:
-        """Check if a field contains non-wrappable data (phone, DOB, etc.)."""
-        NOWRAP_KEYWORDS = [
-            'mobile', 'phone', 'contact', 'tel', 'cell',
-            'dob', 'date', 'birth', 'joining',
-            'aadhar', 'aadhaar', 'pan', 'pincode', 'pin',
-            'roll', 'enrollment', 'reg', 'uid',
-            'account', 'ifsc', 'bank',
-        ]
-        name_lower = field_name.lower().replace(' ', '').replace('_', '').replace('.', '')
-        return any(kw.replace(' ', '') in name_lower for kw in NOWRAP_KEYWORDS)
+        """Check if a field contains non-wrappable data (phone, DOB, etc.).
+
+        Delegates to column_spec intelligence.
+        """
+        return is_nowrap_column(field_name)
     
     def _create_data_tables(self, doc, cards_list, ordered_fields, column_widths,
                             num_cols, Cm, Pt, RGBColor, WD_TABLE_ALIGNMENT,

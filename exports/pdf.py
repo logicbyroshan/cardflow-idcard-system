@@ -44,6 +44,8 @@ from .utils import (
     stream_file_response,
 )
 
+from .column_spec import get_column_spec, classify_column, is_nowrap_column
+
 logger = logging.getLogger(__name__)
 
 # Absolute path to the placeholder image shown when a record has no photo
@@ -369,9 +371,11 @@ class PdfExporter:
 
     @classmethod
     def _is_nowrap_field(cls, field_name: str) -> bool:
-        """Check if a field contains non-wrappable data (phone, DOB, ID numbers, etc.)."""
-        name_lower = field_name.lower().replace(' ', '').replace('_', '').replace('.', '')
-        return any(kw.replace(' ', '') in name_lower for kw in cls.NOWRAP_KEYWORDS)
+        """Check if a field contains non-wrappable data (phone, DOB, ID numbers, etc.).
+
+        Delegates to column_spec intelligence for semantic detection.
+        """
+        return is_nowrap_column(field_name)
 
     def _estimate_header_lines(self, column_configs):
         """Estimate max number of text lines the tallest column header needs.
@@ -502,41 +506,44 @@ class PdfExporter:
         cards: list
     ) -> List[Dict[str, Any]]:
         """
-        Calculate dynamic column widths based on data content.
+        Calculate dynamic column widths based on field semantics + data content.
+
+        Uses ``column_spec`` intelligence to determine min/max bounds, nowrap
+        behaviour, and alignment for every field category.  Then distributes
+        remaining page width proportionally (P90 content length).
 
         Algorithm:
         - Image columns: fixed percentage from subtype dimensions.
-        - Text columns: share remaining width proportionally based on
-          content character lengths.
-        - Uses 90th-percentile length (not max) to avoid outlier skew.
-        - Name/address fields get a 1.4× boost, nowrap fields (phone,
-          DOB, Aadhar) get a 1.35× boost to keep content away from borders.
-        - All text columns respect MIN_COL_WIDTH / MAX_COL_WIDTH bounds.
+        - Text columns: share remaining width proportionally, clamped by
+          semantic min/max from ``column_spec``.
         """
-        # Build column metadata
+        from .column_spec import get_column_spec, classify_column
+
+        # ── Sr No column ────────────────────────────────────────
+        sr_spec = get_column_spec('SR NO')
         configs = [{
             'label': 'SR NO',
             'width': 0,
-            'align': 'center',
+            'align': sr_spec.align,
             'is_image': False,
-            'nowrap': False,
+            'nowrap': not sr_spec.wrap,
         }]
 
         for field in ordered_fields:
             name = field['name']
+            ftype = field.get('type', 'text')
             is_image = field.get('is_image', False)
-            align = 'left' if any(w in name.lower() for w in ['name', 'address']) else 'center'
-            nowrap = (not is_image) and self._is_nowrap_field(name)
+            spec = get_column_spec(name, ftype)
             configs.append({
                 'label': self._humanize_label(name.upper()),
                 'width': 0,
-                'align': align,
+                'align': spec.align,
                 'is_image': is_image,
-                'nowrap': nowrap,
+                'nowrap': not spec.wrap,
+                '_spec': spec,  # carry spec for clamping later
             })
 
-        # Auto-detect nowrap from data: if >70% of values look numeric/date,
-        # flag the column as nowrap even if the name didn't match keywords
+        # ── Auto-detect nowrap from data (safety net) ───────────
         for i, cfg in enumerate(configs):
             if cfg['is_image'] or cfg['nowrap'] or i == 0:
                 continue
@@ -554,7 +561,7 @@ class PdfExporter:
             if numeric_count >= sample_count * 0.7:
                 cfg['nowrap'] = True
 
-        # Step 1: Fix image column percentages from subtype dimensions
+        # ── Step 1: Fix image column percentages ────────────────
         IMAGE_CELL_PADDING_CM = 0.1
         image_indices = set()
         for i, cfg in enumerate(configs):
@@ -567,26 +574,25 @@ class PdfExporter:
                 cfg['image_width_cm'] = render_w
                 cfg['image_height_cm'] = render_h
 
-        # Step 2: Remaining percentage for text columns
+        # ── Step 2: Remaining percentage for text columns ───────
         image_pct = sum(configs[i]['width'] for i in image_indices)
         remaining_pct = max(100.0 - image_pct, 20.0)
 
-        # Step 3: Collect value lengths per text column, compute P90 weight
+        # ── Step 3: Compute proportional weights (P90) ──────────
         text_indices = [i for i in range(len(configs)) if i not in image_indices]
         text_weights = []
         for i in text_indices:
             if i == 0:
-                # Sr No column — fixed small weight
-                text_weights.append(max(len('SR NO'), 4))
+                # Sr No — use spec pref_chars
+                text_weights.append(max(sr_spec.pref_chars, 4))
                 continue
 
             field = ordered_fields[i - 1]
             name = field['name']
-            is_nowrap = configs[i]['nowrap']
-            is_name_addr = any(w in name.lower() for w in ['name', 'address', 'email'])
+            spec = configs[i].get('_spec', get_column_spec(name))
 
-            # Collect all value lengths
-            lengths = [len(name.upper())]  # header length as baseline
+            # Collect value lengths
+            lengths = [len(name.upper())]
             for card in cards:
                 fd = card.field_data or {}
                 val = fd.get(name, '')
@@ -594,29 +600,35 @@ class PdfExporter:
                 if raw_len > 0:
                     lengths.append(raw_len)
 
-            # Use 90th percentile to avoid outlier skew
+            # 90th percentile
             lengths.sort()
             p90_idx = max(0, int(len(lengths) * 0.9) - 1)
-            representative_len = lengths[p90_idx] if lengths else len(name)
+            representative = lengths[p90_idx] if lengths else spec.pref_chars
 
-            # Apply field-type boosts
-            if is_name_addr:
-                representative_len = int(representative_len * self.NAME_ADDRESS_BOOST)
-            elif is_nowrap:
-                representative_len = int(representative_len * self.NOWRAP_BOOST)
+            # Clamp to spec's preferred range (semantic intelligence)
+            representative = max(representative, spec.min_chars)
+            representative = min(representative, spec.max_chars) if spec.max_chars > 0 else representative
 
-            text_weights.append(max(representative_len, 3))
+            text_weights.append(max(representative, 3))
 
         total_tw = sum(text_weights) or 1
-        for idx, i in enumerate(text_indices):
-            pct = (text_weights[idx] / total_tw) * remaining_pct
-            min_w = self.MIN_NOWRAP_COL_WIDTH if configs[i].get('nowrap') else self.MIN_COL_WIDTH
-            configs[i]['width'] = max(min_w, min(pct, self.MAX_COL_WIDTH))
 
-        # Normalize text columns so text + image = 100%
+        # ── Step 4: Distribute width, clamp by spec bounds ──────
+        for idx, i in enumerate(text_indices):
+            raw_pct = (text_weights[idx] / total_tw) * remaining_pct
+            spec = configs[i].get('_spec', sr_spec if i == 0 else get_column_spec(''))
+            # Clamp to semantic min/max from column_spec
+            clamped = max(spec.pdf_min_pct, min(raw_pct, spec.pdf_max_pct))
+            configs[i]['width'] = clamped
+
+        # ── Step 5: Normalise so text + image = 100% ────────────
         text_actual = sum(configs[i]['width'] for i in text_indices) or 1
         for i in text_indices:
             configs[i]['width'] = round((configs[i]['width'] / text_actual) * remaining_pct, 2)
+
+        # Clean up internal helper key
+        for cfg in configs:
+            cfg.pop('_spec', None)
 
         return configs
 
@@ -781,9 +793,13 @@ class PdfExporter:
                 name = field['name']
                 is_image = field.get('is_image', False)
                 val = fd.get(name, '')
+                ftype = field.get('type', 'text')
+
+                # Use column_spec for semantic alignment
+                spec = get_column_spec(name, ftype)
 
                 cell = {
-                    'align': 'left' if any(w in name.lower() for w in ['name', 'address']) else 'center',
+                    'align': spec.align,
                     'is_image': is_image,
                     'is_placeholder': False,
                     'content': '',
