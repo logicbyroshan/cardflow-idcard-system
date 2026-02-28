@@ -1,152 +1,227 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <style>
-        /* ─── Page Layout ───
-         * A4 landscape = 29.7 × 21 cm
-         * Edge padding: 0.5cm all sides
-         * Header frame: 0.8cm at top (inside 0.5cm edge padding)
-         * Content top margin: 1.5cm = 0.5cm edge + 0.8cm header + 0.2cm gap
-         * Content bottom margin: 0.3cm (tight — footer is inline)
-         * Content area height: 21 − 1.5 − 0.3 = 19.2cm
-         * Table: thead ~0.6–1.2cm + 6 × 2.7cm = ~17.4cm max
-         * Remaining ~1.8cm: inline footer
-         *
-         * Font sizes are injected dynamically via template context:
-         *   {{ header_font_size }} — for <th> (e.g. 8pt, 6.5pt, 7.5pt)
-         *   {{ data_font_size }}   — for <td> (e.g. 9pt, 7pt, 8pt)
-         *   {{ font_family }}      — font family (Arial or SairaSemiCondensed)
-         */
-        @page {
-            size: A4 landscape;
-            margin: 1.5cm 0.5cm 0.3cm 0.5cm;
+<meta charset="UTF-8">
+<style>
 
-            @frame header_frame {
-                -pdf-frame-content: header_content;
-                top: 0.5cm;
-                left: 0.5cm;
-                right: 0.5cm;
-                height: 0.8cm;
-            }
-        }
+/* ─── Font Faces ─────────────────────────────────────────────────── */
+@font-face {
+    font-family: 'Arial';
+    src: url('{{ font_dir }}/arial.ttf');
+    font-weight: normal;
+    font-style: normal;
+}
+@font-face {
+    font-family: 'Arial';
+    src: url('{{ font_dir }}/arialbd.ttf');
+    font-weight: bold;
+    font-style: normal;
+}
+@font-face {
+    font-family: 'SairaSemiCondensed';
+    src: url('{{ font_dir }}/saira-semi-condensed-500.ttf');
+    font-weight: normal;
+    font-style: normal;
+}
+@font-face {
+    font-family: 'SairaSemiCondensed';
+    src: url('{{ font_dir }}/saira-semi-condensed-700.ttf');
+    font-weight: bold;
+    font-style: normal;
+}
 
-        body {
-            font-family: {{ font_family }};
-            color: #000;
-            text-transform: uppercase;
-        }
+/* ─── Page setup ─────────────────────────────────────────────────── */
+/*
+   A4 landscape = 297mm × 210mm
+   Top/bottom margins accommodate the @top-* / @bottom-* running boxes.
+*/
+@page {
+    size: A4 landscape;
+    margin: 1.2cm 0.5cm 1.0cm 0.5cm;
 
-        /* Header content — rendered inside header_frame on every page */
-        #header_content {
-            padding: 0;
-        }
-        .header-table { width: 100%; }
-        .inst-name   { text-align: left;   font-weight: bold; font-size: 10pt; }
-        .table-info  { text-align: center; font-weight: bold; font-size: 10pt; }
-        .brand-name  { text-align: right;  font-weight: bold; font-size: 9pt; }
+    /* ── Page-level header ── */
+    @top-left {
+        content: element(hdr-left);
+        vertical-align: middle;
+        text-align: left;
+    }
+    @top-center {
+        content: element(hdr-center);
+        vertical-align: middle;
+        text-align: center;
+    }
+    @top-right {
+        content: element(hdr-right);
+        vertical-align: middle;
+        text-align: right;
+    }
 
-        /* Main data table */
-        table.data-table {
-            width: 100%;
-            table-layout: fixed;
-            border-collapse: collapse;
-        }
+    /* ── Page-level footer ── */
+    @bottom-left {
+        content: element(ftr-left);
+        vertical-align: middle;
+        text-align: left;
+    }
+    @bottom-right {
+        content: "Page " counter(page) " of " counter(pages);
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 6.5pt;
+        font-weight: bold;
+        vertical-align: middle;
+        text-align: right;
+        color: #333;
+    }
+}
 
-        table.data-table thead tr {
-            background-color: #f0f0f0;
-        }
+/* ─── Running (margin-box) elements ─────────────────────────────── */
+/* WeasyPrint picks these up via position: running() and renders them
+   into the @top-* / @bottom-* boxes on every page automatically. */
+#hdr-left {
+    position: running(hdr-left);
+    font-family: {{ font_family }};
+    font-size: 7pt;
+    font-weight: bold;
+    color: #111;
+}
+#hdr-center {
+    position: running(hdr-center);
+    font-family: {{ font_family }};
+    font-size: 8pt;
+    font-weight: bold;
+    color: #111;
+    text-align: center;
+}
+#hdr-right {
+    position: running(hdr-right);
+    font-family: {{ font_family }};
+    font-size: 6.5pt;
+    color: #444;
+    text-align: right;
+}
+#ftr-left {
+    position: running(ftr-left);
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 5.5pt;
+    color: #555;
+}
 
-        table.data-table th {
-            border: 0.5pt solid #000;
-            padding: 1px 2px;
-            font-size: {{ header_font_size }};
-            font-weight: bold;
-            text-align: center;
-            vertical-align: middle;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-            word-break: break-all;
-            overflow: hidden;
-        }
+/* ─── Global reset ───────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
 
-        table.data-table td {
-            border: 0.5pt solid #000;
-            padding: 1px 3px;
-            font-size: {{ data_font_size }};
-            font-weight: bold;
-            vertical-align: middle;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-            word-break: break-all;
-            white-space: normal;
-            line-height: 1.1;
-            height: {{ row_height_cm }}cm;
-            max-width: 0;
-            overflow: hidden;
-        }
+body {
+    font-family: {{ font_family }};
+    font-size: {{ data_font_size }};
+    margin: 0;
+    padding: 0;
+    color: #111;
+}
 
-        /* Image cells — minimal padding */
-        table.data-table td.img-cell {
-            padding: 1px;
-        }
+/* ─── Page break containers ──────────────────────────────────────── */
+.page {
+    page-break-after: always;
+}
+.page:last-child {
+    page-break-after: avoid;
+}
 
-        /* Image sizing — dimensions set inline per subtype */
-        .card-pic {
-            display: block;
-            margin: 0 auto;
-            border: none;
-            padding: 0;
-            background: transparent;
-        }
+/* ─── Data table ─────────────────────────────────────────────────── */
+table.data-table {
+    table-layout: fixed;
+    width: 100%;
+    border-collapse: collapse;
+    font-size: {{ data_font_size }};
+}
+table.data-table th,
+table.data-table td {
+    border: 0.4pt solid #888;
+    padding: 1.5pt 2.5pt;
+    vertical-align: middle;
+}
+table.data-table thead tr {
+    background-color: #cccccc;
+}
+table.data-table thead th {
+    font-size: {{ header_font_size }};
+    font-weight: bold;
+    text-align: center;
+    vertical-align: middle;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    hyphens: auto;
+}
+table.data-table tbody tr:nth-child(even) {
+    background-color: #f5f5f5;
+}
 
-        /* Placeholder images — same layout, no border */
-        .card-pic-placeholder {
-            display: block;
-            margin: 0 auto;
-            padding: 0;
-            border: none;
-            background: transparent;
-        }
+/* Text cells: CSS handles all wrapping — no hacks needed */
+table.data-table td.text-cell {
+    overflow-wrap: break-word;
+    word-break: break-word;
+    hyphens: auto;
+    -webkit-hyphens: auto;
+}
+/* Nowrap cells (phone, DOB, Aadhaar, etc.) stay on one line */
+table.data-table td.text-cell.no-wrap {
+    white-space: nowrap;
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: none;
+}
 
-        /* Inline footer — compact, flows after table */
-        .page-footer {
-            margin-top: 0.15cm;
-            border-top: none;
-            padding-top: 0;
-            font-size: 6.5pt;
-            color: #000;
-            line-height: 1.05;
-        }
-        .page-footer table { width: 100%; border-collapse: collapse; }
-        .page-footer td { border: none; padding: 0; vertical-align: top; }
-        .footer-note  { font-size: 6.5pt; }
-        .footer-meta  { font-size: 6.5pt; }
-        .footer-copy  { font-size: 6.5pt; }
-        .footer-page  { text-align: right; font-size: 7pt; font-weight: bold; white-space: nowrap; vertical-align: middle; }
-    </style>
+/* Image cells */
+table.data-table td.img-cell {
+    text-align: center;
+    padding: 1.5pt;
+}
+table.data-table td.img-cell img {
+    display: block;
+    margin: 0 auto;
+    object-fit: cover;
+    object-position: top center;
+}
+
+/* ─── Instructions block (last page only) ───────────────────────── */
+.instructions-block {
+    margin-top: 0.3cm;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 6.5pt;
+    color: #333;
+    border: 0.3pt solid #bbb;
+    padding: 0.2cm 0.25cm;
+    line-height: 1.4;
+}
+
+/* ─── Copyright / generated line ─────────────────────────────────── */
+.footer-line {
+    margin-top: 0.12cm;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 5.5pt;
+    color: #666;
+    text-align: center;
+}
+
+</style>
 </head>
 <body>
 
-    <!-- Repeating header (rendered by @frame header_frame on every page) -->
-    <div id="header_content">
-        <table class="header-table">
-            <tr>
-                <td class="inst-name">INSTITUTE NAME: {{ institution_name }}</td>
-                <td class="table-info">{{ table_name }} ({{ current_date }})</td>
-                <td class="brand-name">ADARSH ID CARDS</td>
-            </tr>
-        </table>
-    </div>
+{# ── Running header/footer elements — rendered once; WeasyPrint repeats on every page #}
+<div id="hdr-left">{{ institution_name|upper }}</div>
+<div id="hdr-center">{{ table_name|upper }}{% if current_date %} &mdash; {{ current_date }}{% endif %}</div>
+<div id="hdr-right">ADARSH ID CARDS</div>
+<div id="ftr-left">{{ export_note_line }}</div>
 
-    <!-- Pages with data tables (6 records per page, class-break aware) -->
-    {% for page_rows in pages %}
-    {% if not forloop.first %}<pdf:nextpage/>{% endif %}
+{# ── Pages ─────────────────────────────────────────────────────────────────── #}
+{% for page_rows in pages %}
+<div class="page">
+
     <table class="data-table">
+        <colgroup>
+            {% for col in columns %}<col style="width:{{ col.width }}%;">{% endfor %}
+        </colgroup>
         <thead>
             <tr>
                 {% for col in columns %}
-                <th style="width: {{ col.width }}%;">{{ col.label }}</th>
+                <th>{{ col.label }}</th>
                 {% endfor %}
             </tr>
         </thead>
@@ -154,46 +229,36 @@
             {% for row in page_rows %}
             <tr>
                 {% for cell in row %}
-                <td{% if cell.is_image %} class="img-cell"{% endif %} style="text-align: {{ cell.align }};">
-                    {% if cell.is_image %}
-                        {% if cell.is_placeholder %}
-                            <img src="{{ cell.content }}" class="card-pic-placeholder" style="width: {{ cell.image_width_cm }}cm; height: {{ cell.image_height_cm }}cm;" alt="Placeholder">
-                        {% else %}
-                            <img src="{{ cell.content }}" class="card-pic" style="width: {{ cell.image_width_cm }}cm; height: {{ cell.image_height_cm }}cm;" alt="Photo">
-                        {% endif %}
-                    {% else %}
-                        {{ cell.content|safe }}
-                    {% endif %}
+                {% if cell.is_image %}
+                <td class="img-cell">
+                    <img src="{{ cell.content }}"
+                         style="width:{{ cell.image_width_cm }}cm; height:{{ cell.image_height_cm }}cm;"
+                         alt="">
                 </td>
+                {% else %}
+                <td class="text-cell{% if cell.nowrap %} no-wrap{% endif %}"
+                    style="text-align:{{ cell.align }};">{{ cell.content }}</td>
+                {% endif %}
                 {% endfor %}
             </tr>
             {% endfor %}
         </tbody>
     </table>
 
-    {% if template_instructions and forloop.last %}
-    <div style="margin-top: 0.2cm; padding: 4px 6px; border: 0.5pt solid #000; font-size: 6.5pt; line-height: 1.2;">
-        <div style="font-weight: bold; font-size: 7pt; margin-bottom: 2px; text-decoration: underline;">INSTRUCTIONS:</div>
-        <div style="white-space: pre-wrap;">{{ template_instructions|upper }}</div>
+    {% if forloop.last and template_instructions %}
+    <div class="instructions-block">
+        <strong>Instructions:</strong> {{ template_instructions }}
     </div>
     {% endif %}
 
-    <!-- Inline footer — 0.2cm gap below last row, 3 lines -->
-    <div class="page-footer">
-        <table>
-            <tr>
-                <td style="width: 82%;">
-                    <div class="footer-note">{{ export_note_line|upper }}</div>
-                    <div class="footer-meta">GENERATED: {{ generated_at }}</div>
-                    <div class="footer-copy">{{ export_copyright_line|upper }}</div>
-                </td>
-                <td class="footer-page">
-                    PAGE {{ forloop.counter }} OF {{ total_pages }}
-                </td>
-            </tr>
-        </table>
+    {% if forloop.last %}
+    <div class="footer-line">
+        {{ export_copyright_line }} &nbsp;|&nbsp; Generated: {{ generated_at }}
     </div>
-    {% endfor %}
+    {% endif %}
+
+</div>
+{% endfor %}
 
 </body>
 </html>

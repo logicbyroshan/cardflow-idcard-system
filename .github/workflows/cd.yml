@@ -52,6 +52,11 @@ jobs:
             NEW_COMMIT=$(git rev-parse HEAD)
             echo "New commit: $NEW_COMMIT" | tee -a "$DEPLOY_LOG"
 
+            echo "Installing system dependencies for WeasyPrint (one-time)..." | tee -a "$DEPLOY_LOG"
+            sudo apt-get install -y --no-install-recommends \
+              libpango-1.0-0 libpangocairo-1.0-0 libpangoft2-1.0-0 libfontconfig1 \
+              2>/dev/null || true
+
             echo "Installing dependencies..." | tee -a "$DEPLOY_LOG"
             $PIP install -r requirements.txt --quiet
 
