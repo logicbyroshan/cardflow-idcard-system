@@ -1,6 +1,6 @@
 {% comment %}
 Staff Drawer - Permissions Section
-Partial for all staff permission toggles (staff mgmt, templates, groups, card lists, card actions, bulk actions).
+Partial for all staff permission toggles (group settings, card lists, card actions, bulk actions, app & access).
 {% endcomment %}
 
 <!-- Permissions Section -->
@@ -9,41 +9,18 @@ Partial for all staff permission toggles (staff mgmt, templates, groups, card li
         <i class="fa-solid fa-shield-halved"></i> User Permission
     </div>
     
-    <!-- Staff Management -->
+    <!-- Group Settings -->
     <div class="permission-category">
         <div class="category-title">
-            <i class="fa-solid fa-users"></i> Staff Management
+            <i class="fa-solid fa-cog"></i> Group Settings
         </div>
         <div class="permissions-grid">
-            <div class="permission-row">
-                <label class="toggle-switch">
-                    <input type="checkbox" name="perm_idcard_client_list" id="perm-idcard-client-list">
-                    <span class="toggle-slider"></span>
-                </label>
-                <span class="permission-label">Access Clients Page</span>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Template Settings -->
-    <div class="permission-category">
-        <div class="category-title">
-            <i class="fa-solid fa-cog"></i> Template Settings
-        </div>
-        <div class="permissions-grid">
-            <div class="permission-row">
-                <label class="toggle-switch">
-                    <input type="checkbox" name="perm_idcard_setting_list" id="perm-idcard-setting-list">
-                    <span class="toggle-slider"></span>
-                </label>
-                <span class="permission-label">View Template List</span>
-            </div>
             <div class="permission-row">
                 <label class="toggle-switch">
                     <input type="checkbox" name="perm_idcard_setting_add" id="perm-idcard-setting-add">
                     <span class="toggle-slider"></span>
                 </label>
-                <span class="permission-label">Create New Template</span>
+                <span class="permission-label">Create Template</span>
             </div>
             <div class="permission-row">
                 <label class="toggle-switch">
@@ -51,6 +28,13 @@ Partial for all staff permission toggles (staff mgmt, templates, groups, card li
                     <span class="toggle-slider"></span>
                 </label>
                 <span class="permission-label">Edit Template</span>
+            </div>
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_idcard_setting_list" id="perm-idcard-setting-list">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">View Template</span>
             </div>
             <div class="permission-row">
                 <label class="toggle-switch">
@@ -64,16 +48,12 @@ Partial for all staff permission toggles (staff mgmt, templates, groups, card li
                     <input type="checkbox" name="perm_idcard_setting_status" id="perm-idcard-setting-status">
                     <span class="toggle-slider"></span>
                 </label>
-                <span class="permission-label">Enable / Disable Template</span>
+                <span class="permission-label">Status Template</span>
             </div>
         </div>
     </div>
     
-    <!-- Group/Table Management -->
-    <div class="permission-category">
-        <div class="category-title">
-    
-    <!-- View Card Lists -->
+    <!-- ID Card Action List -->
     <div class="permission-category">
         <div class="category-title">
             <i class="fa-solid fa-list"></i> ID Card Action List
@@ -121,6 +101,15 @@ Partial for all staff permission toggles (staff mgmt, templates, groups, card li
                 </label>
                 <span class="permission-label">Reprint List</span>
             </div>
+        </div>
+    </div>
+    
+    <!-- Print & Reprint Lists -->
+    <div class="permission-category">
+        <div class="category-title">
+            <i class="fa-solid fa-print"></i> Print &amp; Reprint Lists
+        </div>
+        <div class="permissions-grid">
             <div class="permission-row">
                 <label class="toggle-switch">
                     <input type="checkbox" name="perm_confirmed_list" id="perm-confirmed-list">
@@ -167,17 +156,17 @@ Partial for all staff permission toggles (staff mgmt, templates, groups, card li
             </div>
             <div class="permission-row">
                 <label class="toggle-switch">
-                    <input type="checkbox" name="perm_idcard_delete" id="perm-idcard-delete">
-                    <span class="toggle-slider"></span>
-                </label>
-                <span class="permission-label">Delete Card</span>
-            </div>
-            <div class="permission-row">
-                <label class="toggle-switch">
                     <input type="checkbox" name="perm_idcard_info" id="perm-idcard-info">
                     <span class="toggle-slider"></span>
                 </label>
                 <span class="permission-label">View Card Info</span>
+            </div>
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_idcard_delete" id="perm-idcard-delete">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">Delete Card</span>
             </div>
             <div class="permission-row">
                 <label class="toggle-switch">
@@ -258,12 +247,28 @@ Partial for all staff permission toggles (staff mgmt, templates, groups, card li
                 </label>
                 <span class="permission-label">Batch Class Upgrade</span>
             </div>
+        </div>
+    </div>
+    
+    <!-- App & Access -->
+    <div class="permission-category">
+        <div class="category-title">
+            <i class="fa-solid fa-mobile-screen"></i> App &amp; Access
+        </div>
+        <div class="permissions-grid">
             <div class="permission-row">
                 <label class="toggle-switch">
                     <input type="checkbox" name="perm_mobile_app" id="perm-mobile-app">
                     <span class="toggle-slider"></span>
                 </label>
                 <span class="permission-label">Mobile App Login</span>
+            </div>
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_idcard_client_list" id="perm-idcard-client-list">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">Access Clients Page</span>
             </div>
         </div>
     </div>

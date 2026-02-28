@@ -37,6 +37,8 @@ class StaffService(BaseService):
         'perm_idcard_pending_list', 'perm_idcard_verified_list',
         'perm_idcard_pool_list', 'perm_idcard_approved_list',
         'perm_idcard_download_list', 'perm_idcard_reprint_list',
+        # Print & Reprint Lists
+        'perm_confirmed_list', 'perm_print_list', 'perm_finalized_list',
         # ID Card Actions (work in Pending and Verified lists only)
         'perm_idcard_add', 'perm_idcard_edit', 'perm_idcard_delete',
         'perm_idcard_info', 'perm_idcard_approve', 'perm_idcard_verify',

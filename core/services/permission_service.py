@@ -52,6 +52,8 @@ class PermissionService:
         'perm_idcard_pending_list', 'perm_idcard_verified_list',
         'perm_idcard_pool_list', 'perm_idcard_approved_list',
         'perm_idcard_download_list', 'perm_idcard_reprint_list',
+        # Print & Reprint list permissions (admin_staff only)
+        'perm_confirmed_list', 'perm_print_list', 'perm_finalized_list',
     ]
 
     IDCARD_ACTION_PERMISSIONS = [
@@ -201,6 +203,13 @@ class PermissionService:
         if perm_key in CLIENT_BLOCKED_PERMS:
             if cls.is_client(user) or cls.is_client_staff(user):
                 return False
+
+        # --- Permissions auto-granted to admin_staff (no profile toggle needed) ---
+        ADMIN_STAFF_AUTO_PERMS = {
+            'perm_reupload_idcard_image',  # Single card reupload always available to admin staff
+        }
+        if cls.is_admin_staff(user) and perm_key in ADMIN_STAFF_AUTO_PERMS:
+            return True
 
         # --- 1. Super admin always passes ---
         if cls.is_super_admin(user):
@@ -367,8 +376,12 @@ class PermissionService:
         elif is_as:
             # Admin staff: read booleans from staff_profile in one shot
             staff = getattr(user, 'staff_profile', None)
+            # Permissions auto-granted to admin_staff regardless of profile value
+            ADMIN_STAFF_AUTO_PERMS = {'perm_reupload_idcard_image'}
             for perm in cls.ALL_PERMISSION_KEYS:
-                if staff and hasattr(staff, perm):
+                if perm in ADMIN_STAFF_AUTO_PERMS:
+                    context[perm] = True
+                elif staff and hasattr(staff, perm):
                     context[perm] = bool(getattr(staff, perm, False))
                 else:
                     context[perm] = False
@@ -376,8 +389,16 @@ class PermissionService:
             # Client: read from client_profile
             profile = getattr(user, 'client_profile', None)
             active = profile.status == 'active' if profile else False
+            # These perms are never exposed to client role in templates
+            CLIENT_BLOCKED_PERMS = {
+                'perm_idcard_bulk_upload', 'perm_idcard_bulk_download',
+                'perm_idcard_bulk_reupload', 'perm_delete_all_idcard',
+                'perm_reupload_idcard_image',
+            }
             for perm in cls.ALL_PERMISSION_KEYS:
-                if active and profile and hasattr(profile, perm):
+                if perm in CLIENT_BLOCKED_PERMS:
+                    context[perm] = False
+                elif active and profile and hasattr(profile, perm):
                     context[perm] = bool(getattr(profile, perm, False))
                 else:
                     context[perm] = False
@@ -386,7 +407,16 @@ class PermissionService:
             staff = getattr(user, 'staff_profile', None)
             client_obj = staff.client if staff else None
             active = client_obj and client_obj.status == 'active'
+            # These perms are never exposed to client_staff role in templates
+            CLIENT_BLOCKED_PERMS = {
+                'perm_idcard_bulk_upload', 'perm_idcard_bulk_download',
+                'perm_idcard_bulk_reupload', 'perm_delete_all_idcard',
+                'perm_reupload_idcard_image',
+            }
             for perm in cls.ALL_PERMISSION_KEYS:
+                if perm in CLIENT_BLOCKED_PERMS:
+                    context[perm] = False
+                    continue
                 if not active:
                     context[perm] = False
                     continue

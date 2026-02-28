@@ -328,13 +328,17 @@ document.addEventListener('DOMContentLoaded', function() {
         var permGrid = document.getElementById('viewPermissionsGrid');
         if (permGrid) {
           var permLabels = {
-            'perm_idcard_setting_list': 'View Settings', 'perm_idcard_setting_add': 'Add Table', 'perm_idcard_setting_edit': 'Edit Table',
-            'perm_idcard_setting_delete': 'Delete Table', 'perm_idcard_setting_status': 'Toggle Table Status',
+            'perm_idcard_setting_add': 'Create Template', 'perm_idcard_setting_edit': 'Edit Template',
+            'perm_idcard_setting_list': 'View Template', 'perm_idcard_setting_delete': 'Delete Template',
+            'perm_idcard_setting_status': 'Status Template',
             'perm_idcard_pending_list': 'Pending List', 'perm_idcard_verified_list': 'Verified List', 'perm_idcard_pool_list': 'Pool List',
             'perm_idcard_approved_list': 'Approved List', 'perm_idcard_download_list': 'Download List', 'perm_idcard_reprint_list': 'Reprint List',
-            'perm_idcard_add': 'Add Card', 'perm_idcard_edit': 'Edit Card', 'perm_idcard_delete': 'Delete Card',
-            'perm_idcard_info': 'View Card Info', 'perm_idcard_approve': 'Approve Card', 'perm_idcard_verify': 'Verify Card',
-            'perm_idcard_upgrade_all': 'Upgrade All Class'
+            'perm_idcard_add': 'Add Card', 'perm_idcard_edit': 'Edit Card', 'perm_idcard_info': 'View Card Info',
+            'perm_idcard_delete': 'Delete Card', 'perm_idcard_approve': 'Approve Card', 'perm_idcard_verify': 'Verify Card',
+            'perm_idcard_created_at': 'Created Date', 'perm_idcard_updated_at': 'Updated Date',
+            'perm_idcard_retrieve': 'Retrieve from Pool',
+            'perm_idcard_upgrade_all': 'Batch Class Upgrade',
+            'perm_mobile_app': 'Mobile App Access', 'perm_idcard_client_list': 'Manage Staff'
           };
           var html = '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
           NS.permissionFields.forEach(function(field) {

@@ -85,37 +85,16 @@
             <div class="form-section">
               <div class="permission-header"><i class="fa-solid fa-shield-halved"></i> User Permission</div>
               
-              <!-- Staff Management Permission -->
+              <!-- Group Settings Permissions -->
               <div class="permission-category">
-                <div class="category-title"><i class="fa-solid fa-users"></i> Staff Management</div>
+                <div class="category-title"><i class="fa-solid fa-cog"></i> Group Settings</div>
                 <div class="permissions-grid">
-                  <div class="permission-row">
-                    <label class="toggle-switch">
-                      <input type="checkbox" id="perm_idcard_client_list" name="perm_idcard_client_list">
-                      <span class="toggle-slider"></span>
-                    </label>
-                    <span class="permission-label">Manage Staff</span>
-                  </div>
-                </div>
-              </div>
-              
-              <!-- Template Settings Permissions -->
-              <div class="permission-category">
-                <div class="category-title"><i class="fa-solid fa-cog"></i> Template Settings</div>
-                <div class="permissions-grid">
-                  <div class="permission-row">
-                    <label class="toggle-switch">
-                      <input type="checkbox" id="perm_idcard_setting_list" name="perm_idcard_setting_list">
-                      <span class="toggle-slider"></span>
-                    </label>
-                    <span class="permission-label">View Templates</span>
-                  </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
                       <input type="checkbox" id="perm_idcard_setting_add" name="perm_idcard_setting_add">
                       <span class="toggle-slider"></span>
                     </label>
-                    <span class="permission-label">Add Template</span>
+                    <span class="permission-label">Create Template</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
@@ -123,6 +102,13 @@
                       <span class="toggle-slider"></span>
                     </label>
                     <span class="permission-label">Edit Template</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_setting_list" name="perm_idcard_setting_list">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">View Template</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
@@ -136,7 +122,7 @@
                       <input type="checkbox" id="perm_idcard_setting_status" name="perm_idcard_setting_status">
                       <span class="toggle-slider"></span>
                     </label>
-                    <span class="permission-label">Toggle Template Status</span>
+                    <span class="permission-label">Status Template</span>
                   </div>
                 </div>
               </div>
@@ -211,17 +197,17 @@
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
-                      <input type="checkbox" id="perm_idcard_delete" name="perm_idcard_delete">
-                      <span class="toggle-slider"></span>
-                    </label>
-                    <span class="permission-label">Delete Card</span>
-                  </div>
-                  <div class="permission-row">
-                    <label class="toggle-switch">
                       <input type="checkbox" id="perm_idcard_info" name="perm_idcard_info">
                       <span class="toggle-slider"></span>
                     </label>
                     <span class="permission-label">View Card Info</span>
+                  </div>
+                  <div class="permission-row">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_delete" name="perm_idcard_delete">
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="permission-label">Delete Card</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
