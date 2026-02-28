@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
   <link rel="stylesheet" href="{% static 'css/common.css' %}">
   <link rel="stylesheet" href="{% static 'css/manage-panel.css' %}">
+  <link rel="stylesheet" href="{% static 'css/backup.css' %}">
   <link rel="stylesheet" href="{% static 'css/global-search.css' %}">
   <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
   <script defer src="{% static 'js/alpine-state.js' %}"></script>
@@ -27,14 +28,6 @@
     <!-- Panel Content -->
     <div class="panel-content">
 
-      <!-- Panel Header -->
-      <div class="panel-header">
-        <div class="panel-header-left">
-          <h1 class="panel-title"><i class="fa-solid fa-sliders"></i> Control Panel</h1>
-          <p class="panel-subtitle">System administration & monitoring</p>
-        </div>
-      </div>
-
       <!-- Panel Tabs -->
       <div class="panel-tabs">
         <button class="panel-tab active" data-tab="notifications" onclick="switchTab('notifications')">
@@ -42,6 +35,9 @@
         </button>
         <button class="panel-tab" data-tab="download-templates" onclick="switchTab('download-templates')">
           <i class="fa-solid fa-file-arrow-down"></i> Download Templates
+        </button>
+        <button class="panel-tab" data-tab="backups" onclick="switchTab('backups')">
+          <i class="fa-solid fa-database"></i> Backups
         </button>
         <button class="panel-tab" data-tab="log-history" onclick="switchTab('log-history')">
           <i class="fa-solid fa-clock-rotate-left"></i> Log History
@@ -53,6 +49,7 @@
 
       {% include 'partials/panel/tab-notifications.html' %}
       {% include 'partials/panel/tab-download-templates.html' %}
+      {% include 'partials/panel/tab-backups.html' %}
       {% include 'partials/panel/tab-log-history.html' %}
       {% include 'partials/panel/tab-system.html' %}
 
@@ -71,5 +68,6 @@
   <script defer src="{% static 'js/init.js' %}"></script>
   <script defer src="{% static 'js/global-search.js' %}"></script>
   <script defer src="{% static 'js/manage-panel.js' %}"></script>
+  <script defer src="{% static 'js/backup-panel.js' %}"></script>
 </body>
 </html>

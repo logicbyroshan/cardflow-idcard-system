@@ -19,10 +19,10 @@
       </a>
       {% endif %}
       {% if is_super_admin %}
-      <a href="{% url 'settings' %}" class="quick-action-btn" id="takeBackupBtn">
+      <button type="button" class="quick-action-btn" onclick="openBackupModal()">
         <i class="fa-solid fa-database"></i>
         <span>Take Backup</span>
-      </a>
+      </button>
       {% endif %}
       {% if is_super_admin %}
       <a href="{% url 'settings' %}" class="quick-action-btn">

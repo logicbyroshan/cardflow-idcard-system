@@ -86,6 +86,17 @@ urlpatterns = [
     # Manage Panel
     path('manage-panel/', views.manage_panel, name='manage_panel'),
     
+    # ==================== BACKUP ====================
+    path('backup/select-clients/', views.backup_select_clients, name='backup_select_clients'),
+    path('api/backup/generate-code/', views.api_backup_generate_code, name='api_backup_generate_code'),
+    path('api/backup/initiate/', views.api_backup_initiate, name='api_backup_initiate'),
+    path('api/backup/start/', views.api_backup_start, name='api_backup_start'),
+    path('api/backup/list/', views.api_backup_list, name='api_backup_list'),
+    path('api/backup/status/<int:task_id>/', views.api_backup_status, name='api_backup_status'),
+    path('api/backup/<int:task_id>/cancel-auto-delete/', views.api_backup_cancel_auto_delete, name='api_backup_cancel_auto_delete'),
+    path('api/backup/<int:task_id>/delete-now/', views.api_backup_delete_now, name='api_backup_delete_now'),
+    path('api/backup/download/<int:task_id>/<int:client_id>/', views.api_backup_download, name='api_backup_download'),
+    
     # Notifications Page (all authenticated users)
     path('notifications/', views.notifications_page, name='notifications_page'),
 

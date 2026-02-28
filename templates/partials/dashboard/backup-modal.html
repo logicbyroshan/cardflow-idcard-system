@@ -1,0 +1,119 @@
+{% load static %}
+<!-- Backup Confirmation Modal -->
+<div id="backupModal" class="backup-modal-overlay" style="display:none;">
+  <div class="backup-modal">
+    <div class="backup-modal-header">
+      <h2><i class="fa-solid fa-database"></i> Take Backup</h2>
+      <button type="button" class="backup-modal-close" onclick="closeBackupModal()">&times;</button>
+    </div>
+
+    <div class="backup-modal-body">
+      <!-- Guidelines -->
+      <div class="backup-guidelines">
+        <h3><i class="fa-solid fa-circle-info"></i> Important Guidelines</h3>
+        <ul>
+          <li>Backup will create downloadable <strong>ZIP files</strong> for each selected client.</li>
+          <li>Each ZIP contains <strong>XLSX files per status</strong> (Pending, Verified, etc.) with an <strong>images folder</strong>.</li>
+          <li>Backup runs in the <strong>background</strong> — you can close this page and track progress in the <strong>Manage Panel</strong>.</li>
+          <li>Backup files will be <strong>automatically deleted after 24 hours</strong>. You can cancel auto-delete or delete manually from the Manage Panel.</li>
+          <li>Download your backup files before the timer expires.</li>
+        </ul>
+      </div>
+
+      <!-- Code section -->
+      <div class="backup-code-section">
+        <p class="backup-code-label">Enter the 10-digit confirmation code shown below to proceed:</p>
+        <div class="backup-code-display" id="backupCodeDisplay">Loading…</div>
+        <div class="backup-code-input-wrap">
+          <input type="text" id="backupCodeInput" class="backup-code-input" maxlength="10"
+                 placeholder="Enter 10-digit code" autocomplete="off">
+        </div>
+        <p class="backup-code-hint" id="backupCodeError" style="display:none;"></p>
+      </div>
+    </div>
+
+    <div class="backup-modal-footer">
+      <button type="button" class="backup-btn-cancel" onclick="closeBackupModal()">Cancel</button>
+      <button type="button" class="backup-btn-confirm" id="backupConfirmBtn" onclick="confirmBackup()">
+        <i class="fa-solid fa-arrow-right"></i> Proceed to Select Clients
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  let _backupCode = '';
+
+  window.openBackupModal = function() {
+    const modal = document.getElementById('backupModal');
+    modal.style.display = 'flex';
+    document.getElementById('backupCodeInput').value = '';
+    document.getElementById('backupCodeError').style.display = 'none';
+    // Generate code
+    fetch('/panel/api/backup/generate-code/')
+      .then(r => r.json())
+      .then(data => {
+        if(data.success) {
+          _backupCode = data.code;
+          document.getElementById('backupCodeDisplay').textContent = data.code;
+        }
+      })
+      .catch(() => {
+        document.getElementById('backupCodeDisplay').textContent = 'Error loading code';
+      });
+  };
+
+  window.closeBackupModal = function() {
+    document.getElementById('backupModal').style.display = 'none';
+  };
+
+  window.confirmBackup = function() {
+    const input = document.getElementById('backupCodeInput').value.trim();
+    const errEl = document.getElementById('backupCodeError');
+
+    if(input.length !== 10 || !/^\d{10}$/.test(input)) {
+      errEl.textContent = 'Please enter a valid 10-digit numeric code.';
+      errEl.style.display = 'block';
+      return;
+    }
+    if(input !== _backupCode) {
+      errEl.textContent = 'Code does not match. Please enter the code shown above.';
+      errEl.style.display = 'block';
+      return;
+    }
+    errEl.style.display = 'none';
+
+    const btn = document.getElementById('backupConfirmBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing…';
+
+    fetch('/panel/api/backup/initiate/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value
+                      || document.querySelector('meta[name="csrf-token"]')?.content || '',
+      },
+      body: JSON.stringify({ code: input }),
+    })
+    .then(r => r.json())
+    .then(data => {
+      if(data.success) {
+        window.location.href = data.redirect_url;
+      } else {
+        errEl.textContent = data.message || 'Failed to initiate backup.';
+        errEl.style.display = 'block';
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-arrow-right"></i> Proceed to Select Clients';
+      }
+    })
+    .catch(() => {
+      errEl.textContent = 'Network error. Please try again.';
+      errEl.style.display = 'block';
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-arrow-right"></i> Proceed to Select Clients';
+    });
+  };
+})();
+</script>

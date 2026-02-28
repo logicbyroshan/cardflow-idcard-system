@@ -1,0 +1,65 @@
+<!-- Backups Tab Content -->
+<div class="panel-tab-content" id="tab-backups">
+
+  <!-- Actions bar -->
+  <div class="backup-tab-actions">
+    <h3 class="backup-tab-title"><i class="fa-solid fa-database"></i> Backup Management</h3>
+    <button type="button" class="backup-btn-refresh" onclick="loadBackups()">
+      <i class="fa-solid fa-arrows-rotate"></i> Refresh
+    </button>
+  </div>
+
+  <!-- Backup list container -->
+  <div id="backupsList" class="backup-list">
+    <div class="backup-loading">
+      <i class="fa-solid fa-spinner fa-spin"></i> Loading backups…
+    </div>
+  </div>
+
+  <!-- Cancel auto-delete modal -->
+  <div id="cancelDeleteModal" class="backup-modal-overlay" style="display:none;">
+    <div class="backup-modal backup-modal-sm">
+      <div class="backup-modal-header">
+        <h2><i class="fa-solid fa-shield-halved"></i> Cancel Auto-Delete</h2>
+        <button type="button" class="backup-modal-close" onclick="closeCancelDeleteModal()">&times;</button>
+      </div>
+      <div class="backup-modal-body">
+        <p>Enter the <strong>10-digit confirmation code</strong> used when creating this backup to cancel auto-delete.</p>
+        <div class="backup-code-input-wrap">
+          <input type="text" id="cancelDeleteCode" class="backup-code-input" maxlength="10" placeholder="Enter 10-digit code" autocomplete="off">
+        </div>
+        <p class="backup-code-hint" id="cancelDeleteError" style="display:none;"></p>
+      </div>
+      <div class="backup-modal-footer">
+        <button type="button" class="backup-btn-cancel" onclick="closeCancelDeleteModal()">Cancel</button>
+        <button type="button" class="backup-btn-confirm" id="cancelDeleteBtn" onclick="submitCancelDelete()">
+          <i class="fa-solid fa-ban"></i> Cancel Auto-Delete
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete now modal -->
+  <div id="deleteNowModal" class="backup-modal-overlay" style="display:none;">
+    <div class="backup-modal backup-modal-sm">
+      <div class="backup-modal-header">
+        <h2><i class="fa-solid fa-trash" style="color:#ef4444;"></i> Delete Backup Now</h2>
+        <button type="button" class="backup-modal-close" onclick="closeDeleteNowModal()">&times;</button>
+      </div>
+      <div class="backup-modal-body">
+        <p>This will <strong>permanently delete</strong> all backup files for this task. Enter the <strong>10-digit confirmation code</strong> to proceed.</p>
+        <div class="backup-code-input-wrap">
+          <input type="text" id="deleteNowCode" class="backup-code-input" maxlength="10" placeholder="Enter 10-digit code" autocomplete="off">
+        </div>
+        <p class="backup-code-hint" id="deleteNowError" style="display:none;"></p>
+      </div>
+      <div class="backup-modal-footer">
+        <button type="button" class="backup-btn-cancel" onclick="closeDeleteNowModal()">Cancel</button>
+        <button type="button" class="backup-btn-danger" id="deleteNowBtn" onclick="submitDeleteNow()">
+          <i class="fa-solid fa-trash"></i> Delete Now
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>

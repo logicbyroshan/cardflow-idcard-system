@@ -150,6 +150,18 @@ from .crop_api import (
     api_crop_batch_cleanup,
 )
 
+from .backup_api import (
+    backup_select_clients,
+    api_backup_initiate,
+    api_backup_start,
+    api_backup_status,
+    api_backup_list,
+    api_backup_cancel_auto_delete,
+    api_backup_delete_now,
+    api_backup_download,
+    api_backup_generate_code,
+)
+
 from .notification_api import (
     api_notifications_list,
     api_notifications_unread_count,
