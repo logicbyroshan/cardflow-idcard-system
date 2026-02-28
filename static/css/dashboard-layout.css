@@ -28,7 +28,7 @@
     overflow-x: hidden;
 }
 
-/* ── Fixed Bottom (DEPRECATED: now scrollable) ── */
+/* ── Fixed Bottom: content-driven height, pinned at bottom ── */
 .dashboard-bottom-fixed {
     flex-shrink: 0;
     border-top: 2px solid rgba(0, 0, 0, 0.10);
