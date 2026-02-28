@@ -247,7 +247,7 @@ function _initTableBodyDelegation() {
         var cell = e.target.closest('.editable-cell:not(.image-field)');
         if (cell) {
             if (e.target.closest('button') || cell.classList.contains('editing')) return;
-            if (typeof startCellEdit === 'function') startCellEdit(cell);
+            if (typeof window.IDCardApp.startCellEdit === 'function') window.IDCardApp.startCellEdit(cell);
         }
     });
 }

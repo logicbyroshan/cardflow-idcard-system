@@ -1,18 +1,38 @@
 /* ============================================
    Dashboard Layout
-   Layout, grid, card containers & welcome banner
+   Layout, grid, card containers
    ============================================ */
 
 /* ====================
-   Dashboard Layout
+   Dashboard Layout — fixed top + scrollable middle + fixed bottom
    ==================== */
 .dashboard-content {
     padding: 0;
     display: flex;
     flex-direction: column;
     height: calc(100vh - var(--spacing-topbar, 40px));
+    overflow: hidden;          /* no scroll on the outer wrapper */
+}
+
+/* ── Fixed Top: Stats Cards ─── */
+.dashboard-top-fixed {
+    flex-shrink: 0;
+    z-index: 10;
+}
+
+/* ── Scrollable Middle ──────── */
+.dashboard-middle-scroll {
+    flex: 1;
+    min-height: 0;             /* allow flex child to shrink below content */
     overflow-y: auto;
     overflow-x: hidden;
+}
+
+/* ── Fixed Bottom: Quick Actions / Team / Bulk ── */
+.dashboard-bottom-fixed {
+    flex-shrink: 0;
+    z-index: 10;
+    border-top: 2px solid rgba(0, 0, 0, 0.10);
 }
 
 /* ====================
@@ -24,8 +44,8 @@
     grid-template-rows: 1fr;
     gap: 0;
     min-height: 0;
-    /* 75% of viewport minus topbar+banner+stats ≈ 75vh, capped at 750px */
-    height: clamp(400px, 75vh, 750px);
+    /* 60% of viewport, capped at 650px */
+    height: clamp(350px, 60vh, 650px);
     flex-shrink: 0;
 }
 
@@ -42,7 +62,7 @@
     grid-template-columns: 40fr 60fr;
     gap: 0;
     min-height: 0;
-    height: clamp(400px, 75vh, 750px);
+    height: clamp(350px, 60vh, 650px);
     flex-shrink: 0;
 }
 
@@ -100,7 +120,7 @@
 }
 
 /* ====================
-   Welcome Banner
+   Welcome Banner (used by owner, staff, client dashboards)
    ==================== */
 .welcome-banner {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);

@@ -87,7 +87,7 @@ async function loadMoreData() {
         
     } catch (error) {
         console.error('Error loading more data:', error);
-        if (typeof showToast === 'function') showToast('Failed to load more data', false);
+        if (typeof window.showToast === 'function') window.showToast('Failed to load more data', false);
     } finally {
         // Only reset isLoading if this is still the active request sequence.
         // Prevents stale responses from clearing isLoading for a newer load.
@@ -259,7 +259,7 @@ async function resetAndReload() {
     if (typeof window.IDCardApp.resetShiftClickIndex === 'function') {
         window.IDCardApp.resetShiftClickIndex();
     }
-    updateButtonStates();
+    window.IDCardApp.updateButtonStates();
 
     // Clear all loaded rows from DOM
     var tableBody = document.getElementById('cardsTableBody');
@@ -345,8 +345,8 @@ function initTableModule() {
     window.IDCardApp.handleBrokenImages();
     
     // Populate class/section filter dropdowns from table data
-    if (typeof populateFilterOptions === 'function') {
-        populateFilterOptions();
+    if (typeof window.IDCardApp.populateFilterOptions === 'function') {
+        window.IDCardApp.populateFilterOptions();
     }
 
     

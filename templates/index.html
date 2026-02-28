@@ -33,25 +33,31 @@
     <!-- Dashboard Content -->
     <div class="dashboard-content">
 
-      {% include 'partials/dashboard/welcome-banner.html' %}
-
-      {% include 'partials/dashboard/stats-cards.html' %}
-
-      <!-- Main Grid - Recent Client Updates & Recent Activity -->
-      <div class="dashboard-grid">
-        {% include 'partials/dashboard/recent-updates.html' %}
-        {% include 'partials/dashboard/recent-activity.html' %}
+      <!-- Fixed Top: Stats Cards -->
+      <div class="dashboard-top-fixed">
+        {% include 'partials/dashboard/stats-cards.html' %}
       </div>
 
-      <!-- Second Row Grid - Quick Actions, Team Overview & Bulk Actions -->
-      <div class="dashboard-grid dashboard-grid-3col">
-        {% include 'partials/dashboard/quick-actions.html' %}
-        {% include 'partials/dashboard/team-overview.html' %}
-        {% include 'partials/dashboard/bulk-actions.html' %}
+      <!-- Scrollable Middle -->
+      <div class="dashboard-middle-scroll">
+        <!-- Main Grid - Recent Client Updates & Recent Activity -->
+        <div class="dashboard-grid">
+          {% include 'partials/dashboard/recent-updates.html' %}
+          {% include 'partials/dashboard/recent-activity.html' %}
+        </div>
+
+        <!-- Print & Reprint Overview (admin only) -->
+        {% include 'partials/dashboard/print-reprint-overview.html' %}
       </div>
 
-      <!-- Third Row Grid - Print & Reprint Overview (admin only) -->
-      {% include 'partials/dashboard/print-reprint-overview.html' %}
+      <!-- Fixed Bottom: Quick Actions, Team Overview & Bulk Actions -->
+      <div class="dashboard-bottom-fixed">
+        <div class="dashboard-grid dashboard-grid-3col">
+          {% include 'partials/dashboard/quick-actions.html' %}
+          {% include 'partials/dashboard/team-overview.html' %}
+          {% include 'partials/dashboard/bulk-actions.html' %}
+        </div>
+      </div>
 
     </div>
 

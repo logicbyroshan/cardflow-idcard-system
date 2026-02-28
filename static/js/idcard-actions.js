@@ -68,54 +68,31 @@
             console.error('IDCard Actions: Some modules failed to load. Check script order in HTML.');
         }
         
-        // Initialize modules in order
-        try {
-            // Core module - CSRF, toast, sidebar, checkboxes, dropdowns
-            if (window.IDCardApp && window.IDCardApp.initCoreModule) {
-                window.IDCardApp.initCoreModule();
+        // Initialize modules in order (each wrapped individually so one failure
+        // doesn't prevent the rest from loading — defensive against cross-IIFE issues)
+        var _modules = [
+            ['initCoreModule',    'Core'],
+            ['initTableModule',   'Table'],
+            ['initSearchModule',  'Search'],
+            ['initUploadModule',  'Upload'],
+            ['initDownloadModule','Download'],
+            ['initModalModule',   'Modal'],
+            ['initApiModule',     'API'],
+            ['initEditModule',    'Edit']
+        ];
+
+        _modules.forEach(function(m) {
+            try {
+                if (window.IDCardApp && typeof window.IDCardApp[m[0]] === 'function') {
+                    window.IDCardApp[m[0]]();
+                }
+            } catch (error) {
+                console.error('IDCard Actions: ' + m[1] + ' module init failed:', error);
             }
-            
-            // Table module - Table rendering, pagination, lazy loading
-            if (window.IDCardApp && window.IDCardApp.initTableModule) {
-                window.IDCardApp.initTableModule();
-            }
-            
-            // Search module - Search, filter, sort
-            if (window.IDCardApp && window.IDCardApp.initSearchModule) {
-                window.IDCardApp.initSearchModule();
-            }
-            
-            // Upload module - XLSX, ZIP uploads
-            if (window.IDCardApp && window.IDCardApp.initUploadModule) {
-                window.IDCardApp.initUploadModule();
-            }
-            
-            // Download module - Download images, DOCX, XLSX
-            if (window.IDCardApp && window.IDCardApp.initDownloadModule) {
-                window.IDCardApp.initDownloadModule();
-            }
-            
-            // Modal module - Side modal, delete modal
-            if (window.IDCardApp && window.IDCardApp.initModalModule) {
-                window.IDCardApp.initModalModule();
-            }
-            
-            // API module - Card status operations, bulk actions
-            if (window.IDCardApp && window.IDCardApp.initApiModule) {
-                window.IDCardApp.initApiModule();
-            }
-            
-            // Edit module - Inline cell editing
-            if (window.IDCardApp && window.IDCardApp.initEditModule) {
-                window.IDCardApp.initEditModule();
-            }
-            
-            // Dispatch custom event for other scripts that may depend on this
-            document.dispatchEvent(new CustomEvent('idcard-actions-ready'));
-            
-        } catch (error) {
-            console.error('IDCard Actions: Error during initialization:', error);
-        }
+        });
+
+        // Dispatch custom event for other scripts that may depend on this
+        document.dispatchEvent(new CustomEvent('idcard-actions-ready'));
     }
     
     // ==========================================
@@ -269,8 +246,8 @@
                 if (checkbox) checkbox.checked = true;
                 
                 // Update selection count
-                if (typeof updateActionButtons === 'function') {
-                    updateActionButtons();
+                if (typeof window.IDCardApp.updateButtonStates === 'function') {
+                    window.IDCardApp.updateButtonStates();
                 }
                 
                 // Scroll into view
@@ -288,7 +265,7 @@
             // First, load all remaining data if lazy loading is active
             if (window.IDCardApp && window.IDCardApp.lazyLoadState) {
                 const state = window.IDCardApp.lazyLoadState;
-                if (state.hasMore && typeof loadMoreData === 'function') {
+                if (state.hasMore && typeof window.IDCardApp.loadMoreData === 'function') {
                     // Load all remaining data first
                     loadAllRemainingData().then(() => {
                         scrollToLastRow();
@@ -328,8 +305,8 @@
                 if (checkbox) checkbox.checked = true;
                 
                 // Update selection count
-                if (typeof updateActionButtons === 'function') {
-                    updateActionButtons();
+                if (typeof window.IDCardApp.updateButtonStates === 'function') {
+                    window.IDCardApp.updateButtonStates();
                 }
                 
                 // Scroll into view
@@ -343,9 +320,9 @@
         if (!window.IDCardApp || !window.IDCardApp.lazyLoadState) return;
         
         const state = window.IDCardApp.lazyLoadState;
-        while (state.hasMore && typeof loadMoreData === 'function') {
+        while (state.hasMore && typeof window.IDCardApp.loadMoreData === 'function') {
             await new Promise(resolve => {
-                loadMoreData();
+                window.IDCardApp.loadMoreData();
                 setTimeout(resolve, 100); // Wait a bit between loads
             });
         }
@@ -361,13 +338,13 @@
             clearTimeout(resizeTimeout);
             resizeTimeout = setTimeout(function() {
                 // Re-adjust table alignment
-                if (typeof setupDynamicTextAlignment === 'function') {
-                    setupDynamicTextAlignment();
+                if (typeof window.IDCardApp.applyDynamicAlignment === 'function') {
+                    window.IDCardApp.applyDynamicAlignment();
                 }
                 
                 // Re-check lazy loading
-                if (typeof checkLoadMore === 'function') {
-                    checkLoadMore();
+                if (typeof window.IDCardApp.checkLoadMore === 'function') {
+                    window.IDCardApp.checkLoadMore();
                 }
             }, 250);
         });
@@ -435,16 +412,16 @@
         
         // Get selected card IDs
         getSelected: function() {
-            if (typeof getSelectedCardIds === 'function') {
-                return getSelectedCardIds();
+            if (window.IDCardApp && typeof window.IDCardApp.getSelectedCardIds === 'function') {
+                return window.IDCardApp.getSelectedCardIds();
             }
             return [];
         },
         
         // Open add modal
         openAddModal: function() {
-            if (typeof openSideModal === 'function') {
-                openSideModal('add');
+            if (window.IDCardApp && typeof window.IDCardApp.openSideModal === 'function') {
+                window.IDCardApp.openSideModal('add');
             }
         },
         

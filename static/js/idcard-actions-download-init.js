@@ -113,8 +113,8 @@ function openReuploadActionsModal() {
     }
     // Card IDs should already be set by the button handler via getAllCardIdsForAction()
     // Only fallback to visible cards if something went wrong (should not happen normally)
-    if (pendingReuploadCardIds.length === 0 && typeof getAllVisibleCardIds === 'function') {
-        pendingReuploadCardIds = getAllVisibleCardIds();
+    if (pendingReuploadCardIds.length === 0 && typeof window.IDCardApp.getAllVisibleCardIds === 'function') {
+        pendingReuploadCardIds = window.IDCardApp.getAllVisibleCardIds();
     }
     const statusLabel = STATUS_LABELS[typeof CURRENT_STATUS !== 'undefined' ? CURRENT_STATUS : 'pending'] || 'Current';
     if (reuploadActionsListName) reuploadActionsListName.textContent = statusLabel + ' List';
