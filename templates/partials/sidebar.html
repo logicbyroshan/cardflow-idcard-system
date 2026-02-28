@@ -68,6 +68,7 @@
     {% endif %}
     
     {% if is_client or is_client_staff %}
+    {% if perm_idcard_setting_list or perm_idcard_pending_list or perm_idcard_verified_list or perm_idcard_approved_list or perm_idcard_download_list or perm_idcard_pool_list %}
     <!-- ID Card Management Section - Client -->
     <div class="nav-section">
       <div class="nav-section-line"></div>
@@ -84,6 +85,7 @@
     <a href="{% url 'client:idcard_group' %}" class="{% if active_page == 'idcard_group' or active_page == 'active_clients' %}active{% endif %}">
       <i class="fa-solid fa-id-card"></i><span>ID Card Group</span>
     </a>
+    {% endif %}
     {% endif %}
     
     {% if is_super_admin or perm_website_view %}

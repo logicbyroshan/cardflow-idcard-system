@@ -58,6 +58,8 @@ class ClientService(BaseService):
         'perm_idcard_bulk_upload', 'perm_idcard_bulk_download',
         'perm_idcard_bulk_reupload', 'perm_delete_all_idcard',
         'perm_idcard_upgrade_all',
+        # Mobile App
+        'perm_mobile_app',
     ]
     
     @classmethod

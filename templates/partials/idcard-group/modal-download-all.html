@@ -18,10 +18,14 @@
       <div style="margin:10px 0;">
         <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:6px;">Select Format</label>
         <select class="center-modal-select" id="downloadAllFormat">
+          {% if not is_client and not is_client_staff %}
           <option value="all">All Formats (ZIP)</option>
           <option value="xlsx">Excel (.xlsx)</option>
+          {% endif %}
           <option value="pdf">PDF</option>
+          {% if not is_client and not is_client_staff %}
           <option value="docx">Word (.docx)</option>
+          {% endif %}
         </select>
       </div>
 
