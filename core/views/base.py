@@ -404,29 +404,25 @@ def api_print_reprint_overview(request):
 
         for c in clients:
             pc = print_map.get(c.id, {})
-            print_total = pc.get('print_list', 0) + pc.get('finalized', 0) + pc.get('pool', 0)
-            if print_total > 0:
-                print_clients.append({
-                    'id': c.id,
-                    'name': c.name,
-                    'print_list': pc.get('print_list', 0),
-                    'finalized': pc.get('finalized', 0),
-                    'pool': pc.get('pool', 0),
-                    'tables': print_tables_map.get(c.id, []),
-                })
+            print_clients.append({
+                'id': c.id,
+                'name': c.name,
+                'print_list': pc.get('print_list', 0),
+                'finalized': pc.get('finalized', 0),
+                'pool': pc.get('pool', 0),
+                'tables': print_tables_map.get(c.id, []),
+            })
 
             rc = reprint_map.get(c.id, {})
-            reprint_total = rc.get('requested', 0) + rc.get('confirmed', 0) + rc.get('downloaded', 0) + rc.get('pool', 0)
-            if reprint_total > 0:
-                reprint_clients.append({
-                    'id': c.id,
-                    'name': c.name,
-                    'requested': rc.get('requested', 0),
-                    'confirmed': rc.get('confirmed', 0),
-                    'downloaded': rc.get('downloaded', 0),
-                    'pool': rc.get('pool', 0),
-                    'tables': reprint_tables_map.get(c.id, []),
-                })
+            reprint_clients.append({
+                'id': c.id,
+                'name': c.name,
+                'requested': rc.get('requested', 0),
+                'confirmed': rc.get('confirmed', 0),
+                'downloaded': rc.get('downloaded', 0),
+                'pool': rc.get('pool', 0),
+                'tables': reprint_tables_map.get(c.id, []),
+            })
 
         return JsonResponse({
             'success': True,

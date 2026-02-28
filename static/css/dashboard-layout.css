@@ -28,10 +28,9 @@
     overflow-x: hidden;
 }
 
-/* ── Fixed Bottom: Quick Actions / Team / Bulk ── */
+/* ── Fixed Bottom (DEPRECATED: now scrollable) ── */
 .dashboard-bottom-fixed {
     flex-shrink: 0;
-    z-index: 10;
     border-top: 2px solid rgba(0, 0, 0, 0.10);
 }
 

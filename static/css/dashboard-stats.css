@@ -30,6 +30,18 @@
     margin-left: 0;
 }
 
+/* Clickable stat cards */
+a.stat-card-link {
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+    transition: box-shadow 0.18s, border-color 0.18s;
+}
+a.stat-card-link:hover {
+    border-color: #667eea;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.13);
+}
+
 .stat-info {
     flex: 1;
     min-width: 0;

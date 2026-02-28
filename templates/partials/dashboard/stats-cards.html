@@ -1,6 +1,6 @@
 <!-- Stats Cards -->
 <div class="stats-cards">
-  <div class="stat-card">
+  <a href="/panel/active-clients/" class="stat-card stat-card-link">
     <div class="stat-icon pending">
       <i class="fa-solid fa-clock"></i>
     </div>
@@ -8,9 +8,9 @@
       <div class="stat-value" id="pendingCards">{{ pending_cards|default:0 }}</div>
       <div class="stat-label">Pending Cards</div>
     </div>
-  </div>
+  </a>
   
-  <div class="stat-card">
+  <a href="/panel/active-clients/" class="stat-card stat-card-link">
     <div class="stat-icon verified">
       <i class="fa-solid fa-check-circle"></i>
     </div>
@@ -18,9 +18,9 @@
       <div class="stat-value" id="verifiedCards">{{ verified_cards|default:0 }}</div>
       <div class="stat-label">Verified Cards</div>
     </div>
-  </div>
+  </a>
   
-  <div class="stat-card">
+  <a href="/panel/active-clients/" class="stat-card stat-card-link">
     <div class="stat-icon approved">
       <i class="fa-solid fa-thumbs-up"></i>
     </div>
@@ -28,9 +28,9 @@
       <div class="stat-value" id="approvedCards">{{ approved_cards|default:0 }}</div>
       <div class="stat-label">Approved Cards</div>
     </div>
-  </div>
+  </a>
   
-  <div class="stat-card">
+  <a href="/panel/active-clients/" class="stat-card stat-card-link">
     <div class="stat-icon downloaded">
       <i class="fa-solid fa-download"></i>
     </div>
@@ -38,9 +38,9 @@
       <div class="stat-value" id="downloadedCards">{{ downloaded_cards|default:0 }}</div>
       <div class="stat-label">Downloaded Cards</div>
     </div>
-  </div>
+  </a>
   
-  <div class="stat-card">
+  <a href="/panel/active-clients/" class="stat-card stat-card-link">
     <div class="stat-icon bg-primary/10 text-primary">
       <i class="fa-solid fa-layer-group"></i>
     </div>
@@ -48,5 +48,5 @@
       <div class="stat-value" id="totalCards">{{ total_id_cards|default:0 }}</div>
       <div class="stat-label">Total ID Cards</div>
     </div>
-  </div>
+  </a>
 </div>

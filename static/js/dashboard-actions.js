@@ -540,9 +540,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <td>
                                         <a href="/panel/print/table/${t.id}/" class="sub-row-name"><i class="fa-solid fa-table"></i> ${esc(t.name)}</a>
                                     </td>
-                                    <td class="text-center"><span class="count-badge pending">${t.print_list}</span></td>
-                                    <td class="text-center"><span class="count-badge verified">${t.finalized}</span></td>
-                                    <td class="text-center"><span class="count-badge">${t.pool}</span></td>
+                                    <td class="text-center"><a href="/panel/print/table/${t.id}/" class="count-badge pending">${t.print_list}</a></td>
+                                    <td class="text-center"><a href="/panel/print/table/${t.id}/" class="count-badge verified">${t.finalized}</a></td>
+                                    <td class="text-center"><a href="/panel/print/table/${t.id}/" class="count-badge">${t.pool}</a></td>
                                 </tr>
                             `).join('');
                             return `
@@ -573,10 +573,10 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <td>
                                         <a href="/panel/reprint/table/${t.id}/" class="sub-row-name"><i class="fa-solid fa-table"></i> ${esc(t.name)}</a>
                                     </td>
-                                    <td class="text-center"><span class="count-badge pending">${t.requested}</span></td>
-                                    <td class="text-center"><span class="count-badge verified">${t.confirmed}</span></td>
-                                    <td class="text-center"><span class="count-badge approved">${t.downloaded}</span></td>
-                                    <td class="text-center"><span class="count-badge">${t.pool}</span></td>
+                                    <td class="text-center"><a href="/panel/reprint/table/${t.id}/" class="count-badge pending">${t.requested}</a></td>
+                                    <td class="text-center"><a href="/panel/reprint/table/${t.id}/" class="count-badge verified">${t.confirmed}</a></td>
+                                    <td class="text-center"><a href="/panel/reprint/table/${t.id}/" class="count-badge approved">${t.downloaded}</a></td>
+                                    <td class="text-center"><a href="/panel/reprint/table/${t.id}/" class="count-badge">${t.pool}</a></td>
                                 </tr>
                             `).join('');
                             return `
