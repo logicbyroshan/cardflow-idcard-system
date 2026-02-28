@@ -429,9 +429,8 @@ def sort_cards_for_export(
     Sort cards for export output.
 
     Sorting rules (applied to field_data values, case-insensitive):
-      • If CLASS exists → Class (A→Z), then Section (A→Z), then Name (A→Z)
-      • If CLASS absent  → Name (A→Z) only
-      • If none found    → original order
+      • Name (A→Z), then Section (A→Z), then Class (logical order)
+      • If none of Name/Section/Class found → original order
 
     This function is the SINGLE source of export sort logic.
     Called by Word, Excel, and PDF exporters.
@@ -463,11 +462,9 @@ def sort_cards_for_export(
         sec_val = str(fd.get(section_field, '') or '').strip().upper() if section_field else ''
         name_val = str(fd.get(name_field, '') or '').strip().upper() if name_field else ''
 
-        if class_field:
-            # Use logical class ordering (NURSERY < LKG < ... < XII < UG)
-            cls_order = _CLASS_ORDER.get(cls_val, _CLASS_ORDER_UNKNOWN)
-            return (cls_order, cls_val, sec_val, name_val)
-        return (name_val,)
+        # Sort order: Name (A→Z), then Section (A→Z), then Class (logical order)
+        cls_order = _CLASS_ORDER.get(cls_val, _CLASS_ORDER_UNKNOWN) if class_field else 0
+        return (name_val, sec_val, cls_order, cls_val)
 
     return sorted(cards_list, key=_sort_key)
 
