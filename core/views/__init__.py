@@ -140,6 +140,15 @@ from .cropper_api import (
     api_cropper_latest_version,
 )
 
+from .crop_api import (
+    api_prepare_crop,
+    api_process_crop,
+    api_crop_batch_preview,
+    api_crop_batch_serve_image,
+    api_reupload_cropped,
+    api_crop_batch_cleanup,
+)
+
 from .notification_api import (
     api_notifications_list,
     api_notifications_unread_count,
