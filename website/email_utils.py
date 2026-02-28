@@ -28,16 +28,22 @@ Message:
 Submitted at: {submission.created_at.strftime('%Y-%m-%d %H:%M:%S')}
 """
         
+        # Check email backend is configured
+        email_backend = getattr(settings, 'EMAIL_BACKEND', '')
+        if not email_backend:
+            logger.error("EMAIL_BACKEND not configured")
+            return False
+
         recipient = getattr(settings, 'CONTACT_FORM_RECIPIENT', '')
         if not recipient:
-            logger.error("CONTACT_FORM_RECIPIENT not configured in settings")
+            logger.error("CONTACT_FORM_RECIPIENT not configured in settings / .env")
             return False
         
         # Send in background thread (non-blocking)
         send_mail_async(
             subject=subject,
             message=message,
-            from_email=settings.EMAIL_HOST_USER,
+            from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[recipient],
         )
         

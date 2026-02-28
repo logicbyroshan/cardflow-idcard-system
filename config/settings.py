@@ -414,6 +414,9 @@ else:
     EMAIL_HOST_PASSWORD = ''
     DEFAULT_FROM_EMAIL = 'noreply@localhost'
 
+# Contact form recipient — if not set, contact-form emails are silently skipped
+CONTACT_FORM_RECIPIENT = os.getenv('CONTACT_FORM_RECIPIENT', '')
+
 # Site URL for email links
 # Local: http://localhost:8000 | Production: Set SITE_URL in .env
 SITE_URL = os.getenv('SITE_URL', 'http://localhost:8000')

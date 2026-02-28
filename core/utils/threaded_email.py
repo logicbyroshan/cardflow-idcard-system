@@ -14,9 +14,10 @@ Usage:
     # HTML email with plain-text fallback
     send_html_email_async(subject, plain, html, from_email, recipient_list)
 
-Thread safety: each call spawns a short-lived daemon thread.  Django's
-SMTP backend is thread-safe and the GIL makes the spawn overhead negligible
-for the low email volume this app produces.
+Thread safety: each call spawns a short-lived non-daemon thread so that
+email delivery is guaranteed even if the calling thread finishes early.
+Django's SMTP backend is thread-safe and the GIL makes the spawn overhead
+negligible for the low email volume this app produces.
 """
 
 import logging

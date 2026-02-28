@@ -304,10 +304,18 @@ class NotificationService:
 
     @classmethod
     def _send_email_alerts(cls, notif):
-        """Send email alerts for a notification in background thread."""
+        """
+        Send email alerts for a notification in background thread.
+        Each recipient gets an individual email so addresses aren't exposed.
+        """
         try:
             from core.utils.threaded_email import send_mail_async
             from django.conf import settings
+
+            # Skip if email is not configured
+            if not getattr(settings, 'EMAIL_HOST_USER', ''):
+                logger.debug("Skipping notification email — EMAIL_HOST_USER not set")
+                return
 
             # Determine recipients
             if notif.target == 'selected':
@@ -332,17 +340,21 @@ class NotificationService:
             if not recipients:
                 return
 
-            from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@example.com')
+            from_email = settings.DEFAULT_FROM_EMAIL
             priority_label = f"[{notif.get_priority_display()}] " if notif.priority != 'normal' else ''
+            subject = f"{priority_label}{notif.title}"
 
-            send_mail_async(
-                subject=f"{priority_label}{notif.title}",
-                message=notif.message,
-                from_email=from_email,
-                recipient_list=recipients,
-                fail_silently=True,
-            )
-            logger.info("Email alert queued for notification #%d to %d recipients",
+            # Send individually so recipients don't see each other's addresses
+            for email_addr in recipients:
+                send_mail_async(
+                    subject=subject,
+                    message=notif.message,
+                    from_email=from_email,
+                    recipient_list=[email_addr],
+                    fail_silently=True,
+                )
+
+            logger.info("Email alerts queued for notification #%d to %d recipients",
                         notif.id, len(recipients))
 
         except Exception as exc:

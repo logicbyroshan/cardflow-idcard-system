@@ -243,9 +243,10 @@ def send_welcome_email(name, email, password, role, request=None, phone=''):
         tuple: (success: bool, message: str)
     """
     try:
-        # Check if email settings are configured
-        if not settings.EMAIL_HOST_USER:
-            return False, 'Email settings not configured. Please add EMAIL_HOST_USER in .env file.'
+        # Skip if email backend is not configured at all
+        email_backend = getattr(settings, 'EMAIL_BACKEND', '')
+        if not email_backend:
+            return False, 'Email backend not configured.'
         
         # Build clean login URL (prefers PANEL_URL from settings)
         login_url = _get_panel_login_url(request)
@@ -262,7 +263,7 @@ def send_welcome_email(name, email, password, role, request=None, phone=''):
         
         # Send the email in background thread (non-blocking)
         subject = '🎉 Welcome to Adarsh Admin - Your Account is Ready!'
-        from_email = settings.EMAIL_HOST_USER
+        from_email = settings.DEFAULT_FROM_EMAIL
         to_email = [email]
         
         send_html_email_async(subject, plain_content, html_content, from_email, to_email)
@@ -282,7 +283,8 @@ def send_password_changed_notification(name, email, request=None):
         bool: True if email was queued successfully, False otherwise.
     """
     try:
-        if not settings.EMAIL_HOST_USER:
+        email_backend = getattr(settings, 'EMAIL_BACKEND', '')
+        if not email_backend:
             return False
 
         # Build clean login URL (prefers PANEL_URL from settings)
@@ -332,7 +334,7 @@ def send_password_changed_notification(name, email, request=None):
         )
 
         subject = '🔒 Your Password Has Been Updated — Adarsh Admin'
-        from_email = settings.EMAIL_HOST_USER
+        from_email = settings.DEFAULT_FROM_EMAIL
         to_email = [email]
 
         send_html_email_async(subject, plain_content, html_content, from_email, to_email)
