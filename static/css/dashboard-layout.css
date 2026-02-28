@@ -51,7 +51,7 @@
 
 .dashboard-bottom-fixed .dashboard-grid-3col {
     grid-template-rows: min-content;
-    align-items: start;
+    align-items: stretch;
 }
 
 /* ====================
