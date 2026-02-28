@@ -94,6 +94,36 @@
 }
 
 /* ===========================================
+   TAB 4 — REPRINT POOL (Gray-Blue)
+   =========================================== */
+.reprint-pool-tab {
+  background: #e0e7ff;
+  color: #3730a3;
+  border: 1px solid #a5b4fc;
+}
+
+.reprint-pool-tab:hover {
+  background: #c7d2fe;
+}
+
+.reprint-pool-tab .tab-count {
+  background: #6366f1;
+  color: #fff;
+}
+
+.reprint-pool-tab.active {
+  background: #6366f1;
+  color: #fff;
+  border-color: #4f46e5;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+}
+
+.reprint-pool-tab.active .tab-count {
+  background: #fff;
+  color: #6366f1;
+}
+
+/* ===========================================
    REPRINT ROW — ALREADY REQUESTED HIGHLIGHT
    =========================================== */
 tr.reprint-requested {
@@ -323,4 +353,99 @@ tr.reprint-requested:hover {
   background: #059669;
   color: #fff;
   border-color: #059669;
+}
+
+/* ============================================
+   PRINT CARDS PAGE - Tab Styles
+   3-Step Workflow: Print List → Finalized → Pool
+   ============================================ */
+
+/* ===========================================
+   TAB 1 — PRINT LIST (Blue)
+   =========================================== */
+.print-list-tab {
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #93c5fd;
+}
+
+.print-list-tab:hover {
+  background: #bfdbfe;
+}
+
+.print-list-tab .tab-count {
+  background: #3b82f6;
+  color: #fff;
+}
+
+.print-list-tab.active {
+  background: #3b82f6;
+  color: #fff;
+  border-color: #2563eb;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+}
+
+.print-list-tab.active .tab-count {
+  background: #fff;
+  color: #3b82f6;
+}
+
+/* ===========================================
+   TAB 2 — FINALIZED (Emerald)
+   =========================================== */
+.print-finalized-tab {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #6ee7b7;
+}
+
+.print-finalized-tab:hover {
+  background: #a7f3d0;
+}
+
+.print-finalized-tab .tab-count {
+  background: #10b981;
+  color: #fff;
+}
+
+.print-finalized-tab.active {
+  background: #10b981;
+  color: #fff;
+  border-color: #059669;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+}
+
+.print-finalized-tab.active .tab-count {
+  background: #fff;
+  color: #10b981;
+}
+
+/* ===========================================
+   TAB 3 — PRINT POOL (Indigo)
+   =========================================== */
+.print-pool-tab {
+  background: #e0e7ff;
+  color: #3730a3;
+  border: 1px solid #a5b4fc;
+}
+
+.print-pool-tab:hover {
+  background: #c7d2fe;
+}
+
+.print-pool-tab .tab-count {
+  background: #6366f1;
+  color: #fff;
+}
+
+.print-pool-tab.active {
+  background: #6366f1;
+  color: #fff;
+  border-color: #4f46e5;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+}
+
+.print-pool-tab.active .tab-count {
+  background: #fff;
+  color: #6366f1;
 }

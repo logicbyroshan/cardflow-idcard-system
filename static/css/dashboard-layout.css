@@ -6,11 +6,26 @@
 /* ====================
    Dashboard Layout — fixed top + scrollable middle + fixed bottom
    ==================== */
+/* Dashboard main — flex column fills entire viewport */
+.main.dashboard-main {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    min-height: 0;       /* override min-height:100vh from tailwind */
+    overflow: hidden;
+}
+
+/* Topbar inside dashboard main is flex-shrink:0 */
+.main.dashboard-main > .topbar {
+    flex-shrink: 0;
+}
+
 .dashboard-content {
     padding: 0;
     display: flex;
     flex-direction: column;
-    height: calc(100vh - var(--spacing-topbar, 40px));
+    flex: 1;
+    min-height: 0;
     overflow: hidden;          /* no scroll on the outer wrapper */
 }
 
