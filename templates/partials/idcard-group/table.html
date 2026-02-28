@@ -54,7 +54,7 @@
                 {% if not is_client and not is_client_staff %}
                 <td class="bulk-action-cell">
                     <div class="bulk-action-buttons">
-                        {% if is_super_admin or perm_reupload_idcard_image %}
+                        {% if is_super_admin or perm_idcard_bulk_reupload %}
                         <button class="bulk-btn reupload-btn" data-action="reupload" data-table="{{ table.id }}" {% if total_count == 0 %}disabled title="No data in this table"{% endif %}>
                             <i class="fa-solid fa-upload"></i> Reupload Image
                         </button>
@@ -74,7 +74,7 @@
                             <i class="fa-solid fa-print"></i> Reprint ID Card
                         </button>
                         {% endif %}
-                        {% if is_super_admin or perm_idcard_edit %}
+                        {% if is_super_admin or perm_idcard_upgrade_all %}
                         <button class="bulk-btn upgrade-class-btn" data-action="upgrade" data-table="{{ table.id }}" {% if not table.has_class_field or total_count == 0 %}disabled title="{% if not table.has_class_field %}No class column in this table{% else %}No data in this table{% endif %}"{% endif %}>
                             <i class="fa-solid fa-arrow-up"></i> Upgrade All Class
                         </button>

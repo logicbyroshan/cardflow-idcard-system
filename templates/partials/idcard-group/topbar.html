@@ -33,7 +33,7 @@
       <a href="{% if is_client or is_client_staff %}{% url 'client:idcard_group' %}{% else %}{% url 'idcard_group' client.id %}{% endif %}" class="btn btn-md btn-primary" title="ID Card Group">
         <i class="fa-solid fa-id-card"></i> <span>ID Card Group</span>
       </a>
-      {% if is_super_admin or is_admin_staff or perm_idcard_setting_list %}
+      {% if is_super_admin or perm_idcard_setting_list %}
       <a href="{% if is_client or is_client_staff %}{% url 'client:group_settings' %}{% else %}#{% endif %}" {% if not is_client and not is_client_staff %}id="switchToGroupSetting"{% endif %} class="btn btn-md btn-neutral" title="Group Setting">
         <i class="fa-solid fa-table-list"></i> <span>Group Setting</span>
       </a>

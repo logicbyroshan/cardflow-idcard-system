@@ -48,7 +48,7 @@ def is_mobile(request):
 
 
 def require_mobile_client(view_func):
-    """Decorator: login + any valid role + mobile UA.
+    """Decorator: login + any valid role + perm_mobile_app + mobile UA.
     Supports all 4 roles: super_admin, admin_staff, client, client_staff.
     After login, redirects back to /app/ (PWA) via ?next= parameter.
     """
@@ -60,6 +60,9 @@ def require_mobile_client(view_func):
         valid_roles = ('super_admin', 'admin_staff', 'client', 'client_staff')
         if not hasattr(user, 'role') or user.role not in valid_roles:
             return redirect('/panel/auth/login/?next=/panel/app/')
+        # Enforce perm_mobile_app (super_admin always passes)
+        if not PermissionService.has(user, 'perm_mobile_app'):
+            return JsonResponse({'error': 'Mobile app access not permitted'}, status=403)
         # Desktop users see a block page (rendered client-side in base.html)
         return view_func(request, *args, **kwargs)
     return wrapper

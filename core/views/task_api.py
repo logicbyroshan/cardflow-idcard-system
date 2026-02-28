@@ -550,7 +550,7 @@ def api_create_bulk_upload_task(request, table_id):
 
 @require_POST
 @rate_limit(max_requests=5, window_seconds=60, key_prefix='reupload')
-@api_require_permission('perm_reupload_idcard_image')
+@api_require_permission('perm_idcard_bulk_reupload')
 def api_create_reupload_task(request, table_id):
     """
     Create a background task for image reupload.

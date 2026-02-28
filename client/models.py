@@ -88,7 +88,7 @@ class Client(models.Model):
     pincode = models.CharField(max_length=10, blank=True, null=True)
     
     # ID Card Client List Permission
-    perm_idcard_client_list = models.BooleanField(default=True)
+    perm_idcard_client_list = models.BooleanField(default=False)
     
     # ID Card Setting Permissions (sensitive — default OFF)
     perm_idcard_setting_list = models.BooleanField(default=False)
@@ -101,32 +101,32 @@ class Client(models.Model):
     perm_idcard_group_create = models.BooleanField(default=False)
     perm_idcard_group_delete = models.BooleanField(default=False)
     
-    # ID Card List Permissions (view lists — default ON)
-    perm_idcard_pending_list = models.BooleanField(default=True)
-    perm_idcard_verified_list = models.BooleanField(default=True)
-    perm_idcard_pool_list = models.BooleanField(default=True)
-    perm_idcard_approved_list = models.BooleanField(default=True)
-    perm_idcard_download_list = models.BooleanField(default=True)
+    # ID Card List Permissions
+    perm_idcard_pending_list = models.BooleanField(default=False)
+    perm_idcard_verified_list = models.BooleanField(default=False)
+    perm_idcard_pool_list = models.BooleanField(default=False)
+    perm_idcard_approved_list = models.BooleanField(default=False)
+    perm_idcard_download_list = models.BooleanField(default=False)
     perm_idcard_reprint_list = models.BooleanField(default=False)
     
-    # ID Card Action Permissions (common actions — default ON, dangerous — default OFF)
+    # ID Card Action Permissions
     # Note: Actions only work in Pending and Verified lists
-    perm_idcard_add = models.BooleanField(default=True)
-    perm_idcard_edit = models.BooleanField(default=True)
-    perm_idcard_delete = models.BooleanField(default=True)
-    perm_idcard_info = models.BooleanField(default=True)
-    perm_idcard_approve = models.BooleanField(default=True)
-    perm_idcard_verify = models.BooleanField(default=True)
+    perm_idcard_add = models.BooleanField(default=False)
+    perm_idcard_edit = models.BooleanField(default=False)
+    perm_idcard_delete = models.BooleanField(default=False)
+    perm_idcard_info = models.BooleanField(default=False)
+    perm_idcard_approve = models.BooleanField(default=False)
+    perm_idcard_verify = models.BooleanField(default=False)
     perm_idcard_created_at = models.BooleanField(default=False)
     perm_idcard_updated_at = models.BooleanField(default=False)
     perm_idcard_delete_from_pool = models.BooleanField(default=False)
-    perm_reupload_idcard_image = models.BooleanField(default=True)  # Single card reupload
-    perm_idcard_retrieve = models.BooleanField(default=True)
+    perm_reupload_idcard_image = models.BooleanField(default=False)  # Single card reupload
+    perm_idcard_retrieve = models.BooleanField(default=False)
     
     # ID Card Bulk Action Permissions (work across all lists)
-    perm_idcard_bulk_upload = models.BooleanField(default=True)
-    perm_idcard_bulk_download = models.BooleanField(default=True)
-    perm_idcard_bulk_reupload = models.BooleanField(default=True)  # Bulk reupload for all lists
+    perm_idcard_bulk_upload = models.BooleanField(default=False)
+    perm_idcard_bulk_download = models.BooleanField(default=False)
+    perm_idcard_bulk_reupload = models.BooleanField(default=False)  # Bulk reupload for all lists
     perm_delete_all_idcard = models.BooleanField(default=False)
     perm_idcard_upgrade_all = models.BooleanField(default=False)  # Upgrade All Class
     

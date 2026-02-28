@@ -1192,7 +1192,7 @@ def api_generate_delete_code(request, table_id):
 
 
 @require_http_methods(["POST"])
-@api_require_permission('perm_idcard_edit')
+@api_require_permission('perm_idcard_upgrade_all')
 def api_generate_upgrade_code(request, table_id):
     """Generate a 6-digit confirmation code for upgrade-all-classes, stored in session."""
     import secrets
@@ -1217,7 +1217,7 @@ def api_generate_upgrade_code(request, table_id):
 
 
 @require_http_methods(["POST"])
-@api_require_permission('perm_idcard_edit')
+@api_require_permission('perm_idcard_upgrade_all')
 def api_upgrade_all_classes(request, table_id):
     """
     Upgrade the class field value for all cards in the 'download' list.
@@ -1685,7 +1685,7 @@ def _map_headers_to_fields(headers, table_fields, image_fields, frontend_mapping
 
 
 @require_http_methods(["POST"])
-@api_require_permission('perm_reupload_idcard_image')
+@api_require_permission('perm_idcard_bulk_reupload')
 def api_idcard_reupload_images(request, table_id):
     """
     API endpoint to reupload images from a ZIP file.
