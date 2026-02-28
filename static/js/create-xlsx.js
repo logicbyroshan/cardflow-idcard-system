@@ -218,10 +218,20 @@ function initCreateWithXlsx(opts) {
       tdNum.textContent = idx + 1;
       tr.appendChild(tdNum);
 
-      // Column name
+      // Column name (editable)
       var tdName = document.createElement('td');
-      tdName.style.cssText = 'padding:7px 10px;font-weight:600;color:#1e293b;';
-      tdName.textContent = field.name;
+      tdName.style.cssText = 'padding:7px 4px;';
+      var nameInput = document.createElement('input');
+      nameInput.type = 'text';
+      nameInput.value = field.name;
+      nameInput.setAttribute('data-field-idx', idx);
+      nameInput.style.cssText = 'width:100%;font-size:12px;font-weight:600;color:#1e293b;padding:4px 6px;border:1px solid #e2e8f0;border-radius:4px;background:#fff;outline:none;';
+      nameInput.addEventListener('focus', function() { this.style.borderColor = '#667eea'; });
+      nameInput.addEventListener('blur', function() { this.style.borderColor = '#e2e8f0'; });
+      nameInput.addEventListener('input', function() {
+        detectedFields[idx].name = this.value.trimStart().toUpperCase();
+      });
+      tdName.appendChild(nameInput);
       tr.appendChild(tdName);
 
       // Type dropdown

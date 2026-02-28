@@ -404,6 +404,8 @@ def api_create_table_from_xlsx(request, group_id):
         # Default: auto-infer
         field_type = _infer_field_type(header)
         mandatory = False
+        # Default field name from the XLSX header
+        field_name = header.strip().upper()
 
         # Override with client-provided config if available and valid
         if client_field_config and idx < len(client_field_config):
@@ -413,9 +415,15 @@ def api_create_table_from_xlsx(request, group_id):
                 if cfg_type in VALID_FIELD_TYPES:
                     field_type = cfg_type
                 mandatory = bool(cfg.get('mandatory', False))
+                # Accept client-provided field name (user may have edited it in preview)
+                cfg_name = cfg.get('name', '')
+                if isinstance(cfg_name, str):
+                    cfg_name = cfg_name.strip().upper()
+                    if cfg_name:
+                        field_name = cfg_name
 
         fields.append({
-            'name': header.strip().upper(),
+            'name': field_name,
             'type': field_type,
             'order': idx,
             'mandatory': mandatory,
