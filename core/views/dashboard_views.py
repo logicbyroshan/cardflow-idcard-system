@@ -1,0 +1,507 @@
+"""
+Dashboard views — dashboard page, cropper page, and dashboard API endpoints.
+Split from base.py for maintainability.
+"""
+import logging
+from django.core.cache import cache
+from django.shortcuts import render, redirect
+from django.http import JsonResponse
+from django.urls import reverse
+from django.views.decorators.http import require_http_methods
+from django.contrib.auth.decorators import login_required
+from django.db.models import Count, F, Max, Q, Min
+from django.utils import timezone
+
+from ..models import Client, Staff, IDCard, IDCardTable, User
+from ..services import IDCardService
+from ..services.activity_service import ActivityService
+from ..utils.htmx import is_htmx
+from ..services.permission_service import (
+    PermissionService,
+    require_any_admin,
+    api_require_any_admin,
+    api_require_any_authenticated,
+)
+from .base_helpers import (
+    get_user_role,
+    ACTIVITY_FEED_MAX,
+    GLOBAL_SEARCH_DB_LIMIT,
+    GLOBAL_SEARCH_RESULT_LIMIT,
+)
+
+logger = logging.getLogger(__name__)
+
+
+# ── Services ─────────────────────────────────────────────────────────────
+@login_required
+@require_any_admin
+def adarsh_cropper(request):
+    """Adarsh Cropper service page — admin & admin staff only."""
+    context = {
+        'active_page': 'adarsh_cropper',
+        'user_role': get_user_role(request.user),
+    }
+    return render(request, 'services/adarsh-cropper.html', context)
+
+
+# Dashboard
+@login_required
+@require_any_admin
+def dashboard(request):
+    """Main dashboard view - Super Admin & Admin Staff"""
+    # Mobile users should use the PWA mobile app, not the desktop dashboard
+    import re
+    ua = request.META.get('HTTP_USER_AGENT', '')
+    if re.search(r'Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini', ua, re.I):
+        return redirect('/panel/app/')
+
+    # Scope cache keys per user for admin_staff (they only see assigned clients)
+    user = request.user
+    is_scoped = PermissionService.is_admin_staff(user)
+    cache_suffix = f':{user.pk}' if is_scoped else ''
+
+    # Combine card status counts into a single aggregate query (cached 30s)
+    # Exclude 'pool' status from total count
+    card_cache_key = f'dashboard_card_stats{cache_suffix}'
+    card_stats = cache.get(card_cache_key)
+    if card_stats is None:
+        card_qs = IDCard.objects.all()
+        if is_scoped:
+            accessible_ids = PermissionService.get_accessible_client_ids(user)
+            card_qs = card_qs.filter(table__group__client_id__in=accessible_ids)
+        card_stats = card_qs.aggregate(
+            total=Count('id', filter=Q(status__in=['pending', 'verified', 'approved', 'download'])),
+            pending=Count('id', filter=Q(status='pending')),
+            verified=Count('id', filter=Q(status='verified')),
+            approved=Count('id', filter=Q(status='approved')),
+            downloaded=Count('id', filter=Q(status='download')),
+        )
+        cache.set(card_cache_key, card_stats, 30)
+
+    context = {
+        'active_page': 'dashboard',
+        'user_role': get_user_role(request.user),
+        'total_id_cards': card_stats['total'],
+        'pending_cards': card_stats['pending'],
+        'verified_cards': card_stats['verified'],
+        'approved_cards': card_stats['approved'],
+        'downloaded_cards': card_stats['downloaded'],
+    }
+    # Consolidate count queries with aggregate (cached 60s)
+    client_cache_key = f'dashboard_client_stats{cache_suffix}'
+    client_stats = cache.get(client_cache_key)
+    if client_stats is None:
+        client_qs = Client.objects.all()
+        if is_scoped:
+            client_qs = client_qs.filter(id__in=accessible_ids)
+        client_stats = client_qs.aggregate(
+            total=Count('id'),
+            active=Count('id', filter=Q(status='active')),
+        )
+        cache.set(client_cache_key, client_stats, 60)
+
+    staff_cache_key = f'dashboard_staff_stats{cache_suffix}'
+    staff_stats = cache.get(staff_cache_key)
+    if staff_stats is None:
+        staff_stats = Staff.objects.aggregate(
+            total=Count('id'),
+            active=Count('id', filter=Q(user__is_active=True)),
+        )
+        cache.set(staff_cache_key, staff_stats, 60)
+
+    cs_cache_key = f'dashboard_cs_stats{cache_suffix}'
+    cs_stats = cache.get(cs_cache_key)
+    if cs_stats is None:
+        cs_qs = User.objects.filter(role='client_staff')
+        if is_scoped:
+            from staff.models import Staff as StaffModel
+            cs_qs = cs_qs.filter(
+                staff_profile__client_id__in=accessible_ids
+            )
+        cs_stats = cs_qs.aggregate(
+            total=Count('id'),
+            active=Count('id', filter=Q(is_active=True)),
+        )
+        cache.set(cs_cache_key, cs_stats, 60)
+    context.update({
+        'total_clients': client_stats['total'],
+        'active_clients': client_stats['active'],
+        'total_staff': staff_stats['total'],
+        'active_staff': staff_stats['active'],
+        'client_staff_count': cs_stats['total'],
+        'active_client_staff_count': cs_stats['active'],
+        # Role-based activity filtering - admin_staff gets filtered by assigned clients
+        'recent_activities': ActivityService.get_recent(limit=ACTIVITY_FEED_MAX, user=request.user),
+    })
+    return render(request, 'index.html', context)
+
+
+@require_http_methods(["GET"])
+@api_require_any_admin
+def api_recent_client_updates(request):
+    """API endpoint to get recent clients with their ID card status counts"""
+    try:
+        limit = int(request.GET.get('limit', 5))
+        user = request.user
+        
+        # Get recent active clients - scoped by PermissionService
+        # Order by most-recently-approved card data (latest approved card update first)
+        clients = PermissionService.get_accessible_clients(
+            user, Client.objects.filter(status='active')
+        ).annotate(
+            latest_approved=Max(
+                'id_card_groups__tables__id_cards__updated_at',
+                filter=Q(id_card_groups__tables__id_cards__status='approved')
+            )
+        ).order_by(F('latest_approved').desc(nulls_last=True))[:limit]
+        
+        results = []
+        
+        # Batch-fetch card counts for all clients in 1 query (instead of N)
+        card_counts_qs = IDCard.objects.filter(
+            table__group__client__in=clients
+        ).values('table__group__client_id').annotate(
+            pending=Count('id', filter=Q(status='pending')),
+            verified=Count('id', filter=Q(status='verified')),
+            approved=Count('id', filter=Q(status='approved')),
+            downloaded=Count('id', filter=Q(status='download')),
+        )
+        counts_map = {item['table__group__client_id']: item for item in card_counts_qs}
+        
+        # Batch-fetch first table IDs in 1 query (instead of N)
+        first_table_qs = IDCardTable.objects.filter(
+            group__client__in=clients
+        ).values('group__client_id').annotate(first_table_id=Min('id'))
+        first_table_map = {item['group__client_id']: item['first_table_id'] for item in first_table_qs}
+        
+        # Batch-fetch all tables with per-table card counts
+        tables_qs = IDCardTable.objects.filter(
+            group__client__in=clients
+        ).values('id', 'name', 'group__client_id').annotate(
+            pending=Count('id_cards', filter=Q(id_cards__status='pending')),
+            verified=Count('id_cards', filter=Q(id_cards__status='verified')),
+            approved=Count('id_cards', filter=Q(id_cards__status='approved')),
+            downloaded=Count('id_cards', filter=Q(id_cards__status='download')),
+        ).order_by('id')
+        tables_map = {}
+        for t in tables_qs:
+            cid = t['group__client_id']
+            if cid not in tables_map:
+                tables_map[cid] = []
+            tables_map[cid].append({
+                'id': t['id'],
+                'name': t['name'],
+                'pending': t['pending'],
+                'verified': t['verified'],
+                'approved': t['approved'],
+                'downloaded': t['downloaded'],
+            })
+        
+        for client in clients:
+            cc = counts_map.get(client.id, {})
+            results.append({
+                'id': client.id,
+                'client_id': client.id,
+                'name': client.name,
+                'initial': client.name[0].upper() if client.name else 'C',
+                'first_table_id': first_table_map.get(client.id),
+                'tables': tables_map.get(client.id, []),
+                'pending': cc.get('pending', 0),
+                'verified': cc.get('verified', 0),
+                'approved': cc.get('approved', 0),
+                'downloaded': cc.get('downloaded', 0),
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'clients': results
+        })
+    except Exception as e:
+        logger.exception('api_recent_client_updates error: %s', e)
+        return JsonResponse({
+            'success': False,
+            'error': 'An error occurred. Please try again.'
+        }, status=500)
+
+
+@require_http_methods(["GET"])
+@api_require_any_admin
+def api_print_reprint_overview(request):
+    """
+    Dashboard API: per-client counts for Card Printing and Card Reprinting stages.
+    Returns expandable table data matching the Recent Client Updates pattern.
+    """
+    try:
+        from cardprint.models import PrintRequest
+        from reprintcard.models import ReprintRequest
+
+        limit = int(request.GET.get('limit', 10))
+        user = request.user
+
+        clients = PermissionService.get_accessible_clients(
+            user, Client.objects.filter(status='active')
+        ).order_by('name')[:limit]
+
+        client_ids = list(clients.values_list('id', flat=True))
+
+        # ── Print counts per client ──────────────────────────────────
+        print_counts_qs = PrintRequest.objects.filter(
+            table__group__client_id__in=client_ids
+        ).values('table__group__client_id').annotate(
+            print_list=Count('id', filter=Q(status='print_list')),
+            finalized=Count('id', filter=Q(status='finalized')),
+            pool=Count('id', filter=Q(status='pool')),
+        )
+        print_map = {r['table__group__client_id']: r for r in print_counts_qs}
+
+        # ── Print counts per table ───────────────────────────────────
+        print_table_qs = PrintRequest.objects.filter(
+            table__group__client_id__in=client_ids
+        ).values('table__id', 'table__name', 'table__group__client_id').annotate(
+            print_list=Count('id', filter=Q(status='print_list')),
+            finalized=Count('id', filter=Q(status='finalized')),
+            pool=Count('id', filter=Q(status='pool')),
+        ).order_by('table__id')
+        print_tables_map = {}
+        for t in print_table_qs:
+            cid = t['table__group__client_id']
+            if cid not in print_tables_map:
+                print_tables_map[cid] = []
+            print_tables_map[cid].append({
+                'id': t['table__id'],
+                'name': t['table__name'],
+                'print_list': t['print_list'],
+                'finalized': t['finalized'],
+                'pool': t['pool'],
+            })
+
+        # ── Reprint counts per client ────────────────────────────────
+        reprint_counts_qs = ReprintRequest.objects.filter(
+            table__group__client_id__in=client_ids
+        ).values('table__group__client_id').annotate(
+            requested=Count('id', filter=Q(status='requested')),
+            confirmed=Count('id', filter=Q(status='confirmed')),
+            downloaded=Count('id', filter=Q(status='downloaded')),
+            pool=Count('id', filter=Q(status='pool')),
+        )
+        reprint_map = {r['table__group__client_id']: r for r in reprint_counts_qs}
+
+        # ── Reprint counts per table ─────────────────────────────────
+        reprint_table_qs = ReprintRequest.objects.filter(
+            table__group__client_id__in=client_ids
+        ).values('table__id', 'table__name', 'table__group__client_id').annotate(
+            requested=Count('id', filter=Q(status='requested')),
+            confirmed=Count('id', filter=Q(status='confirmed')),
+            downloaded=Count('id', filter=Q(status='downloaded')),
+            pool=Count('id', filter=Q(status='pool')),
+        ).order_by('table__id')
+        reprint_tables_map = {}
+        for t in reprint_table_qs:
+            cid = t['table__group__client_id']
+            if cid not in reprint_tables_map:
+                reprint_tables_map[cid] = []
+            reprint_tables_map[cid].append({
+                'id': t['table__id'],
+                'name': t['table__name'],
+                'requested': t['requested'],
+                'confirmed': t['confirmed'],
+                'downloaded': t['downloaded'],
+                'pool': t['pool'],
+            })
+
+        # ── Build per-client results ─────────────────────────────────
+        print_clients = []
+        reprint_clients = []
+
+        for c in clients:
+            pc = print_map.get(c.id, {})
+            print_clients.append({
+                'id': c.id,
+                'name': c.name,
+                'print_list': pc.get('print_list', 0),
+                'finalized': pc.get('finalized', 0),
+                'pool': pc.get('pool', 0),
+                'tables': print_tables_map.get(c.id, []),
+            })
+
+            rc = reprint_map.get(c.id, {})
+            reprint_clients.append({
+                'id': c.id,
+                'name': c.name,
+                'requested': rc.get('requested', 0),
+                'confirmed': rc.get('confirmed', 0),
+                'downloaded': rc.get('downloaded', 0),
+                'pool': rc.get('pool', 0),
+                'tables': reprint_tables_map.get(c.id, []),
+            })
+
+        return JsonResponse({
+            'success': True,
+            'print_clients': print_clients,
+            'reprint_clients': reprint_clients,
+        })
+    except Exception as e:
+        logger.exception('api_print_reprint_overview error: %s', e)
+        return JsonResponse({
+            'success': False,
+            'error': 'An error occurred. Please try again.'
+        }, status=500)
+
+
+@require_http_methods(["GET"])
+@api_require_any_admin
+def api_recent_activity(request):
+    """API endpoint for the Recent Activity feed on the dashboard."""
+    try:
+        limit = int(request.GET.get('limit', ACTIVITY_FEED_MAX))
+        limit = min(limit, ACTIVITY_FEED_MAX)  # Cap at max for 24hr feed
+        # Role-based activity filtering
+        activities = ActivityService.get_recent(limit=limit, user=request.user)
+        return JsonResponse({'success': True, 'activities': activities})
+    except Exception as e:
+        logger.exception('api_recent_activity error: %s', e)
+        return JsonResponse({'success': False, 'error': 'An error occurred. Please try again.'}, status=500)
+
+
+@require_http_methods(["GET"])
+@api_require_any_authenticated
+def api_global_search(request):
+    """API endpoint for global search across all ID cards within clients"""
+    try:
+        query = request.GET.get('q', '').strip()
+        filter_type = request.GET.get('filter', 'all')
+        
+        if not query or len(query) < 2:
+            return JsonResponse({
+                'success': True,
+                'results': [],
+                'message': 'Please enter at least 2 characters to search'
+            })
+        
+        results = []
+        query_upper = query.upper()
+        
+        # Build base queryset - scope by user role
+        user = request.user
+        base_cards = IDCard.objects.select_related(
+            'table', 'table__group', 'table__group__client'
+        ).only(
+            'id', 'field_data', 'status', 'photo',
+            'table__id', 'table__name', 'table__fields',
+            'table__group__id', 'table__group__client__id', 'table__group__client__name',
+        ).filter(
+            field_data__icontains=query
+        )
+        
+        # Scope by role
+        is_client_role = user.role in ('client', 'client_staff')
+        if PermissionService.is_super_admin(user):
+            pass  # super_admin sees all
+        elif user.role in ('client', 'client_staff'):
+            from client.services import ClientAccessService
+            client = ClientAccessService.get_client_for_user(user)
+            if client:
+                base_cards = base_cards.filter(table__group__client=client)
+            else:
+                base_cards = base_cards.none()
+        else:
+            # Admin staff sees only assigned clients — use PermissionService
+            accessible_ids = PermissionService.get_accessible_client_ids(user)
+            if accessible_ids:
+                base_cards = base_cards.filter(table__group__client_id__in=accessible_ids)
+            else:
+                base_cards = base_cards.none()
+        
+        cards = base_cards[:GLOBAL_SEARCH_DB_LIMIT]  # Limit at database level for speed
+        
+        for card in cards:
+            field_data = card.field_data or {}
+            matched_field = ''
+            matched_value = ''
+            
+            # Find which field matched
+            for field_name, field_value in field_data.items():
+                if not field_value:
+                    continue
+                    
+                field_name_upper = field_name.upper()
+                field_value_str = str(field_value).upper()
+                
+                # Apply filter
+                if filter_type != 'all':
+                    if filter_type == 'name' and 'NAME' not in field_name_upper:
+                        continue
+                    elif filter_type == 'address' and 'ADDRESS' not in field_name_upper:
+                        continue
+                    elif filter_type == 'mobile' and 'MOBILE' not in field_name_upper and 'PHONE' not in field_name_upper and 'MOB' not in field_name_upper:
+                        continue
+                
+                if query_upper in field_value_str:
+                    matched_field = field_name
+                    matched_value = str(field_value)
+                    break
+            
+            # Skip if filter was applied but no matching field found
+            if filter_type != 'all' and not matched_field:
+                continue
+                
+            # Get display name from first text field
+            display_name = ''
+            if card.table and card.table.fields:
+                for field in card.table.fields:
+                    if field.get('type') in ['text', 'textarea'] and field.get('name') in field_data:
+                        display_name = field_data.get(field.get('name'), '')
+                        break
+            
+            client_name = card.table.group.client.name if card.table and card.table.group else 'Unknown'
+            table_name = card.table.name if card.table else 'Unknown'
+            
+            # Find first valid photo from image fields
+            photo_url = None
+            if card.table and card.table.fields:
+                for field in card.table.fields:
+                    fname = field.get('name', '')
+                    ftype = field.get('type', 'text')
+                    if ftype in ('photo', 'mother_photo', 'father_photo', 'image'):
+                        val = field_data.get(fname, '')
+                        if val and not str(val).startswith('PENDING:') and val != 'NOT_FOUND':
+                            photo_url = f'/media/{val}' if not str(val).startswith('/') else val
+                            break
+            # Fallback to legacy photo field
+            if not photo_url and card.photo:
+                try:
+                    photo_url = card.photo.url
+                except Exception:
+                    pass
+            
+            results.append({
+                'type': 'idcard',
+                'id': card.id,
+                'title': display_name or f'Card #{card.id}',
+                'subtitle': f'{client_name} • {table_name} • {card.get_status_display()}',
+                'matched_field': matched_field or 'Field',
+                'matched_value': matched_value or query,
+                'url': (f'{reverse("client:idcard_actions", args=[card.table.id])}?status={card.status}&highlight={card.id}'
+                        if is_client_role else
+                        f'{reverse("idcard_actions", args=[card.table.id])}?status={card.status}&highlight={card.id}') if card.table else '#',
+                'icon': 'fa-id-card',
+                'status': card.status,
+                'photo': photo_url,
+            })
+            
+            # Stop after limit for speed
+            if len(results) >= GLOBAL_SEARCH_RESULT_LIMIT:
+                break
+        
+        # Sort by title
+        results.sort(key=lambda x: x['title'])
+        
+        return JsonResponse({
+            'success': True,
+            'results': results,
+            'count': len(results),
+            'query': query
+        })
+    except Exception as e:
+        logger.exception('api_global_search error: %s', e)
+        return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)

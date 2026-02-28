@@ -5,6 +5,8 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/adarsh-cropper.css' %}">
+<link rel="stylesheet" href="{% static 'css/adarsh-cropper-preview.css' %}">
+<link rel="stylesheet" href="{% static 'css/adarsh-cropper-modals.css' %}">
 <link rel="stylesheet" href="{% static 'css/vendor/cropper.min.css' %}">
 <link rel="stylesheet" href="{% static 'css/adarshengine.css' %}">
 {% endblock %}
@@ -426,5 +428,11 @@
 {% block extra_js %}
 <script src="{% static 'js/vendor/cropper.min.js' %}"></script>
 <script src="{% static 'js/adarshengine.js' %}"></script>
+<script src="{% static 'js/adarshengine-histogram.js' %}"></script>
+<script src="{% static 'js/adarshengine-adjust.js' %}"></script>
+<script src="{% static 'js/adarshengine-nav.js' %}"></script>
+<script src="{% static 'js/adarsh-cropper-utils.js' %}"></script>
+<script src="{% static 'js/adarsh-cropper-donut.js' %}"></script>
+<script src="{% static 'js/adarsh-cropper-autoadjust.js' %}"></script>
 <script src="{% static 'js/adarsh-cropper.js' %}"></script>
 {% endblock %}

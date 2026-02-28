@@ -1,0 +1,357 @@
+"""
+ID Card Table API — table CRUD + XLSX import.
+
+Contains:
+- api_idcard_table_create, api_idcard_table_get, api_idcard_table_update,
+  api_idcard_table_delete, api_idcard_table_toggle_status, api_idcard_table_list
+- _HEADER_TYPE_MAP, _infer_field_type
+- api_create_table_from_xlsx
+"""
+import json
+import logging
+
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
+
+from ..models import IDCardTable
+from ..services import IDCardService
+from ..services.permission_service import api_require_permission
+
+from .idcard_helpers import (
+    _safe_error,
+    _check_client_scope_by_group,
+    _check_client_scope_by_table,
+)
+
+# Logger for this module
+logger = logging.getLogger(__name__)
+
+
+# ==================== ID CARD TABLE API ENDPOINTS ====================
+
+@require_http_methods(["POST"])
+@api_require_permission('perm_idcard_setting_add')
+def api_idcard_table_create(request, group_id):
+    """API endpoint to create a new ID Card Table"""
+    group, err = _check_client_scope_by_group(request.user, group_id)
+    if err: return err
+    try:
+        data = json.loads(request.body)
+        result = IDCardService.create_table(group_id, data)
+        return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON data!'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': _safe_error(e)}, status=500)
+
+
+@require_http_methods(["GET"])
+@api_require_permission('perm_idcard_setting_list')
+def api_idcard_table_get(request, table_id):
+    """API endpoint to get a single ID Card Table"""
+    table, err = _check_client_scope_by_table(request.user, table_id)
+    if err: return err
+    result = IDCardService.get_table(table_id)
+    return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
+
+
+@require_http_methods(["POST", "PUT"])
+@api_require_permission('perm_idcard_setting_edit')
+def api_idcard_table_update(request, table_id):
+    """API endpoint to update an ID Card Table"""
+    table, err = _check_client_scope_by_table(request.user, table_id)
+    if err: return err
+    try:
+        data = json.loads(request.body)
+        result = IDCardService.update_table(table_id, data)
+        return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON data!'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': _safe_error(e)}, status=500)
+
+
+@require_http_methods(["DELETE", "POST"])
+@api_require_permission('perm_idcard_setting_delete')
+def api_idcard_table_delete(request, table_id):
+    """API endpoint to delete an ID Card Table"""
+    table, err = _check_client_scope_by_table(request.user, table_id)
+    if err: return err
+    try:
+        result = IDCardService.delete_table(table_id)
+        return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
+    except Exception as e:
+        logger.exception("Table delete error: %s", e)
+        return JsonResponse({'success': False, 'message': _safe_error(e)}, status=500)
+
+
+@require_http_methods(["POST"])
+@api_require_permission('perm_idcard_setting_status')
+def api_idcard_table_toggle_status(request, table_id):
+    """API endpoint to toggle ID Card Table active/inactive status"""
+    table, err = _check_client_scope_by_table(request.user, table_id)
+    if err: return err
+    try:
+        result = IDCardService.toggle_table_status(table_id)
+        return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
+    except Exception as e:
+        logger.exception("Table toggle status error: %s", e)
+        return JsonResponse({'success': False, 'message': _safe_error(e)}, status=500)
+
+
+@require_http_methods(["GET"])
+@api_require_permission('perm_idcard_setting_list')
+def api_idcard_table_list(request, group_id):
+    """API endpoint to list all ID Card Tables for a group"""
+    group, err = _check_client_scope_by_group(request.user, group_id)
+    if err: return err
+    result = IDCardService.list_tables(group_id)
+    return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
+
+
+# ==================== CREATE TABLE FROM XLSX ====================
+
+# Field-type inference patterns: map XLSX header names to field types.
+# Order matters: first match wins.  All comparisons are case-insensitive.
+_HEADER_TYPE_MAP = [
+    # Image-like fields
+    (['mother photo', 'm photo', 'mother_photo', 'mother pic'], 'mother_photo'),
+    (['father photo', 'f photo', 'father_photo', 'father pic'], 'father_photo'),
+    (['photo', 'pic', 'picture', 'image', 'student photo', 'student image'], 'photo'),
+    (['signature', 'sign'], 'signature'),
+    (['barcode'], 'barcode'),
+    (['qr code', 'qr_code', 'qr'], 'qr_code'),
+    # Structural fields
+    (['class'], 'class'),
+    (['section', 'sec'], 'section'),
+    (['email', 'e-mail', 'email id', 'email address'], 'email'),
+]
+
+
+def _infer_field_type(header_name: str) -> str:
+    """Infer field type from an XLSX header name.
+
+    Returns one of the VALID_FIELD_TYPES for IDCardTable.
+    Falls back to 'text' for any unrecognised header.
+    """
+    normalized = header_name.strip().lower().replace('_', ' ')
+    for patterns, field_type in _HEADER_TYPE_MAP:
+        if normalized in patterns:
+            return field_type
+    return 'text'
+
+
+@require_http_methods(["POST"])
+@api_require_permission('perm_idcard_setting_add')
+def api_create_table_from_xlsx(request, group_id):
+    """
+    Create a new IDCardTable from an XLSX file's header row, then bulk-upload
+    the data rows into the table.  Optionally accepts ZIP files for image fields.
+
+    This combines two steps into one:
+      1. Reads the first row of the XLSX to derive field names + types.
+      2. Creates a table with those fields.
+      3. Delegates to the existing bulk-upload logic to import the data.
+
+    POST /api/group/<group_id>/table/create-from-xlsx/
+
+    Form-data:
+        file              : XLSX/XLS/CSV file   (required)
+        table_name        : Optional override for the table name
+        photos_zip_<FIELD>: ZIP per image field  (optional)
+        unified_zip_<N>   : Unified ZIPs         (optional)
+        unified_zip_count : Number of unified ZIPs (optional)
+        zip_field_names   : JSON array of field names with ZIP uploads (optional)
+
+    Returns JSON:
+        { success, message, table_id, table_name, cards_created, ... }
+    """
+    import openpyxl
+    from io import BytesIO
+
+    group, err = _check_client_scope_by_group(request.user, group_id)
+    if err:
+        return err
+
+    # ── 1. Validate file ────────────────────────────────────────────
+    if 'file' not in request.FILES:
+        return JsonResponse({'success': False, 'message': 'No file uploaded.'}, status=400)
+
+    uploaded_file = request.FILES['file']
+    file_name = uploaded_file.name.lower()
+    if not file_name.endswith(('.xlsx', '.xls', '.csv')):
+        return JsonResponse({
+            'success': False,
+            'level': 'warning',
+            'message': 'Only .xlsx, .xls, and .csv files are supported.'
+        }, status=400)
+
+    # Size guard: 50 MB max for the spreadsheet
+    if uploaded_file.size > 50 * 1024 * 1024:
+        return JsonResponse({
+            'success': False,
+            'level': 'warning',
+            'message': 'Spreadsheet file must be under 50 MB.'
+        }, status=400)
+
+    # ── 2. Read headers ─────────────────────────────────────────────
+    try:
+        if file_name.endswith('.csv'):
+            import csv, io
+            content = uploaded_file.read().decode('utf-8-sig', errors='replace')
+            uploaded_file.seek(0)
+            reader = csv.reader(io.StringIO(content))
+            headers = next(reader, [])
+        else:
+            wb = openpyxl.load_workbook(BytesIO(uploaded_file.read()), read_only=True, data_only=True)
+            uploaded_file.seek(0)
+            ws = wb.active
+            raw_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), ())
+            headers = [
+                str(cell).strip().replace('_x000D_', '').replace('_X000D_', '').replace('_x000d_', '').replace('\r', '')
+                if cell is not None else ''
+                for cell in raw_row
+            ]
+            wb.close()
+    except Exception as exc:
+        logger.error("Failed to read XLSX headers: %s", exc)
+        return JsonResponse({
+            'success': False,
+            'message': 'Could not read the spreadsheet. Please check the file format.'
+        }, status=400)
+
+    # Filter out empty headers
+    headers = [h for h in headers if h]
+    if not headers:
+        return JsonResponse({
+            'success': False, 'message': 'The spreadsheet has no column headers in the first row.'
+        }, status=400)
+
+    if len(headers) > IDCardService.MAX_FIELDS_PER_TABLE:
+        return JsonResponse({
+            'success': False,
+            'level': 'warning',
+            'message': f'Maximum {IDCardService.MAX_FIELDS_PER_TABLE} columns allowed. '
+                       f'Your file has {len(headers)} columns.'
+        }, status=400)
+
+    # ── 3. Infer field definitions (or use client-provided config) ──
+    field_config_json = request.POST.get('field_config', '')
+    client_field_config = None
+    if field_config_json:
+        try:
+            import json as _json
+            client_field_config = _json.loads(field_config_json)
+            if not isinstance(client_field_config, list):
+                client_field_config = None
+        except (ValueError, TypeError):
+            client_field_config = None
+
+    VALID_FIELD_TYPES = {
+        'text', 'class', 'section', 'email', 'photo',
+        'mother_photo', 'father_photo', 'signature', 'barcode', 'qr_code',
+    }
+
+    fields = []
+    for idx, header in enumerate(headers):
+        # Default: auto-infer
+        field_type = _infer_field_type(header)
+        mandatory = False
+        # Default field name from the XLSX header
+        field_name = header.strip().upper()
+
+        # Override with client-provided config if available and valid
+        if client_field_config and idx < len(client_field_config):
+            cfg = client_field_config[idx]
+            if isinstance(cfg, dict):
+                cfg_type = cfg.get('type', '')
+                if cfg_type in VALID_FIELD_TYPES:
+                    field_type = cfg_type
+                mandatory = bool(cfg.get('mandatory', False))
+                # Accept client-provided field name (user may have edited it in preview)
+                cfg_name = cfg.get('name', '')
+                if isinstance(cfg_name, str):
+                    cfg_name = cfg_name.strip().upper()
+                    if cfg_name:
+                        field_name = cfg_name
+
+        fields.append({
+            'name': field_name,
+            'type': field_type,
+            'order': idx,
+            'mandatory': mandatory,
+        })
+
+    # ── 4. Create the table ─────────────────────────────────────────
+    table_name = (request.POST.get('table_name') or '').strip().upper()
+    if not table_name:
+        # Derive from filename (strip extension)
+        import os as _os
+        base = _os.path.splitext(uploaded_file.name)[0]
+        table_name = base.strip().upper()[:255] or 'IMPORTED TABLE'
+
+    try:
+        table = IDCardTable.objects.create(
+            group=group,
+            name=table_name,
+            fields=fields,
+            is_active=True,
+        )
+    except Exception as exc:
+        logger.exception("Failed to create table from XLSX: %s", exc)
+        return JsonResponse({
+            'success': False, 'message': 'Failed to create table. Please try again.'
+        }, status=500)
+
+    logger.info(
+        "Created table %d (%s) with %d fields from XLSX (user=%s)",
+        table.id, table_name, len(fields), request.user.id,
+    )
+
+    # ── 5. Delegate to existing bulk upload ─────────────────────────
+    # We re-use the synchronous bulk upload by faking the table_id into the
+    # existing function.  The uploaded file + ZIPs are already in request.FILES.
+    try:
+        # Import and call the existing bulk upload handler directly, passing our
+        # newly-created table_id.  We intercept its JsonResponse to enrich it.
+        from core.views.idcard_api import api_idcard_bulk_upload as _bulk_upload
+
+        # Temporarily patch the URL kwargs so the bulk upload sees our table
+        bulk_response = _bulk_upload(request, table.id)
+
+        # Parse the JSON body from the upload response
+        import json as _json
+        try:
+            body = _json.loads(bulk_response.content)
+        except Exception:
+            body = {}
+
+        if bulk_response.status_code == 200 and body.get('success'):
+            body['table_id'] = table.id
+            body['table_name'] = table.name
+            body['fields_created'] = len(fields)
+            body['message'] = (
+                f'Table "{table.name}" created with {len(fields)} fields. '
+                + (body.get('message') or
+                   f'{body.get("cards_created", 0)} cards imported.')
+            )
+            return JsonResponse(body)
+        else:
+            # Upload failed — clean up: delete the empty table
+            try:
+                table.delete()
+            except Exception:
+                pass
+            return bulk_response
+
+    except Exception as exc:
+        logger.exception("Bulk upload after table creation failed: %s", exc)
+        # Clean up table
+        try:
+            table.delete()
+        except Exception:
+            pass
+        return JsonResponse({
+            'success': False,
+            'message': 'Table was created but data import failed. Please try again.'
+        }, status=500)
