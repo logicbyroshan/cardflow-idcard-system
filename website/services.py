@@ -24,6 +24,9 @@ from .models import (
 
 logger = logging.getLogger(__name__)
 
+# ── Watermark helpers (imported lazily to avoid circular imports) ─────────
+from .watermark import apply_text_watermark, apply_logo_watermark  # noqa: E402
+
 # ── Upload validation constants ──────────────────────────────────────────
 ALLOWED_IMAGE_EXTENSIONS = ('.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg')
 ALLOWED_VIDEO_EXTENSIONS = ('.mp4', '.webm', '.mov', '.avi')
@@ -374,6 +377,10 @@ class PortfolioItemService:
         if image and item_type == 'image':
             orientation = _detect_orientation(image)
 
+        # Apply text watermark to portfolio images
+        if image and item_type == 'image':
+            image = apply_text_watermark(image)
+
         title = 'Portfolio Item'
         if category_id:
             try:
@@ -422,6 +429,10 @@ class PortfolioItemService:
         # Auto-detect orientation from new image
         if image:
             orientation = _detect_orientation(image)
+
+        # Apply text watermark when replacing a portfolio image
+        if image and (item_type == 'image' or not video_file):
+            image = apply_text_watermark(image)
 
         with transaction.atomic():
             item = get_object_or_404(PortfolioItem, pk=pk)
@@ -667,6 +678,11 @@ class ReelService:
         _validate_image_upload(thumbnail, 'reel thumbnail')
         if not title:
             title = f'Reel {uuid.uuid4().hex[:6].upper()}'
+
+        # Apply centred logo watermark to reel thumbnail
+        if thumbnail:
+            thumbnail = apply_logo_watermark(thumbnail)
+
         with transaction.atomic():
             reel = Reel(
                 title=title,
@@ -687,6 +703,11 @@ class ReelService:
         """Update a Reel. Only non-None fields are changed."""
         _validate_video_upload(video_file, 'reel video')
         _validate_image_upload(thumbnail, 'reel thumbnail')
+
+        # Apply centred logo watermark to reel thumbnail when replacing it
+        if thumbnail:
+            thumbnail = apply_logo_watermark(thumbnail)
+
         with transaction.atomic():
             reel = get_object_or_404(Reel, pk=pk)
             if title is not None:
