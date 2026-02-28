@@ -42,8 +42,6 @@ class ClientService(BaseService):
         'perm_idcard_setting_list', 'perm_idcard_setting_add', 
         'perm_idcard_setting_edit', 'perm_idcard_setting_delete', 
         'perm_idcard_setting_status',
-        # Group/Table Create & Delete
-        'perm_idcard_group_create', 'perm_idcard_group_delete',
         # ID Card List Permissions
         'perm_idcard_pending_list', 'perm_idcard_verified_list', 
         'perm_idcard_pool_list', 'perm_idcard_approved_list', 

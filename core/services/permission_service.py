@@ -46,7 +46,6 @@ class PermissionService:
         'perm_idcard_setting_list', 'perm_idcard_setting_add',
         'perm_idcard_setting_edit', 'perm_idcard_setting_delete',
         'perm_idcard_setting_status',
-        'perm_idcard_group_create', 'perm_idcard_group_delete',
     ]
 
     IDCARD_LIST_PERMISSIONS = [

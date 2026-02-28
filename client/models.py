@@ -97,9 +97,6 @@ class Client(models.Model):
     perm_idcard_setting_delete = models.BooleanField(default=False)
     perm_idcard_setting_status = models.BooleanField(default=False)
     
-    # Group/Table Create & Delete (admin-controlled — default OFF)
-    perm_idcard_group_create = models.BooleanField(default=False)
-    perm_idcard_group_delete = models.BooleanField(default=False)
     
     # ID Card List Permissions
     perm_idcard_pending_list = models.BooleanField(default=False)

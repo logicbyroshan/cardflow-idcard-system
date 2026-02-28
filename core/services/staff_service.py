@@ -33,8 +33,6 @@ class StaffService(BaseService):
         'perm_idcard_setting_list', 'perm_idcard_setting_add', 
         'perm_idcard_setting_edit', 'perm_idcard_setting_delete', 
         'perm_idcard_setting_status',
-        # Group/Table Create & Delete
-        'perm_idcard_group_create', 'perm_idcard_group_delete',
         # ID Card Lists
         'perm_idcard_pending_list', 'perm_idcard_verified_list',
         'perm_idcard_pool_list', 'perm_idcard_approved_list',
@@ -47,7 +45,7 @@ class StaffService(BaseService):
         'perm_idcard_retrieve',
         # ID Card Bulk Actions (work across all lists)
         'perm_idcard_bulk_upload', 'perm_idcard_bulk_download',
-        'perm_idcard_bulk_reupload', 'perm_delete_all_idcard',
+        'perm_idcard_bulk_reupload',
         'perm_idcard_upgrade_all',
         # Mobile App
         'perm_mobile_app',

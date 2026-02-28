@@ -59,9 +59,6 @@ class Staff(models.Model):
     perm_idcard_setting_delete = models.BooleanField(default=False)
     perm_idcard_setting_status = models.BooleanField(default=False)
     
-    # Group/Table Create & Delete
-    perm_idcard_group_create = models.BooleanField(default=False)
-    perm_idcard_group_delete = models.BooleanField(default=False)
     
     # ID Card List Permissions
     perm_idcard_pending_list = models.BooleanField(default=False)
@@ -88,7 +85,6 @@ class Staff(models.Model):
     perm_idcard_bulk_upload = models.BooleanField(default=False)
     perm_idcard_bulk_download = models.BooleanField(default=False)
     perm_idcard_bulk_reupload = models.BooleanField(default=False)  # Bulk reupload for all lists
-    perm_delete_all_idcard = models.BooleanField(default=False)
     perm_idcard_upgrade_all = models.BooleanField(default=False)  # Upgrade All Class
     
     # Mobile App (PWA) Permission

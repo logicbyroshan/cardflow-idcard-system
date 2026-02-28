@@ -36,9 +36,11 @@
         <button class="panel-tab" data-tab="download-templates" onclick="switchTab('download-templates')">
           <i class="fa-solid fa-file-arrow-down"></i> Download Templates
         </button>
+        {% if is_super_admin %}
         <button class="panel-tab" data-tab="backups" onclick="switchTab('backups')">
           <i class="fa-solid fa-database"></i> Backups
         </button>
+        {% endif %}
         <button class="panel-tab" data-tab="log-history" onclick="switchTab('log-history')">
           <i class="fa-solid fa-clock-rotate-left"></i> Log History
         </button>
@@ -49,7 +51,7 @@
 
       {% include 'partials/panel/tab-notifications.html' %}
       {% include 'partials/panel/tab-download-templates.html' %}
-      {% include 'partials/panel/tab-backups.html' %}
+      {% if is_super_admin %}{% include 'partials/panel/tab-backups.html' %}{% endif %}
       {% include 'partials/panel/tab-log-history.html' %}
       {% include 'partials/panel/tab-system.html' %}
 
