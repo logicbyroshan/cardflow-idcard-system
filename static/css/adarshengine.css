@@ -237,6 +237,16 @@
   border-radius: 2px;
 }
 
+/* ── Temperature Slider — cool↔warm gradient ──────────────────── */
+
+.ae-slider-temp {
+  background: linear-gradient(to right, #4fc3f7, #78909c, #ffb74d) !important;
+}
+
+.ae-slider-temp::-moz-range-track {
+  background: linear-gradient(to right, #4fc3f7, #78909c, #ffb74d);
+}
+
 /* ── Crop Button ────────────────────────────────────────────────── */
 
 .ae-crop-btn {

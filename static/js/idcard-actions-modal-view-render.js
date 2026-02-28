@@ -243,9 +243,20 @@ function _updateRowInPlace(cardId, cardData) {
                     wrapper.insertBefore(newImg, wrapper.firstChild);
                 }
 
-                // Show edit-photo button if it was hidden
+                // Show edit-photo button if it was hidden; recreate if missing
                 var editBtn = td.querySelector('.edit-photo-btn');
-                if (editBtn) editBtn.style.display = '';
+                if (editBtn) {
+                    editBtn.style.display = '';
+                } else if (typeof PERMS !== 'undefined' && PERMS.idcard_edit) {
+                    // Recreate the edit button if it was removed from the DOM
+                    var wrapper2 = td.querySelector('.image-with-edit') || td;
+                    var newEditBtn = document.createElement('button');
+                    newEditBtn.className = 'edit-photo-btn';
+                    newEditBtn.setAttribute('data-card-id', cardId);
+                    newEditBtn.title = 'Edit Card';
+                    newEditBtn.textContent = 'Edit';
+                    wrapper2.appendChild(newEditBtn);
+                }
             } else {
                 // Image removed, empty, PENDING, or NOT_FOUND — hide img, show placeholder
                 if (img) {
@@ -311,9 +322,13 @@ function _updateRowInPlace(cardId, cardData) {
         window.IDCardApp.applyFiltersAndSort();
     }
 
-    // Handle broken images
+    // Handle broken images — delay to let freshly-set img.src start loading
+    // Without delay, handleBrokenImages() races with the new image load
+    // and can flag it as broken (naturalWidth === 0), hiding the edit button.
     if (window.IDCardApp && typeof window.IDCardApp.handleBrokenImages === 'function') {
-        window.IDCardApp.handleBrokenImages();
+        setTimeout(function() {
+            window.IDCardApp.handleBrokenImages();
+        }, 800);
     }
 }
 

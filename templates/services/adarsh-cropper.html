@@ -242,7 +242,20 @@
       <div class="preview-section" x-show="preview.visible" x-transition x-cloak>
         <div class="preview-header">
           <h3><i class="fa-solid fa-images"></i> Output Photos</h3>
-          <span class="preview-count" x-text="currentTabImages().length + ' photos'"></span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <button class="btn btn-primary btn-sm" type="button"
+                    :disabled="currentTabImages().length === 0 || autoAdjustState.running"
+                    @click="autoAdjustAll()"
+                    title="Auto-adjust levels on all images in the current tab">
+              <template x-if="!autoAdjustState.running">
+                <span><i class="fa-solid fa-wand-magic-sparkles"></i> Auto Adjust All</span>
+              </template>
+              <template x-if="autoAdjustState.running">
+                <span><i class="fa-solid fa-spinner fa-spin"></i> <span x-text="autoAdjustState.progress"></span></span>
+              </template>
+            </button>
+            <span class="preview-count" x-text="currentTabImages().length + ' photos'"></span>
+          </div>
         </div>
 
         {# ── Tabs ── #}

@@ -85,6 +85,20 @@
           </div>
         </div>
 
+        {# ── Temperature Group ────────────────────────────────────────── #}
+        <div class="ae-group">
+          <div class="ae-group-label">Temperature</div>
+
+          <div class="ae-slider-row">
+            <div class="ae-slider-header">
+              <span class="ae-slider-name">Temp</span>
+              <span id="aeTempVal" class="ae-slider-value">0</span>
+            </div>
+            <input id="aeTemp" class="ae-slider ae-slider-temp" type="range" min="-100" max="100" value="0" step="1">
+          </div>
+          <p class="ae-autofix-hint">Cool (blue) ← → Warm (orange)</p>
+        </div>
+
         {# ── Manual Crop Group ────────────────────────────────────────── #}
         <div class="ae-group">
           <div class="ae-group-label">Crop</div>

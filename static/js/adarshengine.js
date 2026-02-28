@@ -72,6 +72,7 @@
       gamma:      1.0,
       whitePoint: 255,
       vibrance:   0,
+      temperature: 0,
     };
 
     // ── Phase 5: Crop state ───────────────────────────────────────
@@ -222,6 +223,10 @@
     e.gammaVal    = document.getElementById('aeGammaVal');
     e.whiteVal    = document.getElementById('aeWhiteVal');
     e.vibranceVal = document.getElementById('aeVibranceVal');
+    e.tempVal     = document.getElementById('aeTempVal');
+
+    // Temperature slider
+    e.temp = document.getElementById('aeTemp');
 
     // Histogram & Level handles
     e.histogram     = document.getElementById('aeHistogram');
@@ -288,6 +293,10 @@
     // Vibrance slider — debounced input
     var vibranceHandler = function () { self._onSliderInput(); };
     this._on(e.vibrance, 'input', vibranceHandler);
+
+    // Temperature slider — debounced input
+    var tempHandler = function () { self._onSliderInput(); };
+    this._on(e.temp, 'input', tempHandler);
 
     // Reset (Phase 9)
     this._on(e.reset, 'click', function () { self.reset(); });
@@ -824,6 +833,7 @@
     var bp = parseInt(e.black.value, 10) || 0;
     var wp = parseInt(e.white.value, 10) || 255;
     var vib = parseInt(e.vibrance.value, 10) || 0;
+    var temp = (e.temp ? parseInt(e.temp.value, 10) : 0) || 0;
 
     // Phase 8: Gamma slider 10–300 → 0.1–3.0. Guard against 0/NaN.
     var rawGamma = parseInt(e.gamma.value, 10) || 100;
@@ -843,23 +853,26 @@
     wp = Math.max(1, Math.min(255, wp));
     vib = Math.max(-100, Math.min(100, vib));
     gamma = Math.max(0.01, Math.min(3.0, gamma));
+    temp = Math.max(-100, Math.min(100, temp));
 
     // Store parameters
     this.params.blackPoint = bp;
     this.params.whitePoint = wp;
     this.params.gamma = gamma;
     this.params.vibrance = vib;
+    this.params.temperature = temp;
 
     // Update value labels
     e.blackVal.textContent    = bp;
     e.gammaVal.textContent    = gamma.toFixed(2);
     e.whiteVal.textContent    = wp;
     e.vibranceVal.textContent = vib;
+    if (e.tempVal) e.tempVal.textContent = temp;
 
     // Phase 7: Debounce + rAF render
     this._scheduleRender();
 
-    this._log('Sliders:', 'B=' + bp, 'G=' + gamma.toFixed(2), 'W=' + wp, 'V=' + vib);
+    this._log('Sliders:', 'B=' + bp, 'G=' + gamma.toFixed(2), 'W=' + wp, 'V=' + vib, 'T=' + temp);
   };
 
   /**
@@ -886,16 +899,19 @@
     e.gamma.value    = 100;
     e.white.value    = 255;
     e.vibrance.value = 0;
+    if (e.temp) e.temp.value = 0;
 
     this.params.blackPoint = 0;
     this.params.gamma      = 1.0;
     this.params.whitePoint = 255;
     this.params.vibrance   = 0;
+    this.params.temperature = 0;
 
     e.blackVal.textContent    = '0';
     e.gammaVal.textContent    = '1.00';
     e.whiteVal.textContent    = '255';
     e.vibranceVal.textContent = '0';
+    if (e.tempVal) e.tempVal.textContent = '0';
 
     this._syncHandlePositions();
   };
@@ -970,6 +986,7 @@
     var wp    = this.params.whitePoint;
     var gamma = this.params.gamma;
     var vib   = this.params.vibrance / 100;  // normalise to -1…+1
+    var temp  = this.params.temperature || 0; // -100…+100
 
     // ── Phase 8: Safety guards ──────────────────────────────────
     if (gamma <= 0) gamma = 0.01;
@@ -996,6 +1013,19 @@
     }
 
     // ── Process every pixel ─────────────────────────────────────
+    // ── Temperature: pre-compute R/B shift ──────────────────────
+    // Warm: boost red, reduce blue.  Cool: boost blue, reduce red.
+    // Uses a gentle cubic curve for natural feel (like Lightroom).
+    var tempShiftR = 0, tempShiftB = 0;
+    if (temp !== 0) {
+      var tNorm = temp / 100;  // -1…+1
+      // Cubic for smooth response: sign * abs^0.7 * maxShift
+      var sign = tNorm >= 0 ? 1 : -1;
+      var curve = sign * Math.pow(Math.abs(tNorm), 0.7);
+      tempShiftR =  curve * 30;  // max ±30
+      tempShiftB = -curve * 30;  // opposite direction
+    }
+
     for (var p = 0; p < len; p += 4) {
       // Phase 3: Apply Levels via LUT
       var r = lut[src[p]];
@@ -1025,6 +1055,12 @@
         r = AdarshEngine._clamp255(r + (r - avg) * amt);
         g = AdarshEngine._clamp255(g + (g - avg) * amt);
         b = AdarshEngine._clamp255(b + (b - avg) * amt);
+      }
+
+      // Apply Temperature shift (warm/cool toning)
+      if (temp !== 0) {
+        r = AdarshEngine._clamp255(r + tempShiftR);
+        b = AdarshEngine._clamp255(b + tempShiftB);
       }
 
       dst[p]     = r;

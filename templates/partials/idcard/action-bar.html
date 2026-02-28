@@ -43,12 +43,6 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
                 <span class="btn-text">View</span>
             </button>
             {% endif %}
-            {% if perm_idcard_delete %}
-            <button class="btn action-btn btn-red" id="deleteBtn" disabled title="Move to pool">
-                <i class="fa-solid fa-trash"></i>
-                <span class="btn-text">Delete</span>
-            </button>
-            {% endif %}
             {% if perm_idcard_verify %}
             <button class="btn action-btn btn-green" id="verifyBtn" disabled title="Verify selected cards">
                 <i class="fa-solid fa-check-circle"></i>
