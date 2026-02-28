@@ -103,9 +103,24 @@ function cropperApp() {
     //  INIT
     // ══════════════════════════════════════════════════════════════════
     init() {
+      // Restore persisted state from sessionStorage (if navigating back)
+      this._restoreState();
+
       this._checkEngineWithRetry();
       // Start keepalive polling — silently re-checks every 30 s
       this._keepaliveId = setInterval(() => { this._keepalivePoll(); }, KEEPALIVE_MS);
+
+      // Save state before navigating away so results persist
+      var self = this;
+      this._beforeUnloadHandler = function () { self._saveState(); };
+      window.addEventListener('beforeunload', this._beforeUnloadHandler);
+      // Also save on link clicks (SPA-like navigation via HTMX/turbo)
+      document.addEventListener('click', function (ev) {
+        var link = ev.target.closest('a[href]');
+        if (link && !link.getAttribute('href').startsWith('#')) {
+          self._saveState();
+        }
+      });
     },
 
     /**
@@ -517,6 +532,107 @@ function cropperApp() {
     clearResults() {
       this.result.visible = false;
       this.preview.visible = false;
+      // Clear persisted state when user explicitly clears
+      try { sessionStorage.removeItem('_cropperState'); } catch (_) {}
+    },
+
+    // ══════════════════════════════════════════════════════════════════
+    //  STATE PERSISTENCE — survive navigation away and back
+    // ══════════════════════════════════════════════════════════════════
+
+    /**
+     * Key to storage — unique for this page.
+     */
+    _STORAGE_KEY: '_cropperState',
+
+    /**
+     * Save essential state to sessionStorage so navigating away
+     * and coming back retains cropped photos, results, and folder path.
+     */
+    _saveState() {
+      try {
+        if (!this.result.visible && !this.preview.visible) return;
+        var state = {
+          folderPath: this.folderPath,
+          activeTab: this.activeTab,
+          result: {
+            visible: this.result.visible,
+            total: this.result.total,
+            success: this.result.success,
+            failed: this.result.failed,
+            accuracy: this.result.accuracy,
+            time: this.result.time,
+            outputFolder: this.result.outputFolder,
+            failedFolder: this.result.failedFolder,
+            errors: this.result.errors,
+          },
+          preview: {
+            visible: this.preview.visible,
+            folder: this.preview.folder,
+            images: this.preview.images,
+            editedImages: this.preview.editedImages,
+            failedImages: this.preview.failedImages,
+            deletedImages: this.preview.deletedImages,
+          },
+          timestamp: Date.now(),
+        };
+        sessionStorage.setItem(this._STORAGE_KEY, JSON.stringify(state));
+      } catch (err) {
+        console.warn('[Cropper] State save failed:', err);
+      }
+    },
+
+    /**
+     * Restore state from sessionStorage if available and recent (< 30 min).
+     */
+    _restoreState() {
+      try {
+        var raw = sessionStorage.getItem(this._STORAGE_KEY);
+        if (!raw) return;
+        var state = JSON.parse(raw);
+        // Only restore if saved within the last 30 minutes
+        if (Date.now() - (state.timestamp || 0) > 30 * 60 * 1000) {
+          sessionStorage.removeItem(this._STORAGE_KEY);
+          return;
+        }
+
+        // Restore folder path
+        if (state.folderPath) this.folderPath = state.folderPath;
+        if (state.activeTab) this.activeTab = state.activeTab;
+
+        // Restore result summary
+        if (state.result && state.result.visible) {
+          this.result.visible = true;
+          this.result.total = state.result.total || 0;
+          this.result.success = state.result.success || 0;
+          this.result.failed = state.result.failed || 0;
+          this.result.accuracy = state.result.accuracy || '—';
+          this.result.time = state.result.time || '—';
+          this.result.outputFolder = state.result.outputFolder || '';
+          this.result.failedFolder = state.result.failedFolder || '';
+          this.result.errors = state.result.errors || [];
+          // Redraw donut chart after DOM renders
+          var self = this;
+          this.$nextTick(function () {
+            self._drawDonutChart(self.result.success, self.result.failed);
+          });
+        }
+
+        // Restore preview images
+        if (state.preview && state.preview.visible) {
+          this.preview.visible = true;
+          this.preview.folder = state.preview.folder || '';
+          this.preview.images = state.preview.images || [];
+          this.preview.editedImages = state.preview.editedImages || [];
+          this.preview.failedImages = state.preview.failedImages || [];
+          this.preview.deletedImages = state.preview.deletedImages || [];
+        }
+
+        console.log('[Cropper] State restored from session');
+      } catch (err) {
+        console.warn('[Cropper] State restore failed:', err);
+        try { sessionStorage.removeItem(this._STORAGE_KEY); } catch (_) {}
+      }
     },
 
     // ══════════════════════════════════════════════════════════════════

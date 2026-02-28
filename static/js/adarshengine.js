@@ -98,6 +98,9 @@
     // ── Phase 14: Tracked event listeners for clean destroy ───────
     this._listeners = [];  // Array of { el, event, handler }
 
+    // ── Scroll position preservation ──────────────────────────────
+    this._savedScrollY = 0;
+
     // ── v3: Image navigation list ─────────────────────────────────
     this._imageList = [];       // Array of { url, name }
     this._imageIndex = -1;      // Current index in _imageList
@@ -669,6 +672,9 @@
     this._showLoading(true);
     this._hideError();
 
+    // Save scroll position before locking body scroll
+    this._savedScrollY = window.scrollY || window.pageYOffset || 0;
+
     // Show modal (Phase 1)
     e.backdrop.classList.add('ae-open');
     document.body.style.overflow = 'hidden';
@@ -704,7 +710,11 @@
     var e = this._els;
 
     if (e.backdrop) e.backdrop.classList.remove('ae-open');
+
+    // Restore scroll position before unlocking body scroll
+    var savedY = this._savedScrollY || 0;
     document.body.style.overflow = '';
+    window.scrollTo(0, savedY);
 
     // Phase 14: Release memory
     this.originalImageData = null;

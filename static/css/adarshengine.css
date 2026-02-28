@@ -37,7 +37,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(129, 140, 248, 0.1);
   transform: scale(0.96);
   transition: transform 0.25s ease;
 }
@@ -119,12 +119,12 @@
   width: 340px;
   flex-shrink: 0;
   background: #16162a;
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
-  padding: 16px;
+  border-right: 1px solid rgba(129, 140, 248, 0.08);
+  padding: 18px 16px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 22px;
 }
 
 /* Scrollbar styling */
@@ -152,9 +152,9 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1.2px;
-  color: #818cf8;
-  padding-bottom: 4px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  color: #a5b4fc;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(129, 140, 248, 0.12);
 }
 
 /* ── Slider Control ─────────────────────────────────────────────── */
@@ -706,23 +706,24 @@
   width: 100%;
   position: relative;
   background: #0f0f1f;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  border: 1px solid rgba(129, 140, 248, 0.15);
   overflow: hidden;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 
 .ae-histogram-wrap canvas {
   display: block;
   width: 100%;
-  height: 80px;
+  height: 85px;
 }
 
 /* Levels handles below histogram */
 .ae-levels-track {
   position: relative;
   width: 100%;
-  height: 24px;
+  height: 28px;
   background: linear-gradient(to right, #000 0%, #888 50%, #fff 100%);
   border-radius: 0 0 6px 6px;
   user-select: none;
@@ -732,8 +733,8 @@
 .ae-levels-handle {
   position: absolute;
   top: 0;
-  width: 12px;
-  height: 24px;
+  width: 16px;
+  height: 28px;
   cursor: ew-resize;
   z-index: 2;
   transform: translateX(-50%);
@@ -742,44 +743,68 @@
 .ae-levels-handle::after {
   content: '';
   position: absolute;
-  top: 2px;
+  top: 3px;
   left: 50%;
   transform: translateX(-50%);
   width: 0;
   height: 0;
-  border-left: 6px solid transparent;
-  border-right: 6px solid transparent;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5));
+}
+
+.ae-levels-handle::before {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 10px;
+  border-radius: 1px;
 }
 
 .ae-levels-handle--black {
   left: 0%;
 }
 .ae-levels-handle--black::after {
-  border-top: 10px solid #000;
+  border-top: 12px solid #6366f1;
+}
+.ae-levels-handle--black::before {
+  background: #6366f1;
 }
 
 .ae-levels-handle--gamma {
   left: 50%;
 }
 .ae-levels-handle--gamma::after {
-  border-top: 10px solid #888;
+  border-top: 12px solid #a78bfa;
+}
+.ae-levels-handle--gamma::before {
+  background: #a78bfa;
 }
 
 .ae-levels-handle--white {
   left: 100%;
 }
 .ae-levels-handle--white::after {
-  border-top: 10px solid #fff;
+  border-top: 12px solid #f0abfc;
+}
+.ae-levels-handle--white::before {
+  background: #f0abfc;
 }
 
 .ae-levels-values {
   display: flex;
   justify-content: space-between;
-  padding: 2px 4px 0;
+  padding: 4px 6px 0;
   font-size: 10px;
-  color: #64748b;
   font-family: 'Consolas', 'Courier New', monospace;
 }
+
+.ae-levels-values span:nth-child(1) { color: #818cf8; }
+.ae-levels-values span:nth-child(2) { color: #a78bfa; }
+.ae-levels-values span:nth-child(3) { color: #f0abfc; }
 
 /* ── Navigation Buttons (prev/next image) ───────────────────────── */
 

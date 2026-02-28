@@ -278,7 +278,7 @@
               <div class="preview-img-wrap">
                 <img :src="img.url" :alt="img.name" loading="lazy">
                 <div class="ae-overlay-btns">
-                  <template x-if="activeTab === 'cropped' || activeTab === 'edited'">
+                  <template x-if="activeTab === 'cropped' || activeTab === 'edited' || activeTab === 'failed' || activeTab === 'deleted'">
                     <button class="ae-edit-btn" type="button"
                             @click.stop="openEditor(img, idx)">
                       <i class="fa-solid fa-sliders" aria-hidden="true"></i> Edit
