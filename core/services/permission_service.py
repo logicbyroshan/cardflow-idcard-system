@@ -190,6 +190,10 @@ class PermissionService:
         if not user.is_active:
             return False
 
+        # --- Always-on permissions (no toggle needed) ---
+        if perm_key == 'perm_reupload_idcard_image':
+            return True
+
         # --- 1. Super admin always passes ---
         if cls.is_super_admin(user):
             return True

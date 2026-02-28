@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', function() {
         'perm-idcard-bulk-reupload', 'perm-idcard-upgrade-all',
         'perm-idcard-created-at', 'perm-idcard-updated-at',
         'perm-idcard-delete-from-pool', 'perm-delete-all-idcard',
-        'perm-reupload-idcard-image', 'perm-idcard-retrieve',
+        'perm-idcard-retrieve',
         'perm-mobile-app'
     ];
 
