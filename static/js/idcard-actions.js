@@ -78,7 +78,8 @@
             ['initDownloadModule','Download'],
             ['initModalModule',   'Modal'],
             ['initApiModule',     'API'],
-            ['initEditModule',    'Edit']
+            ['initEditModule',    'Edit'],
+            ['initCropModule',    'Crop']
         ];
 
         _modules.forEach(function(m) {

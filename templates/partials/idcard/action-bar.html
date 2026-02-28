@@ -55,6 +55,12 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
                 <span class="btn-text">Reupload Image</span>
             </button>
             {% endif %}
+            {% if not is_client and not is_client_staff %}
+            <button class="btn action-btn btn-orange" id="cropSelectedBtn" disabled title="Crop selected images via Face Cropper engine">
+                <i class="fa-solid fa-crop"></i>
+                <span class="btn-text">Crop Selected</span>
+            </button>
+            {% endif %}
             {% if perm_idcard_bulk_download %}
             <div class="action-divider"></div>
             {% if not is_client and not is_client_staff %}

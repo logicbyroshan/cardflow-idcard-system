@@ -86,6 +86,15 @@ function cropperApp() {
       progress: '',
     },
 
+    // ── Compress state ──
+    compressing: false,
+    compressModal: {
+      visible: false,
+      source: 'folder',     // 'results' (from cropped output) or 'folder' (manual path)
+      folderPath: '',
+      targetKB: 100,
+    },
+
     // ── Error ──
     error: {
       visible: false,
@@ -266,13 +275,7 @@ function cropperApp() {
     },
 
     _parseUptime(secs) {
-      if (secs >= 3600) {
-        this.engine.uptime = Math.floor(secs / 3600) + 'h ' + Math.floor((secs % 3600) / 60) + 'm';
-      } else if (secs > 0) {
-        this.engine.uptime = Math.floor(secs / 60) + 'm ' + Math.floor(secs % 60) + 's';
-      } else {
-        this.engine.uptime = '';
-      }
+      this.engine.uptime = window.CropperUtils.formatUptime(secs);
     },
 
     _broadcastEngineState() {
@@ -320,18 +323,10 @@ function cropperApp() {
     },
 
     /**
-     * Compare two semver strings (e.g. "3.0.1" vs "3.0.0").
-     * Returns: >0 if a > b, <0 if a < b, 0 if equal.
+     * Compare two semver strings — delegates to CropperUtils.
      */
     _semverCompare(a, b) {
-      var pa = (a || '0.0.0').split('.').map(Number);
-      var pb = (b || '0.0.0').split('.').map(Number);
-      for (var i = 0; i < 3; i++) {
-        var va = pa[i] || 0;
-        var vb = pb[i] || 0;
-        if (va !== vb) return va - vb;
-      }
-      return 0;
+      return window.CropperUtils.semverCompare(a, b);
     },
 
     // ══════════════════════════════════════════════════════════════════
@@ -471,68 +466,10 @@ function cropperApp() {
     },
 
     /**
-     * Draw a simple donut chart on the canvas element.
-     * Pure canvas — no external chart library needed.
+     * Draw a simple donut chart — delegates to CropperDonut.
      */
     _drawDonutChart(success, failed) {
-      var canvas = this.$refs.chartCanvas;
-      if (!canvas) return;
-
-      var ctx = canvas.getContext('2d');
-      var W = canvas.width;
-      var H = canvas.height;
-      var cx = W / 2;
-      var cy = H / 2;
-      var outerR = Math.min(cx, cy) - 4;
-      var innerR = outerR * 0.62;  // donut hole
-
-      ctx.clearRect(0, 0, W, H);
-
-      var total = success + failed;
-      if (total === 0) return;
-
-      var slices = [
-        { value: success, color: '#22c55e' },  // green
-        { value: failed,  color: '#ef4444' },  // red
-      ];
-
-      var startAngle = -Math.PI / 2;  // 12 o'clock
-
-      slices.forEach(function (slice) {
-        if (slice.value === 0) return;
-        var sweep = (slice.value / total) * 2 * Math.PI;
-        var endAngle = startAngle + sweep;
-
-        ctx.beginPath();
-        ctx.arc(cx, cy, outerR, startAngle, endAngle);
-        ctx.arc(cx, cy, innerR, endAngle, startAngle, true);
-        ctx.closePath();
-        ctx.fillStyle = slice.color;
-        ctx.fill();
-
-        startAngle = endAngle;
-      });
-
-      // Draw count labels on the slices
-      startAngle = -Math.PI / 2;
-      var midR = (outerR + innerR) / 2;
-      ctx.font = 'bold 12px system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#fff';
-
-      slices.forEach(function (slice) {
-        if (slice.value === 0) return;
-        var sweep = (slice.value / total) * 2 * Math.PI;
-        var midAngle = startAngle + sweep / 2;
-        var lx = cx + midR * Math.cos(midAngle);
-        var ly = cy + midR * Math.sin(midAngle);
-        // Only draw label if slice is big enough
-        if (sweep > 0.3) {
-          ctx.fillText(String(slice.value), lx, ly);
-        }
-        startAngle += sweep;
-      });
+      window.CropperDonut.draw(this.$refs.chartCanvas, success, failed);
     },
 
     clearResults() {
@@ -861,184 +798,10 @@ function cropperApp() {
     },
 
     /**
-     * Auto-adjust a single image: load → auto-levels → export → save.
-     * Returns the new served URL on success, or null.
+     * Auto-adjust a single image — delegates to CropperAutoAdjust.
      */
     _autoAdjustSingle(imgObj, csrfToken) {
-      var self = this;
-
-      return new Promise(function (resolve, reject) {
-        var image = new Image();
-        image.crossOrigin = 'anonymous';
-
-        image.onload = function () {
-          try {
-            var w = image.naturalWidth;
-            var h = image.naturalHeight;
-
-            // Cap dimensions to prevent browser crash
-            var MAX = 8000;
-            if (w > MAX || h > MAX) {
-              var scale = MAX / Math.max(w, h);
-              w = Math.round(w * scale);
-              h = Math.round(h * scale);
-            }
-
-            // Draw onto offscreen canvas
-            var canvas = document.createElement('canvas');
-            canvas.width  = w;
-            canvas.height = h;
-            var ctx = canvas.getContext('2d', { willReadFrequently: true });
-            ctx.drawImage(image, 0, 0, w, h);
-
-            var srcData = ctx.getImageData(0, 0, w, h);
-            var src     = srcData.data;
-            var total   = src.length / 4;
-            if (total < 1) { resolve(null); return; }
-
-            // ── Histogram ──
-            var hist   = new Uint32Array(256);
-            var lumSum = 0;
-
-            for (var p = 0; p < src.length; p += 4) {
-              var lum = (src[p] * 299 + src[p+1] * 587 + src[p+2] * 114 + 500) / 1000 | 0;
-              if (lum < 0)   lum = 0;
-              if (lum > 255) lum = 255;
-              hist[lum]++;
-              lumSum += lum;
-            }
-
-            // ── Black / white points (1% clip) ──
-            var clip    = 0.01;
-            var clipLo  = Math.floor(total * clip);
-            var clipHi  = Math.floor(total * (1 - clip));
-            var cum     = 0;
-            var bp      = 0;
-            var wp      = 255;
-
-            for (var s = 0; s < 256; s++) {
-              cum += hist[s];
-              if (cum >= clipLo) { bp = s; break; }
-            }
-            cum = 0;
-            for (var hh = 0; hh < 256; hh++) {
-              cum += hist[hh];
-              if (cum >= clipHi) { wp = hh; break; }
-            }
-
-            // Safety range
-            if (wp - bp < 30) {
-              var mid = ((bp + wp) / 2) | 0;
-              bp = Math.max(0, mid - 15);
-              wp = Math.min(255, mid + 15);
-            }
-            if (bp > 60)  bp = 60;
-            if (wp < 200) wp = 200;
-
-            // ── Gamma from average luminance ──
-            var avgLum = lumSum / total;
-            var range  = wp - bp;
-            if (range < 1) range = 1;
-
-            var normAvg = (avgLum - bp) / range;
-            if (normAvg < 0.02) normAvg = 0.02;
-            if (normAvg > 0.98) normAvg = 0.98;
-
-            var rawGamma = -Math.log(2) / Math.log(normAvg);
-            if (!isFinite(rawGamma) || isNaN(rawGamma)) rawGamma = 1.0;
-            var gamma = rawGamma * 0.5 + 0.5;
-            if (gamma < 0.5) gamma = 0.5;
-            if (gamma > 2.0) gamma = 2.0;
-
-            // ── Build LUT ──
-            var lut    = new Uint8Array(256);
-            var invG   = 1.0 / gamma;
-            for (var v = 0; v < 256; v++) {
-              var norm = (v - bp) / range;
-              if (norm < 0) norm = 0;
-              if (norm > 1) norm = 1;
-              lut[v] = (Math.pow(norm, invG) * 255 + 0.5) | 0;
-            }
-
-            // ── Apply LUT to pixels ──
-            var dstData = ctx.createImageData(w, h);
-            var dst     = dstData.data;
-
-            for (var px = 0; px < src.length; px += 4) {
-              dst[px]     = lut[src[px]];
-              dst[px + 1] = lut[src[px + 1]];
-              dst[px + 2] = lut[src[px + 2]];
-              dst[px + 3] = src[px + 3];
-            }
-
-            ctx.putImageData(dstData, 0, 0);
-
-            // ── Export ──
-            var dataUrl = canvas.toDataURL('image/jpeg', 0.95);
-
-            // Cleanup
-            canvas.width = 1; canvas.height = 1;
-
-            // ── Extract original path from URL ──
-            var originalPath = null;
-            try {
-              var fullUrl = imgObj.url;
-              if (fullUrl.startsWith('/')) fullUrl = window.location.origin + fullUrl;
-              var parsed = new URL(fullUrl);
-              originalPath = parsed.searchParams.get('path') || null;
-            } catch (e2) {
-              var pm = imgObj.url.match(/[?&]path=([^&]+)/);
-              if (pm) originalPath = decodeURIComponent(pm[1]);
-            }
-            if (!originalPath && imgObj.path) originalPath = imgObj.path;
-
-            if (!originalPath) {
-              console.warn('[AutoAdjust] No path for', imgObj.name);
-              resolve(null);
-              return;
-            }
-
-            // ── Save to /edited/ ──
-            fetch('/panel/api/engine/save-edited/', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken,
-              },
-              body: JSON.stringify({
-                image_data:    dataUrl,
-                original_path: originalPath,
-                filename:      imgObj.name,
-              }),
-            })
-            .then(function (resp) {
-              if (!resp.ok) { resolve(null); return; }
-              return resp.json();
-            })
-            .then(function (data) {
-              if (data && data.success && data.saved_path) {
-                // Construct a served URL from the saved path
-                var servedUrl = '/panel/api/engine/serve-image/?path=' +
-                  encodeURIComponent(data.saved_path);
-                resolve(servedUrl);
-              } else {
-                // Image was saved but no path returned — keep old URL
-                resolve(imgObj.url);
-              }
-            })
-            .catch(function () { resolve(null); });
-
-          } catch (err) {
-            reject(err);
-          }
-        };
-
-        image.onerror = function () {
-          reject(new Error('Failed to load image: ' + imgObj.name));
-        };
-
-        image.src = imgObj.url;
-      });
+      return window.CropperAutoAdjust.adjustSingle(imgObj, csrfToken);
     },
 
     // ══════════════════════════════════════════════════════════════════
@@ -1097,31 +860,122 @@ function cropperApp() {
     },
 
     // ══════════════════════════════════════════════════════════════════
+    //  COMPRESS IMAGES — reduce file size to target KB
+    // ══════════════════════════════════════════════════════════════════
+
+    /**
+     * Open the compress modal.
+     * If there are cropped results available, offer to compress those.
+     * Otherwise, ask for a folder path (pre-fill from the main input).
+     */
+    openCompressModal() {
+      if (this.result.visible && this.result.success > 0 && this.result.outputFolder) {
+        // There are cropped images — offer to compress them directly
+        this.compressModal.source = 'results';
+        this.compressModal.folderPath = this.result.outputFolder;
+      } else {
+        // No results — ask for a folder path
+        this.compressModal.source = 'folder';
+        this.compressModal.folderPath = this.folderPath.trim();
+      }
+      this.compressModal.visible = true;
+    },
+
+    /**
+     * Start the compression process.
+     * Uses the same direct/proxy pattern as processFolder().
+     */
+    async startCompress() {
+      var targetKB = this.compressModal.targetKB;
+      var folderPath = this.compressModal.folderPath.trim();
+
+      if (!targetKB || targetKB <= 0) {
+        if (typeof Toast !== 'undefined') Toast.error('Please enter a valid target size in KB.');
+        return;
+      }
+      if (!folderPath) {
+        if (typeof Toast !== 'undefined') Toast.error('Please enter a folder path.');
+        return;
+      }
+
+      this.compressModal.visible = false;
+      this.compressing = true;
+      this.result.visible = false;
+      this.preview.visible = false;
+      this.error.visible = false;
+      this._showProgress('Compressing images…');
+
+      try {
+        this._updateProgress(10, 'Sending compression request to engine…');
+        this._startProgressSimulation();
+
+        var data;
+
+        if (this.engine.direct) {
+          // ── Direct to local engine ────────────────────────────────
+          var resp = await fetch(ENGINE_DIRECT_URL + '/compress-folder', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-ENGINE-KEY': ENGINE_API_KEY,
+            },
+            body: JSON.stringify({ folder_path: folderPath, target_kb: targetKB }),
+          });
+          if (!resp.ok) {
+            var errBody = {};
+            try { errBody = await resp.json(); } catch (_) {}
+            throw new Error(errBody.message || errBody.detail || 'Engine error ' + resp.status);
+          }
+          data = await resp.json();
+        } else {
+          // ── Django proxy fallback ─────────────────────────────────
+          data = await ApiClient.post(
+            '/panel/api/engine/compress-folder/',
+            { folder_path: folderPath, target_kb: targetKB }
+          );
+        }
+
+        this._hideProgress();
+
+        if (data && data.total != null) {
+          this._updateProgress(100, 'Compression complete!');
+          this._showResult(data);
+          if (typeof Toast !== 'undefined') {
+            Toast.success('Compression complete! ' + (data.success || 0) + '/' + (data.total || 0) + ' images compressed to ≤ ' + targetKB + ' KB');
+          }
+        } else {
+          throw new Error((data && data.message) || 'Compression failed');
+        }
+
+      } catch (err) {
+        this._hideProgress();
+        this._handleCompressError(err);
+      } finally {
+        this.compressing = false;
+      }
+    },
+
+    /**
+     * Handle compression-specific errors — delegates classification to CropperUtils.
+     */
+    _handleCompressError(err) {
+      var classified = window.CropperUtils.classifyCompressError(err);
+      if (classified.title === 'Engine Not Reachable') {
+        this.checkEngine();
+      }
+      this._showError(classified.title, classified.message);
+    },
+
+    // ══════════════════════════════════════════════════════════════════
     //  ERROR HANDLING
     // ══════════════════════════════════════════════════════════════════
     _handleProcessError(err) {
-      var title = 'Processing Error';
-      var message = (err && err.message) || 'An unknown error occurred.';
-
-      if (err && err.data && err.data.message) {
-        message = err.data.message;
-      }
-
-      if (message.indexOf('not reachable') !== -1 || message.indexOf('Cannot connect') !== -1) {
-        title = 'Engine Not Reachable';
+      var classified = window.CropperUtils.classifyProcessError(err);
+      if (classified.title === 'Engine Not Reachable') {
         // Trigger a check — engine may have gone offline mid-process
         this.checkEngine();
-      } else if (message.indexOf('Permission') !== -1 || message.indexOf('EACCES') !== -1) {
-        title = 'Permission Denied';
-        message = 'The engine does not have permission to access the specified path.';
-      } else if (message.indexOf('not exist') !== -1 || message.indexOf('not found') !== -1) {
-        title = 'Path Not Found';
-        message = 'The specified folder path does not exist on this machine.';
-      } else if (message.indexOf('timed out') !== -1 || message.indexOf('timeout') !== -1) {
-        title = 'Timeout';
       }
-
-      this._showError(title, message);
+      this._showError(classified.title, classified.message);
     },
 
     _showError(title, message) {

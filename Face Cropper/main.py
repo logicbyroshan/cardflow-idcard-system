@@ -40,6 +40,7 @@ from fastapi.responses import JSONResponse, FileResponse
 from pydantic import BaseModel
 
 from passport_engine_core import process_zip, process_folder
+from passport_engine_core.compressor import compress_folder
 from passport_engine_core.config import ENGINE_VERSION
 
 # ── Constants ────────────────────────────────────────────────────────────
@@ -236,6 +237,11 @@ class FolderRequest(BaseModel):
     folder_path: str
 
 
+class CompressRequest(BaseModel):
+    folder_path: str
+    target_kb: float
+
+
 # ── Routes ───────────────────────────────────────────────────────────────
 
 @app.get("/status")
@@ -360,6 +366,36 @@ async def process_folder_endpoint(body: FolderRequest):
     except Exception:
         logger.exception("Unexpected error during folder processing.")
         raise HTTPException(status_code=500, detail="Internal processing error.")
+
+
+@app.post("/compress-folder")
+async def compress_folder_endpoint(body: CompressRequest):
+    """
+    Accept a folder path + target KB via JSON, compress all images in the
+    folder to ≤ target_kb while preserving maximum quality.
+    Returns summary JSON matching the process-folder response shape.
+    """
+    folder = Path(body.folder_path)
+
+    if not folder.exists():
+        raise HTTPException(status_code=400, detail=f"Path does not exist: {body.folder_path}")
+    if not folder.is_dir():
+        raise HTTPException(status_code=400, detail=f"Path is not a directory: {body.folder_path}")
+    if body.target_kb <= 0:
+        raise HTTPException(status_code=400, detail="target_kb must be greater than 0.")
+
+    try:
+        logger.info("Compressing folder: %s (target: %.1f KB)", body.folder_path, body.target_kb)
+        summary = compress_folder(body.folder_path, body.target_kb)
+        return JSONResponse(content=summary)
+
+    except ValueError as exc:
+        logger.warning("Compression validation error: %s", exc)
+        raise HTTPException(status_code=422, detail=str(exc))
+
+    except Exception:
+        logger.exception("Unexpected error during compression.")
+        raise HTTPException(status_code=500, detail="Internal compression error.")
 
 
 # ── Image preview endpoints ──────────────────────────────────────────────

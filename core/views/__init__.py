@@ -129,6 +129,7 @@ from .monitoring_api import (
 from .engine_api import (
     api_engine_status,
     api_engine_process_folder,
+    api_engine_compress_folder,
     api_engine_preview,
     api_engine_serve_image,
     api_engine_save_edited,
@@ -138,6 +139,27 @@ from .engine_api import (
 from .cropper_api import (
     api_cropper_release_webhook,
     api_cropper_latest_version,
+)
+
+from .crop_api import (
+    api_prepare_crop,
+    api_process_crop,
+    api_crop_batch_preview,
+    api_crop_batch_serve_image,
+    api_reupload_cropped,
+    api_crop_batch_cleanup,
+)
+
+from .backup_api import (
+    backup_select_clients,
+    api_backup_initiate,
+    api_backup_start,
+    api_backup_status,
+    api_backup_list,
+    api_backup_cancel_auto_delete,
+    api_backup_delete_now,
+    api_backup_download,
+    api_backup_generate_code,
 )
 
 from .notification_api import (

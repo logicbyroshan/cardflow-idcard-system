@@ -193,6 +193,14 @@
 .action-bar .btn.btn-amber:hover:not(:disabled) {
     background: #d97706;
 }
+.action-bar .btn.btn-orange {
+    background: #f97316;
+    color: #fff !important;
+    border: none;
+}
+.action-bar .btn.btn-orange:hover:not(:disabled) {
+    background: #ea580c;
+}
 .action-bar .btn.btn-danger-zone {
     background: #b91c1c;
     color: #fff !important;

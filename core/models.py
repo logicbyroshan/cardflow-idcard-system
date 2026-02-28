@@ -822,3 +822,130 @@ class CropperRelease(models.Model):
         if self.is_latest:
             CropperRelease.objects.filter(is_latest=True).exclude(pk=self.pk).update(is_latest=False)
         super().save(*args, **kwargs)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  Backup System — Tracks client data backup requests
+# ═══════════════════════════════════════════════════════════════════════════
+
+class BackupTask(models.Model):
+    """
+    Tracks a backup request that exports client data as ZIP files.
+
+    Lifecycle:
+        1. Super admin enters 10-digit code → BackupTask created (pending)
+        2. Selects clients → task starts processing in background thread
+        3. Per-client ZIPs created (XLSX per status + images)
+        4. On completion → auto_delete_at set to 24 hrs from now
+        5. After 24 hrs → cleanup thread deletes ZIP files and the task
+        6. Admin can cancel auto-delete or trigger immediate deletion
+    """
+
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),           # Created, awaiting client selection
+        ('processing', 'Processing'),     # Background thread running
+        ('completed', 'Completed'),       # All ZIPs ready for download
+        ('failed', 'Failed'),             # Error during processing
+        ('deleted', 'Deleted'),           # Files manually or auto-deleted
+    ]
+
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='backup_tasks',
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='pending',
+        db_index=True,
+    )
+
+    # 10-digit confirmation code (verified on creation & destructive actions)
+    confirmation_code = models.CharField(max_length=10)
+
+    # Which clients are included (list of client IDs)
+    client_ids = models.JSONField(default=list, blank=True)
+
+    # Human-readable client names snapshot (for display after clients may be deleted)
+    client_names = models.JSONField(default=dict, blank=True)
+
+    # Progress tracking
+    progress = models.IntegerField(default=0, help_text='Number of clients processed')
+    total = models.IntegerField(default=0, help_text='Total number of clients to process')
+    current_client = models.CharField(max_length=200, blank=True, default='')
+
+    # Generated ZIP file paths (relative to MEDIA_ROOT)
+    # Format: { "client_id": {"path": "...", "filename": "...", "size": 12345} }
+    zip_files = models.JSONField(default=dict, blank=True)
+
+    # Auto-delete timer
+    auto_delete_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text='When the backup files will be automatically deleted',
+    )
+    is_auto_delete_cancelled = models.BooleanField(default=False)
+
+    # Error info
+    error_message = models.TextField(blank=True, default='')
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['status', '-created_at']),
+            models.Index(fields=['auto_delete_at']),
+        ]
+        verbose_name = 'Backup Task'
+        verbose_name_plural = 'Backup Tasks'
+
+    def __str__(self):
+        return f"Backup #{self.pk} — {self.get_status_display()} ({self.progress}/{self.total})"
+
+    @property
+    def progress_percentage(self):
+        if self.total <= 0:
+            return 0
+        return min(100, int((self.progress / self.total) * 100))
+
+    @property
+    def is_active(self):
+        return self.status in ('pending', 'processing')
+
+    @property
+    def time_remaining_seconds(self):
+        """Seconds until auto-delete (None if cancelled or no timer)."""
+        if self.is_auto_delete_cancelled or not self.auto_delete_at:
+            return None
+        from django.utils import timezone
+        delta = (self.auto_delete_at - timezone.now()).total_seconds()
+        return max(0, int(delta))
+
+    def cleanup_files(self):
+        """Delete all generated ZIP files from disk."""
+        import os
+        from django.conf import settings as _s
+        for cid, info in (self.zip_files or {}).items():
+            fpath = info.get('path', '')
+            if not fpath:
+                continue
+            full = os.path.join(_s.MEDIA_ROOT, fpath) if not os.path.isabs(fpath) else fpath
+            try:
+                if os.path.exists(full):
+                    os.remove(full)
+            except Exception:
+                pass
+        # Also try to remove the backup directory
+        backup_dir = os.path.join(_s.MEDIA_ROOT, 'temp', 'backups', str(self.pk))
+        try:
+            if os.path.isdir(backup_dir):
+                import shutil
+                shutil.rmtree(backup_dir, ignore_errors=True)
+        except Exception:
+            pass

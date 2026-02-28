@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
   <!-- Page-specific: dashboard cards, stats, activity -->
   <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+  <link rel="stylesheet" href="{% static 'css/backup.css' %}">
   <link rel="stylesheet" href="{% static 'css/global-search.css' %}">
   <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
   <!-- Alpine.js State Module (MUST load before Alpine) -->
@@ -67,6 +68,9 @@
   {% include 'partials/dashboard/delete-modal.html' %}
   {% include 'partials/dashboard/upgrade-modal.html' %}
   {% include 'partials/dashboard/reupload-modal.html' %}
+  {% if is_super_admin %}
+  {% include 'partials/dashboard/backup-modal.html' %}
+  {% endif %}
 
   <!-- Core Modules (Load Order: api → toast → modal → utils → init) -->
   <script defer src="{% static 'js/core/api.js' %}"></script>

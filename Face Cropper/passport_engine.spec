@@ -39,6 +39,7 @@ hiddenimports = (
         "passport_engine_core.engine",
         "passport_engine_core.extractor",
         "passport_engine_core.processor",
+        "passport_engine_core.compressor",
         "passport_engine_core.validators",
         "multipart",
         "PIL",
@@ -96,7 +97,7 @@ pyz = PYZ(a.pure)
 # ── EXE ──────────────────────────────────────────────────────────────────
 # ── Version Info (embedded in the EXE → shows in Properties → Details) ───────
 # This makes the EXE look legitimate to Windows Defender / SmartScreen.
-# The version string "2.1.8.0" is auto-stamped by CI from the git tag.
+# The version string "2.2.0.0" is auto-stamped by CI from the git tag.
 version_file = os.path.join(PROJECT_DIR, "version_info.txt")
 icon_file = os.path.join(PROJECT_DIR, "adarsh_cropper.ico")
 

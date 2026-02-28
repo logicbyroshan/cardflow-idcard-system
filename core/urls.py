@@ -66,6 +66,15 @@ urlpatterns = [
     path('api/engine/serve-image/', views.api_engine_serve_image, name='api_engine_serve_image'),
     path('api/engine/save-edited/', views.api_engine_save_edited, name='api_engine_save_edited'),
     path('api/engine/delete-image/', views.api_engine_delete_image, name='api_engine_delete_image'),
+    path('api/engine/compress-folder/', views.api_engine_compress_folder, name='api_engine_compress_folder'),
+
+    # Crop Selected Images APIs (batch crop workflow)
+    path('api/table/<int:table_id>/cards/prepare-crop/', views.api_prepare_crop, name='api_prepare_crop'),
+    path('api/table/<int:table_id>/cards/process-crop/', views.api_process_crop, name='api_process_crop'),
+    path('api/crop-batch/<str:batch_id>/preview/', views.api_crop_batch_preview, name='api_crop_batch_preview'),
+    path('api/crop-batch/<str:batch_id>/serve-image/', views.api_crop_batch_serve_image, name='api_crop_batch_serve_image'),
+    path('api/table/<int:table_id>/cards/reupload-cropped/', views.api_reupload_cropped, name='api_reupload_cropped'),
+    path('api/crop-batch/<str:batch_id>/cleanup/', views.api_crop_batch_cleanup, name='api_crop_batch_cleanup'),
 
     # Cropper Auto-Update APIs
     path('api/cropper/release-webhook/', views.api_cropper_release_webhook, name='api_cropper_release_webhook'),
@@ -76,6 +85,17 @@ urlpatterns = [
     
     # Manage Panel
     path('manage-panel/', views.manage_panel, name='manage_panel'),
+    
+    # ==================== BACKUP ====================
+    path('backup/select-clients/', views.backup_select_clients, name='backup_select_clients'),
+    path('api/backup/generate-code/', views.api_backup_generate_code, name='api_backup_generate_code'),
+    path('api/backup/initiate/', views.api_backup_initiate, name='api_backup_initiate'),
+    path('api/backup/start/', views.api_backup_start, name='api_backup_start'),
+    path('api/backup/list/', views.api_backup_list, name='api_backup_list'),
+    path('api/backup/status/<int:task_id>/', views.api_backup_status, name='api_backup_status'),
+    path('api/backup/<int:task_id>/cancel-auto-delete/', views.api_backup_cancel_auto_delete, name='api_backup_cancel_auto_delete'),
+    path('api/backup/<int:task_id>/delete-now/', views.api_backup_delete_now, name='api_backup_delete_now'),
+    path('api/backup/download/<int:task_id>/<int:client_id>/', views.api_backup_download, name='api_backup_download'),
     
     # Notifications Page (all authenticated users)
     path('notifications/', views.notifications_page, name='notifications_page'),
