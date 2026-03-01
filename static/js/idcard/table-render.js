@@ -98,17 +98,32 @@
         if (!name) return 'min-w-[80px] whitespace-normal break-words';
         var n = name.toLowerCase().trim();
         var t = (type || '').toLowerCase();
-        // Relationship columns (REL 1, REL 2, RELATION, etc.) — short fixed width
-        if (/^rel\s*\d*$|^relation|^relative/.test(n))                  return 'w-[62px] min-w-[62px] text-center whitespace-nowrap';
-        // Phone/mobile: allow wrapping for slash-joined double numbers
+        // ── Serial / row ─────────────────────────────────────────────────
+        if (/^sr\s*no|^s\s*no|^sl\s*no|^serial|^sno$|^slno$/.test(n))  return 'w-[36px] text-center whitespace-nowrap';
+        // ── Relationship (REL 1, REL 2, RELATION, etc.) ──────────────────
+        if (/^rel\s*\d*$|^relati?[ov]/.test(n))                          return 'w-[62px] min-w-[62px] text-center whitespace-nowrap';
+        // ── Age / Gender / Blood Group — very narrow, no-wrap ────────────
+        if (/^age$/.test(n))                                             return 'w-[38px] text-center whitespace-nowrap';
+        if (/^gender$|^sex$|^gndr$/.test(n))                             return 'w-[45px] text-center whitespace-nowrap';
+        if (/blood|^bg$|^b\.?g\.?$|blood.*gr/.test(n))                   return 'w-[45px] text-center whitespace-nowrap';
+        // ── Class / Section / House — narrow, no-wrap ────────────────────
+        if (/class.*sec|^class$|^section$|^sec$|^div$|school\s*house|house\s*nam|house\s*col/.test(n)) return 'w-[52px] text-center whitespace-nowrap';
+        // ── Dates — no-wrap ──────────────────────────────────────────────
+        if (t === 'date' || /\bdob\b|\bdate\b|\bvalid/.test(n))          return 'w-[80px] whitespace-nowrap text-center';
+        // ── Phone/mobile — allow wrap for slash-joined double numbers ─────
         if (/\bphone\b|\bmobile\b|\bcontact\b|\bwhatsapp\b|\btel\b|\bmob\b/.test(n)) return 'min-w-[95px] max-w-[135px] whitespace-normal break-words text-center';
-        if (t === 'date' || /\bdob\b|\bdate\b/.test(n))               return 'w-[80px] whitespace-nowrap text-center';
-        if (/^class$|^section$|^div$/.test(n))                         return 'w-[40px] text-center';
-        if (/\bblood\b|\bgroup\b/.test(n))                             return 'w-[45px] text-center';
-        if (/\bname\b/.test(n))                                        return 'min-w-[100px] text-left';
-        if (/^gender$|^sex$/.test(n))                                  return 'w-[40px] text-center';
-        if (t === 'textarea' || /\baddress\b/.test(n))                 return 'min-w-[100px] max-w-[180px] text-left';
-        return 'min-w-[80px] text-left';
+        // ── Hard-format IDs — no-wrap ────────────────────────────────────
+        if (/aadhaar|aadhar|adhar|\bpan\s*no|\bpan$|voter|driving/.test(n)) return 'min-w-[90px] whitespace-nowrap text-center';
+        if (/\broll\b|\bregist|\benroll|\badmis|emp\s*code|scholar|\bsch\s*no\b|unique\s*no/.test(n)) return 'min-w-[70px] whitespace-nowrap text-center';
+        // ── Names — left-aligned, wrapping ────────────────────────────────
+        if (/\bname\b|father|mother|guardian|spouse|husband|wife/.test(n)) return 'min-w-[100px] text-left whitespace-normal break-words';
+        // ── Address — wider and wrapping ────────────────────────────────
+        if (t === 'textarea' || /\baddress\b|permanen|current\s*add/.test(n)) return 'min-w-[110px] max-w-[180px] text-left whitespace-normal break-words';
+        // ── Organisation text — wrapping ─────────────────────────────────
+        if (/college|^school$|institute|^branch$|department|\bdept\b|designation|^stream$/.test(n)) return 'min-w-[80px] text-center whitespace-normal break-words';
+        // ── Bus / transport short fields ─────────────────────────────────
+        if (/bus|stop\s*name|route\s*no|driver/.test(n))                  return 'min-w-[60px] text-center whitespace-normal break-words';
+        return 'min-w-[80px] text-left whitespace-normal break-words';
     }
 
     function _getCardName(card) {

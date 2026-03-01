@@ -1,0 +1,111 @@
+Full Name
+First Name
+Middle Name
+Last Name / Surname
+Father’s Name
+Mother’s Name
+Guardian Name
+Husband/Wife Name
+Date of Birth (DD/MM/YYYY)
+Age
+Gender
+Blood Group
+Nationality
+Religion (if required)
+Caste Category (GEN/OBC/SC/ST – if required)
+Marital Status
+Photograph (Passport Size)
+Employee / Student Signature
+Thumb Impression
+QR Code
+Barcode
+RFID Tag
+NFC Chip
+Smart Chip
+Hologram Security Sticker
+ID Card Number
+Roll Number
+employee code
+Admission Number
+Registration Number
+Enrollment Number
+Aadhaar Number
+PAN Number
+Voter ID Number
+Driving License Number
+Passport Number
+Ration Card Number
+ESIC Number
+PF / UAN Number
+ABHA ID (Health ID)
+Ayushman Bharat ID
+Address
+Branch Name
+Department
+Designation
+Course Name
+Class / Section
+Batch
+Year of Joining
+Valid From
+Valid Till
+Reporting Manager
+Permanent Address
+Current Address
+City
+District
+State
+PIN Code
+Country
+Mobile Number
+Alternate Mobile Number
+Email ID
+Emergency Contact Person
+Emergency Contact Number
+Office Contact Number
+Blood Group
+Allergies
+Medical Conditions
+Disability Details
+Course Duration
+Stream (Science/Commerce/Arts)
+Semester
+Hostel Room Number
+Bus Route Number
+Library Card Number
+Lab Access Code
+Designation
+Department
+Employee Type (Permanent/Contract/Intern)
+Grade Level
+Shift Timing
+Access Level
+Work Location
+Date of Joining
+Employee Status (Active/Inactive)
+Rank (Police/Defense)
+Service Number
+Posting Location
+Validity Period
+Post/designation
+scholar number
+contact number
+unique number
+teacher code
+sr.no./serial no.serial number
+college name/school name/institute name
+relation
+department
+Primary Mobile No.
+father mobile
+mother mobile
+emergency contact no
+school house name/school house colour
+route number
+stop name
+stop number
+bus facility
+bus stop
+driver name
+driver number
+shift

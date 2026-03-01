@@ -415,7 +415,7 @@ FIELD_ALIASES: List[Tuple[str, str]] = [
     # ── Images (checked early so they don't false-match text rules)
     (r'thumb\s*imp|thumb\s*print', 'photo'),
     (r'photograph|passport\s*size|photo|pic|picture|image|img', 'photo'),
-    (r'signature|sign', 'signature'),
+    (r'signature|\bsign\b', 'signature'),   # \bsign\b avoids matching inside 'designation'
     (r'qr\s*code|barcode|rfid|nfc|smart\s*chip|hologram', 'qr_barcode'),
 
     # ── Parent/guardian phone numbers (checked BEFORE parent name patterns)
@@ -435,6 +435,8 @@ FIELD_ALIASES: List[Tuple[str, str]] = [
      r'|^name$|^nm$|^nme$', 'full_name'),
     (r'reporting\s*manager|manager\s*n(a?me?)?', 'reporting_manager'),
     (r'emergency\s*contact\s*person', 'full_name'),
+    # Driver / conductor names (checked after guardian/parent so those win first)
+    (r'driver\s*(?:full\s*)?name|conductor\s*name', 'full_name'),
 
     # ── Dates (dob, d.o.b, date of birth, birthdate, joining dt) ─
     (r'd\.?\s*o\.?\s*b\.?|date\s*of\s*birth|birth\s*date|b\.?date', 'date'),
@@ -484,21 +486,28 @@ FIELD_ALIASES: List[Tuple[str, str]] = [
     (r'abha|ayushman|health\s*id', 'health_id'),
 
     # ── ESIC / PF / UAN ─────────────────────────────────────────
-    (r'esic|pf\s*no|uan\s*no|uan\s*num|epf', 'id_number'),
+    (r'esic|\bpf\b|uan\s*no|uan\s*num|\buan\b|\bepf\b', 'id_number'),
 
     # ── Generic ID numbers ───────────────────────────────────────
-    (r'id\s*card\s*no|id\s*no|idno|^id$', 'id_number'),
+    (r'id\s*card\s*no|id\s*card\s*num|id\s*no|idno|^id$', 'id_number'),
     (r'roll\s*no|roll\s*num|^roll$', 'id_number'),
     (r'emp\s*code|employee\s*code|emp\s*id|staff\s*id', 'id_number'),
-    (r'admis?si?on\s*no|adm\s*no', 'id_number'),
+    (r'admis?si?on\s*(?:no|num\w*)|adm\s*no', 'id_number'),
     (r'reg\s*no|registra?ti?on|enrol', 'id_number'),
     (r'service\s*no|service\s*num', 'service_number'),
+    # Extra ID types common in Indian schools / organisations
+    (r'scholar\s*(?:no|num|id|code)?\b|^scholar$', 'id_number'),
+    (r'unique\s*(?:no|num|id|code)|^unique$', 'id_number'),
+    (r'teacher\s*(?:code|id|no)|^sch\s*no$|\bsch\s*no\b|school\s*(?:no|num|id)', 'id_number'),
 
     # ── Misc short (BEFORE phone to prevent false matches) ─────
     (r'hostel|room\s*no', 'hostel_room'),
-    (r'bus\s*route', 'bus_route'),
+    (r'bus\s*route|bus\s*stop|\bbus\s*no\b', 'bus_route'),
+    (r'stop\s*name|stop\s*no|stop\s*num|route\s*(?:no|num|name)', 'bus_route'),
     (r'library\s*card|library\s*no', 'library_card'),
     (r'lab\s*access|lab\s*code', 'lab_access'),
+    # Bus / vehicle staff contact (put BEFORE general phone pattern)
+    (r'driver\s*(?:no\b|numb?\w*|mob|pho?ne?|cell|contact|tel)', 'mobile'),
 
     # ── Phone / Mobile (mob, mob no, ph no, fone, contact num) ───
     (r'mobi?le?|pho?ne?|cell\b|tel\b|whatsapp|^mob\b|^ph\b|fone'
@@ -519,11 +528,18 @@ FIELD_ALIASES: List[Tuple[str, str]] = [
     (r'^country$', 'country'),
 
     # ── Organisation / Education ─────────────────────────────────
+    # Institution / school / college names (before branch to be more specific)
+    (r'college\s*name|^college$|school\s*name|^school$'
+     r'|institu\w*\s*name|^institute$|^institution$|^university$', 'branch'),
     (r'^branch$|branch\s*name', 'branch'),
     (r'^depart?me?nt$|^dept$|depart?me?nt\s*name', 'department'),
-    (r'^designa?ti?on$|^desig$', 'designation'),
+    # Designation: no strict anchors so 'post/designation' matches too
+    (r'designa?ti?on|\bdesig\b|\bpost\b', 'designation'),
     (r'course\s*n(a?me?)?|^course$|course\s*dur', 'course'),
-    (r'^class$|^section$|^sec$|^div$|^division$|^cls$', 'class_section'),
+    # House names (colour/badge): checked BEFORE general class/section
+    (r'school\s*house|house\s*(?:name|col|badge|colour|color)', 'class_section'),
+    # Class/section — compound form ('Class / Section') and simple
+    (r'class\s*section|class\s*sec\b|^class$|^section$|^sec$|^div$|^division$|^cls$', 'class_section'),
     (r'^batch$|^batch\s*no', 'batch'),
     (r'^semester$|^sem$', 'semester'),
     (r'^stream$|science.*commerce.*arts|^strm$', 'stream'),
@@ -537,7 +553,7 @@ FIELD_ALIASES: List[Tuple[str, str]] = [
     (r'emp\s*status|employee\s*status|^status$', 'employee_status'),
 
     # ── Defence / Police ─────────────────────────────────────────
-    (r'^rank$', 'rank'),
+    (r'\brank\b', 'rank'),   # word-boundary: catches 'Rank (Police/Defense)' too
 
     # ── Medical ──────────────────────────────────────────────────
     (r'allerg', 'allergies'),
