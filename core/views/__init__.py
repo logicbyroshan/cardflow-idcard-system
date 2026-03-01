@@ -24,6 +24,7 @@ from .base import (
     group_settings,
     manage_website,
     manage_panel,
+    api_email_logs,
     settings,
     api_export_settings_get,
     api_export_settings_update,

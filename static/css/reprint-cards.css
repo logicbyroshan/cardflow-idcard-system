@@ -64,37 +64,7 @@
 }
 
 /* ===========================================
-   TAB 3 — DOWNLOAD REPRINTS (Green)
-   =========================================== */
-.reprint-download-tab {
-  background: #d1fae5;
-  color: #065f46;
-  border: 1px solid #6ee7b7;
-}
-
-.reprint-download-tab:hover {
-  background: #a7f3d0;
-}
-
-.reprint-download-tab .tab-count {
-  background: #10b981;
-  color: #fff;
-}
-
-.reprint-download-tab.active {
-  background: #10b981;
-  color: #fff;
-  border-color: #059669;
-  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
-}
-
-.reprint-download-tab.active .tab-count {
-  background: #fff;
-  color: #10b981;
-}
-
-/* ===========================================
-   TAB 4 — REPRINT POOL (Gray-Blue)
+   TAB 3 — REPRINT POOL (Gray-Blue)
    =========================================== */
 .reprint-pool-tab {
   background: #e0e7ff;

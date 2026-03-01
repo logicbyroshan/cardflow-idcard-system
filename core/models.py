@@ -46,6 +46,8 @@ class User(AbstractUser):
     # DEPRECATED: profile_image removed - use frontend placeholder avatars instead
     # profile_image field removed in Phase 1 refactor
     is_active = models.BooleanField(default=True)
+    # Tracks whether the welcome email has been sent (set True on first activation)
+    welcome_email_sent = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -949,3 +951,59 @@ class BackupTask(models.Model):
                 shutil.rmtree(backup_dir, ignore_errors=True)
         except Exception:
             pass
+
+
+# =============================================================================
+# EMAIL LOG
+# =============================================================================
+
+class EmailLog(models.Model):
+    """
+    Log record for every outbound email.
+    status values:
+      on_hold  – created but not sent (account not yet activated)
+      pending  – queued but not yet delivered
+      sent     – successfully delivered
+      failed   – delivery attempt failed
+    """
+    STATUS_ON_HOLD = 'on_hold'
+    STATUS_PENDING = 'pending'
+    STATUS_SENT = 'sent'
+    STATUS_FAILED = 'failed'
+
+    STATUS_CHOICES = [
+        (STATUS_ON_HOLD, 'On Hold'),
+        (STATUS_PENDING, 'Pending'),
+        (STATUS_SENT, 'Sent'),
+        (STATUS_FAILED, 'Failed'),
+    ]
+
+    EMAIL_TYPE_WELCOME = 'welcome'
+    EMAIL_TYPE_TEMP_PASSWORD = 'temp_password'
+    EMAIL_TYPE_PASSWORD_CHANGE = 'password_change'
+
+    TYPE_CHOICES = [
+        (EMAIL_TYPE_WELCOME, 'Welcome / Activation'),
+        (EMAIL_TYPE_TEMP_PASSWORD, 'Temp Password'),
+        (EMAIL_TYPE_PASSWORD_CHANGE, 'Password Change Notice'),
+    ]
+
+    recipient_name = models.CharField(max_length=200)
+    recipient_email = models.EmailField(db_index=True)
+    subject = models.CharField(max_length=300)
+    email_type = models.CharField(max_length=30, choices=TYPE_CHOICES, db_index=True)
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES,
+        default=STATUS_PENDING, db_index=True
+    )
+    error_message = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Email Log'
+        verbose_name_plural = 'Email Logs'
+
+    def __str__(self):
+        return f'[{self.status}] {self.email_type} → {self.recipient_email}'

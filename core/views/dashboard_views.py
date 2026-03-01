@@ -281,7 +281,6 @@ def api_print_reprint_overview(request):
         ).values('table__group__client_id').annotate(
             requested=Count('id', filter=Q(status='requested')),
             confirmed=Count('id', filter=Q(status='confirmed')),
-            downloaded=Count('id', filter=Q(status='downloaded')),
             pool=Count('id', filter=Q(status='pool')),
         )
         reprint_map = {r['table__group__client_id']: r for r in reprint_counts_qs}
@@ -292,7 +291,6 @@ def api_print_reprint_overview(request):
         ).values('table__id', 'table__name', 'table__group__client_id').annotate(
             requested=Count('id', filter=Q(status='requested')),
             confirmed=Count('id', filter=Q(status='confirmed')),
-            downloaded=Count('id', filter=Q(status='downloaded')),
             pool=Count('id', filter=Q(status='pool')),
         ).order_by('table__id')
         reprint_tables_map = {}
@@ -305,7 +303,6 @@ def api_print_reprint_overview(request):
                 'name': t['table__name'],
                 'requested': t['requested'],
                 'confirmed': t['confirmed'],
-                'downloaded': t['downloaded'],
                 'pool': t['pool'],
             })
 
@@ -330,7 +327,6 @@ def api_print_reprint_overview(request):
                 'name': c.name,
                 'requested': rc.get('requested', 0),
                 'confirmed': rc.get('confirmed', 0),
-                'downloaded': rc.get('downloaded', 0),
                 'pool': rc.get('pool', 0),
                 'tables': reprint_tables_map.get(c.id, []),
             })

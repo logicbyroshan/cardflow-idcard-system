@@ -181,7 +181,7 @@ def client_reprint_cards(request, table_id):
         return redirect('/panel/client/idcard-group/')
     
     current_step = request.GET.get('step', 'reprint_list')
-    if current_step not in ('reprint_list', 'confirmed', 'download', 'pool'):
+    if current_step not in ('reprint_list', 'confirmed', 'pool'):
         current_step = 'reprint_list'
     
     # Real step counts from ReprintRequest table (single aggregate query)
@@ -189,13 +189,11 @@ def client_reprint_cards(request, table_id):
     step_counts_raw = ReprintRequest.objects.filter(table=table).aggregate(
         rl=AggCount('id', filter=Q(status='requested')),
         cl=AggCount('id', filter=Q(status='confirmed')),
-        dl=AggCount('id', filter=Q(status='downloaded')),
         pl=AggCount('id', filter=Q(status='pool')),
     )
     step_counts = {
         'reprint_list': step_counts_raw['rl'],
         'confirmed': step_counts_raw['cl'],
-        'download': step_counts_raw['dl'],
         'pool': step_counts_raw['pl'],
     }
     
@@ -251,30 +249,6 @@ def client_reprint_cards(request, table_id):
                 'updated_at': rr.card.updated_at,
             })
 
-    # Download — status='downloaded'
-    download_items = []
-    download_total = 0
-    if current_step == 'download':
-        dl_qs = ReprintRequest.objects.filter(
-            table=table, status='downloaded',
-        ).select_related('card', 'requested_by').order_by('-updated_at')
-        download_total = dl_qs.count()
-        dl_batch = dl_qs[:INITIAL_LOAD_LIMIT]
-        for idx, rr in enumerate(dl_batch):
-            req_by = rr.requested_by
-            download_items.append({
-                'rr_id': rr.id,
-                'card_id': rr.card_id,
-                'sr_no': idx + 1,
-                'status': rr.card.status,
-                'get_status_display': rr.card.get_status_display(),
-                'reason': rr.reason,
-                'requested_by_name': (req_by.get_full_name() or req_by.username) if req_by else 'System',
-                'downloaded_at': rr.updated_at,
-                'ordered_fields': _build_ordered_fields(rr.card, table),
-                'updated_at': rr.card.updated_at,
-            })
-
     # Pool — status='pool'
     pool_items = []
     pool_total = 0
@@ -313,9 +287,6 @@ def client_reprint_cards(request, table_id):
         'confirmed_items': confirmed_items,
         'confirmed_total': confirmed_total,
         'confirmed_has_more': confirmed_total > INITIAL_LOAD_LIMIT,
-        'download_items': download_items,
-        'download_total': download_total,
-        'download_has_more': download_total > INITIAL_LOAD_LIMIT,
         'pool_items': pool_items,
         'pool_total': pool_total,
         'pool_has_more': pool_total > INITIAL_LOAD_LIMIT,

@@ -11,8 +11,9 @@ from django.shortcuts import get_object_or_404
 from django.db import transaction
 from django.utils.timezone import localtime
 
-from ..models import Staff, User, Client
+from ..models import Staff, User, Client, EmailLog
 from ..utils import send_welcome_email
+from ..utils.email_utils import generate_secure_password
 from .base import BaseService, ServiceResult
 
 logger = logging.getLogger(__name__)
@@ -156,8 +157,8 @@ class StaffService(BaseService):
             role = 'admin_staff' if staff_type == 'admin_staff' else 'client_staff'
             
             with transaction.atomic():
-                # Create user
-                is_active = cls.parse_bool(data.get('is_active', True))
+                # Create user — inactive by default; welcome email sent on first activation
+                is_active = cls.parse_bool(data.get('is_active', False))
                 user = User.objects.create_user(
                     username=username,
                     email=email,
@@ -202,7 +203,6 @@ class StaffService(BaseService):
                 # Assign clients (M2M)
                 assigned_client_ids = data.get('assigned_clients', [])
                 if assigned_client_ids:
-                    # Handle JSON string from FormData
                     if isinstance(assigned_client_ids, str):
                         try:
                             assigned_client_ids = json.loads(assigned_client_ids)
@@ -215,33 +215,22 @@ class StaffService(BaseService):
                         staff.assigned_clients.set(clients)
                     except (ValueError, TypeError):
                         pass  # Skip invalid IDs
-            
-            # Send welcome email
-            email_sent = False
-            email_message = ''
-            if email and request:
-                email_sent, email_message = send_welcome_email(
-                    name=name or user.get_full_name() or 'User',
-                    email=email,
-                    password=password,
-                    role=role,
-                    request=request,
-                    phone=phone
+                
+                # Log email as on_hold — will be sent on first activation
+                EmailLog.objects.create(
+                    recipient_name=name or user.get_full_name(),
+                    recipient_email=email,
+                    subject='Welcome to Adarsh Admin - Your Account is Ready!',
+                    email_type=EmailLog.EMAIL_TYPE_WELCOME,
+                    status=EmailLog.STATUS_ON_HOLD,
                 )
-            
-            message = 'Staff created successfully!'
-            if email_sent:
-                message += ' Welcome email sent.'
-            elif email_message:
-                logger.warning('Welcome email not sent for staff %s: %s', email, email_message)
-                message += ' (Welcome email could not be sent)'
             
             return ServiceResult(
                 success=True,
-                message=message,
+                message='Staff created successfully! Welcome email will be sent on first activation.',
                 data={
                     'staff': cls.serialize(staff, include_permissions=False),
-                    'email_sent': email_sent,
+                    'email_sent': False,
                 }
             )
             
@@ -368,23 +357,64 @@ class StaffService(BaseService):
     
     @classmethod
     def toggle_status(cls, staff_id: int) -> ServiceResult:
-        """Toggle staff active/inactive status (atomic to prevent lost toggles)"""
+        """Toggle staff active/inactive status (atomic to prevent lost toggles).
+        On the FIRST activation, generates fresh credentials and sends a welcome email.
+        """
         try:
+            send_welcome = False
+            welcome_info = {}
+
             with transaction.atomic():
                 staff = Staff.objects.select_related('user').select_for_update().get(id=staff_id)
                 user = staff.user
+                is_first_activation = not user.is_active and not user.welcome_email_sent
                 user.is_active = not user.is_active
                 status = 'active' if user.is_active else 'inactive'
                 status_display = 'Active' if user.is_active else 'Inactive'
-                user.save(update_fields=['is_active'])
-            
+
+                if user.is_active and is_first_activation:
+                    first_password = generate_secure_password()
+                    user.set_password(first_password)
+                    user.welcome_email_sent = True
+                    user.save(update_fields=['is_active', 'welcome_email_sent', 'password'])
+                    send_welcome = True
+                    welcome_info = {
+                        'name': user.get_full_name(),
+                        'email': user.email,
+                        'password': first_password,
+                        'phone': user.phone or '',
+                        'role': staff.staff_type,
+                    }
+                else:
+                    user.save(update_fields=['is_active'])
+
+            if send_welcome:
+                try:
+                    send_welcome_email(
+                        name=welcome_info['name'],
+                        email=welcome_info['email'],
+                        password=welcome_info['password'],
+                        role=welcome_info['role'],
+                        phone=welcome_info['phone'],
+                    )
+                    EmailLog.objects.filter(
+                        recipient_email=welcome_info['email'],
+                        email_type=EmailLog.EMAIL_TYPE_WELCOME,
+                        status=EmailLog.STATUS_ON_HOLD,
+                    ).update(status=EmailLog.STATUS_SENT)
+                except Exception as email_err:
+                    logger.warning('First-activation welcome email failed for %s: %s', welcome_info['email'], email_err)
+                    EmailLog.objects.filter(
+                        recipient_email=welcome_info['email'],
+                        email_type=EmailLog.EMAIL_TYPE_WELCOME,
+                        status=EmailLog.STATUS_ON_HOLD,
+                    ).update(status=EmailLog.STATUS_FAILED, error_message=str(email_err))
+
+            extra = ' Welcome email sent!' if send_welcome else ''
             return ServiceResult(
                 success=True,
-                message=f'Staff status changed to {status_display}!',
-                data={
-                    'status': status,
-                    'status_display': status_display
-                }
+                message=f'Staff status changed to {status_display}!{extra}',
+                data={'status': status, 'status_display': status_display}
             )
         except Staff.DoesNotExist:
             return ServiceResult(success=False, message='Staff not found')
@@ -425,7 +455,7 @@ class StaffService(BaseService):
     def set_temp_password(cls, staff_id: int, new_password: str, request=None) -> ServiceResult:
         """
         Set a temporary password for a staff user.
-        Sends a notification email (no password in email, just a notice).
+        Sends a welcome email with the new credentials so the user knows their password.
         """
         try:
             staff = Staff.objects.filter(id=staff_id).select_related('user').first()
@@ -442,17 +472,26 @@ class StaffService(BaseService):
             user.set_password(new_password)
             user.save(update_fields=['password'])
 
-            # Send notification email (no password in email)
-            from ..utils.email_utils import send_password_changed_notification
+            # Send welcome email with the new temporary password
             email_sent = False
             try:
-                email_sent = send_password_changed_notification(
+                email_sent, _ = send_welcome_email(
                     name=user.get_full_name(),
                     email=user.email,
+                    password=new_password,
+                    role=staff.staff_type,
+                    phone=user.phone or '',
                     request=request,
                 )
+                EmailLog.objects.create(
+                    recipient_name=user.get_full_name(),
+                    recipient_email=user.email,
+                    subject='Your Temporary Password — Adarsh Admin',
+                    email_type=EmailLog.EMAIL_TYPE_TEMP_PASSWORD,
+                    status=EmailLog.STATUS_SENT if email_sent else EmailLog.STATUS_FAILED,
+                )
             except Exception as e:
-                logger.warning('Password change email failed for %s: %s', user.email, e)
+                logger.warning('Temp password email failed for %s: %s', user.email, e)
 
             return ServiceResult(
                 success=True,

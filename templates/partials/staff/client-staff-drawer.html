@@ -123,21 +123,19 @@ Mirrors admin staff-drawer.html but with Group Assignment instead of Client Assi
                     </div>
                 </div>
                 
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="staff-address">Address</label>
-                        <textarea id="staff-address" name="address" rows="2" placeholder="Enter address (optional)"></textarea>
-                    </div>
+                <div class="form-group" style="width:100%;">
+                    <label for="staff-address">Address</label>
+                    <textarea id="staff-address" name="address" rows="2" placeholder="Enter address (optional)"></textarea>
+                </div>
+
+                <div class="form-row" id="staffPasswordOptionRow">
                     <div class="form-group">
                         <label for="staff-status">Status</label>
                         <select id="staff-status" name="is_active">
                             <option value="true">Active</option>
-                            <option value="false">Inactive</option>
+                            <option value="false" selected>Inactive</option>
                         </select>
                     </div>
-                </div>
-
-                <div class="form-row" id="staffPasswordOptionRow">
                     <div class="form-group">
                         <label>Password Option</label>
                         <select id="staff-password-option" name="password_option">
@@ -145,10 +143,11 @@ Mirrors admin staff-drawer.html but with Group Assignment instead of Client Assi
                             <option value="custom">Custom Password</option>
                         </select>
                     </div>
-                    <div class="form-group" id="staffCustomPasswordGroup" style="display: none;">
-                        <label for="staff-password">Password <span class="required">*</span></label>
-                        <input type="password" id="staff-password" name="password" placeholder="Enter custom password" autocomplete="new-password">
-                    </div>
+                </div>
+
+                <div class="form-group" id="staffCustomPasswordGroup" style="display: none;">
+                    <label for="staff-password">Password <span class="required">*</span></label>
+                    <input type="password" id="staff-password" name="password" placeholder="Enter custom password" autocomplete="new-password">
                 </div>
             </div>
             

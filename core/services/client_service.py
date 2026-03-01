@@ -9,9 +9,13 @@ from django.shortcuts import get_object_or_404
 from django.db import transaction
 from django.utils.timezone import localtime
 
-from ..models import Client, Staff, User
+from ..models import Client, Staff, User, EmailLog
 from ..utils import send_welcome_email
+from ..utils.email_utils import generate_secure_password
 from .base import BaseService, ServiceResult
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 class ClientService(BaseService):
@@ -145,7 +149,7 @@ class ClientService(BaseService):
                     return ServiceResult(success=False, message=str(pw_err))
             
             with transaction.atomic():
-                # Create user
+                # Create user — inactive by default; welcome email sent on first activation
                 user = User.objects.create_user(
                     username=username,
                     email=email,
@@ -154,6 +158,7 @@ class ClientService(BaseService):
                     last_name=' '.join(name_parts[1:]) if len(name_parts) > 1 else '',
                     phone=data.get('phone', ''),
                     role='client',
+                    is_active=False,
                 )
                 
                 # Build client kwargs
@@ -164,7 +169,7 @@ class ClientService(BaseService):
                     'city': data.get('city', ''),
                     'state': data.get('state', ''),
                     'pincode': data.get('pincode', ''),
-                    'status': 'active',
+                    'status': 'inactive',
                 }
                 
                 # Add permissions
@@ -175,34 +180,22 @@ class ClientService(BaseService):
                 client = Client.objects.create(**client_kwargs)
                 
                 # Phase 1: Photo field removed - using avatar placeholder
-            
-            # Send welcome email
-            email_sent = False
-            email_message = ''
-            if email and request:
-                email_sent, email_message = send_welcome_email(
-                    name=name or 'Client',
-                    email=email,
-                    password=password,
-                    role='client',
-                    request=request,
-                    phone=phone
+                
+                # Log email as on_hold — will be sent on first activation
+                EmailLog.objects.create(
+                    recipient_name=name or 'Client',
+                    recipient_email=email,
+                    subject='Welcome to Adarsh Admin - Your Account is Ready!',
+                    email_type=EmailLog.EMAIL_TYPE_WELCOME,
+                    status=EmailLog.STATUS_ON_HOLD,
                 )
-            
-            message = 'Client created successfully!'
-            if email_sent:
-                message += ' Welcome email sent.'
-            elif email_message:
-                # Log the actual error server-side, but don't expose details to user
-                import logging
-                logging.getLogger(__name__).warning('Welcome email failed for %s: %s', email, email_message)
             
             return ServiceResult(
                 success=True,
-                message=message,
+                message='Client created successfully! Welcome email will be sent on first activation.',
                 data={
                     'client': cls.serialize(client, include_permissions=False),
-                    'email_sent': email_sent,
+                    'email_sent': False,
                 }
             )
             
@@ -376,38 +369,85 @@ class ClientService(BaseService):
     
     @classmethod
     def toggle_status(cls, client_id: int) -> ServiceResult:
-        """Toggle client active/inactive status (atomic to prevent lost toggles)"""
+        """Toggle client active/inactive status (atomic to prevent lost toggles).
+        On the FIRST activation, generates fresh credentials and sends a welcome email.
+        """
         try:
-            import logging
-            logger = logging.getLogger(__name__)
-            
+            # Collect state needed for email (must be outside atomic for clean email send)
+            send_welcome = False
+            welcome_email_info = {}
+
             with transaction.atomic():
                 client = Client.objects.select_related('user').select_for_update().get(id=client_id)
                 user = client.user
-                
+
+                is_first_activation = (client.status != 'active') and not user.welcome_email_sent
+
                 if client.status == 'active':
+                    # Deactivate
                     client.status = 'inactive'
                     user.is_active = False
                     status_display = 'Inactive'
-                    # CRITICAL: Deactivate all client staff when client is deactivated
                     deactivated_staff_count = cls._cascade_deactivate_staff(client)
+                    client.save(update_fields=['status', 'updated_at'])
+                    user.save(update_fields=['is_active'])
                 else:
+                    # Activate
                     client.status = 'active'
                     user.is_active = True
                     status_display = 'Active'
                     deactivated_staff_count = 0
-                
-                client.save(update_fields=['status', 'updated_at'])
-                user.save(update_fields=['is_active'])
-            
+
+                    if is_first_activation:
+                        first_password = generate_secure_password()
+                        user.set_password(first_password)
+                        user.welcome_email_sent = True
+                        user.save(update_fields=['is_active', 'welcome_email_sent', 'password'])
+                        send_welcome = True
+                        welcome_email_info = {
+                            'name': client.name or user.get_full_name(),
+                            'email': user.email,
+                            'password': first_password,
+                            'phone': user.phone or '',
+                        }
+                    else:
+                        user.save(update_fields=['is_active'])
+
+                    client.save(update_fields=['status', 'updated_at'])
+
+            # Send welcome email after the transaction commits
+            if send_welcome:
+                try:
+                    send_welcome_email(
+                        name=welcome_email_info['name'],
+                        email=welcome_email_info['email'],
+                        password=welcome_email_info['password'],
+                        role='client',
+                        phone=welcome_email_info['phone'],
+                    )
+                    EmailLog.objects.filter(
+                        recipient_email=welcome_email_info['email'],
+                        email_type=EmailLog.EMAIL_TYPE_WELCOME,
+                        status=EmailLog.STATUS_ON_HOLD,
+                    ).update(status=EmailLog.STATUS_SENT)
+                except Exception as email_err:
+                    logger.warning('First-activation welcome email failed for %s: %s', welcome_email_info['email'], email_err)
+                    EmailLog.objects.filter(
+                        recipient_email=welcome_email_info['email'],
+                        email_type=EmailLog.EMAIL_TYPE_WELCOME,
+                        status=EmailLog.STATUS_ON_HOLD,
+                    ).update(status=EmailLog.STATUS_FAILED, error_message=str(email_err))
+
             message = f'Client status changed to {status_display}!'
+            if send_welcome:
+                message += ' Welcome email sent!'
             if deactivated_staff_count > 0:
                 message += f' ({deactivated_staff_count} staff members also deactivated)'
                 logger.info(
-                    "Client deactivation cascade: Deactivated %d staff members of client '%s' (ID: %d)",
+                    'Client deactivation cascade: Deactivated %d staff members of client \'%s\' (ID: %d)',
                     deactivated_staff_count, client.name, client.id
                 )
-            
+
             return ServiceResult(
                 success=True,
                 message=message,
@@ -628,7 +668,7 @@ class ClientService(BaseService):
     def set_temp_password(cls, client_id: int, new_password: str, request=None) -> ServiceResult:
         """
         Set a temporary password for a client user.
-        Sends a notification email (no password content, just a notice).
+        Sends a welcome email with the new credentials so the user knows their password.
         """
         try:
             client = get_object_or_404(Client.objects.select_related('user'), id=client_id)
@@ -642,17 +682,26 @@ class ClientService(BaseService):
             user.set_password(new_password)
             user.save(update_fields=['password'])
 
-            # Send notification email (no password in email)
-            from ..utils.email_utils import send_password_changed_notification
+            # Send welcome email with the new temporary password
             email_sent = False
             try:
-                email_sent = send_password_changed_notification(
+                email_sent, _ = send_welcome_email(
                     name=client.name or user.get_full_name(),
                     email=user.email,
+                    password=new_password,
+                    role='client',
+                    phone=user.phone or '',
                     request=request,
                 )
+                EmailLog.objects.create(
+                    recipient_name=client.name or user.get_full_name(),
+                    recipient_email=user.email,
+                    subject='Your Temporary Password — Adarsh Admin',
+                    email_type=EmailLog.EMAIL_TYPE_TEMP_PASSWORD,
+                    status=EmailLog.STATUS_SENT if email_sent else EmailLog.STATUS_FAILED,
+                )
             except Exception as e:
-                logging.getLogger(__name__).warning('Password change email failed for %s: %s', user.email, e)
+                logger.warning('Temp password email failed for %s: %s', user.email, e)
 
             return ServiceResult(
                 success=True,

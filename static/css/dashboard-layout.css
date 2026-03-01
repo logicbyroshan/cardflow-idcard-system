@@ -39,10 +39,14 @@
 .dashboard-middle-scroll {
     flex: 1;
     min-height: 0;             /* allow flex child to shrink below content */
-    overflow-y: hidden;
+    overflow-y: auto;
     overflow-x: hidden;
     display: flex;
     flex-direction: column;
+    /* Scroll-snap: snaps between the Updates/Activity section and the Print/Reprint section */
+    scroll-snap-type: y mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch; /* smooth rubber-band on Safari/iOS */
 }
 
 /* ── Fixed Bottom: content-driven height, pinned at bottom ── */
@@ -66,6 +70,9 @@
     gap: 0;
     min-height: 0;
     flex: 1;
+    /* Scroll-snap: first section fills viewport height and snaps */
+    scroll-snap-align: start;
+    min-height: 100%;
 }
 
 .dashboard-grid-3col {
@@ -78,10 +85,13 @@
 /* Print-Reprint row: same height rules as the main grid */
 .dashboard-grid-printreprint {
     display: grid;
-    grid-template-columns: 40fr 60fr;
+    grid-template-columns: 1fr 1fr;
     gap: 0;
     min-height: 0;
     flex: 1;
+    /* Scroll-snap: second section snaps into view on scroll */
+    scroll-snap-align: start;
+    min-height: 100%;
 }
 
 .dashboard-card {

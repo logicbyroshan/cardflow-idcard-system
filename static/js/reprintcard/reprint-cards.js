@@ -36,7 +36,6 @@ function refreshStepCounts() {
       if (data.status === 'ok') {
         updateTabCount('.reprint-requests-tab .tab-count', data.reprint_list || 0);
         updateTabCount('.reprint-confirm-tab .tab-count', data.confirmed || 0);
-        updateTabCount('.reprint-download-tab .tab-count', data.download || 0);
         updateTabCount('.reprint-pool-tab .tab-count', data.pool || 0);
       }
     }).catch(function() {});
@@ -448,7 +447,6 @@ function createPaginator(opts) {
   var searchInput   = document.getElementById('confirmedSearchInput');
   var searchClearBtn = document.getElementById('confirmedSearchClearBtn');
   var sendToPrintBtn = document.getElementById('sendToPrintBtn');
-  var markDlBtn     = document.getElementById('markDownloadedBtn');
   var viewBtn       = document.getElementById('confirmedViewBtn');
   var showingRange  = document.getElementById('confirmedShowingRange');
   var totalCountEl  = document.getElementById('confirmedTotalCount');
@@ -478,7 +476,6 @@ function createPaginator(opts) {
     var ids = getSelectedRrIds();
     var count = ids.length;
     if (sendToPrintBtn) sendToPrintBtn.disabled = count === 0;
-    if (markDlBtn) markDlBtn.disabled = count === 0;
     if (viewBtn)   viewBtn.disabled   = count !== 1;
     if (paginator) paginator.updateSelectionCount(count);
     if (selectAllCb) {
@@ -512,11 +509,6 @@ function createPaginator(opts) {
         if (rrId) performSendToPrint([rrId]);
         return;
       }
-      var markBtn = e.target.closest('.btn-markdl-single');
-      if (markBtn) {
-        var rrId = parseInt(markBtn.dataset.rrId);
-        if (rrId) performMarkDownloaded([rrId]);
-      }
     });
   }
 
@@ -527,16 +519,6 @@ function createPaginator(opts) {
       if (ids.length === 0) return;
       if (!confirm('Send ' + ids.length + ' item(s) to Print List?')) return;
       performSendToPrint(ids);
-    });
-  }
-
-  // Bulk Mark Downloaded
-  if (markDlBtn) {
-    markDlBtn.addEventListener('click', function() {
-      var ids = getSelectedRrIds();
-      if (ids.length === 0) return;
-      if (!confirm('Mark ' + ids.length + ' item(s) as downloaded?')) return;
-      performMarkDownloaded(ids);
     });
   }
 
@@ -569,28 +551,6 @@ function createPaginator(opts) {
     }).catch(function(err) {
       showToast('Network error', 'error');
       console.error('[Confirmed] Send to print error:', err);
-    });
-  }
-
-  // Mark Downloaded API
-  function performMarkDownloaded(rrIds) {
-    ApiClient.post('/panel/reprint/api/table/' + TABLE_ID + '/mark-downloaded/', { rr_ids: rrIds })
-    .then(function(data) {
-      if (data.status === 'ok') {
-        showToast(data.message || 'Marked as downloaded', 'success');
-        rrIds.forEach(function(id) {
-          var row = tableBody.querySelector('tr[data-rr-id="' + id + '"]');
-          if (row) row.remove();
-        });
-        updatePagination();
-        updateSelectionUI();
-        refreshStepCounts();
-      } else {
-        showToast(data.message || 'Failed', 'error');
-      }
-    }).catch(function(err) {
-      showToast('Network error', 'error');
-      console.error('[Confirmed] Mark downloaded error:', err);
     });
   }
 
@@ -641,7 +601,6 @@ function createPaginator(opts) {
       html += '<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">' + escapeHtml(item.confirmed_at || '-') + '</td>';
       html += '<td class="w-[80px] px-[1px] py-1 text-center align-middle action-cell"><div class="confirm-action-btns">';
       html += '<button class="btn-send-to-print-single" data-rr-id="' + item.rr_id + '" title="Send to Print List"><i class="fa-solid fa-print"></i></button>';
-      html += '<button class="btn-markdl-single" data-rr-id="' + item.rr_id + '" title="Mark downloaded"><i class="fa-solid fa-download"></i></button>';
       html += '</div></td>';
       html += '<td class="w-[65px] px-[1px] py-1 align-middle text-center"><span class="status-badge status-' + (item.card_status || 'pending') + '">' + escapeHtml(item.status_display || '-') + '</span></td>';
       html += '</tr>';
@@ -670,195 +629,7 @@ function createPaginator(opts) {
 
 
 /* ═══════════════════════════════════════════════════════════════════
-   STEP 3: DOWNLOAD (status = downloaded)
-   ═══════════════════════════════════════════════════════════════════ */
-(function downloadStep() {
-  var tableBody     = document.getElementById('downloadTableBody');
-  var selectAllCb   = document.getElementById('downloadSelectAll');
-  var searchInput   = document.getElementById('downloadSearchInput');
-  var searchClearBtn = document.getElementById('downloadSearchClearBtn');
-  var poolBtn       = document.getElementById('moveToPoolBtn');
-  var viewBtn       = document.getElementById('downloadViewBtn');
-  var showingRange  = document.getElementById('downloadShowingRange');
-  var totalCountEl  = document.getElementById('downloadTotalCount');
-
-  if (!tableBody) return;
-
-  var paginator = createPaginator({
-    barId: 'downloadPaginationBar',
-    prefix: 'download',
-    getTableBody: function() { return tableBody; }
-  });
-  if (paginator) paginator.paginate();
-
-  function getCheckboxes() {
-    return Array.from(tableBody.querySelectorAll('.downloadRowCheckbox:not(:disabled)'));
-  }
-  function getSelectedRrIds() {
-    return getCheckboxes().filter(function(cb) { return cb.checked; })
-      .map(function(cb) { return parseInt(cb.closest('tr').dataset.rrId); });
-  }
-  function getSelectedCardIds() {
-    return getCheckboxes().filter(function(cb) { return cb.checked; })
-      .map(function(cb) { return parseInt(cb.closest('tr').dataset.cardId); });
-  }
-
-  function updateSelectionUI() {
-    var ids = getSelectedRrIds();
-    var count = ids.length;
-    if (poolBtn)  poolBtn.disabled  = count === 0;
-    if (viewBtn)  viewBtn.disabled  = count !== 1;
-    if (paginator) paginator.updateSelectionCount(count);
-    if (selectAllCb) {
-      var allCbs = getCheckboxes();
-      var allChecked = allCbs.length > 0 && allCbs.every(function(cb) { return cb.checked; });
-      var someChecked = allCbs.some(function(cb) { return cb.checked; });
-      selectAllCb.checked = allChecked;
-      selectAllCb.indeterminate = someChecked && !allChecked;
-    }
-  }
-
-  if (selectAllCb) {
-    selectAllCb.addEventListener('change', function() {
-      var checked = this.checked;
-      getCheckboxes().forEach(function(cb) { cb.checked = checked; });
-      updateSelectionUI();
-    });
-  }
-  if (tableBody) {
-    tableBody.addEventListener('change', function(e) {
-      if (e.target.classList.contains('downloadRowCheckbox')) updateSelectionUI();
-    });
-  }
-
-  // Single-row Move to Pool
-  if (tableBody) {
-    tableBody.addEventListener('click', function(e) {
-      var poolSingle = e.target.closest('.btn-pool-single');
-      if (poolSingle) {
-        var rrId = parseInt(poolSingle.dataset.rrId);
-        if (rrId) performMoveToPool([rrId]);
-      }
-    });
-  }
-
-  // Bulk Move to Pool
-  if (poolBtn) {
-    poolBtn.addEventListener('click', function() {
-      var ids = getSelectedRrIds();
-      if (ids.length === 0) return;
-      if (!confirm('Move ' + ids.length + ' item(s) to pool?')) return;
-      performMoveToPool(ids);
-    });
-  }
-
-  // View
-  if (viewBtn) {
-    viewBtn.addEventListener('click', function() {
-      var cardIds = getSelectedCardIds();
-      if (cardIds.length !== 1) return;
-      if (typeof fetchCardAndOpenModal === 'function') fetchCardAndOpenModal('view', cardIds[0]);
-    });
-  }
-
-  // Move to Pool API
-  function performMoveToPool(rrIds) {
-    ApiClient.post('/panel/reprint/api/table/' + TABLE_ID + '/mark-pool/', { rr_ids: rrIds })
-    .then(function(data) {
-      if (data.status === 'ok') {
-        showToast(data.message || 'Moved to pool', 'success');
-        rrIds.forEach(function(id) {
-          var row = tableBody.querySelector('tr[data-rr-id="' + id + '"]');
-          if (row) row.remove();
-        });
-        updatePagination();
-        updateSelectionUI();
-        refreshStepCounts();
-      } else {
-        showToast(data.message || 'Failed', 'error');
-      }
-    }).catch(function(err) {
-      showToast('Network error', 'error');
-      console.error('[Download] Move to pool error:', err);
-    });
-  }
-
-  // Search
-  var searchTimer = null;
-  if (searchInput) {
-    searchInput.addEventListener('input', function() {
-      clearTimeout(searchTimer);
-      var q = this.value.trim();
-      if (searchClearBtn) searchClearBtn.style.display = q ? '' : 'none';
-      searchTimer = setTimeout(function() { fetchDownloadItems(q); }, 350);
-    });
-  }
-  if (searchClearBtn) {
-    searchClearBtn.addEventListener('click', function() {
-      searchInput.value = '';
-      searchClearBtn.style.display = 'none';
-      searchInput.focus();
-      fetchDownloadItems('');
-    });
-    searchClearBtn.style.display = searchInput && searchInput.value ? '' : 'none';
-  }
-
-  function fetchDownloadItems(query) {
-    var url = '/panel/reprint/api/table/' + TABLE_ID + '/download-list/?q=' + encodeURIComponent(query || '') + '&limit=200';
-    ApiClient.get(url)
-    .then(function(data) {
-      if (data.status === 'ok') renderDownloadItems(data.items || [], data.total || 0);
-    }).catch(function(err) { console.error('[Download] Search failed:', err); });
-  }
-
-  function renderDownloadItems(items, total) {
-    if (items.length === 0) {
-      tableBody.innerHTML = '<tr class="no-data-row"><td colspan="50" class="no-data-cell"><div class="no-data"><i class="fa-solid fa-download"></i><span>No downloaded reprints</span></div></td></tr>';
-      if (showingRange) showingRange.textContent = '0';
-      if (totalCountEl) totalCountEl.textContent = total;
-      updateSelectionUI();
-      return;
-    }
-    var html = '';
-    items.forEach(function(item, idx) {
-      html += '<tr data-rr-id="' + item.rr_id + '" data-card-id="' + item.card_id + '" data-sr-no="' + (idx + 1) + '">';
-      html += '<td class="w-[24px] px-[1px] py-1 text-center align-middle checkbox-cell"><input type="checkbox" class="downloadRowCheckbox"></td>';
-      html += '<td class="w-[36px] px-[1px] py-1 text-center align-middle sr-no-cell">' + (idx + 1) + '</td>';
-      html += renderOrderedFields(item.ordered_fields);
-      html += '<td class="min-w-[80px] px-[1px] py-1 align-middle reason-cell whitespace-normal break-words text-left">' + escapeHtml(item.reason || '-') + '</td>';
-      html += '<td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center">' + escapeHtml(item.requested_by_name || '-') + '</td>';
-      html += '<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">' + escapeHtml(item.downloaded_at || '-') + '</td>';
-      html += '<td class="w-[60px] px-[1px] py-1 text-center align-middle action-cell"><div class="confirm-action-btns">';
-      html += '<button class="btn-pool-single" data-rr-id="' + item.rr_id + '" title="Move to pool"><i class="fa-solid fa-layer-group"></i></button>';
-      html += '</div></td>';
-      html += '<td class="w-[65px] px-[1px] py-1 align-middle text-center"><span class="status-badge status-' + (item.card_status || 'pending') + '">' + escapeHtml(item.status_display || '-') + '</span></td>';
-      html += '</tr>';
-    });
-    tableBody.innerHTML = html;
-    if (showingRange) showingRange.textContent = '1-' + items.length;
-    if (totalCountEl) totalCountEl.textContent = total;
-    updateSelectionUI();
-    if (paginator) { paginator.reset(); paginator.paginate(); }
-  }
-
-  function updatePagination() {
-    var rows = tableBody.querySelectorAll('tr:not(.no-data-row)');
-    if (rows.length === 0) {
-      if (showingRange) showingRange.textContent = '0';
-      if (totalCountEl) totalCountEl.textContent = '0';
-      var pBar = document.getElementById('downloadPaginationBar');
-      if (pBar) pBar.style.display = 'none';
-      tableBody.innerHTML = '<tr class="no-data-row"><td colspan="50" class="no-data-cell"><div class="no-data"><i class="fa-solid fa-download"></i><span>No downloaded reprints</span></div></td></tr>';
-    } else {
-      if (paginator) paginator.paginate();
-    }
-  }
-
-})();
-
-
-/* ═══════════════════════════════════════════════════════════════════
-   STEP 4: POOL (status = pool)
+   STEP 3: POOL (status = pool)
    ═══════════════════════════════════════════════════════════════════ */
 (function poolStep() {
   var tableBody     = document.getElementById('poolTableBody');

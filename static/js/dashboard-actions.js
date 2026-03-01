@@ -573,7 +573,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                     </td>
                                     <td class="text-center"><a href="/panel/reprint/table/${t.id}/" class="count-badge pending">${t.requested}</a></td>
                                     <td class="text-center"><a href="/panel/reprint/table/${t.id}/" class="count-badge verified">${t.confirmed}</a></td>
-                                    <td class="text-center"><a href="/panel/reprint/table/${t.id}/" class="count-badge approved">${t.downloaded}</a></td>
                                 </tr>
                             `).join('');
                             return `
@@ -583,13 +582,12 @@ document.addEventListener('DOMContentLoaded', function() {
                                     </td>
                                     <td class="text-center"><span class="count-badge pending">${client.requested}</span></td>
                                     <td class="text-center"><span class="count-badge verified">${client.confirmed}</span></td>
-                                    <td class="text-center"><span class="count-badge approved">${client.downloaded}</span></td>
                                 </tr>
                                 ${subRows}
                             `;
                         }).join('');
                     } else {
-                        reprintBody.innerHTML = `<tr><td colspan="4" class="text-center" style="padding:40px;color:#888;"><i class="fa-solid fa-inbox"></i> No reprint records</td></tr>`;
+                        reprintBody.innerHTML = `<tr><td colspan="3" class="text-center" style="padding:40px;color:#888;"><i class="fa-solid fa-inbox"></i> No reprint records</td></tr>`;
                     }
                 }
             })
@@ -597,7 +595,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Error loading print/reprint overview:', err);
                 const errHtml = (cols) => `<tr><td colspan="${cols}" class="text-center" style="padding:40px;color:#dc2626;"><i class="fa-solid fa-exclamation-triangle"></i> Error loading data</td></tr>`;
                 if (printBody)   printBody.innerHTML = errHtml(3);
-                if (reprintBody) reprintBody.innerHTML = errHtml(4);
+                if (reprintBody) reprintBody.innerHTML = errHtml(3);
             });
     }
 

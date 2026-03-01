@@ -29,6 +29,7 @@ from django.db.models import QuerySet
 from core.models import User, Client, Staff
 from core.services.permission_service import PermissionService
 from core.utils.email_utils import generate_secure_password, send_welcome_email
+from core.models import EmailLog
 
 
 # =============================================================================
@@ -267,7 +268,7 @@ class AdminStaffCreationService:
                 # desired, always pass an explicit password from the UI instead.
                 final_password = password.strip() if password and password.strip() else (phone if phone else generate_secure_password())
                 
-                # Create User
+                # Create User — inactive by default; welcome email sent on first activation
                 user = User.objects.create_user(
                     username=email,
                     email=email,
@@ -276,7 +277,7 @@ class AdminStaffCreationService:
                     last_name=last_name,
                     role='admin_staff',
                     phone=phone,
-                    is_active=True,
+                    is_active=False,
                 )
                 
                 # Create Staff profile
@@ -304,26 +305,26 @@ class AdminStaffCreationService:
                     if not perm_result['success']:
                         raise ValueError(perm_result['error'])
                 
-                # Send welcome email
+                # Log email as on_hold — will be sent on first activation
                 full_name = f"{first_name} {last_name}"
-                success, msg = send_welcome_email(
-                    email=email,
-                    name=full_name,
-                    password=password,
-                    role='Admin Staff',
-                    phone=phone
+                EmailLog.objects.create(
+                    recipient_name=full_name,
+                    recipient_email=email,
+                    subject='Welcome to Adarsh Admin - Your Account is Ready!',
+                    email_type=EmailLog.EMAIL_TYPE_WELCOME,
+                    status=EmailLog.STATUS_ON_HOLD,
                 )
                 
                 return {
                     'success': True,
-                    'message': f'Admin staff "{full_name}" created successfully',
+                    'message': f'Admin staff "{full_name}" created successfully. Welcome email will be sent on first activation.',
                     'staff': {
                         'id': staff.pk,
                         'user_id': staff.user.pk,
                         'name': full_name,
                         'email': email,
                     },
-                    'email_sent': success,
+                    'email_sent': False,
                 }
                 
         except Exception as e:
@@ -438,6 +439,7 @@ class AdminStaffCreationService:
     def toggle_status(cls, toggled_by: User, staff_id: int) -> Dict[str, Any]:
         """
         Toggle admin staff active/inactive status.
+        On the FIRST activation, generates fresh credentials and sends a welcome email.
         """
         try:
             if not PermissionService.is_super_admin(toggled_by):
@@ -445,27 +447,71 @@ class AdminStaffCreationService:
                     'success': False,
                     'error': 'Only Super Admin can toggle staff status'
                 }
-            
+
+            send_welcome = False
+            welcome_info = {}
+
             with transaction.atomic():
                 staff = Staff.objects.select_for_update().select_related('user').filter(
                     id=staff_id,
                     staff_type='admin_staff'
                 ).first()
-                
+
                 if not staff:
                     return {'success': False, 'error': 'Admin staff not found'}
-                
+
                 user = staff.user
+                is_first_activation = not user.is_active and not user.welcome_email_sent
                 user.is_active = not user.is_active
-                user.save(update_fields=['is_active'])
-            
-            status = 'activated' if user.is_active else 'deactivated'
+
+                if user.is_active and is_first_activation:
+                    first_password = generate_secure_password()
+                    user.set_password(first_password)
+                    user.welcome_email_sent = True
+                    user.save(update_fields=['is_active', 'welcome_email_sent', 'password'])
+                    send_welcome = True
+                    welcome_info = {
+                        'full_name': user.get_full_name(),
+                        'email': user.email,
+                        'password': first_password,
+                        'phone': user.phone or '',
+                    }
+                else:
+                    user.save(update_fields=['is_active'])
+
+            if send_welcome:
+                try:
+                    send_welcome_email(
+                        email=welcome_info['email'],
+                        name=welcome_info['full_name'],
+                        password=welcome_info['password'],
+                        role='Admin Staff',
+                        phone=welcome_info['phone'],
+                    )
+                    EmailLog.objects.filter(
+                        recipient_email=welcome_info['email'],
+                        email_type=EmailLog.EMAIL_TYPE_WELCOME,
+                        status=EmailLog.STATUS_ON_HOLD,
+                    ).update(status=EmailLog.STATUS_SENT)
+                except Exception as email_err:
+                    import logging
+                    logging.getLogger(__name__).warning(
+                        'First-activation welcome email failed for %s: %s', welcome_info['email'], email_err
+                    )
+                    EmailLog.objects.filter(
+                        recipient_email=welcome_info['email'],
+                        email_type=EmailLog.EMAIL_TYPE_WELCOME,
+                        status=EmailLog.STATUS_ON_HOLD,
+                    ).update(status=EmailLog.STATUS_FAILED, error_message=str(email_err))
+
+            status_word = 'activated' if user.is_active else 'deactivated'
+            extra = ' Welcome email sent!' if send_welcome else ''
             return {
                 'success': True,
-                'message': f'Admin staff "{user.get_full_name()}" {status}',
+                'message': f'Admin staff "{user.get_full_name()}" {status_word}.{extra}',
                 'is_active': user.is_active,
             }
-            
+
         except Exception as e:
             return {'success': False, 'error': str(e)}
     

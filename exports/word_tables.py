@@ -122,6 +122,59 @@ class WordTablesMixin:
 
         return column_widths
 
+    def _enforce_fixed_table_layout(self, table_obj, column_widths, num_cols, Cm):
+        """Force fixed table layout with explicit column grid definitions.
+
+        Without ``w:tblLayout type="fixed"`` and a ``w:tblGrid``, Word
+        auto-resizes columns so images overflow their cell boundaries.
+        This must be called once immediately after the table is created.
+        """
+        from docx.oxml.ns import qn
+        from docx.oxml import OxmlElement
+
+        tbl = table_obj._tbl
+
+        # ── 1. tblPr: set tblLayout=fixed and total table width ─────
+        tblPr = tbl.find(qn('w:tblPr'))
+        if tblPr is None:
+            tblPr = OxmlElement('w:tblPr')
+            tbl.insert(0, tblPr)
+
+        # Remove stale tblLayout / tblW before re-adding
+        for tag in ('w:tblLayout', 'w:tblW'):
+            for el in tblPr.findall(qn(tag)):
+                tblPr.remove(el)
+
+        # fixed layout — Word must honour explicit column widths
+        tblLayout = OxmlElement('w:tblLayout')
+        tblLayout.set(qn('w:type'), 'fixed')
+        tblPr.append(tblLayout)
+
+        # Total table width in twips (dxa)
+        total_cm = sum(column_widths.get(i, 2.0) for i in range(num_cols))
+        total_twips = int(Cm(total_cm).twips)
+        tblW = OxmlElement('w:tblW')
+        tblW.set(qn('w:w'), str(total_twips))
+        tblW.set(qn('w:type'), 'dxa')
+        tblPr.append(tblW)
+
+        # ── 2. tblGrid: one gridCol per column (twips) ───────────────
+        for existing in tbl.findall(qn('w:tblGrid')):
+            tbl.remove(existing)
+
+        tblGrid = OxmlElement('w:tblGrid')
+        for col_idx in range(num_cols):
+            w_cm = column_widths.get(col_idx, 2.0)
+            w_twips = int(Cm(w_cm).twips)
+            gridCol = OxmlElement('w:gridCol')
+            gridCol.set(qn('w:w'), str(w_twips))
+            tblGrid.append(gridCol)
+
+        # tblGrid must come directly after tblPr in OOXML order
+        tbl_children = list(tbl)
+        tblPr_idx = tbl_children.index(tblPr)
+        tbl.insert(tblPr_idx + 1, tblGrid)
+
     @classmethod
     def _is_nowrap_field_word(cls, field_name: str) -> bool:
         """Check if a field contains non-wrappable data (phone, DOB, etc.).
@@ -169,6 +222,9 @@ class WordTablesMixin:
         table_obj.style = 'Table Grid'
         table_obj.alignment = WD_TABLE_ALIGNMENT.CENTER
         self._set_table_borders(table_obj, parse_xml, nsdecls)
+        # CRITICAL: enforce fixed layout + explicit column grid so images
+        # cannot overflow their cell and column widths are respected.
+        self._enforce_fixed_table_layout(table_obj, column_widths, num_cols, Cm)
 
         # Style the single header row (first page only — NOT set to repeat)
         self._style_header_row(
@@ -319,53 +375,44 @@ class WordTablesMixin:
     
     @staticmethod
     def _prepare_text_for_word(text: str) -> str:
-        """Insert soft hyphens in long words so Word can break them gracefully.
+        """Insert zero-width spaces in very long unbreakable words.
 
         Rules:
-        1. Words ≤ 6 chars: NEVER break.
-        2. Words 7+ chars: insert soft hyphen (U+00AD) near the middle
-           so Word breaks half-above / half-below when the column is narrow.
-        3. Phone-like tokens (≥60% digits, ≥4 digits): insert soft hyphen
-           every 5 chars (5 above / 5 below in rare cases).
-        4. Natural separators (,  /  ;  :) already act as break opportunities.
+        1. Words ≤ 8 chars: leave untouched.
+        2. Words > 8 chars with no natural break opportunity: insert
+           U+200B (ZERO-WIDTH SPACE) every 8 chars so Word can wrap
+           the text without inserting ANY visible character or dash.
+        3. Natural separators (, / ; :) already act as break points.
+        4. NEVER insert U+00AD (soft hyphen) — it can render as a dash
+           when the text is copied from the document.
         """
         import re as _re
-        if not text or len(text) <= 6:
+        if not text or len(text) <= 8:
             return text
 
-        SOFT_HYPHEN = '\u00AD'
+        ZWSP = '\u200B'  # zero-width space — breaks without any visible char
 
-        def _is_phone_like(token):
-            if not token:
-                return False
-            digits = sum(1 for c in token if c.isdigit())
-            return digits >= len(token) * 0.6 and digits >= 4
-
-        def _break_word(word):
-            if len(word) <= 6:
+        def _insert_zwsp(word):
+            """Insert ZWSP every 8 chars in a long word."""
+            if len(word) <= 8:
                 return word
-            if _is_phone_like(word):
-                parts = []
-                for i in range(0, len(word), 5):
-                    parts.append(word[i:i+5])
-                return SOFT_HYPHEN.join(parts)
-            mid = len(word) // 2
-            return word[:mid] + SOFT_HYPHEN + word[mid:]
+            parts = [word[i:i+8] for i in range(0, len(word), 8)]
+            return ZWSP.join(parts)
 
         tokens = text.split(' ')
         processed = []
         for token in tokens:
-            if not token or len(token) <= 6:
+            if not token or len(token) <= 8:
                 processed.append(token)
                 continue
-            # Split on natural separators, process sub-parts
+            # Split on natural separators first; process each sub-part
             sub_parts = _re.split(r'([,/;:\-])', token)
             result = []
             for sp in sub_parts:
                 if sp in (',', '/', ';', ':', '-'):
                     result.append(sp)
-                elif len(sp) > 6:
-                    result.append(_break_word(sp))
+                elif len(sp) > 8:
+                    result.append(_insert_zwsp(sp))
                 else:
                     result.append(sp)
             processed.append(''.join(result))

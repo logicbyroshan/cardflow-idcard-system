@@ -71,32 +71,38 @@ class PdfExportResult:
 
 
 # ── Font-mode presets ───────────────────────────────────────────────
-# Each preset defines: font_family, header_font_size, data_font_size,
-#   char_width_cm (for wrap estimation), header_line_cm
+# Data font is ALWAYS 9pt regardless of mode (no font-size shrinking).
+# Compact/condensed modes only reduce cell padding and tighten column budgets.
 _FONT_MODES = {
     'normal': {
         'font_family': 'Arial, Helvetica, sans-serif',
-        'header_pt': '8pt',
+        'header_pt': '9pt',
         'data_pt': '9pt',
         'char_width_cm': 0.18,   # ~9pt bold uppercase Arial
-        'header_line_cm': 0.28,  # ~8pt text + leading
+        'header_line_cm': 0.28,
         'header_base_cm': 0.10,
+        'is_compact': False,
+        'cell_padding': '2pt 3pt',
     },
     'compact': {
         'font_family': 'Arial, Helvetica, sans-serif',
-        'header_pt': '6.5pt',
-        'data_pt': '7pt',
-        'char_width_cm': 0.155,  # ~7pt bold uppercase Arial
-        'header_line_cm': 0.22,  # ~6.5pt text + leading
+        'header_pt': '9pt',
+        'data_pt': '9pt',
+        'char_width_cm': 0.18,
+        'header_line_cm': 0.28,
         'header_base_cm': 0.10,
+        'is_compact': True,
+        'cell_padding': '1.5pt 2pt',
     },
     'condensed': {
         'font_family': 'SairaSemiCondensed, Arial, Helvetica, sans-serif',
-        'header_pt': '7.5pt',
-        'data_pt': '8pt',
-        'char_width_cm': 0.14,   # condensed ~8pt
+        'header_pt': '9pt',
+        'data_pt': '9pt',
+        'char_width_cm': 0.14,   # condensed variant — narrower glyph width
         'header_line_cm': 0.24,
         'header_base_cm': 0.10,
+        'is_compact': True,
+        'cell_padding': '1.5pt 2pt',
     },
 }
 
@@ -130,8 +136,9 @@ class PdfExporter:
     PAGE_CONTENT_WIDTH_CM = 28.7
 
     # ── Dense-table threshold ──
-    # If total column count (including SR NO) exceeds this, auto-compact
-    DENSE_COLUMN_THRESHOLD = 15
+    # total_cols includes SR NO column.  Data columns = total_cols - 1.
+    # Compact mode triggers only when DATA columns > 15, i.e. total_cols > 16.
+    DENSE_COLUMN_THRESHOLD = 16
 
     def export_cards(
         self,
@@ -159,17 +166,32 @@ class PdfExporter:
             from weasyprint import HTML as WeasyHTML
         except (ImportError, OSError) as _wp_err:
             # ImportError: weasyprint not installed
-            # OSError: native libraries not found (e.g. GTK/Pango missing on Windows)
+            # OSError: native libraries not found (GTK/Pango missing)
+            import sys as _sys
             _wp_msg = str(_wp_err)
             if 'gobject' in _wp_msg.lower() or 'glib' in _wp_msg.lower() or 'pango' in _wp_msg.lower():
-                return PdfExportResult(
-                    success=False,
-                    message=(
-                        'PDF export requires the GTK runtime on Windows. '
-                        'Install GTK3 (https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer) '
-                        'and make sure its bin/ directory is on the PATH, or use the Linux/Docker environment.'
+                if _sys.platform == 'win32':
+                    return PdfExportResult(
+                        success=False,
+                        message=(
+                            'PDF export requires the GTK runtime on Windows. '
+                            'Install GTK3 (https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer) '
+                            'and make sure its bin/ directory is on the PATH, or use the Linux/Docker environment.'
+                        )
                     )
-                )
+                else:
+                    # Linux / macOS: native Pango/GLib system packages are missing
+                    return PdfExportResult(
+                        success=False,
+                        message=(
+                            'PDF export requires Pango/GLib system libraries. '
+                            'On Debian/Ubuntu run: sudo apt-get install -y '
+                            'libpango-1.0-0 libpangoft2-1.0-0 libpangocairo-1.0-0 '
+                            'libgdk-pixbuf2.0-0 libffi-dev shared-mime-info '
+                            'libcairo2 libharfbuzz0b libfontconfig1 '
+                            'then restart the server.'
+                        )
+                    )
             return PdfExportResult(
                 success=False,
                 message='WeasyPrint library not installed or cannot be loaded. Run: pip install weasyprint'
@@ -256,14 +278,16 @@ class PdfExporter:
             )
 
             # Render HTML
+            _now = django_tz.localtime(django_tz.now())
             context = {
                 'columns': column_configs,
                 'pages': pages,
                 'total_pages': len(pages),
                 'institution_name': institution_name,
                 'table_name': table.name,
-                'current_date': django_tz.localtime(django_tz.now()).strftime('%d-%m-%Y'),
-                'generated_at': django_tz.localtime(django_tz.now()).strftime('%d-%b-%Y %H:%M'),
+                'current_date': _now.strftime('%d-%m-%Y'),
+                'current_year': _now.strftime('%Y'),
+                'generated_at': _now.strftime('%d-%b-%Y %H:%M'),
                 'export_note_line': export_settings.get('export_note_line', 'Note: This document is computer generated. Please verify all details before printing ID cards.'),
                 'export_copyright_line': export_settings.get('export_copyright_line', '© Adarsh ID Cards Management System'),
                 'template_instructions': template_instructions,
@@ -274,6 +298,9 @@ class PdfExporter:
                 'data_font_size': font_preset['data_pt'],
                 'font_mode': resolved_font_mode,
                 'font_dir': font_dir,
+                # Layout-mode flags (compact = >15 data columns)
+                'is_compact': font_preset['is_compact'],
+                'cell_padding': font_preset['cell_padding'],
             }
 
             html_string = render_to_string('exports/pdf_report.html', context)

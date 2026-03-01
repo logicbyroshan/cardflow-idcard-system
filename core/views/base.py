@@ -51,6 +51,7 @@ from .admin_page_views import (                      # noqa: F401
     manage_website,
     notifications_page,
     manage_panel,
+    api_email_logs,
     settings,
 )
 

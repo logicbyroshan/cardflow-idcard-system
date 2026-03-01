@@ -33,27 +33,31 @@
 /* ─── Page setup ─────────────────────────────────────────────────── */
 /*
    A4 landscape = 297mm × 210mm
-   Top/bottom margins accommodate the @top-* / @bottom-* running boxes.
+   Top margin enlarged to 2.0cm to accommodate the larger 3-line header.
+   Bottom margin 1.2cm for the footer row.
 */
 @page {
     size: A4 landscape;
-    margin: 1.2cm 0.5cm 1.0cm 0.5cm;
+    margin: 2.0cm 0.5cm 1.2cm 0.5cm;
 
     /* ── Page-level header ── */
     @top-left {
         content: element(hdr-left);
-        vertical-align: middle;
+        vertical-align: bottom;
         text-align: left;
+        padding-bottom: 2pt;
     }
     @top-center {
         content: element(hdr-center);
-        vertical-align: middle;
+        vertical-align: bottom;
         text-align: center;
+        padding-bottom: 2pt;
     }
     @top-right {
         content: element(hdr-right);
-        vertical-align: middle;
+        vertical-align: bottom;
         text-align: right;
+        padding-bottom: 2pt;
     }
 
     /* ── Page-level footer ── */
@@ -65,11 +69,11 @@
     @bottom-right {
         content: "Page " counter(page) " of " counter(pages);
         font-family: Arial, Helvetica, sans-serif;
-        font-size: 6.5pt;
+        font-size: 9pt;
         font-weight: bold;
         vertical-align: middle;
         text-align: right;
-        color: #333;
+        color: #222;
     }
 }
 
@@ -79,30 +83,45 @@
 #hdr-left {
     position: running(hdr-left);
     font-family: {{ font_family }};
-    font-size: 7pt;
+    font-size: 12pt;
     font-weight: bold;
     color: #111;
+    border-bottom: 1.5pt solid #444;
+    padding-bottom: 3pt;
+    line-height: 1.3;
 }
 #hdr-center {
     position: running(hdr-center);
     font-family: {{ font_family }};
-    font-size: 8pt;
+    font-size: 13pt;
     font-weight: bold;
     color: #111;
     text-align: center;
+    border-bottom: 1.5pt solid #444;
+    padding-bottom: 3pt;
+    line-height: 1.3;
 }
 #hdr-right {
     position: running(hdr-right);
     font-family: {{ font_family }};
-    font-size: 6.5pt;
-    color: #444;
+    font-size: 11pt;
+    font-weight: bold;
+    color: #333;
     text-align: right;
+    border-bottom: 1.5pt solid #444;
+    padding-bottom: 3pt;
+    line-height: 1.3;
 }
 #ftr-left {
     position: running(ftr-left);
     font-family: Arial, Helvetica, sans-serif;
-    font-size: 5.5pt;
-    color: #555;
+    font-size: 9pt;
+    font-weight: 600;
+    color: #333;
+    line-height: 1.55;
+    white-space: normal;
+    overflow-wrap: break-word;
+    word-break: normal;
 }
 
 /* ─── Global reset ───────────────────────────────────────────────── */
@@ -110,7 +129,7 @@
 
 body {
     font-family: {{ font_family }};
-    font-size: {{ data_font_size }};
+    font-size: 9pt;
     margin: 0;
     padding: 0;
     color: #111;
@@ -129,38 +148,47 @@ table.data-table {
     table-layout: fixed;
     width: 100%;
     border-collapse: collapse;
-    font-size: {{ data_font_size }};
+    font-size: 9pt;
 }
 table.data-table th,
 table.data-table td {
     border: 0.4pt solid #888;
-    padding: 1.5pt 2.5pt;
+    padding: {{ cell_padding }};
     vertical-align: middle;
 }
 table.data-table thead tr {
-    background-color: #cccccc;
+    background-color: #b0b0b0;
 }
 table.data-table thead th {
-    font-size: {{ header_font_size }};
+    font-size: 9pt;
     font-weight: bold;
     text-align: center;
     vertical-align: middle;
-    overflow-wrap: break-word;
-    word-break: break-word;
-    hyphens: auto;
+    /* No hyphens — wrap only at spaces; very long single words break silently */
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    hyphens: none;
+    -webkit-hyphens: none;
 }
 table.data-table tbody tr:nth-child(even) {
-    background-color: #f5f5f5;
+    background-color: #f3f3f3;
+}
+table.data-table tbody tr {
+    page-break-inside: avoid;
 }
 
-/* Text cells: CSS handles all wrapping — no hacks needed */
+/* ─── Text cells ─────────────────────────────────────────────────── */
+/* Natural word wrap — break only at spaces.
+   If a single word is too long it is allowed to break silently WITHOUT a dash. */
 table.data-table td.text-cell {
-    overflow-wrap: break-word;
-    word-break: break-word;
-    hyphens: auto;
-    -webkit-hyphens: auto;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    hyphens: none;
+    -webkit-hyphens: none;
 }
-/* Nowrap cells (phone, DOB, Aadhaar, etc.) stay on one line */
+/* Nowrap cells (phone, DOB, Aadhaar, roll numbers, ID numbers, etc.) */
 table.data-table td.text-cell.no-wrap {
     white-space: nowrap;
     overflow-wrap: normal;
@@ -168,7 +196,7 @@ table.data-table td.text-cell.no-wrap {
     hyphens: none;
 }
 
-/* Image cells */
+/* ─── Image cells ────────────────────────────────────────────────── */
 table.data-table td.img-cell {
     text-align: center;
     padding: 1.5pt;
@@ -179,23 +207,28 @@ table.data-table td.img-cell img {
     object-fit: cover;
     object-position: top center;
 }
+/* Placeholder images: reduced opacity + circular crop to signal missing photo */
+table.data-table td.img-cell.placeholder-cell img {
+    opacity: 0.35;
+    border-radius: 50%;
+}
 
 /* ─── Instructions block (last page only) ───────────────────────── */
 .instructions-block {
     margin-top: 0.3cm;
     font-family: Arial, Helvetica, sans-serif;
-    font-size: 6.5pt;
+    font-size: 9pt;
     color: #333;
     border: 0.3pt solid #bbb;
     padding: 0.2cm 0.25cm;
-    line-height: 1.4;
+    line-height: 1.5;
 }
 
 /* ─── Copyright / generated line ─────────────────────────────────── */
 .footer-line {
     margin-top: 0.12cm;
     font-family: Arial, Helvetica, sans-serif;
-    font-size: 5.5pt;
+    font-size: 7pt;
     color: #666;
     text-align: center;
 }
@@ -204,13 +237,17 @@ table.data-table td.img-cell img {
 </head>
 <body>
 
-{# ── Running header/footer elements — rendered once; WeasyPrint repeats on every page #}
+{# ── Running header/footer elements — rendered once; WeasyPrint repeats on every page ── #}
+{# LEFT: Institute name — large, bold, prominent #}
 <div id="hdr-left">{{ institution_name|upper }}</div>
-<div id="hdr-center">{{ table_name|upper }}{% if current_date %} &mdash; {{ current_date }}{% endif %}</div>
+{# CENTER: List name + year — clearly identifies the document #}
+<div id="hdr-center">{{ table_name|upper }}{% if current_year %} &mdash; {{ current_year }}{% endif %}</div>
+{# RIGHT: Branding #}
 <div id="hdr-right">ADARSH ID CARDS</div>
+{# FOOTER LEFT: Instruction/note text — naturally wraps into ~3 lines at 9pt #}
 <div id="ftr-left">{{ export_note_line }}</div>
 
-{# ── Pages ─────────────────────────────────────────────────────────────────── #}
+{# ── Pages ──────────────────────────────────────────────────────────────────── #}
 {% for page_rows in pages %}
 <div class="page">
 
@@ -230,7 +267,7 @@ table.data-table td.img-cell img {
             <tr>
                 {% for cell in row %}
                 {% if cell.is_image %}
-                <td class="img-cell">
+                <td class="img-cell{% if cell.is_placeholder %} placeholder-cell{% endif %}">
                     <img src="{{ cell.content }}"
                          style="width:{{ cell.image_width_cm }}cm; height:{{ cell.image_height_cm }}cm;"
                          alt="">
@@ -262,3 +299,4 @@ table.data-table td.img-cell img {
 
 </body>
 </html>
+

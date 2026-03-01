@@ -85,6 +85,7 @@ urlpatterns = [
     
     # Manage Panel
     path('manage-panel/', views.manage_panel, name='manage_panel'),
+    path('api/email-logs/', views.api_email_logs, name='api_email_logs'),
     
     # ==================== BACKUP ====================
     path('backup/select-clients/', views.backup_select_clients, name='backup_select_clients'),

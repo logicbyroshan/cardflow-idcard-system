@@ -10,10 +10,6 @@
             <i class="fa-solid fa-print"></i>
             <span class="btn-text">Print Selected</span>
         </button>
-        <button class="btn action-btn btn-green" id="markDownloadedBtn" disabled title="Mark selected as downloaded">
-            <i class="fa-solid fa-download"></i>
-            <span class="btn-text">Mark Downloaded</span>
-        </button>
         {% endif %}
         <button class="btn action-btn btn-gray" id="confirmedViewBtn" disabled title="View selected card">
             <i class="fa-solid fa-eye"></i>
@@ -69,7 +65,7 @@
                     <th class="min-w-[80px] px-[1px] py-1 text-center align-middle">Reason</th>
                     <th class="w-[65px] min-w-[65px] px-[1px] py-1 text-center align-middle">Requested By</th>
                     <th class="w-[90px] min-w-[90px] px-[1px] py-1 text-center align-middle">Confirmed At</th>
-                    <th class="w-[160px] min-w-[160px] px-[1px] py-1 text-center align-middle">Action</th>
+                    <th class="w-[100px] min-w-[100px] px-[1px] py-1 text-center align-middle">Action</th>
                     <th class="w-[65px] min-w-[65px] px-[1px] py-1 text-center align-middle">Status</th>
                 </tr>
             </thead>
@@ -120,13 +116,10 @@
                     <td class="min-w-[80px] px-[1px] py-1 align-middle reason-cell whitespace-normal break-words text-left" title="{{ item.reason }}">{{ item.reason|truncatewords:8 }}</td>
                     <td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center">{{ item.requested_by_name }}</td>
                     <td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">{{ item.confirmed_at|date:"d-M-Y H:i" }}</td>
-                    <td class="w-[160px] px-[1px] py-1 text-center align-middle action-cell">
+                    <td class="w-[100px] px-[1px] py-1 text-center align-middle action-cell">
                         <div class="confirm-action-btns">
                             <button class="btn-send-to-print-single" data-rr-id="{{ item.rr_id }}" title="Send to Print List" aria-label="Send to Print List">
                                 <i class="fa-solid fa-print"></i> <span>Print</span>
-                            </button>
-                            <button class="btn-markdl-single" data-rr-id="{{ item.rr_id }}" title="Mark as downloaded" aria-label="Mark as downloaded">
-                                <i class="fa-solid fa-download"></i> <span>Download</span>
                             </button>
                         </div>
                     </td>

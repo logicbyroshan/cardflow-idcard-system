@@ -217,10 +217,12 @@ _s('email', 10, 22, 40, True, 'left',
    'min-w-[110px] text-left whitespace-normal break-all')
 
 # ── Address ──────────────────────────────────────────────────────────
-_s('address', 10, 30, 60, True, 'left',
-   6.0, 25.0, 2.5, 9.0,
-   'min-w-[110px] max-w-[200px]',
-   'min-w-[110px] max-w-[200px] text-left whitespace-normal break-words')
+# Address columns are capped at the same max as a name column so they do NOT
+# consume excessive horizontal space; vertical wrapping handles long values.
+_s('address', 8, 18, 28, True, 'left',
+   5.0, 12.0, 2.0, 5.0,
+   'min-w-[110px] max-w-[160px]',
+   'min-w-[110px] max-w-[160px] text-left whitespace-normal break-words')
 
 _s('city', 4, 10, 20, True, 'center',
    3.0, 7.0, 1.0, 3.0,

@@ -13,7 +13,7 @@ from django.core.paginator import Paginator
 from django.db.models import Count, Q
 from django.utils import timezone
 
-from ..models import Client, Staff, IDCardGroup, IDCard, IDCardTable, User, SystemSettings, Notification
+from ..models import Client, Staff, IDCardGroup, IDCard, IDCardTable, User, SystemSettings, Notification, EmailLog
 from ..services import IDCardService
 from ..utils.htmx import is_htmx, render_partial
 from ..services.permission_service import (
@@ -521,6 +521,56 @@ def manage_panel(request):
     context['total_admin_staff'] = user_counts['admin_staff']
     context['total_client_staff'] = user_counts['client_staff']
     return render(request, 'manage-panel.html', context)
+
+
+@super_admin_required
+@require_http_methods(['GET'])
+def api_email_logs(request):
+    """Return paginated email log entries for the Email Management tab."""
+    status_filter = request.GET.get('status', '')
+    email_type_filter = request.GET.get('email_type', '')
+    page = int(request.GET.get('page', 1))
+    per_page = int(request.GET.get('per_page', 50))
+
+    qs = EmailLog.objects.all()
+    if status_filter:
+        qs = qs.filter(status=status_filter)
+    if email_type_filter:
+        qs = qs.filter(email_type=email_type_filter)
+
+    paginator = Paginator(qs, per_page)
+    page_obj = paginator.get_page(page)
+
+    logs = [
+        {
+            'id': log.id,
+            'recipient_name': log.recipient_name,
+            'recipient_email': log.recipient_email,
+            'subject': log.subject,
+            'email_type': log.email_type,
+            'email_type_display': log.get_email_type_display(),
+            'status': log.status,
+            'status_display': log.get_status_display(),
+            'error_message': log.error_message,
+            'created_at': log.created_at.strftime('%d-%m-%Y %H:%M'),
+            'sent_at': log.sent_at.strftime('%d-%m-%Y %H:%M') if log.sent_at else None,
+        }
+        for log in page_obj
+    ]
+
+    return JsonResponse({
+        'success': True,
+        'logs': logs,
+        'total': paginator.count,
+        'page': page,
+        'total_pages': paginator.num_pages,
+        'status_counts': {
+            'on_hold': EmailLog.objects.filter(status=EmailLog.STATUS_ON_HOLD).count(),
+            'pending': EmailLog.objects.filter(status=EmailLog.STATUS_PENDING).count(),
+            'sent': EmailLog.objects.filter(status=EmailLog.STATUS_SENT).count(),
+            'failed': EmailLog.objects.filter(status=EmailLog.STATUS_FAILED).count(),
+        },
+    })
 
 
 # NOTE: Reprint Cards page view moved to 'reprintcard' app

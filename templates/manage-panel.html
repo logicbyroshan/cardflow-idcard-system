@@ -44,6 +44,11 @@
         <button class="panel-tab" data-tab="log-history" onclick="switchTab('log-history')">
           <i class="fa-solid fa-clock-rotate-left"></i> Log History
         </button>
+        {% if is_super_admin %}
+        <button class="panel-tab" data-tab="email-logs" onclick="switchTab('email-logs'); loadEmailLogs();">
+          <i class="fa-solid fa-envelope"></i> Email Management
+        </button>
+        {% endif %}
         <button class="panel-tab" data-tab="system" onclick="switchTab('system')">
           <i class="fa-solid fa-server"></i> System Info
         </button>
@@ -53,6 +58,7 @@
       {% include 'partials/panel/tab-download-templates.html' %}
       {% if is_super_admin %}{% include 'partials/panel/tab-backups.html' %}{% endif %}
       {% include 'partials/panel/tab-log-history.html' %}
+      {% if is_super_admin %}{% include 'partials/panel/tab-email-logs.html' %}{% endif %}
       {% include 'partials/panel/tab-system.html' %}
 
       {% include 'partials/panel/create-notification-modal.html' %}

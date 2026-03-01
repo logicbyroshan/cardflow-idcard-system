@@ -1,0 +1,138 @@
+<!-- === EMAIL MANAGEMENT TAB === -->
+<div class="panel-tab-content" id="tab-email-logs" style="display:none;">
+
+  <!-- Header bar -->
+  <div class="notif-actions-bar">
+    <div class="notif-actions-left">
+      <select id="emailStatusFilter" class="form-select-sm" onchange="loadEmailLogs()">
+        <option value="">All Statuses</option>
+        <option value="on_hold">On Hold</option>
+        <option value="pending">Pending</option>
+        <option value="sent">Sent</option>
+        <option value="failed">Failed</option>
+      </select>
+      <select id="emailTypeFilter" class="form-select-sm" onchange="loadEmailLogs()">
+        <option value="">All Types</option>
+        <option value="welcome">Welcome / Activation</option>
+        <option value="temp_password">Temp Password</option>
+        <option value="password_change">Password Change Notice</option>
+      </select>
+      <button class="btn-secondary btn-sm" onclick="loadEmailLogs()">
+        <i class="fa-solid fa-rotate-right"></i> Refresh
+      </button>
+    </div>
+    <div class="notif-actions-right" style="display:flex;gap:12px;align-items:center;">
+      <span class="status-badge on_hold" title="On Hold"><i class="fa-solid fa-clock"></i> <span id="emailCountOnHold">0</span></span>
+      <span class="status-badge pending" title="Pending"><i class="fa-solid fa-hourglass-half"></i> <span id="emailCountPending">0</span></span>
+      <span class="status-badge sent" title="Sent"><i class="fa-solid fa-check-circle"></i> <span id="emailCountSent">0</span></span>
+      <span class="status-badge failed" title="Failed"><i class="fa-solid fa-circle-xmark"></i> <span id="emailCountFailed">0</span></span>
+    </div>
+  </div>
+
+  <!-- Email Logs Table -->
+  <div class="notif-table-wrap" style="max-height:calc(100vh - 260px); overflow-y:auto;">
+    <table class="notif-table" id="emailLogsTable">
+      <thead>
+        <tr>
+          <th scope="col" style="width:5%">#</th>
+          <th scope="col" style="width:20%">Recipient</th>
+          <th scope="col" style="width:25%">Email</th>
+          <th scope="col" style="width:16%">Type</th>
+          <th scope="col" style="width:12%">Status</th>
+          <th scope="col" style="width:14%">Created</th>
+          <th scope="col" style="width:8%">Note</th>
+        </tr>
+      </thead>
+      <tbody id="emailLogsBody">
+        <tr>
+          <td colspan="7" class="text-center p-6 text-gray-400">
+            <i class="fa-solid fa-spinner fa-spin"></i> Loading…
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 18px;">
+    <span class="text-xs text-gray-400" id="emailLogCountLabel">—</span>
+    <div style="display:flex;gap:6px;">
+      <button class="btn-secondary btn-sm" id="emailPrevBtn" onclick="emailLogPage(-1)" disabled>
+        <i class="fa-solid fa-chevron-left"></i>
+      </button>
+      <span class="text-xs text-gray-500" id="emailPageLabel" style="padding:4px 8px;">—</span>
+      <button class="btn-secondary btn-sm" id="emailNextBtn" onclick="emailLogPage(1)" disabled>
+        <i class="fa-solid fa-chevron-right"></i>
+      </button>
+    </div>
+  </div>
+</div>
+
+<style>
+.status-badge.on_hold  { background:#f3f4f6; color:#6b7280; padding:3px 10px; border-radius:12px; font-size:12px; }
+.status-badge.pending  { background:#fef3c7; color:#d97706; padding:3px 10px; border-radius:12px; font-size:12px; }
+.status-badge.sent     { background:#d1fae5; color:#059669; padding:3px 10px; border-radius:12px; font-size:12px; }
+.status-badge.failed   { background:#fee2e2; color:#dc2626; padding:3px 10px; border-radius:12px; font-size:12px; }
+</style>
+
+<script>
+(function() {
+  var _emailPage = 1;
+
+  window.loadEmailLogs = function(page) {
+    if (page !== undefined) _emailPage = page;
+    var status = document.getElementById('emailStatusFilter').value;
+    var type   = document.getElementById('emailTypeFilter').value;
+    var url    = '/api/email-logs/?page=' + _emailPage + '&per_page=50';
+    if (status) url += '&status=' + encodeURIComponent(status);
+    if (type)   url += '&email_type=' + encodeURIComponent(type);
+
+    fetch(url, {headers: {'X-CSRFToken': document.querySelector('meta[name=csrf-token]').content}})
+      .then(r => r.json())
+      .then(data => {
+        if (!data.success) return;
+        var tbody = document.getElementById('emailLogsBody');
+        var counts = data.status_counts;
+        document.getElementById('emailCountOnHold').textContent  = counts.on_hold  || 0;
+        document.getElementById('emailCountPending').textContent = counts.pending || 0;
+        document.getElementById('emailCountSent').textContent    = counts.sent    || 0;
+        document.getElementById('emailCountFailed').textContent  = counts.failed  || 0;
+
+        if (!data.logs.length) {
+          tbody.innerHTML = '<tr><td colspan="7" class="text-center p-6 text-gray-400"><i class="fa-solid fa-envelope-open"></i> No email logs found.</td></tr>';
+        } else {
+          tbody.innerHTML = data.logs.map(function(log, i) {
+            var statusClass = {'on_hold':'on_hold','pending':'pending','sent':'sent','failed':'failed'}[log.status] || '';
+            var noteHtml = log.error_message
+              ? '<span title="' + log.error_message.replace(/"/g,'&quot;') + '" style="cursor:help;color:#dc2626;"><i class="fa-solid fa-circle-info"></i></span>'
+              : '<span style="color:#9ca3af;">—</span>';
+            return '<tr>' +
+              '<td>' + (((_emailPage-1)*50)+i+1) + '</td>' +
+              '<td style="font-weight:500;">' + (log.recipient_name || '—') + '</td>' +
+              '<td style="font-size:12px;color:#6b7280;">' + log.recipient_email + '</td>' +
+              '<td>' + log.email_type_display + '</td>' +
+              '<td><span class="status-badge ' + statusClass + '">' + log.status_display + '</span></td>' +
+              '<td style="font-size:12px;">' + log.created_at + '</td>' +
+              '<td style="text-align:center;">' + noteHtml + '</td>' +
+            '</tr>';
+          }).join('');
+        }
+
+        var total = data.total;
+        var totalPages = data.total_pages;
+        document.getElementById('emailLogCountLabel').textContent = 'Showing page ' + _emailPage + ' of ' + totalPages + ' (' + total + ' total)';
+        document.getElementById('emailPageLabel').textContent = _emailPage + ' / ' + totalPages;
+        document.getElementById('emailPrevBtn').disabled = _emailPage <= 1;
+        document.getElementById('emailNextBtn').disabled = _emailPage >= totalPages;
+      })
+      .catch(function(err) {
+        console.error('Email logs load error:', err);
+      });
+  };
+
+  window.emailLogPage = function(delta) {
+    _emailPage = Math.max(1, _emailPage + delta);
+    loadEmailLogs();
+  };
+})();
+</script>

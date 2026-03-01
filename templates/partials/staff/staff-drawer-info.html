@@ -25,28 +25,26 @@ Partial for staff name, email, phone, address, status, password fields.
         </div>
     </div>
     
-    <div class="form-row">
-        <div class="form-group">
-            <label class="form-label" for="staff-address">Address</label>
-            <textarea id="staff-address" name="address" class="form-textarea" rows="2" placeholder="Enter address (optional)"></textarea>
-        </div>
+    <div class="form-group" style="width:100%;">
+        <label class="form-label" for="staff-address">Address</label>
+        <textarea id="staff-address" name="address" class="form-textarea" rows="2" placeholder="Enter address (optional)"></textarea>
+    </div>
+    
+    <div class="form-row" id="staffPasswordOptionRow">
         <div class="form-group">
             <label class="form-label" for="staff-status">Status</label>
             <div class="custom-dropdown form-dropdown" id="staffStatusDropdown">
                 <button type="button" class="dropdown-toggle" aria-expanded="false">
-                    <span>Active</span>
+                    <span>Inactive</span>
                     <i class="fa-solid fa-chevron-down"></i>
                 </button>
                 <div class="dropdown-options">
-                    <div class="dropdown-option selected" data-value="true">Active</div>
-                    <div class="dropdown-option" data-value="false">Inactive</div>
+                    <div class="dropdown-option" data-value="true">Active</div>
+                    <div class="dropdown-option selected" data-value="false">Inactive</div>
                 </div>
             </div>
-            <input type="hidden" id="staff-status" name="is_active" value="true">
+            <input type="hidden" id="staff-status" name="is_active" value="false">
         </div>
-    </div>
-
-    <div class="form-row" id="staffPasswordOptionRow">
         <div class="form-group">
             <label class="form-label">Password Option</label>
             <div class="custom-dropdown form-dropdown" id="staffPasswordOptionDropdown">
@@ -61,9 +59,10 @@ Partial for staff name, email, phone, address, status, password fields.
             </div>
             <input type="hidden" id="staff-password-option" name="password_option" value="phone">
         </div>
-        <div class="form-group" id="staffCustomPasswordGroup" style="display: none;">
-            <label class="form-label" for="staff-password">Password <span class="required">*</span></label>
-            <input type="password" id="staff-password" name="password" class="form-input" placeholder="Enter custom password" autocomplete="new-password">
-        </div>
+    </div>
+
+    <div class="form-group" id="staffCustomPasswordGroup" style="display: none;">
+        <label class="form-label" for="staff-password">Password <span class="required">*</span></label>
+        <input type="password" id="staff-password" name="password" class="form-input" placeholder="Enter custom password" autocomplete="new-password">
     </div>
 </div>

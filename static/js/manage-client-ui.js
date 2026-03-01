@@ -231,7 +231,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (clientData === undefined) clientData = null;
         clientForm.reset();
         clientIdInput.value = '';
-        NS.setClientStatusDropdown('true'); // Reset dropdown UI after form reset
+        NS.setClientStatusDropdown('false'); // Default Inactive for new clients
         NS.setClientPasswordOption('phone'); // Reset password option to phone
         
         // Phase 1: Photo upload removed - using avatar placeholder

@@ -186,7 +186,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (staffData === undefined) staffData = null;
         NS.currentMode = mode;
         staffForm.reset();
-        NS.setStatusDropdown('true'); // Reset dropdown UI after form reset
+        NS.setStatusDropdown('false'); // Default Inactive for new staff
         NS.setPasswordOption('phone'); // Reset password option
 
         // Phase 1: Profile image upload removed - using avatar placeholder

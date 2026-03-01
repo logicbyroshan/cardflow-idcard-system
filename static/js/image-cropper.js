@@ -84,8 +84,10 @@ function openModal(file) {
         reader.onload = function(ev) {
             image.src = ev.target.result;
 
-            // Show overlay
-            overlay.classList.add('active');
+            // Show overlay — use style.display directly so that an initial
+            // style="display:none" inline attribute does not block us,
+            // and any CSS-class bleed from other modals cannot interfere.
+            overlay.style.display = 'flex';
             document.body.style.overflow = 'hidden';
 
             // Reset aspect buttons — default to free (select whole image)
@@ -122,9 +124,10 @@ function openModal(file) {
 
 function closeModal() {
     if (cropper) { cropper.destroy(); cropper = null; }
-    overlay?.classList.remove('active');
+    // Hide via inline style — robust against any CSS class conflicts
+    if (overlay) { overlay.style.display = 'none'; }
     document.body.style.overflow = '';
-    image.src = '';
+    if (image) { image.src = ''; }
 }
 
 function cancel() {
@@ -170,6 +173,18 @@ function applyCrop() {
         if (resolvePromise) { resolvePromise(croppedFile); resolvePromise = null; }
     }, currentFileType, 0.92);
 }
+
+// Always bind close / cancel events as soon as the DOM is ready so the
+// close button works even if the overlay became visible via a CSS bug
+// before the user has triggered openModal() for the first time.
+(function _earlyInit() {
+    function _tryBind() { getElements(); }  // safe to call multiple times
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', _tryBind);
+    } else {
+        _tryBind();
+    }
+})();
 
 // Expose
 window.ImageCropper = {
