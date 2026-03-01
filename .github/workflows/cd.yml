@@ -10,6 +10,10 @@ on:
     workflows: ["CI"]
     types: [completed]
 
+concurrency:
+  group: production
+  cancel-in-progress: false
+
 jobs:
   deploy:
     name: Deploy to Production Server
@@ -53,13 +57,22 @@ jobs:
             NEW_COMMIT=$(git rev-parse HEAD)
             echo "New commit: $NEW_COMMIT" | tee -a "$DEPLOY_LOG"
 
-            echo "Installing system dependencies for WeasyPrint (one-time)..." | tee -a "$DEPLOY_LOG"
-            sudo apt-get install -y --no-install-recommends \
-              libpango-1.0-0 libpangocairo-1.0-0 libpangoft2-1.0-0 libfontconfig1 \
-              2>/dev/null || true
+            echo "Installing system dependencies for WeasyPrint (skip if already present)..." | tee -a "$DEPLOY_LOG"
+            if ! dpkg -s libpango-1.0-0 >/dev/null 2>&1; then
+              sudo apt-get install -y --no-install-recommends \
+                libpango-1.0-0 libpangocairo-1.0-0 libpangoft2-1.0-0 libfontconfig1 \
+                2>/dev/null || true
+            else
+              echo "WeasyPrint deps already installed, skipping." | tee -a "$DEPLOY_LOG"
+            fi
 
             echo "Installing dependencies..." | tee -a "$DEPLOY_LOG"
-            $PIP install -r requirements.txt --quiet
+            REQS_CHANGED=$(git diff "$PREV_COMMIT" HEAD -- requirements.txt | wc -l)
+            if [ "$REQS_CHANGED" -gt "0" ] || [ "$PREV_COMMIT" = "$NEW_COMMIT" ]; then
+              $PIP install -r requirements.txt --quiet
+            else
+              echo "requirements.txt unchanged, skipping pip install." | tee -a "$DEPLOY_LOG"
+            fi
 
             echo "Running Django checks..." | tee -a "$DEPLOY_LOG"
             if ! $PYTHON manage.py check --fail-level WARNING; then
