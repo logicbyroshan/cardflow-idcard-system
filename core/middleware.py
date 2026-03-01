@@ -563,14 +563,14 @@ class WebsiteOfflineMiddleware:
 
 class SessionIdleTimeoutMiddleware:
     """
-    Logs out users after SESSION_IDLE_TIMEOUT seconds of inactivity.
+    Enforces two session expiry policies for authenticated users:
 
-    On every authenticated request, compares the current time with
-    the last-activity timestamp stored in the session. If the gap
-    exceeds the threshold, the session is flushed and the user is
-    redirected to login.
+    1. IDLE timeout (SESSION_IDLE_TIMEOUT): logs out after N seconds with no requests.
+       Default: 30 days. Set to 0 to disable.
 
-    Set SESSION_IDLE_TIMEOUT=0 in settings to disable.
+    2. ABSOLUTE max-age (SESSION_ABSOLUTE_MAX_AGE): logs out after N seconds from
+       first login regardless of activity — prevents indefinitely-valid stolen tokens.
+       Default: 90 days. Set to 0 to disable.
     """
 
     SKIP_PREFIXES = ('/static/', '/media/', '/favicon.ico')
@@ -578,11 +578,31 @@ class SessionIdleTimeoutMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
         self._timeout = getattr(django_settings, 'SESSION_IDLE_TIMEOUT', 1800)
+        self._max_age = getattr(django_settings, 'SESSION_ABSOLUTE_MAX_AGE', 60 * 60 * 24 * 90)
+
+    def _force_logout(self, request, reason):
+        """Log user out and redirect to login with a consistent response."""
+        username = getattr(request.user, 'username', 'unknown')
+        logger.info("SessionExpiry: user=%s reason=%s", username, reason)
+        logout(request)
+
+        prefix = '' if getattr(request, '_is_panel_subdomain', False) else '/panel'
+        login_url = f'{prefix}/auth/login/'
+
+        is_ajax = (
+            request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+            or request.headers.get('HX-Request') == 'true'
+            or request.content_type == 'application/json'
+        )
+        if is_ajax:
+            return JsonResponse({
+                'success': False,
+                'message': 'Session expired. Please log in again.',
+                'redirect': login_url,
+            }, status=401)
+        return redirect(login_url)
 
     def __call__(self, request):
-        if self._timeout <= 0:
-            return self.get_response(request)
-
         # Skip for static/media and unauthenticated users
         if any(request.path.startswith(p) for p in self.SKIP_PREFIXES):
             return self.get_response(request)
@@ -591,34 +611,24 @@ class SessionIdleTimeoutMiddleware:
             return self.get_response(request)
 
         now = time.time()
-        last_activity = request.session.get('_last_activity')
 
-        if last_activity is not None and (now - last_activity) > self._timeout:
-            username = getattr(request.user, 'username', 'unknown')
-            logger.info(
-                "SessionIdleTimeout: user=%s idle=%.0fs threshold=%ds — forcing logout",
-                username, now - last_activity, self._timeout
-            )
-            logout(request)
+        # ── Policy 1: Idle timeout ────────────────────────────────────────────
+        if self._timeout > 0:
+            last_activity = request.session.get('_last_activity')
+            if last_activity is not None and (now - last_activity) > self._timeout:
+                return self._force_logout(request, reason='idle')
 
-            prefix = '' if getattr(request, '_is_panel_subdomain', False) else '/panel'
-            login_url = f'{prefix}/auth/login/'
+        # ── Policy 2: Absolute max-age ────────────────────────────────────────
+        if self._max_age > 0:
+            session_created = request.session.get('_session_created')
+            if session_created is not None and (now - session_created) > self._max_age:
+                return self._force_logout(request, reason='absolute_max_age')
 
-            # API/HTMX → JSON; browser → redirect
-            is_ajax = (
-                request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-                or request.headers.get('HX-Request') == 'true'
-                or request.content_type == 'application/json'
-            )
-            if is_ajax:
-                return JsonResponse({
-                    'success': False,
-                    'message': 'Session expired due to inactivity.',
-                    'redirect': login_url,
-                }, status=401)
-            return redirect(login_url)
+        # Stamp session on first authenticated use (for absolute max-age tracking)
+        if '_session_created' not in request.session:
+            request.session['_session_created'] = now
 
-        # Update last-activity timestamp
+        # Update last-activity timestamp (for idle timeout tracking)
         request.session['_last_activity'] = now
 
         return self.get_response(request)

@@ -9,7 +9,7 @@ and all existing migrations remain valid. No data migration needed.
 from django.conf import settings
 from django.db import models
 
-from workflows.models import IDCard, IDCardTable
+from idcards.models import IDCard, IDCardTable
 
 
 class ReprintRequest(models.Model):

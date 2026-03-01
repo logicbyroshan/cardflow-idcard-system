@@ -204,7 +204,7 @@ class Client(models.Model):
                         logger.warning("Could not rename thumbs folder %s to %s: %s", old_code, new_code, e)
 
                 # Update all card field_data paths (batch update for safety)
-                from workflows.models import IDCard
+                from idcards.models import IDCard
                 from django.db import transaction
                 old_prefix = f'adarshimg/{old_code}'
                 new_prefix = f'adarshimg/{new_code}'

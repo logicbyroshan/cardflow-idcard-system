@@ -8,7 +8,7 @@ from client.models import Client, generate_folder_code_from_name, generate_uniqu
 from staff.models import Staff
 
 # Import IDCard models from their new home (preserves backward compatibility)
-from workflows.models import IDCardGroup, IDCardTable, IDCard
+from idcards.models import IDCardGroup, IDCardTable, IDCard
 
 
 class CustomUserManager(UserManager):

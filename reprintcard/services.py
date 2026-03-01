@@ -11,7 +11,7 @@ from typing import Any, Dict, List
 
 from django.db import transaction
 
-from workflows.models import IDCard, IDCardTable
+from idcards.models import IDCard, IDCardTable
 from core.services.base import ServiceResult
 from .models import ReprintRequest
 

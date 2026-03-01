@@ -23,7 +23,7 @@ def _setup_export_data():
     from client.models import Client
     client = Client.objects.create(user=client_user, name='Export Client')
 
-    from workflows.models import IDCardGroup, IDCardTable, IDCard
+    from idcards.models import IDCardGroup, IDCardTable, IDCard
     group = IDCardGroup.objects.create(client=client, name='Export Group')
     table = IDCardTable.objects.create(
         group=group, name='Export Table',
@@ -61,7 +61,7 @@ class ExportPermissionTests(TestCase):
 
     def test_admin_can_export_xlsx(self):
         self.client.login(username='exadmin@test.com', password='adminpass1')
-        from workflows.models import IDCard
+        from idcards.models import IDCard
         card_ids = list(IDCard.objects.filter(table=self.table).values_list('id', flat=True))
         response = self.client.post(
             f'/panel/exports/xlsx/{self.table.id}/',

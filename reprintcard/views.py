@@ -18,7 +18,7 @@ from django.views.decorators.http import require_http_methods
 from django.db.models import Count, Q
 from django.utils.timezone import localtime
 
-from workflows.models import IDCard, IDCardTable
+from idcards.models import IDCard, IDCardTable
 from core.services.permission_service import PermissionService, api_require_permission
 from core.views.base import get_user_role, require_any_admin
 

@@ -163,7 +163,7 @@ def process_bulk_upload(task):
                 
                 # Create card object (don't save yet)
                 # Sanitize field_data before bulk_create (which skips save())
-                from workflows.models import sanitize_text_for_storage
+                from idcards.models import sanitize_text_for_storage
                 for _k, _v in field_data.items():
                     if isinstance(_v, str):
                         field_data[_k] = sanitize_text_for_storage(_v)

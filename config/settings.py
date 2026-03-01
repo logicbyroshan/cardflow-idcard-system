@@ -88,7 +88,7 @@ INSTALLED_APPS = [
     'exports',
     'mediafiles',
     'staff',
-    'workflows',
+    'idcards',
     'website',
     'cardprint',
     'reprintcard',
@@ -260,6 +260,12 @@ if _csrf_cookie_domain:
 # If a user has no requests for this period, session expires on next request.
 # Set to 0 to disable. Default: 30 days (matches SESSION_COOKIE_AGE).
 SESSION_IDLE_TIMEOUT = int(os.getenv('SESSION_IDLE_TIMEOUT', str(60 * 60 * 24 * 30)))
+
+# ── Session absolute max-age (seconds) ──
+# Hard cap on session lifetime regardless of activity.
+# Prevents indefinitely-valid stolen tokens from staying valid forever.
+# Set to 0 to disable. Default: 90 days.
+SESSION_ABSOLUTE_MAX_AGE = int(os.getenv('SESSION_ABSOLUTE_MAX_AGE', str(60 * 60 * 24 * 90)))
 
 # ── Permissions-Policy header ──
 # Restricts browser APIs not needed by this app.

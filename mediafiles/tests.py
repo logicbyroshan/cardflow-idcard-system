@@ -16,7 +16,7 @@ def _create_test_card():
     )
     from client.models import Client
     client = Client.objects.create(user=user, name='Media Client')
-    from workflows.models import IDCardGroup, IDCardTable, IDCard
+    from idcards.models import IDCardGroup, IDCardTable, IDCard
     group = IDCardGroup.objects.create(client=client, name='MF Group')
     table = IDCardTable.objects.create(
         group=group, name='MF Table',

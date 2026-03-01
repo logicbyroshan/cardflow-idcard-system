@@ -261,7 +261,7 @@ class ClientStaffService(BaseService):
                 # Assign groups if provided
                 assigned_groups = data.get('assigned_groups', [])
                 if assigned_groups:
-                    from workflows.models import IDCardGroup
+                    from idcards.models import IDCardGroup
                     valid_groups = IDCardGroup.objects.filter(
                         id__in=assigned_groups, client=client
                     )
@@ -352,7 +352,7 @@ class ClientStaffService(BaseService):
             
             # Update group assignments if provided
             if 'assigned_groups' in data:
-                from workflows.models import IDCardGroup
+                from idcards.models import IDCardGroup
                 group_ids = data['assigned_groups']
                 if isinstance(group_ids, list):
                     valid_groups = IDCardGroup.objects.filter(

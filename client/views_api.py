@@ -252,7 +252,7 @@ def api_client_groups_list(request):
     API: Get list of ID card groups for the current client.
     Used in staff drawer for group assignment.
     """
-    from workflows.models import IDCardGroup  # local import: group listing
+    from idcards.models import IDCardGroup  # local import: group listing
     
     user = request.user
     client = ClientAccessService.get_client_for_user(user)
@@ -276,7 +276,7 @@ def api_class_section_options(request):
     Used in staff drawer for class/section filter assignment.
     """
     from core.models import IDCard, IDCardTable
-    from workflows.models import IDCardGroup
+    from idcards.models import IDCardGroup
 
     user = request.user
     client = ClientAccessService.get_client_for_user(user)

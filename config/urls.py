@@ -29,23 +29,22 @@ def _protected_media_serve(request, path, document_root=None):
     """
     Serve media files with access control for sensitive directories.
 
-    ALL uploaded client data (ID card photos, exports, staff images, temp files)
-    requires authentication.  Only truly public files (none currently) skip the check.
+    In production (DEBUG=False), protected files are served by Nginx via
+    X-Accel-Redirect — Django only performs the auth check then hands off.
+    Nginx must have these locations marked `internal;` (see deployment/nginx_example.conf).
 
-    In production, you should serve media via Nginx with X-Accel-Redirect instead:
-        location /media/ {
-            alias /path/to/media/;
-            internal;  # only accessible via X-Accel-Redirect
-        }
+    In development (DEBUG=True), Django's `serve()` is used as a fallback.
     """
+    from django.http import HttpResponse
     from django.views.static import serve
-    # Every path under media/ that contains user data requires authentication.
-    # 'adarshimg/' - client ID card photos (personal data, most sensitive)
-    # 'exports/'   - generated PDF/Excel/Word/ZIP exports
-    # 'clients_imgs/' / 'staff_imgs/' - profile images
-    # 'temp/'      - temporary upload holding area
+
+    # 'adarshimg/'    - client ID card photos (personal data, most sensitive)
+    # 'exports/'      - generated PDF/Excel/Word/ZIP exports
+    # 'clients_imgs/' - client profile images
+    # 'staff_imgs/'   - staff profile images
+    # 'temp/'         - temporary upload holding area
     PROTECTED_PREFIXES = (
-        'adarshimg/',    # client ID card photos — CRITICAL: personal data
+        'adarshimg/',
         'exports/',
         'clients_imgs/',
         'staff_imgs/',
@@ -54,6 +53,15 @@ def _protected_media_serve(request, path, document_root=None):
     if any(path.startswith(p) for p in PROTECTED_PREFIXES):
         if not request.user.is_authenticated:
             return HttpResponseForbidden('Access denied')
+
+    # Production: let Nginx serve the file via X-Accel-Redirect (zero-copy, non-blocking)
+    if not settings.DEBUG:
+        response = HttpResponse()
+        response['X-Accel-Redirect'] = f'/media/{path}'
+        response['Content-Type'] = ''
+        return response
+
+    # Development: Django fallback
     return serve(request, path, document_root=document_root)
 
 def _serve_mobile_sw(request):
@@ -84,6 +92,9 @@ urlpatterns = [
     # Health check — no auth, used by load balancers / CI/CD
     path('api/health/', health_check, name='health_check'),
 
+    # Versioned API — new endpoints go in config/urls_api_v1.py
+    path('api/v1/', include('config.urls_api_v1', namespace='v1')),
+
     # PWA — manifest and service worker at root scope
     path('manifest.json', lambda r: _serve_pwa_file(r, 'manifest.json'), name='pwa_manifest'),
     path('sw.js', lambda r: _serve_pwa_file(r, 'sw.js'), name='pwa_sw'),
@@ -103,7 +114,7 @@ urlpatterns = [
     path('panel/exports/', include('exports.urls')),
     path('panel/images/', include('mediafiles.urls')),
     path('panel/staff/', include('staff.urls')),
-    path('panel/work/', include('workflows.urls')),
+    path('panel/work/', include('idcards.urls')),
     path('panel/print/', include('cardprint.urls')),
     path('panel/reprint/', include('reprintcard.urls')),
     path('panel/website/', include('website.admin_urls')),
@@ -111,7 +122,7 @@ urlpatterns = [
     # ==================== PWA MOBILE APP (/app/) ====================
     path('app/manifest.json', _serve_mobile_manifest, name='mobile_pwa_manifest'),
     path('app/sw.js', _serve_mobile_sw, name='mobile_pwa_sw'),
-    path('app/', include('PWA.mobile_app.urls')),
+    path('app/', include('mobile_app.urls')),
 
     # ==================== PUBLIC WEBSITE (/) ====================
     # Public-facing website at root — must be LAST to avoid catching /panel/ routes

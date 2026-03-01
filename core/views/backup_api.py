@@ -25,7 +25,7 @@ from django.views.decorators.http import require_http_methods
 from core.models import BackupTask, User
 from core.services.permission_service import require_super_admin
 from client.models import Client
-from workflows.models import IDCardGroup, IDCardTable, IDCard
+from idcards.models import IDCardGroup, IDCardTable, IDCard
 
 logger = logging.getLogger(__name__)
 

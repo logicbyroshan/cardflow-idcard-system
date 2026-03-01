@@ -86,7 +86,7 @@ def _process_backup(task_id: int):
     """Main background thread — iterates clients and builds ZIPs."""
     from core.models import BackupTask
     from client.models import Client
-    from workflows.models import IDCardGroup, IDCardTable, IDCard
+    from idcards.models import IDCardGroup, IDCardTable, IDCard
 
     try:
         task = BackupTask.objects.get(pk=task_id)
@@ -156,7 +156,7 @@ def _build_client_zip(client, out_dir: str) -> dict | None:
               photo1.jpg
               photo2.jpg
     """
-    from workflows.models import IDCardTable, IDCard
+    from idcards.models import IDCardTable, IDCard
     from exports.utils import get_text_fields, get_image_fields, is_image_field
 
     groups = client.id_card_groups.all()
@@ -204,7 +204,7 @@ def _write_table_to_zip(zf: zipfile.ZipFile, client_folder: str, table) -> bool:
     Creates: ``{client}/{table}/status.xlsx`` + ``{client}/{table}/images/…``
     Returns True if at least one file was written.
     """
-    from workflows.models import IDCard
+    from idcards.models import IDCard
     from exports.utils import get_text_fields, get_image_fields
 
     # Fetch all cards for this table

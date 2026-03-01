@@ -43,13 +43,26 @@ def panel_robots_txt(request):
 def _protected_media_serve(request, path, document_root=None):
     """
     Serve media files with access control for sensitive directories.
-    Same logic as config/urls.py — see docstring there.
+    In production uses X-Accel-Redirect so Nginx serves the file directly.
+    See config/urls.py docstring and deployment/nginx_example.conf for setup.
     """
+    from django.http import HttpResponse
     from django.views.static import serve
-    PROTECTED_PREFIXES = ('exports/', 'clients_imgs/', 'staff_imgs/', 'temp/')
+    PROTECTED_PREFIXES = (
+        'adarshimg/',
+        'exports/',
+        'clients_imgs/',
+        'staff_imgs/',
+        'temp/',
+    )
     if any(path.startswith(p) for p in PROTECTED_PREFIXES):
         if not request.user.is_authenticated:
             return HttpResponseForbidden('Access denied')
+    if not settings.DEBUG:
+        response = HttpResponse()
+        response['X-Accel-Redirect'] = f'/media/{path}'
+        response['Content-Type'] = ''
+        return response
     return serve(request, path, document_root=document_root)
 
 
@@ -162,7 +175,8 @@ urlpatterns = [
     # Health check — no auth, used by load balancers / CI/CD
     path('api/health/', health_check, name='health_check'),
 
-    # SEO — block all crawlers on panel subdomain
+    # Versioned API — new endpoints go in config/urls_api_v1.py
+    path('api/v1/', include('config.urls_api_v1', namespace='v1')),
     path('robots.txt', panel_robots_txt, name='panel_robots_txt'),
 
     # PWA — manifest and service worker at root scope
@@ -179,7 +193,7 @@ urlpatterns = [
     path('exports/', include('exports.urls')),
     path('images/', include('mediafiles.urls')),
     path('staff/', include('staff.urls')),
-    path('work/', include('workflows.urls')),
+    path('work/', include('idcards.urls')),
     path('website/', include('website.admin_urls')),
     path('print/', include('cardprint.urls')),
     path('reprint/', include('reprintcard.urls')),
@@ -188,7 +202,7 @@ urlpatterns = [
     # Mobile manifest & SW served via Django for correct headers
     path('app/manifest.json', panel_manifest_json, name='mobile_pwa_manifest'),
     path('app/sw.js', _serve_mobile_sw, name='mobile_pwa_sw'),
-    path('app/', include('PWA.mobile_app.urls')),
+    path('app/', include('mobile_app.urls')),
 ]
 
 # Media file serving (with auth for protected dirs)

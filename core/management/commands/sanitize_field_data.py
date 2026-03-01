@@ -11,7 +11,7 @@ Usage:
 import logging
 
 from django.core.management.base import BaseCommand
-from workflows.models import IDCard, sanitize_text_for_storage
+from idcards.models import IDCard, sanitize_text_for_storage
 
 logger = logging.getLogger(__name__)
 

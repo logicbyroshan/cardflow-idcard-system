@@ -30,7 +30,7 @@ def _create_client_user(email='client@test.com', password='clientpass1'):
 
 
 def _create_table(client, fields=None):
-    from workflows.models import IDCardGroup, IDCardTable
+    from idcards.models import IDCardGroup, IDCardTable
     if fields is None:
         fields = [
             {'name': 'NAME', 'type': 'text', 'order': 1},
@@ -43,7 +43,7 @@ def _create_table(client, fields=None):
 
 
 def _create_card(table, field_data=None, status='pending'):
-    from workflows.models import IDCard
+    from idcards.models import IDCard
     if field_data is None:
         field_data = {'NAME': 'JOHN DOE', 'CLASS': '10'}
     return IDCard.objects.create(table=table, field_data=field_data, status=status)
@@ -93,7 +93,7 @@ class IDCardModelTests(TestCase):
         self.assertEqual(card.table.id, self.table.id)
 
     def test_card_default_status(self):
-        from workflows.models import IDCard
+        from idcards.models import IDCard
         card = IDCard.objects.create(table=self.table, field_data={'NAME': 'X'})
         self.assertEqual(card.status, 'pending')
 
