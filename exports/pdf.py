@@ -106,6 +106,61 @@ _FONT_MODES = {
     },
 }
 
+# ── Column title shortening map ──────────────────────────────────────────────
+# Keys must be UPPER-CASE (labels have already been humanised + upper-cased).
+# Applied only when the caller passes shorten_titles=True.
+TITLE_SHORTENING_MAP: dict = {
+    # Date / identifier fields
+    'DATE OF BIRTH':        'DOB',
+    'D O B':                'DOB',
+    # Blood / medical
+    'BLOOD GROUP':          'BLD GRP',
+    # National fields
+    'NATIONALITY':          'NATNL.',
+    'RELIGION':             'REL.',
+    # Parent / guardian names
+    "FATHER NAME":          "F. NAME",
+    "FATHER S NAME":        "F. NAME",
+    "FATHERS NAME":         "F. NAME",
+    "MOTHER NAME":          "M. NAME",
+    "MOTHER S NAME":        "M. NAME",
+    "MOTHERS NAME":         "M. NAME",
+    "GUARDIAN NAME":        "GUARD. NAME",
+    # Contact
+    'MOBILE NUMBER':        'MOB.',
+    'MOBILE NO':            'MOB.',
+    'MOBILE':               'MOB.',
+    'CONTACT NUMBER':       'CONT. NO.',
+    'CONTACT NO':           'CONT. NO.',
+    'PHONE NUMBER':         'PHONE',
+    'PHONE NO':             'PHONE',
+    # Address variants
+    'PERMANENT ADDRESS':    'PERM. ADDR.',
+    'PRESENT ADDRESS':      'PRES. ADDR.',
+    'RESIDENTIAL ADDRESS':  'RES. ADDR.',
+    'TEMPORARY ADDRESS':    'TEMP. ADDR.',
+    'CORRESPONDENCE ADDRESS': 'CORR. ADDR.',
+    'ADDRESS':              'ADDR.',
+    # Academic
+    'SECTION':              'SEC.',
+    'ENROLLMENT NUMBER':    'ENR. NO.',
+    'ENROLLMENT NO':        'ENR. NO.',
+    'REGISTRATION NUMBER':  'REG. NO.',
+    'REGISTRATION NO':      'REG. NO.',
+    'ROLL NUMBER':          'ROLL NO.',
+    # Professional
+    'DESIGNATION':          'DESIG.',
+    'QUALIFICATION':        'QUAL.',
+    'OCCUPATION':           'OCC.',
+    'DEPARTMENT':           'DEPT.',
+    # Aadhaar / PAN (already short, but standardise spacing)
+    'AADHAR NUMBER':        'AADHAAR',
+    'AADHAAR NUMBER':       'AADHAAR',
+    'PAN NUMBER':           'PAN',
+    # Category / caste
+    'CATEGORY':             'CATG.',
+}
+
 
 class PdfExporter:
     """
@@ -152,6 +207,7 @@ class PdfExporter:
         status: str = '',
         template_id: int = None,
         font_mode: str = 'auto',
+        shorten_titles: bool = False,
     ) -> PdfExportResult:
         """
         Export cards to PDF format.
@@ -163,6 +219,8 @@ class PdfExporter:
             template_id: Optional ExportTemplate ID
             font_mode: 'auto' | 'normal' | 'compact' | 'condensed'
                        'auto' uses normal for ≤15 cols, compact for >15
+            shorten_titles: When True, long column headings are replaced with
+                            short abbreviations (e.g. "Date Of Birth" → "DOB").
 
         Returns:
             PdfExportResult with HttpResponse if successful
@@ -232,7 +290,7 @@ class PdfExporter:
 
             # Sort cards for export (Class → Section → Name)
             cards_list = sort_cards_for_export(list(cards[:MAX_PDF_CARDS]), table.fields)
-            column_configs = self._build_column_configs(ordered_fields, cards_list)
+            column_configs = self._build_column_configs(ordered_fields, cards_list, shorten_titles=shorten_titles)
 
             # ── Resolve font mode ────────────────────────────────
             total_cols = len(column_configs)  # includes SR NO
@@ -422,7 +480,8 @@ class PdfExporter:
     def _build_column_configs(
         self,
         ordered_fields: List[Dict[str, Any]],
-        cards: list
+        cards: list,
+        shorten_titles: bool = False,
     ) -> List[Dict[str, Any]]:
         """
         Calculate dynamic column widths based on field semantics + data content.
@@ -453,8 +512,11 @@ class PdfExporter:
             ftype = field.get('type', 'text')
             is_image = field.get('is_image', False)
             spec = get_column_spec(name, ftype)
+            humanized = self._humanize_label(name.upper())
+            if shorten_titles:
+                humanized = TITLE_SHORTENING_MAP.get(humanized, humanized)
             configs.append({
-                'label': self._humanize_label(name.upper()),
+                'label': humanized,
                 'width': 0,
                 'align': spec.align,
                 'is_image': is_image,

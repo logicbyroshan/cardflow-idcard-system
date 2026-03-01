@@ -31,6 +31,16 @@
     </div>
     <!-- Hidden font mode for non-dense tables -->
     <input type="hidden" id="downloadPdfFontModeHidden" value="auto">
+
+    <!-- Shorten Column Titles option -->
+    <div class="mt-3 mb-1 flex items-center gap-2">
+      <input type="checkbox" id="downloadPdfShortenTitles"
+             class="w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
+      <label for="downloadPdfShortenTitles" class="text-sm text-gray-700 cursor-pointer select-none">
+        Shorten Column Titles
+        <span class="text-xs text-gray-500 ml-1">(e.g. Date Of Birth → DOB, Mobile No → Mob.)</span>
+      </label>
+    </div>
     
     <div class="center-modal-actions">
       <button id="downloadPdfCancel" class="center-modal-btn center-modal-btn-cancel">Cancel</button>

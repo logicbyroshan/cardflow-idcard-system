@@ -439,9 +439,10 @@ var _ASYNC_PDF_THRESHOLD = 500;
  */
 var _POLL_INTERVAL = 2000;
 
-function downloadPdf(cardIds, templateId, fontMode) {
+function downloadPdf(cardIds, templateId, fontMode, shortenTitles) {
     templateId = templateId || '';
     fontMode = fontMode || 'auto';
+    shortenTitles = !!shortenTitles;
     
     const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
     if (!tableId) {
@@ -458,7 +459,7 @@ function downloadPdf(cardIds, templateId, fontMode) {
 
     // Use async export for large datasets to avoid Cloudflare timeout
     if (effectiveCount >= _ASYNC_PDF_THRESHOLD) {
-        _downloadPdfAsync(tableId, cardIds, templateId, fontMode);
+        _downloadPdfAsync(tableId, cardIds, templateId, fontMode, shortenTitles);
         return;
     }
 
@@ -467,7 +468,7 @@ function downloadPdf(cardIds, templateId, fontMode) {
         window.DownloadManager.start({
             name: 'PDF Document',
             url: `/panel/api/table/${tableId}/cards/download-pdf/`,
-            body: Object.assign({ card_ids: cardIds, status: _getCurrentStatus(), template_id: templateId || '', font_mode: fontMode }, _getActiveFilters()),
+            body: Object.assign({ card_ids: cardIds, status: _getCurrentStatus(), template_id: templateId || '', font_mode: fontMode, shorten_titles: shortenTitles }, _getActiveFilters()),
             fallbackExt: 'pdf',
             completeMessage: 'PDF file downloaded successfully!',
             onComplete: function() {
@@ -481,14 +482,14 @@ function downloadPdf(cardIds, templateId, fontMode) {
     }
 
     // Legacy fallback for small exports
-    _downloadPdfLegacy(tableId, cardIds, templateId, fontMode);
+    _downloadPdfLegacy(tableId, cardIds, templateId, fontMode, shortenTitles);
 }
 
 /**
  * Async PDF export: starts background generation + polls for completion.
  * Used for large datasets (500+ cards) to avoid Cloudflare's ~100s timeout.
  */
-function _downloadPdfAsync(tableId, cardIds, templateId, fontMode) {
+function _downloadPdfAsync(tableId, cardIds, templateId, fontMode, shortenTitles) {
     if (typeof showProgressToast === 'function') {
         showProgressToast('Starting PDF generation...', 5);
     }
@@ -497,7 +498,8 @@ function _downloadPdfAsync(tableId, cardIds, templateId, fontMode) {
         card_ids: cardIds,
         status: _getCurrentStatus(),
         template_id: templateId || '',
-        font_mode: fontMode || 'auto'
+        font_mode: fontMode || 'auto',
+        shorten_titles: !!shortenTitles
     }, _getActiveFilters());
 
     // Start async export
@@ -615,7 +617,7 @@ function _pollExportStatus(taskId, cardCount) {
 /**
  * Legacy synchronous PDF download (for small exports without DownloadManager).
  */
-function _downloadPdfLegacy(tableId, cardIds, templateId, fontMode) {
+function _downloadPdfLegacy(tableId, cardIds, templateId, fontMode, shortenTitles) {
     if (typeof showProgressToast === 'function') showProgressToast('Preparing PDF file...', -1);
 
     const xhr = new XMLHttpRequest();
@@ -675,7 +677,7 @@ function _downloadPdfLegacy(tableId, cardIds, templateId, fontMode) {
         if (typeof showToast === 'function') showToast('PDF download timed out. Try selecting fewer cards.', false);
     };
     
-    xhr.send(JSON.stringify(Object.assign({ card_ids: cardIds, status: _getCurrentStatus(), template_id: templateId || '', font_mode: fontMode || 'auto' }, _getActiveFilters())));
+    xhr.send(JSON.stringify(Object.assign({ card_ids: cardIds, status: _getCurrentStatus(), template_id: templateId || '', font_mode: fontMode || 'auto', shorten_titles: !!shortenTitles }, _getActiveFilters())));
 }
 
 /**

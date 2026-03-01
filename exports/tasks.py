@@ -48,6 +48,7 @@ class BackgroundExportManager:
         status: str = '',
         template_id: int = None,
         font_mode: str = 'auto',
+        shorten_titles: bool = False,
     ) -> str:
         """
         Enqueue a PDF export and return a task_id string.
@@ -65,6 +66,7 @@ class BackgroundExportManager:
             'status': status,
             'template_id': template_id,
             'font_mode': font_mode or 'auto',
+            'shorten_titles': bool(shorten_titles),
         }
 
         task, error = BackgroundTask.create_if_no_active(

@@ -417,6 +417,7 @@ def api_export_pdf(request, table_id: int) -> HttpResponse:
     # Extract template_id and font_mode from request
     template_id = None
     font_mode = 'auto'
+    shorten_titles = False
     if request.content_type == 'application/json':
         try:
             data = json.loads(request.body)
@@ -429,6 +430,7 @@ def api_export_pdf(request, table_id: int) -> HttpResponse:
             fm = (data.get('font_mode', '') or '').strip().lower()
             if fm in ('normal', 'compact', 'condensed', 'auto'):
                 font_mode = fm
+            shorten_titles = bool(data.get('shorten_titles', False))
         except (json.JSONDecodeError, ValueError):
             pass
     
@@ -438,7 +440,7 @@ def api_export_pdf(request, table_id: int) -> HttpResponse:
         return JsonResponse({'success': False, 'level': 'warning', 'message': 'Too many PDF exports running. Please wait.'}, status=429)
     try:
         service = ExportService(request.user)
-        result = service.export_pdf(table_id, card_ids, status=_get_status_from_request(request), template_id=template_id, font_mode=font_mode)
+        result = service.export_pdf(table_id, card_ids, status=_get_status_from_request(request), template_id=template_id, font_mode=font_mode, shorten_titles=shorten_titles)
         
         if not result.success:
             return JsonResponse({
@@ -500,6 +502,7 @@ def api_export_pdf_async(request, table_id: int) -> JsonResponse:
     
     template_id = None
     font_mode = 'auto'
+    shorten_titles = False
     if request.content_type == 'application/json':
         try:
             data = json.loads(request.body)
@@ -512,6 +515,7 @@ def api_export_pdf_async(request, table_id: int) -> JsonResponse:
             fm = (data.get('font_mode', '') or '').strip().lower()
             if fm in ('normal', 'compact', 'condensed', 'auto'):
                 font_mode = fm
+            shorten_titles = bool(data.get('shorten_titles', False))
         except (json.JSONDecodeError, ValueError):
             pass
     
@@ -524,6 +528,7 @@ def api_export_pdf_async(request, table_id: int) -> JsonResponse:
         status=_get_status_from_request(request),
         template_id=template_id,
         font_mode=font_mode,
+        shorten_titles=shorten_titles,
     )
     
     logger.info("Export PDF (async): user=%s table=%d cards=%d task=%s",

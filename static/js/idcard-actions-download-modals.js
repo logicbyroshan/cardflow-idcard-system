@@ -320,6 +320,9 @@ function closeDownloadPdfModal() {
         downloadPdfModal.style.display = 'none';
     }
     pendingPdfCardIds = [];
+    // Reset shorten-titles checkbox for next open
+    var shortenCb = document.getElementById('downloadPdfShortenTitles');
+    if (shortenCb) shortenCb.checked = false;
 }
 
 function initDownloadPdfHandlers() {
@@ -352,8 +355,11 @@ function initDownloadPdfHandlers() {
             var fontModeSelect = document.getElementById('downloadPdfFontMode');
             fontMode = fontModeSelect ? fontModeSelect.value : 'auto';
         }
+        // Read shorten-titles checkbox
+        var shortenCb = document.getElementById('downloadPdfShortenTitles');
+        var shortenTitles = shortenCb ? shortenCb.checked : false;
         closeDownloadPdfModal();
-        window.IDCardApp.downloadPdf(pendingPdfCardIds, templateId, fontMode);
+        window.IDCardApp.downloadPdf(pendingPdfCardIds, templateId, fontMode, shortenTitles);
     });
 
     // Close on backdrop click

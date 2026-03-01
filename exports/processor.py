@@ -270,6 +270,7 @@ def process_export_pdf(task):
 
     template_id = metadata.get('template_id')
     font_mode = metadata.get('font_mode', 'auto') or 'auto'
+    shorten_titles = bool(metadata.get('shorten_titles', False))
 
     try:
         # Use existing PDF exporter but save to file
@@ -279,6 +280,7 @@ def process_export_pdf(task):
             status=status_filter,
             template_id=template_id,
             font_mode=font_mode,
+            shorten_titles=shorten_titles,
         )
         
         if not result.success:

@@ -275,6 +275,7 @@ class ExportService:
         status: str = '',
         template_id: Optional[int] = None,
         font_mode: str = 'auto',
+        shorten_titles: bool = False,
     ) -> PdfExportResult:
         """
         Export cards to PDF format.
@@ -285,6 +286,7 @@ class ExportService:
             status: Current status tab label
             template_id: Optional ExportTemplate ID for footer instructions
             font_mode: 'auto' | 'normal' | 'compact' | 'condensed'
+            shorten_titles: Replace long column headings with short abbreviations
             
         Returns:
             PdfExportResult with HttpResponse if successful
@@ -300,6 +302,7 @@ class ExportService:
         return self._pdf_exporter.export_cards(
             context.table, context.cards, status=status,
             template_id=template_id, font_mode=font_mode,
+            shorten_titles=shorten_titles,
         )
     
     # =========================================================================
