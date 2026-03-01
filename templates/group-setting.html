@@ -224,17 +224,6 @@
               <button class="btn btn-md btn-success" id="createFromXlsxBtn" title="Create table directly from an XLSX file"><i class="fa-solid fa-file-excel"></i> Create with XLSX</button>
             </div>
             {% endif %}
-            {% if is_super_admin or perm_idcard_print_list or perm_idcard_reprint_list %}
-            <div class="btn-separator"></div>
-            <div class="btn-group">
-              {% if is_super_admin or perm_idcard_print_list %}
-              <button class="btn btn-md btn-neutral" id="printCardsBtn" disabled title="Go to Print List for selected table"><i class="fa-solid fa-print"></i> Print Cards</button>
-              {% endif %}
-              {% if is_super_admin or perm_idcard_reprint_list %}
-              <button class="btn btn-md btn-neutral" id="reprintCardsBtn" disabled title="Go to Reprint List for selected table"><i class="fa-solid fa-arrows-rotate"></i> Reprint Cards</button>
-              {% endif %}
-            </div>
-            {% endif %}
           </div>
         </div>
       </div>
