@@ -127,33 +127,68 @@ def client_idcard_actions(request, table_id):
 def client_group_settings(request):
     """
     Group Settings page for client admins only — not available to client_staff.
-    Same template as admin group-setting.html.
+    Same template as admin group-setting.html, scoped to the current client.
+
+    Supports:
+    - HTMX partial responses (table-container only)
+    - Search by table name
+    - Pagination (matching admin defaults: 10 per page)
+    - Excludes tables soft-deleted by this client (deleted_by_client=True)
     """
+    from django.core.paginator import Paginator
+    from core.views.base_helpers import get_page_range
+
     user = request.user
     client = _get_client_for_request(user)
     if not client:
         return redirect(reverse('client:dashboard'))
-    
+
     # Always render — show empty if no permissions
     has_perm = PermissionService.has_permission(user, 'perm_idcard_setting_list')
-    
+
+    search_query = request.GET.get('search', '').strip()
+
     if has_perm:
-        # Get the first group for client, or create one if none exists
         group = IDCardService.ensure_default_group(client)
-        tables = IDCardTable.objects.filter(group=group).annotate(
-            total_cards=Count('id_cards')
-        ).order_by('-updated_at')
+        tables_qs = IDCardTable.objects.filter(
+            group=group,
+            deleted_by_client=False,   # hide client-soft-deleted tables
+        ).annotate(total_cards=Count('id_cards')).order_by('-updated_at')
+
+        if search_query:
+            tables_qs = tables_qs.filter(name__icontains=search_query)
     else:
         group = None
-        tables = IDCardTable.objects.none()
-    
+        tables_qs = IDCardTable.objects.none()
+
+    DEFAULT_PER_PAGE = 10
+    PER_PAGE_OPTIONS = [5, 10, 25, 50]
+    try:
+        per_page = int(request.GET.get('per_page', DEFAULT_PER_PAGE))
+        if per_page not in PER_PAGE_OPTIONS:
+            per_page = DEFAULT_PER_PAGE
+    except (ValueError, TypeError):
+        per_page = DEFAULT_PER_PAGE
+
+    paginator = Paginator(tables_qs, per_page)
+    page_obj = paginator.get_page(request.GET.get('page', 1))
+
     context = {
         'active_page': 'group_settings',
         'user_role': user.get_role_display(),
         'client': client,
         'group': group,
-        'tables': tables,
+        'tables': page_obj.object_list,
+        'page_obj': page_obj,
+        'page_range': get_page_range(page_obj),
+        'per_page': per_page,
+        'per_page_options': PER_PAGE_OPTIONS,
+        'search_query': search_query,
     }
+
+    if is_htmx(request):
+        return render(request, 'partials/group-setting/table-container.html', context)
+
     return render(request, 'group-setting.html', context)
 
 

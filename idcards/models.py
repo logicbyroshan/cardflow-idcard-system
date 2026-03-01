@@ -123,6 +123,11 @@ class IDCardTable(models.Model):
     name = models.CharField(max_length=255)
     fields = models.JSONField(default=list, help_text='List of field configurations: [{name, type, order}]')
     is_active = models.BooleanField(default=True)
+    deleted_by_client = models.BooleanField(
+        default=False,
+        help_text='True when the client soft-deletes this table. Hidden from client views; '
+                  'still visible in admin as "User Deleted".'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

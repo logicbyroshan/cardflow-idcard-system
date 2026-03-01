@@ -452,3 +452,13 @@
 #tablesBody tr.no-data-row:hover {
   background: transparent;
 }
+
+/* Rows soft-deleted by the client — shown to admin only, muted style */
+#tablesBody tr.row-deleted-by-client {
+  opacity: 0.6;
+  background: #fafafa;
+}
+#tablesBody tr.row-deleted-by-client:hover {
+  background: #f3f4f6;
+  opacity: 0.75;
+}

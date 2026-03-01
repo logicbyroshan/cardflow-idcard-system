@@ -15,7 +15,7 @@ from django.views.decorators.http import require_http_methods
 
 from idcards.models import IDCardTable
 from ..services import IDCardService
-from ..services.permission_service import api_require_permission
+from ..services.permission_service import api_require_permission, PermissionService
 
 from .idcard_helpers import (
     _safe_error,
@@ -74,10 +74,24 @@ def api_idcard_table_update(request, table_id):
 @require_http_methods(["DELETE", "POST"])
 @api_require_permission('perm_idcard_setting_delete')
 def api_idcard_table_delete(request, table_id):
-    """API endpoint to delete an ID Card Table"""
+    """API endpoint to delete an ID Card Table.
+
+    Client / client_staff users: *soft-delete* — sets deleted_by_client=True.
+    The table becomes invisible to them but is still fully visible to admin
+    as "User Deleted".
+
+    Admin / admin_staff users: *hard-delete* — permanently removes the table
+    and all associated card data.
+    """
     table, err = _check_client_scope_by_table(request.user, table_id)
     if err: return err
     try:
+        # Client users: soft-delete only
+        if PermissionService.is_client_role(request.user):
+            table.deleted_by_client = True
+            table.save(update_fields=['deleted_by_client'])
+            return JsonResponse({'success': True, 'message': 'Table removed from your view successfully.'})
+        # Admin / admin_staff: hard-delete
         result = IDCardService.delete_table(table_id)
         return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
     except Exception as e:

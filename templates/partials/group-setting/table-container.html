@@ -24,9 +24,21 @@ Required context:
         </thead>
         <tbody id="tablesBody">
             {% for table in tables %}
-            <tr data-table-id="{{ table.id }}" data-table-status="{% if table.is_active %}active{% else %}inactive{% endif %}" data-table-name="{{ table.name }}" data-table-fields="{{ table.fields|json_encode }}">
-                <td>{{ table.name }}</td>
-                <td><span class="status-badge {% if table.is_active %}active{% else %}inactive{% endif %}">{% if table.is_active %}Active{% else %}Inactive{% endif %}</span></td>
+            <tr data-table-id="{{ table.id }}"
+                data-table-status="{% if table.deleted_by_client %}deleted{% elif table.is_active %}active{% else %}inactive{% endif %}"
+                data-table-name="{{ table.name }}"
+                data-table-fields="{{ table.fields|json_encode }}"
+                {% if table.deleted_by_client %}class="row-deleted-by-client"{% endif %}>
+                <td>{{ table.name }}{% if table.deleted_by_client %} <small style="color:#9ca3af;">(removed by client)</small>{% endif %}</td>
+                <td>
+                  {% if table.deleted_by_client %}
+                    <span class="status-badge" style="background:#f3f4f6;color:#6b7280;border:1px solid #d1d5db;">User Deleted</span>
+                  {% elif table.is_active %}
+                    <span class="status-badge active">Active</span>
+                  {% else %}
+                    <span class="status-badge inactive">Inactive</span>
+                  {% endif %}
+                </td>
                 <td>{{ table.created_at|date:"d-M-Y H:i" }}</td>
                 <td>{{ table.updated_at|date:"d-M-Y H:i" }}</td>
                 <td><button class="download-btn" data-table-id="{{ table.id }}"><i class="fa-solid fa-download"></i> Download</button></td>

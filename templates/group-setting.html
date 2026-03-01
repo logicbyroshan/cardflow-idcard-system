@@ -242,7 +242,7 @@
       <!-- HTMX Table Container -->
       <div id="gs-table-container"
            hx-trigger="refreshTable from:body"
-           hx-get="{% url 'group_settings' client.id %}"
+           hx-get="{% if is_client or is_client_staff %}{% url 'client:group_settings' %}{% else %}{% url 'group_settings' client.id %}{% endif %}"
            hx-target="#gs-table-container"
            hx-swap="innerHTML">
         {% include 'partials/group-setting/table-container.html' %}
@@ -271,7 +271,7 @@
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       initHTMXFilters({
-        baseUrl: '{% url "group_settings" client.id %}',
+        baseUrl: '{% if is_client or is_client_staff %}{% url "client:group_settings" %}{% else %}{% url "group_settings" client.id %}{% endif %}',
         target:  '#gs-table-container',
         searchInputId: 'searchInput',
         filters: []
