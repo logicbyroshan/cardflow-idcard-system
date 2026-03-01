@@ -238,6 +238,17 @@ class PdfExporter:
                 resolved_font_mode = 'normal'
             font_preset = _FONT_MODES[resolved_font_mode]
 
+            # ── Auto-tiered font size based on column count ──────
+            # 19+ cols → 7pt, 16-18 cols → 8pt, ≤15 → 9pt. Floor: 7pt.
+            if total_cols > 18:
+                _auto_pt = 7
+            elif total_cols > 15:
+                _auto_pt = 8
+            else:
+                _auto_pt = 9
+            _auto_pt = max(7, _auto_pt)  # safety floor
+            data_font_size = f'{_auto_pt}pt'
+
             # Compute dynamic row height from tallest image column
             max_img_h = 0
             for cfg in column_configs:
@@ -294,8 +305,8 @@ class PdfExporter:
                 'row_height_cm': row_height_cm,
                 # Font-mode context for template
                 'font_family': font_preset['font_family'],
-                'header_font_size': font_preset['header_pt'],
-                'data_font_size': font_preset['data_pt'],
+                'header_font_size': data_font_size,
+                'data_font_size': data_font_size,
                 'font_mode': resolved_font_mode,
                 'font_dir': font_dir,
                 # Layout-mode flags (compact = >15 data columns)
@@ -581,11 +592,13 @@ class PdfExporter:
                 col_cfg_idx = field_idx + 1  # +1 because configs[0] = Sr No
                 is_nowrap = column_configs[col_cfg_idx].get('nowrap', False) if column_configs and col_cfg_idx < len(column_configs) else False
 
+                is_email_cell = (classify_column(name, ftype) == 'email')
                 cell = {
                     'align': spec.align,
                     'is_image': is_image,
                     'is_placeholder': False,
                     'nowrap': is_nowrap,
+                    'is_email_cell': is_email_cell,
                     'content': '',
                 }
 

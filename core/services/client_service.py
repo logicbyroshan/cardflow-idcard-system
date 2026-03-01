@@ -418,7 +418,7 @@ class ClientService(BaseService):
             # Send welcome email after the transaction commits
             if send_welcome:
                 try:
-                    send_welcome_email(
+                    email_sent, email_msg = send_welcome_email(
                         name=welcome_email_info['name'],
                         email=welcome_email_info['email'],
                         password=welcome_email_info['password'],
@@ -429,7 +429,10 @@ class ClientService(BaseService):
                         recipient_email=welcome_email_info['email'],
                         email_type=EmailLog.EMAIL_TYPE_WELCOME,
                         status=EmailLog.STATUS_ON_HOLD,
-                    ).update(status=EmailLog.STATUS_SENT)
+                    ).update(
+                        status=EmailLog.STATUS_SENT if email_sent else EmailLog.STATUS_FAILED,
+                        **({}  if email_sent else {'error_message': email_msg})
+                    )
                 except Exception as email_err:
                     logger.warning('First-activation welcome email failed for %s: %s', welcome_email_info['email'], email_err)
                     EmailLog.objects.filter(

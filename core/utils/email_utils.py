@@ -247,6 +247,20 @@ def send_welcome_email(name, email, password, role, request=None, phone=''):
         email_backend = getattr(settings, 'EMAIL_BACKEND', '')
         if not email_backend:
             return False, 'Email backend not configured.'
+        # Skip if using console/dummy/filebased backend (not real SMTP)
+        _non_smtp_backends = (
+            'django.core.mail.backends.console.EmailBackend',
+            'django.core.mail.backends.dummy.EmailBackend',
+            'django.core.mail.backends.filebased.EmailBackend',
+            'django.core.mail.backends.locmem.EmailBackend',
+        )
+        if email_backend in _non_smtp_backends:
+            logger.warning(
+                'send_welcome_email: skipped for %s — backend is %s (not SMTP). '
+                'Set EMAIL_HOST_USER in .env to enable real email delivery.',
+                email, email_backend
+            )
+            return False, f'Email not sent: backend is {email_backend.split(".")[-1]} (configure SMTP in .env)'
         
         # Build clean login URL (prefers PANEL_URL from settings)
         login_url = _get_panel_login_url(request)

@@ -226,10 +226,15 @@ class WordTablesMixin:
         # cannot overflow their cell and column widths are respected.
         self._enforce_fixed_table_layout(table_obj, column_widths, num_cols, Cm)
 
+        # Auto-select font size: >18 cols → 7pt, >15 cols → 8pt, else 9pt
+        _font_pt = 7 if num_cols > 18 else (8 if num_cols > 15 else 9)
+        _font_pt = max(7, _font_pt)
+
         # Style the single header row (first page only — NOT set to repeat)
         self._style_header_row(
             table_obj.rows[0].cells, ordered_fields, column_widths,
-            Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls
+            Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls,
+            font_pt=_font_pt
         )
 
         for card_idx, card in enumerate(cards_list):
@@ -251,7 +256,8 @@ class WordTablesMixin:
                 table_obj, card, ordered_fields, column_widths, sr_no,
                 Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls,
                 Image, ImageOps, image_fixed_widths=image_fixed_widths,
-                image_fixed_heights=image_fixed_heights, row_height_cm=row_height_cm
+                image_fixed_heights=image_fixed_heights, row_height_cm=row_height_cm,
+                font_pt=_font_pt
             )
 
             # If a page break is needed, set it on the FIRST paragraph
@@ -270,32 +276,36 @@ class WordTablesMixin:
             prev_class_val = cur_class_val
     
     def _style_header_row(self, cells, ordered_fields, column_widths,
-                          Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls):
+                          Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls,
+                          font_pt=9):
         """Style the header row of a table."""
         col_idx = 0
         
         # Sr No header
         cells[col_idx].text = 'Sr No.'
         self._style_header_cell(cells[col_idx], column_widths[col_idx],
-                                Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls)
+                                Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls,
+                                font_pt=font_pt)
         col_idx += 1
         
         # Field headers
         for field in ordered_fields:
             cells[col_idx].text = field['name']
             self._style_header_cell(cells[col_idx], column_widths[col_idx],
-                                    Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls)
+                                    Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls,
+                                    font_pt=font_pt)
             col_idx += 1
     
     def _style_header_cell(self, cell, width, Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH,
-                           parse_xml, nsdecls):
+                           parse_xml, nsdecls, font_pt=9):
         """Apply styling to a header cell with wrapping and padding."""
         para = cell.paragraphs[0]
+        header_text = para.runs[0].text if para.runs else cell.text
         if para.runs:
             run = para.runs[0]
             run.bold = True
             run.font.name = 'Arial'
-            run.font.size = Pt(9)
+            run.font.size = Pt(font_pt)
             run.font.color.rgb = RGBColor(0, 0, 0)
         para.alignment = WD_ALIGN_PARAGRAPH.CENTER
         # Adequate padding so header text never touches cell borders
@@ -303,18 +313,22 @@ class WordTablesMixin:
         self._set_cell_vertical_align(cell, parse_xml, nsdecls)
         self._set_para_spacing(para, parse_xml, nsdecls)
         cell.width = Cm(width)
-        # Ensure cell allows text wrapping (no nowrap)
-        tcPr = cell._tc.get_or_add_tcPr()
-        # Remove any noWrap flags
+        # If header text is a single word (no spaces), prevent mid-word wrapping
         from lxml import etree
         from docx.oxml.ns import qn as _qn
-        for nw in tcPr.findall(_qn('w:noWrap')):
-            tcPr.remove(nw)
+        tcPr = cell._tc.get_or_add_tcPr()
+        if ' ' not in header_text.strip():
+            # Single word — keep noWrap so Word doesn't break it mid-letter
+            noWrap = etree.SubElement(tcPr, _qn('w:noWrap'))
+        else:
+            # Multi-word header — allow wrapping at space boundaries
+            for nw in tcPr.findall(_qn('w:noWrap')):
+                tcPr.remove(nw)
     
     def _add_data_row(self, table, card, ordered_fields, column_widths, sr_no,
                       Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls,
                       Image, ImageOps, image_fixed_widths=None,
-                      image_fixed_heights=None, row_height_cm=None):
+                      image_fixed_heights=None, row_height_cm=None, font_pt=9):
         """Add a data row to the table."""
         new_row = table.add_row()
         cells = new_row.cells
@@ -339,7 +353,8 @@ class WordTablesMixin:
         # Sr No
         cells[col_idx].text = str(sr_no)
         self._style_data_cell(cells[col_idx], column_widths[col_idx], False,
-                              Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls)
+                              Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls,
+                              font_pt=font_pt)
         cells[col_idx].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
         col_idx += 1
         
@@ -369,7 +384,8 @@ class WordTablesMixin:
                 value = self._prepare_text_for_word(value)
                 cell.text = value
                 self._style_data_cell(cell, column_widths[col_idx], False,
-                                      Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls)
+                                      Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls,
+                                      font_pt=font_pt)
             
             col_idx += 1
     
@@ -406,7 +422,7 @@ class WordTablesMixin:
                 processed.append(token)
                 continue
             # Split on natural separators first; process each sub-part
-            sub_parts = _re.split(r'([,/;:\-])', token)
+            sub_parts = _re.split(r'([,/;:\-@])', token)
             result = []
             for sp in sub_parts:
                 if sp in (',', '/', ';', ':', '-'):

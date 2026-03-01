@@ -214,7 +214,7 @@ class WordStylesMixin:
             pass  # Not critical — VML images alone provide compatibility
     
     def _style_data_cell(self, cell, width, is_image, Cm, Pt, RGBColor,
-                         WD_ALIGN_PARAGRAPH, parse_xml, nsdecls):
+                          WD_ALIGN_PARAGRAPH, parse_xml, nsdecls, font_pt=9):
         """Apply styling to a data cell with proper wrapping and padding."""
         if is_image:
             self._set_cell_margins(cell, parse_xml, nsdecls, 0, 0, 0, 0)
@@ -229,7 +229,7 @@ class WordStylesMixin:
         if para.runs:
             run = para.runs[0]
             run.font.name = 'Arial'
-            run.font.size = Pt(9)
+            run.font.size = Pt(font_pt)
             run.font.color.rgb = RGBColor(0, 0, 0)
         
         self._set_para_spacing(para, parse_xml, nsdecls)

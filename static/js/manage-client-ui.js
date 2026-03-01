@@ -231,6 +231,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (clientData === undefined) clientData = null;
         clientForm.reset();
         clientIdInput.value = '';
+        // Fix: always re-enable submit button when opening drawer (may be disabled from previous submit)
+        if (submitBtn) { submitBtn.disabled = false; }
         NS.setClientStatusDropdown('false'); // Default Inactive for new clients
         NS.setClientPasswordOption('phone'); // Reset password option to phone
         
