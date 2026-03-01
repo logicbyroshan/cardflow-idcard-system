@@ -241,9 +241,10 @@ def idcard_group(request, client_id):
     return render(request, 'idcard-group.html', context)
 
 
-# Print Card Group
-@login_required
-@require_any_admin
+# ────────────────────────────────────────────────────────────
+# Shared helper: builds queryset + context for idcard-actions
+# Used by admin idcard_actions() and client client_idcard_actions()
+# ────────────────────────────────────────────────────────────
 def build_idcard_actions_context(request, table, *, default_per_page=100,
                                   per_page_options=None, active_page='active_clients',
                                   user_role=None):
