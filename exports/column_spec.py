@@ -152,6 +152,13 @@ _s('marital_status', 4, 8, 12, False, 'center',
    'w-[55px] min-w-[55px]',
    'w-[55px] text-center whitespace-nowrap')
 
+# ── Relationship (REL 1, REL 2, relation type, etc.) ─────────────────
+# Values like FATHER / MOTHER / NANA / AUNTY / UNCLE (max ~10 chars)
+_s('relationship', 3, 7, 10, False, 'center',
+   2.5, 5.5, 0.8, 1.8,
+   'w-[62px] min-w-[62px]',
+   'w-[62px] text-center whitespace-nowrap')
+
 # ── Images ───────────────────────────────────────────────────────────
 _s('photo', 0, 0, 0, False, 'center',
    5.0, 9.0, 1.5, 2.5,
@@ -205,10 +212,12 @@ _s('health_id', 8, 14, 20, False, 'center',
    'min-w-[80px] text-center whitespace-nowrap')
 
 # ── Phone / Mobile ───────────────────────────────────────────────────
-_s('mobile', 10, 12, 15, False, 'center',
-   5.0, 8.0, 1.8, 3.0,
-   'w-[95px] min-w-[95px]',
-   'w-[95px] text-center whitespace-nowrap')
+# wrap=True so slash-joined double numbers (e.g. 98765/98766) can flow to
+# two lines; break-words ensures a single long token breaks as last resort.
+_s('mobile', 10, 13, 22, True, 'center',
+   5.0, 11.0, 1.8, 4.5,
+   'min-w-[95px] max-w-[135px]',
+   'min-w-[95px] max-w-[135px] text-center whitespace-normal break-words')
 
 # ── Email ────────────────────────────────────────────────────────────
 _s('email', 10, 22, 40, True, 'left',
@@ -409,6 +418,13 @@ FIELD_ALIASES: List[Tuple[str, str]] = [
     (r'signature|sign', 'signature'),
     (r'qr\s*code|barcode|rfid|nfc|smart\s*chip|hologram', 'qr_barcode'),
 
+    # ── Parent/guardian phone numbers (checked BEFORE parent name patterns)
+    # "FATHER NO", "MOTHER NO", "FATHER MOBILE", "GUARDIAN PHONE" etc.
+    (r'fa?the?r\s*(mo?bi?le?|pho?ne?|no\.?|num\b|tell?|cell|contact)\b'
+     r'|mothe?r\s*(mo?bi?le?|pho?ne?|no\.?|num\b|tell?|cell|contact)\b'
+     r'|parent\s*(mo?bi?le?|pho?ne?|no\.?|num\b|tell?|cell|contact)\b'
+     r'|guardian\s*(mo?bi?le?|pho?ne?|no\.?|num\b|tell?|cell|contact)\b', 'mobile'),
+
     # ── Names (misspellings: fathrs, fathr, mothr, gardian, etc.) ─
     (r'husband|wife|spouse', 'spouse_name'),
     (r'gu?a?rdi?a?n', 'guardian_name'),
@@ -436,7 +452,9 @@ FIELD_ALIASES: List[Tuple[str, str]] = [
     #    bloodgrp, blod, blood grp, blud, blod group, b grp) ──────
     (r'blo?o?d\s*gr|blo?o?d\s*gro?u?p|^bg$|^bgroup$|^b\.?g\.?$'
      r'|^bld\s*gr|^blud|^blod|blo+d\s*grp|b\s*grp', 'blood_group'),
-
+    # ── Relationship / Relation type (REL 1, REL 2, relation, etc.) ──
+    # Must come BEFORE religion to avoid 'relation' → 'religion' clash.
+    (r'^rel\s*\d*$|^relati?v|^relati?o?n|guardian\s*rel|parent\s*rel|relative\s*of', 'relationship'),
     # ── Nationality / Religion / Caste ───────────────────────────
     (r'nat[io]+na?li?ty?|^nation$', 'nationality'),
     (r'religi?o?n|^rlgn$', 'religion'),

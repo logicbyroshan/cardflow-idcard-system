@@ -457,6 +457,11 @@ class PdfExporter:
         for i, cfg in enumerate(configs):
             if cfg['is_image'] or cfg['nowrap'] or i == 0:
                 continue
+            # Respect spec's explicit wrap=True (e.g. phone columns that may
+            # carry slash-joined double numbers must remain wrappable)
+            _spec_hint = cfg.get('_spec')
+            if _spec_hint and _spec_hint.wrap:
+                continue
             field = ordered_fields[i - 1]
             name = field['name']
             sample_count = min(len(cards), 20)
@@ -593,11 +598,13 @@ class PdfExporter:
                 is_nowrap = column_configs[col_cfg_idx].get('nowrap', False) if column_configs and col_cfg_idx < len(column_configs) else False
 
                 is_email_cell = (classify_column(name, ftype) == 'email')
+                is_phone_cell = (classify_column(name, ftype) == 'mobile')
                 cell = {
                     'align': spec.align,
                     'is_image': is_image,
                     'is_placeholder': False,
-                    'nowrap': is_nowrap,
+                    'nowrap': is_nowrap and not is_phone_cell,
+                    'is_phone_cell': is_phone_cell,
                     'is_email_cell': is_email_cell,
                     'content': '',
                 }

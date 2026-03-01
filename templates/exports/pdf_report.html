@@ -192,6 +192,13 @@ table.data-table td.text-cell.no-wrap {
     word-break: normal;
     hyphens: none;
 }
+/* Phone cells: wrap at spaces/slash; break mid-number only as last resort */
+table.data-table td.text-cell.phone-cell {
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: break-word;
+    hyphens: none;
+}
 /* Email cells: break at @ and anywhere in very long strings */
 table.data-table td.text-cell.email-cell {
     word-break: break-all;
@@ -274,7 +281,7 @@ table.data-table td.img-cell.placeholder-cell img {
                          alt="">
                 </td>
                 {% else %}
-                <td class="text-cell{% if cell.nowrap %} no-wrap{% elif cell.is_email_cell %} email-cell{% endif %}"
+                <td class="text-cell{% if cell.nowrap %} no-wrap{% elif cell.is_phone_cell %} phone-cell{% elif cell.is_email_cell %} email-cell{% endif %}"
                     style="text-align:{{ cell.align }};">{{ cell.content }}</td>
                 {% endif %}
                 {% endfor %}

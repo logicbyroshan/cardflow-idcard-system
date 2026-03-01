@@ -98,7 +98,10 @@
         if (!name) return 'min-w-[80px] whitespace-normal break-words';
         var n = name.toLowerCase().trim();
         var t = (type || '').toLowerCase();
-        if (/\bphone\b|\bmobile\b|\bcontact\b|\bwhatsapp\b/.test(n)) return 'w-[100px] whitespace-normal text-center';
+        // Relationship columns (REL 1, REL 2, RELATION, etc.) — short fixed width
+        if (/^rel\s*\d*$|^relation|^relative/.test(n))                  return 'w-[62px] min-w-[62px] text-center whitespace-nowrap';
+        // Phone/mobile: allow wrapping for slash-joined double numbers
+        if (/\bphone\b|\bmobile\b|\bcontact\b|\bwhatsapp\b|\btel\b|\bmob\b/.test(n)) return 'min-w-[95px] max-w-[135px] whitespace-normal break-words text-center';
         if (t === 'date' || /\bdob\b|\bdate\b/.test(n))               return 'w-[80px] whitespace-nowrap text-center';
         if (/^class$|^section$|^div$/.test(n))                         return 'w-[40px] text-center';
         if (/\bblood\b|\bgroup\b/.test(n))                             return 'w-[45px] text-center';
