@@ -114,7 +114,6 @@ def client_idcard_actions(request, table_id):
     
     # Provide the correct base URL for HTMX requests in the template
     # This ensures HTMX calls go to the client endpoint, not the admin one
-    from django.urls import reverse
     context['actions_base_url'] = reverse('client:idcard_actions', args=[table.id])
     
     # HTMX partial response
