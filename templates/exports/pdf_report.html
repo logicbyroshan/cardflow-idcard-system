@@ -152,6 +152,7 @@ table.data-table td {
     border: 0.4pt solid #888;
     padding: {{ cell_padding }};
     vertical-align: middle;
+    overflow: hidden;       /* clip content — never let text bleed across borders */
 }
 table.data-table thead tr {
     background-color: #b0b0b0;

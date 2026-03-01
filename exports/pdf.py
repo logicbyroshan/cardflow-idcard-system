@@ -134,6 +134,11 @@ class PdfExporter:
     MIN_NOWRAP_COL_WIDTH = 5.5
     # Landscape A4 content width (29.7cm page - 0.5cm left - 0.5cm right margins)
     PAGE_CONTENT_WIDTH_CM = 28.7
+    # Maximum image height so that exactly 6 data rows fit on one A4 landscape page.
+    # A4 landscape body height = 210mm - 20mm (top) - 12mm (bottom) = 178mm = 17.8cm
+    # header row ≈ 0.5cm; available for 6 rows = 17.3cm; per row = 2.88cm
+    # subtract vertical cell-padding (2pt × 2 ≈ 0.14cm) and border ≈ 0.04cm → safe cap.
+    MAX_IMAGE_HEIGHT_CM = 2.6
 
     # ── Dense-table threshold ──
     # total_cols includes SR NO column.  Data columns = total_cols - 1.
@@ -485,6 +490,11 @@ class PdfExporter:
                 field = ordered_fields[i - 1]
                 render_w = field.get('image_width_cm', 1.95)
                 render_h = field.get('image_height_cm', 2.5)
+                # Cap image height so 6 rows always fit on one A4 landscape page.
+                if render_h > self.MAX_IMAGE_HEIGHT_CM:
+                    scale = self.MAX_IMAGE_HEIGHT_CM / render_h
+                    render_w = round(render_w * scale, 2)
+                    render_h = self.MAX_IMAGE_HEIGHT_CM
                 cfg['width'] = ((render_w + IMAGE_CELL_PADDING_CM) / self.PAGE_CONTENT_WIDTH_CM) * 100
                 cfg['image_width_cm'] = render_w
                 cfg['image_height_cm'] = render_h

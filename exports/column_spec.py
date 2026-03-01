@@ -154,8 +154,9 @@ _s('marital_status', 4, 8, 12, False, 'center',
 
 # ── Relationship (REL 1, REL 2, relation type, etc.) ─────────────────
 # Values like FATHER / MOTHER / NANA / AUNTY / UNCLE (max ~10 chars)
+# pdf_min raised to 4.5 % (≈1.29 cm at 28.7 cm page) to fit "MOTHER" at 9pt
 _s('relationship', 3, 7, 10, False, 'center',
-   2.5, 5.5, 0.8, 1.8,
+   4.5, 7.0, 0.8, 1.8,
    'w-[62px] min-w-[62px]',
    'w-[62px] text-center whitespace-nowrap')
 
@@ -279,8 +280,10 @@ _s('course', 4, 12, 30, True, 'center',
    'min-w-[65px]',
    'min-w-[65px] text-center whitespace-normal break-words')
 
+# pdf_min raised to 3.5 % (≈1.0 cm) so the header text "CLASS" does not
+# overflow into the neighbouring column.
 _s('class_section', 2, 5, 10, False, 'center',
-   2.0, 5.0, 0.7, 1.8,
+   3.5, 6.0, 0.7, 1.8,
    'w-[45px] min-w-[45px]',
    'w-[45px] text-center whitespace-nowrap')
 
