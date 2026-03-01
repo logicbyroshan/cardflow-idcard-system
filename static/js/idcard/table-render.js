@@ -101,7 +101,8 @@
         // ── Serial / row ─────────────────────────────────────────────────
         if (/^sr\s*no|^s\s*no|^sl\s*no|^serial|^sno$|^slno$/.test(n))  return 'w-[36px] text-center whitespace-nowrap';
         // ── Relationship (REL 1, REL 2, RELATION, etc.) ──────────────────
-        if (/^rel\s*\d*$|^relati?[ov]/.test(n))                          return 'w-[62px] min-w-[62px] text-center whitespace-nowrap';
+        // wrap=normal so long values like "MATERNAL GRAND MOTHER" break at spaces
+        if (/^rel\s*\d*$|^relati?[ov]/.test(n))                          return 'min-w-[62px] max-w-[120px] text-center whitespace-normal break-words';
         // ── Age / Gender / Blood Group — very narrow, no-wrap ────────────
         if (/^age$/.test(n))                                             return 'w-[38px] text-center whitespace-nowrap';
         if (/^gender$|^sex$|^gndr$/.test(n))                             return 'w-[45px] text-center whitespace-nowrap';
@@ -110,6 +111,10 @@
         if (/class.*sec|^class$|^section$|^sec$|^div$|school\s*house|house\s*nam|house\s*col/.test(n)) return 'w-[52px] text-center whitespace-nowrap';
         // ── Dates — no-wrap ──────────────────────────────────────────────
         if (t === 'date' || /\bdob\b|\bdate\b|\bvalid/.test(n))          return 'w-[80px] whitespace-nowrap text-center';
+        // ── Parent/guardian phone fields (FATHER NO, MOTHER NO, etc.) ────
+        // MUST come BEFORE the generic name pattern so "father no" is treated
+        // as a phone column (capped width + wrapping) rather than a name column.
+        if (/(?:father|mother|guardian|parent|mama|nana|dada|nani|dadi)\s*(?:no\.?|num|mob|ph(?:one)?|cell|tel|contact)/.test(n)) return 'min-w-[95px] max-w-[135px] whitespace-normal break-words text-center';
         // ── Phone/mobile — allow wrap for slash-joined double numbers ─────
         if (/\bphone\b|\bmobile\b|\bcontact\b|\bwhatsapp\b|\btel\b|\bmob\b/.test(n)) return 'min-w-[95px] max-w-[135px] whitespace-normal break-words text-center';
         // ── Hard-format IDs — no-wrap ────────────────────────────────────

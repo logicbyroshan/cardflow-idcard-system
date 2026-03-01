@@ -153,12 +153,14 @@ _s('marital_status', 4, 8, 12, False, 'center',
    'w-[55px] text-center whitespace-nowrap')
 
 # ── Relationship (REL 1, REL 2, relation type, etc.) ─────────────────
-# Values like FATHER / MOTHER / NANA / AUNTY / UNCLE (max ~10 chars)
-# pdf_min raised to 4.5 % (≈1.29 cm at 28.7 cm page) to fit "MOTHER" at 9pt
-_s('relationship', 3, 7, 10, False, 'center',
-   4.5, 7.0, 0.8, 1.8,
-   'w-[62px] min-w-[62px]',
-   'w-[62px] text-center whitespace-nowrap')
+# Values range from short (FATHER / MOTHER / NANA) to long
+# (MATERNAL GRAND MOTHER / PATERNAL GRAND FATHER).  wrap=True so long
+# multi-word values break at spaces rather than overflowing the cell.
+# max_chars raised to 22 to accommodate the longest known values.
+_s('relationship', 3, 12, 22, True, 'center',
+   4.5, 9.0, 0.8, 3.0,
+   'min-w-[62px] max-w-[120px]',
+   'min-w-[62px] max-w-[120px] text-center whitespace-normal break-words')
 
 # ── Images ───────────────────────────────────────────────────────────
 _s('photo', 0, 0, 0, False, 'center',
