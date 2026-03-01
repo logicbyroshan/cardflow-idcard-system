@@ -370,6 +370,13 @@ class PdfExporter:
             DOB              → DOB  (short words unchanged)
         """
         import re as _re
+        # Step 0: normalise separator characters (_, -, .) to spaces so that
+        # e.g. "FATHER_NAME" → "FATHER NAME" and "D.O.B" → "D O B" giving
+        # the PDF engine natural break points in column headers.
+        name = _re.sub(r'[_\-.]+', ' ', name).strip()
+        name = _re.sub(r'\s+', ' ', name)
+        if ' ' in name:
+            return name.upper()   # separators already created word boundaries
         # Common word fragments found in Indian school/ID card field names
         # Order matters: longer fragments first to avoid partial matches
         _KNOWN_WORDS = [
@@ -385,9 +392,6 @@ class PdfExporter:
             'TEHSIL', 'TALUK', 'MANDAL',
             'NEW', 'OLD', 'SR', 'NO', 'ID', 'OF', 'THE',
         ]
-        # If the label already has spaces, return as-is
-        if ' ' in name.strip():
-            return name
         upper = name.upper().strip()
         if len(upper) <= 4:
             return upper
@@ -533,6 +537,21 @@ class PdfExporter:
             # Clamp to spec's preferred range (semantic intelligence)
             representative = max(representative, spec.min_chars)
             representative = min(representative, spec.max_chars) if spec.max_chars > 0 else representative
+
+            # ── Longest-single-word floor ─────────────────────────────────
+            # Guarantee the column is at least as wide as its longest
+            # unbreakable word, so text is never clipped mid-character.
+            # Sample up to 100 cards; cap at spec.max_chars to prevent runaway.
+            max_word_len = max((len(w) for w in name.split()), default=len(name))
+            for _card in cards[:min(len(cards), 100)]:
+                _fd = _card.field_data or {}
+                _val = str(_fd.get(name, '') or '').strip()
+                for _word in _val.split():
+                    if len(_word) > max_word_len:
+                        max_word_len = len(_word)
+            if spec.max_chars > 0:
+                max_word_len = min(max_word_len, spec.max_chars)
+            representative = max(representative, max_word_len)
 
             text_weights.append(max(representative, 3))
 

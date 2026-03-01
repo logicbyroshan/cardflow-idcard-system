@@ -229,10 +229,12 @@ _s('email', 10, 22, 40, True, 'left',
 # ── Address ──────────────────────────────────────────────────────────
 # Address columns are capped at the same max as a name column so they do NOT
 # consume excessive horizontal space; vertical wrapping handles long values.
-_s('address', 8, 18, 28, True, 'left',
-   5.0, 12.0, 2.0, 5.0,
-   'min-w-[110px] max-w-[160px]',
-   'min-w-[110px] max-w-[160px] text-left whitespace-normal break-words')
+# max reduced (pdf 8 %, word 4 cm) so address does not squeeze out narrow
+# categorical columns (class, section, rel, etc.).
+_s('address', 8, 16, 22, True, 'left',
+   4.0, 8.0, 1.8, 4.0,
+   'min-w-[100px] max-w-[140px]',
+   'min-w-[100px] max-w-[140px] text-left whitespace-normal break-words')
 
 _s('city', 4, 10, 20, True, 'center',
    3.0, 7.0, 1.0, 3.0,
@@ -280,12 +282,12 @@ _s('course', 4, 12, 30, True, 'center',
    'min-w-[65px]',
    'min-w-[65px] text-center whitespace-normal break-words')
 
-# pdf_min raised to 3.5 % (≈1.0 cm) so the header text "CLASS" does not
-# overflow into the neighbouring column.
+# pdf_min raised to 5.0 % (≈1.43 cm) so the header text "CLASS" / "SECTION"
+# fits without breaking mid-character in a fixed-layout table.
 _s('class_section', 2, 5, 10, False, 'center',
-   3.5, 6.0, 0.7, 1.8,
-   'w-[45px] min-w-[45px]',
-   'w-[45px] text-center whitespace-nowrap')
+   5.0, 7.0, 0.7, 1.8,
+   'w-[52px] min-w-[52px]',
+   'w-[52px] text-center whitespace-nowrap')
 
 _s('batch', 3, 8, 12, False, 'center',
    3.0, 6.0, 1.0, 2.2,

@@ -152,7 +152,11 @@ table.data-table td {
     border: 0.4pt solid #888;
     padding: {{ cell_padding }};
     vertical-align: middle;
-    overflow: hidden;       /* clip content — never let text bleed across borders */
+}
+/* Clip data cells only — never let cell text bleed across a column border.
+   Excluded from <th>: header words must wrap/flow naturally inside the cell. */
+table.data-table td {
+    overflow: hidden;
 }
 table.data-table thead tr {
     background-color: #b0b0b0;
@@ -162,10 +166,13 @@ table.data-table thead th {
     font-weight: bold;
     text-align: center;
     vertical-align: middle;
-    /* Wrap only at spaces — single words must NEVER break mid-letter */
+    /* Wrap at spaces / zero-width-spaces only.
+       word-break:normal = never break inside a run of letters.
+       overflow-wrap:anywhere = last-resort break only if a single token
+       is truly longer than the column (e.g. a very long concatenated name). */
     white-space: normal;
-    overflow-wrap: normal;
     word-break: normal;
+    overflow-wrap: anywhere;
     hyphens: none;
     -webkit-hyphens: none;
 }

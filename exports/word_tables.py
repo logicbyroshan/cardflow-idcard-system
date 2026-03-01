@@ -96,6 +96,20 @@ class WordTablesMixin:
                 if spec.max_chars > 0:
                     representative = min(representative, spec.max_chars)
 
+                # ── Longest-single-word floor ─────────────────────────────
+                # Min column width must fit the longest unbreakable word so
+                # text is never clipped mid-character in a fixed-layout table.
+                max_word_len = max((len(w) for w in name.split()), default=len(name))
+                for _card in cards[:min(len(cards), 100)]:
+                    _fd = _card.field_data or {}
+                    _val = str(_fd.get(name, '') or '').strip()
+                    for _word in _val.split():
+                        if len(_word) > max_word_len:
+                            max_word_len = len(_word)
+                if spec.max_chars > 0:
+                    max_word_len = min(max_word_len, spec.max_chars)
+                representative = max(representative, max_word_len)
+
                 text_weights[1 + idx] = max(representative, 3)
 
         total_text_w = sum(text_weights.values()) or 1
@@ -290,7 +304,13 @@ class WordTablesMixin:
         
         # Field headers
         for field in ordered_fields:
-            cells[col_idx].text = field['name']
+            import re as _re2
+            _raw = field['name']
+            # Normalise separator chars (_, -, .) → spaces so Word wraps
+            # at natural word boundaries, e.g. "FATHER_NAME" → "FATHER NAME".
+            _label = _re2.sub(r'[_\-.]+', ' ', _raw).strip()
+            _label = _re2.sub(r'\s+', ' ', _label).upper()
+            cells[col_idx].text = _label
             self._style_header_cell(cells[col_idx], column_widths[col_idx],
                                     Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls,
                                     font_pt=font_pt)
@@ -313,15 +333,22 @@ class WordTablesMixin:
         self._set_cell_vertical_align(cell, parse_xml, nsdecls)
         self._set_para_spacing(para, parse_xml, nsdecls)
         cell.width = Cm(width)
-        # If header text is a single word (no spaces), prevent mid-word wrapping
+        # Heading word-break rule:
+        #  • Multi-word labels (already have spaces, e.g. "FATHER NAME") wrap
+        #    at space boundaries — remove any stale noWrap.
+        #  • Single-word labels (e.g. "CLASS", "PHOTO") must NOT be split
+        #    mid-letter by Word; add noWrap so Word honours the column width.
         from lxml import etree
         from docx.oxml.ns import qn as _qn
         tcPr = cell._tc.get_or_add_tcPr()
-        if ' ' not in header_text.strip():
-            # Single word — keep noWrap so Word doesn't break it mid-letter
-            noWrap = etree.SubElement(tcPr, _qn('w:noWrap'))
+        # Use the actual cell text (already normalised by caller)
+        actual_text = cell.paragraphs[0].text if cell.paragraphs else header_text
+        if ' ' not in actual_text.strip():
+            # Single token — tell Word: do NOT break this word mid-letter.
+            if not tcPr.findall(_qn('w:noWrap')):
+                etree.SubElement(tcPr, _qn('w:noWrap'))
         else:
-            # Multi-word header — allow wrapping at space boundaries
+            # Multi-word — remove any pre-existing noWrap; let spaces work.
             for nw in tcPr.findall(_qn('w:noWrap')):
                 tcPr.remove(nw)
     
