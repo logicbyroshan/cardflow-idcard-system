@@ -60,37 +60,15 @@ def sanitize_text_for_storage(value: str) -> str:
 
 
 class IDCardGroup(models.Model):
-    """
+    """id-card-group-model
     ID Card Group/Template for a client
-    
+
     NOTE: app_label='core' preserved for migration compatibility.
-    Model code moved from core/models.py to workflows/models.py
-    
-    DEPRECATION NOTICE (Phase 4 - Media Refactor):
-    - template_front and template_back ImageFields are DEPRECATED
-    - New uploads should create CardMedia records in mediafiles app
-    - These fields are kept for backward compatibility with existing data
-    - Do NOT add new code that writes directly to these fields
-    - Instead, use ImageService.create_media_record() for new uploads
+    Model code moved from core/models.py to idcards/models.py
     """
     client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='id_card_groups')
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True, null=True)
-    
-    # DEPRECATED: Use CardMedia model in mediafiles app instead
-    # These fields are kept for backward compatibility - do not remove without migration
-    template_front = models.ImageField(
-        upload_to='id_templates/', 
-        blank=True, 
-        null=True,
-        help_text='DEPRECATED: Use CardMedia model for new templates'
-    )
-    template_back = models.ImageField(
-        upload_to='id_templates/', 
-        blank=True, 
-        null=True,
-        help_text='DEPRECATED: Use CardMedia model for new templates'
-    )
     
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -108,11 +86,6 @@ class IDCardGroup(models.Model):
     def delete(self, *args, **kwargs):
         # Delete all images before deleting group
         self.delete_all_table_images()
-        # Delete template images
-        if self.template_front:
-            self.template_front.delete(save=False)
-        if self.template_back:
-            self.template_back.delete(save=False)
         super().delete(*args, **kwargs)
     
     class Meta:

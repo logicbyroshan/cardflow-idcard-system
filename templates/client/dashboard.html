@@ -25,9 +25,6 @@
 {% block content %}
 <div class="dashboard-content">
 
-  <!-- Welcome Banner -->
-  {% include 'partials/dashboard/welcome-banner.html' %}
-
   <!-- Notification Bar -->
   {% include 'partials/dashboard/notification-bar.html' %}
 
@@ -40,7 +37,6 @@
       <div class="stat-info">
         <div class="stat-value" id="stat-pending">0</div>
         <div class="stat-label">Pending Cards</div>
-        <span class="stat-change negative"><i class="fa-solid fa-arrow-down"></i> In process</span>
       </div>
     </div>
 
@@ -51,7 +47,6 @@
       <div class="stat-info">
         <div class="stat-value" id="stat-verified">0</div>
         <div class="stat-label">Verified Cards</div>
-        <span class="stat-change positive"><i class="fa-solid fa-arrow-up"></i> Ready for approval</span>
       </div>
     </div>
 
@@ -62,7 +57,6 @@
       <div class="stat-info">
         <div class="stat-value" id="stat-approved">0</div>
         <div class="stat-label">Approved Cards</div>
-        <span class="stat-change positive"><i class="fa-solid fa-arrow-up"></i> Ready to download</span>
       </div>
     </div>
 
@@ -73,7 +67,6 @@
       <div class="stat-info">
         <div class="stat-value" id="stat-download">0</div>
         <div class="stat-label">Downloaded Cards</div>
-        <span class="stat-change positive"><i class="fa-solid fa-arrow-up"></i> Completed</span>
       </div>
     </div>
 
@@ -84,7 +77,6 @@
       <div class="stat-info">
         <div class="stat-value" id="stat-total">0</div>
         <div class="stat-label">Total ID Cards</div>
-        <span class="stat-change positive"><i class="fa-solid fa-arrow-up"></i> Your organization</span>
       </div>
     </div>
   </div>

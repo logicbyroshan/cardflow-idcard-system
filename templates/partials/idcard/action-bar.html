@@ -165,12 +165,6 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
                 <span class="btn-text">Disapprove Selected</span>
             </button>
             {% endif %}
-            {% if perm_idcard_approve %}
-            <button class="btn action-btn btn-green" id="printSelectedBtn" disabled title="Send selected to print list">
-                <i class="fa-solid fa-print"></i>
-                <span class="btn-text">Print Selected</span>
-            </button>
-            {% endif %}
             {% if perm_reupload_idcard_image %}
             <button class="btn action-btn btn-red" id="reuploadImageBtnA" title="Reupload images from ZIP">
                 <i class="fa-solid fa-rotate"></i>

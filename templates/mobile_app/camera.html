@@ -106,13 +106,13 @@
                         <i class="fa-solid fa-crop text-xl"></i>
                     </button>
                     <button @click="savePhoto()" class="w-14 h-14 rounded-full bg-green-500 flex items-center justify-center text-white" :disabled="uploading">
-                        <i class="fa-solid" :class="uploading ? 'fa-spinner fa-spin' : 'fa-check'" style="font-size:1.25rem;"></i>
+                        <i class="fa-solid fa-check" :class="uploading ? 'fa-spinner fa-spin' : 'fa-check'" style="font-size:1.25rem;"></i>
                     </button>
                 </div>
             </template>
             <button @click="toggleFlash()" class="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center text-white"
                     :class="{ 'bg-amber-500/30 text-amber-400': flashOn }">
-                <i class="fa-solid" :class="flashOn ? 'fa-bolt' : 'fa-bolt-slash'" style="font-size:1.125rem;"></i>
+                <i class="fa-solid fa-bolt-slash" :class="flashOn ? 'fa-bolt' : 'fa-bolt-slash'" style="font-size:1.125rem;"></i>
             </button>
         </div>
     </div>

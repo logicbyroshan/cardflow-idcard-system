@@ -237,7 +237,7 @@
         {# Error details (collapsible) #}
         <div class="result-errors" x-show="result.errors.length > 0" x-cloak>
           <button class="result-errors-toggle" @click="result.errorsExpanded = !result.errorsExpanded" type="button">
-            <i class="fa-solid" :class="result.errorsExpanded ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
+            <i class="fa-solid fa-chevron-right" :class="result.errorsExpanded ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
             <span x-text="'Failed Items (' + result.errors.length + ')'"></span>
           </button>
           <ul class="error-list" x-show="result.errorsExpanded" x-transition x-cloak>

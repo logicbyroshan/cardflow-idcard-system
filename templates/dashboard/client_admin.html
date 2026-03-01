@@ -30,7 +30,7 @@
     <header class="topbar">
       <div class="nav-left">
         <button class="sidebar-toggle" id="sidebarToggle" @click="toggleSidebar()" aria-label="Toggle sidebar">
-          <i class="fa-solid" :class="sidebarOpen ? 'fa-xmark' : 'fa-bars'"></i>
+          <i class="fa-solid fa-bars" :class="sidebarOpen ? 'fa-xmark' : 'fa-bars'"></i>
         </button>
         <div class="breadcrumb">
           <span class="breadcrumb-item active"><i class="fa-solid fa-house"></i> Dashboard</span>
@@ -61,7 +61,6 @@
           <div class="stat-info">
             <div class="stat-value" id="pendingCards">{{ pending_cards|default:0 }}</div>
             <div class="stat-label">Pending Cards</div>
-            <span class="stat-change negative"><i class="fa-solid fa-arrow-down"></i> In process</span>
           </div>
         </div>
         
@@ -72,7 +71,6 @@
           <div class="stat-info">
             <div class="stat-value" id="verifiedCards">{{ verified_cards|default:0 }}</div>
             <div class="stat-label">Verified Cards</div>
-            <span class="stat-change positive"><i class="fa-solid fa-arrow-up"></i> Ready for approval</span>
           </div>
         </div>
         
@@ -83,7 +81,6 @@
           <div class="stat-info">
             <div class="stat-value" id="approvedCards">{{ approved_cards|default:0 }}</div>
             <div class="stat-label">Approved Cards</div>
-            <span class="stat-change positive"><i class="fa-solid fa-arrow-up"></i> Ready to download</span>
           </div>
         </div>
         
@@ -94,7 +91,6 @@
           <div class="stat-info">
             <div class="stat-value" id="downloadedCards">{{ downloaded_cards|default:0 }}</div>
             <div class="stat-label">Downloaded Cards</div>
-            <span class="stat-change positive"><i class="fa-solid fa-arrow-up"></i> Completed</span>
           </div>
         </div>
         
@@ -105,7 +101,6 @@
           <div class="stat-info">
             <div class="stat-value" id="totalCards">{{ total_id_cards|default:0 }}</div>
             <div class="stat-label">Total ID Cards</div>
-            <span class="stat-change positive"><i class="fa-solid fa-arrow-up"></i> Your organization</span>
           </div>
         </div>
       </div>
