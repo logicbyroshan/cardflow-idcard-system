@@ -105,94 +105,156 @@ def cleanup_old_results(days=7):
     return count
 
 
+# ── Rate-limiter: prevent cleanup from running more than once per interval ──
+# Uses a per-process dict keyed by directory path.  Minimal overhead; works
+# correctly with BackgroundWorker's single-threaded executor (max_workers=1).
+# Multiple gunicorn workers each have their own memory — that's fine, we only
+# need to avoid the same process doing back-to-back scans.
+
+import time as _time
+
+_last_cleanup: dict = {}  # {marker_key: last_run_epoch_seconds}
+_MIN_CLEANUP_INTERVAL = 3600  # 1 hour minimum between cleanup runs
+
+
+def _should_run(marker_key: str) -> bool:
+    """Return True if it is time to run cleanup for the given marker key."""
+    last = _last_cleanup.get(marker_key, 0)
+    return (_time.time() - last) >= _MIN_CLEANUP_INTERVAL
+
+
+def _mark_ran(marker_key: str) -> None:
+    """Record that cleanup for marker_key just ran."""
+    _last_cleanup[marker_key] = _time.time()
+
+
+def _safe_remove(file_path: str) -> bool:
+    """
+    Delete a file, tolerating concurrent deletions (TOCTOU safety).
+
+    Returns True if the file was deleted by this call, False if it was already
+    gone (another process deleted it first) or if deletion failed for another
+    reason (logged as warning).
+    """
+    try:
+        os.remove(file_path)
+        return True
+    except FileNotFoundError:
+        # Another process beat us to the delete — not an error
+        return False
+    except OSError as exc:
+        logger.warning("Could not delete %s: %s", file_path, exc)
+        return False
+
+
 def cleanup_orphaned_temp_files(hours=24):
     """
     Remove temp files that are older than specified hours.
     These may be left over from crashed uploads or failed tasks.
-    
+
+    Rate-limited: skips the scan if called again within _MIN_CLEANUP_INTERVAL
+    to avoid hammering the filesystem after every background task.
+
     Args:
         hours: Delete files older than this many hours
-        
+
     Returns:
-        Number of files cleaned up
+        Number of files deleted (0 if rate-limiter blocked the run)
     """
-    import time
-    
+    marker_key = f'temp:{hours}'
+    if not _should_run(marker_key):
+        return 0
+
     temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp')
     if not os.path.exists(temp_dir):
+        _mark_ran(marker_key)
         return 0
-    
-    cutoff_time = time.time() - (hours * 3600)
+
+    cutoff_time = _time.time() - (hours * 3600)
     count = 0
-    
+
     try:
-        for filename in os.listdir(temp_dir):
-            file_path = os.path.join(temp_dir, filename)
-            
-            # Skip directories
+        entries = os.listdir(temp_dir)
+    except OSError as exc:
+        logger.error("Error listing temp directory: %s", exc)
+        return 0
+
+    for filename in entries:
+        file_path = os.path.join(temp_dir, filename)
+
+        # Skip directories (e.g. exports/ sub-dir)
+        try:
             if os.path.isdir(file_path):
                 continue
-            
-            try:
-                # Check file modification time
-                mtime = os.path.getmtime(file_path)
-                if mtime < cutoff_time:
-                    os.remove(file_path)
-                    count += 1
-                    logger.debug("Deleted orphaned temp file: %s", filename)
-            except Exception as e:
-                logger.warning("Failed to process temp file %s: %s", filename, e)
-    except Exception as e:
-        logger.error("Error cleaning temp directory: %s", e)
-    
+            mtime = os.path.getmtime(file_path)
+        except FileNotFoundError:
+            continue  # Already deleted between listdir and stat
+        except OSError as exc:
+            logger.warning("Cannot stat temp file %s: %s", filename, exc)
+            continue
+
+        if mtime < cutoff_time:
+            if _safe_remove(file_path):
+                count += 1
+                logger.debug("Deleted orphaned temp file: %s", filename)
+
+    _mark_ran(marker_key)
     if count:
         logger.info("Deleted %d orphaned temp files", count)
-    
     return count
 
 
 def cleanup_old_exports(days=3):
     """
     Remove old export files from the exports directory.
-    
+
+    Rate-limited: skips the scan if called again within _MIN_CLEANUP_INTERVAL.
+
     Args:
         days: Delete files older than this many days
-        
+
     Returns:
-        Number of files cleaned up
+        Number of files deleted (0 if rate-limiter blocked the run)
     """
-    import time
-    
+    marker_key = f'exports:{days}'
+    if not _should_run(marker_key):
+        return 0
+
     exports_dir = os.path.join(settings.MEDIA_ROOT, 'exports')
     if not os.path.exists(exports_dir):
+        _mark_ran(marker_key)
         return 0
-    
-    cutoff_time = time.time() - (days * 24 * 3600)
+
+    cutoff_time = _time.time() - (days * 24 * 3600)
     count = 0
-    
+
     try:
-        for filename in os.listdir(exports_dir):
-            file_path = os.path.join(exports_dir, filename)
-            
-            # Skip directories
+        entries = os.listdir(exports_dir)
+    except OSError as exc:
+        logger.error("Error listing exports directory: %s", exc)
+        return 0
+
+    for filename in entries:
+        file_path = os.path.join(exports_dir, filename)
+
+        try:
             if os.path.isdir(file_path):
                 continue
-            
-            try:
-                # Check file modification time
-                mtime = os.path.getmtime(file_path)
-                if mtime < cutoff_time:
-                    os.remove(file_path)
-                    count += 1
-                    logger.debug("Deleted old export file: %s", filename)
-            except Exception as e:
-                logger.warning("Failed to delete export file %s: %s", filename, e)
-    except Exception as e:
-        logger.error("Error cleaning exports directory: %s", e)
-    
+            mtime = os.path.getmtime(file_path)
+        except FileNotFoundError:
+            continue  # Race: already deleted
+        except OSError as exc:
+            logger.warning("Cannot stat export file %s: %s", filename, exc)
+            continue
+
+        if mtime < cutoff_time:
+            if _safe_remove(file_path):
+                count += 1
+                logger.debug("Deleted old export file: %s", filename)
+
+    _mark_ran(marker_key)
     if count:
         logger.info("Deleted %d old export files", count)
-    
     return count
 
 

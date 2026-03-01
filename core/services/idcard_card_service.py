@@ -245,11 +245,8 @@ class IDCardCardService(BaseService):
         try:
             table = get_object_or_404(IDCardTable, id=table_id)
 
-            # Base queryset — defer heavy photo column
-            cards_query = (
-                IDCard.objects.filter(table=table)
-                .defer('photo')
-            )
+            # Base queryset
+            cards_query = IDCard.objects.filter(table=table)
 
             if status_filter and status_filter in cls.VALID_STATUSES:
                 cards_query = cards_query.filter(status=status_filter)

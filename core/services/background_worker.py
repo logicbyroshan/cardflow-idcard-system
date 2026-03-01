@@ -163,9 +163,14 @@ class BackgroundWorker:
             except Exception as mark_err:
                 logger.warning('Failed to mark task %d as failed: %s', task_id, mark_err)
         finally:
-            # Periodic cleanup of orphaned temp/export files after every task
+            # Periodic cleanup of orphaned temp/export files.
+            # Both functions are rate-limited internally (_MIN_CLEANUP_INTERVAL=1h)
+            # so concurrent workers or rapid task completions skip the scan cheaply.
             try:
-                from core.services.task_cleanup import cleanup_orphaned_temp_files, cleanup_old_exports
+                from core.services.task_cleanup import (
+                    cleanup_orphaned_temp_files,
+                    cleanup_old_exports,
+                )
                 cleanup_orphaned_temp_files(hours=24)
                 cleanup_old_exports(days=3)
             except Exception as cleanup_err:

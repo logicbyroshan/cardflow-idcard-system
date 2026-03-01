@@ -162,11 +162,11 @@ def api_idcard_cards_json(request, table_id):
 
     # Base queryset — show recently moved cards first, defer heavy photo ImageField column
     if status_filter == 'download':
-        qs = IDCard.objects.filter(table=table).defer('photo').order_by('-downloaded_at', '-id')
+        qs = IDCard.objects.filter(table=table).order_by('-downloaded_at', '-id')
     elif status_filter == 'pool':
-        qs = IDCard.objects.filter(table=table).defer('photo').order_by('-deleted_at', '-id')
+        qs = IDCard.objects.filter(table=table).order_by('-deleted_at', '-id')
     else:
-        qs = IDCard.objects.filter(table=table).defer('photo').order_by('-updated_at', '-id')
+        qs = IDCard.objects.filter(table=table).order_by('-updated_at', '-id')
 
     if status_filter and status_filter in IDCardService.VALID_STATUSES:
         qs = qs.filter(status=status_filter)

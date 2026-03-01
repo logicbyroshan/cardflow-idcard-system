@@ -114,8 +114,8 @@ class ClientCardService(BaseService):
                         message=f'No permission to view {status_filter} cards'
                     )
             
-            # Build query — defer heavy photo column
-            cards_query = IDCard.objects.filter(table=table).defer('photo').order_by('-id')
+            # Build base query
+            cards_query = IDCard.objects.filter(table=table).order_by('-id')
             
             if status_filter and status_filter in cls.VALID_STATUSES:
                 cards_query = cards_query.filter(status=status_filter)
