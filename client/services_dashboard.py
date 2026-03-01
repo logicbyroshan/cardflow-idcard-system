@@ -4,7 +4,7 @@ Client Dashboard Service — aggregated statistics for the client dashboard.
 from django.utils.timezone import localtime
 from django.db.models import Count, Q
 
-from core.models import Client, Staff, IDCardGroup, IDCardTable, IDCard
+from core.models import Client, Staff, IDCardGroup, IDCardTable, IDCard, ActivityLog
 from core.services.base import BaseService, ServiceResult
 
 from .services_access import ClientAccessService
@@ -71,21 +71,36 @@ class ClientDashboardService(BaseService):
                 staff_type='client_staff'
             ).count()
             
-            # Recent activity - last 5 updated cards
-            recent_cards = IDCard.objects.filter(
-                table__in=tables
-            ).select_related('table').order_by('-updated_at')[:5]
-            
+            # Recent activity — only show actions performed by client/client_staff of this org.
+            # Never expose admin or admin_staff actions to client-side users.
+            from django.contrib.auth import get_user_model
+            UserModel = get_user_model()
+            # Collect all user PKs belonging to this client org
+            org_user_ids = list(
+                UserModel.objects.filter(
+                    Q(role='client', client_profile=client) |
+                    Q(role='client_staff', staff_profile__client=client)
+                ).values_list('pk', flat=True)
+            )
+            from django.utils.timesince import timesince
+            from django.utils import timezone as tz
+            now = tz.now()
+            logs = (
+                ActivityLog.objects
+                .filter(user_id__in=org_user_ids)
+                .select_related('user')
+                .order_by('-created_at')[:6]
+            )
             recent_activity = []
-            for card in recent_cards:
-                name = card.field_data.get('NAME', card.field_data.get('name', f'Card #{card.id}'))
+            for log in logs:
+                icon_class, icon_color = ActivityLog.ACTION_ICONS.get(
+                    log.action, ('fa-circle-info', 'edit')
+                )
                 recent_activity.append({
-                    'id': card.id,
-                    'name': name,
-                    'status': card.status,
-                    'status_display': card.get_status_display(),
-                    'table_name': card.table.name,
-                    'updated_at': localtime(card.updated_at).strftime('%d %b %Y, %H:%M'),
+                    'description': log.description,
+                    'time_ago': timesince(log.created_at, now),
+                    'icon_class': icon_class,
+                    'icon_color': icon_color,
                 })
             
             return ServiceResult(

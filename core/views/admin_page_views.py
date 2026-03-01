@@ -244,43 +244,6 @@ def idcard_group(request, client_id):
 # Print Card Group
 @login_required
 @require_any_admin
-def print_card_group(request, client_id):
-    """View print/reprint card groups for a specific client"""
-    client = get_object_or_404(Client, id=client_id)
-
-    # Check if user has access to this client
-    user = request.user
-    if not PermissionService.can_access_client(user, client_id):
-        return redirect('active_clients')
-
-    # Get all tables for this client's groups with print/reprint counts
-    from cardprint.models import PrintRequest
-    from reprintcard.models import ReprintRequest
-
-    tables = IDCardTable.objects.filter(group__client=client).select_related('group', 'group__client').annotate(
-        pending_count=Count('id_cards', filter=Q(id_cards__status='pending')),
-        verified_count=Count('id_cards', filter=Q(id_cards__status='verified')),
-        approved_count=Count('id_cards', filter=Q(id_cards__status='approved')),
-        download_count=Count('id_cards', filter=Q(id_cards__status='download')),
-        print_count=Count('print_requests', filter=Q(print_requests__status__in=['print_list', 'finalized'])),
-        reprint_count=Count('reprint_requests', filter=Q(reprint_requests__status__in=['requested', 'confirmed', 'downloaded'])),
-        total_cards=Count('id_cards'),
-    ).order_by('-updated_at')
-
-    context = {
-        'active_page': 'active_clients',
-        'user_role': get_user_role(request.user),
-        'client': client,
-        'tables': tables,
-    }
-    return render(request, 'print-card-group.html', context)
-
-
-# ────────────────────────────────────────────────────────────
-# Shared helper: builds queryset + context for idcard-actions
-# Used by admin idcard_actions() and client client_idcard_actions()
-# ────────────────────────────────────────────────────────────
-
 def build_idcard_actions_context(request, table, *, default_per_page=100,
                                   per_page_options=None, active_page='active_clients',
                                   user_role=None):

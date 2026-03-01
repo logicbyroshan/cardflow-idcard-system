@@ -13,6 +13,50 @@ function initIdcardGroup(config) {
   var searchInput = document.getElementById('searchInput');
   var tableBody = document.querySelector('.idcard-table tbody');
 
+  var selectedTableId = null;
+  var printCardsBtn = document.getElementById('printCardsBtn');
+  var reprintCardsBtn = document.getElementById('reprintCardsBtn');
+
+  function updateGroupActionBtns(tableId) {
+    selectedTableId = tableId;
+    if (printCardsBtn) {
+      printCardsBtn.disabled = !tableId;
+      if (tableId) {
+        var printUrl = isClientRole
+          ? '/panel/client/table/' + tableId + '/print/'
+          : '/panel/table/' + tableId + '/print/';
+        printCardsBtn.onclick = function() { window.location.href = printUrl; };
+      }
+    }
+    if (reprintCardsBtn) {
+      reprintCardsBtn.disabled = !tableId;
+      if (tableId) {
+        var reprintUrl = isClientRole
+          ? '/panel/client/table/' + tableId + '/reprint/'
+          : '/panel/table/' + tableId + '/reprint/';
+        reprintCardsBtn.onclick = function() { window.location.href = reprintUrl; };
+      }
+    }
+  }
+
+  // ==================== SINGLE-CLICK ROW SELECTION ====================
+  if (tableBody) {
+    tableBody.addEventListener('click', function(e) {
+      var row = e.target.closest('tr[data-table-id]');
+      if (!row) return;
+      // Toggle selection
+      var rowTableId = row.getAttribute('data-table-id');
+      if (row.classList.contains('selected')) {
+        row.classList.remove('selected');
+        updateGroupActionBtns(null);
+      } else {
+        tableBody.querySelectorAll('tr.selected').forEach(function(r) { r.classList.remove('selected'); });
+        row.classList.add('selected');
+        updateGroupActionBtns(rowTableId);
+      }
+    });
+  }
+
   // ==================== GROUP SETTING NAV ====================
   if (switchToGroupSettingBtn) {
     switchToGroupSettingBtn.addEventListener('click', function(e) {

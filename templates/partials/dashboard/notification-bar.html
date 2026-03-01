@@ -73,13 +73,36 @@
   gap: 10px;
   padding: 8px 16px;
   border-bottom: 1px solid #f1f5f9;
-  cursor: pointer;
   transition: background .1s;
 }
 .notif-bar-item:last-child { border-bottom: none; }
 .notif-bar-item:hover { background: #f8fafc; }
 .notif-bar-item.unread { background: #eff6ff; }
 .notif-bar-item.unread:hover { background: #dbeafe; }
+.notif-bar-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.notif-bar-mark-btn {
+  cursor: pointer;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #6b7280;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 10px;
+  line-height: 1.4;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.notif-bar-mark-btn:hover {
+  background: #22c55e;
+  color: #fff;
+  border-color: #22c55e;
+}
 .notif-bar-icon {
   width: 28px;
   height: 28px;
@@ -117,7 +140,6 @@
   font-size: 10.5px;
   color: #94a3b8;
   white-space: nowrap;
-  margin-top: 3px;
 }
 .notif-bar-empty {
   padding: 16px;
@@ -171,13 +193,17 @@
           const cat = n.category || 'general';
           const unreadCls = n.is_read ? '' : ' unread';
           const msgPreview = (n.message || '').length > 80 ? n.message.substring(0, 80) + '...' : (n.message || '');
-          return `<div class="notif-bar-item${unreadCls}" onclick="markNotifRead(${n.id}, this)">
+          const markBtn = n.is_read ? '' : `<button class="notif-bar-mark-btn" onclick="event.stopPropagation();markNotifRead(${n.id}, this.closest('.notif-bar-item'))" title="Mark as read"><i class="fa-solid fa-check"></i></button>`;
+          return `<div class="notif-bar-item${unreadCls}" data-notif-id="${n.id}">
             <div class="notif-bar-icon ${cat}"><i class="fa-solid ${icon}"></i></div>
             <div class="notif-bar-body">
               <div class="notif-bar-body-title">${escNotif(n.title)}</div>
               <div class="notif-bar-body-msg">${escNotif(msgPreview)}</div>
             </div>
-            <div class="notif-bar-time">${n.time_ago || ''}</div>
+            <div class="notif-bar-right">
+              <div class="notif-bar-time">${n.time_ago || ''}</div>
+              ${markBtn}
+            </div>
           </div>`;
         }).join('');
       })
@@ -191,20 +217,31 @@
   }
 
   window.markNotifRead = function(id, el) {
-    if (el && el.classList.contains('unread')) {
-      fetch(`/panel/api/notifications/${id}/read/`, {
-        method: 'POST',
-        headers: { 'X-CSRFToken': getCsrf() },
-      }).then(() => {
-        el.classList.remove('unread');
-        const badge = document.getElementById('notifBarCount');
-        if (badge) {
-          let c = parseInt(badge.textContent) - 1;
-          if (c <= 0) { badge.style.display = 'none'; c = 0; }
-          badge.textContent = c;
-        }
-      }).catch(() => {});
-    }
+    fetch(`/panel/api/notifications/${id}/read/`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': getCsrf() },
+    }).then(() => {
+      // Update badge count
+      const badge = document.getElementById('notifBarCount');
+      if (badge && el && el.classList.contains('unread')) {
+        let c = parseInt(badge.textContent) - 1;
+        if (c <= 0) { badge.style.display = 'none'; c = 0; }
+        else badge.textContent = c;
+      }
+      // Remove item from list with fade
+      if (el) {
+        el.style.transition = 'opacity 0.25s';
+        el.style.opacity = '0';
+        setTimeout(() => {
+          el.remove();
+          // If list is now empty, show empty state
+          const list = document.getElementById('notifBarList');
+          if (list && !list.querySelector('.notif-bar-item')) {
+            list.innerHTML = '<div class="notif-bar-empty"><i class="fa-solid fa-check-circle"></i> You\'re all caught up!</div>';
+          }
+        }, 260);
+      }
+    }).catch(() => {});
   };
 
   function getCsrf() {

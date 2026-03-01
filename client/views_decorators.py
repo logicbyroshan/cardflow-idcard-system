@@ -9,6 +9,7 @@ from functools import wraps
 from django.shortcuts import redirect
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
+from django.urls import reverse
 
 from core.services.permission_service import PermissionService
 
@@ -54,7 +55,7 @@ def require_client_admin(view_func):
                     'success': False,
                     'message': 'Client Admin access required'
                 }, status=403)
-            return redirect('/panel/client/dashboard/')
+            return redirect(reverse('client:dashboard'))
         return view_func(request, *args, **kwargs)
     return wrapper
 

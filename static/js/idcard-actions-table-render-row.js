@@ -165,6 +165,7 @@ function createRowFromCard(card, index) {
     
     // Status-dependent last column(s)
     const status = _ts.lazyLoadState.currentStatus;
+    var isClientUser = (typeof IS_CLIENT_USER !== 'undefined' && IS_CLIENT_USER);
     if (status === 'approved') {
         // Approved list: Print action column
         html += `<td class="w-[60px] px-[1px] py-1 text-center align-middle action-cell">
@@ -173,11 +174,15 @@ function createRowFromCard(card, index) {
             </div>
         </td>`;
     } else if (status === 'download') {
-        // Downloaded list: show downloaded_at timestamp
-        html += `<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">${card.downloaded_at || '-'}</td>`;
+        // Downloaded list: show downloaded_at for admins only (client/client_staff don't see admin download info)
+        if (!isClientUser) {
+            html += `<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">${card.downloaded_at || '-'}</td>`;
+        }
     } else if (status === 'pool') {
-        // Pool list: show deleted_at timestamp
-        html += `<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">${card.deleted_at || '-'}</td>`;
+        // Pool list: show deleted_at for admins only (client/client_staff don't see admin delete info)
+        if (!isClientUser) {
+            html += `<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">${card.deleted_at || '-'}</td>`;
+        }
     } else {
         // Pending/Verified: show action buttons
         html += `<td class="w-[60px] px-[1px] py-1 text-center align-middle action-cell">
@@ -187,7 +192,8 @@ function createRowFromCard(card, index) {
         </td>`;
     }
     
-    if (typeof PERMS === 'undefined' || PERMS.idcard_updated_at) {
+    // Last Updated / Updated By — only shown to admin users, never to client/client_staff
+    if (!isClientUser && (typeof PERMS === 'undefined' || PERMS.idcard_updated_at)) {
         html += `<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">${card.updated_at || ''}</td>`;
         html += `<td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center">Admin</td>`;
     }

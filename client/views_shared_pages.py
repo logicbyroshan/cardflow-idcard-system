@@ -7,6 +7,7 @@ but scoped to the current client's data and permissions.
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.db.models import Count, Q
+from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
 from core.models import IDCardTable
@@ -31,7 +32,7 @@ def client_idcard_group(request):
     user = request.user
     client = _get_client_for_request(user)
     if not client:
-        return redirect('/panel/client/dashboard/')
+        return redirect(reverse('client:dashboard'))
     
     # Check if user has any list permission (affects what content is shown)
     LIST_PERMISSIONS = [
@@ -78,7 +79,7 @@ def client_idcard_actions(request, table_id):
     user = request.user
     client = _get_client_for_request(user)
     if not client:
-        return redirect('/panel/client/dashboard/')
+        return redirect(reverse('client:dashboard'))
     
     # Require at least one list permission to access this page
     LIST_PERMISSIONS = [
@@ -87,20 +88,20 @@ def client_idcard_actions(request, table_id):
         'perm_idcard_pool_list', 'perm_idcard_reprint_list',
     ]
     if not any(PermissionService.has_permission(user, p) for p in LIST_PERMISSIONS):
-        return redirect('/panel/client/dashboard/')
+        return redirect(reverse('client:dashboard'))
     
     table = get_object_or_404(IDCardTable.objects.select_related('group__client'), id=table_id)
     
     # Verify ownership
     if not ClientAccessService.can_access_table(user, table):
-        return redirect('/panel/client/idcard-group/')
+        return redirect(reverse('client:idcard_group'))
     
     status_filter = request.GET.get('status', None)
     if status_filter:
         from core.views.base import _STATUS_LIST_PERM
         required_perm = _STATUS_LIST_PERM.get(status_filter)
         if required_perm and not PermissionService.has_permission(user, required_perm):
-            return redirect('/panel/client/idcard-group/')
+            return redirect(reverse('client:idcard_group'))
     
     from core.views.base import build_idcard_actions_context
     context = build_idcard_actions_context(
@@ -132,7 +133,7 @@ def client_group_settings(request):
     user = request.user
     client = _get_client_for_request(user)
     if not client:
-        return redirect('/panel/client/dashboard/')
+        return redirect(reverse('client:dashboard'))
     
     # Always render — show empty if no permissions
     has_perm = PermissionService.has_permission(user, 'perm_idcard_setting_list')
@@ -168,17 +169,17 @@ def client_reprint_cards(request, table_id):
     user = request.user
     client = _get_client_for_request(user)
     if not client:
-        return redirect('/panel/client/dashboard/')
+        return redirect(reverse('client:dashboard'))
     
     table = get_object_or_404(IDCardTable.objects.select_related('group__client'), id=table_id)
     
     # Verify ownership
     if not ClientAccessService.can_access_table(user, table):
-        return redirect('/panel/client/idcard-group/')
+        return redirect(reverse('client:idcard_group'))
     
     # Check perm_idcard_reprint_list permission
     if not PermissionService.has_permission(user, 'perm_idcard_reprint_list'):
-        return redirect('/panel/client/idcard-group/')
+        return redirect(reverse('client:idcard_group'))
     
     current_step = request.GET.get('step', 'reprint_list')
     if current_step not in ('reprint_list', 'confirmed', 'pool'):
@@ -305,13 +306,13 @@ def client_print_cards(request, table_id):
     user = request.user
     client = _get_client_for_request(user)
     if not client:
-        return redirect('/panel/client/dashboard/')
+        return redirect(reverse('client:dashboard'))
 
     table = get_object_or_404(IDCardTable.objects.select_related('group__client'), id=table_id)
 
     # Verify ownership
     if not ClientAccessService.can_access_table(user, table):
-        return redirect('/panel/client/idcard-group/')
+        return redirect(reverse('client:idcard_group'))
 
     current_step = request.GET.get('step', 'print_list')
     if current_step not in ('print_list', 'download'):

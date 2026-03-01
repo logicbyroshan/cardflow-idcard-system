@@ -5,18 +5,20 @@
 
 {% block extra_css %}
 <style>
-  .permission-item.perm-locked {
-    opacity: 0.5;
+  /* Locked permission row (client admin doesn't have this perm — can't delegate) */
+  .permission-row.perm-locked {
+    opacity: 0.45;
     cursor: not-allowed;
-    position: relative;
+    pointer-events: none;
   }
-  .permission-item.perm-locked input[type="checkbox"] {
+  .permission-row.perm-locked .toggle-switch {
     cursor: not-allowed;
   }
   .perm-lock-icon {
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     color: #999;
     margin-left: 4px;
+    vertical-align: middle;
   }
 </style>
 {% endblock %}

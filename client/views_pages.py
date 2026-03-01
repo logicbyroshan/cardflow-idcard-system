@@ -4,6 +4,7 @@ Client Views — page rendering views.
 Full-page views for the client dashboard, card groups, card table,
 and staff management.
 """
+from django.urls import reverse
 from django.shortcuts import render, redirect
 
 from core.models import IDCardTable
@@ -69,7 +70,7 @@ def card_groups(request):
     
     # Check permission
     if not PermissionService.has_permission(user, 'perm_idcard_setting_list'):
-        return redirect('/panel/client/dashboard/')
+        return redirect(reverse('client:dashboard'))
     
     result = ClientDashboardService.get_groups_with_counts(user)
     permissions = PermissionService.get_permission_context(user)
@@ -107,16 +108,16 @@ def card_table(request, table_id):
         'perm_idcard_reprint_list',
     ]
     if not any(PermissionService.has_permission(user, p) for p in LIST_PERMISSIONS):
-        return redirect('/panel/client/dashboard/')
+        return redirect(reverse('client:dashboard'))
     
     # Verify access
     try:
         table = IDCardTable.objects.select_related('group__client').get(id=table_id)
     except IDCardTable.DoesNotExist:
-        return redirect('/panel/client/groups/')
+        return redirect(reverse('client:groups'))
     
     if not ClientAccessService.can_access_table(user, table):
-        return redirect('/panel/client/groups/')
+        return redirect(reverse('client:groups'))
     
     # Get status filter from query params
     status_filter = request.GET.get('status', '')
@@ -154,7 +155,7 @@ def manage_staff(request):
     
     # Check permission
     if not PermissionService.has_permission(user, 'perm_idcard_client_list'):
-        return redirect('/panel/client/dashboard/')
+        return redirect(reverse('client:dashboard'))
     
     # Get Staff QuerySet directly for server-side table rendering
     from staff.models import Staff  # local import: not needed at module level

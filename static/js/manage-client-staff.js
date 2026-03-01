@@ -145,13 +145,20 @@ document.addEventListener('DOMContentLoaded', function () {
             pluralLabel:     'groups',
         },
 
-        // Permissions (smaller set)
+        // Permissions — full set mirroring STAFF_PERMISSION_FIELDS in services_staff.py
         permissionFields: [
+            // ID Card List Tabs
             'perm-idcard-pending-list', 'perm-idcard-verified-list', 'perm-idcard-pool-list',
-            'perm-idcard-approved-list', 'perm-idcard-download-list',
+            'perm-idcard-approved-list', 'perm-idcard-download-list', 'perm-idcard-reprint-list',
+            // Card Actions
             'perm-idcard-add', 'perm-idcard-edit', 'perm-idcard-delete', 'perm-idcard-info',
             'perm-idcard-approve', 'perm-idcard-verify',
             'perm-idcard-created-at', 'perm-idcard-updated-at',
+            'perm-idcard-delete-from-pool', 'perm-reupload-idcard-image', 'perm-idcard-retrieve',
+            // Bulk Actions
+            'perm-idcard-bulk-upload', 'perm-idcard-bulk-download',
+            'perm-idcard-bulk-reupload', 'perm-idcard-upgrade-all',
+            // App & Access
             'perm-mobile-app'
         ],
         defaultOnPerms: [],

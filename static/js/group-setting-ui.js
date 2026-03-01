@@ -37,6 +37,29 @@ document.addEventListener('DOMContentLoaded', function() {
         if (GSP.deleteBtn) GSP.deleteBtn.disabled = !hasSelection;
         if (GSP.toggleStatusBtn) GSP.toggleStatusBtn.disabled = !hasSelection;
 
+        // Print Cards / Reprint Cards buttons
+        var isClient = typeof IS_CLIENT_ROLE !== 'undefined' ? IS_CLIENT_ROLE : false;
+        var printCardsBtn = document.getElementById('printCardsBtn');
+        var reprintCardsBtn = document.getElementById('reprintCardsBtn');
+        if (printCardsBtn) {
+            printCardsBtn.disabled = !hasSelection;
+            if (hasSelection && GSP.selectedTableId) {
+                var pUrl = isClient
+                    ? '/panel/client/table/' + GSP.selectedTableId + '/print/'
+                    : '/panel/table/' + GSP.selectedTableId + '/print/';
+                printCardsBtn.onclick = function() { window.location.href = pUrl; };
+            }
+        }
+        if (reprintCardsBtn) {
+            reprintCardsBtn.disabled = !hasSelection;
+            if (hasSelection && GSP.selectedTableId) {
+                var rUrl = isClient
+                    ? '/panel/client/table/' + GSP.selectedTableId + '/reprint/'
+                    : '/panel/table/' + GSP.selectedTableId + '/reprint/';
+                reprintCardsBtn.onclick = function() { window.location.href = rUrl; };
+            }
+        }
+
         // Update toggle status button text and class based on current status
         if (hasSelection && GSP.toggleStatusBtn) {
             const currentStatus = GSP.selectedRow.dataset.tableStatus;

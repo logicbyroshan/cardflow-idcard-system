@@ -45,9 +45,6 @@ urlpatterns = [
     # ID Card Group for a client (shows all tables with status counts)
     path('client/<int:client_id>/groups/', views.idcard_group, name='idcard_group'),
     
-    # Print Card Group for a client (shows all tables with print/reprint counts)
-    path('client/<int:client_id>/print-groups/', views.print_card_group, name='print_card_group'),
-    
     # ID Card Actions for a table (shows cards, can filter by status)
     path('table/<int:table_id>/cards/', views.idcard_actions, name='idcard_actions'),
     

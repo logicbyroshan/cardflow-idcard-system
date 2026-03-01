@@ -19,7 +19,6 @@ from .base import (
     manage_clients,
     active_clients,
     idcard_group,
-    print_card_group,
     idcard_actions,
     group_settings,
     manage_website,

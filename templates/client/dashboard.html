@@ -25,6 +25,9 @@
 {% block content %}
 <div class="dashboard-content">
 
+  <!-- Welcome Banner -->
+  {% include 'partials/dashboard/welcome-banner.html' %}
+
   <!-- Notification Bar -->
   {% include 'partials/dashboard/notification-bar.html' %}
 
@@ -95,41 +98,14 @@
         <h3><i class="fa-solid fa-history"></i> Recent Activity</h3>
       </div>
       <div class="dashboard-card-body">
-        <div class="activity-list">
-          <div class="activity-item">
-            <div class="activity-icon add">
-              <i class="fa-solid fa-plus"></i>
-            </div>
-            <div class="activity-content">
-              <div class="activity-text">New ID cards uploaded</div>
-              <div class="activity-time">Recently</div>
-            </div>
-          </div>
-          <div class="activity-item">
-            <div class="activity-icon verify">
-              <i class="fa-solid fa-check"></i>
-            </div>
-            <div class="activity-content">
-              <div class="activity-text">Cards verified</div>
-              <div class="activity-time">Recently</div>
-            </div>
-          </div>
-          <div class="activity-item">
-            <div class="activity-icon approve">
-              <i class="fa-solid fa-thumbs-up"></i>
-            </div>
-            <div class="activity-content">
-              <div class="activity-text">Cards approved for download</div>
-              <div class="activity-time">Recently</div>
-            </div>
-          </div>
-          <div class="activity-item">
+        <div class="activity-list" id="recentActivityList">
+          <div class="activity-item" id="activityLoadingMsg">
             <div class="activity-icon edit">
-              <i class="fa-solid fa-download"></i>
+              <i class="fa-solid fa-spinner fa-spin"></i>
             </div>
             <div class="activity-content">
-              <div class="activity-text">Downloaded batch of ID cards</div>
-              <div class="activity-time">Recently</div>
+              <div class="activity-text">Loading recent activity...</div>
+              <div class="activity-time">&nbsp;</div>
             </div>
           </div>
         </div>
@@ -219,6 +195,26 @@ async function loadDashboardData() {
       document.getElementById('stat-verified').textContent = stats.verified || 0;
       document.getElementById('stat-approved').textContent = stats.approved || 0;
       document.getElementById('stat-download').textContent = stats.download || 0;
+
+      // Render recent activity (only client/client_staff actions)
+      const actList = document.getElementById('recentActivityList');
+      const activities = (data.data.recent_activity || []);
+      if (actList) {
+        if (activities.length === 0) {
+          actList.innerHTML = `<div class="activity-item"><div class="activity-icon edit"><i class="fa-solid fa-circle-info"></i></div><div class="activity-content"><div class="activity-text">No recent activity</div><div class="activity-time">Activity will appear as actions are performed</div></div></div>`;
+        } else {
+          actList.innerHTML = activities.map(a => `
+            <div class="activity-item">
+              <div class="activity-icon ${a.icon_color}">
+                <i class="fa-solid ${a.icon_class}"></i>
+              </div>
+              <div class="activity-content">
+                <div class="activity-text">${a.description}</div>
+                <div class="activity-time">${a.time_ago} ago</div>
+              </div>
+            </div>`).join('');
+        }
+      }
     } else {
       console.error('Dashboard data error:', data.error);
     }

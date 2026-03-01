@@ -19,8 +19,6 @@
       <a href="{% url 'active_clients' %}" class="breadcrumb-item">Clients</a>
       <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
       <span class="breadcrumb-item">{{ client.name }}{% if client.status != 'active' %} <span class="status-badge inactive" style="font-size:11px;margin-left:4px;">{{ client.get_status_display }}</span>{% endif %}</span>
-      <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
-      <a href="{% url 'print_card_group' client.id %}" class="breadcrumb-item">Print Card Group</a>
       {% endif %}
       <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
       <span class="breadcrumb-item active">Print — {{ table.name }}</span>

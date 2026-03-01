@@ -44,7 +44,6 @@ from .admin_page_views import (                      # noqa: F401
     manage_clients,
     active_clients,
     idcard_group,
-    print_card_group,
     build_idcard_actions_context,
     idcard_actions,
     group_settings,
