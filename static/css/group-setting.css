@@ -453,7 +453,7 @@
   background: transparent;
 }
 
-/* Rows soft-deleted by the client — shown to admin only, muted style */
+/* Rows soft-deleted by the client â€” shown to admin only, muted style */
 #tablesBody tr.row-deleted-by-client {
   opacity: 0.6;
   background: #fafafa;
