@@ -19,7 +19,7 @@ from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404
 
-from core.models import IDCardTable
+from idcards.models import IDCardTable
 from core.services.permission_service import PermissionService
 from accounts.rate_limit import rate_limit
 
@@ -96,7 +96,7 @@ def _get_card_ids_from_request(request, table_id: int = None) -> Optional[List[i
     # fetch ALL card IDs for the requested status from the database,
     # respecting any active search/class/section filters.
     if not card_ids and table_id:
-        from core.models import IDCard, IDCardTable
+        from idcards.models import IDCard, IDCardTable
         status = _get_status_from_request(request)
         # Extract optional filters from JSON body
         search_q = ''

@@ -13,7 +13,10 @@ from django.core.paginator import Paginator
 from django.db.models import Count, Q
 from django.utils import timezone
 
-from ..models import Client, Staff, IDCardGroup, IDCard, IDCardTable, User, SystemSettings, Notification, EmailLog
+from client.models import Client
+from staff.models import Staff
+from idcards.models import IDCardGroup, IDCard, IDCardTable
+from ..models import User, SystemSettings, Notification, EmailLog
 from ..services import IDCardService
 from ..utils.htmx import is_htmx, render_partial
 from ..services.permission_service import (

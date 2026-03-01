@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from django.db.models import QuerySet
 from django.shortcuts import get_object_or_404
 
-from core.models import IDCardTable, IDCard
+from idcards.models import IDCardTable, IDCard
 from core.services.permission_service import PermissionService
 
 from .excel import ExcelExporter, ExcelExportResult

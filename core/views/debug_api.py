@@ -10,7 +10,8 @@ from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q
 
-from ..models import IDCard, IDCardTable, User, ActivityLog
+from idcards.models import IDCard, IDCardTable
+from ..models import User, ActivityLog
 from ..services.permission_service import (
     PermissionService,
     require_any_admin,

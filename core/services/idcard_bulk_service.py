@@ -11,7 +11,7 @@ from typing import Dict, Any, List
 
 from django.shortcuts import get_object_or_404
 
-from ..models import IDCardTable, IDCard
+from idcards.models import IDCardTable, IDCard
 from .base import BaseService, ServiceResult
 
 logger = logging.getLogger(__name__)

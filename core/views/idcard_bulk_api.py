@@ -18,7 +18,7 @@ from django.db import transaction
 from django.conf import settings
 from django.core.cache import cache as django_cache
 
-from ..models import IDCard, IDCardTable
+from idcards.models import IDCard, IDCardTable
 from ..services import IDCardService
 from ..services.image_service import ImageService
 from ..services.base import BaseService

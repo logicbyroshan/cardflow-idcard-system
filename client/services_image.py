@@ -3,7 +3,8 @@ Client Image Service — image upload and card-matching logic.
 """
 import os
 
-from core.models import Client, IDCardTable, IDCard
+from client.models import Client
+from idcards.models import IDCardTable, IDCard
 from core.services.base import BaseService, ServiceResult
 from core.services.permission_service import PermissionService
 

@@ -15,7 +15,10 @@ from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db.models import Count, F, Max, Q
 from django.utils import timezone
-from ..models import Client, Staff, IDCardGroup, IDCard, IDCardTable, User, SystemSettings, Notification, ActivityLog
+from client.models import Client
+from staff.models import Staff
+from idcards.models import IDCardGroup, IDCard, IDCardTable
+from ..models import User, SystemSettings, Notification, ActivityLog
 from ..services import IDCardService
 from ..services.activity_service import ActivityService
 from ..utils.htmx import is_htmx, render_partial

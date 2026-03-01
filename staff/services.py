@@ -26,7 +26,9 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.db.models import QuerySet
 
-from core.models import User, Client, Staff
+from core.models import User
+from client.models import Client
+from staff.models import Staff
 from core.services.permission_service import PermissionService
 from core.utils.email_utils import generate_secure_password, send_welcome_email
 from core.models import EmailLog

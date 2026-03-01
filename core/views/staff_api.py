@@ -8,7 +8,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from ..services.permission_service import api_require_super_admin
 from ..services import StaffService
-from ..models import Client
+from client.models import Client
 from accounts.rate_limit import rate_limit
 
 logger = logging.getLogger(__name__)

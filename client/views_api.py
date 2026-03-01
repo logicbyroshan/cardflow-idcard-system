@@ -275,7 +275,7 @@ def api_class_section_options(request):
     API: Get distinct class and section values from all cards of this client.
     Used in staff drawer for class/section filter assignment.
     """
-    from core.models import IDCard, IDCardTable
+    from idcards.models import IDCard, IDCardTable
     from idcards.models import IDCardGroup
 
     user = request.user

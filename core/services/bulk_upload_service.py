@@ -22,7 +22,7 @@ from django.conf import settings
 from django.db import transaction
 from django.core.files.storage import default_storage
 
-from ..models import IDCard
+from idcards.models import IDCard
 from ..services.base import BaseService
 from ..services.workflow_service import WorkflowService
 from core.utils.field_utils import (

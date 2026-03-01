@@ -11,7 +11,7 @@ from typing import Dict, Any
 from django.shortcuts import get_object_or_404
 from django.utils.timezone import localtime
 
-from ..models import IDCardGroup, IDCardTable
+from idcards.models import IDCardGroup, IDCardTable
 from .base import BaseService, ServiceResult
 
 logger = logging.getLogger(__name__)

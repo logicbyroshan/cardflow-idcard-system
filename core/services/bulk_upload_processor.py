@@ -50,7 +50,7 @@ def process_bulk_upload(task):
                 'unified_zip_paths': [relative_path, ...],  # Optional
             }
     """
-    from core.models import IDCardTable, IDCard
+    from idcards.models import IDCardTable, IDCard
     from core.services.base import BaseService
     from mediafiles.services import ImageService
     from core.utils.field_utils import validate_image_bytes, convert_class_value, convert_section_value

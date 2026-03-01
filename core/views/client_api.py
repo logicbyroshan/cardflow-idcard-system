@@ -110,7 +110,7 @@ def api_client_update(request, client_id):
 def api_client_delete(request, client_id):
     """API endpoint to delete a client (Super Admin only)"""
     # Get client name before deletion for the activity log
-    from ..models import Client
+    from client.models import Client
     try:
         client_obj = Client.objects.get(pk=client_id)
         client_name = client_obj.name

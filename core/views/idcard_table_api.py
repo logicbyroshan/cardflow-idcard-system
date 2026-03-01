@@ -13,7 +13,7 @@ import logging
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
-from ..models import IDCardTable
+from idcards.models import IDCardTable
 from ..services import IDCardService
 from ..services.permission_service import api_require_permission
 

@@ -15,7 +15,7 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Count
 from django.utils.timezone import localtime
 
-from ..models import IDCardGroup, IDCardTable, IDCard
+from idcards.models import IDCardGroup, IDCardTable, IDCard
 from .base import BaseService, ServiceResult
 from .image_service import ImageService
 

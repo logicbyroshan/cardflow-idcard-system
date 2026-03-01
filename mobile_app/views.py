@@ -28,7 +28,7 @@ from client.services import (
     ClientStaffService,
 )
 from core.services.permission_service import PermissionService
-from core.models import IDCardTable, IDCard, IDCardGroup
+from idcards.models import IDCardTable, IDCard, IDCardGroup
 from staff.models import Staff
 
 logger = logging.getLogger(__name__)

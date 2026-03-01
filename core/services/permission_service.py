@@ -288,7 +288,7 @@ class PermissionService:
         super_admin → all clients; admin_staff → assigned clients only; others → none.
         If base_qs is provided, results are intersected with it.
         """
-        from ..models import Client
+        from client.models import Client
         qs = base_qs if base_qs is not None else Client.objects.all()
         if not user.is_authenticated:
             return qs.none()

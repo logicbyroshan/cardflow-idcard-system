@@ -10,7 +10,7 @@ from django.db.models import Count, Q
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
-from core.models import IDCardTable
+from idcards.models import IDCardTable
 from core.services import IDCardService
 from core.services.permission_service import PermissionService
 from core.utils.htmx import is_htmx

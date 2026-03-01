@@ -6,7 +6,10 @@ import os
 
 from django.db import transaction
 
-from core.models import Client, Staff, User, IDCardGroup, IDCardTable, IDCard
+from core.models import User
+from client.models import Client
+from staff.models import Staff
+from idcards.models import IDCardGroup, IDCardTable, IDCard
 from core.services.base import BaseService, ServiceResult
 from core.services.permission_service import PermissionService
 

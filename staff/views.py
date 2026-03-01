@@ -23,7 +23,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 
-from core.models import Client
+from client.models import Client
 from core.services.activity_service import ActivityService
 
 from .services import (
@@ -313,7 +313,7 @@ def api_client_idcard_groups(request, client_id):
     Example: Get ID card groups for a specific client.
     Enforces both permission AND client access checks.
     """
-    from core.models import IDCardGroup
+    from idcards.models import IDCardGroup
     
     groups = IDCardGroup.objects.filter(client_id=client_id)
     

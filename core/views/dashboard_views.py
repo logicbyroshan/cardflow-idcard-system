@@ -12,7 +12,10 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Count, F, Max, Q, Min
 from django.utils import timezone
 
-from ..models import Client, Staff, IDCard, IDCardTable, User
+from client.models import Client
+from staff.models import Staff
+from idcards.models import IDCard, IDCardTable
+from ..models import User
 from ..services import IDCardService
 from ..services.activity_service import ActivityService
 from ..utils.htmx import is_htmx

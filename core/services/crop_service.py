@@ -75,7 +75,7 @@ class CropService:
               }
             }
         """
-        from core.models import IDCardTable, IDCard
+        from idcards.models import IDCardTable, IDCard
         from mediafiles.constants import IMAGE_FIELD_TYPES
 
         # Validate table
@@ -224,7 +224,7 @@ class CropService:
         """
         import json
 
-        from core.models import IDCardTable, IDCard
+        from idcards.models import IDCardTable, IDCard
         from mediafiles.services import ImageService
 
         batch_dir = cls._batch_dir(batch_id)

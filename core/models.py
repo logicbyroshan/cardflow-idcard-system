@@ -1,14 +1,6 @@
 from django.contrib.auth.models import AbstractUser, UserManager
 from django.db import models
 
-# Import Client from its new home (preserves backward compatibility)
-from client.models import Client, generate_folder_code_from_name, generate_unique_suffix
-
-# Import Staff from its new home (preserves backward compatibility)
-from staff.models import Staff
-
-# Import IDCard models from their new home (preserves backward compatibility)
-from idcards.models import IDCardGroup, IDCardTable, IDCard
 
 
 class CustomUserManager(UserManager):

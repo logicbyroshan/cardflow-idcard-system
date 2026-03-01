@@ -42,7 +42,7 @@ def process_reupload_images(task):
                 'status_filter': str (optional)
             }
     """
-    from core.models import IDCardTable, IDCard
+    from idcards.models import IDCardTable, IDCard
     from core.services.base import BaseService
     from mediafiles.services import ImageService
     from core.utils.field_utils import validate_image_bytes

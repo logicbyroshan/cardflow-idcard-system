@@ -1,7 +1,10 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import Permission
-from .models import User, Client, Staff, IDCardGroup, IDCard, IDCardTable, SystemSettings, ExportTemplate, ActivityLog, Notification, NotificationRead, CropperRelease
+from client.models import Client
+from staff.models import Staff
+from idcards.models import IDCardGroup, IDCard, IDCardTable
+from .models import User, SystemSettings, ExportTemplate, ActivityLog, Notification, NotificationRead, CropperRelease
 
 
 # Register Permission model for admin visibility (moved from deprecated client_staff app)

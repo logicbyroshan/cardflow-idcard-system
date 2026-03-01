@@ -350,7 +350,7 @@ class PermissionValidationMiddleware:
     
     def _validate_client_access(self, request, user):
         """Validate client user access"""
-        from core.models import Client
+        from client.models import Client
         
         try:
             client = Client.objects.get(user=user)
@@ -385,7 +385,8 @@ class PermissionValidationMiddleware:
     
     def _validate_client_staff_access(self, request, user):
         """Validate client staff user access"""
-        from core.models import Staff, Client
+        from staff.models import Staff
+        from client.models import Client
         
         try:
             staff = Staff.objects.select_related('client').get(user=user)

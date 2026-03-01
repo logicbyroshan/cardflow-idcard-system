@@ -4,7 +4,10 @@ Client Dashboard Service — aggregated statistics for the client dashboard.
 from django.utils.timezone import localtime
 from django.db.models import Count, Q
 
-from core.models import Client, Staff, IDCardGroup, IDCardTable, IDCard, ActivityLog
+from core.models import ActivityLog
+from client.models import Client
+from staff.models import Staff
+from idcards.models import IDCardGroup, IDCardTable, IDCard
 from core.services.base import BaseService, ServiceResult
 
 from .services_access import ClientAccessService

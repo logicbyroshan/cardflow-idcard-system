@@ -7,7 +7,7 @@ and staff management.
 from django.urls import reverse
 from django.shortcuts import render, redirect
 
-from core.models import IDCardTable
+from idcards.models import IDCardTable
 from core.services.permission_service import PermissionService
 
 from .views_decorators import require_client_user, require_client_admin

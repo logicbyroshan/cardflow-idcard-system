@@ -27,7 +27,8 @@ from django.views.decorators.http import require_http_methods, require_POST, req
 from django.shortcuts import get_object_or_404
 from django.conf import settings
 
-from core.models import BackgroundTask, IDCardTable
+from core.models import BackgroundTask
+from idcards.models import IDCardTable
 from core.utils.upload_security import validate_zip_safety
 from core.services.permission_service import (
     PermissionService,
@@ -571,7 +572,7 @@ def api_create_reupload_task(request, table_id):
         }
     """
     from core.views.idcard_api import _check_client_scope_by_table, _CLIENT_READONLY_STATUSES
-    from core.models import IDCard
+    from idcards.models import IDCard
     
     # Check client scope
     _tbl, err = _check_client_scope_by_table(request.user, table_id)

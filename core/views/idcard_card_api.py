@@ -15,7 +15,7 @@ import logging
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
-from ..models import IDCard
+from idcards.models import IDCard
 from ..services import IDCardService
 from ..services.base import BaseService
 from ..services.activity_service import ActivityService

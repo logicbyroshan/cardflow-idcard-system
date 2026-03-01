@@ -5,7 +5,8 @@ Ensures clients (and client-staff) can only reach their own data.
 """
 from typing import Optional
 
-from core.models import Client, IDCardGroup, IDCardTable, IDCard
+from client.models import Client
+from idcards.models import IDCardGroup, IDCardTable, IDCard
 from core.services.permission_service import PermissionService
 
 
