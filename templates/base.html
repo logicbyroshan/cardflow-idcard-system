@@ -85,11 +85,12 @@
     };
   </script>
 
-  <!-- Core Modules (Load Order: api → toast → modal → utils → download-manager → init) -->
+  <!-- Core Modules (Load Order: api → toast → modal → utils → sanitizer → download-manager → init) -->
   <script defer src="{% static 'js/core/api.js' %}"></script>
   <script defer src="{% static 'js/core/toast.js' %}"></script>
   <script defer src="{% static 'js/core/modal.js' %}"></script>
   <script defer src="{% static 'js/core/utils.js' %}"></script>
+  <script defer src="{% static 'js/core/sanitizer.js' %}"></script>
   <script defer src="{% static 'js/core/download-manager.js' %}"></script>
   <script defer src="{% static 'js/init.js' %}"></script>
   

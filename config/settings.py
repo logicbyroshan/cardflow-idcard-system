@@ -92,6 +92,7 @@ INSTALLED_APPS = [
     'website',
     'cardprint',
     'reprintcard',
+    'mobile_app',
 ]
 
 # Custom User Model - Keep pointing to core.User for database compatibility

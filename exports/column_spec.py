@@ -89,23 +89,23 @@ _s('sr_no', 2, 4, 5, False, 'center',
 # ── Names ────────────────────────────────────────────────────────────
 _s('full_name', 8, 20, 35, True, 'left',
    6.0, 22.0, 2.5, 8.0,
-   'min-w-[110px]',
-   'min-w-[110px] text-left whitespace-normal break-words')
+   'min-w-[90px] max-w-[160px]',
+   'min-w-[90px] max-w-[160px] text-left whitespace-normal break-words')
 
 _s('parent_name', 8, 18, 30, True, 'left',
    5.5, 18.0, 2.0, 7.0,
-   'min-w-[100px]',
-   'min-w-[100px] text-left whitespace-normal break-words')
+   'min-w-[90px] max-w-[150px]',
+   'min-w-[90px] max-w-[150px] text-left whitespace-normal break-words')
 
 _s('guardian_name', 8, 18, 30, True, 'left',
    5.5, 18.0, 2.0, 7.0,
-   'min-w-[100px]',
-   'min-w-[100px] text-left whitespace-normal break-words')
+   'min-w-[90px] max-w-[150px]',
+   'min-w-[90px] max-w-[150px] text-left whitespace-normal break-words')
 
 _s('spouse_name', 8, 18, 30, True, 'left',
    5.5, 18.0, 2.0, 7.0,
-   'min-w-[100px]',
-   'min-w-[100px] text-left whitespace-normal break-words')
+   'min-w-[90px] max-w-[150px]',
+   'min-w-[90px] max-w-[150px] text-left whitespace-normal break-words')
 
 # ── Date fields ──────────────────────────────────────────────────────
 _s('date', 8, 10, 12, False, 'center',
@@ -235,8 +235,8 @@ _s('email', 10, 22, 40, True, 'left',
 # categorical columns (class, section, rel, etc.).
 _s('address', 8, 16, 22, True, 'left',
    4.0, 8.0, 1.8, 4.0,
-   'min-w-[100px] max-w-[140px]',
-   'min-w-[100px] max-w-[140px] text-left whitespace-normal break-words')
+   'min-w-[90px] max-w-[130px]',
+   'min-w-[90px] max-w-[130px] text-left whitespace-normal break-words')
 
 _s('city', 4, 10, 20, True, 'center',
    3.0, 7.0, 1.0, 3.0,

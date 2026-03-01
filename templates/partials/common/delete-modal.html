@@ -39,15 +39,99 @@ Required JavaScript handlers:
                         <li>This action cannot be undone</li>
                     </ul>
                 </div>
+                <!-- 6-digit confirmation code -->
+                <div style="width:100%;margin-top:16px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 14px;">
+                    <p style="font-size:12px;color:#92400e;font-weight:600;margin:0 0 8px;display:flex;align-items:center;gap:6px">
+                        <i class="fa-solid fa-shield-halved"></i> Verification Required
+                    </p>
+                    <p style="font-size:12px;color:#78350f;margin:0 0 10px">
+                        To confirm deletion, enter this 6-digit code:
+                        <strong id="delete-confirm-code" style="font-size:18px;letter-spacing:4px;color:#dc2626;display:block;margin-top:4px;font-family:monospace;"></strong>
+                    </p>
+                    <input type="text" id="delete-code-input"
+                        maxlength="6"
+                        inputmode="numeric"
+                        pattern="[0-9]{6}"
+                        placeholder="Enter 6-digit code"
+                        autocomplete="off"
+                        style="width:100%;padding:8px 12px;border:2px solid #fca5a5;border-radius:6px;font-size:16px;letter-spacing:4px;text-align:center;font-family:monospace;outline:none;transition:border-color 0.2s;"
+                        oninput="this.value=this.value.replace(/[^0-9]/g,'')"
+                    >
+                    <p id="delete-code-error" style="font-size:11px;color:#dc2626;margin:4px 0 0;display:none;">
+                        <i class="fa-solid fa-circle-xmark"></i> Incorrect code. Please try again.
+                    </p>
+                </div>
             </div>
         </div>
         <div class="modal-footer">
             <button class="btn btn-md btn-neutral" id="cancelDeleteBtn" type="button">
                 <i class="fa-solid fa-xmark"></i> Cancel
             </button>
-            <button class="btn btn-md btn-danger" id="confirmDeleteBtn" type="button">
+            <button class="btn btn-md btn-danger" id="confirmDeleteBtn" type="button" disabled>
                 <i class="fa-solid fa-trash-can"></i> Delete
             </button>
         </div>
     </div>
 </div>
+
+<script>
+(function() {
+    // Generate a random 6-digit code when the modal opens
+    var _deleteCode = '';
+
+    function generateDeleteCode() {
+        _deleteCode = Math.floor(100000 + Math.random() * 900000).toString();
+        var codeEl = document.getElementById('delete-confirm-code');
+        if (codeEl) codeEl.textContent = _deleteCode;
+        var input = document.getElementById('delete-code-input');
+        if (input) { input.value = ''; }
+        var errEl = document.getElementById('delete-code-error');
+        if (errEl) errEl.style.display = 'none';
+        var confirmBtn = document.getElementById('confirmDeleteBtn');
+        if (confirmBtn) confirmBtn.disabled = true;
+    }
+
+    // Expose so modal open handlers can call it
+    window._generateDeleteCode = generateDeleteCode;
+    window._getDeleteCode = function() { return _deleteCode; };
+
+    // Validate input as user types
+    var codeInput = document.getElementById('delete-code-input');
+    if (codeInput) {
+        codeInput.addEventListener('input', function() {
+            var val = this.value.trim();
+            var confirmBtn = document.getElementById('confirmDeleteBtn');
+            var errEl = document.getElementById('delete-code-error');
+            if (val.length === 6) {
+                if (val === _deleteCode) {
+                    if (confirmBtn) confirmBtn.disabled = false;
+                    if (errEl) errEl.style.display = 'none';
+                    codeInput.style.borderColor = '#86efac';
+                } else {
+                    if (confirmBtn) confirmBtn.disabled = true;
+                    if (errEl) errEl.style.display = '';
+                    codeInput.style.borderColor = '#fca5a5';
+                }
+            } else {
+                if (confirmBtn) confirmBtn.disabled = true;
+                if (errEl) errEl.style.display = 'none';
+                codeInput.style.borderColor = '#fca5a5';
+            }
+        });
+    }
+
+    // Reset on modal open via MutationObserver
+    var modalEl = document.getElementById('{{ modal_id|default:"delete-modal" }}');
+    if (modalEl) {
+        new MutationObserver(function(mutations) {
+            mutations.forEach(function(m) {
+                if (m.type === 'attributes' && m.attributeName === 'class') {
+                    if (modalEl.classList.contains('show')) {
+                        generateDeleteCode();
+                    }
+                }
+            });
+        }).observe(modalEl, { attributes: true });
+    }
+})();
+</script>

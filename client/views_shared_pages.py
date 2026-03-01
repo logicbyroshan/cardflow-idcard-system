@@ -45,7 +45,17 @@ def client_idcard_group(request):
     
     # Always render the page — show empty if no permissions
     if has_any_list_perm:
-        tables = IDCardTable.objects.filter(group__client=client).select_related('group', 'group__client').annotate(
+        tables_qs = IDCardTable.objects.filter(group__client=client).select_related('group', 'group__client')
+
+        # For client_staff with assigned groups: restrict to those groups only
+        if PermissionService.is_client_staff(user):
+            staff = getattr(user, 'staff_profile', None)
+            if staff:
+                assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
+                if assigned_group_ids:
+                    tables_qs = tables_qs.filter(group_id__in=assigned_group_ids)
+
+        tables = tables_qs.annotate(
             pending_count=Count('id_cards', filter=Q(id_cards__status='pending')),
             verified_count=Count('id_cards', filter=Q(id_cards__status='verified')),
             pool_count=Count('id_cards', filter=Q(id_cards__status='pool')),

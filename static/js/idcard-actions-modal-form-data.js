@@ -65,9 +65,12 @@ function getFormData() {
                     }
                 }
             } else {
-                // Text fields - send as-is, backend handles uppercase
-                const value = input.value || '';
-                fieldData[fieldName] = value;
+                // Text fields - sanitize before sending (backend also uppercases)
+                var rawValue = input.value || '';
+                var sanitizedValue = (window.DataSanitizer && fieldType !== 'email')
+                    ? DataSanitizer.sanitizeText(rawValue).value
+                    : rawValue;
+                fieldData[fieldName] = sanitizedValue;
             }
         }
     });

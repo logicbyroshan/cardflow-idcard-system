@@ -21,10 +21,23 @@ function getTdWidthClass(fieldName, fieldType) {
     if (type === 'date' || /\bdob\b|\bdate\b/.test(name)) return 'w-[80px] whitespace-nowrap text-center';
     if (/^class$|^section$|^div$/.test(name)) return 'w-[40px] text-center';
     if (/\bblood\b|\bgroup\b/.test(name)) return 'w-[45px] text-center';
-    if (/\bname\b/.test(name)) return 'min-w-[100px] text-left';
+    if (/\bname\b/.test(name)) return 'min-w-[90px] max-w-[160px] text-left whitespace-normal break-words';
     if (/^gender$|^sex$/.test(name)) return 'w-[40px] text-center';
-    if (type === 'textarea' || /\baddress\b/.test(name)) return 'min-w-[100px] max-w-[180px] text-left';
-    return 'min-w-[80px] text-left';
+    if (type === 'textarea' || /\baddress\b/.test(name)) return 'min-w-[90px] max-w-[150px] text-left whitespace-normal break-words';
+    return 'min-w-[65px] max-w-[130px] text-left whitespace-normal break-words';
+}
+
+/**
+ * Inject <wbr> after commas (but NOT after dots) to allow smart line-breaking
+ * at comma positions without breaking within words or decimal numbers.
+ * The original value is preserved in data-original-value for editing.
+ */
+function addCommaBreaks(text) {
+    if (!text) return text;
+    // Insert zero-width word-break opportunity after comma (and optional space)
+    // so text wraps at "COLONY, NEW JAIL" → wraps after comma
+    // Do NOT insert breaks after dots (avoids breaking "10.5" or "B.A.")
+    return text.replace(/,(\s*)/g, ',<wbr>$1');
 }
 
 function createRowFromCard(card, index) {
@@ -151,13 +164,17 @@ function createRowFromCard(card, index) {
                 const editableClass = isLockedForClient ? 'dynamic-field' : 'dynamic-field editable-cell';
                 const editTitle = isLockedForClient ? '' : 'title="Click to edit"';
                 
+                // Display value: inject <wbr> after commas for smart wrapping.
+                // data-original-value keeps the raw unmodified value for editing.
+                const displayValue = addCommaBreaks(safeFieldValue);
+                
                 html += `<td class="${editableClass} ${widthAlignClass} px-[1px] py-1 align-middle" 
                     data-field="${safeFieldName}"
                     data-field-name="${safeFieldName}" 
                     data-field-type="${fieldType}"
                     data-original-value="${safeFieldValue}"
                     ${editTitle}>
-                    <span class="cell-value">${safeFieldValue}</span>
+                    <span class="cell-value">${displayValue}</span>
                 </td>`;
             }
         });

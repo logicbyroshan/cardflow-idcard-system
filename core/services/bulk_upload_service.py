@@ -11,6 +11,7 @@ KEY DESIGN:
 - Batch processing uses bulk_create with transaction.atomic per batch.
 """
 import os
+import re
 import json
 import shutil
 import logging
@@ -562,7 +563,13 @@ def _build_field_data(row, header_to_field, field_type_lookup, all_table_fields,
             field_data[fname] = convert_class_value(field_data[fname])
         elif ftype == 'section' and field_data[fname]:
             field_data[fname] = convert_section_value(field_data[fname])
-    
+
+    # Sanitize plain-text fields (strip forbidden special characters)
+    for fname in list(field_data.keys()):
+        ftype = field_type_lookup.get(fname, 'text')
+        if ftype not in ('date', 'class', 'section', 'image') and field_data.get(fname):
+            field_data[fname] = _sanitize_text_cell(str(field_data[fname]))
+
     return field_data
 
 
@@ -570,3 +577,24 @@ def _is_date_field(field_name):
     """Check if a field name suggests it contains a date value."""
     fn = field_name.lower()
     return 'date' in fn or 'dob' in fn or 'birth' in fn
+
+
+# Characters not permitted in text field data.
+# Kept: letters, digits, spaces, commas, periods, plus, apostrophe, forward-slash.
+_FORBIDDEN_TEXT_CHARS_RE = re.compile(r'["\-_@#$%^&*()\[\]{}<>|\\:;~`!?=]')
+
+
+def _sanitize_text_cell(value: str) -> str:
+    """Strip forbidden special characters from a text-field cell value.
+
+    Mirrors the JS DataSanitizer.sanitizeText() rules:
+    - Removed:  " _ - @ # $ % ^ & * ( ) [ ] { } < > | \\ : ; ~ ` ! ? =
+    - Kept:     letters, digits, whitespace, , . + ' /
+    """
+    if not value or not isinstance(value, str):
+        return value
+    sanitized = _FORBIDDEN_TEXT_CHARS_RE.sub('', value)
+    # Collapse consecutive spaces produced by removal
+    while '  ' in sanitized:
+        sanitized = sanitized.replace('  ', ' ')
+    return sanitized.strip()

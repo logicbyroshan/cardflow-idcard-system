@@ -28,6 +28,10 @@ function layoutState() {
         modalData: null,
         confirmModal: null,
 
+        // ---- Delete confirmation code ----
+        deleteCode: '',
+        deleteCodeInput: '',
+
         // ---- Toast queue ----
         toastQueue: [],
 
@@ -132,6 +136,11 @@ function layoutState() {
         openModal(name, data) {
             this.activeModal = name;
             this.modalData = data || null;
+            // Generate a fresh 6-digit verification code for Alpine-driven delete modals
+            if (name === 'delete') {
+                this.deleteCode = (Math.floor(100000 + Math.random() * 900000)).toString();
+                this.deleteCodeInput = '';
+            }
             document.body.style.overflow = 'hidden';
         },
 
@@ -139,6 +148,8 @@ function layoutState() {
             this.activeModal = null;
             this.modalData = null;
             this.confirmModal = null;
+            this.deleteCode = '';
+            this.deleteCodeInput = '';
             document.body.style.overflow = '';
         },
 

@@ -153,6 +153,12 @@ function openSideModal(mode, cardData = null) {
         sideModalOverlay.classList.add('active');
         document.body.style.overflow = 'hidden';
     }
+
+    // Attach data sanitizer to the card form in add/edit mode
+    if (mode !== 'view' && window.DataSanitizer) {
+        const cardForm = document.getElementById('cardForm');
+        if (cardForm) DataSanitizer.attachToForm(cardForm);
+    }
 }
 
 function closeSideModal() {

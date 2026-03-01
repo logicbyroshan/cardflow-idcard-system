@@ -62,7 +62,9 @@ def require_mobile_client(view_func):
             return redirect('/panel/auth/login/?next=/panel/app/')
         # Enforce perm_mobile_app (super_admin always passes)
         if not PermissionService.has(user, 'perm_mobile_app'):
-            return JsonResponse({'error': 'Mobile app access not permitted'}, status=403)
+            return render(request, 'mobile_app/no_access.html', {
+                'user_name': user.get_full_name() or user.username,
+            }, status=403)
         # Desktop users see a block page (rendered client-side in base.html)
         return view_func(request, *args, **kwargs)
     return wrapper
@@ -99,6 +101,15 @@ def home(request):
     tables = IDCardTable.objects.filter(
         group__client=client, is_active=True,
     ).select_related('group').order_by('group__name', 'name')
+
+    # Restrict client_staff to their assigned groups
+    if PermissionService.is_client_staff(user):
+        staff = getattr(user, 'staff_profile', None)
+        if staff:
+            assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
+            if assigned_group_ids:
+                tables = tables.filter(group_id__in=assigned_group_ids)
+
     first_table = tables.first()
 
     ctx = {
@@ -206,6 +217,14 @@ def table_picker(request, status):
         status_count=Count('id_cards', filter=Q(id_cards__status=status)),
     ).order_by('group__name', 'name')
 
+    # Restrict client_staff to their assigned groups
+    if PermissionService.is_client_staff(user):
+        staff = getattr(user, 'staff_profile', None)
+        if staff:
+            assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
+            if assigned_group_ids:
+                tables = tables.filter(group_id__in=assigned_group_ids)
+
     if tables.count() == 1:
         return redirect('mobile_app:card_list', table_id=tables.first().id, status=status)
 
@@ -239,6 +258,15 @@ def card_list(request, table_id, status):
     cards_qs = IDCard.objects.filter(table=table, status=status).order_by('-updated_at')
     total_count = cards_qs.count()
     cards_batch = cards_qs[:500]
+
+    # For client_staff: apply class/section filter
+    allowed_classes = []
+    allowed_sections = []
+    if PermissionService.is_client_staff(user):
+        staff = getattr(user, 'staff_profile', None)
+        if staff:
+            allowed_classes = staff.allowed_classes or []
+            allowed_sections = staff.allowed_sections or []
 
     cards = []
     for idx, card in enumerate(cards_batch):
@@ -279,6 +307,18 @@ def card_list(request, table_id, status):
             'status': card.status,
             'field_data': fd,
         })
+
+    # Apply class/section filters for client_staff if restrictions are set
+    if allowed_classes:
+        cards = [c for c in cards if c['class_name'] in allowed_classes]
+    if allowed_sections:
+        cards = [c for c in cards if c['section'] in allowed_sections]
+
+    # Re-number sr_no after filtering
+    for i, c in enumerate(cards):
+        c['sr_no'] = i + 1
+
+    total_count = len(cards)
 
     all_classes = sorted(set(c['class_name'] for c in cards if c['class_name']))
     all_sections = sorted(set(c['section'] for c in cards if c['section']))

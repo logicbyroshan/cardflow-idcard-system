@@ -291,6 +291,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         clientDrawer.classList.add('open');
         document.body.style.overflow = 'hidden';
+
+        // Attach data sanitizer (blur listener shows inline hint, removes bad chars)
+        if (window.DataSanitizer) DataSanitizer.attachToForm(clientForm);
       };
       
       NS.closeDrawerFn = function() {

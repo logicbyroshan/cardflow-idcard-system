@@ -74,6 +74,12 @@ document.addEventListener('DOMContentLoaded', function() {
           is_active: document.getElementById('clientStatus').value === 'true',
         };
 
+        // Sanitize text fields (strip newlines, forbidden chars); email is exempt from char rules
+        if (window.DataSanitizer) {
+          var sanitized = DataSanitizer.sanitizeFormData(formData, ['email']);
+          formData = sanitized.data;
+        }
+
         // Add custom password if selected
         var pwOption = document.getElementById('clientPasswordOption');
         if (pwOption && pwOption.value === 'custom') {
@@ -135,8 +141,8 @@ document.addEventListener('DOMContentLoaded', function() {
             submitBtn.innerHTML = originalText;
           }
         } catch (error) {
-          console.error('Form submission error:', error); // Debug log
-          showToast('An error occurred', 'error');
+          console.error('Form submission error:', error);
+          showToast(error && error.message ? error.message : 'An error occurred', 'error');
           submitBtn.disabled = false;
           submitBtn.innerHTML = originalText;
         }
@@ -233,7 +239,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return null;
           }
         } catch (error) {
-          showToast('Network error. Please try again.', 'error');
+          showToast(error && error.message ? error.message : 'Network error. Please try again.', 'error');
           return null;
         }
       }
@@ -357,7 +363,7 @@ document.addEventListener('DOMContentLoaded', function() {
             showToast(result.message || 'Failed to toggle staff status', 'error');
           }
         } catch (error) {
-          showToast('Network error. Please try again.', 'error');
+          showToast(error && error.message ? error.message : 'Network error. Please try again.', 'error');
         }
       };
 

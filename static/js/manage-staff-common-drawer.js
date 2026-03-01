@@ -219,6 +219,9 @@ window._StaffDrawerSetup = function (cfg, ctx) {
         staffDrawer.classList.add('open');
         if (staffOverlay) staffOverlay.classList.add('active');
         document.body.style.overflow = 'hidden';
+
+        // Attach sanitizer (shows inline hint on blur, strips bad chars)
+        if (window.DataSanitizer) DataSanitizer.attachToForm(staffForm);
     }
 
     function populateForm(d) {
@@ -251,6 +254,8 @@ window._StaffDrawerSetup = function (cfg, ctx) {
     function enableFormInputs(enable) {
         staffDrawer.querySelectorAll('input, select, textarea').forEach(function (input) {
             if (cfg.skipHiddenInputs && input.type === 'hidden') return;
+            // Don't re-enable permission checkboxes that are locked (client lacks this permission)
+            if (enable && input.type === 'checkbox' && input.closest('.perm-locked')) return;
             input.disabled = !enable;
             input.style.backgroundColor = enable ? '' : '#f5f5f5';
             input.style.cursor          = enable ? '' : 'not-allowed';
@@ -322,6 +327,12 @@ window._StaffDrawerSetup = function (cfg, ctx) {
                 address:   (document.getElementById('staff-address') || {}).value || '',
                 is_active: document.getElementById('staff-status').value === 'true',
             };
+
+            // Sanitize text fields before submission; email exempt from char rules
+            if (window.DataSanitizer) {
+                var _sanitized = DataSanitizer.sanitizeFormData(formData, ['email']);
+                formData = _sanitized.data;
+            }
 
             // Add custom password if selected
             if (pwOptionSelect && pwOptionSelect.value === 'custom' && pwInput && pwInput.value.trim()) {

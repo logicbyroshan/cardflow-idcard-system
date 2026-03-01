@@ -205,10 +205,10 @@
     background: #f1f5f9;
 }
 
-/* Table allows horizontal scrolling — columns keep their min-width */
+/* Table fills available width first; only scrolls horizontally if content truly cannot fit */
 .idcard-actions-page .idcard-table table {
     min-width: 100%;
-    width: max-content;
+    width: 100%;
     border-collapse: separate;
     border-spacing: 0;
     table-layout: auto;

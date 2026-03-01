@@ -194,6 +194,25 @@ function initCreateWithXlsx(opts) {
           };
         });
 
+        // Warn if any data cells contain characters that will be stripped on import
+        (function() {
+          var BAD_CHARS = /[\n\r\t"_\-@#$%^&*()\[\]{}<>|\\:;~`!?=]/;
+          var dataRows = jsonData.slice(1);
+          var foundBad = dataRows.some(function(row) {
+            return Array.isArray(row) && row.some(function(cell) {
+              return cell != null && BAD_CHARS.test(String(cell));
+            });
+          });
+          if (foundBad && window.showToast) {
+            showToast(
+              'Your data contains characters that will be removed on import ' +
+              '(e.g. newlines, _, -, @, double quotes). ' +
+              'Only letters, numbers, spaces, commas, periods and + are allowed.',
+              'warning'
+            );
+          }
+        })();
+
         renderFieldPreview();
         showStep(2);
       } catch (err) {

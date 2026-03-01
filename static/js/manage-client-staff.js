@@ -130,7 +130,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var mgr = window.initStaffPage({
 
         tableDelegateId: 'staff-table-body',
-        nameColumnIndex: 2,
+        nameColumnIndex: 1,
         skipHiddenInputs: false,
         respectDisabledPerms: true,
 

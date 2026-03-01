@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return null;
           }
         } catch (error) {
-          showToast('Network error. Please try again.', 'error');
+          showToast(error && error.message ? error.message : 'Network error. Please try again.', 'error');
           return null;
         }
       };
@@ -37,7 +37,9 @@ document.addEventListener('DOMContentLoaded', function() {
             return await ApiClient.post('/panel/api/client/create/', formData);
           }
         } catch (error) {
-          return { success: false, message: 'Network error. Please try again.' };
+          // If the server returned a structured error (from XHR upload or fetch), pass it through
+          if (error && error.data && typeof error.data === 'object') return error.data;
+          return { success: false, message: error && error.message ? error.message : 'Network error. Please try again.' };
         }
       };
       
@@ -57,7 +59,8 @@ document.addEventListener('DOMContentLoaded', function() {
             return await ApiClient.post('/panel/api/client/' + clientId + '/update/', formData);
           }
         } catch (error) {
-          return { success: false, message: 'Network error. Please try again.' };
+          if (error && error.data && typeof error.data === 'object') return error.data;
+          return { success: false, message: error && error.message ? error.message : 'Network error. Please try again.' };
         }
       };
       
@@ -65,7 +68,8 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
           return await ApiClient.post('/panel/api/client/' + clientId + '/delete/', {});
         } catch (error) {
-          return { success: false, message: 'Network error. Please try again.' };
+          if (error && error.data && typeof error.data === 'object') return error.data;
+          return { success: false, message: error && error.message ? error.message : 'Network error. Please try again.' };
         }
       };
       
@@ -73,7 +77,8 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
           return await ApiClient.post('/panel/api/client/' + clientId + '/toggle-status/', {});
         } catch (error) {
-          return { success: false, message: 'Network error. Please try again.' };
+          if (error && error.data && typeof error.data === 'object') return error.data;
+          return { success: false, message: error && error.message ? error.message : 'Network error. Please try again.' };
         }
       };
 
@@ -174,7 +179,7 @@ document.addEventListener('DOMContentLoaded', function() {
             showToast(result.message || 'Failed to set password', 'error');
           }
         } catch (err) {
-          showToast('Network error. Please try again.', 'error');
+          showToast(err && err.message ? err.message : 'Network error. Please try again.', 'error');
         } finally {
           saveBtn.disabled = false;
           saveBtn.innerHTML = '<i class="fa-solid fa-save"></i> Save Password';
