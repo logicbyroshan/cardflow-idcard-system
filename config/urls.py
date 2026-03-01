@@ -1,8 +1,8 @@
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, reverse
 from django.conf import settings
 from django.conf.urls.static import static
-from django.http import HttpResponseForbidden
+from django.contrib.auth.views import redirect_to_login
 from website.seo import robots_txt, sitemap_xml
 from core.views.health import health_check
 
@@ -31,7 +31,8 @@ def _protected_media_serve(request, path, document_root=None):
 
     In production (DEBUG=False), protected files are served by Nginx via
     X-Accel-Redirect — Django only performs the auth check then hands off.
-    Nginx must have these locations marked `internal;` (see deployment/nginx_example.conf).
+    Nginx must have the `location /protected-media/` block marked `internal;`
+    (see deployment/nginx_example.conf).
 
     In development (DEBUG=True), Django's `serve()` is used as a fallback.
     """
@@ -52,13 +53,18 @@ def _protected_media_serve(request, path, document_root=None):
     )
     if any(path.startswith(p) for p in PROTECTED_PREFIXES):
         if not request.user.is_authenticated:
-            return HttpResponseForbidden('Access denied')
+            # Redirect to login, preserving the original URL in ?next=
+            # so the user is returned here after successful authentication.
+            login_url = reverse('accounts:login')
+            return redirect_to_login(request.get_full_path(), login_url=login_url)
 
-    # Production: let Nginx serve the file via X-Accel-Redirect (zero-copy, non-blocking)
+    # Production: let Nginx serve the file via X-Accel-Redirect (zero-copy, non-blocking).
+    # Django only performs the auth check; Nginx streams the file from the
+    # internal /protected-media/ location which maps directly to MEDIA_ROOT.
     if not settings.DEBUG:
         response = HttpResponse()
-        response['X-Accel-Redirect'] = f'/media/{path}'
-        response['Content-Type'] = ''
+        response['X-Accel-Redirect'] = f'/protected-media/{path}'
+        response['Content-Type'] = ''  # let Nginx detect from file extension
         return response
 
     # Development: Django fallback
