@@ -8,27 +8,12 @@
         <i class="fa-solid fa-magnifying-glass"></i>
         <input type="text" id="logSearch" placeholder="Search logs..." oninput="debounceLogSearch()">
       </div>
-      <select id="logActionFilter" class="form-select-sm" onchange="loadLogs()">
-        <option value="">All Actions</option>
-        <option value="login">Login</option>
-        <option value="logout">Logout</option>
-        <option value="client_create">Client Created</option>
-        <option value="client_update">Client Updated</option>
-        <option value="client_delete">Client Deleted</option>
-        <option value="staff_create">Staff Created</option>
-        <option value="staff_update">Staff Updated</option>
-        <option value="card_create">Cards Added</option>
-        <option value="card_update">Card Updated</option>
-        <option value="card_delete">Card Deleted</option>
-        <option value="card_status">Card Status</option>
-        <option value="card_bulk_status">Bulk Status</option>
-        <option value="card_bulk_upload">Bulk Upload</option>
-        <option value="card_bulk_download">Bulk Download</option>
-        <option value="image_upload">Image Upload</option>
-        <option value="image_reupload">Image Re-upload</option>
-        <option value="reprint_request">Reprint Request</option>
-        <option value="reprint_status">Reprint Status</option>
-        <option value="settings_update">Settings Updated</option>
+      <select id="logUserTypeFilter" class="form-select-sm" onchange="loadLogs()">
+        <option value="">All User Types</option>
+        <option value="super_admin">Super Admin</option>
+        <option value="admin_staff">Admin Staff</option>
+        <option value="client">Client</option>
+        <option value="client_staff">Client Staff</option>
       </select>
     </div>
     <div class="notif-actions-right">

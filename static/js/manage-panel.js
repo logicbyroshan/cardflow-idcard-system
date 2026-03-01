@@ -480,10 +480,10 @@ async function loadLogs(append) {
   if (!append) logOffset = 0;
   try {
     const search = document.getElementById('logSearch')?.value || '';
-    const action = document.getElementById('logActionFilter')?.value || '';
+    const userRole = document.getElementById('logUserTypeFilter')?.value || '';
     let url = `/panel/api/activity-logs/?limit=${LOG_LIMIT}&offset=${logOffset}`;
     if (search) url += `&search=${encodeURIComponent(search)}`;
-    if (action) url += `&action=${encodeURIComponent(action)}`;
+    if (userRole) url += `&user_role=${encodeURIComponent(userRole)}`;
 
     const res = await fetch(url);
     if (!res.ok) { console.error('loadLogs HTTP', res.status); return; }

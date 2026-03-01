@@ -316,12 +316,15 @@ def api_activity_logs(request):
     limit = min(int(request.GET.get('limit', 30)), 100)
     offset = int(request.GET.get('offset', 0))
     search = request.GET.get('search', '').strip()
-    action_filter = request.GET.get('action', '').strip()
+    action_filter   = request.GET.get('action', '').strip()
+    user_role_filter = request.GET.get('user_role', '').strip()
 
     qs = ActivityLog.objects.select_related('user').order_by('-created_at')
 
     if action_filter:
         qs = qs.filter(action=action_filter)
+    if user_role_filter:
+        qs = qs.filter(user__role=user_role_filter)
     if search:
         from django.db.models import Q
         qs = qs.filter(
