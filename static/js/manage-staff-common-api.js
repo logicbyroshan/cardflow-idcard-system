@@ -33,7 +33,13 @@ window._StaffCommonAPI = {
      */
     createStaff: async function (cfg, formData) {
         try { return await ApiClient[cfg.api.createMethod](cfg.api.createUrl, formData); }
-        catch (_) { return { success: false, message: 'Network error. Please try again.' }; }
+        catch (err) {
+            // 4xx errors: ApiClient throws with err.data containing the JSON body.
+            // Extract the server's error message instead of showing a generic toast.
+            var serverMsg = (err.data && (err.data.error || err.data.message))
+                || err.message || 'Network error. Please try again.';
+            return { success: false, error: serverMsg, message: serverMsg };
+        }
     },
 
     /**
@@ -46,7 +52,11 @@ window._StaffCommonAPI = {
     updateStaff: async function (cfg, id, formData) {
         var ep = cfg.api.updateEndpoint(id);
         try { return await ApiClient[ep.method](ep.url, formData); }
-        catch (_) { return { success: false, message: 'Network error. Please try again.' }; }
+        catch (err) {
+            var serverMsg = (err.data && (err.data.error || err.data.message))
+                || err.message || 'Network error. Please try again.';
+            return { success: false, error: serverMsg, message: serverMsg };
+        }
     },
 
     /**
@@ -58,7 +68,11 @@ window._StaffCommonAPI = {
     deleteStaffApi: async function (cfg, id) {
         var ep = cfg.api.deleteEndpoint(id);
         try { return await ApiClient[ep.method](ep.url); }
-        catch (_) { return { success: false, message: 'Network error. Please try again.' }; }
+        catch (err) {
+            var serverMsg = (err.data && (err.data.error || err.data.message))
+                || err.message || 'Network error. Please try again.';
+            return { success: false, error: serverMsg, message: serverMsg };
+        }
     },
 
     /**
@@ -69,7 +83,11 @@ window._StaffCommonAPI = {
      */
     toggleStaffStatus: async function (cfg, id) {
         try { return await ApiClient.post(cfg.api.toggleUrl(id)); }
-        catch (_) { return { success: false, message: 'Network error. Please try again.' }; }
+        catch (err) {
+            var serverMsg = (err.data && (err.data.error || err.data.message))
+                || err.message || 'Network error. Please try again.';
+            return { success: false, error: serverMsg, message: serverMsg };
+        }
     },
 
     /**

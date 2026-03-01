@@ -22,8 +22,8 @@
                 <th class="{{ field|get_column_width_class }} {{ field|get_column_align_class }}" data-field-name="{{ field.name }}" data-field-type="{{ field.type }}">{{ field.name|humanize_header }}</th>
                 {% endif %}
                 {% endfor %}
-                {% if current_status == 'approved' %}
-                <!-- Approved list: Print action column -->
+                {% if current_status == 'approved' and not is_client and not is_client_staff %}
+                <!-- Approved list: Print action column — admin only -->
                 <th class="w-[60px] min-w-[60px] text-center">Action</th>
                 {% elif current_status == 'download' and not is_client and not is_client_staff %}
                 <!-- Downloaded At — admin only -->

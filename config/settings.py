@@ -445,7 +445,49 @@ SITE_URL = os.getenv('SITE_URL', 'http://localhost:8000')
 # APP VERSION
 # =============================================================================
 
-APP_VERSION = os.getenv('APP_VERSION', 'v1.8.0')
+def _get_app_version() -> str:
+    """
+    Resolve the running app version using these sources (in order):
+      1. `git describe --tags --always`  (dev / CI with git available)
+      2. APP_VERSION environment variable
+      3. VERSION.txt file at the project root
+      4. Hard-coded fallback
+    """
+    import subprocess as _sp
+
+    # 1. Git describe
+    try:
+        r = _sp.run(
+            ['git', 'describe', '--tags', '--always'],
+            capture_output=True, text=True,
+            cwd=str(BASE_DIR), timeout=2,
+        )
+        if r.returncode == 0:
+            v = r.stdout.strip()
+            if v:
+                return v if v.startswith('v') else f'v{v}'
+    except Exception:
+        pass
+
+    # 2. Environment variable
+    env_ver = os.getenv('APP_VERSION', '').strip()
+    if env_ver:
+        return env_ver if env_ver.startswith('v') else f'v{env_ver}'
+
+    # 3. VERSION.txt
+    ver_file = BASE_DIR / 'VERSION.txt'
+    try:
+        if ver_file.exists():
+            v = ver_file.read_text().strip()
+            if v:
+                return v if v.startswith('v') else f'v{v}'
+    except Exception:
+        pass
+
+    return 'v1.8.0'
+
+
+APP_VERSION = _get_app_version()
 
 
 # =============================================================================

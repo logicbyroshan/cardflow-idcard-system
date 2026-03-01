@@ -149,15 +149,12 @@ document.addEventListener('DOMContentLoaded', function () {
         permissionFields: [
             // ID Card List Tabs
             'perm-idcard-pending-list', 'perm-idcard-verified-list', 'perm-idcard-pool-list',
-            'perm-idcard-approved-list', 'perm-idcard-download-list', 'perm-idcard-reprint-list',
+            'perm-idcard-approved-list', 'perm-idcard-download-list',
             // Card Actions
             'perm-idcard-add', 'perm-idcard-edit', 'perm-idcard-delete', 'perm-idcard-info',
             'perm-idcard-approve', 'perm-idcard-verify',
             'perm-idcard-created-at', 'perm-idcard-updated-at',
-            'perm-idcard-delete-from-pool', 'perm-reupload-idcard-image', 'perm-idcard-retrieve',
-            // Bulk Actions
-            'perm-idcard-bulk-upload', 'perm-idcard-bulk-download',
-            'perm-idcard-bulk-reupload', 'perm-idcard-upgrade-all',
+            'perm-idcard-delete-from-pool',
             // App & Access
             'perm-mobile-app'
         ],

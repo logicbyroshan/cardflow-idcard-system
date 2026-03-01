@@ -33,10 +33,12 @@ textarea.form-control { resize: vertical; min-height: 60px; }
 .form-fields-grid .form-group.full-width { grid-column: 1 / -1; }
 .form-fields-grid .form-group label {
     display: block;
-    font-size: 13px;
-    font-weight: 500;
-    color: #4b5563;
-    margin-bottom: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #6366f1;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
 }
 
 /* Photo Section in Form */

@@ -198,13 +198,6 @@ Mirrors admin staff-drawer.html but with Group Assignment instead of Client Assi
                             </label>
                             <span class="permission-label">Download List{% if not perm_idcard_download_list %} <i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}</span>
                         </div>
-                        <div class="permission-row{% if not perm_idcard_reprint_list %} perm-locked{% endif %}" {% if not perm_idcard_reprint_list %}title="Admin has not granted you this permission"{% endif %}>
-                            <label class="toggle-switch">
-                                <input type="checkbox" name="perm_idcard_reprint_list" id="perm-idcard-reprint-list" {% if not perm_idcard_reprint_list %}disabled{% endif %}>
-                                <span class="toggle-slider"></span>
-                            </label>
-                            <span class="permission-label">Reprint List{% if not perm_idcard_reprint_list %} <i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}</span>
-                        </div>
                     </div>
                 </div>
 
@@ -274,55 +267,6 @@ Mirrors admin staff-drawer.html but with Group Assignment instead of Client Assi
                                 <span class="toggle-slider"></span>
                             </label>
                             <span class="permission-label">Retrieve from Pool{% if not perm_idcard_delete_from_pool %} <i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}</span>
-                        </div>
-                        <div class="permission-row{% if not perm_reupload_idcard_image %} perm-locked{% endif %}" {% if not perm_reupload_idcard_image %}title="Admin has not granted you this permission"{% endif %}>
-                            <label class="toggle-switch">
-                                <input type="checkbox" name="perm_reupload_idcard_image" id="perm-reupload-idcard-image" {% if not perm_reupload_idcard_image %}disabled{% endif %}>
-                                <span class="toggle-slider"></span>
-                            </label>
-                            <span class="permission-label">Re-upload Photo{% if not perm_reupload_idcard_image %} <i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}</span>
-                        </div>
-                        <div class="permission-row{% if not perm_idcard_retrieve %} perm-locked{% endif %}" {% if not perm_idcard_retrieve %}title="Admin has not granted you this permission"{% endif %}>
-                            <label class="toggle-switch">
-                                <input type="checkbox" name="perm_idcard_retrieve" id="perm-idcard-retrieve" {% if not perm_idcard_retrieve %}disabled{% endif %}>
-                                <span class="toggle-slider"></span>
-                            </label>
-                            <span class="permission-label">Retrieve from Download{% if not perm_idcard_retrieve %} <i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Bulk Actions -->
-                <div class="permission-category">
-                    <div class="category-title"><i class="fa-solid fa-layer-group"></i> Bulk Actions</div>
-                    <div class="permissions-grid">
-                        <div class="permission-row{% if not perm_idcard_bulk_upload %} perm-locked{% endif %}" {% if not perm_idcard_bulk_upload %}title="Admin has not granted you this permission"{% endif %}>
-                            <label class="toggle-switch">
-                                <input type="checkbox" name="perm_idcard_bulk_upload" id="perm-idcard-bulk-upload" {% if not perm_idcard_bulk_upload %}disabled{% endif %}>
-                                <span class="toggle-slider"></span>
-                            </label>
-                            <span class="permission-label">Excel / ZIP Bulk Upload{% if not perm_idcard_bulk_upload %} <i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}</span>
-                        </div>
-                        <div class="permission-row{% if not perm_idcard_bulk_download %} perm-locked{% endif %}" {% if not perm_idcard_bulk_download %}title="Admin has not granted you this permission"{% endif %}>
-                            <label class="toggle-switch">
-                                <input type="checkbox" name="perm_idcard_bulk_download" id="perm-idcard-bulk-download" {% if not perm_idcard_bulk_download %}disabled{% endif %}>
-                                <span class="toggle-slider"></span>
-                            </label>
-                            <span class="permission-label">Download All as ZIP{% if not perm_idcard_bulk_download %} <i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}</span>
-                        </div>
-                        <div class="permission-row{% if not perm_idcard_bulk_reupload %} perm-locked{% endif %}" {% if not perm_idcard_bulk_reupload %}title="Admin has not granted you this permission"{% endif %}>
-                            <label class="toggle-switch">
-                                <input type="checkbox" name="perm_idcard_bulk_reupload" id="perm-idcard-bulk-reupload" {% if not perm_idcard_bulk_reupload %}disabled{% endif %}>
-                                <span class="toggle-slider"></span>
-                            </label>
-                            <span class="permission-label">Bulk Replace Photos{% if not perm_idcard_bulk_reupload %} <i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}</span>
-                        </div>
-                        <div class="permission-row{% if not perm_idcard_upgrade_all %} perm-locked{% endif %}" {% if not perm_idcard_upgrade_all %}title="Admin has not granted you this permission"{% endif %}>
-                            <label class="toggle-switch">
-                                <input type="checkbox" name="perm_idcard_upgrade_all" id="perm-idcard-upgrade-all" {% if not perm_idcard_upgrade_all %}disabled{% endif %}>
-                                <span class="toggle-slider"></span>
-                            </label>
-                            <span class="permission-label">Batch Class Upgrade{% if not perm_idcard_upgrade_all %} <i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}</span>
                         </div>
                     </div>
                 </div>

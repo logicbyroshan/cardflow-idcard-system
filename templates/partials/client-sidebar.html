@@ -71,3 +71,17 @@
     </div>
   </div>
 </aside>
+<script>
+// Fallback clock — runs independently of Alpine.js
+(function(){
+  function _sidebarClock(){
+    var now = new Date();
+    var d = document.getElementById('date');
+    var t = document.getElementById('time');
+    if (d) d.textContent = now.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
+    if (t) t.textContent = now.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12: false});
+  }
+  _sidebarClock();
+  setInterval(_sidebarClock, 1000);
+})();
+</script>
