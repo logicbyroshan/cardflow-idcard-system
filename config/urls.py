@@ -28,18 +28,29 @@ def _serve_pwa_file(request, filename):
 def _protected_media_serve(request, path, document_root=None):
     """
     Serve media files with access control for sensitive directories.
-    
-    Active in both dev (DEBUG=True) and production (as fallback when
-    no reverse proxy / cloud storage is configured).
-    
-    In production, you should serve media via Nginx or S3 instead:
+
+    ALL uploaded client data (ID card photos, exports, staff images, temp files)
+    requires authentication.  Only truly public files (none currently) skip the check.
+
+    In production, you should serve media via Nginx with X-Accel-Redirect instead:
         location /media/ {
             alias /path/to/media/;
             internal;  # only accessible via X-Accel-Redirect
         }
     """
     from django.views.static import serve
-    PROTECTED_PREFIXES = ('exports/', 'clients_imgs/', 'staff_imgs/', 'temp/')
+    # Every path under media/ that contains user data requires authentication.
+    # 'adarshimg/' - client ID card photos (personal data, most sensitive)
+    # 'exports/'   - generated PDF/Excel/Word/ZIP exports
+    # 'clients_imgs/' / 'staff_imgs/' - profile images
+    # 'temp/'      - temporary upload holding area
+    PROTECTED_PREFIXES = (
+        'adarshimg/',    # client ID card photos — CRITICAL: personal data
+        'exports/',
+        'clients_imgs/',
+        'staff_imgs/',
+        'temp/',
+    )
     if any(path.startswith(p) for p in PROTECTED_PREFIXES):
         if not request.user.is_authenticated:
             return HttpResponseForbidden('Access denied')

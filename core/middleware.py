@@ -628,13 +628,52 @@ class SecurityHeadersMiddleware:
     """
     Adds extra security headers that Django's SecurityMiddleware does not cover.
 
-    Currently adds:
+    Adds:
+    - Content-Security-Policy: restricts resource origins, blocks object/plugin injection
     - Permissions-Policy: restricts browser APIs (camera, microphone, etc.)
     - Cache-Control: prevents caching of authenticated HTML pages
     - X-Robots-Tag: noindex on panel subdomain (SEO isolation)
     """
 
     SKIP_PREFIXES = ('/static/', '/media/')
+
+    # CSP for the panel / admin pages:
+    # - 'unsafe-inline' required: HTMX hx-* attributes and Django template inline scripts
+    # - img-src data:/blob: required: image previews and canvas operations
+    # - font-src data: required: some icon fonts are base64-embedded
+    # Strict protections still enforced:
+    # - object-src 'none'    → blocks Flash/plugins entirely
+    # - base-uri 'self'      → prevents <base href> injection attacks
+    # - form-action 'self'   → prevents forms being hijacked to external targets
+    # - frame-ancestors 'none' → belt-and-suspenders with X-Frame-Options: DENY
+    _CSP_PANEL = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data: blob:; "
+        "font-src 'self' data:; "
+        "connect-src 'self'; "
+        "media-src 'self'; "
+        "object-src 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self'; "
+        "frame-ancestors 'none';"
+    )
+
+    # CSP for the mobile PWA (/app/) which loads Alpine.js and Cropper.js from CDNs
+    _CSP_PWA = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
+        "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
+        "img-src 'self' data: blob:; "
+        "font-src 'self' data: https://cdnjs.cloudflare.com; "
+        "connect-src 'self'; "
+        "media-src 'self'; "
+        "object-src 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self'; "
+        "frame-ancestors 'none';"
+    )
 
     def __init__(self, get_response):
         self.get_response = get_response
@@ -650,6 +689,13 @@ class SecurityHeadersMiddleware:
         # Skip for static/media (served by WhiteNoise which handles its own headers)
         if any(request.path.startswith(p) for p in self.SKIP_PREFIXES):
             return response
+
+        # Content-Security-Policy
+        # Only apply to HTML responses (skip JSON API responses)
+        content_type = response.get('Content-Type', '')
+        if 'text/html' in content_type and 'Content-Security-Policy' not in response:
+            is_pwa = request.path.startswith('/app/')
+            response['Content-Security-Policy'] = self._CSP_PWA if is_pwa else self._CSP_PANEL
 
         if self._permissions_policy:
             response['Permissions-Policy'] = self._permissions_policy

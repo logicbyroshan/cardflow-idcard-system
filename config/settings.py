@@ -24,6 +24,13 @@ if not SECRET_KEY:
         'SECRET_KEY is not set. Add it to your .env file. '
         'Generate one with: python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"'
     )
+# In production, enforce a minimum key length (Django requires 50+ chars)
+if not os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes'):
+    if len(SECRET_KEY) < 50:
+        raise ImproperlyConfigured(
+            f'SECRET_KEY is too short ({len(SECRET_KEY)} chars). '
+            'Generate a proper key: python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"'
+        )
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # Safe default: False — must explicitly opt-in to DEBUG mode
@@ -218,6 +225,12 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
 SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
 SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin'
+
+# ── Additional hardening (production only) ──
+if not DEBUG:
+    # Prevent browser from caching sensitive pages from the back button
+    # (belt-and-suspenders with SecurityHeadersMiddleware Cache-Control)
+    SECURE_BROWSER_XSS_FILTER = True  # for older browsers that don't support CSP
 
 # ── Cookie hardening (always applied, both dev and prod) ──
 SESSION_COOKIE_HTTPONLY = True          # JS cannot read session cookie
