@@ -106,7 +106,7 @@ class WorkflowTransitionTests(TestCase):
         self.group, self.table = _create_table(self.client_obj)
 
     def test_pending_to_verified(self):
-        from core.services.workflow_service import WorkflowService
+        from idcards.services_workflow import WorkflowService
         card = _create_card(self.table, status='pending')
         result = WorkflowService.transition(card, 'verified', self.admin, request=None)
         self.assertTrue(result.success)
@@ -114,7 +114,7 @@ class WorkflowTransitionTests(TestCase):
         self.assertEqual(card.status, 'verified')
 
     def test_invalid_transition_rejected(self):
-        from core.services.workflow_service import WorkflowService
+        from idcards.services_workflow import WorkflowService
         card = _create_card(self.table, status='pending')
         result = WorkflowService.transition(card, 'download', self.admin, request=None)
         self.assertFalse(result.success)
@@ -122,7 +122,7 @@ class WorkflowTransitionTests(TestCase):
         self.assertEqual(card.status, 'pending')
 
     def test_bulk_transition(self):
-        from core.services.workflow_service import WorkflowService
+        from idcards.services_workflow import WorkflowService
         c1 = _create_card(self.table, status='pending')
         c2 = _create_card(self.table, status='pending')
         result = WorkflowService.bulk_transition(

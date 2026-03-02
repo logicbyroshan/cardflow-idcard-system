@@ -25,7 +25,7 @@ from django.core.files.storage import default_storage
 
 from idcards.models import IDCard
 from ..services.base import BaseService
-from ..services.workflow_service import WorkflowService
+from idcards.services_workflow import WorkflowService
 from core.utils.field_utils import (
     validate_image_bytes,
     convert_class_value,
