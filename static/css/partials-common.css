@@ -83,3 +83,11 @@
 }
 
 .center-modal.delete-modal .modal-header h3 { color: #fff; }
+
+/* ── Phone / Email table-cell break rules ──────────────────────── */
+.phone-cell,
+.email-cell {
+  word-break: keep-all;
+  overflow-wrap: normal;
+  white-space: normal;
+}

@@ -7,6 +7,7 @@ Required context:
   - page_obj, page_range, per_page, per_page_options
   - search_query, status_filter
 {% endcomment %}
+{% load custom_filters %}
 
 <!-- Table -->
 <div class="table-wrapper">
@@ -14,8 +15,8 @@ Required context:
         <thead>
             <tr>
                 <th>Name</th>
-                <th>Email</th>
-                <th>Mobile</th>
+                <th class="min-w-[130px]">Email</th>
+                <th class="min-w-[120px]">Mobile</th>
                 <th>Status</th>
                 <th>Created At</th>
                 <th>Updated At</th>
@@ -25,8 +26,8 @@ Required context:
             {% for client in clients %}
             <tr data-client-id="{{ client.id }}" data-client-status="{{ client.status }}">
                 <td>{{ client.name }}</td>
-                <td>{{ client.user.email }}</td>
-                <td>{{ client.user.phone|default:"-" }}</td>
+                <td class="email-cell">{{ client.user.email|email_break }}</td>
+                <td class="phone-cell">{{ client.user.phone|default:"-"|phone_break }}</td>
                 <td><span class="status-badge {% if client.status == 'active' %}active{% else %}inactive{% endif %}">{{ client.get_status_display }}</span></td>
                 <td>{{ client.created_at|date:"d-m-Y H:i" }}</td>
                 <td>{{ client.updated_at|date:"d-m-Y H:i" }}</td>

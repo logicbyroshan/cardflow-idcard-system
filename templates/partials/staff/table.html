@@ -3,6 +3,7 @@ Staff Table Partial
 Contains: Table header and body for displaying staff members
 Uses Tailwind CSS component classes.
 {% endcomment %}
+{% load custom_filters %}
 
 <!-- Staff Table Start -->
 <div class="table-wrapper">
@@ -10,8 +11,8 @@ Uses Tailwind CSS component classes.
         <thead>
             <tr>
                 <th scope="col">Name</th>
-                <th scope="col">Email</th>
-                <th scope="col">Phone</th>
+                <th scope="col" class="min-w-[130px]">Email</th>
+                <th scope="col" class="min-w-[120px]">Phone</th>
                 <th scope="col" class="w-24 text-center">Status</th>
                 <th scope="col">Created At</th>
                 <th scope="col">Updated At</th>
@@ -21,8 +22,8 @@ Uses Tailwind CSS component classes.
             {% for staff in staff_list %}
             <tr data-staff-id="{{ staff.id }}" data-staff-status="{% if staff.user.is_active %}active{% else %}inactive{% endif %}">
                 <td class="font-medium text-gray-800">{{ staff.user.get_full_name|default:staff.user.username }}</td>
-                <td>{{ staff.user.email }}</td>
-                <td>{{ staff.user.phone|default:"-" }}</td>
+                <td class="email-cell">{{ staff.user.email|email_break }}</td>
+                <td class="phone-cell">{{ staff.user.phone|default:"-"|phone_break }}</td>
                 <td class="text-center">
                     <span class="status-badge {% if staff.user.is_active %}active{% else %}inactive{% endif %}">
                         {% if staff.user.is_active %}Active{% else %}Inactive{% endif %}

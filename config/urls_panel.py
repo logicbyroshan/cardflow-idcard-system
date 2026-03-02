@@ -24,7 +24,7 @@ import re
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
-from django.http import HttpResponse, HttpResponseForbidden, JsonResponse, FileResponse, Http404
+from django.http import HttpResponse, JsonResponse, FileResponse, Http404
 from django.views.decorators.cache import cache_page
 from django.views.decorators.http import require_GET
 from core.views.health import health_check
@@ -43,11 +43,19 @@ def panel_robots_txt(request):
 def _protected_media_serve(request, path, document_root=None):
     """
     Serve media files with access control for sensitive directories.
-    In production uses X-Accel-Redirect so Nginx serves the file directly.
-    See config/urls.py docstring and deployment/nginx_example.conf for setup.
+
+    In production (DEBUG=False), protected files are served by Nginx via
+    X-Accel-Redirect — Django only performs the auth check then hands off.
+    Nginx must have the `location /protected-media/` block marked `internal;`
+    (see deployment/nginx_example.conf).
+
+    In development (DEBUG=True), Django's `serve()` is used as a fallback.
     """
     from django.http import HttpResponse
     from django.views.static import serve
+    from django.urls import reverse
+    from django.contrib.auth.views import redirect_to_login
+
     PROTECTED_PREFIXES = (
         'adarshimg/',
         'exports/',
@@ -57,12 +65,21 @@ def _protected_media_serve(request, path, document_root=None):
     )
     if any(path.startswith(p) for p in PROTECTED_PREFIXES):
         if not request.user.is_authenticated:
-            return HttpResponseForbidden('Access denied')
+            # Redirect to login, preserving the original URL in ?next=
+            # so the user is returned here after successful authentication.
+            login_url = reverse('accounts:login')
+            return redirect_to_login(request.get_full_path(), login_url=login_url)
+
+    # Production: let Nginx serve the file via X-Accel-Redirect (zero-copy, non-blocking).
+    # Django only performs the auth check; Nginx streams the file from the
+    # internal /protected-media/ location which maps directly to MEDIA_ROOT.
     if not settings.DEBUG:
         response = HttpResponse()
-        response['X-Accel-Redirect'] = f'/media/{path}'
-        response['Content-Type'] = ''
+        response['X-Accel-Redirect'] = f'/protected-media/{path}'
+        response['Content-Type'] = ''  # let Nginx detect from file extension
         return response
+
+    # Development: Django fallback
     return serve(request, path, document_root=document_root)
 
 

@@ -38,7 +38,7 @@ def api_get_profile(request):
             'phone': getattr(user, 'phone', '') or '',
             'role': getattr(user, 'role', 'client'),
             'role_display': user.get_role_display() if hasattr(user, 'get_role_display') else user.role,
-            'profile_image': user.profile_image.url if getattr(user, 'profile_image', None) and user.profile_image else None,
+            'profile_image': None,  # profile_image removed in Phase 1 refactor
             'member_since': user.date_joined.strftime('%b %Y') if user.date_joined else '',
         }
     })

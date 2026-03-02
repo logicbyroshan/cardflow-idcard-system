@@ -871,3 +871,15 @@ body[style*="overflow:hidden"] {
   border-left: none;
 }
 
+/* ── Phone / Email table-cell break rules ──────────────────────────
+   Phone: no random breaks; only break at the <wbr> we insert (centre).
+   Email: only break at <wbr> before the @ symbol.                        */
+.phone-cell,
+.email-cell,
+td.phone-col,
+td.email-col {
+  word-break: keep-all;      /* prevent arbitrary mid-word breaks */
+  overflow-wrap: normal;
+  white-space: normal;
+}
+

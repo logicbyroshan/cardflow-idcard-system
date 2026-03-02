@@ -114,9 +114,11 @@
         // ── Parent/guardian phone fields (FATHER NO, MOTHER NO, etc.) ────
         // MUST come BEFORE the generic name pattern so "father no" is treated
         // as a phone column (capped width + wrapping) rather than a name column.
-        if (/(?:father|mother|guardian|parent|mama|nana|dada|nani|dadi)\s*(?:no\.?|num|mob|ph(?:one)?|cell|tel|contact)/.test(n)) return 'min-w-[95px] max-w-[135px] whitespace-normal break-words text-center';
+        if (/(?:father|mother|guardian|parent|mama|nana|dada|nani|dadi)\s*(?:no\.?|num|mob|ph(?:one)?|cell|tel|contact)/.test(n)) return 'min-w-[120px] max-w-[160px] whitespace-normal text-center phone-col';
         // ── Phone/mobile — allow wrap for slash-joined double numbers ─────
-        if (/\bphone\b|\bmobile\b|\bcontact\b|\bwhatsapp\b|\btel\b|\bmob\b/.test(n)) return 'min-w-[95px] max-w-[135px] whitespace-normal break-words text-center';
+        if (/\bphone\b|\bmobile\b|\bcontact\b|\bwhatsapp\b|\btel\b|\bmob\b/.test(n)) return 'min-w-[120px] max-w-[160px] whitespace-normal text-center phone-col';
+        // ── Email —————————————————————————————————————————————————————────
+        if (/\be[\-\s]?mail\b/.test(n)) return 'min-w-[130px] max-w-[200px] whitespace-normal text-left email-col';
         // ── Hard-format IDs — no-wrap ────────────────────────────────────
         if (/aadhaar|aadhar|adhar|\bpan\s*no|\bpan$|voter|driving/.test(n)) return 'min-w-[90px] whitespace-nowrap text-center';
         if (/\broll\b|\bregist|\benroll|\badmis|emp\s*code|scholar|\bsch\s*no\b|unique\s*no/.test(n)) return 'min-w-[70px] whitespace-nowrap text-center';
@@ -129,6 +131,42 @@
         // ── Bus / transport short fields ─────────────────────────────────
         if (/bus|stop\s*name|route\s*no|driver/.test(n))                  return 'min-w-[60px] text-center whitespace-normal break-words';
         return 'min-w-[80px] text-left whitespace-normal break-words';
+    }
+
+    // ── Phone / Email cell-break helpers ─────────────────────────────
+    function _escHtml(s) {
+        if (!s) return '';
+        return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    function _isPhoneCol(name) {
+        var n = (name || '').toLowerCase();
+        return /(?:father|mother|guardian|parent|mama|nana|dada|nani|dadi)\s*(?:no\.?|num|mob|ph(?:one)?|cell|tel|contact)/.test(n) ||
+               /\bphone\b|\bmobile\b|\bcontact\b|\bwhatsapp\b|\btel\b|\bmob\b/.test(n);
+    }
+    function _isEmailCol(name) {
+        var n = (name || '').toLowerCase();
+        return /\be[\-\s]?mail\b/.test(n);
+    }
+    /** Insert <wbr> at digit-centre of a phone string */
+    function _fmtPhone(val) {
+        var safe = _escHtml(val);
+        var digits = val.replace(/[^0-9]/g, '');
+        if (digits.length < 6) return safe;
+        var mid = Math.ceil(digits.length / 2);
+        var cnt = 0;
+        for (var i = 0; i < val.length; i++) {
+            if (/[0-9]/.test(val[i])) cnt++;
+            if (cnt === mid) {
+                return _escHtml(val.substring(0, i + 1)) + '<wbr>' + _escHtml(val.substring(i + 1));
+            }
+        }
+        return safe;
+    }
+    /** Insert <wbr> before @ in an email */
+    function _fmtEmail(val) {
+        var at = val.indexOf('@');
+        if (at > 0) return _escHtml(val.substring(0, at)) + '<wbr>' + _escHtml(val.substring(at));
+        return _escHtml(val);
     }
 
     function _getCardName(card) {
@@ -388,7 +426,14 @@
             f.td.dataset.originalValue = val;
 
             if (f.type === 'text') {
-                f.span.textContent = val;
+                var colName = data.name || '';
+                if (val && _isPhoneCol(colName)) {
+                    f.span.innerHTML = _fmtPhone(val);
+                } else if (val && _isEmailCol(colName)) {
+                    f.span.innerHTML = _fmtEmail(val);
+                } else {
+                    f.span.textContent = val;
+                }
             } else {
                 // Image cell — show one of three states
                 var isPending = val.indexOf('PENDING:') === 0;

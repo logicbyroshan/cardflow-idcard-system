@@ -557,3 +557,45 @@ def get_column_align_class(field):
     field_type = field.get('type', '') or ''
     spec = get_column_spec(field_name, field_type)
     return f'text-{spec.align}'
+
+
+# ---------------------------------------------------------------------------
+# phone_break / email_break — controlled word-break for table cells
+# ---------------------------------------------------------------------------
+@register.filter(name='phone_break')
+def phone_break(value):
+    """
+    Insert a <wbr> word-break opportunity at the centre of a phone number.
+    10 digits → break after 5th, 12 digits → after 6th, etc.
+    Usage: {{ staff.user.phone|phone_break }}
+    """
+    if not value:
+        return ''
+    val = str(value)
+    digits = re.sub(r'[^0-9]', '', val)
+    if len(digits) < 6:
+        return escape(val)
+    mid = len(digits) // 2
+    count = 0
+    for i, ch in enumerate(val):
+        if ch.isdigit():
+            count += 1
+        if count == mid:
+            return mark_safe(escape(val[:i + 1]) + '<wbr>' + escape(val[i + 1:]))
+    return escape(val)
+
+
+@register.filter(name='email_break')
+def email_break(value):
+    """
+    Insert a <wbr> word-break opportunity before the @ in an email address.
+    Browser will only break the line at @ when the cell is too narrow.
+    Usage: {{ staff.user.email|email_break }}
+    """
+    if not value:
+        return ''
+    val = str(value)
+    idx = val.find('@')
+    if idx > 0:
+        return mark_safe(escape(val[:idx]) + '<wbr>' + escape(val[idx:]))
+    return escape(val)

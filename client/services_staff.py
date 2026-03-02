@@ -142,7 +142,7 @@ class ClientStaffService(BaseService):
                 'is_active': staff.user.is_active,
                 'status': 'active' if staff.user.is_active else 'inactive',
                 'created_at': staff.created_at.strftime('%Y-%m-%dT%H:%M:%S'),
-                'profile_image_url': staff.user.profile_image.url if staff.user.profile_image else None,
+                'profile_image_url': None,  # profile_image removed in Phase 1 refactor
                 'assigned_group_ids': list(staff.assigned_groups.values_list('id', flat=True)),
                 'allowed_classes': staff.allowed_classes or [],
                 'allowed_sections': staff.allowed_sections or [],
@@ -420,13 +420,6 @@ class ClientStaffService(BaseService):
             
             staff_name = staff.user.get_full_name() or staff.user.username
             staff_user = staff.user
-            
-            # Clean up profile image file before deleting
-            if staff_user.profile_image:
-                try:
-                    staff_user.profile_image.delete(save=False)
-                except Exception:
-                    pass
             
             # Delete staff profile and user atomically
             with transaction.atomic():
