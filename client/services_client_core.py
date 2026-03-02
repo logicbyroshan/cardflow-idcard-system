@@ -150,8 +150,11 @@ class ClientService(BaseService):
                 except Exception as pw_err:
                     return ServiceResult(success=False, message=str(pw_err))
             
+            # Check if admin explicitly requested active status at creation time
+            create_as_active = cls.parse_bool(data.get('is_active', False))
+            
             with transaction.atomic():
-                # Create user — inactive by default; welcome email sent on first activation
+                # Create user — honour admin's active/inactive choice
                 user = User.objects.create_user(
                     username=username,
                     email=email,
@@ -160,7 +163,7 @@ class ClientService(BaseService):
                     last_name=' '.join(name_parts[1:]) if len(name_parts) > 1 else '',
                     phone=data.get('phone', ''),
                     role='client',
-                    is_active=False,
+                    is_active=create_as_active,
                 )
                 
                 # Build client kwargs
@@ -171,7 +174,7 @@ class ClientService(BaseService):
                     'city': data.get('city', ''),
                     'state': data.get('state', ''),
                     'pincode': data.get('pincode', ''),
-                    'status': 'inactive',
+                    'status': 'active' if create_as_active else 'inactive',
                 }
                 
                 # Add permissions
@@ -183,21 +186,69 @@ class ClientService(BaseService):
                 
                 # Phase 1: Photo field removed - using avatar placeholder
                 
-                # Log email as on_hold — will be sent on first activation
-                EmailLog.objects.create(
-                    recipient_name=name or 'Client',
-                    recipient_email=email,
-                    subject='Welcome to Adarsh Admin - Your Account is Ready!',
-                    email_type=EmailLog.EMAIL_TYPE_WELCOME,
-                    status=EmailLog.STATUS_ON_HOLD,
-                )
+                if create_as_active:
+                    # Admin created client as active — send welcome email now
+                    user.welcome_email_sent = True
+                    user.save(update_fields=['welcome_email_sent'])
+                    
+                    EmailLog.objects.create(
+                        recipient_name=name or 'Client',
+                        recipient_email=email,
+                        subject='Welcome to Adarsh Admin - Your Account is Ready!',
+                        email_type=EmailLog.EMAIL_TYPE_WELCOME,
+                        status=EmailLog.STATUS_ON_HOLD,
+                    )
+                else:
+                    # Log email as on_hold — will be sent on first activation
+                    EmailLog.objects.create(
+                        recipient_name=name or 'Client',
+                        recipient_email=email,
+                        subject='Welcome to Adarsh Admin - Your Account is Ready!',
+                        email_type=EmailLog.EMAIL_TYPE_WELCOME,
+                        status=EmailLog.STATUS_ON_HOLD,
+                    )
+            
+            # Send welcome email immediately if created as active
+            email_sent = False
+            if create_as_active:
+                try:
+                    email_sent, email_msg = send_welcome_email(
+                        name=name or user.get_full_name(),
+                        email=email,
+                        password=password,
+                        role='client',
+                        phone=phone,
+                    )
+                    EmailLog.objects.filter(
+                        recipient_email=email,
+                        email_type=EmailLog.EMAIL_TYPE_WELCOME,
+                        status=EmailLog.STATUS_ON_HOLD,
+                    ).update(
+                        status=EmailLog.STATUS_SENT if email_sent else EmailLog.STATUS_FAILED,
+                        **({}  if email_sent else {'error_message': email_msg})
+                    )
+                except Exception as email_err:
+                    logger.warning('Welcome email failed for new active client %s: %s', email, email_err)
+                    EmailLog.objects.filter(
+                        recipient_email=email,
+                        email_type=EmailLog.EMAIL_TYPE_WELCOME,
+                        status=EmailLog.STATUS_ON_HOLD,
+                    ).update(status=EmailLog.STATUS_FAILED, error_message=str(email_err))
+            
+            message = 'Client created successfully!'
+            if create_as_active and email_sent:
+                message += ' Welcome email sent!'
+            elif create_as_active:
+                message += ' (Welcome email delivery pending)'
+            else:
+                message += ' Welcome email will be sent on first activation.'
             
             return ServiceResult(
                 success=True,
-                message='Client created successfully! Welcome email will be sent on first activation.',
+                message=message,
                 data={
                     'client': cls.serialize(client, include_permissions=False),
-                    'email_sent': False,
+                    'email_sent': email_sent,
                 }
             )
             

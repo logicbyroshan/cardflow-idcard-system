@@ -49,6 +49,12 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
                 <span class="btn-text">Verify Selected</span>
             </button>
             {% endif %}
+            {% if perm_idcard_delete %}
+            <button class="btn action-btn btn-red" id="deleteBtn" disabled title="Move to pool">
+                <i class="fa-solid fa-trash"></i>
+                <span class="btn-text">Delete</span>
+            </button>
+            {% endif %}
             {% if perm_reupload_idcard_image %}
             <button class="btn action-btn btn-red" id="reuploadImageBtn" title="Reupload images from ZIP">
                 <i class="fa-solid fa-rotate"></i>
@@ -95,12 +101,6 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
             <button class="btn action-btn btn-gray" id="viewBtnV" disabled title="View selected card">
                 <i class="fa-solid fa-eye"></i>
                 <span class="btn-text">View</span>
-            </button>
-            {% endif %}
-            {% if perm_idcard_delete %}
-            <button class="btn action-btn btn-red" id="deleteBtnV" disabled title="Move to pool">
-                <i class="fa-solid fa-trash"></i>
-                <span class="btn-text">Delete</span>
             </button>
             {% endif %}
             {% if perm_idcard_verify %}

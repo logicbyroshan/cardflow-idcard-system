@@ -671,15 +671,25 @@ class SecurityHeadersMiddleware:
         "frame-ancestors 'none';"
     )
 
-    # CSP for the mobile PWA (/app/) which loads Alpine.js and Cropper.js from CDNs
+    # CSP for the mobile PWA (/app/) which loads Tailwind CDN, Alpine.js,
+    # Cropper.js, Google Fonts, and Font Awesome from CDNs.
+    # 'unsafe-eval' required by Tailwind CSS Play CDN (runtime compiler).
     _CSP_PWA = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
-        "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
-        "img-src 'self' data: blob:; "
-        "font-src 'self' data: https://cdnjs.cloudflare.com; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' "
+            "https://cdn.tailwindcss.com "
+            "https://cdn.jsdelivr.net "
+            "https://cdnjs.cloudflare.com; "
+        "style-src 'self' 'unsafe-inline' "
+            "https://cdnjs.cloudflare.com "
+            "https://fonts.googleapis.com "
+            "https://cdn.tailwindcss.com; "
+        "img-src 'self' data: blob: https:; "
+        "font-src 'self' data: "
+            "https://cdnjs.cloudflare.com "
+            "https://fonts.gstatic.com; "
         "connect-src 'self'; "
-        "media-src 'self'; "
+        "media-src 'self' blob:; "
         "object-src 'none'; "
         "base-uri 'self'; "
         "form-action 'self'; "
@@ -709,7 +719,14 @@ class SecurityHeadersMiddleware:
             response['Content-Security-Policy'] = self._CSP_PWA if is_pwa else self._CSP_PANEL
 
         if self._permissions_policy:
-            response['Permissions-Policy'] = self._permissions_policy
+            # Mobile PWA needs camera access for photo capture
+            if request.path.startswith('/app/'):
+                response['Permissions-Policy'] = (
+                    'camera=(self), microphone=(), geolocation=(), '
+                    'payment=(), usb=()'
+                )
+            else:
+                response['Permissions-Policy'] = self._permissions_policy
 
         # Prevent caching of authenticated panel pages (security best practice)
         is_panel = getattr(request, '_is_panel_subdomain', False) or request.path.startswith('/panel/')

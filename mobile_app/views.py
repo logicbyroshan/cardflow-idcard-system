@@ -53,7 +53,7 @@ def require_mobile_client(view_func):
     After login, redirects back to /app/ (PWA) via ?next= parameter.
     """
     @wraps(view_func)
-    @login_required(login_url='/panel/auth/login/?next=/panel/app/')
+    @login_required(login_url='/panel/auth/login/')
     def wrapper(request, *args, **kwargs):
         user = request.user
         # Allow all 4 valid roles; reject unknown/empty roles

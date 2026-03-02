@@ -310,7 +310,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 # =============================================================================
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
@@ -331,8 +331,13 @@ STORAGES = {
 WHITENOISE_MANIFEST_STRICT = False
 
 # Media files (Uploads)
-MEDIA_URL = 'media/'
+MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# Set to True ONLY when Nginx is configured with an internal /protected-media/
+# location block (see deployment/nginx_example.conf). When False, Django serves
+# media files directly even in production — slower but works without Nginx.
+MEDIA_USE_XACCEL = os.getenv('MEDIA_USE_XACCEL', 'false').strip().lower() in ('1', 'true', 'yes')
 
 # =============================================================================
 # FILE UPLOAD LIMITS

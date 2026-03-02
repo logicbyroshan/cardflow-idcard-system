@@ -58,16 +58,16 @@ def _protected_media_serve(request, path, document_root=None):
             login_url = reverse('accounts:login')
             return redirect_to_login(request.get_full_path(), login_url=login_url)
 
-    # Production: let Nginx serve the file via X-Accel-Redirect (zero-copy, non-blocking).
-    # Django only performs the auth check; Nginx streams the file from the
-    # internal /protected-media/ location which maps directly to MEDIA_ROOT.
-    if not settings.DEBUG:
+    # Production with Nginx: serve via X-Accel-Redirect (zero-copy, non-blocking).
+    # Requires MEDIA_USE_XACCEL=true in env AND the Nginx internal
+    # /protected-media/ location block (see deployment/nginx_example.conf).
+    if getattr(settings, 'MEDIA_USE_XACCEL', False):
         response = HttpResponse()
         response['X-Accel-Redirect'] = f'/protected-media/{path}'
         response['Content-Type'] = ''  # let Nginx detect from file extension
         return response
 
-    # Development: Django fallback
+    # Fallback: Django serves the file directly (dev + prod without X-Accel)
     return serve(request, path, document_root=document_root)
 
 def _serve_mobile_sw(request):
