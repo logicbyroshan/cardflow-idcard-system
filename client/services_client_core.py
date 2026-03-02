@@ -195,41 +195,47 @@ class ClientService(BaseService):
                     status=EmailLog.STATUS_ON_HOLD,
                 )
             
-            # Send welcome email immediately if created as active
-            email_sent = False
+            # Send welcome email in background thread if created as active
+            # This prevents the API response from being blocked by SMTP
             if create_as_active:
+                _user_pk = user.pk
+                _email = email
+                _name = name
+                _full_name = user.get_full_name()
+                _phone = phone
+
+                def _on_email_success():
+                    User.objects.filter(pk=_user_pk).update(welcome_email_sent=True)
+                    EmailLog.objects.filter(
+                        recipient_email=_email,
+                        email_type=EmailLog.EMAIL_TYPE_WELCOME,
+                        status=EmailLog.STATUS_ON_HOLD,
+                    ).update(status=EmailLog.STATUS_SENT)
+
+                def _on_email_failure(err_msg):
+                    EmailLog.objects.filter(
+                        recipient_email=_email,
+                        email_type=EmailLog.EMAIL_TYPE_WELCOME,
+                        status=EmailLog.STATUS_ON_HOLD,
+                    ).update(status=EmailLog.STATUS_FAILED, error_message=err_msg)
+
                 try:
-                    email_sent, email_msg = send_welcome_email(
-                        name=name or user.get_full_name(),
-                        email=email,
+                    send_welcome_email(
+                        name=_name or _full_name,
+                        email=_email,
                         password=password,
                         role='client',
-                        phone=phone,
-                    )
-                    if email_sent:
-                        # Mark flag only after successful delivery
-                        User.objects.filter(pk=user.pk).update(welcome_email_sent=True)
-                    EmailLog.objects.filter(
-                        recipient_email=email,
-                        email_type=EmailLog.EMAIL_TYPE_WELCOME,
-                        status=EmailLog.STATUS_ON_HOLD,
-                    ).update(
-                        status=EmailLog.STATUS_SENT if email_sent else EmailLog.STATUS_FAILED,
-                        **({}  if email_sent else {'error_message': email_msg})
+                        phone=_phone,
+                        on_success=_on_email_success,
+                        on_failure=_on_email_failure,
                     )
                 except Exception as email_err:
-                    logger.warning('Welcome email failed for new active client %s: %s', email, email_err)
-                    EmailLog.objects.filter(
-                        recipient_email=email,
-                        email_type=EmailLog.EMAIL_TYPE_WELCOME,
-                        status=EmailLog.STATUS_ON_HOLD,
-                    ).update(status=EmailLog.STATUS_FAILED, error_message=str(email_err))
+                    logger.warning('Welcome email scheduling failed for new active client %s: %s', _email, email_err)
+                    _on_email_failure(str(email_err))
             
             message = 'Client created successfully!'
-            if create_as_active and email_sent:
-                message += ' Welcome email sent!'
-            elif create_as_active:
-                message += ' (Welcome email delivery pending)'
+            if create_as_active:
+                message += ' Welcome email queued for delivery.'
             else:
                 message += ' Welcome email will be sent on first activation.'
             
@@ -238,7 +244,7 @@ class ClientService(BaseService):
                 message=message,
                 data={
                     'client': cls.serialize(client, include_permissions=False),
-                    'email_sent': email_sent,
+                    'email_sent': create_as_active,
                 }
             )
             
@@ -461,42 +467,45 @@ class ClientService(BaseService):
 
                     client.save(update_fields=['status', 'updated_at'])
 
-            # Send welcome email after the transaction commits
-            email_sent = False
-            email_msg = ''
+            # Send welcome email asynchronously after the transaction commits
             if send_welcome:
-                try:
-                    email_sent, email_msg = send_welcome_email(
-                        name=welcome_email_info['name'],
-                        email=welcome_email_info['email'],
-                        password=welcome_email_info['password'],
-                        role='client',
-                        phone=welcome_email_info['phone'],
-                    )
-                    if email_sent:
-                        # Mark flag only after successful delivery
-                        User.objects.filter(pk=welcome_user_id).update(welcome_email_sent=True)
-                    EmailLog.objects.filter(
-                        recipient_email=welcome_email_info['email'],
-                        email_type=EmailLog.EMAIL_TYPE_WELCOME,
-                        status=EmailLog.STATUS_ON_HOLD,
-                    ).update(
-                        status=EmailLog.STATUS_SENT if email_sent else EmailLog.STATUS_FAILED,
-                        **({}  if email_sent else {'error_message': email_msg})
-                    )
-                except Exception as email_err:
-                    logger.warning('First-activation welcome email failed for %s: %s', welcome_email_info['email'], email_err)
-                    EmailLog.objects.filter(
-                        recipient_email=welcome_email_info['email'],
-                        email_type=EmailLog.EMAIL_TYPE_WELCOME,
-                        status=EmailLog.STATUS_ON_HOLD,
-                    ).update(status=EmailLog.STATUS_FAILED, error_message=str(email_err))
+                _user_pk = welcome_user_id
+                _email = welcome_email_info['email']
+
+                def _on_email_success():
+                    try:
+                        User.objects.filter(pk=_user_pk).update(welcome_email_sent=True)
+                        EmailLog.objects.filter(
+                            recipient_email=_email,
+                            email_type=EmailLog.EMAIL_TYPE_WELCOME,
+                            status=EmailLog.STATUS_ON_HOLD,
+                        ).update(status=EmailLog.STATUS_SENT)
+                    except Exception as cb_err:
+                        logger.warning('Email success callback failed for %s: %s', _email, cb_err)
+
+                def _on_email_failure(err_msg):
+                    try:
+                        EmailLog.objects.filter(
+                            recipient_email=_email,
+                            email_type=EmailLog.EMAIL_TYPE_WELCOME,
+                            status=EmailLog.STATUS_ON_HOLD,
+                        ).update(status=EmailLog.STATUS_FAILED, error_message=str(err_msg))
+                    except Exception as cb_err:
+                        logger.warning('Email failure callback failed for %s: %s', _email, cb_err)
+
+                send_welcome_email(
+                    name=welcome_email_info['name'],
+                    email=welcome_email_info['email'],
+                    password=welcome_email_info['password'],
+                    role='client',
+                    phone=welcome_email_info['phone'],
+                    on_success=_on_email_success,
+                    on_failure=_on_email_failure,
+                )
 
             message = f'Client status changed to {status_display}!'
-            if send_welcome and email_sent:
-                message += ' Welcome email sent!'
-            elif send_welcome and not email_sent:
-                message += f' ⚠️ Welcome email failed: {email_msg}'
+            if send_welcome:
+                message += ' Welcome email queued for delivery.'
             if deactivated_staff_count > 0:
                 message += f' ({deactivated_staff_count} staff members also deactivated)'
                 logger.info(

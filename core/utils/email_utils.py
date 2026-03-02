@@ -8,7 +8,7 @@ import string
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
-from core.utils.threaded_email import send_html_email_async
+from core.utils.threaded_email import send_html_email_async, send_html_email_with_callback
 
 logger = logging.getLogger(__name__)
 
@@ -232,7 +232,7 @@ This is an automated message. Please do not reply to this email.
     return html_content, plain_content
 
 
-def send_welcome_email(name, email, password, role, request=None, phone=''):
+def send_welcome_email(name, email, password, role, request=None, phone='', **kwargs):
     """
     Send a welcome email with login credentials to new users.
     
@@ -280,19 +280,36 @@ def send_welcome_email(name, email, password, role, request=None, phone=''):
             phone=phone
         )
         
-        # Send synchronously — welcome emails are critical (contain password)
-        # so we MUST detect SMTP errors and report them back to the caller.
         subject = '🎉 Welcome to Adarsh Admin - Your Account is Ready!'
         from_email = settings.DEFAULT_FROM_EMAIL
         to_email = [email]
 
-        msg = EmailMultiAlternatives(subject, plain_content, from_email, to_email)
-        msg.attach_alternative(html_content, "text/html")
-        msg.send(fail_silently=False)
+        # If callbacks provided, send in background thread (non-blocking)
+        on_success = kwargs.get('on_success')
+        on_failure = kwargs.get('on_failure')
+        if on_success or on_failure:
+            send_html_email_with_callback(
+                subject, plain_content, html_content,
+                from_email, to_email,
+                on_success=on_success,
+                on_failure=on_failure,
+            )
+            logger.info("Welcome email queued (async) for %s", email)
+            return True, 'Welcome email queued for delivery.'
 
-        logger.info("Welcome email sent to %s", email)
-        return True, 'Welcome email sent successfully!'
-        
+        # Synchronous fallback (with 30s timeout to avoid blocking forever)
+        import socket
+        old_timeout = socket.getdefaulttimeout()
+        try:
+            socket.setdefaulttimeout(30)
+            msg = EmailMultiAlternatives(subject, plain_content, from_email, to_email)
+            msg.attach_alternative(html_content, "text/html")
+            msg.send(fail_silently=False)
+            logger.info("Welcome email sent to %s", email)
+            return True, 'Welcome email sent successfully!'
+        finally:
+            socket.setdefaulttimeout(old_timeout)
+
     except Exception as e:
         logger.error("Failed to send welcome email to %s: %s", email, e)
         return False, f'Failed to send email: {str(e)}'

@@ -692,7 +692,7 @@ class SecurityHeadersMiddleware:
     # - frame-ancestors 'none' → belt-and-suspenders with X-Frame-Options: DENY
     _CSP_PANEL = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com; "
         "style-src 'self' 'unsafe-inline'; "
         "img-src 'self' data: blob:; "
         "font-src 'self' data:; "
@@ -712,7 +712,8 @@ class SecurityHeadersMiddleware:
         "script-src 'self' 'unsafe-inline' 'unsafe-eval' "
             "https://cdn.tailwindcss.com "
             "https://cdn.jsdelivr.net "
-            "https://cdnjs.cloudflare.com; "
+            "https://cdnjs.cloudflare.com "
+            "https://static.cloudflareinsights.com; "
         "style-src 'self' 'unsafe-inline' "
             "https://cdnjs.cloudflare.com "
             "https://fonts.googleapis.com "

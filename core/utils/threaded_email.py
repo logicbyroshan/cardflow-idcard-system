@@ -70,3 +70,42 @@ def send_html_email_async(subject, plain_content, html_content,
 
     t = threading.Thread(target=_send, daemon=False, name='html-email-send')
     t.start()
+
+
+def send_html_email_with_callback(subject, plain_content, html_content,
+                                   from_email, recipient_list,
+                                   on_success=None, on_failure=None):
+    """
+    Send an HTML email in a background thread with success/failure callbacks.
+
+    Used for welcome emails where we need to track delivery status in the DB
+    without blocking the HTTP response.
+
+    Args:
+        on_success: callable()  — called after successful send
+        on_failure: callable(error_message: str) — called on SMTP failure
+    """
+    def _send():
+        try:
+            msg = EmailMultiAlternatives(
+                subject, plain_content, from_email, recipient_list
+            )
+            msg.attach_alternative(html_content, "text/html")
+            msg.send(fail_silently=False)
+            logger.info("Threaded welcome email sent to %s", recipient_list)
+            if on_success:
+                try:
+                    on_success()
+                except Exception as cb_err:
+                    logger.error("Welcome email on_success callback error: %s", cb_err)
+        except Exception as exc:
+            logger.error("Threaded welcome email to %s failed: %s",
+                         recipient_list, exc)
+            if on_failure:
+                try:
+                    on_failure(str(exc))
+                except Exception as cb_err:
+                    logger.error("Welcome email on_failure callback error: %s", cb_err)
+
+    t = threading.Thread(target=_send, daemon=False, name='welcome-email-send')
+    t.start()

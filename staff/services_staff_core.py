@@ -393,41 +393,42 @@ class StaffService(BaseService):
                 else:
                     user.save(update_fields=['is_active'])
 
-            email_sent = False
-            email_msg = ''
             if send_welcome:
-                try:
-                    email_sent, email_msg = send_welcome_email(
-                        name=welcome_info['name'],
-                        email=welcome_info['email'],
-                        password=welcome_info['password'],
-                        role=welcome_info['role'],
-                        phone=welcome_info['phone'],
-                    )
-                    if email_sent:
-                        User.objects.filter(pk=welcome_user_id).update(welcome_email_sent=True)
-                    EmailLog.objects.filter(
-                        recipient_email=welcome_info['email'],
-                        email_type=EmailLog.EMAIL_TYPE_WELCOME,
-                        status=EmailLog.STATUS_ON_HOLD,
-                    ).update(
-                        status=EmailLog.STATUS_SENT if email_sent else EmailLog.STATUS_FAILED,
-                        **({}  if email_sent else {'error_message': email_msg})
-                    )
-                except Exception as email_err:
-                    logger.warning('First-activation welcome email failed for %s: %s', welcome_info['email'], email_err)
-                    EmailLog.objects.filter(
-                        recipient_email=welcome_info['email'],
-                        email_type=EmailLog.EMAIL_TYPE_WELCOME,
-                        status=EmailLog.STATUS_ON_HOLD,
-                    ).update(status=EmailLog.STATUS_FAILED, error_message=str(email_err))
+                _user_pk = welcome_user_id
+                _email = welcome_info['email']
 
-            if send_welcome and email_sent:
-                extra = ' Welcome email sent!'
-            elif send_welcome and not email_sent:
-                extra = f' ⚠️ Welcome email failed: {email_msg}'
-            else:
-                extra = ''
+                def _on_email_success():
+                    try:
+                        User.objects.filter(pk=_user_pk).update(welcome_email_sent=True)
+                        EmailLog.objects.filter(
+                            recipient_email=_email,
+                            email_type=EmailLog.EMAIL_TYPE_WELCOME,
+                            status=EmailLog.STATUS_ON_HOLD,
+                        ).update(status=EmailLog.STATUS_SENT)
+                    except Exception as cb_err:
+                        logger.warning('Email success callback failed for %s: %s', _email, cb_err)
+
+                def _on_email_failure(err_msg):
+                    try:
+                        EmailLog.objects.filter(
+                            recipient_email=_email,
+                            email_type=EmailLog.EMAIL_TYPE_WELCOME,
+                            status=EmailLog.STATUS_ON_HOLD,
+                        ).update(status=EmailLog.STATUS_FAILED, error_message=str(err_msg))
+                    except Exception as cb_err:
+                        logger.warning('Email failure callback failed for %s: %s', _email, cb_err)
+
+                send_welcome_email(
+                    name=welcome_info['name'],
+                    email=welcome_info['email'],
+                    password=welcome_info['password'],
+                    role=welcome_info['role'],
+                    phone=welcome_info['phone'],
+                    on_success=_on_email_success,
+                    on_failure=_on_email_failure,
+                )
+
+            extra = ' Welcome email queued for delivery.' if send_welcome else ''
             return ServiceResult(
                 success=True,
                 message=f'Staff status changed to {status_display}!{extra}',
