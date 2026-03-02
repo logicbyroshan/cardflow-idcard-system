@@ -5,7 +5,8 @@
  *
  * Features:
  *   - Direct engine connection at http://127.0.0.1:4765 (fallback: Django proxy)
- *   - Keepalive polling every 30 s — auto-reconnects if engine restarts
+ *   - Staged retry: 3 tries → 5 min sleep → 3 tries → 1 hr sleep → 3 tries → stop
+ *   - Keepalive polling every 30 s (only while connected) — restarts staged retry on disconnect
  *   - Donut chart showing cropped vs failed counts
  *   - Image preview grid always available after processing
  *
@@ -16,7 +17,15 @@
 // ── Engine connection constants ──────────────────────────────────────────
 var ENGINE_DIRECT_URL = 'http://127.0.0.1:4765';
 var ENGINE_API_KEY    = 'passport-engine-local-key';
-var KEEPALIVE_MS      = 30000;  // poll engine status every 30 s
+var KEEPALIVE_MS      = 30000;  // poll engine status every 30 s (only when connected)
+
+// Staged-retry schedule: [{ attempts, retryDelayMs, sleepAfterMs | null }]
+// 3 tries (1.5 s apart) → sleep 5 min → 3 tries → sleep 1 hr → 3 tries → stop
+var ENGINE_RETRY_STAGES = [
+  { attempts: 3, retryDelayMs: 1500, sleepAfterMs: 5  * 60 * 1000 },  // 5 min
+  { attempts: 3, retryDelayMs: 1500, sleepAfterMs: 60 * 60 * 1000 },  // 1 hr
+  { attempts: 3, retryDelayMs: 1500, sleepAfterMs: null },             // give up
+];
 
 function cropperApp() {
   return {
@@ -105,6 +114,7 @@ function cropperApp() {
     // ── Internal ──
     _progressTimer: null,
     _keepaliveId: null,
+    _retryGaveUp: false,   // true once all retry stages exhausted
 
     // ── Update state ──
     update: {
@@ -121,8 +131,8 @@ function cropperApp() {
       // Restore persisted state from sessionStorage (if navigating back)
       this._restoreState();
 
-      this._checkEngineWithRetry();
-      // Start keepalive polling — silently re-checks every 30 s
+      this._stagedRetryConnect();
+      // Start keepalive polling — only pings when engine is already connected
       this._keepaliveId = setInterval(() => { this._keepalivePoll(); }, KEEPALIVE_MS);
 
       // Save state before navigating away so results persist
@@ -139,18 +149,37 @@ function cropperApp() {
     },
 
     /**
-     * Retry engine detection up to 3 times (1.5 s apart) so a hard-refresh
-     * doesn't falsely show "not detected" when the engine is slow to respond.
+     * Staged retry connect:
+     *  Stage 1: try 3 times (1.5 s apart)
+     *  Stage 2: sleep 5 min, then try 3 times
+     *  Stage 3: sleep 1 hr, then try 3 times
+     *  After that: give up — user must manually refresh or click reconnect.
      */
-    async _checkEngineWithRetry(attempt) {
-      attempt = attempt || 1;
-      var MAX_RETRIES = 3;
-      await this.checkEngine();
-      if (!this.engine.connected && attempt < MAX_RETRIES) {
-        console.log('[Cropper] Engine not detected, retry ' + attempt + '/' + MAX_RETRIES + '…');
-        await new Promise(function (r) { setTimeout(r, 1500); });
-        await this._checkEngineWithRetry(attempt + 1);
+    async _stagedRetryConnect() {
+      this._retryGaveUp = false;
+      for (var s = 0; s < ENGINE_RETRY_STAGES.length; s++) {
+        var stage = ENGINE_RETRY_STAGES[s];
+        for (var a = 1; a <= stage.attempts; a++) {
+          await this.checkEngine();
+          if (this.engine.connected) {
+            console.log('[Cropper] Engine connected (stage ' + (s + 1) + ', attempt ' + a + ')');
+            return;  // success — keepalive will handle ongoing monitoring
+          }
+          console.log('[Cropper] Engine not detected — stage ' + (s + 1) + ' attempt ' + a + '/' + stage.attempts);
+          if (a < stage.attempts) {
+            await new Promise(function (r) { setTimeout(r, stage.retryDelayMs); });
+          }
+        }
+        // All attempts in this stage failed
+        if (stage.sleepAfterMs) {
+          var mins = Math.round(stage.sleepAfterMs / 60000);
+          console.log('[Cropper] Sleeping ' + mins + ' min before next retry stage…');
+          await new Promise(function (r) { setTimeout(r, stage.sleepAfterMs); });
+        }
       }
+      // All stages exhausted — give up
+      this._retryGaveUp = true;
+      console.warn('[Cropper] All retry stages exhausted — engine not found. Stopped retrying.');
     },
 
     // ══════════════════════════════════════════════════════════════════
@@ -159,6 +188,8 @@ function cropperApp() {
     async _keepalivePoll() {
       // Don't poll while processing (engine is busy)
       if (this.processing) return;
+      // Don't poll if retries were exhausted and engine was never connected
+      if (this._retryGaveUp && !this.engine.connected) return;
       var wasConnected = this.engine.connected;
 
       try {
@@ -172,6 +203,7 @@ function cropperApp() {
           if (!this.engine.connected) {
             // Reconnected — refresh full engine info
             console.log('[Cropper] Engine reconnected');
+            this._retryGaveUp = false;
             await this.checkEngine();
           }
           return;
@@ -184,6 +216,7 @@ function cropperApp() {
         if (data && data.connected) {
           if (!this.engine.connected) {
             console.log('[Cropper] Engine reconnected via proxy');
+            this._retryGaveUp = false;
             await this.checkEngine();
           }
           return;
@@ -192,10 +225,12 @@ function cropperApp() {
 
       // Engine went offline
       if (wasConnected) {
-        console.warn('[Cropper] Engine disconnected — will auto-reconnect when available');
+        console.warn('[Cropper] Engine disconnected — starting staged retry…');
         this.engine.connected = false;
         this.engine.checked = true;
         this._broadcastEngineState();
+        // Engine was connected but lost — run staged retry
+        this._stagedRetryConnect();
       }
     },
 
@@ -240,6 +275,7 @@ function cropperApp() {
 
           this.engine.loading = false;
           this.engine.checked = true;
+          this._retryGaveUp = false;  // successful connect resets gave-up flag
           console.log('[Cropper] Connected directly to local engine v' + this.engine.version);
           this._broadcastEngineState();
           return;
@@ -263,6 +299,7 @@ function cropperApp() {
           this.engine.memory = health.memory_usage_mb != null
             ? String(health.memory_usage_mb)
             : '';
+          this._retryGaveUp = false;  // successful connect resets gave-up flag
           console.log('[Cropper] Connected via Django proxy v' + this.engine.version);
         }
       } catch (_proxyErr) {
