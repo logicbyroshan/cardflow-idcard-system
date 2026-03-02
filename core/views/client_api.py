@@ -123,9 +123,9 @@ def api_client_delete(request, client_id):
 
 
 @require_http_methods(["POST"])
-@api_require_super_admin
+@api_require_any_admin
 def api_client_toggle_status(request, client_id):
-    """API endpoint to toggle client active/inactive status (Super Admin only)"""
+    """API endpoint to toggle client active/inactive status"""
     result = ClientService.toggle_status(client_id)
     if result.success:
         new_status = result.data.get('new_status', result.data.get('status', ''))

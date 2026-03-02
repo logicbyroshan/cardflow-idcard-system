@@ -27,7 +27,7 @@ JS contract (Alpine bridge):
        x-show="activeModal === 'status'" x-transition.scale.origin.center>
 
     <!-- Header -->
-    <div class="modal-header">
+    <div class="modal-header" id="statusModalHeader">
       <h3 id="{{ modal_id|default:'status-modal' }}-title"><i class="fa-solid fa-toggle-on"></i> Confirm Status Change</h3>
       <button type="button" class="modal-close"
               @click="closeModal()"
@@ -39,7 +39,7 @@ JS contract (Alpine bridge):
     <!-- Body -->
     <div class="modal-body">
       <div class="flex flex-col items-center text-center" style="padding:18px 12px 8px">
-        <div style="width:52px;height:52px;border-radius:50%;background:var(--color-warning-bg,#fef9c3);display:flex;align-items:center;justify-content:center;margin-bottom:14px">
+        <div style="width:52px;height:52px;border-radius:50%;background:var(--color-warning-bg,#fef9c3);display:flex;align-items:center;justify-content:center;margin-bottom:14px" id="statusModalIcon">
           <i class="fa-solid fa-toggle-on" style="font-size:22px;color:var(--color-warning,#f59e0b)"></i>
         </div>
         <p style="font-size:15px;font-weight:600;color:#1f2937;margin:0 0 4px">Change Status?</p>

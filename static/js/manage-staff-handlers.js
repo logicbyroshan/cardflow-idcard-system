@@ -194,7 +194,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ==================== STATUS MODAL ====================
     var confirmStatusBtn = document.getElementById('confirmStatusBtn');
-    var statusStaffNameEl = document.getElementById('statusStaffName');
+    var statusStaffNameEl = document.getElementById('statusItemName');
     var statusModalHeader = document.getElementById('statusModalHeader');
     var statusModalIcon = document.getElementById('statusModalIcon');
     var statusNote = document.getElementById('statusNote');

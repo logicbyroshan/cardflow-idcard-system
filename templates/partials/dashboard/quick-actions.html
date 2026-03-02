@@ -6,7 +6,7 @@
   </div>
   <div class="dashboard-card-body">
     <div class="quick-actions">
-      {% if is_super_admin or is_admin_staff %}
+      {% if is_super_admin %}
       <a href="{% url 'manage_clients' %}?add=1" class="quick-action-btn">
         <i class="fa-solid fa-user-plus"></i>
         <span>Add New Client</span>

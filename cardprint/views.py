@@ -172,6 +172,7 @@ def print_cards(request, table_id):
 
 @require_http_methods(["POST"])
 @login_required
+@api_require_permission('perm_print_list')
 def api_print_send(request, table_id):
     """Send approved cards to the print list.
 
@@ -224,6 +225,7 @@ def api_print_send(request, table_id):
 
 @require_http_methods(["GET"])
 @login_required
+@api_require_permission('perm_print_list')
 def api_print_list(request, table_id):
     """List print_list items with pagination and search."""
     table, err = _check_print_table_scope(request.user, table_id)
@@ -283,6 +285,7 @@ def api_print_list(request, table_id):
 
 @require_http_methods(["GET"])
 @login_required
+@api_require_permission('perm_print_list')
 def api_print_step_counts(request, table_id):
     """Return step counts for the print workflow tabs."""
     table, err = _check_print_table_scope(request.user, table_id)
@@ -304,6 +307,7 @@ def api_print_step_counts(request, table_id):
 
 @require_http_methods(["POST"])
 @login_required
+@api_require_permission('perm_print_list')
 def api_print_remove(request, table_id):
     """Remove items from the print list.
 
@@ -344,6 +348,7 @@ def api_print_remove(request, table_id):
 
 @require_http_methods(["POST"])
 @login_required
+@api_require_permission('perm_print_list')
 def api_print_generate(request, table_id):
     """Generate (print_list → finalized) for selected items.
 
@@ -387,6 +392,7 @@ def api_print_generate(request, table_id):
 
 @require_http_methods(["GET"])
 @login_required
+@api_require_permission('perm_finalized_list')
 def api_print_finalized_list(request, table_id):
     """List finalized print items with pagination and search."""
     table, err = _check_print_table_scope(request.user, table_id)
@@ -446,6 +452,7 @@ def api_print_finalized_list(request, table_id):
 
 @require_http_methods(["POST"])
 @login_required
+@api_require_permission('perm_finalized_list')
 def api_print_mark_pool(request, table_id):
     """Move finalized items to pool.
 
@@ -486,6 +493,7 @@ def api_print_mark_pool(request, table_id):
 
 @require_http_methods(["GET"])
 @login_required
+@api_require_permission('perm_print_list')
 def api_print_pool_list(request, table_id):
     """List pool items with pagination and search."""
     table, err = _check_print_table_scope(request.user, table_id)

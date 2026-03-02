@@ -608,6 +608,7 @@ def api_pool_list(request, table_id):
 
 @require_http_methods(["POST"])
 @login_required
+@api_require_permission('perm_idcard_reprint_list')
 def api_reprint_send_to_print(request, table_id):
     """Send confirmed reprint items to the cardprint Print List.
 
