@@ -159,3 +159,45 @@ def is_valid_image_path(path: Optional[str]) -> bool:
     if path.startswith('PENDING:'):
         return False
     return True
+
+
+def get_card_photo_url(card, field_data: Optional[dict] = None) -> Optional[str]:
+    """
+    Get the display photo URL for an IDCard, checking field_data first
+    then falling back to the deprecated card.photo ImageField.
+
+    Returns a URL string like '/media/adarshimg/...' or None.
+    """
+    from django.conf import settings
+    from .constants import IMAGE_FIELD_TYPES
+
+    fd = field_data if field_data is not None else (card.field_data or {})
+
+    # 1. Check image fields in field_data (canonical source)
+    #    Try well-known photo field names first, then scan all values
+    for key in ('PHOTO', 'Photo', 'photo'):
+        val = fd.get(key, '')
+        if val and is_valid_image_path(val):
+            return _ensure_media_url(val, settings.MEDIA_URL)
+
+    # Scan remaining fields for image-like paths
+    for val in fd.values():
+        if isinstance(val, str) and is_valid_image_path(val):
+            if 'adarshimg/' in val or val.endswith(('.jpg', '.jpeg', '.png', '.webp')):
+                return _ensure_media_url(val, settings.MEDIA_URL)
+
+    # 2. Legacy fallback: deprecated photo ImageField
+    if card.photo:
+        try:
+            return card.photo.url
+        except Exception:
+            pass
+
+    return None
+
+
+def _ensure_media_url(path: str, media_url: str = '/media/') -> str:
+    """Ensure a relative media path has the proper /media/ prefix."""
+    if path.startswith(('/', 'http://', 'https://')):
+        return path
+    return f'{media_url}{path}'

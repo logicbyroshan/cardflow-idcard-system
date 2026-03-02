@@ -29,6 +29,7 @@ from client.services import (
 )
 from core.services.permission_service import PermissionService
 from idcards.models import IDCardTable, IDCard, IDCardGroup
+from mediafiles.utils import get_card_photo_url
 from staff.models import Staff
 
 logger = logging.getLogger(__name__)
@@ -987,7 +988,7 @@ def api_search(request):
         fd = card.field_data or {}
         name = fd.get('NAME') or fd.get('name') or fd.get('Name') or f'Card #{card.id}'
         roll_no = fd.get('ROLL NO') or fd.get('ROLL_NO') or fd.get('roll_no') or ''
-        photo_url = card.photo.url if card.photo else None
+        photo_url = get_card_photo_url(card, fd)
         results.append({
             'id': card.id,
             'name': name,

@@ -12,6 +12,7 @@ from staff.models import Staff
 from idcards.models import IDCardGroup, IDCardTable, IDCard
 from core.services.base import BaseService, ServiceResult
 from core.services.permission_service import PermissionService
+from mediafiles.utils import get_card_photo_url
 
 from .services_access import ClientAccessService
 
@@ -183,7 +184,7 @@ class ClientCardService(BaseService):
                     'name': name,
                     'id_number': id_number,
                     'class_designation': class_designation,
-                    'photo_url': card.photo.url if card.photo else None,
+                    'photo_url': get_card_photo_url(card, field_data),
                     'field_data': card.field_data,
                     'status': card.status,
                     'status_display': card.get_status_display(),
@@ -316,7 +317,7 @@ class ClientCardService(BaseService):
                     'address': address,
                     'contact': contact,
                     'session': session,
-                    'photo_url': card.photo.url if card.photo else None,
+                    'photo_url': get_card_photo_url(card, field_data),
                     'field_data': field_data,
                     'status': card.status,
                     'status_display': card.get_status_display(),
