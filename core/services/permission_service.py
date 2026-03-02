@@ -86,6 +86,36 @@ class PermissionService:
         + MOBILE_APP_PERMISSIONS
     )
 
+    # Perms intentionally absent from the Staff model
+    # (removed by migrations to enforce super_admin-only access).
+    # has() returns False silently for admin_staff checking these — no warning.
+    STAFF_BLOCKED_PERMS: set = {
+        'perm_delete_all_idcard',  # removed from Staff in migration 0036; super_admin only
+    }
+
+    # Perms that are NEVER available to client / client_staff roles.
+    # This superset replaces inline dicts in has() and get_permission_context()
+    # so warnings are not emitted for perm keys that are simply not on the
+    # Client model by design (admin/staff-only features).
+    CLIENT_BLOCKED_PERMS: set = {
+        # Bulk operations — admin/staff only
+        'perm_idcard_bulk_upload',
+        'perm_idcard_bulk_download',
+        'perm_idcard_bulk_reupload',
+        'perm_delete_all_idcard',    # super_admin-only
+        'perm_reupload_idcard_image',
+        # Print-queue lists — admin_staff only (not on Client model by design)
+        'perm_confirmed_list',
+        'perm_print_list',
+        'perm_finalized_list',
+        # Website management — admin_staff only (not on Client model by design)
+        'perm_website_view',
+        'perm_website_add',
+        'perm_website_edit',
+        'perm_website_delete',
+        'perm_website_publish',
+    }
+
     # Status → list-permission mapping (shared across views)
     STATUS_LIST_PERM_MAP = {
         'pending': 'perm_idcard_pending_list',
@@ -192,15 +222,8 @@ class PermissionService:
             return False
 
         # --- Permissions blocked for client / client_staff roles ---
-        # Bulk actions and reupload are admin-only
-        CLIENT_BLOCKED_PERMS = {
-            'perm_idcard_bulk_upload',
-            'perm_idcard_bulk_download',
-            'perm_idcard_bulk_reupload',
-            'perm_delete_all_idcard',
-            'perm_reupload_idcard_image',
-        }
-        if perm_key in CLIENT_BLOCKED_PERMS:
+        # Uses class-level CLIENT_BLOCKED_PERMS (admin/staff-only features).
+        if perm_key in cls.CLIENT_BLOCKED_PERMS:
             if cls.is_client(user) or cls.is_client_staff(user):
                 return False
 
@@ -222,6 +245,9 @@ class PermissionService:
                 logger.warning("PermissionService.has: admin_staff user %s has no staff_profile", user.pk)
                 return False
             if not user.is_active:
+                return False
+            # Perms intentionally removed from Staff model (super_admin-only) — silent False
+            if perm_key in cls.STAFF_BLOCKED_PERMS:
                 return False
             # Check the perm field on staff
             if not hasattr(staff, perm_key):
@@ -381,6 +407,9 @@ class PermissionService:
             for perm in cls.ALL_PERMISSION_KEYS:
                 if perm in ADMIN_STAFF_AUTO_PERMS:
                     context[perm] = True
+                elif perm in cls.STAFF_BLOCKED_PERMS:
+                    # Intentionally absent from Staff model — super_admin-only
+                    context[perm] = False
                 elif staff and hasattr(staff, perm):
                     context[perm] = bool(getattr(staff, perm, False))
                 else:
@@ -389,14 +418,8 @@ class PermissionService:
             # Client: read from client_profile
             profile = getattr(user, 'client_profile', None)
             active = profile.status == 'active' if profile else False
-            # These perms are never exposed to client role in templates
-            CLIENT_BLOCKED_PERMS = {
-                'perm_idcard_bulk_upload', 'perm_idcard_bulk_download',
-                'perm_idcard_bulk_reupload', 'perm_delete_all_idcard',
-                'perm_reupload_idcard_image',
-            }
             for perm in cls.ALL_PERMISSION_KEYS:
-                if perm in CLIENT_BLOCKED_PERMS:
+                if perm in cls.CLIENT_BLOCKED_PERMS:
                     context[perm] = False
                 elif active and profile and hasattr(profile, perm):
                     context[perm] = bool(getattr(profile, perm, False))
@@ -407,14 +430,8 @@ class PermissionService:
             staff = getattr(user, 'staff_profile', None)
             client_obj = staff.client if staff else None
             active = client_obj and client_obj.status == 'active'
-            # These perms are never exposed to client_staff role in templates
-            CLIENT_BLOCKED_PERMS = {
-                'perm_idcard_bulk_upload', 'perm_idcard_bulk_download',
-                'perm_idcard_bulk_reupload', 'perm_delete_all_idcard',
-                'perm_reupload_idcard_image',
-            }
             for perm in cls.ALL_PERMISSION_KEYS:
-                if perm in CLIENT_BLOCKED_PERMS:
+                if perm in cls.CLIENT_BLOCKED_PERMS:
                     context[perm] = False
                     continue
                 if not active:

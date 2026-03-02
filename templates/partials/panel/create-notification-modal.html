@@ -1,12 +1,13 @@
 <!-- Create Notification Modal -->
-<div class="center-modal-overlay center-modal-theme-blue" id="createNotifModal" onclick="if(event.target===this)closeCreateModal()">
-  <div class="center-modal-card" style="max-width:620px;">
-    <div class="center-modal-icon" style="background:rgba(102,126,234,.1);">
-      <i class="fa-solid fa-bell" style="color:#667eea;font-size:20px;"></i>
+<div class="center-modal-overlay center-modal-theme-blue" id="createNotifModal">
+  <div class="center-modal-card" style="max-width:650px;" @click.stop>
+    <!-- Header -->
+    <div class="center-modal-header">
+      <h3><i class="fa-solid fa-bell"></i> Create Notification</h3>
+      <button type="button" class="center-modal-header-close" onclick="closeCreateModal()" title="Close"><i class="fa-solid fa-xmark"></i></button>
     </div>
-    <h3 class="center-modal-title">Create Notification</h3>
-    <p class="center-modal-subtitle">Send a message to users across the platform</p>
-
+    <!-- Body -->
+    <div class="center-modal-body-area">
     <form id="createNotifForm" onsubmit="return handleCreateNotif(event)">
       {% csrf_token %}
 
@@ -72,14 +73,14 @@
         <input type="checkbox" id="notifSendEmail">
         <span>Also send email notification</span>
       </label>
-
-      <!-- Actions -->
-      <div class="center-modal-actions">
-        <button type="button" class="center-modal-btn center-modal-btn-cancel" onclick="closeCreateModal()">Cancel</button>
-        <button type="submit" class="center-modal-btn center-modal-btn-confirm" id="createNotifBtn">
-          <i class="fa-solid fa-paper-plane"></i> Send Notification
-        </button>
-      </div>
     </form>
+    </div><!-- end body-area -->
+    <!-- Footer -->
+    <div class="center-modal-footer-area">
+      <button type="button" class="center-modal-btn center-modal-btn-cancel" onclick="closeCreateModal()">Cancel</button>
+      <button type="submit" form="createNotifForm" class="center-modal-btn center-modal-btn-confirm" id="createNotifBtn">
+        <i class="fa-solid fa-paper-plane"></i> Send Notification
+      </button>
+    </div>
   </div>
 </div>

@@ -328,12 +328,17 @@
       </div>
 
       {# ══════════ Delete Confirmation Modal ══════════ #}
-      <div class="delete-confirm-backdrop" x-show="deleteConfirm.visible" x-cloak x-transition.opacity @click.self="deleteConfirm.visible = false">
-        <div class="delete-confirm-modal" x-transition.scale>
-          <h4><i class="fa-solid fa-triangle-exclamation"></i> Delete Image</h4>
-          <p>Are you sure you want to delete <strong x-text="deleteConfirm.imageName"></strong>?</p>
-          <p class="delete-confirm-note">The image will be moved to the <em>deleted/</em> folder and can be viewed in the Deleted tab.</p>
-          <div class="delete-confirm-actions">
+      <div class="delete-confirm-backdrop" x-show="deleteConfirm.visible" x-cloak x-transition.opacity>
+        <div class="delete-confirm-modal" x-transition.scale @click.stop>
+          <div class="delete-confirm-modal-header">
+            <h4><i class="fa-solid fa-triangle-exclamation"></i> Delete Image</h4>
+            <button type="button" class="delete-confirm-modal-header-close" @click="deleteConfirm.visible = false" title="Close"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+          <div class="delete-confirm-modal-body">
+            <p>Are you sure you want to delete <strong x-text="deleteConfirm.imageName"></strong>?</p>
+            <p class="delete-confirm-note">The image will be moved to the <em>deleted/</em> folder and can be viewed in the Deleted tab.</p>
+          </div>
+          <div class="delete-confirm-modal-footer">
             <button class="btn btn-neutral" @click="deleteConfirm.visible = false" type="button">Cancel</button>
             <button class="btn btn-danger" @click="executeDelete()" :disabled="deleteConfirm.deleting" type="button">
               <template x-if="!deleteConfirm.deleting">
@@ -348,7 +353,7 @@
       </div>
 
       {# ══════════ Compress Images Modal ══════════ #}
-      <div class="compress-modal-backdrop" x-show="compressModal.visible" x-cloak x-transition.opacity @click.self="compressModal.visible = false">
+      <div class="compress-modal-backdrop" x-show="compressModal.visible" x-cloak x-transition.opacity>
         <div class="compress-modal" x-transition.scale>
           <div class="compress-modal-header">
             <h4><i class="fa-solid fa-compress"></i> Compress Images</h4>

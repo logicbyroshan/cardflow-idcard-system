@@ -580,16 +580,16 @@ def _is_date_field(field_name):
 
 
 # Characters not permitted in text field data.
-# Kept: letters, digits, spaces, commas, periods, plus, apostrophe, forward-slash.
-_FORBIDDEN_TEXT_CHARS_RE = re.compile(r'["\-_@#$%^&*()\[\]{}<>|\\:;~`!?=]')
+# Kept: letters, digits, spaces, commas, periods, plus, apostrophe, forward-slash, hyphen.
+_FORBIDDEN_TEXT_CHARS_RE = re.compile(r'["_@#$%^&*()\[\]{}<>|\\:;~`!?=]')
 
 
 def _sanitize_text_cell(value: str) -> str:
     """Strip forbidden special characters from a text-field cell value.
 
     Mirrors the JS DataSanitizer.sanitizeText() rules:
-    - Removed:  " _ - @ # $ % ^ & * ( ) [ ] { } < > | \\ : ; ~ ` ! ? =
-    - Kept:     letters, digits, whitespace, , . + ' /
+    - Removed:  " _ @ # $ % ^ & * ( ) [ ] { } < > | \\ : ; ~ ` ! ? =
+    - Kept:     letters, digits, whitespace, , . + ' / -
     """
     if not value or not isinstance(value, str):
         return value

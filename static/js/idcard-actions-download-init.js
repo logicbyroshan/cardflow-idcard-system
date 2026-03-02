@@ -191,14 +191,15 @@ function initReuploadHandlers() {
         });
     }
 
-    // Cancel & backdrop close
+    // Cancel & close button handlers (no backdrop close)
     if (reuploadActionsCancelBtn) reuploadActionsCancelBtn.addEventListener('click', closeReuploadActionsModal);
-    if (reuploadActionsModal) reuploadActionsModal.addEventListener('click', function(e) { if (e.target === reuploadActionsModal) closeReuploadActionsModal(); });
+    const reuploadActionsCloseBtn = document.getElementById('reuploadActionsClose');
+    if (reuploadActionsCloseBtn) reuploadActionsCloseBtn.addEventListener('click', closeReuploadActionsModal);
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape' && reuploadActionsModal && reuploadActionsModal.style.display === 'flex') closeReuploadActionsModal();
     });
 
-    // Confirm — upload ZIP via XHR
+    // Confirm — upload ZIP via XHR (background task + polling)
     if (reuploadActionsConfirmBtn) {
         reuploadActionsConfirmBtn.addEventListener('click', function() {
             if (!reuploadActionsFileInput || !reuploadActionsFileInput.files.length) return;
@@ -214,78 +215,67 @@ function initReuploadHandlers() {
             if (reuploadActionsProgress) reuploadActionsProgress.style.display = 'block';
             if (reuploadActionsBar) reuploadActionsBar.style.width = '0%';
             if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Starting upload...';
-            var _reuploadProcessingTimer = null;
+            var _actPollInterval = null;
 
             const formData = new FormData();
             formData.append('photos_zip', reuploadActionsFileInput.files[0]);
             formData.append('card_ids', JSON.stringify(pendingReuploadCardIds));
             formData.append('status', _getCurrentStatus());
 
-            let _reuploadRetryCount = 0;
             const xhr = new XMLHttpRequest();
-            xhr.open('POST', `/panel/api/table/${tableId}/cards/reupload-images/`, true);
+            xhr.open('POST', `/panel/api/table/${tableId}/reupload-task/`, true);
             xhr.setRequestHeader('X-CSRFToken', typeof getCSRFToken === 'function' ? getCSRFToken() : '');
-            xhr.timeout = 600000; // 10-minute timeout
+            xhr.timeout = 300000; // 5-minute timeout for upload phase only
 
             xhr.upload.onprogress = function(event) {
                 if (event.lengthComputable) {
-                    const uploadPct = Math.round((event.loaded / event.total) * 85);
+                    const uploadPct = Math.round((event.loaded / event.total) * 80);
                     if (reuploadActionsBar) reuploadActionsBar.style.width = uploadPct + '%';
                     if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Uploading... ' + Math.round((event.loaded / event.total) * 100) + '%';
                 }
             };
-            xhr.upload.onloadend = function() {
-                if (reuploadActionsBar) reuploadActionsBar.style.width = '85%';
-                if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Processing images on server...';
-                var _procStart = Date.now();
-                _reuploadProcessingTimer = setInterval(function() {
-                    var el = (Date.now() - _procStart) / 1000;
-                    var pct = 85 + Math.round(10 * (1 - Math.exp(-el / 8)));
-                    if (reuploadActionsBar) reuploadActionsBar.style.width = Math.min(pct, 95) + '%';
-                }, 400);
-            };
 
             xhr.onload = function() {
-                if (_reuploadProcessingTimer) { clearInterval(_reuploadProcessingTimer); _reuploadProcessingTimer = null; }
-                if (reuploadActionsBar) reuploadActionsBar.style.width = '100%';
                 try {
                     const result = JSON.parse(xhr.responseText);
                     if (xhr.status === 200 && result.success) {
-                        if (reuploadActionsStatus) reuploadActionsStatus.textContent = result.message || 'Done!';
-                        if (typeof showToast === 'function') showToast(result.message || 'Images reuploaded successfully!', true);
-                        setTimeout(function() {
-                            closeReuploadActionsModal();
-                            if (window.IDCardApp && typeof window.IDCardApp.refreshCardTable === 'function') {
-                                window.IDCardApp.refreshCardTable();
-                            } else {
-                                window.location.reload();
-                            }
-                        }, 1500);
-                    } else if (xhr.status === 429) {
-                        // Rate limited / duplicate request — retry after delay
-                        const retryMsg = result.message || 'Server is busy. Retrying...';
-                        if (reuploadActionsStatus) reuploadActionsStatus.textContent = retryMsg;
-                        _reuploadRetryCount++;
-                        if (_reuploadRetryCount <= 2) {
-                            setTimeout(function() {
-                                if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Retrying...';
-                                if (reuploadActionsBar) reuploadActionsBar.style.width = '0%';
-                                const retryXhr = new XMLHttpRequest();
-                                retryXhr.open('POST', `/panel/api/table/${tableId}/cards/reupload-images/`, true);
-                                retryXhr.setRequestHeader('X-CSRFToken', typeof getCSRFToken === 'function' ? getCSRFToken() : '');
-                                retryXhr.timeout = 600000;
-                                retryXhr.onload = xhr.onload;
-                                retryXhr.onerror = xhr.onerror;
-                                retryXhr.ontimeout = xhr.ontimeout;
-                                retryXhr.upload.onprogress = xhr.upload.onprogress;
-                                retryXhr.upload.onloadend = xhr.upload.onloadend;
-                                retryXhr.send(formData);
-                            }, 5000);
-                        } else {
-                            if (typeof showToast === 'function') showToast('Server is busy. Please try again in a minute.', 'warning');
-                            reuploadActionsConfirmBtn.disabled = false;
-                            reuploadActionsConfirmBtn.textContent = 'Upload & Match';
-                        }
+                        if (reuploadActionsBar) reuploadActionsBar.style.width = '80%';
+                        if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Processing images...';
+                        // Poll for real task progress
+                        _actPollInterval = setInterval(function() {
+                            fetch('/panel/api/task-status/' + result.task_id + '/')
+                                .then(function(r) { return r.json(); })
+                                .then(function(t) {
+                                    if (t.status === 'completed') {
+                                        clearInterval(_actPollInterval);
+                                        if (reuploadActionsBar) reuploadActionsBar.style.width = '100%';
+                                        const matched = (t.result && t.result.matched_count != null) ? t.result.matched_count : '';
+                                        const msg = matched !== '' ? ('Done! ' + matched + ' images matched.') : 'Done!';
+                                        if (reuploadActionsStatus) reuploadActionsStatus.textContent = msg;
+                                        if (typeof showToast === 'function') showToast(msg, true);
+                                        setTimeout(function() {
+                                            closeReuploadActionsModal();
+                                            if (window.IDCardApp && typeof window.IDCardApp.refreshCardTable === 'function') {
+                                                window.IDCardApp.refreshCardTable();
+                                            } else {
+                                                window.location.reload();
+                                            }
+                                        }, 1500);
+                                    } else if (t.status === 'failed' || t.status === 'cancelled') {
+                                        clearInterval(_actPollInterval);
+                                        const errMsg = t.error_message || 'Reupload failed. Please try again.';
+                                        if (reuploadActionsStatus) reuploadActionsStatus.textContent = errMsg;
+                                        if (typeof showToast === 'function') showToast(errMsg, false);
+                                        reuploadActionsConfirmBtn.disabled = false;
+                                        reuploadActionsConfirmBtn.textContent = 'Upload & Match';
+                                    } else {
+                                        const pct = 80 + Math.round((t.progress_percentage || 0) * 0.19);
+                                        if (reuploadActionsBar) reuploadActionsBar.style.width = Math.min(pct, 99) + '%';
+                                        if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Processing: ' + (t.progress || 0) + '/' + (t.total || '?') + ' images...';
+                                    }
+                                })
+                                .catch(function() {}); // ignore transient network errors during polling
+                        }, 2000);
                     } else {
                         if (reuploadActionsStatus) reuploadActionsStatus.textContent = result.message || 'Failed';
                         if (typeof showToast === 'function') showToast(result.message || 'Reupload failed', result.level || false);
@@ -307,34 +297,14 @@ function initReuploadHandlers() {
             };
 
             xhr.onerror = function() {
-                if (_reuploadProcessingTimer) { clearInterval(_reuploadProcessingTimer); _reuploadProcessingTimer = null; }
-                _reuploadRetryCount++;
-                if (_reuploadRetryCount <= 2) {
-                    if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Network error. Retrying in 5s...';
-                    if (typeof showToast === 'function') showToast('Network error. Retrying automatically...', false);
-                    setTimeout(function() {
-                        if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Retrying...';
-                        if (reuploadActionsBar) reuploadActionsBar.style.width = '0%';
-                        const retryXhr = new XMLHttpRequest();
-                        retryXhr.open('POST', `/panel/api/table/${tableId}/cards/reupload-images/`, true);
-                        retryXhr.setRequestHeader('X-CSRFToken', typeof getCSRFToken === 'function' ? getCSRFToken() : '');
-                        retryXhr.timeout = 600000;
-                        retryXhr.onload = xhr.onload;
-                        retryXhr.onerror = xhr.onerror;
-                        retryXhr.ontimeout = xhr.ontimeout;
-                        retryXhr.upload.onprogress = xhr.upload.onprogress;
-                        retryXhr.upload.onloadend = xhr.upload.onloadend;
-                        retryXhr.send(formData);
-                    }, 5000);
-                } else {
-                    if (typeof showToast === 'function') showToast('Upload failed after retries. Please check your connection.', false);
-                    reuploadActionsConfirmBtn.disabled = false;
-                    reuploadActionsConfirmBtn.textContent = 'Upload & Match';
-                    if (reuploadActionsProgress) reuploadActionsProgress.style.display = 'none';
-                }
+                if (typeof showToast === 'function') showToast('Upload failed. Please check your connection and try again.', false);
+                reuploadActionsConfirmBtn.disabled = false;
+                reuploadActionsConfirmBtn.textContent = 'Upload & Match';
+                if (reuploadActionsProgress) reuploadActionsProgress.style.display = 'none';
             };
 
-            xhr.ontimeout = function() {                if (_reuploadProcessingTimer) { clearInterval(_reuploadProcessingTimer); _reuploadProcessingTimer = null; }                if (typeof showToast === 'function') showToast('Reupload timed out — the server took too long. Please try with a smaller ZIP.', 'warning');
+            xhr.ontimeout = function() {
+                if (typeof showToast === 'function') showToast('Upload timed out — try with a smaller ZIP.', 'warning');
                 reuploadActionsConfirmBtn.disabled = false;
                 reuploadActionsConfirmBtn.textContent = 'Upload & Match';
                 if (reuploadActionsProgress) reuploadActionsProgress.style.display = 'none';

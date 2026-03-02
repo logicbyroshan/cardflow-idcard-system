@@ -117,24 +117,75 @@ function debounceSearch() {
 }
 
 /* ============ Delete ============ */
-async function deleteNotification(id) {
-  if (!confirm('Delete this notification? It will no longer be visible to users.')) return;
-  try {
-    const res = await fetch(`/panel/api/notifications/admin/${id}/delete/`, {
-      method: 'DELETE',
-      headers: { 'X-CSRFToken': getCSRFToken() },
+let _panelConfirmCallback = null;
+
+function _panelConfirm(title, message, onConfirm) {
+  const modal = document.getElementById('panelDeleteConfirmModal');
+  const titleEl = document.getElementById('panelConfirmTitleText');
+  const msgEl = document.getElementById('panelConfirmMessage');
+  const okBtn = document.getElementById('panelConfirmOkBtn');
+  if (!modal) { if (onConfirm) onConfirm(); return; }
+  titleEl.textContent = title;
+  msgEl.textContent = message;
+  _panelConfirmCallback = onConfirm;
+  modal.style.display = 'flex';
+  okBtn.focus();
+}
+
+window.closePanelConfirmModal = function () {
+  const modal = document.getElementById('panelDeleteConfirmModal');
+  if (modal) modal.style.display = 'none';
+  _panelConfirmCallback = null;
+};
+
+document.addEventListener('DOMContentLoaded', function () {
+  const okBtn = document.getElementById('panelConfirmOkBtn');
+  if (okBtn) {
+    okBtn.addEventListener('click', function () {
+      const cb = _panelConfirmCallback;
+      closePanelConfirmModal();
+      if (typeof cb === 'function') cb();
     });
-    if (!res.ok) { if (window.showToast) showToast('Delete failed (HTTP ' + res.status + ')', 'error'); return; }
-    const data = await res.json();
-    if (data.success) {
-      if (window.showToast) showToast('Notification deleted', 'success');
-      loadNotifications(false);
-    } else {
-      if (window.showToast) showToast(data.message || 'Failed', 'error');
-    }
-  } catch (err) {
-    console.error('Delete failed:', err);
   }
+  // Close on overlay click
+  const modal = document.getElementById('panelDeleteConfirmModal');
+  if (modal) {
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal) closePanelConfirmModal();
+    });
+  }
+  // Close on Escape key
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      const m = document.getElementById('panelDeleteConfirmModal');
+      if (m && m.style.display !== 'none') closePanelConfirmModal();
+    }
+  });
+});
+
+async function deleteNotification(id) {
+  _panelConfirm(
+    'Delete Notification',
+    'Delete this notification? It will no longer be visible to users.',
+    async function () {
+      try {
+        const res = await fetch(`/panel/api/notifications/admin/${id}/delete/`, {
+          method: 'DELETE',
+          headers: { 'X-CSRFToken': getCSRFToken() },
+        });
+        if (!res.ok) { if (window.showToast) showToast('Delete failed (HTTP ' + res.status + ')', 'error'); return; }
+        const data = await res.json();
+        if (data.success) {
+          if (window.showToast) showToast('Notification deleted', 'success');
+          loadNotifications(false);
+        } else {
+          if (window.showToast) showToast(data.message || 'Failed', 'error');
+        }
+      } catch (err) {
+        console.error('Delete failed:', err);
+      }
+    }
+  );
 }
 
 /* ============ Create Modal ============ */
@@ -450,20 +501,25 @@ async function saveTemplate() {
 }
 
 async function deleteTemplate(id) {
-  if (!confirm('Delete this template?')) return;
-  try {
-    const res = await fetch(`/panel/api/export-templates/${id}/delete/`, {
-      method: 'DELETE',
-      headers: { 'X-CSRFToken': getCSRFToken() },
-    });
-    const data = await res.json();
-    if (data.success) {
-      if (window.showToast) showToast('Template deleted', 'success');
-      loadTemplates();
-    } else {
-      if (window.showToast) showToast(data.message || 'Failed', 'error');
+  _panelConfirm(
+    'Delete Template',
+    'Delete this template? This action cannot be undone.',
+    async function () {
+      try {
+        const res = await fetch(`/panel/api/export-templates/${id}/delete/`, {
+          method: 'DELETE',
+          headers: { 'X-CSRFToken': getCSRFToken() },
+        });
+        const data = await res.json();
+        if (data.success) {
+          if (window.showToast) showToast('Template deleted', 'success');
+          loadTemplates();
+        } else {
+          if (window.showToast) showToast(data.message || 'Failed', 'error');
+        }
+      } catch (err) { console.error('deleteTemplate:', err); }
     }
-  } catch (err) { console.error('deleteTemplate:', err); }
+  );
 }
 
 
@@ -472,7 +528,7 @@ async function deleteTemplate(id) {
    ================================================================ */
 let panelLogs = [];
 let logOffset = 0;
-const LOG_LIMIT = 30;
+const LOG_LIMIT = 500;  // Load all logs at once — table scrolls natively
 let logTotal = 0;
 let logSearchTimer = null;
 
@@ -499,8 +555,6 @@ async function loadLogs(append) {
     renderLogTable();
     const label = document.getElementById('logCountLabel');
     if (label) label.textContent = `${panelLogs.length} of ${logTotal} logs`;
-    const more = document.getElementById('logLoadMore');
-    if (more) more.style.display = panelLogs.length < logTotal ? '' : 'none';
   } catch (err) { console.error('loadLogs:', err); }
 }
 
@@ -527,7 +581,7 @@ function renderLogTable() {
     const actionLabel = l.action_display || l.action;
     const colorClass = l.icon_color || 'edit';
     return `<tr>
-      <td class="text-center text-xs text-gray-400">${logOffset - panelLogs.length + i + 1 + panelLogs.length}</td>
+      <td class="text-center text-xs text-gray-400">${i + 1}</td>
       <td><span class="text-xs font-medium">${escHtml(l.user_name || 'System')}</span></td>
       <td><span class="log-action-badge ${colorClass}"><i class="fa-solid ${l.icon_class || 'fa-circle-info'}"></i> ${escHtml(actionLabel)}</span></td>
       <td><span class="text-xs text-gray-600">${escHtml(l.description || '')}</span></td>
@@ -545,3 +599,101 @@ switchTab = function(tabName) {
   if (tabName === 'download-templates' && !panelTemplates.length) loadTemplates();
   if (tabName === 'log-history' && !panelLogs.length) loadLogs();
 };
+
+/* ============ Monitoring Tab ============ */
+
+const STATUS_BADGE = {
+  pending:    { color: '#92400e', bg: '#fef3c7', label: 'Pending' },
+  processing: { color: '#1e40af', bg: '#dbeafe', label: 'Processing' },
+  completed:  { color: '#166534', bg: '#dcfce7', label: 'Completed' },
+  failed:     { color: '#991b1b', bg: '#fee2e2', label: 'Failed' },
+  cancelled:  { color: '#374151', bg: '#f3f4f6', label: 'Cancelled' },
+};
+
+function _statusBadge(status, displayText) {
+  const s = STATUS_BADGE[status] || { color: '#374151', bg: '#f3f4f6', label: displayText };
+  const label = displayText || s.label;
+  return `<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;color:${s.color};background:${s.bg};">${escHtml(label)}</span>`;
+}
+
+async function loadMonitoring() {
+  const refreshBtn = document.getElementById('monitoringRefreshBtn');
+  if (refreshBtn) { refreshBtn.disabled = true; refreshBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Loading…'; }
+
+  try {
+    const res = await fetch('/panel/api/monitoring/');
+    if (!res.ok) { window.showToast && showToast('Failed to load monitoring data', 'error'); return; }
+    const data = await res.json();
+    if (!data.success) return;
+
+    // Stats
+    const el = id => document.getElementById(id);
+    if (el('statActiveTasks')) el('statActiveTasks').textContent = data.stats.active_tasks;
+    if (el('statPendingTasks')) el('statPendingTasks').textContent = data.stats.pending_tasks;
+    if (el('statCompleted24h')) el('statCompleted24h').textContent = data.stats.completed_24h;
+    if (el('statFailed24h')) el('statFailed24h').textContent = data.stats.failed_24h;
+
+    // Timestamp
+    const ts = el('monitoringLastUpdated');
+    if (ts) ts.textContent = 'Updated ' + new Date().toLocaleTimeString();
+
+    // Backup tasks
+    const backupSection = el('monitoringBackups');
+    const backupBody = el('monitoringBackupBody');
+    if (backupSection && backupBody) {
+      if (data.backup_tasks.length > 0) {
+        backupSection.style.display = '';
+        backupBody.innerHTML = data.backup_tasks.map(b => `
+          <div class="system-row">
+            <span class="system-label">#${b.id} — ${escHtml(b.status_display)}</span>
+            <span class="system-value">
+              ${escHtml(b.current_client || 'Queued')}
+              <span style="color:#94a3b8;margin-left:6px;">(${b.progress}/${b.total})</span>
+              ${b.progress_pct > 0 ? `<div style="width:100px;height:4px;background:#e2e8f0;border-radius:999px;display:inline-block;vertical-align:middle;margin-left:8px;overflow:hidden;"><div style="width:${b.progress_pct}%;height:100%;background:#667eea;border-radius:999px;"></div></div>` : ''}
+            </span>
+          </div>
+        `).join('');
+      } else {
+        backupSection.style.display = 'none';
+      }
+    }
+
+    // Tasks table
+    const tbody = el('monitoringTasksBody');
+    const countBadge = el('monitoringTaskCount');
+    if (countBadge) countBadge.textContent = data.recent_tasks.length;
+
+    if (!tbody) return;
+    if (!data.recent_tasks.length) {
+      tbody.innerHTML = `<tr class="notif-table-empty"><td colspan="8"><div class="empty-state"><i class="fa-solid fa-inbox"></i><p>No background tasks yet</p><span>Tasks will appear here when processing starts</span></div></td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = data.recent_tasks.map((t, i) => {
+      const pct = t.progress_pct;
+      const progressCell = pct > 0
+        ? `<div style="display:flex;align-items:center;gap:6px;"><div style="width:50px;height:4px;background:#e2e8f0;border-radius:999px;overflow:hidden;"><div style="width:${pct}%;height:100%;background:#667eea;"></div></div><span style="font-size:11px;color:#64748b;">${pct}%</span></div>`
+        : `<span style="font-size:11px;color:#94a3b8;">—</span>`;
+
+      const errTip = t.error ? ` title="${escHtml(t.error)}"` : '';
+      const errIcon = t.error ? ` <i class="fa-solid fa-circle-info" style="color:#ef4444;cursor:help;" title="${escHtml(t.error)}"></i>` : '';
+
+      return `<tr${errTip}>
+        <td class="text-center text-xs text-gray-400">${i + 1}</td>
+        <td><span class="text-xs font-medium">${escHtml(t.task_type)}</span></td>
+        <td>${_statusBadge(t.status, t.status_display)}${errIcon}</td>
+        <td><span class="text-xs text-gray-600">${escHtml(t.user)}</span></td>
+        <td>${progressCell}</td>
+        <td><span class="notif-time">${escHtml(t.created_at)}</span></td>
+        <td><span class="notif-time">${t.completed_at ? escHtml(t.completed_at) : '<span style="color:#94a3b8;">—</span>'}</span></td>
+        <td></td>
+      </tr>`;
+    }).join('');
+
+  } catch (err) {
+    console.error('Monitoring load error:', err);
+  } finally {
+    if (refreshBtn) { refreshBtn.disabled = false; refreshBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Refresh'; }
+  }
+}
+

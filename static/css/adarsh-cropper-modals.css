@@ -26,9 +26,13 @@
 .delete-confirm-modal {
   background: var(--color-white, #fff);
   border-radius: 10px;
-  padding: 24px;
-  max-width: 420px;
+  padding: 0;
+  max-width: 650px;
+  min-height: 500px;
   width: 90vw;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   text-align: center;
 }
@@ -37,6 +41,60 @@
   font-size: 36px;
   color: var(--color-danger, #ef4444);
   margin-bottom: 12px;
+}
+
+/* Header band for delete-confirm-modal */
+.delete-confirm-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-radius: 10px 10px 0 0;
+  background: linear-gradient(135deg, #dc2626, #ef4444);
+  flex-shrink: 0;
+}
+.delete-confirm-modal-header h4 {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.delete-confirm-modal-header-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: transparent;
+  border: none;
+  color: rgba(255,255,255,0.8);
+  cursor: pointer;
+  border-radius: 50%;
+  font-size: 16px;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.delete-confirm-modal-header-close:hover {
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+}
+.delete-confirm-modal-body {
+  padding: 20px 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+.delete-confirm-modal-footer {
+  padding: 14px 20px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  background: #f8fafc;
+  flex-shrink: 0;
+  border-radius: 0 0 10px 10px;
 }
 
 .delete-confirm-modal h4 {
@@ -155,9 +213,10 @@
 }
 
 .compress-modal {
+  min-height: 500px;
   background: var(--color-white, #fff);
   border-radius: 14px;
-  max-width: 480px;
+  max-width: 650px;
   width: 92vw;
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.3);
   overflow: hidden;

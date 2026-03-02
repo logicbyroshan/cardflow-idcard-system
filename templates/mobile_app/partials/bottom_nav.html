@@ -12,16 +12,25 @@
                 <i class="fa-solid fa-magnifying-glass text-base"></i>
                 <span class="text-[9px] font-semibold">Search</span>
             </a>
-            <!-- Groups -->
+            <!-- Groups / Clients — admins see Clients list, others see their Groups -->
+            {% if is_super_admin or is_admin_staff %}
+            <a href="{% url 'mobile_app:clients_list' %}" class="flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-all active:scale-95 {% if request.resolver_match.url_name == 'clients_list' or request.resolver_match.url_name == 'client_groups' %}text-brand-light{% else %}text-gray-400 hover:text-gray-600{% endif %}">
+                <i class="fa-solid fa-building text-base"></i>
+                <span class="text-[9px] font-semibold">Clients</span>
+            </a>
+            {% else %}
             <a href="{% url 'mobile_app:groups_overview' %}" class="flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-all active:scale-95 {% if request.resolver_match.url_name == 'groups_overview' %}text-brand-light{% else %}text-gray-400 hover:text-gray-600{% endif %}">
                 <i class="fa-solid fa-layer-group text-base"></i>
                 <span class="text-[9px] font-semibold">Groups</span>
             </a>
-            <!-- Notifications -->
+            {% endif %}
+            <!-- Activity / Notifications — hidden for admins -->
+            {% if not is_super_admin and not is_admin_staff %}
             <a href="{% url 'mobile_app:notifications' %}" class="flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-all active:scale-95 {% if request.resolver_match.url_name == 'notifications' %}text-brand-light{% else %}text-gray-400 hover:text-gray-600{% endif %}">
                 <i class="fa-solid fa-bell text-base"></i>
                 <span class="text-[9px] font-semibold">Activity</span>
             </a>
+            {% endif %}
             <!-- Settings -->
             <a href="{% url 'mobile_app:settings_page' %}" class="flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-all active:scale-95 {% if request.resolver_match.url_name == 'settings_page' %}text-brand-light{% else %}text-gray-400 hover:text-gray-600{% endif %}">
                 <i class="fa-solid fa-gear text-base"></i>

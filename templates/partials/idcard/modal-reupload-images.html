@@ -1,10 +1,13 @@
 <!-- Reupload Images Modal (for idcard-actions per-list reupload) -->
 <div id="reuploadActionsModal" class="center-modal-overlay center-modal-theme-red" style="display:none;">
-  <div class="center-modal-card">
-    <div class="center-modal-icon">
-      <i class="fa-solid fa-rotate"></i>
+  <div class="center-modal-card" @click.stop>
+    <!-- Header -->
+    <div class="center-modal-header">
+      <h3><i class="fa-solid fa-rotate"></i> Reupload Images</h3>
+      <button type="button" class="center-modal-header-close" id="reuploadActionsClose" title="Close"><i class="fa-solid fa-xmark"></i></button>
     </div>
-    <h3 class="center-modal-title">Reupload Images</h3>
+    <!-- Body -->
+    <div class="center-modal-body-area">
     <p class="center-modal-subtitle">List: <strong id="reuploadActionsListName"></strong></p>
     <p class="center-modal-subtitle">Cards: <strong id="reuploadActionsCardCount">0</strong></p>
     <p class="center-modal-subtitle mb-4">Upload a ZIP file with images. Filenames will be matched against the cards in this list.</p>
@@ -15,15 +18,17 @@
       <p id="reuploadActionsFileName">Click or drag &amp; drop a ZIP file</p>
       <input type="file" id="reuploadActionsFileInput" accept=".zip" style="display:none;">
     </div>
-    <div class="center-modal-actions">
-      <button id="reuploadActionsCancel" class="center-modal-btn center-modal-btn-cancel">Cancel</button>
-      <button id="reuploadActionsConfirm" class="center-modal-btn center-modal-btn-confirm" disabled>Upload &amp; Match</button>
-    </div>
     <div id="reuploadActionsProgress" class="center-modal-progress">
       <div class="center-modal-progress-track">
         <div id="reuploadActionsBar" class="center-modal-progress-bar"></div>
       </div>
       <p class="center-modal-progress-text" id="reuploadActionsStatus">Uploading...</p>
+    </div>
+    </div><!-- end body-area -->
+    <!-- Footer -->
+    <div class="center-modal-footer-area">
+      <button id="reuploadActionsCancel" class="center-modal-btn center-modal-btn-cancel">Cancel</button>
+      <button id="reuploadActionsConfirm" class="center-modal-btn center-modal-btn-confirm" disabled>Upload &amp; Match</button>
     </div>
   </div>
 </div>

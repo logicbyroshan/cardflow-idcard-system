@@ -49,6 +49,11 @@
           <i class="fa-solid fa-envelope"></i> Email Management
         </button>
         {% endif %}
+        {% if is_super_admin %}
+        <button class="panel-tab" data-tab="monitoring" onclick="switchTab('monitoring'); loadMonitoring();">
+          <i class="fa-solid fa-chart-line"></i> Monitoring
+        </button>
+        {% endif %}
         <button class="panel-tab" data-tab="system" onclick="switchTab('system')">
           <i class="fa-solid fa-server"></i> System Info
         </button>
@@ -59,9 +64,32 @@
       {% if is_super_admin %}{% include 'partials/panel/tab-backups.html' %}{% endif %}
       {% include 'partials/panel/tab-log-history.html' %}
       {% if is_super_admin %}{% include 'partials/panel/tab-email-logs.html' %}{% endif %}
+      {% if is_super_admin %}{% include 'partials/panel/tab-monitoring.html' %}{% endif %}
       {% include 'partials/panel/tab-system.html' %}
 
       {% include 'partials/panel/create-notification-modal.html' %}
+
+      <!-- Custom delete confirm modal (replaces browser confirm() dialogs) -->
+      <div id="panelDeleteConfirmModal" class="backup-modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="panelConfirmTitle">
+        <div class="backup-modal backup-modal-sm" style="min-height:unset;">
+          <div class="backup-modal-header">
+            <h2 id="panelConfirmTitle" style="color:#1e293b;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;">
+              <i class="fa-solid fa-triangle-exclamation" style="color:#f59e0b;font-size:16px;"></i>
+              <span id="panelConfirmTitleText">Confirm Delete</span>
+            </h2>
+            <button type="button" class="backup-modal-close" onclick="closePanelConfirmModal()" aria-label="Close">&times;</button>
+          </div>
+          <div class="backup-modal-body">
+            <p id="panelConfirmMessage" style="font-size:13px;color:#475569;line-height:1.6;margin:0;"></p>
+          </div>
+          <div class="backup-modal-footer">
+            <button type="button" class="backup-btn-cancel" onclick="closePanelConfirmModal()">Cancel</button>
+            <button type="button" class="backup-btn-danger" id="panelConfirmOkBtn">
+              <i class="fa-solid fa-trash"></i> Delete
+            </button>
+          </div>
+        </div>
+      </div>
 
     </div><!-- /.panel-content -->
   </main>

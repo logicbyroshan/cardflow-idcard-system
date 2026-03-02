@@ -139,7 +139,19 @@ class WordExporter(WordStylesMixin, WordTablesMixin, WordImagesMixin):
             text_fields = field_info['text']
             image_fields = field_info['image']
             ordered_fields = text_fields + image_fields
-            
+
+            # Column count guard — beyond 25 columns the document is unreadable
+            MAX_WORD_COLUMNS = 25
+            if len(ordered_fields) > MAX_WORD_COLUMNS:
+                return WordExportResult(
+                    success=False,
+                    message=(
+                        f'Word export supports a maximum of {MAX_WORD_COLUMNS} columns '
+                        f'({len(ordered_fields)} selected). Remove some fields from the '
+                        f'table configuration to proceed, or use Excel export instead.'
+                    )
+                )
+
             # Get institution name
             institution_name = "Institution"
             if table.group and table.group.client:

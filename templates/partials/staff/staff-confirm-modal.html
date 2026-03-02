@@ -1,13 +1,13 @@
 {% load static %}
 
 <!-- Confirmation Modal -->
-<div class="modal-overlay" id="confirmModal">
-  <div class="modal-content max-w-[400px]">
+<div class="modal-backdrop" id="confirmModal">
+  <div class="modal-center modal-danger">
     <div class="modal-header">
       <h3 id="confirmTitle"><i class="fa-solid fa-triangle-exclamation"></i> Confirm Action</h3>
       <button class="modal-close" onclick="closeConfirmModal()" aria-label="Close">&times;</button>
     </div>
-    <div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:18px 16px 12px">
+    <div class="modal-body" style="display:flex;flex-direction:column;align-items:center;text-align:center;">
       <div style="width:52px;height:52px;border-radius:50%;background:#fee2e2;display:flex;align-items:center;justify-content:center;margin-bottom:14px" id="confirmIconWrap">
         <i class="fa-solid fa-triangle-exclamation" style="font-size:22px;color:#ef4444" id="confirmIconEl"></i>
       </div>
@@ -22,7 +22,7 @@
         </ul>
       </div>
     </div>
-    <div class="btn-group" style="padding:0 16px 16px;display:flex;gap:8px;justify-content:flex-end">
+    <div class="modal-footer">
       <button type="button" class="btn btn-md btn-neutral" onclick="closeConfirmModal()"><i class="fa-solid fa-xmark"></i> Cancel</button>
       <button type="button" class="btn btn-md btn-danger" id="confirmBtn" onclick="executeConfirmAction()"><i class="fa-solid fa-check"></i> Confirm</button>
     </div>

@@ -11,7 +11,7 @@ Features:
 - Repeating header/footer on every page via CSS @page margin boxes
 - UPPERCASE text for printing clarity
 - Images rendered at fixed subtype dimensions (photo: 1.95×2.5cm, etc.)
-- 0.5cm left/right, 1.5cm top/bottom page margins
+- 0.5cm left/right, 2.0cm top / 1.2cm bottom page margins
 - Exactly 6 rows per page (class-break aware) via CSS page-break
 - CSS overflow-wrap / word-break / hyphens for proper Unicode wrapping
 """
@@ -159,6 +159,47 @@ TITLE_SHORTENING_MAP: dict = {
     'PAN NUMBER':           'PAN',
     # Category / caste
     'CATEGORY':             'CATG.',
+    # Academic / institutional
+    'ADMISSION NUMBER':     'ADM. NO.',
+    'ADMISSION NO':         'ADM. NO.',
+    'DATE OF JOINING':      'DOJ',
+    'DATE OF JOIN':         'DOJ',
+    'YEAR OF PASSING':      'YOP',
+    'ACADEMIC YEAR':        'ACAD. YR.',
+    'STUDENT NAME':         'STD. NAME',
+    'EMPLOYEE NAME':        'EMP. NAME',
+    'EMPLOYEE CODE':        'EMP. CODE',
+    'EMPLOYEE ID':          'EMP. ID',
+    'STAFF ID':             'STAFF ID',
+    # Identification
+    'VOTER ID':             'VOTER ID',
+    'VOTER ID NUMBER':      'VOTER ID',
+    'VOTER ID NO':          'VOTER ID',
+    'DRIVING LICENSE':      'DL NO.',
+    'DRIVING LICENCE':      'DL NO.',
+    'PASSPORT NUMBER':      'PASSPORT',
+    'SCHOLARSHIP NUMBER':   'SCH. NO.',
+    'SCHOLARSHIP NO':       'SCH. NO.',
+    # Personal
+    'MARITAL STATUS':       'MAR. STS.',
+    'MOTHER TONGUE':        'MTH. TNGUE.',
+    'EMERGENCY CONTACT':    'EMER. CONT.',
+    'ALTERNATE MOBILE':     'ALT. MOB.',
+    'ALTERNATE NUMBER':     'ALT. NO.',
+    'ALTERNATE NO':         'ALT. NO.',
+    # Financial
+    'BANK ACCOUNT NUMBER':  'A/C NO.',
+    'BANK ACCOUNT NO':      'A/C NO.',
+    'ANNUAL INCOME':        'INCOME',
+    'IFSC CODE':            'IFSC',
+    # Address extras
+    'HOME ADDRESS':         'HOME ADDR.',
+    'OFFICE ADDRESS':       'OFFICE ADDR.',
+    'HOUSE NUMBER':         'HOUSE NO.',
+    'HOUSE NO':             'HOUSE NO.',
+    'WARD NUMBER':          'WARD NO.',
+    'BLOCK NUMBER':         'BLOCK NO.',
+    'OFFICIAL EMAIL':       'OFF. EMAIL',
 }
 
 
@@ -288,6 +329,18 @@ class PdfExporter:
                     message='No fields found in table configuration!'
                 )
 
+            # Column count guard — beyond 25 the layout becomes unreadable
+            MAX_PDF_COLUMNS = 25
+            if len(ordered_fields) > MAX_PDF_COLUMNS:
+                return PdfExportResult(
+                    success=False,
+                    message=(
+                        f'PDF export supports a maximum of {MAX_PDF_COLUMNS} columns '
+                        f'({len(ordered_fields)} selected). Remove some fields from the '
+                        f'table configuration to proceed, or use Excel export instead.'
+                    )
+                )
+
             # Sort cards for export (Class → Section → Name)
             cards_list = sort_cards_for_export(list(cards[:MAX_PDF_CARDS]), table.fields)
             column_configs = self._build_column_configs(ordered_fields, cards_list, shorten_titles=shorten_titles)
@@ -296,7 +349,12 @@ class PdfExporter:
             total_cols = len(column_configs)  # includes SR NO
             resolved_font_mode = font_mode
             if resolved_font_mode == 'auto':
-                resolved_font_mode = 'compact' if total_cols > self.DENSE_COLUMN_THRESHOLD else 'normal'
+                if total_cols > 20:  # >20 data cols: SairaSemiCondensed saves ~22% width
+                    resolved_font_mode = 'condensed'
+                elif total_cols > self.DENSE_COLUMN_THRESHOLD:
+                    resolved_font_mode = 'compact'
+                else:
+                    resolved_font_mode = 'normal'
             if resolved_font_mode not in _FONT_MODES:
                 resolved_font_mode = 'normal'
             font_preset = _FONT_MODES[resolved_font_mode]
@@ -619,12 +677,36 @@ class PdfExporter:
 
         total_tw = sum(text_weights) or 1
 
+        # ── Dense-table pdf_max_pct overrides (>20 data columns) ───
+        # When the table is dense, tighten wide-column caps so one column
+        # cannot dominate the layout at the expense of narrow columns.
+        _DENSE_PDF_MAX: dict = {
+            'full_name': 10.0,
+            'parent_name': 9.0,
+            'guardian_name': 9.0,
+            'spouse_name': 9.0,
+            'reporting_manager': 7.0,
+            'email': 8.0,
+            'address': 5.5,
+            'allergies': 6.0,
+            'medical_condition': 6.0,
+            'department': 7.0,
+            'designation': 7.0,
+            'course': 6.0,
+            'branch': 6.0,
+        }
+        _dense_pdf = total_cols > 20  # >20 data columns
+
         # ── Step 4: Distribute width, clamp by spec bounds ──────
         for idx, i in enumerate(text_indices):
             raw_pct = (text_weights[idx] / total_tw) * remaining_pct
             spec = configs[i].get('_spec', sr_spec if i == 0 else get_column_spec(''))
+            # Effective max: tighter cap in dense-table mode
+            eff_max_pct = spec.pdf_max_pct
+            if _dense_pdf and spec.category in _DENSE_PDF_MAX:
+                eff_max_pct = min(eff_max_pct, _DENSE_PDF_MAX[spec.category])
             # Clamp to semantic min/max from column_spec
-            clamped = max(spec.pdf_min_pct, min(raw_pct, spec.pdf_max_pct))
+            clamped = max(spec.pdf_min_pct, min(raw_pct, eff_max_pct))
             configs[i]['width'] = clamped
 
         # ── Step 5: Normalise so text + image = 100% ────────────

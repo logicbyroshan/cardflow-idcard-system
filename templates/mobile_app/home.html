@@ -1,7 +1,7 @@
 {% extends "mobile_app/base.html" %}
 {% load static %}
 
-{% block title %}Home - ID Card Manager{% endblock %}
+{% block title %}Home - Adarsh ID Cards{% endblock %}
 
 {% block content %}
 <div x-data="homeApp()">
@@ -11,26 +11,11 @@
         {% include "mobile_app/partials/navbar.html" %}
     </div>
 
-    <!-- Snap Scroll Container -->
-    <div class="snap-container" style="height: calc(100vh - 60px); height: calc(100dvh - 60px); overflow-y: auto; scroll-snap-type: y mandatory; -webkit-overflow-scrolling: touch;">
+    <!-- Main Scroll Area -->
+    <div class="overflow-y-auto pb-20" style="-webkit-overflow-scrolling: touch;">
 
-        <!-- ===== FIRST SCREEN ===== -->
-        <div class="snap-section flex flex-col" style="min-height: calc(100vh - 60px); min-height: calc(100dvh - 60px); scroll-snap-align: start;">
-
-            <!-- Search Bar -->
-            <div class="px-4 py-2">
-                <a href="{% url 'mobile_app:search_page' %}" class="block">
-                    <div class="relative">
-                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
-                        <div class="w-full pl-10 pr-10 py-2.5 bg-gray-100 border border-gray-200 rounded-lg text-sm text-gray-400 cursor-pointer">
-                            Search students, ID cards...
-                        </div>
-                    </div>
-                </a>
-            </div>
-
-            <!-- Hero Carousel -->
-            {% include "mobile_app/partials/hero_carousel.html" %}
+        <!-- ===== CARDS SECTION ===== -->
+        <div class="flex flex-col">
 
             <!-- 2x2 Grid Options -->
             <div class="px-4 pt-3 flex-1 flex flex-col">
@@ -208,19 +193,18 @@
             </div>
         </div>
 
-        <!-- ===== SECOND SCREEN: Recent Activity ===== -->
-        <div class="snap-section flex flex-col px-4 pb-4" style="min-height: calc(100vh - 60px); min-height: calc(100dvh - 60px); scroll-snap-align: start;">
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col flex-1 mt-3">
+        <!-- ===== RECENT ACTIVITY SECTION ===== -->
+        <div class="px-4 pb-4">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-3">
                 <!-- Header -->
-                <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100 flex-shrink-0">
+                <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                     <h3 class="text-sm font-bold text-gray-800">
                         <i class="fa-solid fa-clock-rotate-left text-brand-light mr-1.5"></i>
                         Recent Activity
                     </h3>
-                    <a href="{% url 'mobile_app:notifications' %}" class="text-xs text-brand-light font-medium">View All</a>
                 </div>
                 <!-- Activity List -->
-                <div class="divide-y divide-gray-50 flex-1 overflow-y-auto">
+                <div class="divide-y divide-gray-50">
                     {% for activity in recent_activities %}
                     <div class="flex items-start gap-3 px-4 py-3.5 hover:bg-gray-50/50 transition-colors">
                         <div class="mt-0.5 w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0
@@ -250,40 +234,17 @@
             </div>
         </div>
 
-    </div><!-- end snap container -->
+    </div><!-- end main scroll area -->
 
     <!-- Bottom Nav -->
     {% include "mobile_app/partials/bottom_nav.html" %}
 
 </div>
 
-<!-- Hero images for carousel — branded cards -->
-<script>
-    window.__heroImages = [
-        {"url": "", "title": "ID Card Management", "gradient": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"},
-        {"url": "", "title": "Smart Solutions", "gradient": "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)"},
-        {"url": "", "title": "Efficient Workflow", "gradient": "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)"}
-    ];
-</script>
-
 <script>
 function homeApp() {
     return {
-        init() {
-            // Quick card count animation
-            document.querySelectorAll('[data-count]').forEach(el => {
-                const target = parseInt(el.getAttribute('data-count')) || 0;
-                if (target > 0) {
-                    let current = 0;
-                    const step = Math.max(1, Math.ceil(target / 20));
-                    const timer = setInterval(() => {
-                        current = Math.min(current + step, target);
-                        el.textContent = current;
-                        if (current >= target) clearInterval(timer);
-                    }, 30);
-                }
-            });
-        }
+        init() {}
     }
 }
 </script>

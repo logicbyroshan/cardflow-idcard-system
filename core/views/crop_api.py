@@ -79,7 +79,13 @@ def api_prepare_crop(request, table_id):
             status=400,
         )
 
-    result = CropService.prepare_images(table_id, card_ids)
+    # Optional user-specified output folder path
+    output_path = body.get("output_path", "")
+    if not isinstance(output_path, str):
+        output_path = ""
+    output_path = output_path.strip()
+
+    result = CropService.prepare_images(table_id, card_ids, output_path=output_path or None)
     status_code = 200 if result.get("success") else 400
     return JsonResponse(result, status=status_code)
 

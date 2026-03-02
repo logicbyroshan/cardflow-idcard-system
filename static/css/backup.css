@@ -17,13 +17,16 @@
 }
 .backup-modal {
   background: #fff;
-  width: 540px;
+  width: 650px;
   max-width: 95vw;
+  min-height: 500px;
   max-height: 90vh;
   overflow-y: auto;
   border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
 }
-.backup-modal-sm { width: 440px; }
+.backup-modal-sm { width: 440px; min-height: unset; }
 
 .backup-modal-header {
   display: flex;
@@ -143,6 +146,7 @@
   color: #64748b;
   background: #f1f5f9;
   border: 1px solid #e2e8f0;
+  border-radius: 6px;
   cursor: pointer;
 }
 .backup-btn-cancel:hover { background: #e2e8f0; }
@@ -154,6 +158,7 @@
   color: #fff;
   background: #667eea;
   border: 1px solid #667eea;
+  border-radius: 6px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -169,6 +174,7 @@
   color: #fff;
   background: #ef4444;
   border: 1px solid #ef4444;
+  border-radius: 6px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -288,25 +294,27 @@
 /* Client cards grid */
 .backup-clients-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 0;
-  padding: 0;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  padding: 16px 18px;
 }
 .backup-client-card {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 18px;
-  border-bottom: 1px solid #f1f5f9;
-  border-right: 1px solid #f1f5f9;
+  padding: 14px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
   cursor: pointer;
-  transition: background .15s;
+  transition: background .15s, border-color .15s, box-shadow .15s;
   position: relative;
+  background: #fff;
 }
-.backup-client-card:hover { background: #f8fafc; }
+.backup-client-card:hover { background: #f8fafc; border-color: #c7d2fe; box-shadow: 0 2px 6px rgba(102,126,234,.1); }
 .backup-client-card.selected {
   background: #f0f1ff;
-  border-color: #c7d2fe;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102,126,234,.2);
 }
 .backup-client-check {
   width: 16px;
@@ -426,9 +434,14 @@
 /* Backup card in list */
 .backup-card {
   border: 1px solid #e5e7eb;
-  margin-bottom: 12px;
+  border-radius: 8px;
+  margin-bottom: 14px;
   background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  overflow: hidden;
+  transition: box-shadow 0.2s;
 }
+.backup-card:hover { box-shadow: 0 3px 8px rgba(0,0,0,.1); }
 .backup-card-header {
   display: flex;
   align-items: center;
@@ -436,19 +449,21 @@
   padding: 12px 16px;
   border-bottom: 1px solid #f1f5f9;
   gap: 10px;
+  background: #fafbff;
 }
 .backup-card-title {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   color: #1e293b;
 }
 .backup-card-title i { margin-right: 5px; color: #667eea; }
 .backup-card-status {
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
   padding: 3px 10px;
   text-transform: uppercase;
-  letter-spacing: .5px;
+  letter-spacing: .6px;
+  border-radius: 999px;
 }
 .backup-status-pending { background: #fef3c7; color: #92400e; }
 .backup-status-processing { background: #dbeafe; color: #1e40af; }
@@ -459,23 +474,46 @@
 .backup-card-body { padding: 12px 16px; }
 
 /* Progress bar */
-.backup-progress-wrap { margin-bottom: 10px; }
+.backup-progress-wrap { margin-bottom: 12px; }
 .backup-progress-info {
   display: flex;
   justify-content: space-between;
   font-size: 11.5px;
   color: #64748b;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
+  font-weight: 500;
 }
 .backup-progress-bar {
-  height: 6px;
+  height: 10px;
   background: #e5e7eb;
+  border-radius: 999px;
   overflow: hidden;
 }
 .backup-progress-fill {
   height: 100%;
-  background: #667eea;
-  transition: width .3s;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  border-radius: 999px;
+  transition: width 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  position: relative;
+}
+.backup-progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0) 100%);
+  animation: backup-shimmer 1.8s infinite;
+}
+@keyframes backup-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+/* Stop shimmer animation for completed backups */
+.backup-card[data-status="completed"] .backup-progress-fill::after,
+.backup-card[data-status="failed"] .backup-progress-fill::after {
+  animation: none;
 }
 
 /* Timer */
@@ -504,10 +542,11 @@
 .backup-client-tag {
   font-size: 11px;
   font-weight: 600;
-  padding: 2px 8px;
-  background: #f1f5f9;
-  color: #475569;
-  border: 1px solid #e2e8f0;
+  padding: 3px 9px;
+  background: #f0f1ff;
+  color: #667eea;
+  border: 1px solid #c7d2fe;
+  border-radius: 999px;
 }
 
 /* Download links */

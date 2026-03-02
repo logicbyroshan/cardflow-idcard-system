@@ -90,18 +90,11 @@ function initDownloadImagesHandlers() {
 
     // Modal button handlers
     document.getElementById('downloadImgCancel')?.addEventListener('click', closeDownloadImgModal);
+    document.getElementById('downloadImgClose')?.addEventListener('click', closeDownloadImgModal);
     document.getElementById('downloadImgConfirm')?.addEventListener('click', function() {
         closeDownloadImgModal();
         window.IDCardApp.downloadImages(pendingDownloadCardIds);
     });
-
-    // Close on backdrop click
-    downloadImgModal = document.getElementById('downloadImgModal');
-    if (downloadImgModal) {
-        downloadImgModal.addEventListener('click', function(e) {
-            if (e.target === downloadImgModal) closeDownloadImgModal();
-        });
-    }
 }
 
 // ==========================================
@@ -174,6 +167,7 @@ function initDownloadDocxHandlers() {
 
     // Docx template modal handlers
     document.getElementById('downloadDocxCancel')?.addEventListener('click', closeDownloadDocxModal);
+    document.getElementById('downloadDocxClose')?.addEventListener('click', closeDownloadDocxModal);
     document.getElementById('downloadDocxConfirm')?.addEventListener('click', function() {
         const templateSelect = document.getElementById('downloadDocxTemplate');
         const templateId = templateSelect ? templateSelect.value : '';
@@ -251,18 +245,11 @@ function initDownloadXlsxHandlers() {
 
     // Modal button handlers
     document.getElementById('downloadXlsxCancel')?.addEventListener('click', closeDownloadXlsxModal);
+    document.getElementById('downloadXlsxClose')?.addEventListener('click', closeDownloadXlsxModal);
     document.getElementById('downloadXlsxConfirm')?.addEventListener('click', function() {
         closeDownloadXlsxModal();
         window.IDCardApp.downloadXlsx(pendingDownloadCardIds);
     });
-
-    // Close on backdrop click
-    downloadXlsxModal = document.getElementById('downloadXlsxModal');
-    if (downloadXlsxModal) {
-        downloadXlsxModal.addEventListener('click', function(e) {
-            if (e.target === downloadXlsxModal) closeDownloadXlsxModal();
-        });
-    }
 }
 
 // ==========================================
@@ -345,6 +332,7 @@ function initDownloadPdfHandlers() {
 
     // Modal button handlers
     document.getElementById('downloadPdfCancel')?.addEventListener('click', closeDownloadPdfModal);
+    document.getElementById('downloadPdfClose')?.addEventListener('click', closeDownloadPdfModal);
     document.getElementById('downloadPdfConfirm')?.addEventListener('click', function() {
         const templateSelect = document.getElementById('downloadPdfTemplate');
         const templateId = templateSelect ? templateSelect.value : '';
@@ -362,13 +350,8 @@ function initDownloadPdfHandlers() {
         window.IDCardApp.downloadPdf(pendingPdfCardIds, templateId, fontMode, shortenTitles);
     });
 
-    // Close on backdrop click
+    // Close on backdrop click removed — modal does not close on outside click
     downloadPdfModal = document.getElementById('downloadPdfModal');
-    if (downloadPdfModal) {
-        downloadPdfModal.addEventListener('click', function(e) {
-            if (e.target === downloadPdfModal) closeDownloadPdfModal();
-        });
-    }
 }
 
 // ==========================================

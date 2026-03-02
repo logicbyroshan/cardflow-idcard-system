@@ -197,6 +197,47 @@ def clients_list(request):
 
 
 @require_mobile_client
+def client_groups(request, client_id):
+    """Groups & tables for a specific client — admin only view.
+    Admin taps a client in clients_list → sees that client's groups/tables.
+    """
+    user = request.user
+    _, perms = _client_ctx(user)
+    if not PermissionService.is_any_admin(user):
+        return redirect('mobile_app:home')
+
+    from client.models import Client
+    client = get_object_or_404(Client, id=client_id)
+
+    groups = IDCardGroup.objects.filter(client=client).annotate(
+        table_count=Count('tables'),
+        total_cards=Count('tables__id_cards'),
+        pending_cards=Count('tables__id_cards', filter=Q(tables__id_cards__status='pending')),
+        verified_cards=Count('tables__id_cards', filter=Q(tables__id_cards__status='verified')),
+        approved_cards=Count('tables__id_cards', filter=Q(tables__id_cards__status='approved')),
+        download_cards=Count('tables__id_cards', filter=Q(tables__id_cards__status='download')),
+    ).order_by('name')
+
+    tables = IDCardTable.objects.filter(group__client=client).select_related('group').annotate(
+        total_cards=Count('id_cards'),
+        pending_cards=Count('id_cards', filter=Q(id_cards__status='pending')),
+        verified_cards=Count('id_cards', filter=Q(id_cards__status='verified')),
+        approved_cards=Count('id_cards', filter=Q(id_cards__status='approved')),
+        download_cards=Count('id_cards', filter=Q(id_cards__status='download')),
+    ).order_by('group__name', 'name')
+
+    return render(request, 'mobile_app/groups.html', {
+        'user_name': user.get_full_name() or user.username,
+        'client': client,
+        'client_name': client.name,
+        'groups': groups,
+        'tables': tables,
+        'back_to_clients': True,
+        **perms,
+    })
+
+
+@require_mobile_client
 def table_picker(request, status):
     """
     Show table picker when client has multiple tables.

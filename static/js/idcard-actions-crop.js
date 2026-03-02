@@ -21,6 +21,8 @@
     // ── State ──────────────────────────────────────────────────────
     let _batchId = null;
     let _currentTab = 'cropped';
+    let _pendingIds = [];    // card IDs waiting for user to confirm path
+    let _pendingTableId = null;
 
     // ── DOM references (cached on first use) ───────────────────────
     const $ = (id) => document.getElementById(id);
@@ -33,7 +35,7 @@
     function _hide(el)  { if (el) el.style.display = 'none'; }
 
     function _showOnly(stepNumber) {
-        for (const n of [1, 2, 3, 'Error', 'Done']) _hide(_step(n));
+        for (const n of [0, 1, 2, 3, 'Error', 'Done']) _hide(_step(n));
         _show(_step(stepNumber));
     }
 
@@ -94,6 +96,7 @@
 
     /**
      * Entry point — called when "Crop Selected" button is clicked.
+     * Shows Step 0 (path input) first; the user clicks Start Crop to proceed.
      */
     function startCropFlow() {
         // Get selected card IDs
@@ -114,13 +117,48 @@
             return;
         }
 
-        // Reset UI
+        // Save for when user clicks Start Crop
+        _pendingIds = ids;
+        _pendingTableId = tableId;
         _batchId = null;
+
+        // Show modal on Step 0 (path input)
         _openModal();
-        _showOnly(1);
+        _showOnly(0);
+        _show($('cropStartBtn'));
         _hide($('cropReuploadBtn'));
         _hide($('cropDoneCloseBtn'));
-        _show($('cropCancelBtn'));
+
+        // Reset path field
+        const pathInput = $('cropOutputPath');
+        if (pathInput) { pathInput.value = ''; setTimeout(() => pathInput.focus(), 100); }
+        const pathError = $('cropPathError');
+        if (pathError) { pathError.textContent = ''; pathError.style.display = 'none'; }
+    }
+
+    /**
+     * Called when user clicks "Start Crop" after entering a path.
+     * Validates path then kicks off the prepare → process → preview flow.
+     */
+    function _startWithPath() {
+        const pathInput = $('cropOutputPath');
+        const outputPath = pathInput ? pathInput.value.trim() : '';
+        const pathError = $('cropPathError');
+
+        if (!outputPath) {
+            if (pathError) { pathError.textContent = 'Please enter a folder path.'; pathError.style.display = ''; }
+            if (pathInput) pathInput.focus();
+            return;
+        }
+
+        if (pathError) { pathError.textContent = ''; pathError.style.display = 'none'; }
+
+        const ids = _pendingIds;
+        const tableId = _pendingTableId;
+
+        // Hide Start, show Cancel; move to preparing step
+        _hide($('cropStartBtn'));
+        _showOnly(1);
 
         // Update status
         const status1 = $('cropStatus1');
@@ -128,8 +166,7 @@
         if (status1) status1.textContent = `Preparing ${ids.length} card(s)…`;
         if (progress1) progress1.style.width = '20%';
 
-        // Step 1: Prepare images
-        _post(`/panel/api/table/${tableId}/cards/prepare-crop/`, { card_ids: ids })
+        _post(`/panel/api/table/${tableId}/cards/prepare-crop/`, { card_ids: ids, output_path: outputPath })
             .then((data) => {
                 if (!data.success) {
                     _showError(data.message || 'Failed to prepare images');
@@ -141,7 +178,6 @@
                 if (status1) status1.textContent =
                     `${data.images_copied} image(s) copied, ${data.skipped} skipped`;
 
-                // Brief pause then move to step 2
                 setTimeout(() => _processStep(tableId), 600);
             })
             .catch((err) => {
@@ -396,6 +432,17 @@
         const cropBtn = $('cropSelectedBtn');
         if (cropBtn) {
             cropBtn.addEventListener('click', startCropFlow);
+        }
+
+        // Start Crop button (Step 0)
+        $('cropStartBtn')?.addEventListener('click', _startWithPath);
+
+        // Allow Enter key in path input to trigger Start Crop
+        const pathInput = $('cropOutputPath');
+        if (pathInput) {
+            pathInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); _startWithPath(); }
+            });
         }
 
         // Modal close / cancel

@@ -212,7 +212,8 @@ function createRowFromCard(card, index) {
     // Last Updated / Updated By — only shown to admin users, never to client/client_staff
     if (!isClientUser && (typeof PERMS === 'undefined' || PERMS.idcard_updated_at)) {
         html += `<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">${card.updated_at || ''}</td>`;
-        html += `<td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center">Admin</td>`;
+        const updatedByLabel = (card.modified_by && card.modified_by.trim()) ? card.modified_by : 'Admin';
+        html += `<td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center">${updatedByLabel}</td>`;
     }
     
     tr.innerHTML = html;

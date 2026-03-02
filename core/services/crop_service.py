@@ -12,6 +12,7 @@ Naming convention inside batch folder:
   The triple-underscore separator is safe because neither PK nor field
   names can contain it.
 """
+import json
 import logging
 import os
 import shutil
@@ -37,7 +38,19 @@ class CropService:
 
     @staticmethod
     def _batch_dir(batch_id: str) -> Path:
-        """Absolute path to a crop-batch folder inside MEDIA_ROOT/temp/."""
+        """Absolute path to a crop-batch folder.
+
+        If a pointer file exists (written when a custom output_path was given),
+        returns the custom path stored in it.  Otherwise defaults to
+        MEDIA_ROOT/temp/crop_batch_{batch_id}.
+        """
+        ptr_file = Path(settings.MEDIA_ROOT) / "temp" / f"batch_ptr_{batch_id}.json"
+        if ptr_file.is_file():
+            try:
+                data = json.loads(ptr_file.read_text(encoding="utf-8"))
+                return Path(data["custom_path"])
+            except Exception:
+                pass  # fall through to default
         return Path(settings.MEDIA_ROOT) / "temp" / f"crop_batch_{batch_id}"
 
     @staticmethod
@@ -58,7 +71,7 @@ class CropService:
     # ── 1. Prepare images ────────────────────────────────────────────
 
     @classmethod
-    def prepare_images(cls, table_id: int, card_ids: list) -> dict:
+    def prepare_images(cls, table_id: int, card_ids: list, output_path: str = None) -> dict:
         """
         Copy images from selected cards into a temp batch folder.
 
@@ -100,7 +113,21 @@ class CropService:
 
         # Create batch folder
         batch_id = f"{int(time.time())}_{uuid.uuid4().hex[:8]}"
-        batch_dir = cls._batch_dir(batch_id)
+
+        if output_path and output_path.strip():
+            # Use the user-specified path; write a pointer file so _batch_dir
+            # can resolve it later (preview / cleanup calls only have batch_id).
+            batch_dir = Path(output_path.strip())
+            temp_dir = Path(settings.MEDIA_ROOT) / "temp"
+            temp_dir.mkdir(parents=True, exist_ok=True)
+            ptr_file = temp_dir / f"batch_ptr_{batch_id}.json"
+            ptr_file.write_text(
+                json.dumps({"custom_path": str(batch_dir), "batch_id": batch_id}),
+                encoding="utf-8",
+            )
+        else:
+            batch_dir = Path(settings.MEDIA_ROOT) / "temp" / f"crop_batch_{batch_id}"
+
         batch_dir.mkdir(parents=True, exist_ok=True)
 
         images_copied = 0
@@ -378,5 +405,10 @@ class CropService:
             if d.is_dir():
                 shutil.rmtree(str(d), ignore_errors=True)
                 removed += 1
+
+        # Clean up pointer file if one was written for this batch
+        ptr_file = Path(settings.MEDIA_ROOT) / "temp" / f"batch_ptr_{batch_id}.json"
+        if ptr_file.is_file():
+            ptr_file.unlink(missing_ok=True)
 
         return {"success": True, "folders_removed": removed}

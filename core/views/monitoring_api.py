@@ -10,8 +10,9 @@ import json
 import logging
 import re
 from django.http import JsonResponse
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_http_methods, require_POST
 from django.views.decorators.csrf import csrf_protect
+from django.contrib.auth.decorators import login_required
 
 logger = logging.getLogger('core.views')
 
@@ -107,3 +108,101 @@ def api_client_errors(request):
             )
 
     return JsonResponse({'status': 'ok', 'received': len(errors)})
+
+
+# =============================================================================
+# MONITORING DASHBOARD API  (super_admin only)
+# =============================================================================
+
+@require_http_methods(["GET"])
+@login_required
+def api_monitoring_data(request):
+    """
+    Return monitoring data for the Manage Panel → Monitoring tab.
+
+    GET /panel/api/monitoring/
+    Response: { success, stats, recent_tasks, backup_tasks }
+    """
+    from ..services.permission_service import PermissionService
+
+    if not PermissionService.is_super_admin(request.user):
+        return JsonResponse({'success': False, 'message': 'Super admin only'}, status=403)
+
+    from django.utils import timezone
+    from datetime import timedelta
+    from ..models import BackgroundTask, BackupTask
+
+    now = timezone.now()
+    since_24h = now - timedelta(hours=24)
+
+    # ── Background Task stats ────────────────────────────────────────────────
+    active_tasks = BackgroundTask.objects.filter(status__in=['pending', 'processing']).count()
+    pending_tasks = BackgroundTask.objects.filter(status='pending').count()
+    completed_24h = BackgroundTask.objects.filter(
+        status='completed', completed_at__gte=since_24h
+    ).count()
+    failed_24h = BackgroundTask.objects.filter(
+        status='failed', completed_at__gte=since_24h
+    ).count()
+
+    # ── Recent Background Tasks (last 20) ────────────────────────────────────
+    recent_qs = (
+        BackgroundTask.objects
+        .select_related('user')
+        .order_by('-created_at')[:20]
+    )
+
+    STATUS_COLOR = {
+        'pending': 'warning',
+        'processing': 'info',
+        'completed': 'success',
+        'failed': 'danger',
+        'cancelled': 'secondary',
+    }
+
+    recent_tasks = []
+    for t in recent_qs:
+        recent_tasks.append({
+            'id': t.id,
+            'task_type': t.get_task_type_display(),
+            'status': t.status,
+            'status_display': t.get_status_display(),
+            'status_color': STATUS_COLOR.get(t.status, 'secondary'),
+            'progress_pct': t.progress_percentage,
+            'user': t.user.get_full_name() or t.user.username if t.user else '—',
+            'created_at': t.created_at.strftime('%d-%m-%Y %H:%M'),
+            'completed_at': t.completed_at.strftime('%d-%m-%Y %H:%M') if t.completed_at else None,
+            'error': (t.error_message or '')[:120] if t.status == 'failed' else '',
+        })
+
+    # ── Active Backup Tasks ───────────────────────────────────────────────────
+    backup_qs = (
+        BackupTask.objects
+        .filter(status__in=['queued', 'processing'])
+        .order_by('-created_at')[:10]
+    )
+
+    backup_tasks = []
+    for b in backup_qs:
+        backup_tasks.append({
+            'id': b.id,
+            'status': b.status,
+            'status_display': b.get_status_display(),
+            'progress': b.progress,
+            'total': b.total,
+            'progress_pct': round((b.progress / b.total) * 100) if b.total > 0 else 0,
+            'current_client': b.current_client or '',
+            'created_at': b.created_at.strftime('%d-%m-%Y %H:%M'),
+        })
+
+    return JsonResponse({
+        'success': True,
+        'stats': {
+            'active_tasks': active_tasks,
+            'pending_tasks': pending_tasks,
+            'completed_24h': completed_24h,
+            'failed_24h': failed_24h,
+        },
+        'recent_tasks': recent_tasks,
+        'backup_tasks': backup_tasks,
+    })

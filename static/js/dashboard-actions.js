@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!tbody) return;
         const esc = typeof escapeHtml === 'function' ? escapeHtml : (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
         
-        ApiClient.get('/panel/api/recent-client-updates/?limit=5')
+        ApiClient.get('/panel/api/recent-client-updates/')
             .then(data => {
                 if (data.success && data.clients.length > 0) {
                     tbody.innerHTML = data.clients.map((client, i) => {
@@ -418,61 +418,57 @@ document.addEventListener('DOMContentLoaded', function() {
             if (dashReuploadProgress) dashReuploadProgress.style.display = 'block';
             if (dashReuploadBar) dashReuploadBar.style.width = '0%';
             if (dashReuploadStatus) dashReuploadStatus.textContent = 'Starting upload...';
-            let _dashProcessingTimer = null;
+            let _dashPollInterval = null;
 
             const formData = new FormData();
             formData.append('photos_zip', dashReuploadFileInput.files[0]);
 
-            let _dashRetryCount = 0;
             const xhr = new XMLHttpRequest();
-            xhr.open('POST', `/panel/api/table/${dashReuploadTableId}/cards/reupload-images/`);
+            xhr.open('POST', `/panel/api/table/${dashReuploadTableId}/reupload-task/`);
             xhr.setRequestHeader('X-CSRFToken', typeof getCSRFToken === 'function' ? getCSRFToken() : '');
-            xhr.timeout = 600000; // 10-minute timeout
+            xhr.timeout = 300000; // 5-minute timeout for upload phase only
 
             xhr.upload.onprogress = function(e) {
                 if (e.lengthComputable) {
-                    const uploadPct = Math.round((e.loaded / e.total) * 85);
+                    const uploadPct = Math.round((e.loaded / e.total) * 80);
                     if (dashReuploadBar) dashReuploadBar.style.width = uploadPct + '%';
                     if (dashReuploadStatus) dashReuploadStatus.textContent = `Uploading... ${Math.round(e.loaded / e.total * 100)}%`;
                 }
             };
-            xhr.upload.onloadend = function() {
-                if (dashReuploadBar) dashReuploadBar.style.width = '85%';
-                if (dashReuploadStatus) dashReuploadStatus.textContent = 'Processing images on server...';
-                const _procStart = Date.now();
-                _dashProcessingTimer = setInterval(function() {
-                    const el = (Date.now() - _procStart) / 1000;
-                    const pct = 85 + Math.round(10 * (1 - Math.exp(-el / 8)));
-                    if (dashReuploadBar) dashReuploadBar.style.width = Math.min(pct, 95) + '%';
-                }, 400);
-            };
 
             xhr.onload = function() {
-                if (_dashProcessingTimer) { clearInterval(_dashProcessingTimer); _dashProcessingTimer = null; }
-                if (dashReuploadBar) dashReuploadBar.style.width = '100%';
                 try {
                     const data = JSON.parse(xhr.responseText);
                     if (xhr.status === 200 && data.success) {
-                        if (dashReuploadStatus) dashReuploadStatus.textContent = data.message || 'Done!';
-                        if (typeof showToast === 'function') showToast(data.message || 'Images reuploaded!', 'success');
-                        setTimeout(() => dashCloseReuploadModal(), 1500);
-                    } else if (xhr.status === 429 && _dashRetryCount < 2) {
-                        _dashRetryCount++;
-                        if (dashReuploadStatus) dashReuploadStatus.textContent = (data.message || 'Server busy') + ' Retrying...';
-                        setTimeout(function() {
-                            if (dashReuploadBar) dashReuploadBar.style.width = '0%';
-                            if (dashReuploadStatus) dashReuploadStatus.textContent = 'Retrying...';
-                            const retryXhr = new XMLHttpRequest();
-                            retryXhr.open('POST', `/panel/api/table/${dashReuploadTableId}/cards/reupload-images/`);
-                            retryXhr.setRequestHeader('X-CSRFToken', typeof getCSRFToken === 'function' ? getCSRFToken() : '');
-                            retryXhr.timeout = 600000;
-                            retryXhr.onload = xhr.onload;
-                            retryXhr.onerror = xhr.onerror;
-                            retryXhr.ontimeout = xhr.ontimeout;
-                            retryXhr.upload.onprogress = xhr.upload.onprogress;
-                            retryXhr.upload.onloadend = xhr.upload.onloadend;
-                            retryXhr.send(formData);
-                        }, 5000);
+                        if (dashReuploadBar) dashReuploadBar.style.width = '80%';
+                        if (dashReuploadStatus) dashReuploadStatus.textContent = 'Processing images...';
+                        // Poll for real task progress
+                        _dashPollInterval = setInterval(function() {
+                            fetch('/panel/api/task-status/' + data.task_id + '/')
+                                .then(function(r) { return r.json(); })
+                                .then(function(t) {
+                                    if (t.status === 'completed') {
+                                        clearInterval(_dashPollInterval);
+                                        if (dashReuploadBar) dashReuploadBar.style.width = '100%';
+                                        const matched = (t.result && t.result.matched_count != null) ? t.result.matched_count : '';
+                                        const msg = matched !== '' ? ('Done! ' + matched + ' images matched.') : 'Done!';
+                                        if (dashReuploadStatus) dashReuploadStatus.textContent = msg;
+                                        if (typeof showToast === 'function') showToast(msg, 'success');
+                                        setTimeout(() => dashCloseReuploadModal(), 1500);
+                                    } else if (t.status === 'failed' || t.status === 'cancelled') {
+                                        clearInterval(_dashPollInterval);
+                                        const errMsg = t.error_message || 'Reupload failed. Please try again.';
+                                        if (dashReuploadStatus) dashReuploadStatus.textContent = errMsg;
+                                        if (typeof showToast === 'function') showToast(errMsg, 'error');
+                                        dashReuploadConfirmBtn.disabled = false; dashReuploadConfirmBtn.textContent = 'Upload & Match';
+                                    } else {
+                                        const pct = 80 + Math.round((t.progress_percentage || 0) * 0.19);
+                                        if (dashReuploadBar) dashReuploadBar.style.width = Math.min(pct, 99) + '%';
+                                        if (dashReuploadStatus) dashReuploadStatus.textContent = 'Processing: ' + (t.progress || 0) + '/' + (t.total || '?') + ' images...';
+                                    }
+                                })
+                                .catch(function() {}); // ignore transient network errors during polling
+                        }, 2000);
                     } else {
                         if (dashReuploadStatus) dashReuploadStatus.textContent = data.message || 'Failed';
                         if (typeof showToast === 'function') showToast(data.message || 'Reupload failed', 'error');
@@ -491,35 +487,13 @@ document.addEventListener('DOMContentLoaded', function() {
             };
 
             xhr.onerror = function() {
-                if (_dashProcessingTimer) { clearInterval(_dashProcessingTimer); _dashProcessingTimer = null; }
-                _dashRetryCount++;
-                if (_dashRetryCount <= 2) {
-                    if (dashReuploadStatus) dashReuploadStatus.textContent = 'Network error. Retrying in 5s...';
-                    if (typeof showToast === 'function') showToast('Network error. Retrying...', 'error');
-                    setTimeout(function() {
-                        if (dashReuploadBar) dashReuploadBar.style.width = '0%';
-                        if (dashReuploadStatus) dashReuploadStatus.textContent = 'Retrying...';
-                        const retryXhr = new XMLHttpRequest();
-                        retryXhr.open('POST', `/panel/api/table/${dashReuploadTableId}/cards/reupload-images/`);
-                        retryXhr.setRequestHeader('X-CSRFToken', typeof getCSRFToken === 'function' ? getCSRFToken() : '');
-                        retryXhr.timeout = 600000;
-                        retryXhr.onload = xhr.onload;
-                        retryXhr.onerror = xhr.onerror;
-                        retryXhr.ontimeout = xhr.ontimeout;
-                        retryXhr.upload.onprogress = xhr.upload.onprogress;
-                        retryXhr.upload.onloadend = xhr.upload.onloadend;
-                        retryXhr.send(formData);
-                    }, 5000);
-                } else {
-                    if (typeof showToast === 'function') showToast('Upload failed after retries. Check your connection.', 'error');
-                    dashReuploadConfirmBtn.disabled = false; dashReuploadConfirmBtn.textContent = 'Upload & Match';
-                    if (dashReuploadProgress) dashReuploadProgress.style.display = 'none';
-                }
+                if (typeof showToast === 'function') showToast('Upload failed. Check your connection and try again.', 'error');
+                dashReuploadConfirmBtn.disabled = false; dashReuploadConfirmBtn.textContent = 'Upload & Match';
+                if (dashReuploadProgress) dashReuploadProgress.style.display = 'none';
             };
 
             xhr.ontimeout = function() {
-                if (_dashProcessingTimer) { clearInterval(_dashProcessingTimer); _dashProcessingTimer = null; }
-                if (typeof showToast === 'function') showToast('Reupload timed out — try a smaller ZIP.', 'error');
+                if (typeof showToast === 'function') showToast('Upload timed out — try a smaller ZIP.', 'warning');
                 dashReuploadConfirmBtn.disabled = false; dashReuploadConfirmBtn.textContent = 'Upload & Match';
                 if (dashReuploadProgress) dashReuploadProgress.style.display = 'none';
             };
@@ -541,7 +515,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const esc = typeof escapeHtml === 'function' ? escapeHtml : (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
-        ApiClient.get('/panel/api/print-reprint-overview/')
+        ApiClient.get('/panel/api/print-reprint-overview/?limit=500')
             .then(data => {
                 if (!data.success) throw new Error(data.error || 'Failed');
 

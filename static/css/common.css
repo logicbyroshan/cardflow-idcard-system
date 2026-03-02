@@ -304,18 +304,18 @@ body[style*="overflow:hidden"] {
 
 /* ===========================================
    CENTER CONFIRM MODAL (Bulk Actions)
-   Overlay + .show removed (in tailwind); card & children kept.
+   Standardized: 650px wide, header + body + footer layout
    =========================================== */
 .center-modal-card {
   background: #fff;
   border-radius: 10px;
-  padding: 24px 22px 20px;
-  width: 420px;
+  width: 650px;
   max-width: 95vw;
-  min-height: auto;
+  min-height: 500px;
   max-height: 90vh;
-  overflow-y: auto;
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   box-shadow: 0 12px 32px rgba(0,0,0,0.18), 0 2px 6px rgba(0,0,0,0.08);
   animation: centerModalIn 0.22s ease-out;
 }
@@ -324,24 +324,93 @@ body[style*="overflow:hidden"] {
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
+/* Standard header for center-modal-card */
+.center-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-radius: 10px 10px 0 0;
+  flex-shrink: 0;
+}
+.center-modal-header h3,
+.center-modal-header .center-modal-header-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+.center-modal-header h3 i,
+.center-modal-header-title i { font-size: 14px; }
+.center-modal-header-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  color: rgba(255,255,255,0.8);
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.center-modal-header-close:hover {
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+}
+
+/* Scrollable body */
+.center-modal-body-area {
+  padding: 20px 24px;
+  overflow-y: auto;
+  flex: 1;
+  text-align: center;
+}
+.center-modal-body-area.text-left { text-align: left; }
+
+/* Footer */
+.center-modal-footer-area {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 20px;
+  border-top: 1px solid #e5e7eb;
+  background: #f8fafc;
+  flex-shrink: 0;
+}
+
+/* Theme header backgrounds */
+.center-modal-theme-red .center-modal-header    { background: linear-gradient(135deg, #dc2626, #ef4444); }
+.center-modal-theme-amber .center-modal-header  { background: linear-gradient(135deg, #d97706, #f59e0b); }
+.center-modal-theme-blue .center-modal-header   { background: linear-gradient(135deg, #2563eb, #3b82f6); }
+.center-modal-theme-purple .center-modal-header { background: linear-gradient(135deg, #7c3aed, #8b5cf6); }
+.center-modal-theme-green .center-modal-header  { background: linear-gradient(135deg, #16a34a, #22c55e); }
+
 .center-modal-icon {
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 .center-modal-icon i {
-  font-size: 28px;
+  font-size: 32px;
 }
 
 .center-modal-title {
   margin: 0 0 4px;
   color: #111827;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
 }
 
 .center-modal-subtitle {
   color: #6b7280;
-  margin: 0 0 4px;
-  font-size: 15px;
+  margin: 0 0 6px;
+  font-size: 14px;
   line-height: 1.5;
 }
 
@@ -354,14 +423,14 @@ body[style*="overflow:hidden"] {
 .center-modal-label {
   color: #374151;
   margin: 0 0 6px;
-  font-size: 15px;
+  font-size: 14px;
 }
 
 .center-modal-code {
   border-radius: 6px;
   padding: 10px;
   margin: 0 0 10px;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   letter-spacing: 6px;
   border-width: 2px;
@@ -399,7 +468,7 @@ body[style*="overflow:hidden"] {
   background: #f9fafb;
 }
 .center-modal-dropzone i {
-  font-size: 20px;
+  font-size: 24px;
   color: #9ca3af;
   margin-bottom: 6px;
 }
@@ -413,14 +482,14 @@ body[style*="overflow:hidden"] {
   display: flex;
   gap: 8px;
   justify-content: center;
-  margin-top: 4px;
+  margin-top: 12px;
 }
 
 .center-modal-btn {
-  padding: 7px 16px;
+  padding: 8px 18px;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   transition: opacity 0.15s, background 0.15s;
 }

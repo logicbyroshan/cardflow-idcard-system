@@ -174,6 +174,7 @@ class IDCardCardService(BaseService):
             'updated_at_iso': card.updated_at.isoformat() if card.updated_at else None,
             'downloaded_at': localtime(card.downloaded_at).strftime('%d-%b-%Y %H:%M') if card.downloaded_at else None,
             'deleted_at': localtime(card.deleted_at).strftime('%d-%b-%Y %H:%M') if card.deleted_at else None,
+            'modified_by': card.modified_by or '',
         }
 
         if sr_no is not None:
@@ -606,6 +607,7 @@ class IDCardCardService(BaseService):
         uploaded_by=None,
         expected_updated_at: str = None,
         legacy_photo_file=None,
+        modified_by: str = None,
     ) -> ServiceResult:
         """Update an ID Card with atomic concurrency control.
 
@@ -701,6 +703,12 @@ class IDCardCardService(BaseService):
 
                 card.field_data = existing_data
 
+                # Track who performed the update
+                if modified_by:
+                    card.modified_by = modified_by
+                elif uploaded_by and hasattr(uploaded_by, 'username'):
+                    card.modified_by = uploaded_by.username
+
                 # Status changes MUST go through WorkflowService.transition().
                 if status:
                     logger.warning(
@@ -731,7 +739,7 @@ class IDCardCardService(BaseService):
             return ServiceResult(success=False, message=str(e))
 
     @classmethod
-    def update_single_field(cls, card_id: int, field: str, value: Any) -> ServiceResult:
+    def update_single_field(cls, card_id: int, field: str, value: Any, modified_by: str = None) -> ServiceResult:
         """Update a single field on an ID Card (for inline editing)"""
         try:
             from django.db import transaction
@@ -754,6 +762,8 @@ class IDCardCardService(BaseService):
                     field_data[field] = value
 
                 card.field_data = field_data
+                if modified_by:
+                    card.modified_by = modified_by
                 card.save()
 
                 return ServiceResult(

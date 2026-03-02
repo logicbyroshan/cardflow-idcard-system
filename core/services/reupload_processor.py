@@ -96,7 +96,8 @@ def process_reupload_images(task):
         return
     
     task.update_progress(0, total_cards)
-    
+    _open_zip = None  # Kept open for entire card loop; closed in finally
+
     try:
         # First, build index of available images in ZIP (just names, not content)
         # This is memory efficient - only stores filenames
@@ -106,17 +107,23 @@ def process_reupload_images(task):
         except Exception as e:
             task.mark_failed(f"Failed to read ZIP file: {str(e)}")
             return
-        
+
         if not zip_image_index:
             task.mark_failed("No valid images found in ZIP file")
             return
-        
+
+        # Open the ZIP once for the entire card loop.
+        # Avoids reopening (and re-reading the central directory) for every
+        # single image — was N open/close calls, now exactly 1.
+        _open_zip = zipfile.ZipFile(zip_path, 'r')
+
         # Process cards one at a time
         updated_count = 0
         matched_count = 0
         errors = []
         batch_counter = 0
-    
+        pending_updates = []  # Accumulated cards for bulk_update; flushed every 50
+
         for idx, card in enumerate(cards_qs.iterator(chunk_size=100)):
             try:
                 field_data = card.field_data or {}
@@ -154,8 +161,8 @@ def process_reupload_images(task):
                     try:
                         batch_counter += 1
                         
-                        # Extract image from ZIP (only this one file)
-                        image_bytes = _extract_single_image(zip_path, zip_entry['zip_path'])
+                        # Extract image using the already-open ZIP handle
+                        image_bytes = _extract_single_image(_open_zip, zip_entry['zip_path'])
                         if not image_bytes:
                             errors.append(f"Card {card.pk}: Failed to extract image")
                             continue
@@ -197,18 +204,27 @@ def process_reupload_images(task):
                     except Exception as save_err:
                         errors.append(f"Card {card.pk}: Error - {str(save_err)}")
                 
-                # Save card if updated
+                # Queue card for bulk update instead of saving individually
                 if card_updated:
                     card.field_data = field_data
-                    card.save(update_fields=['field_data', 'updated_at'])
+                    pending_updates.append(card)
                     updated_count += 1
                 
             except Exception as card_err:
                 errors.append(f"Card {card.pk}: {str(card_err)}")
                 logger.error("Error processing card %d: %s", card.pk, card_err)
             
-            # Update progress every 50 cards to reduce DB writes
+            # Flush bulk updates + report progress every 50 cards
             if (idx + 1) % 50 == 0 or idx == total_cards - 1:
+                if pending_updates:
+                    from django.utils import timezone as _tz
+                    _now = _tz.now()
+                    for _c in pending_updates:
+                        _c.updated_at = _now
+                    IDCard.objects.bulk_update(
+                        pending_updates, ['field_data', 'updated_at'], batch_size=50
+                    )
+                    pending_updates = []
                 task.update_progress(idx + 1)
 
         # Build result
@@ -235,6 +251,11 @@ def process_reupload_images(task):
         logger.exception("Reupload processing failed: %s", e)
         task.mark_failed(str(e))
     finally:
+        if _open_zip is not None:
+            try:
+                _open_zip.close()
+            except Exception:
+                pass
         # Cleanup
         _cleanup_task_files(task)
 
@@ -282,20 +303,23 @@ def _build_zip_image_index(zip_path):
     return index
 
 
-def _extract_single_image(zip_path, internal_path):
+def _extract_single_image(zf_or_path, internal_path):
     """
     Extract a single image from a ZIP file.
-    
-    CRITICAL: Only extracts ONE file, not the entire ZIP.
-    
+
+    Accepts an already-open ZipFile object (fast path — zero open/close overhead)
+    or a path string (fallback that opens and closes the ZIP itself).
+
     Returns:
         bytes: Image content, or None if extraction failed
     """
     try:
-        with zipfile.ZipFile(zip_path, 'r') as zf:
+        if isinstance(zf_or_path, zipfile.ZipFile):
+            return zf_or_path.read(internal_path)
+        with zipfile.ZipFile(zf_or_path, 'r') as zf:
             return zf.read(internal_path)
     except Exception as e:
-        logger.error("Failed to extract %s from %s: %s", internal_path, zip_path, e)
+        logger.error("Failed to extract %s: %s", internal_path, e)
         return None
 
 

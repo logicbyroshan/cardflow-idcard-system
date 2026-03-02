@@ -10,7 +10,7 @@
 #
 # SINGLE AUTHORITIES:
 #   PermissionService  → all permission decisions
-#   WorkflowService    → all IDCard status transitions
+#   WorkflowService    → all IDCard status transitions   (idcards.services_workflow)
 #   ReprintWorkflowService → all ReprintRequest status transitions
 #   IDCardService      → all IDCard / IDCardTable / IDCardGroup mutations
 #   ImageService       → all file I/O (save, replace, delete images)
@@ -30,7 +30,6 @@ from .staff_service import StaffService
 from .idcard_service import IDCardService
 from .permission_service import PermissionService
 from .activity_service import ActivityService
-from .workflow_service import WorkflowService
 from .notification_service import NotificationService
 
 __all__ = [
@@ -42,13 +41,15 @@ __all__ = [
     'IDCardService',
     'PermissionService',
     'ActivityService',
-    'WorkflowService',
     'NotificationService',
 ]
 
 
-# Lazy re-export for ReprintWorkflowService (avoids circular import)
+# Lazy re-exports for workflow services (avoids circular import)
 def __getattr__(name):
+    if name == 'WorkflowService':
+        from idcards.services_workflow import WorkflowService
+        return WorkflowService
     if name == 'ReprintWorkflowService':
         from reprintcard.services import ReprintWorkflowService
         return ReprintWorkflowService

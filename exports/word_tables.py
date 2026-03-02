@@ -61,7 +61,22 @@ class WordTablesMixin:
 
         # Step 2: Remaining page width for text + Sr No columns
         used_by_images = sum(image_widths.values())
-        remaining = max(self.PAGE_WIDTH_CM - used_by_images, 5.0)
+
+        # Guard: prevent image columns from crowding out text columns.
+        # Each text column needs at least 1.0 cm; if images would leave
+        # less than that, scale all image widths down proportionally.
+        num_text_cols = num_cols - len(image_widths)
+        min_text_budget = num_text_cols * 1.0  # 1 cm floor per text col
+        if image_widths and (self.PAGE_WIDTH_CM - used_by_images) < min_text_budget:
+            max_image_budget = max(
+                self.PAGE_WIDTH_CM - min_text_budget,
+                len(image_widths) * 0.8,  # never shrink below 0.8 cm per image
+            )
+            _scale = max_image_budget / used_by_images
+            image_widths = {k: round(v * _scale, 2) for k, v in image_widths.items()}
+            used_by_images = sum(image_widths.values())
+
+        remaining = max(self.PAGE_WIDTH_CM - used_by_images, min_text_budget)
 
         # Step 3: Collect P90 value lengths per text column and compute weights
         text_weights = {}
@@ -114,6 +129,26 @@ class WordTablesMixin:
 
         total_text_w = sum(text_weights.values()) or 1
 
+        # ── Dense-table word_max_cm overrides (>20 data columns) ──────
+        # Tighten wide-column caps when the table is dense so narrow
+        # categorical columns are not squeezed out.
+        _DENSE_WORD_MAX: dict = {
+            'full_name': 4.5,
+            'parent_name': 4.0,
+            'guardian_name': 4.0,
+            'spouse_name': 4.0,
+            'reporting_manager': 3.5,
+            'email': 3.5,
+            'address': 2.5,
+            'allergies': 2.8,
+            'medical_condition': 2.8,
+            'department': 3.0,
+            'designation': 3.0,
+            'course': 2.8,
+            'branch': 2.8,
+        }
+        _dense_word = num_cols > 20  # >20 data columns (includes Sr No)
+
         # Step 4: Build final widths — proportional, then clamp by spec
         column_widths = {}
         for col_idx in range(num_cols):
@@ -122,7 +157,11 @@ class WordTablesMixin:
             elif col_idx in text_weights:
                 raw_cm = (text_weights[col_idx] / total_text_w) * remaining
                 spec = text_specs.get(col_idx, sr_spec)
-                clamped = max(spec.word_min_cm, min(raw_cm, spec.word_max_cm))
+                # Effective max: tighter cap in dense-table mode
+                eff_max_cm = spec.word_max_cm
+                if _dense_word and spec.category in _DENSE_WORD_MAX:
+                    eff_max_cm = min(eff_max_cm, _DENSE_WORD_MAX[spec.category])
+                clamped = max(spec.word_min_cm, min(raw_cm, eff_max_cm))
                 column_widths[col_idx] = clamped
             else:
                 column_widths[col_idx] = 1.5
@@ -229,7 +268,13 @@ class WordTablesMixin:
                 image_fixed_heights[field['name']] = h
                 max_image_height = max(max_image_height, h)
         # Dynamic row height: tallest image + minimal padding, or default 0.8cm
+        _MAX_ROW_HEIGHT_CM = 2.6  # hard cap: keeps 6 rows inside A4 landscape budget
         row_height_cm = round(max_image_height + 0.15, 2) if max_image_height > 0 else 0.8
+        row_height_cm = min(row_height_cm, _MAX_ROW_HEIGHT_CM)
+        # Image rows use 'exact' height so wrapped text cannot push a row taller
+        # than the page budget allows (6 rows must always fit).
+        # Text-only rows keep 'atLeast' so multi-line cells are never clipped.
+        _row_h_rule = 'exact' if max_image_height > 0 else 'atLeast'
 
         # Create ONE table with a header row
         table_obj = doc.add_table(rows=1, cols=num_cols)
@@ -271,7 +316,7 @@ class WordTablesMixin:
                 Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls,
                 Image, ImageOps, image_fixed_widths=image_fixed_widths,
                 image_fixed_heights=image_fixed_heights, row_height_cm=row_height_cm,
-                font_pt=_font_pt
+                font_pt=_font_pt, h_rule=_row_h_rule
             )
 
             # If a page break is needed, set it on the FIRST paragraph
@@ -355,7 +400,8 @@ class WordTablesMixin:
     def _add_data_row(self, table, card, ordered_fields, column_widths, sr_no,
                       Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls,
                       Image, ImageOps, image_fixed_widths=None,
-                      image_fixed_heights=None, row_height_cm=None, font_pt=9):
+                      image_fixed_heights=None, row_height_cm=None, font_pt=9,
+                      h_rule='atLeast'):
         """Add a data row to the table."""
         new_row = table.add_row()
         cells = new_row.cells
@@ -366,7 +412,7 @@ class WordTablesMixin:
         effective_row_h = row_height_cm if row_height_cm else self.ROW_HEIGHT_CM
         row_height_twips = int(Cm(effective_row_h).twips)
         trHeight = parse_xml(
-            r'<w:trHeight {} w:val="{}" w:hRule="atLeast"/>'.format(nsdecls('w'), row_height_twips)
+            r'<w:trHeight {} w:val="{}" w:hRule="{}"/>'.format(nsdecls('w'), row_height_twips, h_rule)
         )
         trPr.append(trHeight)
         

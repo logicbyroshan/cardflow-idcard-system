@@ -1,10 +1,13 @@
 <!-- Download PDF Modal -->
 <div id="downloadPdfModal" class="center-modal-overlay center-modal-theme-purple" style="display:none;">
-  <div class="center-modal-card">
-    <div class="center-modal-icon">
-      <i class="fa-solid fa-file-pdf"></i>
+  <div class="center-modal-card" @click.stop>
+    <!-- Header -->
+    <div class="center-modal-header">
+      <h3><i class="fa-solid fa-file-pdf"></i> Download PDF</h3>
+      <button type="button" class="center-modal-header-close" id="downloadPdfClose" title="Close"><i class="fa-solid fa-xmark"></i></button>
     </div>
-    <h3 class="center-modal-title">Download PDF</h3>
+    <!-- Body -->
+    <div class="center-modal-body-area">
     <p class="center-modal-subtitle">List: <strong id="downloadPdfListName"></strong></p>
     <p class="center-modal-subtitle mb-4">Cards: <strong id="downloadPdfCardCount">0</strong></p>
     
@@ -42,94 +45,105 @@
       </label>
     </div>
     
-    <div class="center-modal-actions">
-      <button id="downloadPdfCancel" class="center-modal-btn center-modal-btn-cancel">Cancel</button>
-      <button id="downloadPdfConfirm" class="center-modal-btn center-modal-btn-confirm">Download</button>
-    </div>
     <div id="downloadPdfProgress" class="center-modal-progress">
       <div class="center-modal-progress-track">
         <div id="downloadPdfBar" class="center-modal-progress-bar"></div>
       </div>
       <p class="center-modal-progress-text" id="downloadPdfStatus">Preparing...</p>
     </div>
+    </div><!-- end body-area -->
+    <!-- Footer -->
+    <div class="center-modal-footer-area">
+      <button id="downloadPdfCancel" class="center-modal-btn center-modal-btn-cancel">Cancel</button>
+      <button id="downloadPdfConfirm" class="center-modal-btn center-modal-btn-confirm">Download</button>
+    </div>
   </div>
 </div>
 
 <!-- Download XLSX Modal -->
 <div id="downloadXlsxModal" class="center-modal-overlay center-modal-theme-green" style="display:none;">
-  <div class="center-modal-card">
-    <div class="center-modal-icon">
-      <i class="fa-solid fa-file-excel"></i>
+  <div class="center-modal-card" @click.stop>
+    <!-- Header -->
+    <div class="center-modal-header">
+      <h3><i class="fa-solid fa-file-excel"></i> Download Excel</h3>
+      <button type="button" class="center-modal-header-close" id="downloadXlsxClose" title="Close"><i class="fa-solid fa-xmark"></i></button>
     </div>
-    <h3 class="center-modal-title">Download Excel</h3>
+    <!-- Body -->
+    <div class="center-modal-body-area">
     <p class="center-modal-subtitle">List: <strong id="downloadXlsxListName"></strong></p>
     <p class="center-modal-subtitle mb-4">Cards: <strong id="downloadXlsxCardCount">0</strong></p>
-    
     <p class="center-modal-note mt-0">Export all card data to an Excel spreadsheet.</p>
-    
-    <div class="center-modal-actions">
-      <button id="downloadXlsxCancel" class="center-modal-btn center-modal-btn-cancel">Cancel</button>
-      <button id="downloadXlsxConfirm" class="center-modal-btn center-modal-btn-confirm">Download</button>
-    </div>
     <div id="downloadXlsxProgress" class="center-modal-progress">
       <div class="center-modal-progress-track">
         <div id="downloadXlsxBar" class="center-modal-progress-bar"></div>
       </div>
       <p class="center-modal-progress-text" id="downloadXlsxStatus">Preparing...</p>
     </div>
+    </div><!-- end body-area -->
+    <!-- Footer -->
+    <div class="center-modal-footer-area">
+      <button id="downloadXlsxCancel" class="center-modal-btn center-modal-btn-cancel">Cancel</button>
+      <button id="downloadXlsxConfirm" class="center-modal-btn center-modal-btn-confirm">Download</button>
+    </div>
   </div>
 </div>
 
 <!-- Download Word Modal -->
 <div id="downloadDocxModal" class="center-modal-overlay center-modal-theme-blue" style="display:none;">
-  <div class="center-modal-card">
-    <div class="center-modal-icon">
-      <i class="fa-solid fa-file-word"></i>
+  <div class="center-modal-card" @click.stop>
+    <!-- Header -->
+    <div class="center-modal-header">
+      <h3><i class="fa-solid fa-file-word"></i> Download Word</h3>
+      <button type="button" class="center-modal-header-close" id="downloadDocxClose" title="Close"><i class="fa-solid fa-xmark"></i></button>
     </div>
-    <h3 class="center-modal-title">Download Word</h3>
+    <!-- Body -->
+    <div class="center-modal-body-area">
     <p class="center-modal-subtitle">List: <strong id="downloadDocxListName"></strong></p>
     <p class="center-modal-subtitle mb-4">Cards: <strong id="downloadDocxCardCount">0</strong></p>
-    
     <label class="center-modal-label text-left block">Select Template:</label>
     <select id="downloadDocxTemplate" class="center-modal-select">
       <option value="">Default (No Footer Instructions)</option>
     </select>
     <p class="center-modal-note">Template determines the footer instructions printed on the Word document.</p>
-    
-    <div class="center-modal-actions">
-      <button id="downloadDocxCancel" class="center-modal-btn center-modal-btn-cancel">Cancel</button>
-      <button id="downloadDocxConfirm" class="center-modal-btn center-modal-btn-confirm">Download</button>
-    </div>
     <div id="downloadDocxProgress" class="center-modal-progress">
       <div class="center-modal-progress-track">
         <div id="downloadDocxBar" class="center-modal-progress-bar"></div>
       </div>
       <p class="center-modal-progress-text" id="downloadDocxStatus">Preparing...</p>
     </div>
+    </div><!-- end body-area -->
+    <!-- Footer -->
+    <div class="center-modal-footer-area">
+      <button id="downloadDocxCancel" class="center-modal-btn center-modal-btn-cancel">Cancel</button>
+      <button id="downloadDocxConfirm" class="center-modal-btn center-modal-btn-confirm">Download</button>
+    </div>
   </div>
 </div>
 
 <!-- Download Images Modal -->
 <div id="downloadImgModal" class="center-modal-overlay center-modal-theme-amber" style="display:none;">
-  <div class="center-modal-card">
-    <div class="center-modal-icon">
-      <i class="fa-solid fa-images"></i>
+  <div class="center-modal-card" @click.stop>
+    <!-- Header -->
+    <div class="center-modal-header">
+      <h3><i class="fa-solid fa-images"></i> Download Images</h3>
+      <button type="button" class="center-modal-header-close" id="downloadImgClose" title="Close"><i class="fa-solid fa-xmark"></i></button>
     </div>
-    <h3 class="center-modal-title">Download Images</h3>
+    <!-- Body -->
+    <div class="center-modal-body-area">
     <p class="center-modal-subtitle">List: <strong id="downloadImgListName"></strong></p>
     <p class="center-modal-subtitle mb-4">Cards: <strong id="downloadImgCardCount">0</strong></p>
-    
     <p class="center-modal-note mt-0">Download all images as a ZIP file.</p>
-    
-    <div class="center-modal-actions">
-      <button id="downloadImgCancel" class="center-modal-btn center-modal-btn-cancel">Cancel</button>
-      <button id="downloadImgConfirm" class="center-modal-btn center-modal-btn-confirm">Download</button>
-    </div>
     <div id="downloadImgProgress" class="center-modal-progress">
       <div class="center-modal-progress-track">
         <div id="downloadImgBar" class="center-modal-progress-bar"></div>
       </div>
       <p class="center-modal-progress-text" id="downloadImgStatus">Preparing...</p>
+    </div>
+    </div><!-- end body-area -->
+    <!-- Footer -->
+    <div class="center-modal-footer-area">
+      <button id="downloadImgCancel" class="center-modal-btn center-modal-btn-cancel">Cancel</button>
+      <button id="downloadImgConfirm" class="center-modal-btn center-modal-btn-confirm">Download</button>
     </div>
   </div>
 </div>

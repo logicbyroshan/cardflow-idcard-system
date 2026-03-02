@@ -160,14 +160,11 @@ document.addEventListener('DOMContentLoaded', function () {
     var _assignAllGroups   = [];
     var _assignGroupsLoaded = false;
 
-    function openAssignModal() { if (assignOverlay) { assignOverlay.style.display = ''; document.body.style.overflow = 'hidden'; } }
+    function openAssignModal() { if (assignOverlay) { assignOverlay.style.display = 'flex'; document.body.style.overflow = 'hidden'; } }
     function closeAssignModal() { if (assignOverlay) { assignOverlay.style.display = 'none'; document.body.style.overflow = ''; } }
 
     if (assignCloseBtn)  assignCloseBtn.addEventListener('click', closeAssignModal);
     if (assignCancelBtn) assignCancelBtn.addEventListener('click', closeAssignModal);
-    if (assignOverlay) {
-        assignOverlay.addEventListener('click', function (e) { if (e.target === assignOverlay) closeAssignModal(); });
-    }
 
     // Reusable multi-select builder for the assign modal
     function buildAssignMultiselect(prefix, allItems, selectedSet) {

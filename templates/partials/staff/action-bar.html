@@ -1,4 +1,4 @@
-{% comment %}
+﻿{% comment %}
 Staff Action Bar Partial
 Contains: Filter dropdown, search input, and action buttons
 Uses Tailwind CSS component classes.
@@ -23,27 +23,22 @@ Uses Tailwind CSS component classes.
         <div class="search-box">
             <i class="fa-solid fa-magnifying-glass search-icon"></i>
             <input type="text" id="searchInput" class="search-input" placeholder="Search All..." autocomplete="off">
-            <button class="search-clear-btn" id="searchClearBtn" type="button" title="Clear search" aria-label="Clear search">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
+            <button class="search-clear-btn" id="searchClearBtn" type="button" title="Clear search" aria-label="Clear search"><i class="fa-solid fa-xmark"></i></button>
         </div>
     </div>
     <div class="action-bar-right">
         <div class="actions">
             <div class="btn-group">
                 {% if perm_idcard_client_list %}
-                <button class="btn btn-md btn-primary" id="addStaffBtn" title="Add New Staff">
-                    <i class="fa-solid fa-plus"></i> Add
+                <button class="btn btn-md btn-primary" id="addStaffBtn" title="Add New Staff"> Add
                 </button>
                 {% endif %}
                 {% if perm_idcard_client_list %}
-                <button class="btn btn-md btn-neutral" id="editStaffBtn" title="Edit Selected Staff" disabled>
-                    <i class="fa-solid fa-pen"></i> Edit
+                <button class="btn btn-md btn-neutral" id="editStaffBtn" title="Edit Selected Staff" disabled> Edit
                 </button>
                 {% endif %}
                 {% if perm_idcard_client_list %}
-                <button class="btn btn-md btn-neutral" id="viewStaffBtn" title="View Selected Staff" disabled>
-                    <i class="fa-solid fa-eye"></i> View
+                <button class="btn btn-md btn-neutral" id="viewStaffBtn" title="View Selected Staff" disabled> View
                 </button>
                 {% endif %}
             </div>
@@ -51,8 +46,7 @@ Uses Tailwind CSS component classes.
             <div class="btn-separator"></div>
             <div class="btn-group">
                 {% if perm_idcard_client_list %}
-                <button class="btn btn-md btn-neutral" id="assignStaffBtn" title="Assign Groups / Classes / Sections" disabled>
-                    <i class="fa-solid fa-layer-group"></i> Assign
+                <button class="btn btn-md btn-neutral" id="assignStaffBtn" title="Assign Groups / Classes / Sections" disabled> Assign
                 </button>
                 {% endif %}
             </div>
@@ -60,13 +54,11 @@ Uses Tailwind CSS component classes.
             <div class="btn-separator"></div>
             <div class="btn-group">
                 {% if perm_idcard_client_list %}
-                <button class="btn btn-md btn-danger" id="deleteStaffBtn" title="Delete Selected Staff" disabled>
-                    <i class="fa-solid fa-trash"></i> Delete
+                <button class="btn btn-md btn-danger" id="deleteStaffBtn" title="Delete Selected Staff" disabled> Delete
                 </button>
                 {% endif %}
                 {% if perm_idcard_client_list %}
-                <button class="btn btn-md btn-warning" id="activeStaffBtn" title="Toggle Staff Status" disabled>
-                    <i class="fa-solid fa-check"></i> Active
+                <button class="btn btn-md btn-warning" id="activeStaffBtn" title="Toggle Staff Status" disabled> Active
                 </button>
                 {% endif %}
             </div>

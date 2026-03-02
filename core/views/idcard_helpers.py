@@ -29,7 +29,7 @@ from ..services.permission_service import (
     api_require_any_authenticated,
     api_require_permission,
 )
-from ..services.workflow_service import WorkflowService
+from idcards.services_workflow import WorkflowService
 from ..utils.upload_security import validate_zip_safety
 
 # Logger for this module

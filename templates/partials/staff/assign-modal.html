@@ -5,21 +5,19 @@ Opened via the "Assign" button in the action bar.
 {% endcomment %}
 
 <!-- Assign Modal Overlay -->
-<div class="modal-overlay" id="assign-modal-overlay" style="display:none;">
-  <div class="modal-card" style="max-width:520px;width:95%;max-height:90vh;display:flex;flex-direction:column;">
+<div class="modal-backdrop" id="assign-modal-overlay" style="display:none;">
+  <div class="modal-center modal-purple" style="max-width:650px;width:95%;max-height:90vh;display:flex;flex-direction:column;" @click.stop>
     <!-- Header -->
-    <div class="modal-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #e5e7eb;">
-      <h3 style="margin:0;font-size:1.05rem;font-weight:600;color:#1f2937;">
-        <i class="fa-solid fa-layer-group" style="color:#6366f1;margin-right:6px;"></i>
-        Assign to <span id="assign-staff-name" style="color:#6366f1;">Staff</span>
+    <div class="modal-header">
+      <h3>
+        <i class="fa-solid fa-layer-group" style="color:inherit;margin-right:6px;"></i>
+        Assign to <span id="assign-staff-name">Staff</span>
       </h3>
-      <button type="button" id="assign-modal-close" style="background:none;border:none;font-size:1.2rem;color:#9ca3af;cursor:pointer;padding:4px;" title="Close">
-        <i class="fa-solid fa-xmark"></i>
-      </button>
+      <button type="button" id="assign-modal-close" class="modal-close" title="Close">&times;</button>
     </div>
 
     <!-- Body (scrollable) -->
-    <div style="padding:16px 20px;overflow-y:auto;flex:1;">
+    <div class="modal-body" style="overflow-y:auto;flex:1;">
       <!-- Group Assignment -->
       <div style="margin-bottom:18px;">
         <label style="display:block;font-weight:600;font-size:0.85rem;color:#374151;margin-bottom:6px;">
@@ -110,7 +108,7 @@ Opened via the "Assign" button in the action bar.
     </div>
 
     <!-- Footer -->
-    <div style="padding:14px 20px;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end;gap:10px;">
+    <div class="modal-footer">
       <button type="button" class="btn btn-md btn-neutral" id="assign-modal-cancel">Cancel</button>
       <button type="button" class="btn btn-md btn-primary" id="assign-modal-save">
         <i class="fa-solid fa-check"></i> Save Assignment
@@ -118,24 +116,3 @@ Opened via the "Assign" button in the action bar.
     </div>
   </div>
 </div>
-
-<style>
-  #assign-modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.45);
-    z-index: 9999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    animation: fadeIn .15s ease;
-  }
-  #assign-modal-overlay .modal-card {
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-    animation: slideUp .2s ease;
-  }
-  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-  @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-</style>

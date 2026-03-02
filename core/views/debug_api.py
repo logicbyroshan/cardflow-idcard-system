@@ -83,7 +83,8 @@ def api_debug_workflow(request):
         Returns: global transition matrix + reprint matrix.
     """
     from ..services.permission_service import PermissionService
-    from ..services.workflow_service import WorkflowService, ReprintWorkflowService
+    from idcards.services_workflow import WorkflowService
+    from reprintcard.services import ReprintWorkflowService
 
     if not PermissionService.is_super_admin(request.user):
         return JsonResponse({'success': False, 'message': 'Super admin access required'}, status=403)
@@ -122,7 +123,7 @@ def api_card_allowed_transitions(request, card_id):
     GET /panel/api/card/<card_id>/allowed-transitions/
     Response: { "success": true, "allowed_transitions": ["verified", "pool"] }
     """
-    from ..services.workflow_service import WorkflowService
+    from idcards.services_workflow import WorkflowService
 
     try:
         card = get_object_or_404(IDCard.objects.select_related('table__group'), id=card_id)

@@ -231,6 +231,12 @@ class IDCard(models.Model):
     deleted_at = models.DateTimeField(null=True, blank=True, help_text='Timestamp when card was moved to pool')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    modified_by = models.CharField(
+        max_length=150,
+        blank=True,
+        default='',
+        help_text='Username of the user who last modified this card',
+    )
 
     def __str__(self):
         # Try to get a name field from field_data (with null safety)

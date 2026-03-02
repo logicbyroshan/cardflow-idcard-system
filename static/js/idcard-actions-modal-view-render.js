@@ -293,9 +293,21 @@ function _updateRowInPlace(cardId, cardData) {
                     img.style.display = 'none';
                     img.removeAttribute('src');
                 }
-                // Hide edit-photo button
+                // Always keep the edit button visible on image cells so the user
+                // can click it to upload a new photo (even when there is no image).
                 const editBtn = td.querySelector('.edit-photo-btn');
-                if (editBtn) editBtn.style.display = 'none';
+                if (editBtn) {
+                    editBtn.style.display = '';
+                } else if (typeof PERMS !== 'undefined' && PERMS.idcard_edit) {
+                    // Recreate if it was ever removed from the DOM
+                    var wrapperEl = td.querySelector('.image-with-edit') || td;
+                    var newBtn = document.createElement('button');
+                    newBtn.className = 'edit-photo-btn';
+                    newBtn.setAttribute('data-card-id', cardId);
+                    newBtn.title = 'Edit Card';
+                    newBtn.textContent = 'Edit';
+                    wrapperEl.appendChild(newBtn);
+                }
 
                 // Remove old placeholder if any
                 var existingPlaceholder = td.querySelector('.no-image');
@@ -327,15 +339,18 @@ function _updateRowInPlace(cardId, cardData) {
         }
     });
 
-    // Update the updated_at cell if present
+    // Update the updated_at and modified_by cells if present in the response
     if (cardData.updated_at) {
         const dateCells = row.querySelectorAll('.date-cell');
+        // updated_at is the last date-cell (appears just before the user-cell)
         if (dateCells.length > 0) {
-            const lastDateCell = dateCells[dateCells.length - 1];
-            // Only update if it looks like a timestamp cell (not downloaded_at/deleted_at)
-            if (lastDateCell.previousElementSibling && !lastDateCell.previousElementSibling.classList.contains('action-cell')) {
-                // The updated_at is typically the second to last cell
-            }
+            dateCells[dateCells.length - 1].textContent = cardData.updated_at;
+        }
+    }
+    if (cardData.modified_by !== undefined) {
+        const userCells = row.querySelectorAll('.user-cell');
+        if (userCells.length > 0) {
+            userCells[userCells.length - 1].textContent = cardData.modified_by || 'Admin';
         }
     }
 

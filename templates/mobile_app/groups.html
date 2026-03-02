@@ -1,17 +1,23 @@
 {% extends "mobile_app/base.html" %}
 {% load static %}
 
-{% block title %}Groups & Tables - ID Card Manager{% endblock %}
+{% block title %}Groups & Tables - Adarsh ID Cards{% endblock %}
 
 {% block content %}
 <div class="min-h-screen bg-gray-50 pb-20" x-data="{ activeTab: 'groups', expandedGroup: null }">
     <!-- Header -->
     <div class="sticky top-0 z-40 flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-brand-light to-brand-dark">
+        {% if back_to_clients %}
+        <a href="{% url 'mobile_app:clients_list' %}" class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all">
+            <i class="fa-solid fa-arrow-left text-sm"></i>
+        </a>
+        {% else %}
         <a href="{% url 'mobile_app:home' %}" class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all">
             <i class="fa-solid fa-arrow-left text-sm"></i>
         </a>
+        {% endif %}
         <div class="flex-1">
-            <h1 class="text-white font-bold text-sm">Groups & Tables</h1>
+            <h1 class="text-white font-bold text-sm">{% if client_name %}{{ client_name }}{% else %}Groups & Tables{% endif %}</h1>
             <p class="text-white/70 text-[10px]">{{ groups|length }} group(s) · {{ tables|length }} table(s)</p>
         </div>
     </div>

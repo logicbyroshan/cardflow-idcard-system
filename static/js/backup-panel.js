@@ -86,7 +86,7 @@
     const statusClass = 'backup-status-' + b.status;
     const statusLabel = b.status.charAt(0).toUpperCase() + b.status.slice(1);
 
-    let html = '<div class="backup-card" data-backup-id="' + b.id + '">';
+    let html = '<div class="backup-card" data-backup-id="' + b.id + '" data-status="' + b.status + '">';
 
     // Header
     html += '<div class="backup-card-header">';
@@ -308,7 +308,7 @@
   /* ──── Polling ──── */
   function _startPolling() {
     if (_pollTimer) return;
-    _pollTimer = setInterval(loadBackups, 5000);
+    _pollTimer = setInterval(loadBackups, 3000);
   }
 
   function _stopPolling() {

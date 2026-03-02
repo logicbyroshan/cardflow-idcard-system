@@ -273,11 +273,11 @@ function openConfirmModal(title, message, action) {
   document.getElementById('confirmTitle').textContent = title;
   document.getElementById('confirmMessage').textContent = message;
   confirmAction = action;
-  document.getElementById('confirmModal').classList.add('active');
+  document.getElementById('confirmModal').classList.add('show');
 }
 
 function closeConfirmModal() {
-  document.getElementById('confirmModal').classList.remove('active');
+  document.getElementById('confirmModal').classList.remove('show');
   confirmAction = null;
 }
 

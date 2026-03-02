@@ -43,29 +43,30 @@
 </div>
 
 <!-- Create / Edit Template Modal -->
-<div class="modal-overlay" id="templateModal" style="display:none;">
-  <div class="modal-container" style="max-width:540px;">
-    <div class="modal-header">
-      <h3 id="templateModalTitle"><i class="fa-solid fa-file-lines"></i> New Template</h3>
-      <button class="modal-close" onclick="closeTemplateModal()">&times;</button>
+<div class="center-modal-overlay" id="templateModal" onclick="if(event.target===this)closeTemplateModal()">
+  <div class="center-modal-card" style="max-width:540px; width:100%; text-align:left;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+      <h3 id="templateModalTitle" style="font-size:15px; font-weight:700; color:#1e293b; margin:0; display:flex; align-items:center; gap:8px;">
+        <i class="fa-solid fa-file-lines" style="color:#667eea;"></i> New Template
+      </h3>
+      <button onclick="closeTemplateModal()" style="background:none; border:none; cursor:pointer; color:#94a3b8; font-size:18px; line-height:1; padding:2px 6px;">&times;</button>
     </div>
-    <div class="modal-body">
-      <input type="hidden" id="templateEditId" value="">
-      <div class="form-group" style="margin-bottom:14px;">
-        <label class="form-label">Template Name</label>
-        <input type="text" id="templateName" class="form-input" placeholder="e.g. School ID Card Footer" maxlength="100">
-      </div>
-      <div class="form-group" style="margin-bottom:14px;">
-        <label class="form-label">Instructions / Footer Text</label>
-        <textarea id="templateInstructions" class="form-input" rows="5" placeholder="Footer text printed at the bottom of PDF/Word exports..." maxlength="5000" style="resize:vertical;"></textarea>
-      </div>
-      <div class="form-group">
-        <label class="flex items-center gap-2 cursor-pointer text-xs text-gray-600">
-          <input type="checkbox" id="templateIsDefault"> Set as default template
-        </label>
-      </div>
-    </div>
-    <div class="modal-footer">
+
+    <input type="hidden" id="templateEditId" value="">
+
+    <label class="panel-form-label">Template Name</label>
+    <input type="text" id="templateName" class="panel-form-input" placeholder="e.g. School ID Card Footer" maxlength="100">
+
+    <label class="panel-form-label">Instructions / Footer Text</label>
+    <textarea id="templateInstructions" class="panel-form-input" rows="5"
+      placeholder="Footer text printed at the bottom of PDF/Word exports..." maxlength="5000"></textarea>
+
+    <label class="panel-form-label" style="display:flex; align-items:center; gap:8px; font-weight:500; cursor:pointer;">
+      <input type="checkbox" id="templateIsDefault" style="accent-color:#667eea; width:14px; height:14px;">
+      Set as default template
+    </label>
+
+    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
       <button class="btn btn-md btn-neutral" onclick="closeTemplateModal()">Cancel</button>
       <button class="btn btn-md btn-primary" onclick="saveTemplate()">
         <i class="fa-solid fa-check"></i> Save Template

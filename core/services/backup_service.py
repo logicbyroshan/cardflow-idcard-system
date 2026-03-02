@@ -83,7 +83,12 @@ def delete_backup_files(task_id: int):
 # ─── Background worker ───────────────────────────────────────────────────
 
 def _process_backup(task_id: int):
-    """Main background thread — iterates clients and builds ZIPs."""
+    """Main background thread — iterates clients and builds ZIPs.
+
+    Clients are set to *inactive* for the duration of the backup so that
+    no new cards are added while the ZIP is being built.  They are
+    restored to *active* in a finally block regardless of outcome.
+    """
     from core.models import BackupTask
     from client.models import Client
     from idcards.models import IDCardGroup, IDCardTable, IDCard
@@ -100,8 +105,23 @@ def _process_backup(task_id: int):
 
     out_dir = _ensure_backup_dir(task_id)
 
+    client_ids: List[int] = task.client_ids or []
+
+    # ── Temporarily deactivate selected clients ──────────────────────────
+    # This prevents new cards being added while the backup is in progress.
+    # We record which clients were active before so we only restore those.
+    previously_active_ids: List[int] = list(
+        Client.objects.filter(pk__in=client_ids, status='active')
+        .values_list('pk', flat=True)
+    )
+    if previously_active_ids:
+        Client.objects.filter(pk__in=previously_active_ids).update(status='inactive')
+        logger.info(
+            "Backup #%d: set %d client(s) inactive for backup duration: %s",
+            task_id, len(previously_active_ids), previously_active_ids,
+        )
+
     try:
-        client_ids: List[int] = task.client_ids or []
         clients = Client.objects.filter(pk__in=client_ids).order_by('name')
         task.total = clients.count()
         task.save(update_fields=['total'])
@@ -109,13 +129,17 @@ def _process_backup(task_id: int):
         zip_files = {}
 
         for idx, client in enumerate(clients, 1):
+            # Show which client is being processed
             task.current_client = client.name
-            task.progress = idx - 1
-            task.save(update_fields=['current_client', 'progress'])
+            task.save(update_fields=['current_client'])
 
             zip_info = _build_client_zip(client, out_dir)
             if zip_info:
                 zip_files[str(client.pk)] = zip_info
+
+            # Update progress AFTER each client completes (accurate count)
+            task.progress = idx
+            task.save(update_fields=['progress'])
 
         task.zip_files = zip_files
         task.progress = task.total
@@ -139,6 +163,15 @@ def _process_backup(task_id: int):
             task.save(update_fields=['status', 'error_message', 'completed_at'])
         except Exception:
             pass
+
+    finally:
+        # ── Always restore clients to active ─────────────────────────────
+        if previously_active_ids:
+            Client.objects.filter(pk__in=previously_active_ids).update(status='active')
+            logger.info(
+                "Backup #%d: restored %d client(s) to active status.",
+                task_id, len(previously_active_ids),
+            )
 
 
 def _build_client_zip(client, out_dir: str) -> dict | None:

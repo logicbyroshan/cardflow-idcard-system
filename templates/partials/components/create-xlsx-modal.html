@@ -13,11 +13,18 @@ and the JS block at the bottom which wires up the logic.
 <div class="center-modal-overlay center-modal-theme-green"
      x-show="activeModal === 'createXlsx'" x-transition.opacity
      style="display:none;">
-  <div class="center-modal-card" style="text-align:left;max-width:560px;"
+  <div class="center-modal-card"
        @click.stop x-show="activeModal === 'createXlsx'"
        x-transition:enter="transition ease-out duration-200"
        x-transition:enter-start="opacity-0 scale-95"
        x-transition:enter-end="opacity-100 scale-100">
+    <!-- Header -->
+    <div class="center-modal-header">
+      <h3><i class="fa-solid fa-file-excel"></i> Create Table from XLSX</h3>
+      <button type="button" class="center-modal-header-close" @click="closeModal()" title="Close"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <!-- Body -->
+    <div class="center-modal-body-area" style="text-align:left;">
 
     <!-- Step indicator (3 steps) -->
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
@@ -143,5 +150,6 @@ and the JS block at the bottom which wires up the logic.
       </div>
       <p style="margin:6px 0 0;font-size:11px;color:#9ca3af;" id="cxProgressPct"></p>
     </div>
+    </div><!-- end body-area -->
   </div>
 </div>

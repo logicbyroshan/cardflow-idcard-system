@@ -249,6 +249,11 @@ class WorkflowService:
             card.status = target_status
             update_fields = ['status', 'updated_at']
 
+            # Track who performed the transition
+            if user and hasattr(user, 'username'):
+                card.modified_by = user.username
+                update_fields.append('modified_by')
+
             # Set/clear timestamps for download and pool transitions
             if target_status == 'download':
                 card.downloaded_at = timezone.now()
@@ -401,6 +406,10 @@ class WorkflowService:
             )
 
         update_kwargs = {'status': target_status}
+
+        # Track who performed the bulk transition
+        if user and hasattr(user, 'username'):
+            update_kwargs['modified_by'] = user.username
 
         # Set/clear timestamps for download and pool transitions
         if target_status == 'download':

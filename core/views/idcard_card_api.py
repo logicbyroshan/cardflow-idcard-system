@@ -295,6 +295,7 @@ def api_idcard_cards_json(request, table_id):
             'updated_at_iso': card.updated_at.isoformat() if card.updated_at else None,
             'downloaded_at': localtime(card.downloaded_at).strftime('%d-%b-%Y %H:%M') if card.downloaded_at else None,
             'deleted_at': localtime(card.deleted_at).strftime('%d-%b-%Y %H:%M') if card.deleted_at else None,
+            'modified_by': card.modified_by or '',
         })
 
     return JsonResponse({
@@ -521,6 +522,7 @@ def api_idcard_update(request, card_id):
             uploaded_by=request.user if request.user.is_authenticated else None,
             expected_updated_at=expected_updated_at,
             legacy_photo_file=legacy_photo_file,
+            modified_by=request.user.username if request.user.is_authenticated else '',
         )
 
         if result.success:
@@ -534,7 +536,9 @@ def api_idcard_update(request, card_id):
                     'photo': card_data.get('photo'),
                     'status': card_data['status'],
                     'status_display': card_data.get('status_display'),
-                    'updated_at': card_data.get('updated_at_iso'),
+                    'updated_at': card_data.get('updated_at'),
+                    'updated_at_iso': card_data.get('updated_at_iso'),
+                    'modified_by': card_data.get('modified_by', ''),
                 }
             })
 
@@ -588,7 +592,10 @@ def api_idcard_update_field(request, card_id):
         field = data.get('field')
         value = data.get('value', '')
         
-        result = IDCardService.update_single_field(card_id, field, value)
+        result = IDCardService.update_single_field(
+            card_id, field, value,
+            modified_by=request.user.username if request.user.is_authenticated else '',
+        )
         return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON data!'}, status=400)
@@ -610,7 +617,7 @@ def api_idcard_change_status(request, card_id):
         data = json.loads(request.body)
         new_status = data.get('status')
 
-        from ..services.workflow_service import WorkflowService
+        from idcards.services_workflow import WorkflowService
         result = WorkflowService.transition(card, new_status, user=request.user, request=request)
         return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
     except json.JSONDecodeError:
@@ -639,7 +646,7 @@ def api_idcard_bulk_status(request, table_id):
         if not card_ids:
             return JsonResponse({'success': False, 'message': 'No cards selected'}, status=400)
 
-        from ..services.workflow_service import WorkflowService
+        from idcards.services_workflow import WorkflowService
         result = WorkflowService.bulk_transition(
             _tbl, card_ids, new_status, user=request.user, request=request
         )

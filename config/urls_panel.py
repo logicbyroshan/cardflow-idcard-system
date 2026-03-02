@@ -104,15 +104,16 @@ def panel_manifest_json(request):
     standalone window.
     """
     if _is_mobile_ua(request):
-        # Mobile → ID Card Manager (mobile app)
+        # Mobile → Adarsh ID Cards (mobile app)
         manifest = {
-            'name': 'ID Card Manager',
-            'short_name': 'IDCard',
-            'description': 'Mobile ID Card Management System',
+            'name': 'Adarsh ID Cards',
+            'short_name': 'Adarsh ID',
+            'description': 'Adarsh ID Cards - Mobile Card Management',
             'start_url': '/app/',
-            'scope': '/',
+            'scope': '/app/',
             'id': '/app/',
             'display': 'standalone',
+            'display_override': ['standalone', 'minimal-ui'],
             'background_color': '#667eea',
             'theme_color': '#667eea',
             'orientation': 'portrait',
@@ -192,8 +193,6 @@ urlpatterns = [
     # Health check — no auth, used by load balancers / CI/CD
     path('api/health/', health_check, name='health_check'),
 
-    # Versioned API — new endpoints go in config/urls_api_v1.py
-    path('api/v1/', include('config.urls_api_v1', namespace='v1')),
     path('robots.txt', panel_robots_txt, name='panel_robots_txt'),
 
     # PWA — manifest and service worker at root scope

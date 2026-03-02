@@ -144,7 +144,7 @@ def dashboard(request):
 def api_recent_client_updates(request):
     """API endpoint to get recent clients with their ID card status counts"""
     try:
-        limit = int(request.GET.get('limit', 5))
+        limit = int(request.GET.get('limit', 500))  # default: show all active clients
         user = request.user
         
         # Get recent active clients - scoped by PermissionService
@@ -238,7 +238,7 @@ def api_print_reprint_overview(request):
         from cardprint.models import PrintRequest
         from reprintcard.models import ReprintRequest
 
-        limit = int(request.GET.get('limit', 10))
+        limit = int(request.GET.get('limit', 500))  # default: show all active clients
         user = request.user
 
         clients = PermissionService.get_accessible_clients(

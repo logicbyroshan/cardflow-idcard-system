@@ -11,10 +11,16 @@
                 <p class="text-sm font-semibold text-gray-800">{{ user_name|default:"Admin User" }}</p>
             </div>
         </a>
-        <!-- Right: Notification Bell -->
+        <!-- Right: Notification Bell (hidden for admins) -->
+        {% if not is_super_admin and not is_admin_staff %}
         <a href="{% url 'mobile_app:notifications' %}" class="relative p-2" x-data="{ hasNew: {{ has_new_activity|yesno:'true,false' }} }">
             <i class="fa-solid fa-bell text-xl text-gray-600"></i>
             <span x-show="hasNew" class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
         </a>
+        {% else %}
+        <a href="{% url 'mobile_app:settings_page' %}" class="relative p-2">
+            <i class="fa-solid fa-gear text-xl text-gray-600"></i>
+        </a>
+        {% endif %}
     </div>
 </div>

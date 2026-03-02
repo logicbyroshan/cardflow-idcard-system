@@ -98,9 +98,6 @@ urlpatterns = [
     # Health check — no auth, used by load balancers / CI/CD
     path('api/health/', health_check, name='health_check'),
 
-    # Versioned API — new endpoints go in config/urls_api_v1.py
-    path('api/v1/', include('config.urls_api_v1', namespace='v1')),
-
     # PWA — manifest and service worker at root scope
     path('manifest.json', lambda r: _serve_pwa_file(r, 'manifest.json'), name='pwa_manifest'),
     path('sw.js', lambda r: _serve_pwa_file(r, 'sw.js'), name='pwa_sw'),

@@ -212,6 +212,9 @@ urlpatterns = [
 
     # Client-side error reporting (from error-monitor.js)
     path('api/client-errors/', views.api_client_errors, name='api_client_errors'),
+
+    # Monitoring dashboard data (super_admin only)
+    path('api/monitoring/', views.api_monitoring_data, name='api_monitoring_data'),
 ]
 
 # Debug endpoints — only available when DEBUG=True

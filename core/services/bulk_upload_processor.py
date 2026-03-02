@@ -86,7 +86,8 @@ def process_bulk_upload(task):
     cards_created = 0
     photos_matched = 0
     errors = []
-    
+    open_zip_handles = []  # ZipFile objects kept open during row loop; closed in finally
+
     try:
         # Parse XLSX/CSV and get rows
         if file_name.endswith(('.xlsx', '.xls')):
@@ -118,7 +119,24 @@ def process_bulk_upload(task):
         # Get ZIP file paths from metadata
         zip_paths = metadata.get('zip_paths', {})
         unified_zip_paths = metadata.get('unified_zip_paths', [])
-        
+
+        # Build ZIP index ONCE before the row loop.
+        # Scans every ZIP's central directory a single time so each row can do
+        # an O(1) dict lookup + a direct seek-read instead of iterating all ZIP
+        # entries for every row (the old approach was O(rows × zip_entries)).
+        zip_index = {}  # {normalized_key: (ZipFile_handle, internal_path, ext)}
+        for _zip_rel in list(zip_paths.values()) + list(unified_zip_paths):
+            _zip_full = os.path.join(settings.MEDIA_ROOT, _zip_rel)
+            if not os.path.exists(_zip_full):
+                continue
+            try:
+                _zf = zipfile.ZipFile(_zip_full, 'r')
+                open_zip_handles.append(_zf)
+                _populate_zip_index(_zf, zip_index)
+                logger.info("ZIP indexed: %s  keys=%d", _zip_rel, len(zip_index))
+            except Exception as _idx_err:
+                logger.warning("Could not index ZIP %s: %s", _zip_rel, _idx_err)
+
         # Process rows in batches
         batch = []
         saved_image_paths = []  # Track for rollback cleanup
@@ -140,15 +158,12 @@ def process_bulk_upload(task):
                     )
                     
                     if photo_column_value:
-                        # Try to find and save image from ZIP
+                        # Try to find and save image from ZIP (O(1) index lookup)
                         result = _find_and_save_image_from_zips(
                             photo_column_value=photo_column_value,
-                            img_field=img_field,
-                            zip_paths=zip_paths,
-                            unified_zip_paths=unified_zip_paths,
+                            zip_index=zip_index,
                             client=client,
                             batch_counter=len(batch) + cards_created + 1,
-                            user=task.user
                         )
                         
                         if result['success']:
@@ -178,9 +193,8 @@ def process_bulk_upload(task):
                 if len(batch) >= BATCH_SIZE:
                     with transaction.atomic():
                         IDCard.objects.bulk_create(batch)
-                        # Create CardMedia records for each card
-                        for card in batch:
-                            _create_media_records_for_card(card, image_fields, client, task.user)
+                        # Bulk-create all CardMedia records in one query instead of N inserts
+                        _bulk_create_media_for_batch(batch, image_fields, client, task.user)
                         cards_created += len(batch)
                     batch = []
                     
@@ -196,8 +210,7 @@ def process_bulk_upload(task):
         if batch:
             with transaction.atomic():
                 IDCard.objects.bulk_create(batch)
-                for card in batch:
-                    _create_media_records_for_card(card, image_fields, client, task.user)
+                _bulk_create_media_for_batch(batch, image_fields, client, task.user)
                 cards_created += len(batch)
         
         # Update final progress
@@ -227,6 +240,12 @@ def process_bulk_upload(task):
         task.mark_failed(str(e))
     
     finally:
+        # Close open ZIP handles before cleanup
+        for _zf in open_zip_handles:
+            try:
+                _zf.close()
+            except Exception:
+                pass
         # Cleanup temp files
         _cleanup_task_files(task)
 
@@ -450,84 +469,66 @@ def _get_image_reference_from_row(row, img_field, image_ref_columns, headers):
     return None
 
 
-def _find_and_save_image_from_zips(photo_column_value, img_field, zip_paths, unified_zip_paths, 
-                                   client, batch_counter, user):
+def _populate_zip_index(zf, index):
     """
-    Find an image in ZIP files and save it.
-    
-    CRITICAL: Processes ONE image at a time from ZIP.
-    Never extracts entire ZIP into memory.
+    Scan an open ZipFile and populate index:
+        index[normalized_key] = (ZipFile_handle, internal_path, ext)
+
+    Only stores metadata — no image bytes are loaded into memory.
+    First encountered entry wins when two files share the same normalized key.
     """
     from core.services.base import BaseService
-    from mediafiles.services import ImageService
+    ALLOWED_EXTS = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'}
+    MAX_SINGLE_FILE = 30 * 1024 * 1024  # 30 MB — matches upload limit
+    for info in zf.infolist():
+        if info.is_dir():
+            continue
+        if info.file_size > MAX_SINGLE_FILE:
+            continue
+        base_name = os.path.basename(info.filename)
+        name_no_ext, ext = os.path.splitext(base_name)
+        ext = ext.lower()
+        if ext not in ALLOWED_EXTS:
+            continue
+        key = BaseService.normalize_image_identifier(name_no_ext)
+        if key and key not in index:
+            index[key] = (zf, info.filename, ext)
+
+
+def _find_and_save_image_from_zips(photo_column_value, zip_index, client, batch_counter):
+    """
+    Find an image using the pre-built zip_index and save it.
+
+    zip_index is built once before the row loop by _populate_zip_index so
+    this function does an O(1) dict lookup + a single seek-read instead
+    of iterating all ZIP entries for every row.
+    """
+    from core.services.base import BaseService
     from core.utils.field_utils import validate_image_bytes
-    
+
     normalized_key = BaseService.normalize_image_identifier(photo_column_value)
     if not normalized_key:
         return {'success': False, 'error': 'Invalid photo reference'}
-    
-    # Try field-specific ZIP first
-    if img_field in zip_paths:
-        zip_path = os.path.join(settings.MEDIA_ROOT, zip_paths[img_field])
-        result = _find_image_in_zip(zip_path, normalized_key)
-        if result['found']:
-            return _save_extracted_image(result, client, batch_counter)
-    
-    # Try unified ZIPs
-    for zip_rel_path in unified_zip_paths:
-        zip_path = os.path.join(settings.MEDIA_ROOT, zip_rel_path)
-        result = _find_image_in_zip(zip_path, normalized_key)
-        if result['found']:
-            return _save_extracted_image(result, client, batch_counter)
-    
-    return {'success': False, 'error': 'Image not found in any ZIP'}
 
+    entry = zip_index.get(normalized_key)
+    if not entry:
+        return {'success': False, 'error': 'Image not found in any ZIP'}
 
-def _find_image_in_zip(zip_path, normalized_key):
-    """
-    Find a single image in a ZIP file by normalized key.
-    
-    CRITICAL: Opens ZIP from disk, extracts only ONE file.
-    """
-    from core.services.base import BaseService
-    from core.utils.field_utils import validate_image_bytes
-    
-    if not os.path.exists(zip_path):
-        return {'found': False}
-    
+    zf, internal_path, ext = entry
     try:
-        with zipfile.ZipFile(zip_path, 'r') as zf:
-            for zip_info in zf.infolist():
-                if zip_info.is_dir():
-                    continue
-                
-                # Skip large files
-                if zip_info.file_size > 30 * 1024 * 1024:  # 30MB (matches upload limit)
-                    continue
-                
-                base_name = os.path.basename(zip_info.filename)
-                name_without_ext = os.path.splitext(base_name)[0]
-                ext = os.path.splitext(base_name)[1].lower()
-                
-                if ext not in ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']:
-                    continue
-                
-                file_key = BaseService.normalize_image_identifier(name_without_ext)
-                if file_key == normalized_key:
-                    # Found matching file - extract only this one
-                    image_bytes = zf.read(zip_info.filename)
-                    is_valid, error_msg = validate_image_bytes(image_bytes)
-                    if is_valid:
-                        return {
-                            'found': True,
-                            'bytes': image_bytes,
-                            'ext': ext,
-                            'original_name': base_name
-                        }
+        image_bytes = zf.read(internal_path)
     except Exception as e:
-        logger.error("Error reading ZIP %s: %s", zip_path, e)
-    
-    return {'found': False}
+        return {'success': False, 'error': f'Failed to read image from ZIP: {e}'}
+
+    is_valid, error_msg = validate_image_bytes(image_bytes)
+    if not is_valid:
+        return {'success': False, 'error': f'Invalid image: {error_msg}'}
+
+    return _save_extracted_image(
+        {'bytes': image_bytes, 'ext': ext, 'original_name': os.path.basename(internal_path)},
+        client,
+        batch_counter,
+    )
 
 
 def _save_extracted_image(result, client, batch_counter):
@@ -554,29 +555,40 @@ def _save_extracted_image(result, client, batch_counter):
         return {'success': False, 'error': str(e)}
 
 
-def _create_media_records_for_card(card, image_fields, client, user):
+def _bulk_create_media_for_batch(batch, image_fields, client, user):
     """
-    Create CardMedia records for a card's images.
+    Bulk-create CardMedia records for an entire batch of cards in one INSERT.
+    Replaces the old per-card create loop (N inserts → 1 insert).
     """
-    from mediafiles.services import ImageService
-    
-    field_data = card.field_data or {}
-    
-    for img_field in image_fields:
-        img_path = field_data.get(img_field, '')
-        if img_path and not img_path.startswith('PENDING:') and img_path not in ('', 'NOT_FOUND'):
-            try:
-                ImageService.create_media_record(
-                    saved_path=img_path,
-                    client=client,
+    from mediafiles.models import CardMedia
+
+    records = []
+    for card in batch:
+        field_data = card.field_data or {}
+        for img_field in image_fields:
+            img_path = field_data.get(img_field, '')
+            if img_path and not img_path.startswith('PENDING:') and img_path not in ('', 'NOT_FOUND'):
+                records.append(CardMedia(
                     card=card,
-                    field_name=img_field,
+                    group=None,
+                    client=client,
+                    file=img_path,
                     media_type='photo',
+                    field_name=img_field,
                     original_filename=None,
-                    uploaded_by=user
-                )
-            except Exception as e:
-                logger.warning("Failed to create CardMedia for %s: %s", img_field, e)
+                    uploaded_by=user,
+                ))
+
+    if records:
+        try:
+            CardMedia.objects.bulk_create(records, ignore_conflicts=True)
+        except Exception as e:
+            logger.warning("Bulk CardMedia create failed, falling back to individual inserts: %s", e)
+            for rec in records:
+                try:
+                    rec.save()
+                except Exception as rec_err:
+                    logger.warning("CardMedia individual save also failed for card %s field %s: %s", rec.card_id, rec.field_name, rec_err)
 
 
 def _cleanup_task_files(task):
