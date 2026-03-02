@@ -353,14 +353,19 @@ function cropperApp() {
     },
 
     _startProgressSimulation() {
+      var startTime = Date.now();
+      var self = this;
       this._progressTimer = setInterval(() => {
-        if (this.progress.percent < 85) {
-          this._updateProgress(
-            Math.min(this.progress.percent + 3, 85),
-            'Engine processing photos…'
-          );
+        var elapsed = (Date.now() - startTime) / 1000;
+        // Exponential deceleration: fast start, slows toward 90%
+        var target = 90;
+        var tau = 12; // reaches ~63% at 12s, ~86% at 24s
+        var pct = Math.round(target * (1 - Math.exp(-elapsed / tau)));
+        pct = Math.max(pct, self.progress.percent); // never go backwards
+        if (pct < target) {
+          self._updateProgress(pct, 'Engine processing photos…');
         }
-      }, 800);
+      }, 500);
     },
 
     // ══════════════════════════════════════════════════════════════════

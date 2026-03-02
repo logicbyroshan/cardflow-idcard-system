@@ -416,8 +416,9 @@ document.addEventListener('DOMContentLoaded', function() {
             dashReuploadConfirmBtn.disabled = true;
             dashReuploadConfirmBtn.textContent = 'Uploading...';
             if (dashReuploadProgress) dashReuploadProgress.style.display = 'block';
-            if (dashReuploadBar) dashReuploadBar.style.width = '30%';
-            if (dashReuploadStatus) dashReuploadStatus.textContent = 'Uploading ZIP...';
+            if (dashReuploadBar) dashReuploadBar.style.width = '0%';
+            if (dashReuploadStatus) dashReuploadStatus.textContent = 'Starting upload...';
+            let _dashProcessingTimer = null;
 
             const formData = new FormData();
             formData.append('photos_zip', dashReuploadFileInput.files[0]);
@@ -430,13 +431,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
             xhr.upload.onprogress = function(e) {
                 if (e.lengthComputable) {
-                    const pct = Math.round((e.loaded / e.total) * 60) + 30;
-                    if (dashReuploadBar) dashReuploadBar.style.width = pct + '%';
+                    const uploadPct = Math.round((e.loaded / e.total) * 85);
+                    if (dashReuploadBar) dashReuploadBar.style.width = uploadPct + '%';
                     if (dashReuploadStatus) dashReuploadStatus.textContent = `Uploading... ${Math.round(e.loaded / e.total * 100)}%`;
                 }
             };
+            xhr.upload.onloadend = function() {
+                if (dashReuploadBar) dashReuploadBar.style.width = '85%';
+                if (dashReuploadStatus) dashReuploadStatus.textContent = 'Processing images on server...';
+                const _procStart = Date.now();
+                _dashProcessingTimer = setInterval(function() {
+                    const el = (Date.now() - _procStart) / 1000;
+                    const pct = 85 + Math.round(10 * (1 - Math.exp(-el / 8)));
+                    if (dashReuploadBar) dashReuploadBar.style.width = Math.min(pct, 95) + '%';
+                }, 400);
+            };
 
             xhr.onload = function() {
+                if (_dashProcessingTimer) { clearInterval(_dashProcessingTimer); _dashProcessingTimer = null; }
                 if (dashReuploadBar) dashReuploadBar.style.width = '100%';
                 try {
                     const data = JSON.parse(xhr.responseText);
@@ -458,6 +470,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             retryXhr.onerror = xhr.onerror;
                             retryXhr.ontimeout = xhr.ontimeout;
                             retryXhr.upload.onprogress = xhr.upload.onprogress;
+                            retryXhr.upload.onloadend = xhr.upload.onloadend;
                             retryXhr.send(formData);
                         }, 5000);
                     } else {
@@ -478,6 +491,7 @@ document.addEventListener('DOMContentLoaded', function() {
             };
 
             xhr.onerror = function() {
+                if (_dashProcessingTimer) { clearInterval(_dashProcessingTimer); _dashProcessingTimer = null; }
                 _dashRetryCount++;
                 if (_dashRetryCount <= 2) {
                     if (dashReuploadStatus) dashReuploadStatus.textContent = 'Network error. Retrying in 5s...';
@@ -493,6 +507,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         retryXhr.onerror = xhr.onerror;
                         retryXhr.ontimeout = xhr.ontimeout;
                         retryXhr.upload.onprogress = xhr.upload.onprogress;
+                        retryXhr.upload.onloadend = xhr.upload.onloadend;
                         retryXhr.send(formData);
                     }, 5000);
                 } else {
@@ -503,6 +518,7 @@ document.addEventListener('DOMContentLoaded', function() {
             };
 
             xhr.ontimeout = function() {
+                if (_dashProcessingTimer) { clearInterval(_dashProcessingTimer); _dashProcessingTimer = null; }
                 if (typeof showToast === 'function') showToast('Reupload timed out — try a smaller ZIP.', 'error');
                 dashReuploadConfirmBtn.disabled = false; dashReuploadConfirmBtn.textContent = 'Upload & Match';
                 if (dashReuploadProgress) dashReuploadProgress.style.display = 'none';

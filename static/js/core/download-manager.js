@@ -277,6 +277,7 @@
         // Check active downloads
         var dl = _active[id];
         if (dl) {
+            if (dl._indeterminateTimer) { clearInterval(dl._indeterminateTimer); dl._indeterminateTimer = null; }
             if (dl.xhr && dl.status === 'downloading') {
                 dl.xhr.abort();
             }
@@ -346,18 +347,32 @@
         xhr.onprogress = function (e) {
             if (e.lengthComputable) {
                 _updateToast(dl, e.loaded, e.total);
-            } else {
-                // Indeterminate — pulse the bar
-                var bar = dl.toastEl ? dl.toastEl.querySelector('.dl-toast-bar') : null;
-                if (bar && !bar.dataset.indeterminate) {
-                    bar.dataset.indeterminate = '1';
-                    bar.style.width = '30%';
-                    bar.style.animation = '1.5s ease-in-out infinite alternate indeterminate-bar';
+                // Clear indeterminate timer if we now have real progress
+                if (dl._indeterminateTimer) {
+                    clearInterval(dl._indeterminateTimer);
+                    dl._indeterminateTimer = null;
+                    var bar2 = dl.toastEl ? dl.toastEl.querySelector('.dl-toast-bar') : null;
+                    if (bar2) { bar2.style.animation = ''; bar2.dataset.indeterminate = ''; }
                 }
+            } else if (!dl._indeterminateTimer) {
+                // No Content-Length — use time-based estimation (exponential approach to 85%)
+                var _indStart = Date.now();
+                dl._indeterminateTimer = setInterval(function() {
+                    var bar = dl.toastEl ? dl.toastEl.querySelector('.dl-toast-bar') : null;
+                    var pctEl = dl.toastEl ? dl.toastEl.querySelector('.dl-toast-pct') : null;
+                    if (!bar) return;
+                    bar.style.animation = '';
+                    bar.dataset.indeterminate = '';
+                    var elapsed = (Date.now() - _indStart) / 1000;
+                    var estPct = Math.round(85 * (1 - Math.exp(-elapsed / 15)));
+                    bar.style.width = estPct + '%';
+                    if (pctEl) pctEl.textContent = estPct + '%';
+                }, 500);
             }
         };
 
         xhr.onload = function () {
+            if (dl._indeterminateTimer) { clearInterval(dl._indeterminateTimer); dl._indeterminateTimer = null; }
             if (dl.status !== 'downloading') return; // was cancelled
 
             if (xhr.status === 200) {
@@ -393,18 +408,21 @@
         };
 
         xhr.onerror = function () {
+            if (dl._indeterminateTimer) { clearInterval(dl._indeterminateTimer); dl._indeterminateTimer = null; }
             if (dl.status !== 'downloading') return;
             _finishToast(dl, 'error', 'Network error — download failed');
             if (typeof opts.onError === 'function') opts.onError('Network error');
         };
 
         xhr.ontimeout = function () {
+            if (dl._indeterminateTimer) { clearInterval(dl._indeterminateTimer); dl._indeterminateTimer = null; }
             if (dl.status !== 'downloading') return;
             _finishToast(dl, 'error', 'Download timed out — the server took too long to respond. Please try again.');
             if (typeof opts.onError === 'function') opts.onError('Timeout');
         };
 
         xhr.onabort = function () {
+            if (dl._indeterminateTimer) { clearInterval(dl._indeterminateTimer); dl._indeterminateTimer = null; }
             // Handled by _cancel
         };
 

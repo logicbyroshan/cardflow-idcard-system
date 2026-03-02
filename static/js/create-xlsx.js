@@ -312,7 +312,14 @@ function initCreateWithXlsx(opts) {
     step2El.style.display = 'none';
     step3El.style.display = 'none';
     progress.style.display = '';
-    progressText.textContent = 'Creating table and importing data…';
+    progressText.textContent = 'Preparing upload…';
+
+    var progressBar = document.getElementById('cxProgressBar');
+    var progressPct = document.getElementById('cxProgressPct');
+    var progressIcon = document.getElementById('cxProgressIcon');
+
+    if (progressBar) progressBar.style.width = '0%';
+    if (progressPct) progressPct.textContent = '';
 
     var formData = new FormData();
     formData.append('file', selectedFile);
@@ -333,55 +340,86 @@ function initCreateWithXlsx(opts) {
 
     var _createRetryCount = 0;
     var MAX_RETRIES = 2;
+    var _processingTimer = null;
 
     function attemptUpload() {
-      // Use AbortController for 10-minute timeout
-      var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-      var timeoutId = controller ? setTimeout(function() { controller.abort(); }, 600000) : null;
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', apiUrl, true);
+      xhr.setRequestHeader('X-CSRFToken', csrfToken);
+      xhr.timeout = 600000; // 10-minute timeout
 
-      var fetchOpts = {
-        method: 'POST',
-        headers: { 'X-CSRFToken': csrfToken },
-        body: formData
+      // Phase 1: Upload progress (0% → 70%)
+      xhr.upload.onprogress = function(e) {
+        if (e.lengthComputable) {
+          var uploadPct = Math.round((e.loaded / e.total) * 70);
+          if (progressBar) progressBar.style.width = uploadPct + '%';
+          if (progressPct) progressPct.textContent = Math.round((e.loaded / e.total) * 100) + '% uploaded';
+          progressText.textContent = 'Uploading file…';
+        }
       };
-      if (controller) fetchOpts.signal = controller.signal;
 
-      fetch(apiUrl, fetchOpts)
-      .then(function(res) { return res.json().then(function(data) { return { ok: res.ok, status: res.status, data: data }; }); })
-      .then(function(result) {
-        if (timeoutId) clearTimeout(timeoutId);
-        if (result.data.success) {
-          if (window.showToast) showToast(result.data.message || 'Table created successfully!', 'success');
-          if (window.alpineCloseModal) window.alpineCloseModal();
-          setTimeout(onSuccess, 800);
-        } else if (result.status === 429 && _createRetryCount < MAX_RETRIES) {
-          // Rate limited — retry after delay
-          _createRetryCount++;
-          progressText.textContent = (result.data.message || 'Server busy') + ' Retrying...';
-          setTimeout(attemptUpload, 5000);
-        } else {
-          if (window.showToast) showToast(result.data.message || 'Failed to create table.', result.data.level || 'error');
+      // Phase 2: Upload complete → server processing (70% → 95%)
+      xhr.upload.onloadend = function() {
+        if (progressBar) progressBar.style.width = '70%';
+        if (progressPct) progressPct.textContent = '';
+        progressText.textContent = 'Creating table and importing data…';
+        var _procStart = Date.now();
+        _processingTimer = setInterval(function() {
+          var el = (Date.now() - _procStart) / 1000;
+          var pct = 70 + Math.round(25 * (1 - Math.exp(-el / 10)));
+          if (progressBar) progressBar.style.width = Math.min(pct, 95) + '%';
+        }, 400);
+      };
+
+      xhr.onload = function() {
+        if (_processingTimer) { clearInterval(_processingTimer); _processingTimer = null; }
+        try {
+          var result = JSON.parse(xhr.responseText);
+          if (xhr.status >= 200 && xhr.status < 300 && result.success) {
+            if (progressBar) progressBar.style.width = '100%';
+            if (progressPct) progressPct.textContent = 'Done!';
+            if (progressIcon) { progressIcon.className = 'fa-solid fa-check-circle'; progressIcon.style.animation = 'none'; }
+            progressText.textContent = result.message || 'Table created successfully!';
+            if (window.showToast) showToast(result.message || 'Table created successfully!', 'success');
+            if (window.alpineCloseModal) window.alpineCloseModal();
+            setTimeout(onSuccess, 800);
+          } else if (xhr.status === 429 && _createRetryCount < MAX_RETRIES) {
+            _createRetryCount++;
+            if (progressBar) progressBar.style.width = '0%';
+            progressText.textContent = (result.message || 'Server busy') + ' Retrying...';
+            setTimeout(attemptUpload, 5000);
+          } else {
+            if (window.showToast) showToast(result.message || 'Failed to create table.', result.level || 'error');
+            showStep(1);
+          }
+        } catch (e) {
+          console.error('Create from XLSX parse error:', e);
+          if (window.showToast) showToast('Failed to process server response.', 'error');
           showStep(1);
         }
-      })
-      .catch(function(err) {
-        if (timeoutId) clearTimeout(timeoutId);
-        console.error('Create from XLSX error:', err);
+      };
 
-        // Retry on network errors
-        if (_createRetryCount < MAX_RETRIES && err.name !== 'AbortError') {
+      xhr.onerror = function() {
+        if (_processingTimer) { clearInterval(_processingTimer); _processingTimer = null; }
+        if (_createRetryCount < MAX_RETRIES) {
           _createRetryCount++;
+          if (progressBar) progressBar.style.width = '0%';
           progressText.textContent = 'Network error. Retrying in 5s...';
           if (window.showToast) showToast('Network error. Retrying automatically...', 'error');
           setTimeout(attemptUpload, 5000);
           return;
         }
-
-        var errMsg = 'Network error. Please try again.';
-        if (err.name === 'AbortError') errMsg = 'Upload timed out — server took too long. Try a smaller file.';
-        if (window.showToast) showToast(errMsg, 'error');
+        if (window.showToast) showToast('Network error. Please try again.', 'error');
         showStep(1);
-      });
+      };
+
+      xhr.ontimeout = function() {
+        if (_processingTimer) { clearInterval(_processingTimer); _processingTimer = null; }
+        if (window.showToast) showToast('Upload timed out — server took too long. Try a smaller file.', 'error');
+        showStep(1);
+      };
+
+      xhr.send(formData);
     }
 
     attemptUpload();

@@ -132,6 +132,7 @@
         progressWrap.style.display = 'block';
         progressBar.style.width = '0%';
         progressText.textContent = 'Uploading 0/' + files.length + '...';
+        var _portfolioProcessingTimer = null;
 
         var fd = new FormData();
         fd.append('category', category);
@@ -144,15 +145,31 @@
         var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
         if (csrfToken) xhr.setRequestHeader('X-CSRFToken', csrfToken.value);
 
+        // Phase 1: Upload progress (0% → 80%)
         xhr.upload.onprogress = function (ev) {
             if (ev.lengthComputable) {
-                var pct = Math.round((ev.loaded / ev.total) * 100);
-                progressBar.style.width = pct + '%';
-                progressText.textContent = 'Uploading... ' + pct + '%';
+                var rawPct = Math.round((ev.loaded / ev.total) * 100);
+                var barPct = Math.round((ev.loaded / ev.total) * 80);
+                progressBar.style.width = barPct + '%';
+                progressText.textContent = 'Uploading... ' + rawPct + '%';
             }
         };
 
+        // Phase 2: Upload done → server processing (80% → 95%)
+        xhr.upload.onloadend = function () {
+            progressBar.style.width = '80%';
+            progressText.textContent = 'Processing ' + files.length + ' image(s) on server...';
+            var _procStart = Date.now();
+            _portfolioProcessingTimer = setInterval(function () {
+                var el = (Date.now() - _procStart) / 1000;
+                var pct = 80 + Math.round(15 * (1 - Math.exp(-el / 6)));
+                progressBar.style.width = Math.min(pct, 95) + '%';
+            }, 400);
+        };
+
         xhr.onload = function () {
+            if (_portfolioProcessingTimer) { clearInterval(_portfolioProcessingTimer); _portfolioProcessingTimer = null; }
+            progressBar.style.width = '100%';
             try {
                 var data = JSON.parse(xhr.responseText);
                 if (data.success) {
@@ -168,6 +185,7 @@
             }
         };
         xhr.onerror = function () {
+            if (_portfolioProcessingTimer) { clearInterval(_portfolioProcessingTimer); _portfolioProcessingTimer = null; }
             showToast('Network error during upload', 'error');
             btn.disabled = false;
         };

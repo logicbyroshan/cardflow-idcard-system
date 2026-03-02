@@ -212,8 +212,9 @@ function initReuploadHandlers() {
             reuploadActionsConfirmBtn.disabled = true;
             reuploadActionsConfirmBtn.textContent = 'Uploading...';
             if (reuploadActionsProgress) reuploadActionsProgress.style.display = 'block';
-            if (reuploadActionsBar) reuploadActionsBar.style.width = '30%';
-            if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Uploading ZIP...';
+            if (reuploadActionsBar) reuploadActionsBar.style.width = '0%';
+            if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Starting upload...';
+            var _reuploadProcessingTimer = null;
 
             const formData = new FormData();
             formData.append('photos_zip', reuploadActionsFileInput.files[0]);
@@ -228,13 +229,24 @@ function initReuploadHandlers() {
 
             xhr.upload.onprogress = function(event) {
                 if (event.lengthComputable) {
-                    const pct = Math.round((event.loaded / event.total) * 60) + 30;
-                    if (reuploadActionsBar) reuploadActionsBar.style.width = pct + '%';
+                    const uploadPct = Math.round((event.loaded / event.total) * 85);
+                    if (reuploadActionsBar) reuploadActionsBar.style.width = uploadPct + '%';
                     if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Uploading... ' + Math.round((event.loaded / event.total) * 100) + '%';
                 }
             };
+            xhr.upload.onloadend = function() {
+                if (reuploadActionsBar) reuploadActionsBar.style.width = '85%';
+                if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Processing images on server...';
+                var _procStart = Date.now();
+                _reuploadProcessingTimer = setInterval(function() {
+                    var el = (Date.now() - _procStart) / 1000;
+                    var pct = 85 + Math.round(10 * (1 - Math.exp(-el / 8)));
+                    if (reuploadActionsBar) reuploadActionsBar.style.width = Math.min(pct, 95) + '%';
+                }, 400);
+            };
 
             xhr.onload = function() {
+                if (_reuploadProcessingTimer) { clearInterval(_reuploadProcessingTimer); _reuploadProcessingTimer = null; }
                 if (reuploadActionsBar) reuploadActionsBar.style.width = '100%';
                 try {
                     const result = JSON.parse(xhr.responseText);
@@ -266,6 +278,7 @@ function initReuploadHandlers() {
                                 retryXhr.onerror = xhr.onerror;
                                 retryXhr.ontimeout = xhr.ontimeout;
                                 retryXhr.upload.onprogress = xhr.upload.onprogress;
+                                retryXhr.upload.onloadend = xhr.upload.onloadend;
                                 retryXhr.send(formData);
                             }, 5000);
                         } else {
@@ -294,6 +307,7 @@ function initReuploadHandlers() {
             };
 
             xhr.onerror = function() {
+                if (_reuploadProcessingTimer) { clearInterval(_reuploadProcessingTimer); _reuploadProcessingTimer = null; }
                 _reuploadRetryCount++;
                 if (_reuploadRetryCount <= 2) {
                     if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Network error. Retrying in 5s...';
@@ -309,6 +323,7 @@ function initReuploadHandlers() {
                         retryXhr.onerror = xhr.onerror;
                         retryXhr.ontimeout = xhr.ontimeout;
                         retryXhr.upload.onprogress = xhr.upload.onprogress;
+                        retryXhr.upload.onloadend = xhr.upload.onloadend;
                         retryXhr.send(formData);
                     }, 5000);
                 } else {
@@ -319,8 +334,7 @@ function initReuploadHandlers() {
                 }
             };
 
-            xhr.ontimeout = function() {
-                if (typeof showToast === 'function') showToast('Reupload timed out — the server took too long. Please try with a smaller ZIP.', 'warning');
+            xhr.ontimeout = function() {                if (_reuploadProcessingTimer) { clearInterval(_reuploadProcessingTimer); _reuploadProcessingTimer = null; }                if (typeof showToast === 'function') showToast('Reupload timed out — the server took too long. Please try with a smaller ZIP.', 'warning');
                 reuploadActionsConfirmBtn.disabled = false;
                 reuploadActionsConfirmBtn.textContent = 'Upload & Match';
                 if (reuploadActionsProgress) reuploadActionsProgress.style.display = 'none';

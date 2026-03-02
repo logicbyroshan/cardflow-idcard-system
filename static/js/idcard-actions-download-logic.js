@@ -556,6 +556,7 @@ function _downloadPdfAsync(tableId, cardIds, templateId, fontMode, shortenTitles
 
 /**
  * Poll the export status endpoint until the PDF is ready or fails.
+ * Uses time-based estimation when backend reports 0% to keep the bar moving.
  * @param {string} taskId
  * @param {number} cardCount
  * @param {Function} isCancelled - returns true if user cancelled
@@ -564,6 +565,9 @@ function _downloadPdfAsync(tableId, cardIds, templateId, fontMode, shortenTitles
 function _pollExportStatus(taskId, cardCount, isCancelled, cancelFn) {
     var pollCount = 0;
     var maxPolls = 300; // 300 * 2s = 10 minutes max
+    var _pollStartTime = Date.now();
+    // Estimate processing time: ~0.3s per card for PDF, min 10s, max 300s
+    var _estSeconds = Math.max(10, Math.min(300, (cardCount || 100) * 0.3));
 
     function poll() {
         // Check if user cancelled
@@ -573,7 +577,6 @@ function _pollExportStatus(taskId, cardCount, isCancelled, cancelFn) {
         }
 
         pollCount++;
-        if (pollCount > maxPolls) {
         if (pollCount > maxPolls) {
             if (typeof hideProgressToast === 'function') hideProgressToast();
             if (typeof showToast === 'function') showToast('PDF generation timed out. Please try again with fewer cards.', false);
@@ -614,10 +617,18 @@ function _pollExportStatus(taskId, cardCount, isCancelled, cancelFn) {
                 if (typeof hideProgressToast === 'function') hideProgressToast();
                 if (typeof showToast === 'function') showToast(data.message || 'PDF generation failed', false);
             } else {
-                // Still processing — show progress and poll again
+                // Still processing — compute display progress
+                var serverPct = data.progress || 0;
+                // Time-based estimation: exponential approach to 90%
+                var elapsed = (Date.now() - _pollStartTime) / 1000;
+                var tau = _estSeconds / 3; // reaches ~95% at 3×tau
+                var estimatedPct = Math.round(90 * (1 - Math.exp(-elapsed / tau)));
+                // Use whichever is higher (server or estimated), cap at 95%
+                var displayPct = Math.min(Math.max(serverPct, estimatedPct), 95);
+
                 var msg = data.message || ('Generating PDF' + (cardCount ? ' (' + cardCount + ' cards)' : '') + '...');
                 if (typeof showProgressToast === 'function') {
-                    showProgressToast(msg, data.progress || -1, cancelFn);
+                    showProgressToast(msg, displayPct, cancelFn);
                 }
                 setTimeout(poll, _POLL_INTERVAL);
             }

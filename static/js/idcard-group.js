@@ -430,8 +430,9 @@ function initIdcardGroup(config) {
       reuploadConfirmBtn.disabled = true;
       reuploadConfirmBtn.textContent = 'Uploading...';
       reuploadProgress.style.display = 'block';
-      reuploadBar.style.width = '30%';
-      reuploadStatus.textContent = 'Uploading ZIP...';
+      reuploadBar.style.width = '0%';
+      reuploadStatus.textContent = 'Starting upload...';
+      var _grpProcessingTimer = null;
 
       var formData = new FormData();
       formData.append('photos_zip', reuploadFileInput.files[0]);
@@ -444,13 +445,24 @@ function initIdcardGroup(config) {
 
       xhr.upload.onprogress = function(e) {
         if (e.lengthComputable) {
-          var pct = Math.round((e.loaded / e.total) * 60) + 30;
-          reuploadBar.style.width = pct + '%';
+          var uploadPct = Math.round((e.loaded / e.total) * 85);
+          reuploadBar.style.width = uploadPct + '%';
           reuploadStatus.textContent = 'Uploading... ' + Math.round(e.loaded / e.total * 100) + '%';
         }
       };
+      xhr.upload.onloadend = function() {
+        reuploadBar.style.width = '85%';
+        reuploadStatus.textContent = 'Processing images on server...';
+        var _procStart = Date.now();
+        _grpProcessingTimer = setInterval(function() {
+          var el = (Date.now() - _procStart) / 1000;
+          var pct = 85 + Math.round(10 * (1 - Math.exp(-el / 8)));
+          reuploadBar.style.width = Math.min(pct, 95) + '%';
+        }, 400);
+      };
 
       xhr.onload = function() {
+        if (_grpProcessingTimer) { clearInterval(_grpProcessingTimer); _grpProcessingTimer = null; }
         reuploadBar.style.width = '100%';
         try {
           var data = JSON.parse(xhr.responseText);
@@ -473,6 +485,7 @@ function initIdcardGroup(config) {
                 retryXhr.onerror = xhr.onerror;
                 retryXhr.ontimeout = xhr.ontimeout;
                 retryXhr.upload.onprogress = xhr.upload.onprogress;
+                retryXhr.upload.onloadend = xhr.upload.onloadend;
                 retryXhr.send(formData);
               }, 5000);
             } else {
@@ -501,6 +514,7 @@ function initIdcardGroup(config) {
       };
 
       xhr.onerror = function() {
+        if (_grpProcessingTimer) { clearInterval(_grpProcessingTimer); _grpProcessingTimer = null; }
         _grpRetryCount++;
         if (_grpRetryCount <= 2) {
           reuploadStatus.textContent = 'Network error. Retrying in 5s...';
@@ -516,6 +530,7 @@ function initIdcardGroup(config) {
             retryXhr.onerror = xhr.onerror;
             retryXhr.ontimeout = xhr.ontimeout;
             retryXhr.upload.onprogress = xhr.upload.onprogress;
+            retryXhr.upload.onloadend = xhr.upload.onloadend;
             retryXhr.send(formData);
           }, 5000);
         } else {
@@ -528,6 +543,7 @@ function initIdcardGroup(config) {
       };
 
       xhr.ontimeout = function() {
+        if (_grpProcessingTimer) { clearInterval(_grpProcessingTimer); _grpProcessingTimer = null; }
         window.showToast('Reupload timed out — server took too long. Try a smaller ZIP.', 'warning');
         reuploadConfirmBtn.disabled = false;
         reuploadConfirmBtn.textContent = 'Upload & Match';
