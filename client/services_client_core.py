@@ -186,27 +186,14 @@ class ClientService(BaseService):
                 
                 # Phase 1: Photo field removed - using avatar placeholder
                 
-                if create_as_active:
-                    # Admin created client as active — send welcome email now
-                    user.welcome_email_sent = True
-                    user.save(update_fields=['welcome_email_sent'])
-                    
-                    EmailLog.objects.create(
-                        recipient_name=name or 'Client',
-                        recipient_email=email,
-                        subject='Welcome to Adarsh Admin - Your Account is Ready!',
-                        email_type=EmailLog.EMAIL_TYPE_WELCOME,
-                        status=EmailLog.STATUS_ON_HOLD,
-                    )
-                else:
-                    # Log email as on_hold — will be sent on first activation
-                    EmailLog.objects.create(
-                        recipient_name=name or 'Client',
-                        recipient_email=email,
-                        subject='Welcome to Adarsh Admin - Your Account is Ready!',
-                        email_type=EmailLog.EMAIL_TYPE_WELCOME,
-                        status=EmailLog.STATUS_ON_HOLD,
-                    )
+                # Log email as on_hold — will be sent now (active) or on first activation (inactive)
+                EmailLog.objects.create(
+                    recipient_name=name or 'Client',
+                    recipient_email=email,
+                    subject='Welcome to Adarsh Admin - Your Account is Ready!',
+                    email_type=EmailLog.EMAIL_TYPE_WELCOME,
+                    status=EmailLog.STATUS_ON_HOLD,
+                )
             
             # Send welcome email immediately if created as active
             email_sent = False
@@ -219,6 +206,9 @@ class ClientService(BaseService):
                         role='client',
                         phone=phone,
                     )
+                    if email_sent:
+                        # Mark flag only after successful delivery
+                        User.objects.filter(pk=user.pk).update(welcome_email_sent=True)
                     EmailLog.objects.filter(
                         recipient_email=email,
                         email_type=EmailLog.EMAIL_TYPE_WELCOME,
@@ -429,6 +419,7 @@ class ClientService(BaseService):
             # Collect state needed for email (must be outside atomic for clean email send)
             send_welcome = False
             welcome_email_info = {}
+            welcome_user_id = None
 
             with transaction.atomic():
                 client = Client.objects.select_related('user').select_for_update().get(id=client_id)
@@ -454,9 +445,11 @@ class ClientService(BaseService):
                     if is_first_activation:
                         first_password = generate_secure_password()
                         user.set_password(first_password)
-                        user.welcome_email_sent = True
-                        user.save(update_fields=['is_active', 'welcome_email_sent', 'password'])
+                        # Do NOT set welcome_email_sent here — set it only after
+                        # the email is actually delivered so retries are possible.
+                        user.save(update_fields=['is_active', 'password'])
                         send_welcome = True
+                        welcome_user_id = user.pk
                         welcome_email_info = {
                             'name': client.name or user.get_full_name(),
                             'email': user.email,
@@ -469,6 +462,8 @@ class ClientService(BaseService):
                     client.save(update_fields=['status', 'updated_at'])
 
             # Send welcome email after the transaction commits
+            email_sent = False
+            email_msg = ''
             if send_welcome:
                 try:
                     email_sent, email_msg = send_welcome_email(
@@ -478,6 +473,9 @@ class ClientService(BaseService):
                         role='client',
                         phone=welcome_email_info['phone'],
                     )
+                    if email_sent:
+                        # Mark flag only after successful delivery
+                        User.objects.filter(pk=welcome_user_id).update(welcome_email_sent=True)
                     EmailLog.objects.filter(
                         recipient_email=welcome_email_info['email'],
                         email_type=EmailLog.EMAIL_TYPE_WELCOME,
@@ -495,8 +493,10 @@ class ClientService(BaseService):
                     ).update(status=EmailLog.STATUS_FAILED, error_message=str(email_err))
 
             message = f'Client status changed to {status_display}!'
-            if send_welcome:
+            if send_welcome and email_sent:
                 message += ' Welcome email sent!'
+            elif send_welcome and not email_sent:
+                message += f' ⚠️ Welcome email failed: {email_msg}'
             if deactivated_staff_count > 0:
                 message += f' ({deactivated_staff_count} staff members also deactivated)'
                 logger.info(

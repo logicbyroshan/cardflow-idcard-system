@@ -2,10 +2,15 @@
 Email Utility Functions
 Contains: Email sending utilities with beautiful HTML templates
 """
+import logging
 import secrets
 import string
+
 from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
 from core.utils.threaded_email import send_html_email_async
+
+logger = logging.getLogger(__name__)
 
 
 def _get_panel_login_url(request=None):
@@ -275,16 +280,21 @@ def send_welcome_email(name, email, password, role, request=None, phone=''):
             phone=phone
         )
         
-        # Send the email in background thread (non-blocking)
+        # Send synchronously — welcome emails are critical (contain password)
+        # so we MUST detect SMTP errors and report them back to the caller.
         subject = '🎉 Welcome to Adarsh Admin - Your Account is Ready!'
         from_email = settings.DEFAULT_FROM_EMAIL
         to_email = [email]
-        
-        send_html_email_async(subject, plain_content, html_content, from_email, to_email)
-        
+
+        msg = EmailMultiAlternatives(subject, plain_content, from_email, to_email)
+        msg.attach_alternative(html_content, "text/html")
+        msg.send(fail_silently=False)
+
+        logger.info("Welcome email sent to %s", email)
         return True, 'Welcome email sent successfully!'
         
     except Exception as e:
+        logger.error("Failed to send welcome email to %s: %s", email, e)
         return False, f'Failed to send email: {str(e)}'
 
 

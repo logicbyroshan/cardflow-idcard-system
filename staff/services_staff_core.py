@@ -365,6 +365,7 @@ class StaffService(BaseService):
         try:
             send_welcome = False
             welcome_info = {}
+            welcome_user_id = None
 
             with transaction.atomic():
                 staff = Staff.objects.select_related('user').select_for_update().get(id=staff_id)
@@ -377,9 +378,11 @@ class StaffService(BaseService):
                 if user.is_active and is_first_activation:
                     first_password = generate_secure_password()
                     user.set_password(first_password)
-                    user.welcome_email_sent = True
-                    user.save(update_fields=['is_active', 'welcome_email_sent', 'password'])
+                    # Do NOT set welcome_email_sent here — set it only after
+                    # the email is actually delivered so retries are possible.
+                    user.save(update_fields=['is_active', 'password'])
                     send_welcome = True
+                    welcome_user_id = user.pk
                     welcome_info = {
                         'name': user.get_full_name(),
                         'email': user.email,
@@ -390,6 +393,8 @@ class StaffService(BaseService):
                 else:
                     user.save(update_fields=['is_active'])
 
+            email_sent = False
+            email_msg = ''
             if send_welcome:
                 try:
                     email_sent, email_msg = send_welcome_email(
@@ -399,6 +404,8 @@ class StaffService(BaseService):
                         role=welcome_info['role'],
                         phone=welcome_info['phone'],
                     )
+                    if email_sent:
+                        User.objects.filter(pk=welcome_user_id).update(welcome_email_sent=True)
                     EmailLog.objects.filter(
                         recipient_email=welcome_info['email'],
                         email_type=EmailLog.EMAIL_TYPE_WELCOME,
@@ -415,7 +422,12 @@ class StaffService(BaseService):
                         status=EmailLog.STATUS_ON_HOLD,
                     ).update(status=EmailLog.STATUS_FAILED, error_message=str(email_err))
 
-            extra = ' Welcome email sent!' if send_welcome else ''
+            if send_welcome and email_sent:
+                extra = ' Welcome email sent!'
+            elif send_welcome and not email_sent:
+                extra = f' ⚠️ Welcome email failed: {email_msg}'
+            else:
+                extra = ''
             return ServiceResult(
                 success=True,
                 message=f'Staff status changed to {status_display}!{extra}',
