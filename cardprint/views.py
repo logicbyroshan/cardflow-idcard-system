@@ -83,6 +83,8 @@ def print_cards(request, table_id):
     user = request.user
     if not PermissionService.can_access_client(user, table.group.client_id):
         return redirect('active_clients')
+    if not PermissionService.has_permission(user, 'perm_print_list'):
+        return redirect('active_clients')
 
     current_step = request.GET.get('step', 'print_list')
     if current_step not in ('print_list', 'finalized', 'pool'):

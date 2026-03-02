@@ -26,16 +26,18 @@
     </a>
     {% endif %}
     
-    {% if is_super_admin %}
-    <!-- User Management Section - Super Admin Only -->
+    {% if is_super_admin or is_admin_staff and perm_idcard_client_list %}
+    <!-- User Management Section -->
     <div class="nav-section">
       <div class="nav-section-line"></div>
       <span class="nav-section-title">User Management</span>
       <div class="nav-section-line"></div>
     </div>
+    {% if is_super_admin %}
     <a href="{% url 'manage_staff' %}" class="{% if active_page == 'manage_staff' %}active{% endif %}">
       <i class="fa-solid fa-user-tie"></i><span>Manage Staff</span>
     </a>
+    {% endif %}
     <a href="{% url 'manage_clients' %}" id="allClientsLink" class="{% if active_page == 'manage_clients' %}active{% endif %}">
       <i class="fa-solid fa-users"></i><span>Manage Clients</span>
     </a>
