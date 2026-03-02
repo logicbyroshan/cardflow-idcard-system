@@ -35,7 +35,7 @@ class Staff(models.Model):
         help_text='ID Card groups this staff can manage. Empty = all groups.'
     )
     
-    # For client_staff: class/section filters (empty = all)
+    # For client_staff: class/section/branch filters (empty = all)
     allowed_classes = models.JSONField(
         default=list, blank=True,
         help_text='Allowed class values. Empty list = all classes.'
@@ -43,6 +43,10 @@ class Staff(models.Model):
     allowed_sections = models.JSONField(
         default=list, blank=True,
         help_text='Allowed section values. Empty list = all sections.'
+    )
+    allowed_branches = models.JSONField(
+        default=list, blank=True,
+        help_text='Allowed branch values (colleges). Empty list = all branches.'
     )
     
     address = models.TextField(blank=True, null=True)

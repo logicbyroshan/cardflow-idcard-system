@@ -555,3 +555,129 @@ def stream_file_response(file_bytes, filename, content_type, chunk_size=1024 * 1
         except OSError:
             pass
         raise
+
+# =============================================================================
+# EXPORT ORDERING — Class → Section → Name ascending
+# =============================================================================
+
+class SortedCardList:
+    """
+    Wraps a sorted list of cards with a QuerySet-compatible interface.
+    
+    Downstream exporters call .count(), .iterator(), iterate, and slice.
+    This wrapper supports all those operations on an in-memory sorted list.
+    """
+
+    def __init__(self, cards_list):
+        self._cards = list(cards_list)
+
+    def count(self):
+        return len(self._cards)
+
+    def exists(self):
+        return len(self._cards) > 0
+
+    def iterator(self, chunk_size=None):
+        return iter(self._cards)
+
+    def __iter__(self):
+        return iter(self._cards)
+
+    def __getitem__(self, key):
+        return self._cards[key]
+
+    def __len__(self):
+        return len(self._cards)
+
+    def __bool__(self):
+        return len(self._cards) > 0
+
+
+def _detect_sort_fields(table_fields):
+    """
+    Detect class, section, and name field names from table field config.
+    
+    Returns:
+        (class_field_name, section_field_name, name_field_name)
+        Each can be None if not found.
+    """
+    class_field = None
+    section_field = None
+    name_field = None
+
+    for f in (table_fields or []):
+        ft = f.get('type', 'text').lower()
+        fn = f.get('name', '')
+        if ft == 'class' and not class_field:
+            class_field = fn
+        elif ft == 'section' and not section_field:
+            section_field = fn
+
+    # Name: prefer first text field with 'name' in its label
+    for f in (table_fields or []):
+        if f.get('type', 'text').lower() == 'text' and 'name' in f.get('name', '').lower():
+            name_field = f.get('name', '')
+            break
+    # Fallback: first text field
+    if not name_field:
+        for f in (table_fields or []):
+            if f.get('type', 'text').lower() == 'text':
+                name_field = f.get('name', '')
+                break
+
+    return class_field, section_field, name_field
+
+
+def _make_sort_key(class_field, section_field, name_field):
+    """
+    Return a sort-key function for IDCard instances.
+    
+    Ordering: class (numeric-aware) → section (alpha) → name (alpha).
+    Numeric class values (1, 2, 10) sort before text values (LKG, UKG).
+    """
+    def sort_key(card):
+        fd = card.field_data or {}
+
+        # Class: numeric values first, then alphabetical text
+        class_val = str(fd.get(class_field, '')).strip() if class_field else ''
+        try:
+            class_num = int(class_val)
+            class_sort = (0, class_num, '')
+        except (ValueError, TypeError):
+            class_sort = (1, 0, class_val.lower())
+
+        # Section: alphabetical
+        section_val = str(fd.get(section_field, '')).strip().lower() if section_field else ''
+
+        # Name: alphabetical, case-insensitive
+        name_val = str(fd.get(name_field, '')).strip().lower() if name_field else ''
+
+        return (class_sort, section_val, name_val)
+
+    return sort_key
+
+
+def sort_cards_for_export(cards_qs, table_fields):
+    """
+    Sort cards by Class → Section → Name ascending for exports.
+    
+    For class values: numeric ordering first (1, 2, 10),
+    then alphabetical for non-numeric (LKG, Nursery, UKG).
+    
+    Args:
+        cards_qs: QuerySet or iterable of IDCard instances
+        table_fields: list of field config dicts from IDCardTable.fields
+        
+    Returns:
+        SortedCardList if sorting is possible, original queryset otherwise.
+    """
+    class_field, section_field, name_field = _detect_sort_fields(table_fields)
+
+    # If no sortable fields found, return as-is
+    if not class_field and not section_field and not name_field:
+        return cards_qs
+
+    cards_list = list(cards_qs)
+    key_fn = _make_sort_key(class_field, section_field, name_field)
+    cards_list.sort(key=key_fn)
+    return SortedCardList(cards_list)

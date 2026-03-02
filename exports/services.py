@@ -23,7 +23,7 @@ from .excel import ExcelExporter, ExcelExportResult
 from .word import WordExporter, WordExportResult
 from .pdf import PdfExporter, PdfExportResult
 from .zip import ZipExporter, ZipExportResult
-from .utils import get_text_fields, get_image_fields
+from .utils import get_text_fields, get_image_fields, sort_cards_for_export
 
 
 @dataclass
@@ -32,10 +32,11 @@ class ExportContext:
     Context for an export operation.
     
     Contains user, table, and scoped cards based on permissions.
+    cards may be a QuerySet or SortedCardList (sorted by class/section/name).
     """
     user: Any
     table: IDCardTable
-    cards: QuerySet
+    cards: Any  # QuerySet or SortedCardList
     has_permission: bool = True
     error_message: str = ''
 
@@ -188,10 +189,13 @@ class ExportService:
                 error_message='No cards available for export'
             )
         
+        # Sort cards: class → section → name ascending
+        sorted_cards = sort_cards_for_export(cards, table.fields)
+        
         return ExportContext(
             user=self.user,
             table=table,
-            cards=cards,
+            cards=sorted_cards,
             has_permission=True
         )
     

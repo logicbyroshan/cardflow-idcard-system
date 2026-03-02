@@ -289,11 +289,13 @@ def api_class_section_options(request):
 
     classes = set()
     sections = set()
+    branches = set()
 
     for table in tables:
-        # Determine which field names are class/section type
+        # Determine which field names are class/section/branch type
         class_field = None
         section_field = None
+        branch_field = None
         for field in (table.fields or []):
             ft = field.get('type', '').lower()
             fn = field.get('name', '')
@@ -301,8 +303,10 @@ def api_class_section_options(request):
                 class_field = fn
             elif ft == 'section' or fn.lower() == 'section':
                 section_field = fn
+            elif ft == 'branch' or fn.lower() == 'branch':
+                branch_field = fn
 
-        if not class_field and not section_field:
+        if not class_field and not section_field and not branch_field:
             continue
 
         # Query cards in this table
@@ -318,11 +322,16 @@ def api_class_section_options(request):
                 val = fd.get(section_field, '') or fd.get(section_field.upper(), '') or fd.get(section_field.lower(), '')
                 if val:
                     sections.add(str(val).strip())
+            if branch_field:
+                val = fd.get(branch_field, '') or fd.get(branch_field.upper(), '') or fd.get(branch_field.lower(), '')
+                if val:
+                    branches.add(str(val).strip())
 
     return JsonResponse({
         'success': True,
         'classes': sorted(classes),
         'sections': sorted(sections),
+        'branches': sorted(branches),
     })
 
 

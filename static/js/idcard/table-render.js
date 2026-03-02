@@ -113,10 +113,10 @@
         if (t === 'date' || /\bdob\b|\bdate\b|\bvalid/.test(n))          return 'w-[80px] whitespace-nowrap text-center';
         // ── Parent/guardian phone fields (FATHER NO, MOTHER NO, etc.) ────
         // MUST come BEFORE the generic name pattern so "father no" is treated
-        // as a phone column (capped width + wrapping) rather than a name column.
-        if (/(?:father|mother|guardian|parent|mama|nana|dada|nani|dadi)\s*(?:no\.?|num|mob|ph(?:one)?|cell|tel|contact)/.test(n)) return 'min-w-[120px] max-w-[160px] whitespace-normal text-center phone-col';
-        // ── Phone/mobile — allow wrap for slash-joined double numbers ─────
-        if (/\bphone\b|\bmobile\b|\bcontact\b|\bwhatsapp\b|\btel\b|\bmob\b/.test(n)) return 'min-w-[120px] max-w-[160px] whitespace-normal text-center phone-col';
+        // as a phone column (no mid-word breaks) rather than a name column.
+        if (/(?:father|mother|guardian|parent|mama|nana|dada|nani|dadi)\s*(?:no\.?|num|mob|ph(?:one)?|cell|tel|contact)/.test(n)) return 'min-w-[120px] whitespace-nowrap text-center phone-col';
+        // ── Phone/mobile — no mid-word breaks ─────
+        if (/\bphone\b|\bmobile\b|\bcontact\b|\bwhatsapp\b|\btel\b|\bmob\b/.test(n)) return 'min-w-[120px] whitespace-nowrap text-center phone-col';
         // ── Email —————————————————————————————————————————————————————────
         if (/\be[\-\s]?mail\b/.test(n)) return 'min-w-[130px] max-w-[200px] whitespace-normal text-left email-col';
         // ── Hard-format IDs — no-wrap ────────────────────────────────────

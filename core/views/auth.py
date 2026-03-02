@@ -37,6 +37,44 @@ def inactive_view(request):
     return render(request, 'auth/inactive.html', {'reason': reason})
 
 
+def maintenance_view(request):
+    """Display maintenance page for suspended client/client_staff (user stays logged in)."""
+    from django.shortcuts import render, redirect
+    # If user is not logged in, send to inactive page
+    if not request.user.is_authenticated:
+        return redirect('inactive')
+    reason = request.GET.get('reason', '')
+    return render(request, 'auth/maintenance.html', {'reason': reason})
+
+
+def api_check_maintenance(request):
+    """
+    Lightweight API for the maintenance page to poll whether the client
+    account has been reactivated. Returns { active: true/false }.
+    """
+    from django.http import JsonResponse
+    user = request.user
+    if not user.is_authenticated:
+        return JsonResponse({'active': False})
+    
+    if user.role == 'client':
+        from client.models import Client
+        try:
+            client = Client.objects.get(user=user)
+            return JsonResponse({'active': client.status == 'active'})
+        except Client.DoesNotExist:
+            return JsonResponse({'active': False})
+    elif user.role == 'client_staff':
+        from staff.models import Staff
+        try:
+            staff = Staff.objects.select_related('client').get(user=user)
+            return JsonResponse({'active': staff.client and staff.client.status == 'active'})
+        except Staff.DoesNotExist:
+            return JsonResponse({'active': False})
+    
+    return JsonResponse({'active': True})
+
+
 __all__ = [
     'login_view',
     'logout_view',
@@ -49,5 +87,7 @@ __all__ = [
     'client_dashboard',
     'client_staff_dashboard',
     'inactive_view',
+    'maintenance_view',
+    'api_check_maintenance',
 ]
 

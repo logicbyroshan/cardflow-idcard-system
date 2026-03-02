@@ -62,10 +62,12 @@ window.initStaffPage = function (cfg) {
         var activeStaffBtn = document.getElementById('activeStaffBtn');
         var deleteStaffBtn = document.getElementById('deleteStaffBtn');
         var viewStaffBtn   = document.getElementById('viewStaffBtn');
+        var assignStaffBtn = document.getElementById('assignStaffBtn');
         if (editStaffBtn)   editStaffBtn.disabled   = !enable;
         if (activeStaffBtn) activeStaffBtn.disabled = !enable;
         if (deleteStaffBtn) deleteStaffBtn.disabled = !enable;
         if (viewStaffBtn)   viewStaffBtn.disabled   = !enable;
+        if (assignStaffBtn) assignStaffBtn.disabled = !enable;
     }
 
     function updateActiveButtonState() {

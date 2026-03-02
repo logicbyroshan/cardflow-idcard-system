@@ -47,6 +47,8 @@ from .auth import (
     client_dashboard,
     client_staff_dashboard,
     inactive_view,
+    maintenance_view,
+    api_check_maintenance,
 )
 
 from .client_api import (

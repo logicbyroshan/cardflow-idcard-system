@@ -53,6 +53,9 @@
             </div>
             <div class="wa-action-right">
                 {% if is_super_admin or perm_website_add %}
+                <button class="btn btn-secondary" onclick="openBulkUploadModal()">
+                    <i class="fa-solid fa-images"></i> Bulk Upload
+                </button>
                 <button class="btn btn-primary" onclick="openPortfolioModal()">
                     <i class="fa-solid fa-plus"></i> Add Item
                 </button>
@@ -229,6 +232,44 @@
             <div class="wa-modal-footer">
                 <button type="button" class="btn btn-neutral" onclick="closePortfolioModal()">Cancel</button>
                 <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Bulk Upload Modal -->
+<div class="wa-modal-overlay" id="bulkUploadModal">
+    <div class="wa-modal">
+        <div class="wa-modal-header">
+            <h3>Bulk Upload Images</h3>
+            <button class="wa-modal-close" onclick="closeBulkUploadModal()" title="Close"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form id="bulkUploadForm" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="wa-form-group">
+                <label for="bulk_category">Category *</label>
+                <select id="bulk_category" name="category" required>
+                    <option value="">— Select Category —</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat.id }}">{{ cat.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="wa-form-group">
+                <label for="bulk_images"><i class="fa-solid fa-images"></i> Select Images (max 50)</label>
+                <input type="file" id="bulk_images" name="images" accept="image/*" multiple required>
+                <small class="form-hint">Select up to 50 images. Orientation is auto-detected. All will be set as Active.</small>
+                <div id="bulkFileCount" style="margin-top:6px;font-weight:600;color:var(--primary,#3b82f6);display:none;"></div>
+            </div>
+            <div id="bulkProgress" style="display:none;">
+                <div style="background:var(--bg-muted,#e5e7eb);border-radius:6px;height:8px;overflow:hidden;margin-bottom:8px;">
+                    <div id="bulkProgressBar" style="height:100%;width:0%;background:var(--primary,#3b82f6);border-radius:6px;transition:width .3s;"></div>
+                </div>
+                <small id="bulkProgressText">Uploading...</small>
+            </div>
+            <div class="wa-modal-footer">
+                <button type="button" class="btn btn-neutral" onclick="closeBulkUploadModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="bulkUploadBtn"><i class="fa-solid fa-cloud-arrow-up"></i> Upload All</button>
             </div>
         </form>
     </div>

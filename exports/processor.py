@@ -48,7 +48,7 @@ def process_export_zip(task):
     from idcards.models import IDCardTable, IDCard
     from core.services.background_worker import ensure_exports_directory
     from mediafiles.services import ImageService
-    from exports.utils import get_image_fields, clean_filename, is_valid_image_path
+    from exports.utils import get_image_fields, clean_filename, is_valid_image_path, sort_cards_for_export
     
     metadata = task.metadata or {}
     table_id = metadata.get('table_id')
@@ -68,13 +68,16 @@ def process_export_zip(task):
     status_filter = metadata.get('status', '')
     
     if card_ids:
-        cards_qs = IDCard.objects.filter(table=table, id__in=card_ids).order_by('id')
+        cards_qs = IDCard.objects.filter(table=table, id__in=card_ids)
     elif status_filter:
-        cards_qs = IDCard.objects.filter(table=table, status=status_filter).order_by('id')
+        cards_qs = IDCard.objects.filter(table=table, status=status_filter)
     else:
-        cards_qs = IDCard.objects.filter(table=table).order_by('id')
+        cards_qs = IDCard.objects.filter(table=table)
     
-    total_cards = cards_qs.count()
+    # Sort: class → section → name ascending
+    cards_qs = sort_cards_for_export(cards_qs, table.fields or [])
+    
+    total_cards = cards_qs.count() if hasattr(cards_qs, 'count') else len(cards_qs)
     if total_cards == 0:
         task.mark_failed("No cards to export")
         return
@@ -235,7 +238,7 @@ def process_export_pdf(task):
     from idcards.models import IDCardTable, IDCard
     from core.services.background_worker import ensure_exports_directory
     from exports.pdf import PdfExporter
-    from exports.utils import generate_export_filename
+    from exports.utils import generate_export_filename, sort_cards_for_export
     
     metadata = task.metadata or {}
     table_id = metadata.get('table_id')
@@ -255,13 +258,16 @@ def process_export_pdf(task):
     status_filter = metadata.get('status', '')
     
     if card_ids:
-        cards_qs = IDCard.objects.filter(table=table, id__in=card_ids).order_by('id')
+        cards_qs = IDCard.objects.filter(table=table, id__in=card_ids)
     elif status_filter:
-        cards_qs = IDCard.objects.filter(table=table, status=status_filter).order_by('id')
+        cards_qs = IDCard.objects.filter(table=table, status=status_filter)
     else:
-        cards_qs = IDCard.objects.filter(table=table).order_by('id')
+        cards_qs = IDCard.objects.filter(table=table)
     
-    total_cards = cards_qs.count()
+    # Sort: class → section → name ascending
+    cards_qs = sort_cards_for_export(cards_qs, table.fields or [])
+    
+    total_cards = cards_qs.count() if hasattr(cards_qs, 'count') else len(cards_qs)
     if total_cards == 0:
         task.mark_failed("No cards to export")
         return
@@ -339,7 +345,7 @@ def process_export_docx(task):
     from idcards.models import IDCardTable, IDCard
     from core.services.background_worker import ensure_exports_directory
     from exports.word import WordExporter
-    from exports.utils import generate_export_filename
+    from exports.utils import generate_export_filename, sort_cards_for_export
     
     metadata = task.metadata or {}
     table_id = metadata.get('table_id')
@@ -359,13 +365,16 @@ def process_export_docx(task):
     status_filter = metadata.get('status', '')
     
     if card_ids:
-        cards_qs = IDCard.objects.filter(table=table, id__in=card_ids).order_by('id')
+        cards_qs = IDCard.objects.filter(table=table, id__in=card_ids)
     elif status_filter:
-        cards_qs = IDCard.objects.filter(table=table, status=status_filter).order_by('id')
+        cards_qs = IDCard.objects.filter(table=table, status=status_filter)
     else:
-        cards_qs = IDCard.objects.filter(table=table).order_by('id')
+        cards_qs = IDCard.objects.filter(table=table)
     
-    total_cards = cards_qs.count()
+    # Sort: class → section → name ascending
+    cards_qs = sort_cards_for_export(cards_qs, table.fields or [])
+    
+    total_cards = cards_qs.count() if hasattr(cards_qs, 'count') else len(cards_qs)
     if total_cards == 0:
         task.mark_failed("No cards to export")
         return
@@ -433,7 +442,7 @@ def process_export_excel(task):
     from idcards.models import IDCardTable, IDCard
     from core.services.background_worker import ensure_exports_directory
     from exports.excel import ExcelExporter
-    from exports.utils import generate_export_filename
+    from exports.utils import generate_export_filename, sort_cards_for_export
     
     metadata = task.metadata or {}
     table_id = metadata.get('table_id')
@@ -453,13 +462,16 @@ def process_export_excel(task):
     status_filter = metadata.get('status', '')
     
     if card_ids:
-        cards_qs = IDCard.objects.filter(table=table, id__in=card_ids).order_by('id')
+        cards_qs = IDCard.objects.filter(table=table, id__in=card_ids)
     elif status_filter:
-        cards_qs = IDCard.objects.filter(table=table, status=status_filter).order_by('id')
+        cards_qs = IDCard.objects.filter(table=table, status=status_filter)
     else:
-        cards_qs = IDCard.objects.filter(table=table).order_by('id')
+        cards_qs = IDCard.objects.filter(table=table)
     
-    total_cards = cards_qs.count()
+    # Sort: class → section → name ascending
+    cards_qs = sort_cards_for_export(cards_qs, table.fields or [])
+    
+    total_cards = cards_qs.count() if hasattr(cards_qs, 'count') else len(cards_qs)
     if total_cards == 0:
         task.mark_failed("No cards to export")
         return

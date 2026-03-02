@@ -28,6 +28,7 @@
     // ------------------------------------------
     var _toastTimeout    = null;
     var _progressTimeout = null;
+    var _progressCancelCb = null;  // cancel callback for progress toast
 
     // ------------------------------------------
     // ICON MAP
@@ -54,10 +55,26 @@
             '<i id="toastIcon" class="fa-solid fa-check-circle"></i>' +
             '<span id="toastMessage">Success!</span>' +
             '<span id="toastPercent" style="display:none;margin-left:8px;font-weight:600;"></span>' +
+            '<button id="toastCancelBtn" type="button" title="Cancel" ' +
+            'style="display:none;background:none;border:none;color:inherit;cursor:pointer;' +
+            'margin-left:10px;padding:2px 6px;font-size:1.1em;opacity:.7;transition:opacity .2s;" ' +
+            'onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.7">' +
+            '<i class="fa-solid fa-xmark"></i></button>' +
             '<div id="toastProgress" class="toast-progress" style="display:none;">' +
             '  <div id="toastProgressBar" class="toast-progress-bar"></div>' +
             '</div>';
         document.body.appendChild(toast);
+        // Wire cancel button
+        var cancelBtn = document.getElementById('toastCancelBtn');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', function () {
+                if (typeof _progressCancelCb === 'function') {
+                    _progressCancelCb();
+                    _progressCancelCb = null;
+                }
+                hideToast();
+            });
+        }
         return toast;
     }
 
@@ -92,6 +109,9 @@
 
         if (progressEl) progressEl.style.display = 'none';
         if (barEl) { barEl.classList.remove('indeterminate'); barEl.style.width = '0%'; }
+        var cancelBtnSimple = document.getElementById('toastCancelBtn');
+        if (cancelBtnSimple) cancelBtnSimple.style.display = 'none';
+        _progressCancelCb = null;
 
         toast.className = 'toast show ' + type;
 
@@ -101,9 +121,12 @@
     // ------------------------------------------
     // PROGRESS TOAST
     // ------------------------------------------
-    function showProgressToast(message, progress) {
+    function showProgressToast(message, progress, onCancel) {
         if (progress === undefined) progress = -1;
         if (_progressTimeout) { clearTimeout(_progressTimeout); _progressTimeout = null; }
+
+        // Store cancel callback
+        if (typeof onCancel === 'function') _progressCancelCb = onCancel;
 
         var toast      = _ensureEl();
         var msgEl      = document.getElementById('toastMessage')      || toast.querySelector('span');
@@ -111,6 +134,16 @@
         var progressEl = document.getElementById('toastProgress');
         var barEl      = document.getElementById('toastProgressBar');
         var pctEl      = document.getElementById('toastPercent');
+        var cancelBtn  = document.getElementById('toastCancelBtn');
+
+        if (msgEl)  msgEl.textContent = message;
+        if (iconEl) iconEl.className  = 'fa-solid fa-spinner fa-spin';
+        if (progressEl) progressEl.style.display = 'block';
+
+        // Show cancel/stop button when a cancel callback is registered
+        if (cancelBtn) {
+            cancelBtn.style.display = _progressCancelCb ? 'inline-block' : 'none';
+        }
 
         if (msgEl)  msgEl.textContent = message;
         if (iconEl) iconEl.className  = 'fa-solid fa-spinner fa-spin';
@@ -144,6 +177,7 @@
     function showDownloadComplete(message) {
         message = message || 'Successfully downloaded!';
         if (_progressTimeout) { clearTimeout(_progressTimeout); _progressTimeout = null; }
+        _progressCancelCb = null;
 
         var toast      = _ensureEl();
         var msgEl      = document.getElementById('toastMessage')      || toast.querySelector('span');
@@ -151,12 +185,14 @@
         var progressEl = document.getElementById('toastProgress');
         var barEl      = document.getElementById('toastProgressBar');
         var pctEl      = document.getElementById('toastPercent');
+        var cancelBtn  = document.getElementById('toastCancelBtn');
 
         if (msgEl)  msgEl.textContent = message;
         if (iconEl) iconEl.className  = 'fa-solid fa-check-circle';
         if (progressEl) progressEl.style.display = 'block';
         if (barEl)  { barEl.classList.remove('indeterminate'); barEl.style.width = '100%'; }
         if (pctEl)  { pctEl.style.display = 'inline'; pctEl.textContent = '100%'; }
+        if (cancelBtn) cancelBtn.style.display = 'none';
 
         toast.className = 'toast show success';
 
@@ -175,6 +211,9 @@
         if (toast) toast.classList.remove('show');
         if (_toastTimeout)    { clearTimeout(_toastTimeout);    _toastTimeout    = null; }
         if (_progressTimeout) { clearTimeout(_progressTimeout); _progressTimeout = null; }
+        _progressCancelCb = null;
+        var cancelBtn = document.getElementById('toastCancelBtn');
+        if (cancelBtn) cancelBtn.style.display = 'none';
     }
 
     // ------------------------------------------

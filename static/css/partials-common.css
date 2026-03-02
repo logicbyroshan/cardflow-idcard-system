@@ -84,8 +84,12 @@
 
 .center-modal.delete-modal .modal-header h3 { color: #fff; }
 
-/* ── Phone / Email table-cell break rules ──────────────────────── */
+/* ── Phone / Email / Date / Number table-cell break rules ───────── */
+/* Phone numbers, dates, and numeric IDs must never break mid-word. */
 .phone-cell,
+.phone-col {
+  white-space: nowrap;
+}
 .email-cell {
   word-break: keep-all;
   overflow-wrap: normal;

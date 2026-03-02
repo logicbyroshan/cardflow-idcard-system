@@ -490,8 +490,16 @@ function downloadPdf(cardIds, templateId, fontMode, shortenTitles) {
  * Used for large datasets (500+ cards) to avoid Cloudflare's ~100s timeout.
  */
 function _downloadPdfAsync(tableId, cardIds, templateId, fontMode, shortenTitles) {
+    // Cancellation flag for the polling loop
+    var _pdfAsyncCancelled = false;
+
+    var cancelFn = function () {
+        _pdfAsyncCancelled = true;
+        if (typeof showToast === 'function') showToast('PDF export cancelled', 'info');
+    };
+
     if (typeof showProgressToast === 'function') {
-        showProgressToast('Starting PDF generation...', 5);
+        showProgressToast('Starting PDF generation...', 5, cancelFn);
     }
 
     var body = Object.assign({
@@ -512,7 +520,7 @@ function _downloadPdfAsync(tableId, cardIds, templateId, fontMode, shortenTitles
                     return;
                 }
                 // Start polling for completion
-                _pollExportStatus(data.task_id, data.card_count || 0);
+                _pollExportStatus(data.task_id, data.card_count || 0, function() { return _pdfAsyncCancelled; }, cancelFn);
             })
             .catch(function(err) {
                 if (typeof hideProgressToast === 'function') hideProgressToast();
@@ -536,7 +544,7 @@ function _downloadPdfAsync(tableId, cardIds, templateId, fontMode, shortenTitles
                 if (typeof showToast === 'function') showToast(data.message || 'Failed to start PDF export', false);
                 return;
             }
-            _pollExportStatus(data.task_id, data.card_count || 0);
+            _pollExportStatus(data.task_id, data.card_count || 0, function() { return _pdfAsyncCancelled; }, cancelFn);
         })
         .catch(function(err) {
             if (typeof hideProgressToast === 'function') hideProgressToast();
@@ -548,13 +556,24 @@ function _downloadPdfAsync(tableId, cardIds, templateId, fontMode, shortenTitles
 
 /**
  * Poll the export status endpoint until the PDF is ready or fails.
+ * @param {string} taskId
+ * @param {number} cardCount
+ * @param {Function} isCancelled - returns true if user cancelled
+ * @param {Function} cancelFn - passed to showProgressToast for cancel button
  */
-function _pollExportStatus(taskId, cardCount) {
+function _pollExportStatus(taskId, cardCount, isCancelled, cancelFn) {
     var pollCount = 0;
     var maxPolls = 300; // 300 * 2s = 10 minutes max
 
     function poll() {
+        // Check if user cancelled
+        if (typeof isCancelled === 'function' && isCancelled()) {
+            if (typeof hideProgressToast === 'function') hideProgressToast();
+            return;
+        }
+
         pollCount++;
+        if (pollCount > maxPolls) {
         if (pollCount > maxPolls) {
             if (typeof hideProgressToast === 'function') hideProgressToast();
             if (typeof showToast === 'function') showToast('PDF generation timed out. Please try again with fewer cards.', false);
@@ -598,7 +617,7 @@ function _pollExportStatus(taskId, cardCount) {
                 // Still processing — show progress and poll again
                 var msg = data.message || ('Generating PDF' + (cardCount ? ' (' + cardCount + ' cards)' : '') + '...');
                 if (typeof showProgressToast === 'function') {
-                    showProgressToast(msg, data.progress || -1);
+                    showProgressToast(msg, data.progress || -1, cancelFn);
                 }
                 setTimeout(poll, _POLL_INTERVAL);
             }
@@ -618,9 +637,9 @@ function _pollExportStatus(taskId, cardCount) {
  * Legacy synchronous PDF download (for small exports without DownloadManager).
  */
 function _downloadPdfLegacy(tableId, cardIds, templateId, fontMode, shortenTitles) {
-    if (typeof showProgressToast === 'function') showProgressToast('Preparing PDF file...', -1);
-
     const xhr = new XMLHttpRequest();
+    var cancelFn = function () { xhr.abort(); if (typeof showToast === 'function') showToast('PDF download cancelled', 'info'); };
+    if (typeof showProgressToast === 'function') showProgressToast('Preparing PDF file...', -1, cancelFn);
     xhr.open('POST', `/panel/api/table/${tableId}/cards/download-pdf/`, true);
     xhr.timeout = 600000;
     xhr.setRequestHeader('Content-Type', 'application/json');

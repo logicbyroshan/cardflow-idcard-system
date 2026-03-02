@@ -205,7 +205,7 @@ class NotificationService:
     @classmethod
     def list_all_notifications(cls, limit=50, offset=0, search=''):
         """List all notifications (admin panel view)."""
-        qs = Notification.objects.select_related('created_by').order_by('-created_at')
+        qs = Notification.objects.filter(is_active=True).select_related('created_by').order_by('-created_at')
         if search:
             qs = qs.filter(
                 Q(title__icontains=search) | Q(message__icontains=search)

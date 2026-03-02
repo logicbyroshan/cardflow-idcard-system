@@ -198,6 +198,7 @@ class PermissionValidationMiddleware:
         'auth/password-reset/',
         'api/auth/',
         'inactive/',
+        'maintenance/',
     ]
     
     # Paths that are always exempt regardless of prefix
@@ -364,10 +365,10 @@ class PermissionValidationMiddleware:
         # Check if client is still active
         if client.status != 'active':
             logger.warning(
-                "PermissionValidationMiddleware: Client '%s' (ID: %s) is now %s - forcing logout for user %s",
+                "PermissionValidationMiddleware: Client '%s' (ID: %s) is now %s - redirecting to maintenance for user %s",
                 client.name, client.pk, client.status, user.username
             )
-            return self._force_logout(request, 'Your organization account has been suspended.')
+            return self._redirect_to_maintenance(request, 'Your organization account has been suspended.')
         
         # Store client_id in session for reassignment detection
         session_client_id = request.session.get('_client_id')
@@ -408,10 +409,10 @@ class PermissionValidationMiddleware:
         # Check if staff's client is still active
         if staff.client.status != 'active':
             logger.warning(
-                "PermissionValidationMiddleware: Client '%s' (ID: %s) is now %s - forcing logout for staff %s",
+                "PermissionValidationMiddleware: Client '%s' (ID: %s) is now %s - redirecting to maintenance for staff %s",
                 staff.client.name, staff.client.pk, staff.client.status, user.username
             )
-            return self._force_logout(
+            return self._redirect_to_maintenance(
                 request, 
                 'Your organization account has been suspended.'
             )
@@ -455,6 +456,36 @@ class PermissionValidationMiddleware:
             staff = getattr(user, 'staff_profile', None)
             if staff and staff.client:
                 request.user_scope['client_id'] = staff.client.id
+    
+    def _redirect_to_maintenance(self, request, message):
+        """Redirect to maintenance page WITHOUT logging out.
+        
+        Used when a client/staff's organization is suspended.
+        The user stays logged in so they can seamlessly resume
+        once the account is reactivated.
+        """
+        from urllib.parse import quote
+        
+        prefix = self._panel_prefix(request)
+        maintenance_url = f'{prefix}/maintenance/?reason={quote(message)}'
+        
+        # Check if this is an API request
+        is_api_request = (
+            request.headers.get('X-Requested-With') == 'XMLHttpRequest' or
+            request.content_type == 'application/json' or
+            '/api/' in request.path
+        )
+        
+        if is_api_request:
+            return JsonResponse({
+                'success': False,
+                'message': message,
+                'force_maintenance': True,
+                'redirect': maintenance_url
+            }, status=403)
+        
+        # Regular page request - redirect to maintenance page
+        return redirect(maintenance_url)
     
     def _force_logout(self, request, message):
         """Force logout user and redirect to inactive page"""
@@ -650,6 +681,8 @@ class SecurityHeadersMiddleware:
 
     # CSP for the panel / admin pages:
     # - 'unsafe-inline' required: HTMX hx-* attributes and Django template inline scripts
+    # - 'unsafe-eval' required: Alpine.js evaluates x-data/x-show/x-text/x-bind expressions
+    #   via new Function() which needs eval permission (confirmed via browser console CSP errors)
     # - img-src data:/blob: required: image previews and canvas operations
     # - font-src data: required: some icon fonts are base64-embedded
     # Strict protections still enforced:
@@ -659,11 +692,11 @@ class SecurityHeadersMiddleware:
     # - frame-ancestors 'none' → belt-and-suspenders with X-Frame-Options: DENY
     _CSP_PANEL = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline'; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
         "style-src 'self' 'unsafe-inline'; "
         "img-src 'self' data: blob:; "
         "font-src 'self' data:; "
-        "connect-src 'self'; "
+        "connect-src 'self' http://127.0.0.1:4765; "  # 127.0.0.1:4765 = local Face Cropper engine
         "media-src 'self'; "
         "object-src 'none'; "
         "base-uri 'self'; "
@@ -688,7 +721,7 @@ class SecurityHeadersMiddleware:
         "font-src 'self' data: "
             "https://cdnjs.cloudflare.com "
             "https://fonts.gstatic.com; "
-        "connect-src 'self'; "
+        "connect-src 'self' http://127.0.0.1:4765; "  # 127.0.0.1:4765 = local Face Cropper engine
         "media-src 'self' blob:; "
         "object-src 'none'; "
         "base-uri 'self'; "

@@ -563,6 +563,64 @@ def api_portfolio_create(request):
     return JsonResponse({'success': True, 'message': 'Portfolio item created', 'id': item.id})
 
 
+@require_POST
+@website_add_required
+def api_portfolio_bulk_upload(request):
+    """
+    Bulk upload portfolio images (max 50).
+    
+    Accepts multipart form with:
+      - images: multiple image files
+      - category: category ID
+    """
+    MAX_BULK_IMAGES = 50
+    
+    category_id = request.POST.get('category', '')
+    files = request.FILES.getlist('images')
+    
+    if not files:
+        return JsonResponse({'success': False, 'message': 'No images selected'}, status=400)
+    
+    if len(files) > MAX_BULK_IMAGES:
+        return JsonResponse({
+            'success': False,
+            'message': f'Maximum {MAX_BULK_IMAGES} images allowed per upload. You selected {len(files)}.'
+        }, status=400)
+    
+    created = 0
+    errors = []
+    
+    for i, img_file in enumerate(files):
+        try:
+            PortfolioItemService.create(
+                category_id=category_id or None,
+                orientation='',
+                item_type='image',
+                video_url='',
+                order=0,
+                is_active=True,
+                is_featured=False,
+                image=img_file,
+                video_file=None,
+            )
+            created += 1
+        except (ValidationError, Exception) as e:
+            err_msg = e.message if hasattr(e, 'message') else str(e)
+            errors.append(f'{img_file.name}: {err_msg}')
+    
+    if created == 0:
+        return JsonResponse({
+            'success': False,
+            'message': 'No images were uploaded. ' + '; '.join(errors[:3])
+        }, status=400)
+    
+    msg = f'{created} image{"s" if created != 1 else ""} uploaded successfully'
+    if errors:
+        msg += f' ({len(errors)} failed)'
+    
+    return JsonResponse({'success': True, 'message': msg, 'created': created, 'errors': errors[:5]})
+
+
 @require_GET
 @website_admin_required
 def api_portfolio_get(request, pk):

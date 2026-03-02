@@ -231,10 +231,34 @@ function _updateRowInPlace(cardId, cardData) {
                 const placeholder = td.querySelector('.no-image');
                 if (placeholder) placeholder.remove();
 
+                // Chained onerror: thumb → original → placeholder (keeps edit btn visible)
+                var _makeOnerror = function(fallbackSrc, cellTd) {
+                    return function() {
+                        if (fallbackSrc) {
+                            this.onerror = _makeOnerror(null, cellTd);
+                            this.src = fallbackSrc;
+                        } else {
+                            // Both thumb and original failed — show placeholder, keep edit button
+                            this.onerror = null;
+                            this.style.display = 'none';
+                            if (!this.parentElement.querySelector('.no-image')) {
+                                var ph = document.createElement('div');
+                                ph.className = 'no-image colorful-placeholder';
+                                ph.title = 'Image not available';
+                                ph.innerHTML = '<i class="fa-solid fa-user-astronaut"></i>';
+                                this.parentElement.insertBefore(ph, this);
+                            }
+                            // Ensure edit button is still visible
+                            var eb = cellTd.querySelector('.edit-photo-btn');
+                            if (eb) eb.style.display = '';
+                        }
+                    };
+                };
+
                 if (img) {
                     // Existing img element — just update src
                     img.src = thumbSrc || originalSrc;
-                    img.onerror = function() { this.onerror = null; this.src = originalSrc; };
+                    img.onerror = _makeOnerror(thumbSrc ? originalSrc : null, td);
                     img.style.display = '';
                 } else {
                     // No img element exists (was a placeholder) — create one
@@ -245,7 +269,7 @@ function _updateRowInPlace(cardId, cardData) {
                     newImg.className = 'table-image';
                     newImg.loading = 'lazy';
                     newImg.decoding = 'async';
-                    newImg.onerror = function() { this.onerror = null; this.src = originalSrc; };
+                    newImg.onerror = _makeOnerror(thumbSrc ? originalSrc : null, td);
                     wrapper.insertBefore(newImg, wrapper.firstChild);
                 }
 
@@ -328,14 +352,11 @@ function _updateRowInPlace(cardId, cardData) {
         window.IDCardApp.applyFiltersAndSort();
     }
 
-    // Handle broken images — delay to let freshly-set img.src start loading
-    // Without delay, handleBrokenImages() races with the new image load
-    // and can flag it as broken (naturalWidth === 0), hiding the edit button.
-    if (window.IDCardApp && typeof window.IDCardApp.handleBrokenImages === 'function') {
-        setTimeout(function() {
-            window.IDCardApp.handleBrokenImages();
-        }, 800);
-    }
+    // NOTE: We intentionally do NOT call handleBrokenImages() here.
+    // The chained onerror handlers above already handle failed images
+    // (thumb → original → placeholder) without the race-condition risk
+    // of a delayed handleBrokenImages() flagging still-loading images
+    // as broken and hiding the edit button.
 }
 
 // ==========================================

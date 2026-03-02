@@ -54,6 +54,7 @@ urlpatterns = [
     # ==========================================================================
     path('api/portfolio/', admin_views.api_portfolio_list, name='api_portfolio_list'),
     path('api/portfolio/create/', admin_views.api_portfolio_create, name='api_portfolio_create'),
+    path('api/portfolio/bulk-upload/', admin_views.api_portfolio_bulk_upload, name='api_portfolio_bulk_upload'),
     path('api/portfolio/<int:pk>/', admin_views.api_portfolio_get, name='api_portfolio_get'),
     path('api/portfolio/<int:pk>/update/', admin_views.api_portfolio_update, name='api_portfolio_update'),
     path('api/portfolio/<int:pk>/delete/', admin_views.api_portfolio_delete, name='api_portfolio_delete'),

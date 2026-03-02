@@ -86,6 +86,97 @@
     /* ================================================================
        CATEGORY MANAGEMENT
     ================================================================ */
+
+    /* ================================================================
+       BULK UPLOAD
+    ================================================================ */
+    window.openBulkUploadModal = function () {
+        document.getElementById('bulkUploadForm').reset();
+        document.getElementById('bulkFileCount').style.display = 'none';
+        document.getElementById('bulkProgress').style.display = 'none';
+        document.getElementById('bulkUploadBtn').disabled = false;
+        document.getElementById('bulkUploadModal').classList.add('show');
+    };
+    window.closeBulkUploadModal = function () {
+        document.getElementById('bulkUploadModal').classList.remove('show');
+    };
+
+    // Show file count when user selects files
+    document.getElementById('bulk_images').addEventListener('change', function () {
+        var countEl = document.getElementById('bulkFileCount');
+        var count = this.files ? this.files.length : 0;
+        if (count > 0) {
+            countEl.textContent = count + ' image' + (count !== 1 ? 's' : '') + ' selected';
+            if (count > 50) countEl.textContent += ' (max 50 — extra will be ignored)';
+            countEl.style.display = 'block';
+        } else {
+            countEl.style.display = 'none';
+        }
+    });
+
+    // Bulk upload form submit
+    document.getElementById('bulkUploadForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var fileInput = document.getElementById('bulk_images');
+        var category = document.getElementById('bulk_category').value;
+        if (!category) { showToast('Please select a category', 'error'); return; }
+        if (!fileInput.files || fileInput.files.length === 0) { showToast('Please select images', 'error'); return; }
+
+        var files = Array.from(fileInput.files).slice(0, 50);
+        var btn = document.getElementById('bulkUploadBtn');
+        var progressWrap = document.getElementById('bulkProgress');
+        var progressBar = document.getElementById('bulkProgressBar');
+        var progressText = document.getElementById('bulkProgressText');
+
+        btn.disabled = true;
+        progressWrap.style.display = 'block';
+        progressBar.style.width = '0%';
+        progressText.textContent = 'Uploading 0/' + files.length + '...';
+
+        var fd = new FormData();
+        fd.append('category', category);
+        for (var i = 0; i < files.length; i++) {
+            fd.append('images', files[i]);
+        }
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', BASE + '/portfolio/bulk-upload/', true);
+        var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (csrfToken) xhr.setRequestHeader('X-CSRFToken', csrfToken.value);
+
+        xhr.upload.onprogress = function (ev) {
+            if (ev.lengthComputable) {
+                var pct = Math.round((ev.loaded / ev.total) * 100);
+                progressBar.style.width = pct + '%';
+                progressText.textContent = 'Uploading... ' + pct + '%';
+            }
+        };
+
+        xhr.onload = function () {
+            try {
+                var data = JSON.parse(xhr.responseText);
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    setTimeout(function () { location.reload(); }, 800);
+                } else {
+                    showToast(data.message || 'Upload failed', 'error');
+                    btn.disabled = false;
+                }
+            } catch (err) {
+                showToast('Upload failed', 'error');
+                btn.disabled = false;
+            }
+        };
+        xhr.onerror = function () {
+            showToast('Network error during upload', 'error');
+            btn.disabled = false;
+        };
+        xhr.send(fd);
+    });
+
+    /* ================================================================
+       CATEGORY MANAGEMENT (continued)
+    ================================================================ */
     window.openCategoryModal = function () {
         document.getElementById('categoryModalTitle').textContent = 'Add Category';
         document.getElementById('categoryForm').reset();

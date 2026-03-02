@@ -47,6 +47,16 @@ Uses Tailwind CSS component classes.
                 </button>
                 {% endif %}
             </div>
+            {% if is_client_admin %}
+            <div class="btn-separator"></div>
+            <div class="btn-group">
+                {% if perm_idcard_client_list %}
+                <button class="btn btn-md btn-neutral" id="assignStaffBtn" title="Assign Groups / Classes / Sections" disabled>
+                    <i class="fa-solid fa-layer-group"></i> Assign
+                </button>
+                {% endif %}
+            </div>
+            {% endif %}
             <div class="btn-separator"></div>
             <div class="btn-group">
                 {% if perm_idcard_client_list %}

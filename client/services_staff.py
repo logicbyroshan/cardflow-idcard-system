@@ -146,6 +146,7 @@ class ClientStaffService(BaseService):
                 'assigned_group_ids': list(staff.assigned_groups.values_list('id', flat=True)),
                 'allowed_classes': staff.allowed_classes or [],
                 'allowed_sections': staff.allowed_sections or [],
+                'allowed_branches': staff.allowed_branches or [],
                 'client_permissions': client_permissions,
             }
             # Include all permissions
@@ -347,6 +348,10 @@ class ClientStaffService(BaseService):
                 allowed_sections = data['allowed_sections']
                 if isinstance(allowed_sections, list):
                     staff.allowed_sections = [str(v).strip() for v in allowed_sections if isinstance(v, str)]
+            if 'allowed_branches' in data:
+                allowed_branches = data['allowed_branches']
+                if isinstance(allowed_branches, list):
+                    staff.allowed_branches = [str(v).strip() for v in allowed_branches if isinstance(v, str)]
             staff.save()
             
             # Update group assignments if provided
