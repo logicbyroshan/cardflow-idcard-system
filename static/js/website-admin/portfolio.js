@@ -133,6 +133,32 @@
         progressBar.style.width = '0%';
         progressText.textContent = 'Uploading 0/' + files.length + '...';
         var _portfolioProcessingTimer = null;
+        var _portfolioUploadDone = false;
+
+        // ── Stall detection: abort if no progress for 30 seconds ──
+        var _pfLastProgress = Date.now();
+        var _pfStallTimer = setInterval(function() {
+            if (_portfolioUploadDone) { clearInterval(_pfStallTimer); return; }
+            if (Date.now() - _pfLastProgress > 30000) {
+                clearInterval(_pfStallTimer);
+                if (!_portfolioUploadDone) {
+                    _portfolioUploadDone = true;
+                    xhr.abort();
+                    if (_portfolioProcessingTimer) { clearInterval(_portfolioProcessingTimer); _portfolioProcessingTimer = null; }
+                    progressText.textContent = 'Upload stalled — server may have rejected the files.';
+                    showToast(
+                        'Upload stalled. Check that Nginx client_max_body_size is large enough (1000M) and the server is running.',
+                        'error'
+                    );
+                    btn.disabled = false;
+                }
+            }
+        }, 5000);
+
+        function _cleanupPortfolioUpload() {
+            _portfolioUploadDone = true;
+            clearInterval(_pfStallTimer);
+        }
 
         var fd = new FormData();
         fd.append('category', category);
@@ -140,13 +166,17 @@
             fd.append('images', files[i]);
         }
 
+        var uploadUrl = BASE + '/portfolio/bulk-upload/';
         var xhr = new XMLHttpRequest();
-        xhr.open('POST', BASE + '/portfolio/bulk-upload/', true);
+        xhr.open('POST', uploadUrl, true);
         var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
         if (csrfToken) xhr.setRequestHeader('X-CSRFToken', csrfToken.value);
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        console.log('[Portfolio] Starting bulk upload to', uploadUrl, '| Files:', files.length, '| Total size:', Math.round(files.reduce(function(s,f){return s+f.size;},0) / 1024) + 'KB');
 
         // Phase 1: Upload progress (0% → 80%)
         xhr.upload.onprogress = function (ev) {
+            _pfLastProgress = Date.now();
             if (ev.lengthComputable) {
                 var rawPct = Math.round((ev.loaded / ev.total) * 100);
                 var barPct = Math.round((ev.loaded / ev.total) * 80);
@@ -167,7 +197,29 @@
             }, 400);
         };
 
+        // ── Catch early server error (e.g. Nginx 413) before upload finishes ──
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState >= 2) {
+                console.log('[Portfolio] XHR state:', xhr.readyState, '| HTTP:', xhr.status);
+            }
+            if (xhr.readyState === 4 && !_portfolioUploadDone) {
+                if (xhr.status !== 200 && xhr.status !== 0) {
+                    _cleanupPortfolioUpload();
+                    if (_portfolioProcessingTimer) { clearInterval(_portfolioProcessingTimer); _portfolioProcessingTimer = null; }
+                    var earlyErr = 'Server rejected the upload (HTTP ' + xhr.status + ').';
+                    if (xhr.status === 413) earlyErr = 'Files too large. Increase Nginx client_max_body_size.';
+                    else if (xhr.status === 403) earlyErr = 'Forbidden (403). Possible causes: CSRF token expired, session expired, or no permission. Try reloading the page.';
+                    console.error('[Portfolio] Upload rejection: HTTP', xhr.status, xhr.responseText ? xhr.responseText.substring(0, 500) : '(empty)');
+                    progressText.textContent = earlyErr;
+                    showToast(earlyErr, 'error');
+                    btn.disabled = false;
+                }
+            }
+        };
+
         xhr.onload = function () {
+            if (_portfolioUploadDone) return;
+            _cleanupPortfolioUpload();
             if (_portfolioProcessingTimer) { clearInterval(_portfolioProcessingTimer); _portfolioProcessingTimer = null; }
             progressBar.style.width = '100%';
             try {
@@ -180,13 +232,24 @@
                     btn.disabled = false;
                 }
             } catch (err) {
-                showToast('Upload failed', 'error');
+                console.error('Portfolio upload parse error:', err, 'Status:', xhr.status, 'Response:', xhr.responseText ? xhr.responseText.substring(0, 300) : '(empty)');
+                var errMsg = 'Upload failed';
+                if (xhr.status === 413) errMsg = 'Files too large. Increase Nginx client_max_body_size (need 1000M).';
+                else if (xhr.status === 502 || xhr.status === 504) errMsg = 'Server timeout — try fewer images.';
+                else if (xhr.status === 0) errMsg = 'Connection lost — server may have rejected the upload size.';
+                showToast(errMsg, 'error');
                 btn.disabled = false;
             }
         };
         xhr.onerror = function () {
+            if (_portfolioUploadDone) return;
+            _cleanupPortfolioUpload();
             if (_portfolioProcessingTimer) { clearInterval(_portfolioProcessingTimer); _portfolioProcessingTimer = null; }
-            showToast('Network error during upload', 'error');
+            console.error('Portfolio XHR onerror — status:', xhr.status, 'readyState:', xhr.readyState);
+            var errMsg = 'Upload failed. ';
+            if (xhr.status === 0) errMsg += 'Connection was reset — server may have rejected the file size. Check Nginx client_max_body_size.';
+            else errMsg += 'Network error during upload.';
+            showToast(errMsg, 'error');
             btn.disabled = false;
         };
         xhr.send(fd);

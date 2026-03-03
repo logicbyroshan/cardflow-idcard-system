@@ -20,11 +20,11 @@ var ENGINE_API_KEY    = 'passport-engine-local-key';
 var KEEPALIVE_MS      = 30000;  // poll engine status every 30 s (only when connected)
 
 // Staged-retry schedule: [{ attempts, retryDelayMs, sleepAfterMs | null }]
-// 3 tries (1.5 s apart) → sleep 5 min → 3 tries → sleep 1 hr → 3 tries → stop
+// 2 tries (2 s apart) → sleep 5 min → 2 tries → stop
+// Kept minimal to avoid flooding the console with ERR_CONNECTION_REFUSED.
 var ENGINE_RETRY_STAGES = [
-  { attempts: 3, retryDelayMs: 1500, sleepAfterMs: 5  * 60 * 1000 },  // 5 min
-  { attempts: 3, retryDelayMs: 1500, sleepAfterMs: 60 * 60 * 1000 },  // 1 hr
-  { attempts: 3, retryDelayMs: 1500, sleepAfterMs: null },             // give up
+  { attempts: 2, retryDelayMs: 2000, sleepAfterMs: 5 * 60 * 1000 },  // 5 min
+  { attempts: 2, retryDelayMs: 2000, sleepAfterMs: null },            // give up
 ];
 
 function cropperApp() {
@@ -165,7 +165,8 @@ function cropperApp() {
             console.log('[Cropper] Engine connected (stage ' + (s + 1) + ', attempt ' + a + ')');
             return;  // success — keepalive will handle ongoing monitoring
           }
-          console.log('[Cropper] Engine not detected — stage ' + (s + 1) + ' attempt ' + a + '/' + stage.attempts);
+          // Use debug level so these don't clutter the console by default
+          console.debug('[Cropper] Engine not detected — stage ' + (s + 1) + ' attempt ' + a + '/' + stage.attempts);
           if (a < stage.attempts) {
             await new Promise(function (r) { setTimeout(r, stage.retryDelayMs); });
           }
@@ -173,13 +174,13 @@ function cropperApp() {
         // All attempts in this stage failed
         if (stage.sleepAfterMs) {
           var mins = Math.round(stage.sleepAfterMs / 60000);
-          console.log('[Cropper] Sleeping ' + mins + ' min before next retry stage…');
+          console.debug('[Cropper] Will retry in ' + mins + ' min…');
           await new Promise(function (r) { setTimeout(r, stage.sleepAfterMs); });
         }
       }
-      // All stages exhausted — give up
+      // All stages exhausted — give up quietly
       this._retryGaveUp = true;
-      console.warn('[Cropper] All retry stages exhausted — engine not found. Stopped retrying.');
+      console.info('[Cropper] Engine not found — retries exhausted. Refresh or click Reconnect to try again.');
     },
 
     // ══════════════════════════════════════════════════════════════════
@@ -194,7 +195,7 @@ function cropperApp() {
 
       try {
         var controller = new AbortController();
-        var timer = setTimeout(function () { controller.abort(); }, 4000);
+        var timer = setTimeout(function () { controller.abort(); }, 2000);
         var resp = await fetch(ENGINE_DIRECT_URL + '/status', { signal: controller.signal });
         clearTimeout(timer);
 
@@ -225,7 +226,7 @@ function cropperApp() {
 
       // Engine went offline
       if (wasConnected) {
-        console.warn('[Cropper] Engine disconnected — starting staged retry…');
+        console.debug('[Cropper] Engine disconnected — restarting detection…');
         this.engine.connected = false;
         this.engine.checked = true;
         this._broadcastEngineState();
@@ -245,7 +246,7 @@ function cropperApp() {
       // ── Attempt 1: Direct connection to local engine ──────────────
       try {
         var controller = new AbortController();
-        var timer = setTimeout(function () { controller.abort(); }, 6000);
+        var timer = setTimeout(function () { controller.abort(); }, 3000);
 
         var statusResp = await fetch(ENGINE_DIRECT_URL + '/status', {
           signal: controller.signal,

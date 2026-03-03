@@ -216,18 +216,48 @@ function initReuploadHandlers() {
             if (reuploadActionsBar) reuploadActionsBar.style.width = '0%';
             if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Starting upload...';
             var _actPollInterval = null;
+            var _actUploadDone = false; // guard against duplicate handler calls
+
+            // ── Stall detection: abort if no progress for 30 seconds ──
+            var _actLastProgress = Date.now();
+            var _actStallTimer = setInterval(function() {
+                if (_actUploadDone) { clearInterval(_actStallTimer); return; }
+                if (Date.now() - _actLastProgress > 30000) {
+                    clearInterval(_actStallTimer);
+                    if (!_actUploadDone) {
+                        _actUploadDone = true;
+                        xhr.abort();
+                        if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Upload stalled — server may have rejected the file.';
+                        if (typeof showToast === 'function') showToast(
+                            'Upload stalled. Check that Nginx client_max_body_size is large enough (1000M) and the server is running.',
+                            false
+                        );
+                        reuploadActionsConfirmBtn.disabled = false;
+                        reuploadActionsConfirmBtn.textContent = 'Upload & Match';
+                    }
+                }
+            }, 5000);
+
+            function _cleanupReuploadActions() {
+                _actUploadDone = true;
+                clearInterval(_actStallTimer);
+            }
 
             const formData = new FormData();
             formData.append('photos_zip', reuploadActionsFileInput.files[0]);
             formData.append('card_ids', JSON.stringify(pendingReuploadCardIds));
             formData.append('status', _getCurrentStatus());
 
+            const uploadUrl = `/panel/api/table/${tableId}/reupload-task/`;
             const xhr = new XMLHttpRequest();
-            xhr.open('POST', `/panel/api/table/${tableId}/reupload-task/`, true);
+            xhr.open('POST', uploadUrl, true);
             xhr.setRequestHeader('X-CSRFToken', typeof getCSRFToken === 'function' ? getCSRFToken() : '');
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
             xhr.timeout = 300000; // 5-minute timeout for upload phase only
+            console.log('[Reupload] Starting upload to', uploadUrl, '| File:', reuploadActionsFileInput.files[0].name, '| Size:', Math.round(reuploadActionsFileInput.files[0].size / 1024) + 'KB');
 
             xhr.upload.onprogress = function(event) {
+                _actLastProgress = Date.now();
                 if (event.lengthComputable) {
                     const uploadPct = Math.round((event.loaded / event.total) * 80);
                     if (reuploadActionsBar) reuploadActionsBar.style.width = uploadPct + '%';
@@ -235,7 +265,30 @@ function initReuploadHandlers() {
                 }
             };
 
+            // ── Catch early server error (e.g. Nginx 413) before upload finishes ──
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState >= 2) {
+                    console.log('[Reupload] XHR state:', xhr.readyState, '| HTTP:', xhr.status);
+                }
+                if (xhr.readyState === 4 && !_actUploadDone) {
+                    if (xhr.status !== 200 && xhr.status !== 0) {
+                        _cleanupReuploadActions();
+                        let earlyErr = 'Server rejected the upload (HTTP ' + xhr.status + ').';
+                        if (xhr.status === 413) earlyErr = 'ZIP file too large. Increase Nginx client_max_body_size.';
+                        else if (xhr.status === 403) earlyErr = 'Forbidden (403). Possible causes: CSRF token expired, session expired, or insufficient permissions. Try reloading the page.';
+                        else if (xhr.status === 502 || xhr.status === 504) earlyErr = 'Server timeout — try a smaller ZIP.';
+                        console.error('[Reupload] Server rejection: HTTP', xhr.status, xhr.responseText ? xhr.responseText.substring(0, 500) : '(empty)');
+                        if (reuploadActionsStatus) reuploadActionsStatus.textContent = earlyErr;
+                        if (typeof showToast === 'function') showToast(earlyErr, false);
+                        reuploadActionsConfirmBtn.disabled = false;
+                        reuploadActionsConfirmBtn.textContent = 'Upload & Match';
+                    }
+                }
+            };
+
             xhr.onload = function() {
+                if (_actUploadDone) return;
+                _cleanupReuploadActions();
                 try {
                     const result = JSON.parse(xhr.responseText);
                     if (xhr.status === 200 && result.success) {
@@ -297,13 +350,22 @@ function initReuploadHandlers() {
             };
 
             xhr.onerror = function() {
-                if (typeof showToast === 'function') showToast('Upload failed. Please check your connection and try again.', false);
+                if (_actUploadDone) return;
+                _cleanupReuploadActions();
+                console.error('Reupload XHR onerror — status:', xhr.status, 'readyState:', xhr.readyState);
+                let errMsg = 'Upload failed. ';
+                if (xhr.status === 413) errMsg += 'File too large for server (Nginx client_max_body_size).';
+                else if (xhr.status === 0) errMsg += 'Connection was reset — server may have rejected the file size. Check Nginx client_max_body_size.';
+                else errMsg += 'Check your connection and try again.';
+                if (typeof showToast === 'function') showToast(errMsg, false);
                 reuploadActionsConfirmBtn.disabled = false;
                 reuploadActionsConfirmBtn.textContent = 'Upload & Match';
                 if (reuploadActionsProgress) reuploadActionsProgress.style.display = 'none';
             };
 
             xhr.ontimeout = function() {
+                if (_actUploadDone) return;
+                _cleanupReuploadActions();
                 if (typeof showToast === 'function') showToast('Upload timed out — try with a smaller ZIP.', 'warning');
                 reuploadActionsConfirmBtn.disabled = false;
                 reuploadActionsConfirmBtn.textContent = 'Upload & Match';

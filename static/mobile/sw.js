@@ -32,9 +32,12 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
     if (event.request.method !== 'GET') return;
 
-    const url = event.request.url;
+    // Skip cross-origin requests entirely (e.g., 127.0.0.1:4765 engine)
+    const reqUrl = new URL(event.request.url);
+    if (reqUrl.origin !== self.location.origin) return;
+
     // Never cache API calls, admin panel pages, media files, or auth pages
-    if (url.includes('/api/') || url.includes('/admin/') || url.includes('/media/') || url.includes('/auth/')) return;
+    if (reqUrl.pathname.includes('/api/') || reqUrl.pathname.includes('/admin/') || reqUrl.pathname.includes('/media/') || reqUrl.pathname.includes('/auth/')) return;
 
     event.respondWith(
         fetch(event.request)
@@ -45,6 +48,10 @@ self.addEventListener('fetch', event => {
                 }
                 return response;
             })
-            .catch(() => caches.match(event.request))
+            .catch(() =>
+                caches.match(event.request).then(cached =>
+                    cached || new Response('Offline', { status: 503, statusText: 'Service Unavailable' })
+                )
+            )
     );
 });

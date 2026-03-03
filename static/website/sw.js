@@ -34,9 +34,13 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
     if (event.request.method !== 'GET') return;
 
+    // Skip cross-origin requests entirely (e.g., 127.0.0.1:4765 engine)
+    // Intercepting these causes ERR_CONNECTION_REFUSED → TypeError cascades
+    const reqUrl = new URL(event.request.url);
+    if (reqUrl.origin !== self.location.origin) return;
+
     // Never cache API calls or admin mutations
-    const url = event.request.url;
-    if (url.includes('/api/') || url.includes('/admin/')) return;
+    if (reqUrl.pathname.includes('/api/') || reqUrl.pathname.includes('/admin/')) return;
 
     event.respondWith(
         fetch(event.request)
@@ -48,6 +52,10 @@ self.addEventListener('fetch', event => {
                 }
                 return response;
             })
-            .catch(() => caches.match(event.request))
+            .catch(() =>
+                caches.match(event.request).then(cached =>
+                    cached || new Response('Offline', { status: 503, statusText: 'Service Unavailable' })
+                )
+            )
     );
 });

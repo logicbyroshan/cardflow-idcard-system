@@ -433,16 +433,46 @@ function initIdcardGroup(config) {
       reuploadBar.style.width = '0%';
       reuploadStatus.textContent = 'Starting upload...';
       var _grpPollInterval = null;
+      var _uploadDone = false; // guard against duplicate handler calls
+
+      // ── Stall detection: abort if no progress for 30 seconds ──
+      var _lastProgressTime = Date.now();
+      var _stallTimer = setInterval(function() {
+        if (_uploadDone) { clearInterval(_stallTimer); return; }
+        if (Date.now() - _lastProgressTime > 30000) {
+          clearInterval(_stallTimer);
+          if (!_uploadDone) {
+            _uploadDone = true;
+            xhr.abort();
+            reuploadStatus.textContent = 'Upload stalled — server may have rejected the file.';
+            window.showToast(
+              'Upload stalled. Check that Nginx client_max_body_size is large enough (1000M) and the server is running.',
+              'error'
+            );
+            reuploadConfirmBtn.disabled = false;
+            reuploadConfirmBtn.textContent = 'Upload & Match';
+          }
+        }
+      }, 5000);
+
+      function _cleanupReuploadGroup() {
+        _uploadDone = true;
+        clearInterval(_stallTimer);
+      }
 
       var formData = new FormData();
       formData.append('photos_zip', reuploadFileInput.files[0]);
 
+      var uploadUrl = '/panel/api/table/' + reuploadTableId + '/reupload-task/';
       var xhr = new XMLHttpRequest();
-      xhr.open('POST', '/panel/api/table/' + reuploadTableId + '/reupload-task/');
+      xhr.open('POST', uploadUrl);
       if (window.getCSRFToken) xhr.setRequestHeader('X-CSRFToken', window.getCSRFToken());
+      xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
       xhr.timeout = 300000; // 5-minute timeout for upload phase only
+      console.log('[Reupload] Starting upload to', uploadUrl, '| File:', reuploadFileInput.files[0].name, '| Size:', Math.round(reuploadFileInput.files[0].size / 1024) + 'KB');
 
       xhr.upload.onprogress = function(e) {
+        _lastProgressTime = Date.now();
         if (e.lengthComputable) {
           var uploadPct = Math.round((e.loaded / e.total) * 80);
           reuploadBar.style.width = uploadPct + '%';
@@ -450,7 +480,32 @@ function initIdcardGroup(config) {
         }
       };
 
+      // ── Catch early server error (e.g. Nginx 413) before upload finishes ──
+      xhr.onreadystatechange = function() {
+        if (xhr.readyState >= 2) {
+          console.log('[Reupload] XHR state:', xhr.readyState, '| HTTP:', xhr.status);
+        }
+        if (xhr.readyState === 4 && !_uploadDone) {
+          // Response arrived while still uploading — likely a server rejection
+          if (xhr.status !== 200) {
+            _cleanupReuploadGroup();
+            var errMsg = 'Server rejected the upload (HTTP ' + xhr.status + ').';
+            if (xhr.status === 413) errMsg = 'ZIP file too large. Increase Nginx client_max_body_size.';
+            else if (xhr.status === 403) errMsg = 'Forbidden (403). Possible causes: CSRF token expired, session expired, or insufficient permissions. Try reloading the page.';
+            else if (xhr.status === 502 || xhr.status === 504) errMsg = 'Server timeout — try a smaller ZIP file.';
+            else if (xhr.status === 0) errMsg = 'Connection lost. Check your internet and server status.';
+            console.error('[Reupload] Server rejection: HTTP', xhr.status, xhr.responseText ? xhr.responseText.substring(0, 500) : '(empty)');
+            reuploadStatus.textContent = errMsg;
+            window.showToast(errMsg, 'error');
+            reuploadConfirmBtn.disabled = false;
+            reuploadConfirmBtn.textContent = 'Upload & Match';
+          }
+        }
+      };
+
       xhr.onload = function() {
+        if (_uploadDone) return;
+        _cleanupReuploadGroup();
         try {
           var data = JSON.parse(xhr.responseText);
           if (xhr.status === 200 && data.success) {
@@ -491,12 +546,12 @@ function initIdcardGroup(config) {
             reuploadConfirmBtn.textContent = 'Upload & Match';
           }
         } catch (parseErr) {
-          console.error('Reupload parse error:', parseErr, 'Status:', xhr.status);
+          console.error('Reupload parse error:', parseErr, 'Status:', xhr.status, 'Response:', xhr.responseText ? xhr.responseText.substring(0, 300) : '(empty)');
           var errMsg = 'Unexpected error during reupload';
-          if (xhr.status === 413) errMsg = 'ZIP file too large. Please reduce the file size.';
+          if (xhr.status === 413) errMsg = 'ZIP file too large. Increase Nginx client_max_body_size (need 1000M).';
           else if (xhr.status === 502 || xhr.status === 504) errMsg = 'Server timeout — try a smaller ZIP file.';
           else if (xhr.status === 500) errMsg = 'Server error. Please try again.';
-          else if (xhr.status === 0) errMsg = 'Connection lost. Check your internet.';
+          else if (xhr.status === 0) errMsg = 'Connection lost. Check your internet and server status.';
           window.showToast(errMsg, (xhr.status === 413 || xhr.status === 502 || xhr.status === 504) ? 'warning' : 'error');
           reuploadConfirmBtn.disabled = false;
           reuploadConfirmBtn.textContent = 'Upload & Match';
@@ -504,13 +559,22 @@ function initIdcardGroup(config) {
       };
 
       xhr.onerror = function() {
-        window.showToast('Upload failed. Check your connection and try again.', 'error');
+        if (_uploadDone) return;
+        _cleanupReuploadGroup();
+        console.error('Reupload XHR onerror — status:', xhr.status, 'readyState:', xhr.readyState);
+        var errMsg = 'Upload failed. ';
+        if (xhr.status === 413) errMsg += 'File too large for server (Nginx client_max_body_size).';
+        else if (xhr.status === 0) errMsg += 'Connection was reset — server may have rejected the file size. Check Nginx client_max_body_size.';
+        else errMsg += 'Check your connection and try again.';
+        window.showToast(errMsg, 'error');
         reuploadConfirmBtn.disabled = false;
         reuploadConfirmBtn.textContent = 'Upload & Match';
         reuploadProgress.style.display = 'none';
       };
 
       xhr.ontimeout = function() {
+        if (_uploadDone) return;
+        _cleanupReuploadGroup();
         window.showToast('Upload timed out — try a smaller ZIP.', 'warning');
         reuploadConfirmBtn.disabled = false;
         reuploadConfirmBtn.textContent = 'Upload & Match';

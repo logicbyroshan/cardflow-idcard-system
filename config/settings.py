@@ -206,11 +206,29 @@ if render_hostname:
     if render_url not in CSRF_TRUSTED_ORIGINS:
         CSRF_TRUSTED_ORIGINS.append(render_url)
 
+# Auto-add PANEL_DOMAIN and WEBSITE_DOMAIN to CSRF_TRUSTED_ORIGINS
+# so that CSRF works even if the env var is not explicitly set.
+for _domain in (PANEL_DOMAIN, WEBSITE_DOMAIN):
+    if _domain:
+        for _scheme in ('https', 'http'):
+            _origin = f'{_scheme}://{_domain}'
+            if _origin not in CSRF_TRUSTED_ORIGINS:
+                CSRF_TRUSTED_ORIGINS.append(_origin)
+
+# ── Reverse-proxy SSL detection ──
+# MUST be set whenever Django is behind Nginx/Apache that terminates SSL,
+# REGARDLESS of DEBUG. Without this, Django thinks requests arrive over HTTP
+# and CSRF origin checks fail (Origin says https:// but Django expects http://).
+# This is configured outside the "if not DEBUG" block on purpose.
+SECURE_PROXY_SSL_HEADER = (
+    os.getenv('SECURE_PROXY_SSL_HEADER_NAME', 'HTTP_X_FORWARDED_PROTO'),
+    os.getenv('SECURE_PROXY_SSL_HEADER_VALUE', 'https'),
+) if os.getenv('SECURE_PROXY_SSL_HEADER_NAME', 'HTTP_X_FORWARDED_PROTO') else None
+
 # Production security settings (only when DEBUG=False)
 if not DEBUG:
     # HTTPS settings
     SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'True').lower() in ('true', '1', 'yes')
-    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     
     # Cookie security
     SESSION_COOKIE_SECURE = True
