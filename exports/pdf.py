@@ -732,7 +732,7 @@ class PdfExporter:
             'course': 6.0,
             'branch': 6.0,
         }
-        _dense_pdf = total_cols > 20  # >20 data columns
+        _dense_pdf = len(configs) > 20  # >20 data columns
 
         # ── Step 4: Distribute width, clamp by spec bounds ──────
         for idx, i in enumerate(text_indices):
