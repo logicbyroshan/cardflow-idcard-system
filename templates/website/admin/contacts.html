@@ -254,7 +254,7 @@ function viewContact(id) {
                 document.getElementById('contact_date').textContent = new Date(c.created_at).toLocaleString();
                 document.getElementById('contact_message').textContent = c.message;
                 document.getElementById('replyEmailBtn').href = 'mailto:' + c.email + '?subject=Re: ' + encodeURIComponent(c.subject);
-                document.getElementById('contactModal').classList.add('active');
+                document.getElementById('contactModal').classList.add('show');
                 
                 // Update row to remove highlight if it was new
                 const row = document.querySelector('tr[data-id="' + id + '"]');
@@ -277,7 +277,7 @@ function viewContact(id) {
 }
 
 function closeContactModal() {
-    document.getElementById('contactModal').classList.remove('active');
+    document.getElementById('contactModal').classList.remove('show');
 }
 
 function updateContactStatus(id, status) {

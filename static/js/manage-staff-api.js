@@ -15,7 +15,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 return null;
             }
         } catch (error) {
-            showToast('Network error. Please try again.', 'error');
+            var msg = (error && error.message) ? error.message : 'Network error. Please try again.';
+            showToast(msg, 'error');
             return null;
         }
     };
@@ -26,7 +27,10 @@ document.addEventListener('DOMContentLoaded', function() {
             var data = await ApiClient.post('/api/staff/create/', formData);
             return data;
         } catch (error) {
-            return { success: false, message: 'Network error. Please try again.' };
+            // Preserve server error message if available
+            if (error && error.data && typeof error.data === 'object') return error.data;
+            var msg = (error && error.message) ? error.message : 'Network error. Please try again.';
+            return { success: false, message: msg };
         }
     };
     
@@ -36,7 +40,9 @@ document.addEventListener('DOMContentLoaded', function() {
             var data = await ApiClient.post('/api/staff/' + staffId + '/update/', formData);
             return data;
         } catch (error) {
-            return { success: false, message: 'Network error. Please try again.' };
+            if (error && error.data && typeof error.data === 'object') return error.data;
+            var msg = (error && error.message) ? error.message : 'Network error. Please try again.';
+            return { success: false, message: msg };
         }
     };
     
@@ -45,7 +51,9 @@ document.addEventListener('DOMContentLoaded', function() {
             var data = await ApiClient.post('/api/staff/' + staffId + '/delete/');
             return data;
         } catch (error) {
-            return { success: false, message: 'Network error. Please try again.' };
+            if (error && error.data && typeof error.data === 'object') return error.data;
+            var msg = (error && error.message) ? error.message : 'Network error. Please try again.';
+            return { success: false, message: msg };
         }
     };
     
@@ -54,7 +62,9 @@ document.addEventListener('DOMContentLoaded', function() {
             var data = await ApiClient.post('/api/staff/' + staffId + '/toggle-status/');
             return data;
         } catch (error) {
-            return { success: false, message: 'Network error. Please try again.' };
+            if (error && error.data && typeof error.data === 'object') return error.data;
+            var msg = (error && error.message) ? error.message : 'Network error. Please try again.';
+            return { success: false, message: msg };
         }
     };
 
