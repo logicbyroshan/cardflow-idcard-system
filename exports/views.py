@@ -115,15 +115,23 @@ def _get_card_ids_from_request(request, table_id: int = None) -> Optional[List[i
             except (json.JSONDecodeError, ValueError):
                 pass
         try:
+            from django.db.models.fields.json import KeyTextTransform
+            from core.views.idcard_api import _get_class_section_field_names
+            
             qs = IDCard.objects.filter(table_id=table_id)
             if status:
                 qs = qs.filter(status=status)
             if search_q:
                 qs = qs.filter(field_data__icontains=search_q)
-            if class_f:
-                qs = qs.filter(field_data__icontains=class_f)
-            if section_f:
-                qs = qs.filter(field_data__icontains=section_f)
+            # Use proper JSON field extraction for exact class/section matching
+            if class_f or section_f:
+                table = IDCardTable.objects.filter(id=table_id).first()
+                if table:
+                    class_field_name, section_field_name = _get_class_section_field_names(table)
+                    if class_f and class_field_name:
+                        qs = qs.annotate(_cls=KeyTextTransform(class_field_name, 'field_data')).filter(_cls__iexact=class_f)
+                    if section_f and section_field_name:
+                        qs = qs.annotate(_sec=KeyTextTransform(section_field_name, 'field_data')).filter(_sec__iexact=section_f)
             # DateTime range filter (download list)
             if from_date:
                 try:

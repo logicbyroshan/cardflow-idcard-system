@@ -249,28 +249,11 @@ function initReuploadHandlers() {
             formData.append('status', _getCurrentStatus());
 
             const uploadUrl = `/api/table/${tableId}/reupload-task/`;
-
-            // ── Diagnostic: pre-flight connectivity check ──
-            // A tiny GET to the health endpoint proves the server is reachable.
-            // If this fails, the upload would definitely fail too.
-            console.log('[Reupload] Pre-flight check: verifying server connectivity...');
-            fetch('/api/health/', { method: 'GET', cache: 'no-store' })
-                .then(function(r) { console.log('[Reupload] Pre-flight OK — server reachable (HTTP ' + r.status + ')'); })
-                .catch(function(e) { console.error('[Reupload] Pre-flight FAILED — server unreachable:', e.message); });
-
             const xhr = new XMLHttpRequest();
             xhr.open('POST', uploadUrl, true);
-            var _csrfToken = typeof getCSRFToken === 'function' ? getCSRFToken() : '';
-            xhr.setRequestHeader('X-CSRFToken', _csrfToken);
+            xhr.setRequestHeader('X-CSRFToken', typeof getCSRFToken === 'function' ? getCSRFToken() : '');
             xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-            xhr.timeout = 300000; // 5-minute timeout for upload phase only
-            var _fileSizeKB = Math.round(reuploadActionsFileInput.files[0].size / 1024);
-            var _fileSizeMB = (_fileSizeKB / 1024).toFixed(1);
-            console.log('[Reupload] Starting upload to', uploadUrl,
-                '| File:', reuploadActionsFileInput.files[0].name,
-                '| Size:', _fileSizeKB + 'KB (' + _fileSizeMB + 'MB)',
-                '| CSRF token:', _csrfToken ? 'present (' + _csrfToken.substring(0, 8) + '...)' : 'MISSING',
-                '| Cards:', pendingReuploadCardIds.length);
+            xhr.timeout = 300000;
 
             xhr.upload.onprogress = function(event) {
                 _actLastProgress = Date.now();
@@ -283,17 +266,13 @@ function initReuploadHandlers() {
 
             // ── Catch early server error (e.g. Nginx 413) before upload finishes ──
             xhr.onreadystatechange = function() {
-                if (xhr.readyState >= 2) {
-                    console.log('[Reupload] XHR state:', xhr.readyState, '| HTTP:', xhr.status);
-                }
                 if (xhr.readyState === 4 && !_actUploadDone) {
                     if (xhr.status !== 200 && xhr.status !== 0) {
                         _cleanupReuploadActions();
                         let earlyErr = 'Server rejected the upload (HTTP ' + xhr.status + ').';
                         if (xhr.status === 413) earlyErr = 'ZIP file too large. Increase Nginx client_max_body_size.';
-                        else if (xhr.status === 403) earlyErr = 'Forbidden (403). Possible causes: CSRF token expired, session expired, or insufficient permissions. Try reloading the page.';
+                        else if (xhr.status === 403) earlyErr = 'Forbidden (403). Try reloading the page.';
                         else if (xhr.status === 502 || xhr.status === 504) earlyErr = 'Server timeout — try a smaller ZIP.';
-                        console.error('[Reupload] Server rejection: HTTP', xhr.status, xhr.responseText ? xhr.responseText.substring(0, 500) : '(empty)');
                         if (reuploadActionsStatus) reuploadActionsStatus.textContent = earlyErr;
                         if (typeof showToast === 'function') showToast(earlyErr, false);
                         reuploadActionsConfirmBtn.disabled = false;
@@ -380,12 +359,9 @@ function initReuploadHandlers() {
             xhr.onerror = function() {
                 if (_actUploadDone) return;
                 _cleanupReuploadActions();
-                console.error('[Reupload] XHR onerror — status:', xhr.status, 'readyState:', xhr.readyState,
-                    '| This usually means Nginx rejected the upload (check: sudo tail -f /var/log/nginx/error.log)',
-                    '| File size:', _fileSizeMB + 'MB — ensure Nginx has: client_max_body_size 1000M;');
                 let errMsg = 'Upload failed. ';
-                if (xhr.status === 413) errMsg += 'File too large for server (Nginx client_max_body_size).';
-                else if (xhr.status === 0) errMsg += 'Connection was reset — Nginx likely rejected the file. Check Nginx error log and client_max_body_size setting.';
+                if (xhr.status === 413) errMsg += 'File too large for server.';
+                else if (xhr.status === 0) errMsg += 'Connection was reset. Check your connection and try again.';
                 else errMsg += 'Check your connection and try again.';
                 if (typeof showToast === 'function') showToast(errMsg, false);
                 if (reuploadActionsStatus) reuploadActionsStatus.textContent = errMsg;

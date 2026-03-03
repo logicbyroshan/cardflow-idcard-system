@@ -47,6 +47,7 @@ from .services import (
     PortfolioCategoryService,
     HeroImageService,
     ReelService,
+    ContactSubmissionService,
     _parse_bool,
 )
 
@@ -997,4 +998,122 @@ def api_reel_toggle(request, pk):
         return JsonResponse({'success': True, 'is_active': is_active})
     except Exception as e:
         logging.getLogger(__name__).exception("Reel toggle error: %s", e)
+        return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
+
+
+# =============================================================================
+# CONTACT SUBMISSIONS — Page + API
+# =============================================================================
+
+@website_admin_required
+def contacts_page(request):
+    """Contact Messages management page."""
+    context = _get_base_context(request, 'contacts')
+    
+    status_filter = request.GET.get('status', '')
+    if status_filter and status_filter in ['new', 'read', 'replied', 'closed']:
+        contacts = ContactSubmissionService.list_by_status(status_filter)
+    else:
+        contacts = ContactSubmissionService.list_all()
+    
+    context['contacts'] = contacts
+    context['stats'] = ContactSubmissionService.get_stats()
+    context['current_status'] = status_filter
+    return render(request, 'website/admin/contacts.html', context)
+
+
+@require_GET
+@website_admin_required
+def api_contact_list(request):
+    """List all contact submissions as JSON."""
+    status_filter = request.GET.get('status', '')
+    if status_filter and status_filter in ['new', 'read', 'replied', 'closed']:
+        contacts = ContactSubmissionService.list_by_status(status_filter)
+    else:
+        contacts = ContactSubmissionService.list_all()
+    
+    return JsonResponse({
+        'success': True,
+        'contacts': [
+            {
+                'id': c.id,
+                'name': c.name,
+                'email': c.email,
+                'phone': c.phone,
+                'subject': c.subject,
+                'message': c.message,
+                'status': c.status,
+                'email_status': c.email_status,
+                'created_at': c.created_at.isoformat(),
+            }
+            for c in contacts
+        ]
+    })
+
+
+@require_GET
+@website_admin_required
+def api_contact_get(request, pk):
+    """Get a single contact submission."""
+    try:
+        c = ContactSubmissionService.get(pk)
+        # Auto-mark as read if new
+        if c.status == 'new':
+            ContactSubmissionService.update_status(pk, 'read')
+            c.refresh_from_db()
+        return JsonResponse({
+            'success': True,
+            'contact': {
+                'id': c.id,
+                'name': c.name,
+                'email': c.email,
+                'phone': c.phone,
+                'subject': c.subject,
+                'message': c.message,
+                'status': c.status,
+                'email_status': c.email_status,
+                'created_at': c.created_at.isoformat(),
+                'updated_at': c.updated_at.isoformat(),
+            }
+        })
+    except ContactSubmission.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Contact not found'}, status=404)
+
+
+@require_POST
+@website_edit_required
+def api_contact_update_status(request, pk):
+    """Update the status of a contact submission."""
+    try:
+        if request.content_type == 'application/json':
+            import json
+            data = json.loads(request.body)
+            status = data.get('status', '')
+        else:
+            status = request.POST.get('status', '')
+        
+        if not status:
+            return JsonResponse({'success': False, 'message': 'Status is required'}, status=400)
+        
+        ContactSubmissionService.update_status(pk, status)
+        ActivityService.log_website_update(request, f'contact status updated to {status}')
+        return JsonResponse({'success': True, 'message': 'Status updated'})
+    except ValueError as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+    except ContactSubmission.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Contact not found'}, status=404)
+
+
+@require_POST
+@website_delete_required
+def api_contact_delete(request, pk):
+    """Delete a contact submission."""
+    try:
+        ContactSubmissionService.delete(pk)
+        ActivityService.log_website_update(request, 'contact message deleted')
+        return JsonResponse({'success': True, 'message': 'Contact deleted'})
+    except ContactSubmission.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Contact not found'}, status=404)
+    except Exception as e:
+        logging.getLogger(__name__).exception("Contact delete error: %s", e)
         return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)

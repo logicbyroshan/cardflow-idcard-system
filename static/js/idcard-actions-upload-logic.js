@@ -222,6 +222,8 @@ function initXlsxUpload() {
 
     // ── UPLOAD button (Step 2 — send to server) ──
     if (confirmUploadModal) {
+        var _uploadXhr = null; // Store current XHR for cancel support
+        
         confirmUploadModal.addEventListener('click', async function() {
             if (!_us.pendingUploadFile) {
                 if (typeof showToast === 'function') showToast('No file to upload', false);
@@ -244,6 +246,15 @@ function initXlsxUpload() {
             if (backBtnEl) backBtnEl.disabled = true;
 
             if (progressSection) progressSection.style.display = 'block';
+
+            // Show blocking overlay with cancel support
+            if (typeof showBlockingOverlay === 'function') {
+                showBlockingOverlay('Uploading data...', function() {
+                    if (_uploadXhr) { _uploadXhr.abort(); _uploadXhr = null; }
+                    resetUploadState();
+                    if (typeof showToast === 'function') showToast('Upload cancelled', 'warning');
+                });
+            }
 
             var formData = new FormData();
             formData.append('file', _us.pendingUploadFile);
@@ -272,6 +283,7 @@ function initXlsxUpload() {
             // ── Reusable upload sender (supports retry with fresh XHR) ──
             function _createAndSendXhr() {
             var xhr = new XMLHttpRequest();
+            _uploadXhr = xhr; // Store reference for cancel
             var startTime = Date.now();
 
             xhr.upload.addEventListener('progress', function(e) {
@@ -284,6 +296,11 @@ function initXlsxUpload() {
 
                     if (progressBar) progressBar.style.width = percentComplete + '%';
                     if (percentageText) percentageText.textContent = percentComplete + '%';
+
+                    // Update blocking overlay
+                    if (typeof updateBlockingOverlay === 'function') {
+                        updateBlockingOverlay(percentComplete, 'Uploading... ' + percentComplete + '%');
+                    }
 
                     var loadedMB = (e.loaded / (1024 * 1024));
                     var totalMB = (e.total / (1024 * 1024));
@@ -345,6 +362,10 @@ function initXlsxUpload() {
                         if (progressBar) { progressBar.style.width = '100%'; progressBar.classList.remove('processing'); }
                         if (percentageText) percentageText.textContent = '100%';
                         if (timeText) timeText.textContent = 'Complete!';
+                        
+                        // Hide blocking overlay on success
+                        if (typeof hideBlockingOverlay === 'function') hideBlockingOverlay();
+                        _uploadXhr = null;
 
                         setTimeout(function() {
                             closeUploadModalFn();
@@ -412,6 +433,9 @@ function initXlsxUpload() {
                 confirmUploadModal.disabled = false;
                 if (cancelBtn) cancelBtn.disabled = false;
                 if (backBtnEl) backBtnEl.disabled = false;
+                _uploadXhr = null;
+                // Hide blocking overlay
+                if (typeof hideBlockingOverlay === 'function') hideBlockingOverlay();
             }
 
             var _uploadRetryCount = 0;

@@ -628,7 +628,22 @@ class HeroImageService:
 # =============================================================================
 
 class ContactSubmissionService:
-    """Handles public contact form submissions."""
+    """Handles public contact form submissions and admin management."""
+
+    @staticmethod
+    def list_all():
+        """Return all contact submissions ordered by creation date (newest first)."""
+        return ContactSubmission.objects.all().order_by('-created_at')
+
+    @staticmethod
+    def list_by_status(status):
+        """Return submissions filtered by status."""
+        return ContactSubmission.objects.filter(status=status).order_by('-created_at')
+
+    @staticmethod
+    def get(pk):
+        """Return a single submission by ID or raise DoesNotExist."""
+        return ContactSubmission.objects.get(pk=pk)
 
     @staticmethod
     def create(*, name, email, phone='', subject, message):
@@ -651,6 +666,38 @@ class ContactSubmissionService:
         except Exception:
             logger.warning("Email send failed for contact submission %s", submission.id)
         return submission
+
+    @staticmethod
+    def update_status(pk, status):
+        """Update the status of a contact submission."""
+        valid_statuses = ['new', 'read', 'replied', 'closed']
+        if status not in valid_statuses:
+            raise ValueError(f"Invalid status: {status}. Must be one of {valid_statuses}")
+        with transaction.atomic():
+            submission = ContactSubmission.objects.select_for_update().get(pk=pk)
+            submission.status = status
+            submission.save(update_fields=['status', 'updated_at'])
+        return submission
+
+    @staticmethod
+    def delete(pk):
+        """Delete a contact submission by ID."""
+        with transaction.atomic():
+            submission = ContactSubmission.objects.get(pk=pk)
+            submission.delete()
+        return True
+
+    @staticmethod
+    def get_stats():
+        """Return aggregated stats for contact submissions."""
+        from django.db.models import Count, Q
+        return ContactSubmission.objects.aggregate(
+            total=Count('id'),
+            new=Count('id', filter=Q(status='new')),
+            read=Count('id', filter=Q(status='read')),
+            replied=Count('id', filter=Q(status='replied')),
+            closed=Count('id', filter=Q(status='closed')),
+        )
 
 
 # =============================================================================

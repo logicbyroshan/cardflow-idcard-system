@@ -91,4 +91,17 @@ urlpatterns = [
     path('api/reels/<int:pk>/update/', admin_views.api_reel_update, name='api_reel_update'),
     path('api/reels/<int:pk>/delete/', admin_views.api_reel_delete, name='api_reel_delete'),
     path('api/reels/<int:pk>/toggle/', admin_views.api_reel_toggle, name='api_reel_toggle'),
+
+    # ==========================================================================
+    # PAGE VIEW — Contact Messages
+    # ==========================================================================
+    path('contacts/', admin_views.contacts_page, name='contacts'),
+
+    # ==========================================================================
+    # API — Contact Messages
+    # ==========================================================================
+    path('api/contacts/', admin_views.api_contact_list, name='api_contact_list'),
+    path('api/contacts/<int:pk>/', admin_views.api_contact_get, name='api_contact_get'),
+    path('api/contacts/<int:pk>/status/', admin_views.api_contact_update_status, name='api_contact_update_status'),
+    path('api/contacts/<int:pk>/delete/', admin_views.api_contact_delete, name='api_contact_delete'),
 ]

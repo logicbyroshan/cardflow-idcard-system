@@ -274,13 +274,14 @@ def build_idcard_actions_context(request, table, *, default_per_page=100,
     class_filter = request.GET.get('class', '').strip()
     section_filter = request.GET.get('section', '').strip()
 
-    # ── Base queryset — show recently moved cards first ──
+    # ── Base queryset — maintain original insertion order (by id) ──
+    # Download/pool tabs show recently moved cards first; other tabs preserve Excel order
     if status_filter == 'download':
         id_cards_query = IDCard.objects.filter(table=table).order_by('-downloaded_at', '-id')
     elif status_filter == 'pool':
         id_cards_query = IDCard.objects.filter(table=table).order_by('-deleted_at', '-id')
     else:
-        id_cards_query = IDCard.objects.filter(table=table).order_by('-updated_at', '-id')
+        id_cards_query = IDCard.objects.filter(table=table).order_by('id')
     if status_filter and status_filter in _VALID_STATUSES:
         id_cards_query = id_cards_query.filter(status=status_filter)
 

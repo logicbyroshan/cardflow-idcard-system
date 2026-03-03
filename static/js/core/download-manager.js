@@ -37,6 +37,42 @@
     var _nextId = 1;
     var _active = {};    // id → { id, name, xhr, startTime, loaded, total, toastEl, status }
     var _queue = [];     // [{ id, options }]  waiting to start
+    var _currentOverlayId = null;   // ID of the download currently shown in blocking overlay
+
+    // =========================================
+    // BLOCKING OVERLAY HELPERS
+    // =========================================
+    function _showBlockingOverlay(id, name) {
+        var overlay = document.getElementById('blockingOverlay');
+        if (!overlay) return;
+        _currentOverlayId = id;
+        var msgEl = overlay.querySelector('#blockingOverlayMessage');
+        var barEl = overlay.querySelector('#blockingOverlayBar');
+        var cancelBtn = overlay.querySelector('#blockingOverlayCancelBtn');
+        if (msgEl) msgEl.textContent = 'Downloading ' + name + '...';
+        if (barEl) barEl.style.width = '0%';
+        if (cancelBtn) {
+            cancelBtn.onclick = function() { _cancel(id); };
+        }
+        overlay.style.display = 'flex';
+    }
+
+    function _updateBlockingOverlay(id, pct, message) {
+        if (_currentOverlayId !== id) return;
+        var overlay = document.getElementById('blockingOverlay');
+        if (!overlay) return;
+        var msgEl = overlay.querySelector('#blockingOverlayMessage');
+        var barEl = overlay.querySelector('#blockingOverlayBar');
+        if (msgEl && message) msgEl.textContent = message;
+        if (barEl) barEl.style.width = pct + '%';
+    }
+
+    function _hideBlockingOverlay(id) {
+        if (_currentOverlayId !== id) return;
+        var overlay = document.getElementById('blockingOverlay');
+        if (overlay) overlay.style.display = 'none';
+        _currentOverlayId = null;
+    }
 
     // =========================================
     // TOAST CONTAINER (stacks download toasts)
@@ -173,6 +209,9 @@
     // MARK TOAST AS COMPLETE / ERROR / CANCELLED
     // =========================================
     function _finishToast(dl, status, message) {
+        // Hide blocking overlay
+        _hideBlockingOverlay(dl.id);
+        
         var el = dl.toastEl;
         if (!el) return;
 
@@ -322,6 +361,9 @@
         dl.status = 'downloading';
         dl.startTime = Date.now();
 
+        // Show blocking overlay
+        _showBlockingOverlay(id, dl.name);
+
         var xhr = new XMLHttpRequest();
         dl.xhr = xhr;
 
@@ -343,10 +385,14 @@
         if (typeof getCSRFToken === 'function') {
             xhr.setRequestHeader('X-CSRFToken', getCSRFToken());
         }
+        // Disable compression to ensure Content-Length is readable for progress tracking
+        xhr.setRequestHeader('Accept-Encoding', 'identity');
 
         xhr.onprogress = function (e) {
             if (e.lengthComputable) {
                 _updateToast(dl, e.loaded, e.total);
+                var pct = Math.min(Math.round((e.loaded / e.total) * 100), 100);
+                _updateBlockingOverlay(dl.id, pct, 'Downloading ' + dl.name + '... ' + pct + '%');
                 // Clear indeterminate timer if we now have real progress
                 if (dl._indeterminateTimer) {
                     clearInterval(dl._indeterminateTimer);
@@ -367,6 +413,7 @@
                     var estPct = Math.round(85 * (1 - Math.exp(-elapsed / 15)));
                     bar.style.width = estPct + '%';
                     if (pctEl) pctEl.textContent = estPct + '%';
+                    _updateBlockingOverlay(dl.id, estPct, 'Generating ' + dl.name + '...');
                 }, 500);
             }
         };
@@ -543,6 +590,9 @@
 
         var dl = _active[id];
 
+        // Show blocking overlay for image download
+        _showBlockingOverlay(id, name);
+
         var xhr = new XMLHttpRequest();
         dl.xhr = xhr;
 
@@ -556,6 +606,8 @@
         xhr.onprogress = function (e) {
             if (e.lengthComputable) {
                 _updateToast(dl, e.loaded, e.total);
+                var pct = Math.min(Math.round((e.loaded / e.total) * 100), 100);
+                _updateBlockingOverlay(dl.id, pct, 'Downloading images... ' + pct + '%');
             }
         };
 
@@ -710,11 +762,48 @@
                 });
             }
             return list;
+        },
+        // Public API for Upload blocking overlay (can be called from any upload code)
+        showUploadOverlay: function(message, cancelFn) {
+            var overlay = document.getElementById('blockingOverlay');
+            if (!overlay) return;
+            _currentOverlayId = 'upload-' + Date.now();
+            var msgEl = overlay.querySelector('#blockingOverlayMessage');
+            var barEl = overlay.querySelector('#blockingOverlayBar');
+            var cancelBtn = overlay.querySelector('#blockingOverlayCancelBtn');
+            if (msgEl) msgEl.textContent = message || 'Uploading...';
+            if (barEl) barEl.style.width = '0%';
+            if (cancelBtn) {
+                cancelBtn.onclick = function() {
+                    if (typeof cancelFn === 'function') cancelFn();
+                    DownloadManager.hideUploadOverlay();
+                };
+            }
+            overlay.style.display = 'flex';
+            return _currentOverlayId;
+        },
+        updateUploadOverlay: function(pct, message) {
+            var overlay = document.getElementById('blockingOverlay');
+            if (!overlay) return;
+            var msgEl = overlay.querySelector('#blockingOverlayMessage');
+            var barEl = overlay.querySelector('#blockingOverlayBar');
+            if (msgEl && message) msgEl.textContent = message;
+            if (barEl) barEl.style.width = pct + '%';
+        },
+        hideUploadOverlay: function() {
+            var overlay = document.getElementById('blockingOverlay');
+            if (overlay) overlay.style.display = 'none';
+            _currentOverlayId = null;
         }
     };
 
     window.DownloadManager = DownloadManager;
     window.IDCardApp = window.IDCardApp || {};
     window.IDCardApp.DownloadManager = DownloadManager;
+
+    // Global shortcuts for upload overlay (convenience for vanilla JS upload code)
+    window.showBlockingOverlay = DownloadManager.showUploadOverlay;
+    window.updateBlockingOverlay = DownloadManager.updateUploadOverlay;
+    window.hideBlockingOverlay = DownloadManager.hideUploadOverlay;
 
 })();

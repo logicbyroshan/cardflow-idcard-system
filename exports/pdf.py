@@ -266,40 +266,46 @@ class PdfExporter:
         Returns:
             PdfExportResult with HttpResponse if successful
         """
+        _weasyprint_available = False
+        _xhtml2pdf_available = False
+        WeasyHTML = None
+        
         try:
             from weasyprint import HTML as WeasyHTML
+            _weasyprint_available = True
         except (ImportError, OSError) as _wp_err:
             # ImportError: weasyprint not installed
             # OSError: native libraries not found (GTK/Pango missing)
-            import sys as _sys
             _wp_msg = str(_wp_err)
-            if 'gobject' in _wp_msg.lower() or 'glib' in _wp_msg.lower() or 'pango' in _wp_msg.lower():
-                if _sys.platform == 'win32':
-                    return PdfExportResult(
-                        success=False,
-                        message=(
-                            'PDF export requires the GTK runtime on Windows. '
-                            'Install GTK3 (https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer) '
-                            'and make sure its bin/ directory is on the PATH, or use the Linux/Docker environment.'
-                        )
+            logger.warning("WeasyPrint not available: %s. Trying xhtml2pdf fallback.", _wp_msg[:100])
+        
+        # Try xhtml2pdf as fallback
+        if not _weasyprint_available:
+            try:
+                from xhtml2pdf import pisa
+                _xhtml2pdf_available = True
+            except ImportError:
+                pass
+        
+        # If neither is available, return helpful error
+        if not _weasyprint_available and not _xhtml2pdf_available:
+            import sys as _sys
+            if _sys.platform == 'win32':
+                return PdfExportResult(
+                    success=False,
+                    message=(
+                        'PDF export requires GTK runtime on Windows or xhtml2pdf. '
+                        'Please install xhtml2pdf: pip install xhtml2pdf'
                     )
-                else:
-                    # Linux / macOS: native Pango/GLib system packages are missing
-                    return PdfExportResult(
-                        success=False,
-                        message=(
-                            'PDF export requires Pango/GLib system libraries. '
-                            'On Debian/Ubuntu run: sudo apt-get install -y '
-                            'libpango-1.0-0 libpangoft2-1.0-0 libpangocairo-1.0-0 '
-                            'libgdk-pixbuf2.0-0 libffi-dev shared-mime-info '
-                            'libcairo2 libharfbuzz0b libfontconfig1 '
-                            'then restart the server.'
-                        )
+                )
+            else:
+                return PdfExportResult(
+                    success=False,
+                    message=(
+                        'PDF export requires WeasyPrint or xhtml2pdf. Please install one: '
+                        'pip install weasyprint xhtml2pdf'
                     )
-            return PdfExportResult(
-                success=False,
-                message='WeasyPrint library not installed or cannot be loaded. Run: pip install weasyprint'
-            )
+                )
 
         if not cards.exists():
             return PdfExportResult(
@@ -438,10 +444,41 @@ class PdfExporter:
             html_string = render_to_string('exports/pdf_report.html', context)
             filename = generate_export_filename(table.name, 'pdf', client_name=institution_name, status=status)
 
-            # Generate PDF using WeasyPrint — no link_callback needed; images
-            # are already embedded as file:// URIs in the row cell content.
-            base_url = _path_to_file_uri(str(settings.BASE_DIR))
-            pdf_bytes = WeasyHTML(string=html_string, base_url=base_url).write_pdf()
+            # Generate PDF using WeasyPrint or xhtml2pdf fallback
+            if _weasyprint_available and WeasyHTML:
+                # WeasyPrint — no link_callback needed; images are file:// URIs
+                base_url = _path_to_file_uri(str(settings.BASE_DIR))
+                pdf_bytes = WeasyHTML(string=html_string, base_url=base_url).write_pdf()
+            else:
+                # xhtml2pdf fallback
+                from xhtml2pdf import pisa
+                pdf_buffer = io.BytesIO()
+                # xhtml2pdf needs a link_callback to resolve local file paths
+                def link_callback(uri, rel):
+                    """Convert relative paths to absolute paths for xhtml2pdf"""
+                    if uri.startswith('file://'):
+                        # Strip file:// prefix
+                        path = uri[7:]
+                        if path.startswith('/') and len(path) > 2 and path[2] == ':':
+                            # Windows path like /C:/... → C:/...
+                            path = path[1:]
+                        return path.replace('/', os.sep)
+                    if uri.startswith('/'):
+                        return os.path.join(str(settings.BASE_DIR), uri.lstrip('/'))
+                    return uri
+                
+                pisa_status = pisa.CreatePDF(
+                    io.BytesIO(html_string.encode('utf-8')),
+                    dest=pdf_buffer,
+                    link_callback=link_callback
+                )
+                if pisa_status.err:
+                    logger.error("xhtml2pdf errors: %s", pisa_status.err)
+                    return PdfExportResult(
+                        success=False,
+                        message='PDF generation failed. Please try again.'
+                    )
+                pdf_bytes = pdf_buffer.getvalue()
 
             response = stream_file_response(pdf_bytes, filename, 'application/pdf')
 

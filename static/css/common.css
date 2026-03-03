@@ -952,3 +952,28 @@ td.email-col {
   white-space: normal;
 }
 
+/* ===========================================
+   TOAST POSITION — Left-bottom corner
+   =========================================== */
+.toast {
+  right: auto !important;
+  left: 12px !important;
+}
+
+.toast-wrapper,
+.alpine-toast-wrapper {
+  right: auto !important;
+  left: 8px !important;
+}
+
+@media (max-width: 600px) {
+  .toast {
+    right: auto !important;
+    left: 16px !important;
+  }
+  .alpine-toast-wrapper {
+    right: auto !important;
+    left: 16px !important;
+  }
+}
+
