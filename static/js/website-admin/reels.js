@@ -3,7 +3,7 @@
  * v1.0
  */
 (function () {
-    const API = window.API_BASE_URL || '/panel/website/';
+    const API = window.API_BASE_URL || '/website/';
     const csrf = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
 
     /* ─── Modal helpers ─── */

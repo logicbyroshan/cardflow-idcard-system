@@ -31,7 +31,7 @@ function updateTabCount(sel, count) {
 }
 
 function refreshStepCounts() {
-  ApiClient.get('/panel/print/api/table/' + TABLE_ID + '/step-counts/')
+  ApiClient.get('/print/api/table/' + TABLE_ID + '/step-counts/')
     .then(function(data) {
       if (data.status === 'ok') {
         updateTabCount('.print-list-tab .tab-count', data.print_list || 0);
@@ -321,7 +321,7 @@ function createPaginator(opts) {
 
   // Generate API (print_list → finalized)
   function performGenerate(prIds) {
-    ApiClient.post('/panel/print/api/table/' + TABLE_ID + '/generate/', { request_ids: prIds })
+    ApiClient.post('/print/api/table/' + TABLE_ID + '/generate/', { request_ids: prIds })
     .then(function(data) {
       if (data.status === 'ok') {
         showToast(data.message || 'Generated successfully', 'success');
@@ -343,7 +343,7 @@ function createPaginator(opts) {
 
   // Remove API
   function performRemove(prIds) {
-    ApiClient.post('/panel/print/api/table/' + TABLE_ID + '/remove/', { request_ids: prIds })
+    ApiClient.post('/print/api/table/' + TABLE_ID + '/remove/', { request_ids: prIds })
     .then(function(data) {
       if (data.status === 'ok') {
         showToast(data.message || 'Removed from print list', 'success');
@@ -384,7 +384,7 @@ function createPaginator(opts) {
   }
 
   function fetchPrintListItems(query) {
-    var url = '/panel/print/api/table/' + TABLE_ID + '/list/?q=' + encodeURIComponent(query || '') + '&limit=200';
+    var url = '/print/api/table/' + TABLE_ID + '/list/?q=' + encodeURIComponent(query || '') + '&limit=200';
     ApiClient.get(url)
     .then(function(data) {
       if (data.status === 'ok') renderPrintListItems(data.items || [], data.total || 0);
@@ -531,7 +531,7 @@ function createPaginator(opts) {
 
   // Move to Pool API (finalized → pool)
   function performMoveToPool(prIds) {
-    ApiClient.post('/panel/print/api/table/' + TABLE_ID + '/mark-pool/', { request_ids: prIds })
+    ApiClient.post('/print/api/table/' + TABLE_ID + '/mark-pool/', { request_ids: prIds })
     .then(function(data) {
       if (data.status === 'ok') {
         showToast(data.message || 'Moved to pool', 'success');
@@ -572,7 +572,7 @@ function createPaginator(opts) {
   }
 
   function fetchFinalizedItems(query) {
-    var url = '/panel/print/api/table/' + TABLE_ID + '/finalized-list/?q=' + encodeURIComponent(query || '') + '&limit=200';
+    var url = '/print/api/table/' + TABLE_ID + '/finalized-list/?q=' + encodeURIComponent(query || '') + '&limit=200';
     ApiClient.get(url)
     .then(function(data) {
       if (data.status === 'ok') renderFinalizedItems(data.items || [], data.total || 0);
@@ -714,7 +714,7 @@ function createPaginator(opts) {
   }
 
   function fetchPoolItems(query) {
-    var url = '/panel/print/api/table/' + TABLE_ID + '/pool-list/?q=' + encodeURIComponent(query || '') + '&limit=200';
+    var url = '/print/api/table/' + TABLE_ID + '/pool-list/?q=' + encodeURIComponent(query || '') + '&limit=200';
     ApiClient.get(url)
     .then(function(data) {
       if (data.status === 'ok') renderPoolItems(data.items || [], data.total || 0);

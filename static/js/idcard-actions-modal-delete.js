@@ -178,7 +178,7 @@ function initDeleteModal() {
             this.disabled = true;
             this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Deleting...';
             
-            ApiClient.post(`/panel/api/table/${tableId}/cards/bulk-delete/`, { card_ids: cardIds })
+            ApiClient.post(`/api/table/${tableId}/cards/bulk-delete/`, { card_ids: cardIds })
             .then(data => {
                 closeDeleteModalFn();
                 if (data.success) {
@@ -271,7 +271,7 @@ function initSimpleDeleteModal() {
             this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Deleting...';
             
             // Delete cards (moves to pool status)
-            ApiClient.post(`/panel/api/table/${tableId}/cards/bulk-status/`, { card_ids: cardIds, status: 'pool' }, { timeout: 120000 })
+            ApiClient.post(`/api/table/${tableId}/cards/bulk-status/`, { card_ids: cardIds, status: 'pool' }, { timeout: 120000 })
             .then(data => {
                 closeSimpleDeleteModalFn();
                 if (data.success) {

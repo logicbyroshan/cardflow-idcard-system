@@ -39,7 +39,7 @@
             if (response.redirected && !_isLoginPage) {
                 var finalUrl = response.url || '';
                 if (finalUrl.indexOf('/auth/login') !== -1 || finalUrl.indexOf('/login') !== -1) {
-                    window.location.href = '/panel/auth/login/';
+                    window.location.href = '/auth/login/';
                     // Return a synthetic "session expired" JSON so callers
                     // don't fail with a JSON-parse error on the HTML body.
                     return new Response(JSON.stringify({
@@ -59,11 +59,11 @@
                         if (data && data.redirect) {
                             window.location.href = data.redirect;
                         } else {
-                            window.location.href = '/panel/auth/login/';
+                            window.location.href = '/auth/login/';
                         }
                     })
                     .catch(function () {
-                        window.location.href = '/panel/auth/login/';
+                        window.location.href = '/auth/login/';
                     });
             }
             if (response.status === 403) {

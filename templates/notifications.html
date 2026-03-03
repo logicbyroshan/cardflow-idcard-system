@@ -128,7 +128,7 @@
 
   function loadPage(append) {
     if (!append) pageOffset = 0;
-    fetch(`/panel/api/notifications/list/?limit=${PAGE_LIMIT}&offset=${pageOffset}`)
+    fetch(`/api/notifications/list/?limit=${PAGE_LIMIT}&offset=${pageOffset}`)
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (!data || !data.success) return;
@@ -181,7 +181,7 @@
 
   function markRead(id, el) {
     if (!el.classList.contains('unread')) return;
-    fetch(`/panel/api/notifications/${id}/read/`, {
+    fetch(`/api/notifications/${id}/read/`, {
       method: 'POST',
       headers: { 'X-CSRFToken': getCsrf() },
     }).then(() => {
@@ -190,7 +190,7 @@
   }
 
   function markAllRead() {
-    fetch('/panel/api/notifications/mark-all-read/', {
+    fetch('/api/notifications/mark-all-read/', {
       method: 'POST',
       headers: { 'X-CSRFToken': getCsrf() },
     }).then(r => r.json()).then(d => {

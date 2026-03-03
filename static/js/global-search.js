@@ -138,7 +138,7 @@
         const filter = getEl('globalSearchFilter')?.value || 'all';
         const results = getEl('globalSearchResults');
 
-        ApiClient.get(`/panel/api/global-search/?q=${encodeURIComponent(query)}&filter=${filter}`)
+        ApiClient.get(`/api/global-search/?q=${encodeURIComponent(query)}&filter=${filter}`)
             .then(data => {
                 if (data.success) {
                     displayResults(data.results, query);

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Reprint Cards - Step 3: Download Reprints
  * Split from reprint-cards-actions.js
  */
@@ -24,7 +24,7 @@ var _refreshStepCounts = NS._refreshStepCounts;
   if (!TABLE_ID_VAL) return;
   if (STEP !== 'download') return;
 
-  // â”€â”€ DOM refs â”€â”€
+  // ── DOM refs ──
   const selectAllCb = document.getElementById('downloadSelectAll');
   const tableBody = document.getElementById('downloadTableBody');
   const searchInput = document.getElementById('downloadSearchInput');
@@ -34,7 +34,7 @@ var _refreshStepCounts = NS._refreshStepCounts;
   const showingRange = document.getElementById('downloadShowingRange');
   const totalCountEl = document.getElementById('downloadTotalCount');
 
-  // â”€â”€ Paginator â”€â”€
+  // ── Paginator ──
   const paginator = createReprintPaginator({
     barId: 'downloadPaginationBar',
     prefix: 'download',
@@ -44,7 +44,7 @@ var _refreshStepCounts = NS._refreshStepCounts;
   // Initial pagination on page load
   if (paginator) paginator.paginate();
 
-  // â”€â”€ Helpers (aliases to shared file-scope helpers) â”€â”€
+  // ── Helpers (aliases to shared file-scope helpers) ──
   const getCSRFToken = _getCSRFToken, escapeHtml = _escapeHtml, isImageField = _isImageField, showToast = _showToast;
   function refreshStepCounts() { _refreshStepCounts(TABLE_ID_VAL); }
 
@@ -87,7 +87,7 @@ var _refreshStepCounts = NS._refreshStepCounts;
     }
   }
 
-  // â”€â”€ Select All â”€â”€
+  // ── Select All ──
   if (selectAllCb) {
     selectAllCb.addEventListener('change', function() {
       const checked = this.checked;
@@ -96,7 +96,7 @@ var _refreshStepCounts = NS._refreshStepCounts;
     });
   }
 
-  // â”€â”€ Row Checkboxes (delegated) â”€â”€
+  // ── Row Checkboxes (delegated) ──
   if (tableBody) {
     tableBody.addEventListener('change', function(e) {
       if (e.target.classList.contains('downloadRowCheckbox')) {
@@ -105,7 +105,7 @@ var _refreshStepCounts = NS._refreshStepCounts;
     });
   }
 
-  // â”€â”€ Single Download Button (delegated) â”€â”€
+  // ── Single Download Button (delegated) ──
   if (tableBody) {
     tableBody.addEventListener('click', function(e) {
       const btn = e.target.closest('.btn-download-single');
@@ -115,7 +115,7 @@ var _refreshStepCounts = NS._refreshStepCounts;
     });
   }
 
-  // â”€â”€ Bulk Download Button â”€â”€
+  // ── Bulk Download Button ──
   if (downloadBtn) {
     downloadBtn.addEventListener('click', function() {
       const ids = getSelectedRrIds();
@@ -124,7 +124,7 @@ var _refreshStepCounts = NS._refreshStepCounts;
     });
   }
 
-  // â”€â”€ View Button â”€â”€
+  // ── View Button ──
   if (viewBtn) {
     viewBtn.addEventListener('click', function() {
       const cardIds = getSelectedCardIds();
@@ -135,9 +135,9 @@ var _refreshStepCounts = NS._refreshStepCounts;
     });
   }
 
-  // â”€â”€ Download (Mark as Downloaded) API Call â”€â”€
+  // ── Download (Mark as Downloaded) API Call ──
   function performDownload(rrIds) {
-    ApiClient.post(`/panel/api/table/${TABLE_ID_VAL}/reprint/mark-downloaded/`, { rr_ids: rrIds })
+    ApiClient.post(`/api/table/${TABLE_ID_VAL}/reprint/mark-downloaded/`, { rr_ids: rrIds })
     .then(data => {
       if (data.status === 'success') {
         showToast(`${data.downloaded_count} reprint${data.downloaded_count !== 1 ? 's' : ''} marked as downloaded`, 'success');
@@ -154,12 +154,12 @@ var _refreshStepCounts = NS._refreshStepCounts;
       }
     })
     .catch(err => {
-      showToast('Network error â€” please try again', 'error');
+      showToast('Network error — please try again', 'error');
       console.error('[Reprint Download] Error:', err);
     });
   }
 
-  // â”€â”€ Search â”€â”€
+  // ── Search ──
   let searchTimer = null;
 
   if (searchInput) {
@@ -181,9 +181,9 @@ var _refreshStepCounts = NS._refreshStepCounts;
     searchClearBtn.style.display = searchInput && searchInput.value ? '' : 'none';
   }
 
-  // â”€â”€ Fetch Download Items API â”€â”€
+  // ── Fetch Download Items API ──
   function fetchDownloadItems(query) {
-    const url = `/panel/api/table/${TABLE_ID_VAL}/reprint/download-list/?q=${encodeURIComponent(query || '')}&limit=200`;
+    const url = `/api/table/${TABLE_ID_VAL}/reprint/download-list/?q=${encodeURIComponent(query || '')}&limit=200`;
 
     ApiClient.get(url)
     .then(data => {
@@ -196,7 +196,7 @@ var _refreshStepCounts = NS._refreshStepCounts;
     });
   }
 
-  // â”€â”€ Render Download Items into Table â”€â”€
+  // ── Render Download Items into Table ──
   function renderDownloadItems(items, total) {
     if (!tableBody) return;
 
@@ -275,7 +275,7 @@ var _refreshStepCounts = NS._refreshStepCounts;
     if (paginator) { paginator.reset(); paginator.paginate(); }
   }
 
-  // â”€â”€ Update Pagination â”€â”€
+  // ── Update Pagination ──
   function updatePagination() {
     if (!tableBody) return;
     const rows = tableBody.querySelectorAll('tr:not(.no-data-row)');

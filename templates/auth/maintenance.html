@@ -114,7 +114,7 @@
       .then(function(data) {
         if (data.active) {
           statusText.innerHTML = '<span style="color:#059669;font-weight:600;">Account reactivated! Redirecting...</span>';
-          setTimeout(function() { window.location.href = '/panel/'; }, 1000);
+          setTimeout(function() { window.location.href = '/'; }, 1000);
         } else {
           statusText.textContent = 'Account still suspended. Will check again in 30s...';
         }

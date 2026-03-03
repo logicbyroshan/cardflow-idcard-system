@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 formData.append('profile_image', file);
                 
                 try {
-                    const data = await ApiClient.upload('/panel/api/profile/upload-image/', formData);
+                    const data = await ApiClient.upload('/api/profile/upload-image/', formData);
                     
                     if (data.success) {
                         // Update avatar displays
@@ -89,7 +89,7 @@ document.addEventListener('DOMContentLoaded', function() {
             };
             
             try {
-                const data = await ApiClient.post('/panel/api/profile/update/', formData);
+                const data = await ApiClient.post('/api/profile/update/', formData);
                 
                 if (data.success) {
                     showToast('Profile information updated successfully!', 'success');
@@ -152,7 +152,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             try {
-                const data = await ApiClient.post('/panel/api/profile/change-password/', {
+                const data = await ApiClient.post('/api/profile/change-password/', {
                     current_password: currentPassword,
                     new_password: newPassword,
                     confirm_password: confirmPassword
@@ -180,7 +180,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Must use POST for logout (GET is ignored for CSRF safety)
                 var form = document.createElement('form');
                 form.method = 'POST';
-                form.action = '/panel/auth/logout/';
+                form.action = '/auth/logout/';
                 var csrfInput = document.createElement('input');
                 csrfInput.type = 'hidden';
                 csrfInput.name = 'csrfmiddlewaretoken';
@@ -195,7 +195,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // ===== Load Profile Data =====
     async function loadProfile() {
         try {
-            const data = await ApiClient.get('/panel/api/profile/');
+            const data = await ApiClient.get('/api/profile/');
             
             if (data.success) {
                 const profile = data.profile;
@@ -310,7 +310,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (statusSpan) statusSpan.textContent = '';
             
             try {
-                const data = await ApiClient.post('/panel/api/export-settings/update/', {
+                const data = await ApiClient.post('/api/export-settings/update/', {
                     export_note_line: noteLine,
                     export_copyright_line: copyrightLine
                 });
@@ -352,7 +352,7 @@ document.addEventListener('DOMContentLoaded', function() {
     async function loadExportTemplates() {
         if (!tplListEl) return;
         try {
-            const data = await ApiClient.get('/panel/api/export-templates/');
+            const data = await ApiClient.get('/api/export-templates/');
             if (data.success) {
                 renderTemplateList(data.templates);
             } else {
@@ -406,7 +406,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             try {
-                const data = await ApiClient.post('/panel/api/export-templates/create/', {
+                const data = await ApiClient.post('/api/export-templates/create/', {
                     name: name,
                     instructions: instructions,
                     is_default: isDefault
@@ -435,7 +435,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Fetch current data
         let tplData;
         try {
-            const data = await ApiClient.get('/panel/api/export-templates/');
+            const data = await ApiClient.get('/api/export-templates/');
             if (data.success) {
                 tplData = data.templates.find(function(t) { return t.id === id; });
             }
@@ -448,7 +448,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (newInstructions === null) return;
 
         try {
-            const data = await ApiClient.post('/panel/api/export-templates/' + id + '/update/', {
+            const data = await ApiClient.post('/api/export-templates/' + id + '/update/', {
                 name: newName.trim(),
                 instructions: newInstructions.trim()
             });
@@ -468,7 +468,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.deleteExportTemplate = async function(id, name) {
         if (!confirm('Delete template "' + name + '"?')) return;
         try {
-            const data = await ApiClient.post('/panel/api/export-templates/' + id + '/delete/');
+            const data = await ApiClient.post('/api/export-templates/' + id + '/delete/');
             if (data.success) {
                 showToast('Template deleted', 'success');
                 loadExportTemplates();

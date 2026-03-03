@@ -265,7 +265,7 @@
             tableContainer.addEventListener('dblclick', function(e) {
                 const row = e.target.closest('tr');
                 if (row && row.dataset.clientId) {
-                    window.location.href = `/panel/client/${row.dataset.clientId}/groups/`;
+                    window.location.href = `/client/${row.dataset.clientId}/groups/`;
                 }
             });
         }
@@ -274,7 +274,7 @@
         if (elements.groupSettingBtn) {
             elements.groupSettingBtn.addEventListener('click', function() {
                 if (selectedClientId) {
-                    window.location.href = `/panel/client/${selectedClientId}/settings/`;
+                    window.location.href = `/client/${selectedClientId}/settings/`;
                 }
             });
         }
@@ -283,7 +283,7 @@
         if (elements.idcardGroupBtn) {
             elements.idcardGroupBtn.addEventListener('click', function() {
                 if (selectedClientId) {
-                    window.location.href = `/panel/client/${selectedClientId}/groups/`;
+                    window.location.href = `/client/${selectedClientId}/groups/`;
                 }
             });
         }
@@ -330,7 +330,7 @@
                 if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable)) return;
                 const searchOverlay = document.getElementById('globalSearchOverlay');
                 if (searchOverlay && searchOverlay.classList.contains('active')) return;
-                window.location.href = `/panel/client/${selectedClientId}/groups/`;
+                window.location.href = `/client/${selectedClientId}/groups/`;
             }
         });
     }

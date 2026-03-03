@@ -274,8 +274,8 @@
   document.addEventListener('DOMContentLoaded', function() {
     var isClientRole = {% if is_client or is_client_staff %}true{% else %}false{% endif %};
     var apiUrl = isClientRole
-      ? '/panel/client/api/create-from-xlsx/'
-      : '/panel/api/group/' + GROUP_ID + '/table/create-from-xlsx/';
+      ? '/client/api/create-from-xlsx/'
+      : '/api/group/' + GROUP_ID + '/table/create-from-xlsx/';
     initCreateWithXlsx({
       apiUrl: apiUrl,
       csrfToken: '{{ csrf_token }}',

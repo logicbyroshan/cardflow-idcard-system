@@ -369,8 +369,10 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10 MB — POST fields only, no
 # Max size for a single uploaded file kept in memory before spilling to disk (10 MB)
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10 MB
 
-# Max number of files per upload request (ZIP + XLSX + unified ZIPs)
-DATA_UPLOAD_MAX_NUMBER_FILES = 30
+# Max number of files per upload request.
+# Portfolio bulk upload allows up to 50 images; bulk-upload-task can include
+# 1 XLSX + 20 unified ZIPs + field-specific ZIPs.  Keep headroom.
+DATA_UPLOAD_MAX_NUMBER_FILES = 60
 
 
 # =============================================================================

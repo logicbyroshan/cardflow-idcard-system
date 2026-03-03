@@ -34,11 +34,13 @@ class SubdomainRoutingMiddleware:
     - PANEL_DOMAIN   (e.g. panel.adarshbhopal.in) → config.urls_panel
 
     On the panel subdomain, any incoming path that starts with /panel/ is
-    silently rewritten (prefix stripped) so that all existing hardcoded
-    /panel/… URLs in JS, templates, and Python code keep working.
+    silently rewritten (prefix stripped) so that old bookmarks keep working.
 
-    In local development (when neither domain is set, or the Host header
-    matches neither), the default ROOT_URLCONF is used (all routes).
+    In local development (127.0.0.1, localhost, or any unknown host),
+    paths starting with /panel/ are automatically routed through
+    config.urls_panel with the prefix stripped — so /panel/auth/login/
+    renders the page, and JS API calls like /api/auth/check-email/
+    resolve correctly against urls_panel.
 
     Must be placed BEFORE WhiteNoiseMiddleware in MIDDLEWARE so that the
     urlconf is set before any downstream middleware resolves URLs.
@@ -50,30 +52,50 @@ class SubdomainRoutingMiddleware:
         self.panel_domain = getattr(django_settings, 'PANEL_DOMAIN', '').lower().strip()
 
     def __call__(self, request):
-        # Skip routing if domains are not configured (local dev fallback)
-        if not self.website_domain and not self.panel_domain:
-            request._is_panel_subdomain = False
-            return self.get_response(request)
-
         host = request.get_host().split(':')[0].lower()  # strip port
+        _set_panel_cookie = False
 
-        if host == self.website_domain:
+        if self.website_domain and host == self.website_domain:
             request.urlconf = 'config.urls_website'
             request._is_panel_subdomain = False
-        elif host == self.panel_domain:
+        elif self.panel_domain and host == self.panel_domain:
             request.urlconf = 'config.urls_panel'
             request._is_panel_subdomain = True
-            # Backward compat: strip /panel/ prefix so hardcoded URLs still work
+            # Backward compat: strip /panel/ prefix so old bookmarks still work
             if request.path_info.startswith('/panel/'):
-                request.path_info = request.path_info[len('/panel'):]  # /panel/auth/… → /auth/…
-                # CRITICAL: Also update request.path so downstream middleware
-                # (e.g. PermissionValidationMiddleware) sees the rewritten path.
+                request.path_info = request.path_info[len('/panel'):]
                 request.path = request.path_info
+        elif request.path_info.startswith('/panel/') or request.path_info == '/panel':
+            # Local dev / unknown host accessing /panel/… paths:
+            # Route through urls_panel and strip the prefix.  Also set a
+            # context cookie so that subsequent JS fetch() calls (which use
+            # root-relative paths like /api/…) are routed through urls_panel.
+            request.urlconf = 'config.urls_panel'
+            request._is_panel_subdomain = True
+            _set_panel_cookie = True
+            request.path_info = request.path_info[len('/panel'):]  # /panel/auth/… → /auth/…
+            if not request.path_info:
+                request.path_info = '/'
+            request.path = request.path_info
+        elif request.COOKIES.get('_panel_ctx') == '1':
+            # Local dev: JS API calls from a panel page (e.g. /api/auth/…).
+            # The cookie was set when the /panel/… page was first loaded.
+            request.urlconf = 'config.urls_panel'
+            request._is_panel_subdomain = True
         else:
-            # Unknown host — use default ROOT_URLCONF (local dev)
+            # Unknown host, non-panel path — use default ROOT_URLCONF
             request._is_panel_subdomain = False
 
-        return self.get_response(request)
+        response = self.get_response(request)
+
+        # Set / clear the panel context cookie for local dev routing
+        if _set_panel_cookie:
+            response.set_cookie(
+                '_panel_ctx', '1',
+                httponly=True, samesite='Lax', max_age=86400,
+            )
+
+        return response
 
 
 class RequestTimingMiddleware:

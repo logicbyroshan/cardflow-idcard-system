@@ -30,7 +30,7 @@ function _moveCardsToDownloadIfApproved(cardIds) {
     // If cardIds is empty, we exported ALL approved cards — fetch them from backend first
     if (!cardIds || cardIds.length === 0) {
         // Use the all-ids endpoint to get every approved card
-        var idsUrl = '/panel/api/table/' + tableId + '/cards/all-ids/?status=approved';
+        var idsUrl = '/api/table/' + tableId + '/cards/all-ids/?status=approved';
         var filters = _getActiveFilters();
         var params = [];
         if (filters.search) params.push('search=' + encodeURIComponent(filters.search));
@@ -54,7 +54,7 @@ function _moveCardsToDownloadIfApproved(cardIds) {
 
 function _doBulkMoveToDownload(tableId, cardIds) {
     if (typeof apiCall === 'function') {
-        apiCall('/panel/api/table/' + tableId + '/cards/bulk-status/', 'POST', {
+        apiCall('/api/table/' + tableId + '/cards/bulk-status/', 'POST', {
             card_ids: cardIds,
             status: 'download'
         }, { timeout: 120000 })
@@ -117,7 +117,7 @@ function downloadImages(cardIds) {
     if (window.DownloadManager) {
         window.DownloadManager.startImageDownload({
             name: 'Images ZIP',
-            url: `/panel/api/table/${tableId}/cards/download-images/`,
+            url: `/api/table/${tableId}/cards/download-images/`,
             body: Object.assign({ card_ids: cardIds, status: _getCurrentStatus() }, _getActiveFilters()),
             onComplete: function() {
                 // Image export: do NOT move cards to download list
@@ -133,7 +133,7 @@ function downloadImages(cardIds) {
     if (typeof showProgressToast === 'function') showProgressToast('Preparing images...', -1);
     
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', `/panel/api/table/${tableId}/cards/download-images/`, true);
+    xhr.open('POST', `/api/table/${tableId}/cards/download-images/`, true);
     xhr.timeout = 600000;
     xhr.setRequestHeader('Content-Type', 'application/json');
     xhr.setRequestHeader('X-CSRFToken', typeof getCSRFToken === 'function' ? getCSRFToken() : '');
@@ -242,7 +242,7 @@ function downloadDocx(cardIds, format, templateId) {
     if (window.DownloadManager) {
         window.DownloadManager.start({
             name: format.toUpperCase() + ' Document',
-            url: `/panel/api/table/${tableId}/cards/download-docx/`,
+            url: `/api/table/${tableId}/cards/download-docx/`,
             body: Object.assign({ card_ids: cardIds, format: format, template_id: templateId || '', status: _getCurrentStatus() }, _getActiveFilters()),
             fallbackExt: format,
             completeMessage: 'Document downloaded successfully!',
@@ -260,7 +260,7 @@ function downloadDocx(cardIds, format, templateId) {
     if (typeof showProgressToast === 'function') showProgressToast(`Preparing ${format.toUpperCase()} document...`, -1);
     
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', `/panel/api/table/${tableId}/cards/download-docx/`, true);
+    xhr.open('POST', `/api/table/${tableId}/cards/download-docx/`, true);
     xhr.timeout = 600000;
     xhr.setRequestHeader('Content-Type', 'application/json');
     xhr.setRequestHeader('X-CSRFToken', typeof getCSRFToken === 'function' ? getCSRFToken() : '');
@@ -336,7 +336,7 @@ function downloadXlsx(cardIds) {
     if (window.DownloadManager) {
         window.DownloadManager.start({
             name: 'Excel Spreadsheet',
-            url: `/panel/api/table/${tableId}/cards/download-xlsx/`,
+            url: `/api/table/${tableId}/cards/download-xlsx/`,
             body: Object.assign({ card_ids: cardIds, status: _getCurrentStatus() }, _getActiveFilters()),
             fallbackExt: 'xlsx',
             completeMessage: 'Excel file downloaded successfully!',
@@ -358,7 +358,7 @@ function downloadXlsx(cardIds) {
     if (typeof showProgressToast === 'function') showProgressToast('Preparing Excel file...', -1);
     
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', `/panel/api/table/${tableId}/cards/download-xlsx/`, true);
+    xhr.open('POST', `/api/table/${tableId}/cards/download-xlsx/`, true);
     xhr.timeout = 600000;
     xhr.setRequestHeader('Content-Type', 'application/json');
     xhr.setRequestHeader('X-CSRFToken', typeof getCSRFToken === 'function' ? getCSRFToken() : '');
@@ -467,7 +467,7 @@ function downloadPdf(cardIds, templateId, fontMode, shortenTitles) {
     if (window.DownloadManager) {
         window.DownloadManager.start({
             name: 'PDF Document',
-            url: `/panel/api/table/${tableId}/cards/download-pdf/`,
+            url: `/api/table/${tableId}/cards/download-pdf/`,
             body: Object.assign({ card_ids: cardIds, status: _getCurrentStatus(), template_id: templateId || '', font_mode: fontMode, shorten_titles: shortenTitles }, _getActiveFilters()),
             fallbackExt: 'pdf',
             completeMessage: 'PDF file downloaded successfully!',
@@ -512,7 +512,7 @@ function _downloadPdfAsync(tableId, cardIds, templateId, fontMode, shortenTitles
 
     // Start async export
     if (typeof apiCall === 'function') {
-        apiCall('/panel/api/table/' + tableId + '/cards/download-pdf-async/', 'POST', body, { timeout: 30000 })
+        apiCall('/api/table/' + tableId + '/cards/download-pdf-async/', 'POST', body, { timeout: 30000 })
             .then(function(data) {
                 if (!data.success) {
                     if (typeof hideProgressToast === 'function') hideProgressToast();
@@ -529,7 +529,7 @@ function _downloadPdfAsync(tableId, cardIds, templateId, fontMode, shortenTitles
             });
     } else {
         // Fallback: use fetch
-        fetch('/panel/api/table/' + tableId + '/cards/download-pdf-async/', {
+        fetch('/api/table/' + tableId + '/cards/download-pdf-async/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -583,7 +583,7 @@ function _pollExportStatus(taskId, cardCount, isCancelled, cancelFn) {
             return;
         }
 
-        fetch('/panel/api/export/status/' + taskId + '/', {
+        fetch('/api/export/status/' + taskId + '/', {
             headers: {
                 'X-CSRFToken': typeof getCSRFToken === 'function' ? getCSRFToken() : ''
             }
@@ -651,7 +651,7 @@ function _downloadPdfLegacy(tableId, cardIds, templateId, fontMode, shortenTitle
     const xhr = new XMLHttpRequest();
     var cancelFn = function () { xhr.abort(); if (typeof showToast === 'function') showToast('PDF download cancelled', 'info'); };
     if (typeof showProgressToast === 'function') showProgressToast('Preparing PDF file...', -1, cancelFn);
-    xhr.open('POST', `/panel/api/table/${tableId}/cards/download-pdf/`, true);
+    xhr.open('POST', `/api/table/${tableId}/cards/download-pdf/`, true);
     xhr.timeout = 600000;
     xhr.setRequestHeader('Content-Type', 'application/json');
     xhr.setRequestHeader('X-CSRFToken', typeof getCSRFToken === 'function' ? getCSRFToken() : '');

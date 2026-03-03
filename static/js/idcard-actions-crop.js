@@ -89,7 +89,7 @@
 
     function _cleanupBatch(batchId) {
         // Fire-and-forget cleanup
-        _post(`/panel/api/crop-batch/${batchId}/cleanup/`, {}).catch(() => {});
+        _post(`/api/crop-batch/${batchId}/cleanup/`, {}).catch(() => {});
     }
 
     // ── Main flow ──────────────────────────────────────────────────
@@ -166,7 +166,7 @@
         if (status1) status1.textContent = `Preparing ${ids.length} card(s)…`;
         if (progress1) progress1.style.width = '20%';
 
-        _post(`/panel/api/table/${tableId}/cards/prepare-crop/`, { card_ids: ids, output_path: outputPath })
+        _post(`/api/table/${tableId}/cards/prepare-crop/`, { card_ids: ids, output_path: outputPath })
             .then((data) => {
                 if (!data.success) {
                     _showError(data.message || 'Failed to prepare images');
@@ -193,7 +193,7 @@
         const status2 = $('cropStatus2');
         if (status2) status2.textContent = 'Sending to Face Cropper engine…';
 
-        _post(`/panel/api/table/${tableId}/cards/process-crop/`, {
+        _post(`/api/table/${tableId}/cards/process-crop/`, {
             batch_id: _batchId,
         })
             .then((data) => {
@@ -222,7 +222,7 @@
         _showOnly(3);
         _show($('cropReuploadBtn'));
 
-        _get(`/panel/api/crop-batch/${_batchId}/preview/`)
+        _get(`/api/crop-batch/${_batchId}/preview/`)
             .then((data) => {
                 if (!data.success) {
                     _showError(data.message || 'Failed to load preview');
@@ -282,7 +282,7 @@
         files.forEach((filename) => {
             const card = document.createElement('div');
             card.className = 'crop-image-card';
-            const imgUrl = `/panel/api/crop-batch/${_batchId}/serve-image/?type=${type}&name=${encodeURIComponent(filename)}`;
+            const imgUrl = `/api/crop-batch/${_batchId}/serve-image/?type=${type}&name=${encodeURIComponent(filename)}`;
             card.innerHTML = `
                 <img src="${imgUrl}" alt="${filename}" loading="lazy" />
                 <div class="crop-image-name" title="${filename}">${_prettyName(filename)}</div>
@@ -362,7 +362,7 @@
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Re-uploading…';
         }
 
-        _post(`/panel/api/table/${tableId}/cards/reupload-cropped/`, {
+        _post(`/api/table/${tableId}/cards/reupload-cropped/`, {
             batch_id: _batchId,
             use_edited: false,
         })

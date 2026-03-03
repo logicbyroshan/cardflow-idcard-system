@@ -209,7 +209,7 @@ document.addEventListener('DOMContentLoaded', function() {
         clientTableContainer.addEventListener('dblclick', function(e) {
           var row = e.target.closest('tr');
           if (row && row.dataset.clientId) {
-            window.location.href = '/panel/client/' + row.dataset.clientId + '/settings/';
+            window.location.href = '/client/' + row.dataset.clientId + '/settings/';
           }
         });
       }

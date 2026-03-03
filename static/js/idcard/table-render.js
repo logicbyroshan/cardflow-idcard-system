@@ -6,7 +6,7 @@
  * Fetches card data from the JSON API and renders on-demand as the user scrolls.
  *
  * Activation: Set  window.USE_VIRTUAL_TABLE = true  BEFORE this script loads.
- * Data source: GET /panel/api/table/{id}/cards-json/
+ * Data source: GET /api/table/{id}/cards-json/
  *
  * Architecture:
  *   _allCards[]        – all card objects fetched from server so far
@@ -670,7 +670,7 @@
             if (fromEl && fromEl.value) params.set('from', fromEl.value);
             if (toEl && toEl.value)     params.set('to', toEl.value);
 
-            var url = '/panel/api/table/' + _tableId + '/cards-json/?' + params.toString();
+            var url = '/api/table/' + _tableId + '/cards-json/?' + params.toString();
             var response;
 
             if (typeof ApiClient !== 'undefined' && typeof ApiClient.get === 'function') {
@@ -835,7 +835,7 @@
     async function _fetchFilterOptions() {
         if (!_tableId) return;
         try {
-            var url = '/panel/api/table/' + _tableId + '/filter-options/';
+            var url = '/api/table/' + _tableId + '/filter-options/';
             var response;
             if (typeof ApiClient !== 'undefined' && typeof ApiClient.get === 'function') {
                 response = await ApiClient.get(url);

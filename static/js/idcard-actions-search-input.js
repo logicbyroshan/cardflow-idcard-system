@@ -118,7 +118,7 @@ function initSearchAllModal() {
             return;
         }
         
-        ApiClient.get(`/panel/api/table/${tableId}/cards/search/?q=${encodeURIComponent(query)}`)
+        ApiClient.get(`/api/table/${tableId}/cards/search/?q=${encodeURIComponent(query)}`)
             .then(data => {
                 if (data.success) {
                     displaySearchResults(data.results, query, searchResultsContainer, closeSearchAllModalFn);

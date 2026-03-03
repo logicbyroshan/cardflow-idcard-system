@@ -8,7 +8,7 @@
  *
  * Usage:
  *   initHTMXFilters({
- *     baseUrl: '/panel/manage-staff/',
+ *     baseUrl: '/manage-staff/',
  *     target:  '#staff-table-container',
  *     searchInputId: 'searchInput',
  *     filters: [{ name: 'status', optionsId: 'statusOptions' }],

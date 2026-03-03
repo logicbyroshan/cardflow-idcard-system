@@ -272,12 +272,12 @@ function listApp() {
         downloadPDF() {
             if (!this.selectedIds.length) { this.showToast('Select items first', 'error'); return; }
             this.showToast('Generating PDF...', 'info');
-            window.open('/panel/api/table/' + TABLE_ID + '/cards/download-pdf/?status=' + LIST_TYPE + '&ids=' + this.selectedIds.join(','), '_blank');
+            window.open('/api/table/' + TABLE_ID + '/cards/download-pdf/?status=' + LIST_TYPE + '&ids=' + this.selectedIds.join(','), '_blank');
         },
         downloadIMG() {
             if (!this.selectedIds.length) { this.showToast('Select items first', 'error'); return; }
             this.showToast('Downloading images...', 'info');
-            window.open('/panel/api/table/' + TABLE_ID + '/cards/download-images/?ids=' + this.selectedIds.join(','), '_blank');
+            window.open('/api/table/' + TABLE_ID + '/cards/download-images/?ids=' + this.selectedIds.join(','), '_blank');
         },
         downloadAgain() { this.apiAction('download', 're-downloaded'); },
         async permanentlyDelete() {

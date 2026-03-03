@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', function () {
     async function fetchClassSectionOptions() {
         if (csOptionsLoaded) return;
         try {
-            var resp = await fetch('/panel/client/api/class-section-options/', { credentials: 'same-origin' });
+            var resp = await fetch('/client/api/class-section-options/', { credentials: 'same-origin' });
             if (!resp.ok) return;
             var data = await resp.json();
             if (data.success) {
@@ -258,7 +258,7 @@ document.addEventListener('DOMContentLoaded', function () {
     async function loadAssignGroups() {
         if (_assignGroupsLoaded) return;
         try {
-            var resp = await fetch('/panel/client/api/groups/active/', { credentials: 'same-origin' });
+            var resp = await fetch('/client/api/groups/active/', { credentials: 'same-origin' });
             if (!resp.ok) return;
             var data = await resp.json();
             if (data.success) { _assignAllGroups = data.groups || []; _assignGroupsLoaded = true; }
@@ -273,7 +273,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Fetch current staff data
         try {
-            var resp = await fetch('/panel/client/api/staff/' + staffId + '/', { credentials: 'same-origin' });
+            var resp = await fetch('/client/api/staff/' + staffId + '/', { credentials: 'same-origin' });
             if (!resp.ok) { if (typeof showToast === 'function') showToast('Failed to load staff data', 'error'); return; }
             var json = await resp.json();
             if (!json.success) { if (typeof showToast === 'function') showToast(json.error || 'Failed to load staff data', 'error'); return; }
@@ -338,7 +338,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 var csrfEl = document.querySelector('[name=csrfmiddlewaretoken]') || document.querySelector('meta[name="csrf-token"]');
                 if (csrfEl) csrfToken = csrfEl.value || csrfEl.getAttribute('content') || '';
 
-                var resp = await fetch('/panel/client/api/staff/' + _assignStaffId + '/', {
+                var resp = await fetch('/client/api/staff/' + _assignStaffId + '/', {
                     method: 'PUT',
                     credentials: 'same-origin',
                     headers: {
@@ -386,7 +386,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // Assignment: groups
         assignment: {
             prefix:          'group',
-            apiUrl:          '/panel/client/api/groups/active/',
+            apiUrl:          '/client/api/groups/active/',
             responseKey:     'groups',
             payloadKey:      'assigned_groups',
             preselectedKey:  'assigned_group_ids',
@@ -411,14 +411,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // API endpoints (RESTful)
         api: {
-            fetchUrl:          function (id) { return '/panel/client/api/staff/' + id + '/'; },
+            fetchUrl:          function (id) { return '/client/api/staff/' + id + '/'; },
             fetchResponseKey:  'data',
             errorKey:          'error',
-            createUrl:         '/panel/client/api/staff/',
+            createUrl:         '/client/api/staff/',
             createMethod:      'post',
-            updateEndpoint:    function (id) { return { url: '/panel/client/api/staff/' + id + '/', method: 'put' }; },
-            deleteEndpoint:    function (id) { return { url: '/panel/client/api/staff/' + id + '/', method: 'delete' }; },
-            toggleUrl:         function (id) { return '/panel/client/api/staff/' + id + '/toggle-status/'; },
+            updateEndpoint:    function (id) { return { url: '/client/api/staff/' + id + '/', method: 'put' }; },
+            deleteEndpoint:    function (id) { return { url: '/client/api/staff/' + id + '/', method: 'delete' }; },
+            toggleUrl:         function (id) { return '/client/api/staff/' + id + '/toggle-status/'; },
         },
 
         onDrawerReset: function () {

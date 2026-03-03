@@ -10,7 +10,7 @@
 // ==========================================
 
 function fetchCardAndOpenModal(mode, cardId) {
-    ApiClient.get(`/panel/api/card/${cardId}/`)
+    ApiClient.get(`/api/card/${cardId}/`)
         .then(data => {
             if (data.success) {
                 IDCardApp.openSideModal(mode, data.card);
@@ -44,7 +44,7 @@ function createNewCard(fieldData, imageFiles, mainPhoto) {
         formData.append(`image_${fieldName}`, file);
     }
     
-    ApiClient.upload(`/panel/api/table/${tableId}/card/create/`, formData)
+    ApiClient.upload(`/api/table/${tableId}/card/create/`, formData)
     .then(data => {
         if (data.success) {
             if (typeof showToast === 'function') showToast('Card added successfully!');
@@ -87,7 +87,7 @@ function updateExistingCard(cardId, fieldData, imageFiles, mainPhoto) {
         formData.append(`image_${fieldName}`, file);
     }
     
-    ApiClient.upload(`/panel/api/card/${cardId}/update/`, formData)
+    ApiClient.upload(`/api/card/${cardId}/update/`, formData)
     .then(data => {
         if (data.success) {
             if (typeof showToast === 'function') showToast('Card updated successfully!');

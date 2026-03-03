@@ -30,7 +30,7 @@ async function loadNotifications(append) {
   if (!append) panelOffset = 0;
   try {
     const search = document.getElementById('notifSearch')?.value || '';
-    const res = await fetch(`/panel/api/notifications/admin/list/?limit=${PANEL_LIMIT}&offset=${panelOffset}&search=${encodeURIComponent(search)}`);
+    const res = await fetch(`/api/notifications/admin/list/?limit=${PANEL_LIMIT}&offset=${panelOffset}&search=${encodeURIComponent(search)}`);
     if (!res.ok) { console.error('Failed to load notifications: HTTP', res.status); return; }
     const data = await res.json();
     if (!data.success) return;
@@ -169,7 +169,7 @@ async function deleteNotification(id) {
     'Delete this notification? It will no longer be visible to users.',
     async function () {
       try {
-        const res = await fetch(`/panel/api/notifications/admin/${id}/delete/`, {
+        const res = await fetch(`/api/notifications/admin/${id}/delete/`, {
           method: 'DELETE',
           headers: { 'X-CSRFToken': getCSRFToken() },
         });
@@ -227,7 +227,7 @@ async function loadTargetUsers() {
     return;
   }
   try {
-    const res = await fetch('/panel/api/notifications/admin/target-users/');
+    const res = await fetch('/api/notifications/admin/target-users/');
     if (!res.ok) { console.error('Failed to load users: HTTP', res.status); return; }
     const data = await res.json();
     if (data.success) {
@@ -339,7 +339,7 @@ async function handleCreateNotif(e) {
   }
 
   try {
-    const res = await fetch('/panel/api/notifications/admin/create/', {
+    const res = await fetch('/api/notifications/admin/create/', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -403,7 +403,7 @@ let panelTemplates = [];
 
 async function loadTemplates() {
   try {
-    const res = await fetch('/panel/api/export-templates/');
+    const res = await fetch('/api/export-templates/');
     if (!res.ok) return;
     const data = await res.json();
     if (data.success) {
@@ -477,8 +477,8 @@ async function saveTemplate() {
   if (!instructions) { if (window.showToast) showToast('Instructions text is required', 'error'); return; }
 
   const url = editId
-    ? `/panel/api/export-templates/${editId}/update/`
-    : '/panel/api/export-templates/create/';
+    ? `/api/export-templates/${editId}/update/`
+    : '/api/export-templates/create/';
 
   try {
     const res = await fetch(url, {
@@ -506,7 +506,7 @@ async function deleteTemplate(id) {
     'Delete this template? This action cannot be undone.',
     async function () {
       try {
-        const res = await fetch(`/panel/api/export-templates/${id}/delete/`, {
+        const res = await fetch(`/api/export-templates/${id}/delete/`, {
           method: 'DELETE',
           headers: { 'X-CSRFToken': getCSRFToken() },
         });
@@ -537,7 +537,7 @@ async function loadLogs(append) {
   try {
     const search = document.getElementById('logSearch')?.value || '';
     const userRole = document.getElementById('logUserTypeFilter')?.value || '';
-    let url = `/panel/api/activity-logs/?limit=${LOG_LIMIT}&offset=${logOffset}`;
+    let url = `/api/activity-logs/?limit=${LOG_LIMIT}&offset=${logOffset}`;
     if (search) url += `&search=${encodeURIComponent(search)}`;
     if (userRole) url += `&user_role=${encodeURIComponent(userRole)}`;
 
@@ -621,7 +621,7 @@ async function loadMonitoring() {
   if (refreshBtn) { refreshBtn.disabled = true; refreshBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Loading…'; }
 
   try {
-    const res = await fetch('/panel/api/monitoring/');
+    const res = await fetch('/api/monitoring/');
     if (!res.ok) { window.showToast && showToast('Failed to load monitoring data', 'error'); return; }
     const data = await res.json();
     if (!data.success) return;

@@ -218,7 +218,7 @@ function goToPage(page) {
 
 async function viewCard(cardId) {
   try {
-    const response = await fetch(`/panel/client/api/cards/${cardId}/`);
+    const response = await fetch(`/client/api/cards/${cardId}/`);
     const data = await response.json();
     
     if (data.success) {

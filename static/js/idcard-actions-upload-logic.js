@@ -399,7 +399,7 @@ function initXlsxUpload() {
             });
 
             var tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : null;
-            xhr.open('POST', '/panel/api/table/' + tableId + '/cards/bulk-upload/');
+            xhr.open('POST', '/api/table/' + tableId + '/cards/bulk-upload/');
             xhr.setRequestHeader('X-CSRFToken', typeof getCSRFToken === 'function' ? getCSRFToken() : '');
             xhr.timeout = 600000; // 10-minute timeout for large uploads
             xhr.send(formData);

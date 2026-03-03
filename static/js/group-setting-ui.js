@@ -45,8 +45,8 @@ document.addEventListener('DOMContentLoaded', function() {
             printCardsBtn.disabled = !hasSelection;
             if (hasSelection && GSP.selectedTableId) {
                 var pUrl = isClient
-                    ? '/panel/client/table/' + GSP.selectedTableId + '/print/'
-                    : '/panel/table/' + GSP.selectedTableId + '/print/';
+                    ? '/client/table/' + GSP.selectedTableId + '/print/'
+                    : '/table/' + GSP.selectedTableId + '/print/';
                 printCardsBtn.onclick = function() { window.location.href = pUrl; };
             }
         }
@@ -54,8 +54,8 @@ document.addEventListener('DOMContentLoaded', function() {
             reprintCardsBtn.disabled = !hasSelection;
             if (hasSelection && GSP.selectedTableId) {
                 var rUrl = isClient
-                    ? '/panel/client/table/' + GSP.selectedTableId + '/reprint/'
-                    : '/panel/table/' + GSP.selectedTableId + '/reprint/';
+                    ? '/client/table/' + GSP.selectedTableId + '/reprint/'
+                    : '/table/' + GSP.selectedTableId + '/reprint/';
                 reprintCardsBtn.onclick = function() { window.location.href = rUrl; };
             }
         }

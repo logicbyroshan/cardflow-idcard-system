@@ -167,7 +167,7 @@ function initCheckboxes() {
                 if (tableId) {
                     try {
                         const qs = _buildFilterQS();
-                        const data = await ApiClient.get('/panel/api/table/' + tableId + '/cards/all-ids/?' + qs);
+                        const data = await ApiClient.get('/api/table/' + tableId + '/cards/all-ids/?' + qs);
                         if (data.success && data.card_ids) {
                             window.IDCardApp.allDbCardIds = data.card_ids;
                             showToast('Selected all ' + data.total_count + ' cards');
@@ -326,7 +326,7 @@ function initSelectAllDbButton() {
         
         try {
             const qs = _buildFilterQS();
-            const data = await ApiClient.get(`/panel/api/table/${tableId}/cards/all-ids/?${qs}`);
+            const data = await ApiClient.get(`/api/table/${tableId}/cards/all-ids/?${qs}`);
             
             if (data.success && data.card_ids) {
                 // Store all card IDs globally
@@ -400,7 +400,7 @@ async function getAllCardIdsForAction() {
 
     try {
         const qs = _buildFilterQS();
-        const data = await ApiClient.get(`/panel/api/table/${tableId}/cards/all-ids/?${qs}`);
+        const data = await ApiClient.get(`/api/table/${tableId}/cards/all-ids/?${qs}`);
         if (data.success && data.card_ids) {
             return data.card_ids;
         }

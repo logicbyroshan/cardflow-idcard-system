@@ -44,8 +44,8 @@ document.addEventListener('DOMContentLoaded', function() {
             // Use template-set flag (URL-based detection fails for admin on /client/<id>/settings/)
             var isClient = typeof IS_CLIENT_ROLE !== 'undefined' ? IS_CLIENT_ROLE : false;
             var basePath = isClient
-                ? '/panel/client/table/' + tableId + '/actions/'
-                : '/panel/table/' + tableId + '/cards/';
+                ? '/client/table/' + tableId + '/actions/'
+                : '/table/' + tableId + '/cards/';
             window.location.href = basePath + '?status=pending';
         });
     }
@@ -108,7 +108,7 @@ document.addEventListener('DOMContentLoaded', function() {
             GSP.confirmDeleteBtn.disabled = true;
 
             try {
-                const data = await ApiClient.delete(`/panel/api/table/${GSP.selectedTableId}/delete/`);
+                const data = await ApiClient.delete(`/api/table/${GSP.selectedTableId}/delete/`);
 
                 if (data.success) {
                     showToast(data.message || 'Table deleted successfully!', 'success');

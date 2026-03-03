@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Fetch active clients from API
     async function fetchActiveClients() {
         try {
-            var data = await ApiClient.get('/panel/api/clients/active/');
+            var data = await ApiClient.get('/api/clients/active/');
             if (data.success) {
                 NS.allClients = data.clients || [];
             }

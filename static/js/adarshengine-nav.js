@@ -263,7 +263,7 @@
 
   /**
    * Extract the filesystem path from a serve-image URL.
-   * Works with both proxy URLs (/panel/api/engine/serve-image/?path=...)
+   * Works with both proxy URLs (/api/engine/serve-image/?path=...)
    * and direct engine URLs (/serve-image?path=...).
    * Returns null if not a serve-image URL.
    * @param {string} url
@@ -427,7 +427,7 @@
 
     self._log('Saving to /edited/ folder:', originalPath);
 
-    fetch('/panel/api/engine/save-edited/', {
+    fetch('/api/engine/save-edited/', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

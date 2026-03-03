@@ -23,6 +23,7 @@ from core.services.permission_service import (
     api_require_permission,
 )
 from core.services.activity_service import ActivityService
+from accounts.rate_limit import rate_limit
 
 from .models import (
     BusinessDetails,
@@ -564,6 +565,7 @@ def api_portfolio_create(request):
 
 
 @require_POST
+@rate_limit(max_requests=5, window_seconds=60, key_prefix='portfolio_bulk')
 @website_add_required
 def api_portfolio_bulk_upload(request):
     """
@@ -574,6 +576,8 @@ def api_portfolio_bulk_upload(request):
       - category: category ID
     """
     MAX_BULK_IMAGES = 50
+    MAX_SINGLE_IMAGE_SIZE = 20 * 1024 * 1024  # 20 MB per image
+    ALLOWED_IMAGE_TYPES = ('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp')
     
     category_id = request.POST.get('category', '')
     files = request.FILES.getlist('images')
@@ -586,6 +590,21 @@ def api_portfolio_bulk_upload(request):
             'success': False,
             'message': f'Maximum {MAX_BULK_IMAGES} images allowed per upload. You selected {len(files)}.'
         }, status=400)
+    
+    # Validate every file's extension and size before processing any
+    for img_file in files:
+        ext = '.' + img_file.name.rsplit('.', 1)[-1].lower() if '.' in img_file.name else ''
+        if ext not in ALLOWED_IMAGE_TYPES:
+            return JsonResponse({
+                'success': False,
+                'message': f'{img_file.name}: Invalid file type. Allowed: {"  ".join(ALLOWED_IMAGE_TYPES)}'
+            }, status=400)
+        if img_file.size > MAX_SINGLE_IMAGE_SIZE:
+            size_mb = img_file.size / (1024 * 1024)
+            return JsonResponse({
+                'success': False,
+                'message': f'{img_file.name}: Too large ({size_mb:.1f} MB). Max 20 MB per image.'
+            }, status=400)
     
     created = 0
     errors = []

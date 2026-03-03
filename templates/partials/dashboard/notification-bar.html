@@ -157,7 +157,7 @@
 <script>
 (function() {
   function loadNotifBar() {
-    fetch('/panel/api/notifications/list/?limit=5&unread_only=true')
+    fetch('/api/notifications/list/?limit=5&unread_only=true')
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (!data || !data.success) return;
@@ -217,7 +217,7 @@
   }
 
   window.markNotifRead = function(id, el) {
-    fetch(`/panel/api/notifications/${id}/read/`, {
+    fetch(`/api/notifications/${id}/read/`, {
       method: 'POST',
       headers: { 'X-CSRFToken': getCsrf() },
     }).then(() => {

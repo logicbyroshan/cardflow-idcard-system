@@ -272,7 +272,7 @@ function triggerPwaInstall() {
         if (window.__panelUrl) {
             window.location.href = window.__panelUrl + '/app/';
         } else {
-            window.location.href = window.location.origin + '/panel/app/';
+            window.location.href = window.location.origin + '/app/';
         }
         return;
     }
@@ -281,7 +281,7 @@ function triggerPwaInstall() {
     if (window.__panelUrl) {
         window.location.href = window.__panelUrl + '/app/';
     } else {
-        window.location.href = window.location.origin + '/panel/app/';
+        window.location.href = window.location.origin + '/app/';
     }
 }
 

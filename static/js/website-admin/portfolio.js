@@ -4,7 +4,7 @@
  * Type & orientation are auto-detected server-side.
  */
 (function () {
-    const BASE = '/panel/website/api';
+    const BASE = '/website/api';
 
     /* ================================================================
        PORTFOLIO ITEM — MODAL
@@ -123,6 +123,23 @@
         if (!fileInput.files || fileInput.files.length === 0) { showToast('Please select images', 'error'); return; }
 
         var files = Array.from(fileInput.files).slice(0, 50);
+
+        // ── Client-side validation: file type + size ──
+        var allowedExts = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
+        var maxSingleMB = 20;
+        for (var vi = 0; vi < files.length; vi++) {
+            var fname = files[vi].name.toLowerCase();
+            var fext = fname.split('.').pop();
+            if (allowedExts.indexOf(fext) === -1) {
+                showToast(fname + ': Invalid type. Allowed: ' + allowedExts.join(', '), 'error');
+                return;
+            }
+            if (files[vi].size > maxSingleMB * 1024 * 1024) {
+                showToast(fname + ': Too large (' + (files[vi].size / 1024 / 1024).toFixed(1) + ' MB). Max ' + maxSingleMB + ' MB per image.', 'error');
+                return;
+            }
+        }
+
         var btn = document.getElementById('bulkUploadBtn');
         var progressWrap = document.getElementById('bulkProgress');
         var progressBar = document.getElementById('bulkProgressBar');
@@ -135,11 +152,12 @@
         var _portfolioProcessingTimer = null;
         var _portfolioUploadDone = false;
 
-        // ── Stall detection: abort if no progress for 30 seconds ──
+        // ── Stall detection: abort if no progress for 60 seconds ──
+        // (Raised from 30s because server-side processing of 50 images is synchronous)
         var _pfLastProgress = Date.now();
         var _pfStallTimer = setInterval(function() {
             if (_portfolioUploadDone) { clearInterval(_pfStallTimer); return; }
-            if (Date.now() - _pfLastProgress > 30000) {
+            if (Date.now() - _pfLastProgress > 60000) {
                 clearInterval(_pfStallTimer);
                 if (!_portfolioUploadDone) {
                     _portfolioUploadDone = true;
@@ -185,8 +203,21 @@
             }
         };
 
+        // 5-minute timeout (matches reupload files)
+        xhr.timeout = 300000;
+        xhr.ontimeout = function() {
+            if (_portfolioUploadDone) return;
+            _cleanupPortfolioUpload();
+            if (_portfolioProcessingTimer) { clearInterval(_portfolioProcessingTimer); _portfolioProcessingTimer = null; }
+            progressText.textContent = 'Upload timed out — try fewer images.';
+            showToast('Upload timed out after 5 minutes. Try uploading fewer images at once.', 'error');
+            btn.disabled = false;
+        };
+
         // Phase 2: Upload done → server processing (80% → 95%)
         xhr.upload.onloadend = function () {
+            // CRITICAL: Reset stall timer so it doesn't fire during server processing
+            _pfLastProgress = Date.now();
             progressBar.style.width = '80%';
             progressText.textContent = 'Processing ' + files.length + ' image(s) on server...';
             var _procStart = Date.now();

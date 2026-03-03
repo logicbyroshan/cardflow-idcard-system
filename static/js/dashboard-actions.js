@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!tbody) return;
         const esc = typeof escapeHtml === 'function' ? escapeHtml : (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
         
-        ApiClient.get('/panel/api/recent-client-updates/')
+        ApiClient.get('/api/recent-client-updates/')
             .then(data => {
                 if (data.success && data.clients.length > 0) {
                     tbody.innerHTML = data.clients.map((client, i) => {
@@ -22,19 +22,19 @@ document.addEventListener('DOMContentLoaded', function() {
                         const tableSubRows = tables.map(t => `
                             <tr class="client-sub-row expand-group-${i}" style="display:none">
                                 <td>
-                                    <a href="/panel/table/${t.id}/cards/" class="sub-row-name"><i class="fa-solid fa-table"></i> ${esc(t.name)}</a>
+                                    <a href="/table/${t.id}/cards/" class="sub-row-name"><i class="fa-solid fa-table"></i> ${esc(t.name)}</a>
                                 </td>
                                 <td class="text-center">
-                                    <a href="/panel/table/${t.id}/cards/?status=pending" class="count-badge pending">${t.pending}</a>
+                                    <a href="/table/${t.id}/cards/?status=pending" class="count-badge pending">${t.pending}</a>
                                 </td>
                                 <td class="text-center">
-                                    <a href="/panel/table/${t.id}/cards/?status=verified" class="count-badge verified">${t.verified}</a>
+                                    <a href="/table/${t.id}/cards/?status=verified" class="count-badge verified">${t.verified}</a>
                                 </td>
                                 <td class="text-center">
-                                    <a href="/panel/table/${t.id}/cards/?status=approved" class="count-badge approved">${t.approved}</a>
+                                    <a href="/table/${t.id}/cards/?status=approved" class="count-badge approved">${t.approved}</a>
                                 </td>
                                 <td class="text-center">
-                                    <a href="/panel/table/${t.id}/cards/?status=download" class="count-badge downloaded">${t.downloaded}</a>
+                                    <a href="/table/${t.id}/cards/?status=download" class="count-badge downloaded">${t.downloaded}</a>
                                 </td>
                             </tr>
                         `).join('');
@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         return `
                         <tr class="client-row" data-idx="${i}" onclick="toggleClientExpandRow(this)">
                             <td>
-                                <a href="/panel/client/${client.client_id}/groups/" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}</a>
+                                <a href="/client/${client.client_id}/groups/" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}</a>
                             </td>
                             <td class="text-center">
                                 <span class="count-badge pending">${client.pending}</span>
@@ -95,7 +95,7 @@ document.addEventListener('DOMContentLoaded', function() {
     async function loadBulkClients() {
         if (!bulkClientSelect) return;
         try {
-            const data = await ApiClient.get('/panel/api/clients/active/');
+            const data = await ApiClient.get('/api/clients/active/');
             if (data.success && data.clients) {
                 data.clients.forEach(client => {
                     const opt = document.createElement('option');
@@ -122,7 +122,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!clientId) return;
 
             try {
-                const data = await ApiClient.get(`/panel/api/group/${clientId}/tables/`);
+                const data = await ApiClient.get(`/api/group/${clientId}/tables/`);
                 if (data.success && data.tables) {
                     data.tables.forEach(table => {
                         const opt = document.createElement('option');
@@ -194,7 +194,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (dashDeleteCodeInput) dashDeleteCodeInput.value = '';
         if (dashDeleteConfirmBtn) { dashDeleteConfirmBtn.disabled = true; dashDeleteConfirmBtn.style.opacity = '0.5'; dashDeleteConfirmBtn.textContent = 'Delete All Cards'; }
 
-        ApiClient.post(`/panel/api/table/${tableId}/cards/generate-delete-code/`)
+        ApiClient.post(`/api/table/${tableId}/cards/generate-delete-code/`)
           .then(data => {
             if (data.success) {
               dashDeleteExpectedCode = data.code;
@@ -232,7 +232,7 @@ document.addEventListener('DOMContentLoaded', function() {
             dashDeleteConfirmBtn.disabled = true;
             dashDeleteConfirmBtn.textContent = 'Deleting...';
 
-            ApiClient.post(`/panel/api/table/${dashDeleteTableId}/cards/bulk-delete/`, { delete_all: true, confirmation_code: dashDeleteCodeInput.value.trim() })
+            ApiClient.post(`/api/table/${dashDeleteTableId}/cards/bulk-delete/`, { delete_all: true, confirmation_code: dashDeleteCodeInput.value.trim() })
             .then(data => {
                 dashCloseDeleteAllModal();
                 if (typeof showToast === 'function') showToast(data.message || (data.success ? 'Deleted!' : 'Failed'), data.success ? 'success' : 'error');
@@ -252,7 +252,7 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.disabled = true;
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Preparing...</span>';
 
-        ApiClient.post(`/panel/api/table/${tableId}/cards/download-all/`)
+        ApiClient.post(`/api/table/${tableId}/cards/download-all/`)
         .then(data => {
             if (data.success && data.download_url) {
                 // New streaming mode: single combined ZIP on disk
@@ -304,7 +304,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (dashUpgradeCodeInput) dashUpgradeCodeInput.value = '';
         if (dashUpgradeConfirmBtn) { dashUpgradeConfirmBtn.disabled = true; dashUpgradeConfirmBtn.style.opacity = '0.5'; dashUpgradeConfirmBtn.textContent = 'Upgrade All Classes'; }
 
-        ApiClient.post(`/panel/api/table/${tableId}/cards/generate-upgrade-code/`)
+        ApiClient.post(`/api/table/${tableId}/cards/generate-upgrade-code/`)
           .then(data => {
             if (data.success) {
               dashUpgradeExpectedCode = data.code;
@@ -342,7 +342,7 @@ document.addEventListener('DOMContentLoaded', function() {
             dashUpgradeConfirmBtn.disabled = true;
             dashUpgradeConfirmBtn.textContent = 'Upgrading...';
 
-            ApiClient.post(`/panel/api/table/${dashUpgradeTableId}/cards/upgrade-classes/`, { confirmation_code: dashUpgradeCodeInput.value.trim() })
+            ApiClient.post(`/api/table/${dashUpgradeTableId}/cards/upgrade-classes/`, { confirmation_code: dashUpgradeCodeInput.value.trim() })
             .then(data => {
                 dashCloseUpgradeAllModal();
                 if (typeof showToast === 'function') showToast(data.message || (data.success ? 'Upgraded!' : 'Failed'), data.success ? 'success' : 'error');
@@ -424,7 +424,7 @@ document.addEventListener('DOMContentLoaded', function() {
             formData.append('photos_zip', dashReuploadFileInput.files[0]);
 
             const xhr = new XMLHttpRequest();
-            xhr.open('POST', `/panel/api/table/${dashReuploadTableId}/reupload-task/`);
+            xhr.open('POST', `/api/table/${dashReuploadTableId}/reupload-task/`);
             xhr.setRequestHeader('X-CSRFToken', typeof getCSRFToken === 'function' ? getCSRFToken() : '');
             xhr.timeout = 300000; // 5-minute timeout for upload phase only
 
@@ -444,7 +444,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (dashReuploadStatus) dashReuploadStatus.textContent = 'Processing images...';
                         // Poll for real task progress
                         _dashPollInterval = setInterval(function() {
-                            fetch('/panel/api/task-status/' + data.task_id + '/')
+                            fetch('/api/task-status/' + data.task_id + '/')
                                 .then(function(r) { return r.json(); })
                                 .then(function(t) {
                                     if (t.status === 'completed') {
@@ -515,7 +515,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const esc = typeof escapeHtml === 'function' ? escapeHtml : (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
-        ApiClient.get('/panel/api/print-reprint-overview/?limit=500')
+        ApiClient.get('/api/print-reprint-overview/?limit=500')
             .then(data => {
                 if (!data.success) throw new Error(data.error || 'Failed');
 
@@ -528,16 +528,16 @@ document.addEventListener('DOMContentLoaded', function() {
                             const subRows = tables.map(t => `
                                 <tr class="client-sub-row print-expand-group-${i}" style="display:none">
                                     <td>
-                                        <a href="/panel/print/table/${t.id}/" class="sub-row-name"><i class="fa-solid fa-table"></i> ${esc(t.name)}</a>
+                                        <a href="/print/table/${t.id}/" class="sub-row-name"><i class="fa-solid fa-table"></i> ${esc(t.name)}</a>
                                     </td>
-                                    <td class="text-center"><a href="/panel/print/table/${t.id}/" class="count-badge pending">${t.print_list}</a></td>
-                                    <td class="text-center"><a href="/panel/print/table/${t.id}/" class="count-badge verified">${t.finalized}</a></td>
+                                    <td class="text-center"><a href="/print/table/${t.id}/" class="count-badge pending">${t.print_list}</a></td>
+                                    <td class="text-center"><a href="/print/table/${t.id}/" class="count-badge verified">${t.finalized}</a></td>
                                 </tr>
                             `).join('');
                             return `
                                 <tr class="client-row" data-idx="${i}" data-scope="print" onclick="toggleScopedExpandRow(this)">
                                     <td>
-                                        <a href="/panel/client/${client.id}/groups/" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}</a>
+                                        <a href="/client/${client.id}/groups/" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}</a>
                                     </td>
                                     <td class="text-center"><span class="count-badge pending">${client.print_list}</span></td>
                                     <td class="text-center"><span class="count-badge verified">${client.finalized}</span></td>
@@ -559,16 +559,16 @@ document.addEventListener('DOMContentLoaded', function() {
                             const subRows = tables.map(t => `
                                 <tr class="client-sub-row reprint-expand-group-${i}" style="display:none">
                                     <td>
-                                        <a href="/panel/reprint/table/${t.id}/" class="sub-row-name"><i class="fa-solid fa-table"></i> ${esc(t.name)}</a>
+                                        <a href="/reprint/table/${t.id}/" class="sub-row-name"><i class="fa-solid fa-table"></i> ${esc(t.name)}</a>
                                     </td>
-                                    <td class="text-center"><a href="/panel/reprint/table/${t.id}/" class="count-badge pending">${t.requested}</a></td>
-                                    <td class="text-center"><a href="/panel/reprint/table/${t.id}/" class="count-badge verified">${t.confirmed}</a></td>
+                                    <td class="text-center"><a href="/reprint/table/${t.id}/" class="count-badge pending">${t.requested}</a></td>
+                                    <td class="text-center"><a href="/reprint/table/${t.id}/" class="count-badge verified">${t.confirmed}</a></td>
                                 </tr>
                             `).join('');
                             return `
                                 <tr class="client-row" data-idx="${i}" data-scope="reprint" onclick="toggleScopedExpandRow(this)">
                                     <td>
-                                        <a href="/panel/client/${client.id}/groups/" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}</a>
+                                        <a href="/client/${client.id}/groups/" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}</a>
                                     </td>
                                     <td class="text-center"><span class="count-badge pending">${client.requested}</span></td>
                                     <td class="text-center"><span class="count-badge verified">${client.confirmed}</span></td>

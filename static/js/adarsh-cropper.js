@@ -213,7 +213,7 @@ function cropperApp() {
 
       // Try proxy fallback
       try {
-        var data = await ApiClient.get('/panel/api/engine/status/');
+        var data = await ApiClient.get('/api/engine/status/');
         if (data && data.connected) {
           if (!this.engine.connected) {
             console.log('[Cropper] Engine reconnected via proxy');
@@ -287,7 +287,7 @@ function cropperApp() {
 
       // ── Attempt 2: Django proxy ───────────────────────────────────
       try {
-        var data = await ApiClient.get('/panel/api/engine/status/');
+        var data = await ApiClient.get('/api/engine/status/');
 
         if (data && data.connected) {
           var status = data.status || {};
@@ -336,7 +336,7 @@ function cropperApp() {
     // ══════════════════════════════════════════════════════════════════
     async _checkForUpdates() {
       try {
-        var data = await ApiClient.get('/panel/api/cropper/latest-version/');
+        var data = await ApiClient.get('/api/cropper/latest-version/');
         if (!data || !data.available) {
           this.update.available = false;
           return;
@@ -443,7 +443,7 @@ function cropperApp() {
         } else {
           // ── Django proxy fallback ─────────────────────────────────
           data = await ApiClient.post(
-            '/panel/api/engine/process-folder/',
+            '/api/engine/process-folder/',
             { folder_path: path }
           );
         }
@@ -644,7 +644,7 @@ function cropperApp() {
           data = await resp.json();
         } else {
           data = await ApiClient.get(
-            '/panel/api/engine/preview/?folder=' + encodeURIComponent(folderPath)
+            '/api/engine/preview/?folder=' + encodeURIComponent(folderPath)
           );
         }
 
@@ -662,7 +662,7 @@ function cropperApp() {
             }
             return {
               name: name,
-              url: '/panel/api/engine/serve-image/?path=' + encodeURIComponent(fullPath),
+              url: '/api/engine/serve-image/?path=' + encodeURIComponent(fullPath),
               path: fullPath,
             };
           });
@@ -735,7 +735,7 @@ function cropperApp() {
           data = await resp.json();
         } else {
           data = await ApiClient.get(
-            '/panel/api/engine/preview/?folder=' + encodeURIComponent(tabFolder)
+            '/api/engine/preview/?folder=' + encodeURIComponent(tabFolder)
           );
         }
 
@@ -753,7 +753,7 @@ function cropperApp() {
             }
             return {
               name: name,
-              url: '/panel/api/engine/serve-image/?path=' + encodeURIComponent(fullPath),
+              url: '/api/engine/serve-image/?path=' + encodeURIComponent(fullPath),
               path: fullPath,
             };
           });
@@ -868,7 +868,7 @@ function cropperApp() {
       this.deleteConfirm.deleting = true;
 
       try {
-        var data = await ApiClient.post('/panel/api/engine/delete-image/', {
+        var data = await ApiClient.post('/api/engine/delete-image/', {
           path: path,
         });
 
@@ -973,7 +973,7 @@ function cropperApp() {
         } else {
           // ── Django proxy fallback ─────────────────────────────────
           data = await ApiClient.post(
-            '/panel/api/engine/compress-folder/',
+            '/api/engine/compress-folder/',
             { folder_path: folderPath, target_kb: targetKB }
           );
         }

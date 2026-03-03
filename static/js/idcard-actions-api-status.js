@@ -42,7 +42,7 @@ function refreshCardTable() {
 function refreshStatusCounts() {
     if (typeof TABLE_ID === 'undefined') return;
     if (typeof apiCall !== 'function') return;
-    apiCall('/panel/api/table/' + TABLE_ID + '/status-counts/', 'GET')
+    apiCall('/api/table/' + TABLE_ID + '/status-counts/', 'GET')
         .then(function(data) {
             if (!data.success || !data.status_counts) return;
             var counts = data.status_counts;
@@ -197,7 +197,7 @@ function showWorkflowConfirm(message, onConfirm, options) {
 function verifyCard(cardId) {
     showWorkflowConfirm('Are you sure you want to verify this record?', function() {
         if (typeof apiCall === 'function') {
-            apiCall(`/panel/api/card/${cardId}/status/`, 'POST', { status: 'verified' })
+            apiCall(`/api/card/${cardId}/status/`, 'POST', { status: 'verified' })
                 .then(data => {
                     if (data.success === false) {
                         if (typeof showToast === 'function') showToast(data.message || 'Cannot verify card', false);
@@ -216,7 +216,7 @@ function verifyCard(cardId) {
 function approveCard(cardId) {
     showWorkflowConfirm('Are you sure you want to approve this record?', function() {
         if (typeof apiCall === 'function') {
-            apiCall(`/panel/api/card/${cardId}/status/`, 'POST', { status: 'approved' })
+            apiCall(`/api/card/${cardId}/status/`, 'POST', { status: 'approved' })
                 .then(data => {
                     if (data.success === false) {
                         if (typeof showToast === 'function') showToast(data.message || 'Cannot approve card', false);
@@ -235,7 +235,7 @@ function approveCard(cardId) {
 function unverifyCard(cardId) {
     showWorkflowConfirm('Are you sure you want to move this record back to pending?', function() {
         if (typeof apiCall === 'function') {
-            apiCall(`/panel/api/card/${cardId}/status/`, 'POST', { status: 'pending' })
+            apiCall(`/api/card/${cardId}/status/`, 'POST', { status: 'pending' })
                 .then(data => {
                     if (data.success === false) {
                         if (typeof showToast === 'function') showToast(data.message || 'Error', false);
@@ -254,7 +254,7 @@ function unverifyCard(cardId) {
 function retrieveCard(cardId) {
     showWorkflowConfirm('Are you sure you want to retrieve this record to pending?', function() {
         if (typeof apiCall === 'function') {
-            apiCall(`/panel/api/card/${cardId}/status/`, 'POST', { status: 'pending' })
+            apiCall(`/api/card/${cardId}/status/`, 'POST', { status: 'pending' })
                 .then(data => {
                     if (data.success === false) {
                         if (typeof showToast === 'function') showToast(data.message || 'Error', false);
@@ -273,7 +273,7 @@ function retrieveCard(cardId) {
 function disapproveCard(cardId) {
     showWorkflowConfirm('Are you sure you want to disapprove this record and move it back to pending?', function() {
         if (typeof apiCall === 'function') {
-            apiCall(`/panel/api/card/${cardId}/status/`, 'POST', { status: 'pending' })
+            apiCall(`/api/card/${cardId}/status/`, 'POST', { status: 'pending' })
                 .then(data => {
                     if (data.success === false) {
                         if (typeof showToast === 'function') showToast(data.message || 'Cannot disapprove card', false);
@@ -292,7 +292,7 @@ function disapproveCard(cardId) {
 function moveToDownload(cardId) {
     showWorkflowConfirm('Are you sure you want to move this record to the download list?', function() {
         if (typeof apiCall === 'function') {
-            apiCall(`/panel/api/card/${cardId}/status/`, 'POST', { status: 'download' })
+            apiCall(`/api/card/${cardId}/status/`, 'POST', { status: 'download' })
                 .then(data => {
                     if (data.success === false) {
                         if (typeof showToast === 'function') showToast(data.message || 'Cannot move card', false);

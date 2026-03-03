@@ -47,7 +47,7 @@
     const container = document.getElementById('backupsList');
     if (!container) return;
 
-    fetch('/panel/api/backup/list/')
+    fetch('/api/backup/list/')
       .then(r => r.json())
       .then(data => {
         if (!data.success) return;
@@ -168,7 +168,7 @@
 
   /* ──── Show downloads (fetch full status) ──── */
   window.showBackupDownloads = function (taskId) {
-    fetch('/panel/api/backup/status/' + taskId + '/')
+    fetch('/api/backup/status/' + taskId + '/')
       .then(r => r.json())
       .then(data => {
         if (!data.success) return;
@@ -192,7 +192,7 @@
           const sizeStr = _formatBytes(info.size || 0);
           html += '<div class="backup-download-item">';
           html += '<span><span class="backup-download-name">' + _esc(clientName) + '</span><span class="backup-download-size">(' + sizeStr + ')</span></span>';
-          html += '<a href="/panel/api/backup/download/' + taskId + '/' + cid + '/" class="backup-download-link"><i class="fa-solid fa-download"></i> Download</a>';
+          html += '<a href="/api/backup/download/' + taskId + '/' + cid + '/" class="backup-download-link"><i class="fa-solid fa-download"></i> Download</a>';
           html += '</div>';
         });
         dlContainer.innerHTML = html;
@@ -225,7 +225,7 @@
     const btn = document.getElementById('cancelDeleteBtn');
     btn.disabled = true;
 
-    fetch('/panel/api/backup/' + _activeModalTaskId + '/cancel-auto-delete/', {
+    fetch('/api/backup/' + _activeModalTaskId + '/cancel-auto-delete/', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -278,7 +278,7 @@
     const btn = document.getElementById('deleteNowBtn');
     btn.disabled = true;
 
-    fetch('/panel/api/backup/' + _activeModalTaskId + '/delete-now/', {
+    fetch('/api/backup/' + _activeModalTaskId + '/delete-now/', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

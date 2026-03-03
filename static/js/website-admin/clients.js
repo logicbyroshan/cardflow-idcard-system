@@ -3,7 +3,7 @@
  * CRUD operations for Trusted Clients / Partners
  */
 (function () {
-    const BASE = '/panel/website/api';
+    const BASE = '/website/api';
 
     /* ===== MODAL ===== */
 

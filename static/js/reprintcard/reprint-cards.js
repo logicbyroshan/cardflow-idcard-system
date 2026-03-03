@@ -31,7 +31,7 @@ function updateTabCount(sel, count) {
 }
 
 function refreshStepCounts() {
-  ApiClient.get('/panel/reprint/api/table/' + TABLE_ID + '/step-counts/')
+  ApiClient.get('/reprint/api/table/' + TABLE_ID + '/step-counts/')
     .then(function(data) {
       if (data.status === 'ok') {
         updateTabCount('.reprint-requests-tab .tab-count', data.reprint_list || 0);
@@ -321,7 +321,7 @@ function createPaginator(opts) {
 
   // Confirm API
   function performConfirm(rrIds) {
-    ApiClient.post('/panel/reprint/api/table/' + TABLE_ID + '/confirm/', { rr_ids: rrIds })
+    ApiClient.post('/reprint/api/table/' + TABLE_ID + '/confirm/', { rr_ids: rrIds })
     .then(function(data) {
       if (data.status === 'ok') {
         showToast(data.message || 'Confirmed', 'success');
@@ -343,7 +343,7 @@ function createPaginator(opts) {
 
   // Reject API
   function performReject(rrIds) {
-    ApiClient.post('/panel/reprint/api/table/' + TABLE_ID + '/reject/', { rr_ids: rrIds })
+    ApiClient.post('/reprint/api/table/' + TABLE_ID + '/reject/', { rr_ids: rrIds })
     .then(function(data) {
       if (data.status === 'ok') {
         showToast(data.message || 'Rejected', 'success');
@@ -384,7 +384,7 @@ function createPaginator(opts) {
   }
 
   function fetchReprintListItems(query) {
-    var url = '/panel/reprint/api/table/' + TABLE_ID + '/reprint-list/?q=' + encodeURIComponent(query || '') + '&limit=200';
+    var url = '/reprint/api/table/' + TABLE_ID + '/reprint-list/?q=' + encodeURIComponent(query || '') + '&limit=200';
     ApiClient.get(url)
     .then(function(data) {
       if (data.status === 'ok') renderReprintListItems(data.items || [], data.total || 0);
@@ -533,7 +533,7 @@ function createPaginator(opts) {
 
   // Send to Print API
   function performSendToPrint(rrIds) {
-    ApiClient.post('/panel/reprint/api/table/' + TABLE_ID + '/send-to-print/', { rr_ids: rrIds })
+    ApiClient.post('/reprint/api/table/' + TABLE_ID + '/send-to-print/', { rr_ids: rrIds })
     .then(function(data) {
       if (data.status === 'ok') {
         showToast(data.message || 'Sent to print list', 'success');
@@ -575,7 +575,7 @@ function createPaginator(opts) {
   }
 
   function fetchConfirmedItems(query) {
-    var url = '/panel/reprint/api/table/' + TABLE_ID + '/confirmed-list/?q=' + encodeURIComponent(query || '') + '&limit=200';
+    var url = '/reprint/api/table/' + TABLE_ID + '/confirmed-list/?q=' + encodeURIComponent(query || '') + '&limit=200';
     ApiClient.get(url)
     .then(function(data) {
       if (data.status === 'ok') renderConfirmedItems(data.items || [], data.total || 0);
@@ -718,7 +718,7 @@ function createPaginator(opts) {
   }
 
   function fetchPoolItems(query) {
-    var url = '/panel/reprint/api/table/' + TABLE_ID + '/pool-list/?q=' + encodeURIComponent(query || '') + '&limit=200';
+    var url = '/reprint/api/table/' + TABLE_ID + '/pool-list/?q=' + encodeURIComponent(query || '') + '&limit=200';
     ApiClient.get(url)
     .then(function(data) {
       if (data.status === 'ok') renderPoolItems(data.items || [], data.total || 0);

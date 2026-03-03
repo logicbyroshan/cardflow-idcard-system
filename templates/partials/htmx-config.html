@@ -64,9 +64,9 @@ Usage:
       evt.detail.shouldSwap = false;
       try {
         var data = JSON.parse(evt.detail.xhr.responseText);
-        window.location.href = data.redirect || '/panel/auth/login/';
+        window.location.href = data.redirect || '/auth/login/';
       } catch(e) {
-        window.location.href = '/panel/auth/login/';
+        window.location.href = '/auth/login/';
       }
       return;
     }

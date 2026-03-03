@@ -1,4 +1,4 @@
-const API_BASE = '/panel/staff/api';
+const API_BASE = '/staff/api';
 let availablePermissions = [];
 let availableClients = [];
 let confirmAction = null;

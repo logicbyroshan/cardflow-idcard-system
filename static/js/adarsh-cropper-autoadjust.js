@@ -151,7 +151,7 @@ window.CropperAutoAdjust = {
           }
 
           // ── Save to /edited/ ──
-          fetch('/panel/api/engine/save-edited/', {
+          fetch('/api/engine/save-edited/', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -170,7 +170,7 @@ window.CropperAutoAdjust = {
           .then(function (data) {
             if (data && data.success && data.saved_path) {
               // Construct a served URL from the saved path
-              var servedUrl = '/panel/api/engine/serve-image/?path=' +
+              var servedUrl = '/api/engine/serve-image/?path=' +
                 encodeURIComponent(data.saved_path);
               resolve(servedUrl);
             } else {

@@ -156,7 +156,7 @@ function initSectionFilterDropdown() {
 
 /**
  * Populate class/section filter dropdowns from the server-side API.
- * Calls /panel/api/table/{id}/filter-options/ to get ALL distinct values from the database,
+ * Calls /api/table/{id}/filter-options/ to get ALL distinct values from the database,
  * not just from loaded rows.
  */
 function populateFilterOptions() {
@@ -173,7 +173,7 @@ function populateFilterOptions() {
     // Fetch filter options for ALL statuses (no status param) so users can
     // see every class/section value across the entire table, not just the
     // current list.
-    ApiClient.get('/panel/api/table/' + tableId + '/filter-options/')
+    ApiClient.get('/api/table/' + tableId + '/filter-options/')
         .then(function(data) {
             if (!data || !data.success) return;
 

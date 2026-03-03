@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // ==================== API CALLS ====================
     NS.fetchStaffDetails = async function(staffId) {
         try {
-            var data = await ApiClient.get('/panel/api/staff/' + staffId + '/');
+            var data = await ApiClient.get('/api/staff/' + staffId + '/');
             if (data.success) {
                 return data.staff;
             } else {
@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', function() {
     NS.createStaff = async function(formData) {
         try {
             // Phase 1: File upload removed - always use JSON
-            var data = await ApiClient.post('/panel/api/staff/create/', formData);
+            var data = await ApiClient.post('/api/staff/create/', formData);
             return data;
         } catch (error) {
             return { success: false, message: 'Network error. Please try again.' };
@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', function() {
     NS.updateStaff = async function(staffId, formData) {
         try {
             // Phase 1: File upload removed - always use JSON
-            var data = await ApiClient.post('/panel/api/staff/' + staffId + '/update/', formData);
+            var data = await ApiClient.post('/api/staff/' + staffId + '/update/', formData);
             return data;
         } catch (error) {
             return { success: false, message: 'Network error. Please try again.' };
@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     NS.deleteStaffApi = async function(staffId) {
         try {
-            var data = await ApiClient.post('/panel/api/staff/' + staffId + '/delete/');
+            var data = await ApiClient.post('/api/staff/' + staffId + '/delete/');
             return data;
         } catch (error) {
             return { success: false, message: 'Network error. Please try again.' };
@@ -51,7 +51,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     NS.toggleStaffStatus = async function(staffId) {
         try {
-            var data = await ApiClient.post('/panel/api/staff/' + staffId + '/toggle-status/');
+            var data = await ApiClient.post('/api/staff/' + staffId + '/toggle-status/');
             return data;
         } catch (error) {
             return { success: false, message: 'Network error. Please try again.' };
@@ -134,7 +134,7 @@ document.addEventListener('DOMContentLoaded', function() {
         saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
 
         try {
-            var url = '/panel/api/staff/' + tempPwTargetId + '/set-temp-password/';
+            var url = '/api/staff/' + tempPwTargetId + '/set-temp-password/';
             var result = await ApiClient.post(url, { password: password });
             if (result.success) {
                 closeTempPasswordModal();

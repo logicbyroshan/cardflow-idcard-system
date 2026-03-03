@@ -46,7 +46,7 @@ function saveCellEdit(cell, newValue, cardId, field) {
     `;
     
     // Save via API
-    ApiClient.post(`/panel/api/card/${cardId}/update-field/`, {
+    ApiClient.post(`/api/card/${cardId}/update-field/`, {
         field: field,
         value: finalValue
     })
@@ -178,7 +178,7 @@ window.saveInlineEdit = async function (cardId, fieldName, value) {
         var IMAGE_TYPES = ['photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature', 'image'];
         var finalValue = (!IMAGE_TYPES.includes(fieldName) && typeof value === 'string') ? value.toUpperCase() : value;
 
-        var data = await ApiClient.post('/panel/api/card/' + cardId + '/update-field/', {
+        var data = await ApiClient.post('/api/card/' + cardId + '/update-field/', {
             field: fieldName,
             value: finalValue
         });

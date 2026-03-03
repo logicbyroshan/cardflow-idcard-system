@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', function() {
       // ==================== API CALLS ====================
       NS.fetchClientDetails = async function(clientId) {
         try {
-          var data = await ApiClient.get('/panel/api/client/' + clientId + '/');
+          var data = await ApiClient.get('/api/client/' + clientId + '/');
           if (data.success) {
             return data.client;
           } else {
@@ -32,9 +32,9 @@ document.addEventListener('DOMContentLoaded', function() {
             Object.keys(formData).forEach(function(key) {
               data.append(key, typeof formData[key] === 'boolean' ? (formData[key] ? 'true' : 'false') : formData[key]);
             });
-            return await ApiClient.upload('/panel/api/client/create/', data);
+            return await ApiClient.upload('/api/client/create/', data);
           } else {
-            return await ApiClient.post('/panel/api/client/create/', formData);
+            return await ApiClient.post('/api/client/create/', formData);
           }
         } catch (error) {
           // If the server returned a structured error (from XHR upload or fetch), pass it through
@@ -54,9 +54,9 @@ document.addEventListener('DOMContentLoaded', function() {
             Object.keys(formData).forEach(function(key) {
               data.append(key, typeof formData[key] === 'boolean' ? (formData[key] ? 'true' : 'false') : formData[key]);
             });
-            return await ApiClient.upload('/panel/api/client/' + clientId + '/update/', data);
+            return await ApiClient.upload('/api/client/' + clientId + '/update/', data);
           } else {
-            return await ApiClient.post('/panel/api/client/' + clientId + '/update/', formData);
+            return await ApiClient.post('/api/client/' + clientId + '/update/', formData);
           }
         } catch (error) {
           if (error && error.data && typeof error.data === 'object') return error.data;
@@ -66,7 +66,7 @@ document.addEventListener('DOMContentLoaded', function() {
       
       NS.deleteClientApi = async function(clientId) {
         try {
-          return await ApiClient.post('/panel/api/client/' + clientId + '/delete/', {});
+          return await ApiClient.post('/api/client/' + clientId + '/delete/', {});
         } catch (error) {
           if (error && error.data && typeof error.data === 'object') return error.data;
           return { success: false, message: error && error.message ? error.message : 'Network error. Please try again.' };
@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', function() {
       
       NS.toggleClientStatus = async function(clientId) {
         try {
-          return await ApiClient.post('/panel/api/client/' + clientId + '/toggle-status/', {});
+          return await ApiClient.post('/api/client/' + clientId + '/toggle-status/', {});
         } catch (error) {
           if (error && error.data && typeof error.data === 'object') return error.data;
           return { success: false, message: error && error.message ? error.message : 'Network error. Please try again.' };
@@ -168,8 +168,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         try {
           var url = tempPwTargetType === 'staff'
-            ? '/panel/api/staff/' + tempPwTargetId + '/set-temp-password/'
-            : '/panel/api/client/' + tempPwTargetId + '/set-temp-password/';
+            ? '/api/staff/' + tempPwTargetId + '/set-temp-password/'
+            : '/api/client/' + tempPwTargetId + '/set-temp-password/';
 
           var result = await ApiClient.post(url, { password: password });
           if (result.success) {

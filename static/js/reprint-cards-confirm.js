@@ -1,11 +1,11 @@
-﻿/**
+/**
  * Reprint Cards - Confirm/Reject (Step 2)
  * Split from reprint-cards-actions.js
  */
 (function() {
 'use strict';
 
-/* â”€â”€ Pull shared utilities from namespace â”€â”€ */
+/* ── Pull shared utilities from namespace ── */
 var NS = window.ReprintCardsPage || {};
 var createReprintPaginator = NS.createPaginator;
 var _getCSRFToken  = NS._getCSRFToken;
@@ -15,9 +15,9 @@ var _isImageField  = NS._isImageField;
 var _updateTabCount = NS._updateTabCount;
 var _refreshStepCounts = NS._refreshStepCounts;
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   STEP 2: CONFIRM REPRINT â€” Phase 3
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ══════════════════════════════════════════════════════════════════
+   STEP 2: CONFIRM REPRINT — Phase 3
+   ══════════════════════════════════════════════════════════════════ */
 (function() {
   'use strict';
 
@@ -27,7 +27,7 @@ var _refreshStepCounts = NS._refreshStepCounts;
   if (!TABLE_ID_VAL) return;
   if (STEP !== 'confirm') return;
 
-  // â”€â”€ DOM refs â”€â”€
+  // ── DOM refs ──
   const selectAllCb = document.getElementById('confirmSelectAll');
   const tableBody = document.getElementById('confirmTableBody');
   const searchInput = document.getElementById('confirmSearchInput');
@@ -38,7 +38,7 @@ var _refreshStepCounts = NS._refreshStepCounts;
   const showingRange = document.getElementById('confirmShowingRange');
   const totalCountEl = document.getElementById('confirmTotalCount');
 
-  // â”€â”€ Paginator â”€â”€
+  // ── Paginator ──
   const paginator = createReprintPaginator({
     barId: 'confirmPaginationBar',
     prefix: 'confirm',
@@ -48,7 +48,7 @@ var _refreshStepCounts = NS._refreshStepCounts;
   // Initial pagination on page load
   if (paginator) paginator.paginate();
 
-  // â”€â”€ Helpers (aliases to shared file-scope helpers) â”€â”€
+  // ── Helpers (aliases to shared file-scope helpers) ──
   const getCSRFToken = _getCSRFToken, escapeHtml = _escapeHtml, isImageField = _isImageField, showToast = _showToast;
   function refreshStepCounts() { _refreshStepCounts(TABLE_ID_VAL); }
 
@@ -92,7 +92,7 @@ var _refreshStepCounts = NS._refreshStepCounts;
     }
   }
 
-  // â”€â”€ Select All â”€â”€
+  // ── Select All ──
   if (selectAllCb) {
     selectAllCb.addEventListener('change', function() {
       const checked = this.checked;
@@ -101,7 +101,7 @@ var _refreshStepCounts = NS._refreshStepCounts;
     });
   }
 
-  // â”€â”€ Row Checkboxes (delegated) â”€â”€
+  // ── Row Checkboxes (delegated) ──
   if (tableBody) {
     tableBody.addEventListener('change', function(e) {
       if (e.target.classList.contains('confirmRowCheckbox')) {
@@ -110,7 +110,7 @@ var _refreshStepCounts = NS._refreshStepCounts;
     });
   }
 
-  // â”€â”€ Single Confirm/Reject Buttons (delegated) â”€â”€
+  // ── Single Confirm/Reject Buttons (delegated) ──
   if (tableBody) {
     tableBody.addEventListener('click', function(e) {
       const confirmSingle = e.target.closest('.btn-confirm-single');
@@ -128,7 +128,7 @@ var _refreshStepCounts = NS._refreshStepCounts;
     });
   }
 
-  // â”€â”€ Bulk Confirm Button â”€â”€
+  // ── Bulk Confirm Button ──
   if (confirmBtn) {
     confirmBtn.addEventListener('click', function() {
       const ids = getSelectedRrIds();
@@ -137,7 +137,7 @@ var _refreshStepCounts = NS._refreshStepCounts;
     });
   }
 
-  // â”€â”€ Bulk Reject Button â”€â”€
+  // ── Bulk Reject Button ──
   if (rejectBtn) {
     rejectBtn.addEventListener('click', function() {
       const ids = getSelectedRrIds();
@@ -147,7 +147,7 @@ var _refreshStepCounts = NS._refreshStepCounts;
     });
   }
 
-  // â”€â”€ View Button â”€â”€
+  // ── View Button ──
   if (viewBtn) {
     viewBtn.addEventListener('click', function() {
       const cardIds = getSelectedCardIds();
@@ -158,9 +158,9 @@ var _refreshStepCounts = NS._refreshStepCounts;
     });
   }
 
-  // â”€â”€ Confirm API Call â”€â”€
+  // ── Confirm API Call ──
   function performConfirm(rrIds) {
-    ApiClient.post(`/panel/api/table/${TABLE_ID_VAL}/reprint/confirm/`, { rr_ids: rrIds })
+    ApiClient.post(`/api/table/${TABLE_ID_VAL}/reprint/confirm/`, { rr_ids: rrIds })
     .then(data => {
       if (data.status === 'success') {
         showToast(`${data.confirmed_count} reprint${data.confirmed_count !== 1 ? 's' : ''} confirmed`, 'success');
@@ -177,14 +177,14 @@ var _refreshStepCounts = NS._refreshStepCounts;
       }
     })
     .catch(err => {
-      showToast('Network error â€” please try again', 'error');
+      showToast('Network error — please try again', 'error');
       console.error('[Reprint Confirm] Error:', err);
     });
   }
 
-  // â”€â”€ Reject API Call â”€â”€
+  // ── Reject API Call ──
   function performReject(rrIds) {
-    ApiClient.post(`/panel/api/table/${TABLE_ID_VAL}/reprint/reject/`, { rr_ids: rrIds })
+    ApiClient.post(`/api/table/${TABLE_ID_VAL}/reprint/reject/`, { rr_ids: rrIds })
     .then(data => {
       if (data.status === 'success') {
         showToast(`${data.rejected_count} reprint${data.rejected_count !== 1 ? 's' : ''} rejected`, 'success');
@@ -201,12 +201,12 @@ var _refreshStepCounts = NS._refreshStepCounts;
       }
     })
     .catch(err => {
-      showToast('Network error â€” please try again', 'error');
+      showToast('Network error — please try again', 'error');
       console.error('[Reprint Reject] Error:', err);
     });
   }
 
-  // â”€â”€ Search â”€â”€
+  // ── Search ──
   let searchTimer = null;
 
   if (searchInput) {
@@ -228,9 +228,9 @@ var _refreshStepCounts = NS._refreshStepCounts;
     searchClearBtn.style.display = searchInput && searchInput.value ? '' : 'none';
   }
 
-  // â”€â”€ Fetch Confirm Items API â”€â”€
+  // ── Fetch Confirm Items API ──
   function fetchConfirmItems(query) {
-    const url = `/panel/api/table/${TABLE_ID_VAL}/reprint/confirm-list/?q=${encodeURIComponent(query || '')}&limit=200`;
+    const url = `/api/table/${TABLE_ID_VAL}/reprint/confirm-list/?q=${encodeURIComponent(query || '')}&limit=200`;
 
     ApiClient.get(url)
     .then(data => {
@@ -243,7 +243,7 @@ var _refreshStepCounts = NS._refreshStepCounts;
     });
   }
 
-  // â”€â”€ Render Confirm Items into Table â”€â”€
+  // ── Render Confirm Items into Table ──
   function renderConfirmItems(items, total) {
     if (!tableBody) return;
 
@@ -329,7 +329,7 @@ var _refreshStepCounts = NS._refreshStepCounts;
     if (paginator) { paginator.reset(); paginator.paginate(); }
   }
 
-  // â”€â”€ Update Pagination â”€â”€
+  // ── Update Pagination ──
   function updatePagination() {
     if (!tableBody) return;
     const rows = tableBody.querySelectorAll('tr:not(.no-data-row)');

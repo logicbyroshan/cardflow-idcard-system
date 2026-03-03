@@ -238,7 +238,7 @@
             const ok = await waConfirm({ title: 'Delete Hero Image?', text: 'This image will be permanently removed.', icon: 'fa-solid fa-trash' });
             if (!ok) return;
             try {
-                const res = await fetch(`/panel/website/api/hero-images/${id}/delete/`, {
+                const res = await fetch(`/website/api/hero-images/${id}/delete/`, {
                     method: 'POST',
                     headers: { 'X-CSRFToken': CSRF },
                 });
@@ -255,7 +255,7 @@
             const fd = new FormData();
             fd.append('is_active', isActive ? 'false' : 'true');
             try {
-                const res = await fetch(`/panel/website/api/hero-images/${id}/update/`, {
+                const res = await fetch(`/website/api/hero-images/${id}/update/`, {
                     method: 'POST',
                     headers: { 'X-CSRFToken': CSRF },
                     body: fd,
@@ -275,7 +275,7 @@
             fd.append('title', title);
             fd.append('subtitle', subtitle);
             try {
-                const res = await fetch(`/panel/website/api/hero-images/${id}/update/`, {
+                const res = await fetch(`/website/api/hero-images/${id}/update/`, {
                     method: 'POST',
                     headers: { 'X-CSRFToken': CSRF },
                     body: fd,

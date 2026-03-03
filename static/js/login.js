@@ -143,7 +143,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setButtonLoading(this, true);
         
         try {
-            const data = await safePost('/panel/api/auth/check-email/', { email, role: selectedRole });
+            const data = await safePost('/api/auth/check-email/', { email, role: selectedRole });
             if (data.success) {
                 userName = data.user_name;
                 document.getElementById('displayUserName').textContent = userName;
@@ -185,7 +185,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setButtonLoading(this, true);
         
         try {
-            const data = await safePost('/panel/api/auth/login/', { email, password, role: selectedRole });
+            const data = await safePost('/api/auth/login/', { email, password, role: selectedRole });
             if (data.success) {
                 showMessage('Login successful! Redirecting...', 'success');
                 // Respect ?next= param (e.g. from PWA → login redirect)
@@ -197,7 +197,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!safeNext) {
                     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
                     if (isMobile) {
-                        redirectTo = '/panel/app/';
+                        redirectTo = '/app/';
                     }
                 }
 
@@ -228,7 +228,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setButtonLoading(btnLogin, true);
         
         try {
-            const data = await safePost('/panel/api/auth/forgot-password/', { email, role: selectedRole });
+            const data = await safePost('/api/auth/forgot-password/', { email, role: selectedRole });
             if (data.success) {
                 // Show OTP step
                 goToStep(4);
@@ -296,7 +296,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     btnResendOtp.addEventListener('click', async function() {
         try {
-            const data = await safePost('/panel/api/auth/forgot-password/', { email, role: selectedRole });
+            const data = await safePost('/api/auth/forgot-password/', { email, role: selectedRole });
             if (data.success) {
                 showMessage('OTP sent successfully!', 'success');
                 startResendTimer();
@@ -320,7 +320,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setButtonLoading(this, true);
         
         try {
-            const data = await safePost('/panel/api/auth/verify-otp/', { email, otp });
+            const data = await safePost('/api/auth/verify-otp/', { email, otp });
             if (data.success) {
                 resetToken = data.reset_token;
                 goToStep(5);
@@ -370,7 +370,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setButtonLoading(this, true);
         
         try {
-            const data = await safePost('/panel/api/auth/reset-password/', {
+            const data = await safePost('/api/auth/reset-password/', {
                 email,
                 reset_token: resetToken,
                 new_password: newPassword,

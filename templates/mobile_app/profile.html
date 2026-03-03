@@ -148,7 +148,7 @@
 
     <!-- Logout -->
     <div class="px-4 pb-6">
-        <form method="post" action="/panel/auth/logout/">
+        <form method="post" action="/auth/logout/">
             {% csrf_token %}
             <input type="hidden" name="next" value="/app/">
             <button type="submit" class="block w-full py-3 text-center text-sm font-semibold text-red-500 bg-red-50 border border-red-100 rounded-2xl hover:bg-red-100 transition">

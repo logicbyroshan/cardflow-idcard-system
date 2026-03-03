@@ -152,7 +152,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     GSP.downloadTableFields = async function(tableId) {
         try {
-            const data = await ApiClient.get(`/panel/api/table/${tableId}/`);
+            const data = await ApiClient.get(`/api/table/${tableId}/`);
 
             if (!data.success) {
                 showToast(data.message || 'Error fetching table data', 'error');
@@ -197,7 +197,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     GSP.fetchTableData = async function(tableId) {
         try {
-            const data = await ApiClient.get(`/panel/api/table/${tableId}/`);
+            const data = await ApiClient.get(`/api/table/${tableId}/`);
             if (data.success) return data.table;
             showToast(data.message || 'Error fetching table data', 'error');
             return null;
@@ -232,7 +232,7 @@ document.addEventListener('DOMContentLoaded', function() {
         };
 
         try {
-            let url = GSP.currentMode === 'add' ? `/panel/api/group/${GSP.groupId}/table/create/` : `/panel/api/table/${GSP.selectedTableId}/update/`;
+            let url = GSP.currentMode === 'add' ? `/api/group/${GSP.groupId}/table/create/` : `/api/table/${GSP.selectedTableId}/update/`;
             const data = await ApiClient.post(url, payload);
 
             if (data.success) {
@@ -268,7 +268,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (GSP.modalConfirm) GSP.modalConfirm.disabled = true;
 
         try {
-            const data = await ApiClient.post(`/panel/api/table/${GSP.selectedTableId}/toggle-status/`);
+            const data = await ApiClient.post(`/api/table/${GSP.selectedTableId}/toggle-status/`);
 
             if (data.success) {
                 showToast(data.message || 'Status updated!', 'success');

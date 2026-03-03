@@ -22,7 +22,7 @@ async function loadMoreData() {
     window.IDCardApp._showLazyLoadIndicator(true);
     
     try {
-        const url = `/panel/api/table/${_ts.lazyLoadState.tableId}/cards/?${window.IDCardApp._buildFilterParams()}`;
+        const url = `/api/table/${_ts.lazyLoadState.tableId}/cards/?${window.IDCardApp._buildFilterParams()}`;
         
         const data = await ApiClient.get(url);
         

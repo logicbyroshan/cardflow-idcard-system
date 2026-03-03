@@ -33,7 +33,7 @@ async function _loadExportTemplates(force) {
         return;
     }
     try {
-        const resp = await fetch('/panel/api/export-templates/', {
+        const resp = await fetch('/api/export-templates/', {
             headers: { 'Accept': 'application/json' }
         });
         if (resp.ok) {
@@ -248,7 +248,7 @@ function initReuploadHandlers() {
             formData.append('card_ids', JSON.stringify(pendingReuploadCardIds));
             formData.append('status', _getCurrentStatus());
 
-            const uploadUrl = `/panel/api/table/${tableId}/reupload-task/`;
+            const uploadUrl = `/api/table/${tableId}/reupload-task/`;
             const xhr = new XMLHttpRequest();
             xhr.open('POST', uploadUrl, true);
             xhr.setRequestHeader('X-CSRFToken', typeof getCSRFToken === 'function' ? getCSRFToken() : '');
@@ -295,10 +295,12 @@ function initReuploadHandlers() {
                         if (reuploadActionsBar) reuploadActionsBar.style.width = '80%';
                         if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Processing images...';
                         // Poll for real task progress
+                        let _actPollErrors = 0;
                         _actPollInterval = setInterval(function() {
-                            fetch('/panel/api/task-status/' + result.task_id + '/')
+                            fetch('/api/task-status/' + result.task_id + '/')
                                 .then(function(r) { return r.json(); })
                                 .then(function(t) {
+                                    _actPollErrors = 0;
                                     if (t.status === 'completed') {
                                         clearInterval(_actPollInterval);
                                         if (reuploadActionsBar) reuploadActionsBar.style.width = '100%';
@@ -327,7 +329,17 @@ function initReuploadHandlers() {
                                         if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Processing: ' + (t.progress || 0) + '/' + (t.total || '?') + ' images...';
                                     }
                                 })
-                                .catch(function() {}); // ignore transient network errors during polling
+                                .catch(function(err) {
+                                    _actPollErrors++;
+                                    console.warn('[Reupload] Poll error #' + _actPollErrors + ':', err);
+                                    if (_actPollErrors >= 5) {
+                                        clearInterval(_actPollInterval);
+                                        if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Lost connection to server. Task may still be running — refresh to check.';
+                                        if (typeof showToast === 'function') showToast('Lost connection while tracking progress. Please refresh.', false);
+                                        reuploadActionsConfirmBtn.disabled = false;
+                                        reuploadActionsConfirmBtn.textContent = 'Upload & Match';
+                                    }
+                                });
                         }, 2000);
                     } else {
                         if (reuploadActionsStatus) reuploadActionsStatus.textContent = result.message || 'Failed';

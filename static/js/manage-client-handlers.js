@@ -231,7 +231,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       async function fetchClientStaff(clientId) {
         try {
-          var data = await ApiClient.get('/panel/api/client/' + clientId + '/staff/');
+          var data = await ApiClient.get('/api/client/' + clientId + '/staff/');
           if (data.success) {
             return data;
           } else {
@@ -353,7 +353,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!NS.selectedClientId || !NS.isSuperAdmin) return;
 
         try {
-          var result = await ApiClient.post('/panel/api/client/' + NS.selectedClientId + '/staff/' + staffId + '/toggle-status/', {});
+          var result = await ApiClient.post('/api/client/' + NS.selectedClientId + '/staff/' + staffId + '/toggle-status/', {});
 
           if (result.success) {
             showToast(result.message, 'success');

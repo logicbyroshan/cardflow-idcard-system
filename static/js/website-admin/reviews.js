@@ -3,7 +3,7 @@
  * CRUD operations for Testimonials / Reviews
  */
 (function () {
-    const BASE = '/panel/website/api';
+    const BASE = '/website/api';
 
     /* ===== MODAL ===== */
 

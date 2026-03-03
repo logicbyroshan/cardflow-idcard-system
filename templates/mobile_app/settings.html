@@ -124,7 +124,7 @@
                     <i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
                 </a>
                 {% if is_super_admin or is_admin_staff %}
-                <a href="/panel/" class="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition">
+                <a href="/" class="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition">
                     <div class="flex items-center gap-3">
                         <div class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center"><i class="fa-solid fa-desktop text-gray-500 text-xs"></i></div>
                         <span class="text-sm text-gray-700">Desktop Panel</span>
@@ -173,7 +173,7 @@
 
     <!-- Logout -->
     <div class="px-4 pt-4 pb-4">
-        <form method="post" action="/panel/auth/logout/">
+        <form method="post" action="/auth/logout/">
             {% csrf_token %}
             <input type="hidden" name="next" value="/app/">
             <button type="submit" class="block w-full py-3 text-center text-sm font-semibold text-red-500 bg-red-50 border border-red-100 rounded-2xl hover:bg-red-100 transition">

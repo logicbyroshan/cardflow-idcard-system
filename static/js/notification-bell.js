@@ -62,7 +62,7 @@
   /* ── Poll Unread Count ── */
   async function pollUnreadCount() {
     try {
-      const res = await fetch('/panel/api/notifications/unread-count/');
+      const res = await fetch('/api/notifications/unread-count/');
       if (!res.ok) return;
       const data = await res.json();
       if (data.success) {
@@ -91,7 +91,7 @@
     if (!list) return;
 
     try {
-      const res = await fetch('/panel/api/notifications/list/?limit=15');
+      const res = await fetch('/api/notifications/list/?limit=15');
       if (!res.ok) return;
       const data = await res.json();
       if (!data.success) return;
@@ -131,7 +131,7 @@
   /* ── Mark Read ── */
   window.markNotificationRead = async function(id, el) {
     try {
-      await fetch(`/panel/api/notifications/${id}/read/`, {
+      await fetch(`/api/notifications/${id}/read/`, {
         method: 'POST',
         headers: { 'X-CSRFToken': getCsrfTokenBell() },
       });
@@ -149,7 +149,7 @@
   /* ── Mark All Read ── */
   window.markAllNotificationsRead = async function() {
     try {
-      await fetch('/panel/api/notifications/mark-all-read/', {
+      await fetch('/api/notifications/mark-all-read/', {
         method: 'POST',
         headers: { 'X-CSRFToken': getCsrfTokenBell() },
       });

@@ -57,7 +57,7 @@
             return Promise.resolve();
         }
 
-        var url = '/panel/api/table/' + tableId + '/modals-html/';
+        var url = '/api/table/' + tableId + '/modals-html/';
 
         _promise = fetch(url, {
             method: 'GET',

@@ -81,8 +81,8 @@
     var isClientRole = {% if is_client or is_client_staff %}true{% else %}false{% endif %};
     var groupId = {% if group %}{{ group.id }}{% else %}null{% endif %};
     var apiUrl = isClientRole
-      ? '/panel/client/api/create-from-xlsx/'
-      : '/panel/api/group/' + groupId + '/table/create-from-xlsx/';
+      ? '/client/api/create-from-xlsx/'
+      : '/api/group/' + groupId + '/table/create-from-xlsx/';
     initCreateWithXlsx({
       apiUrl: apiUrl,
       csrfToken: '{{ csrf_token }}',

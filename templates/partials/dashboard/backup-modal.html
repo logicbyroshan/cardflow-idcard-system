@@ -51,7 +51,7 @@
     document.getElementById('backupCodeInput').value = '';
     document.getElementById('backupCodeError').style.display = 'none';
     // Generate code
-    fetch('/panel/api/backup/generate-code/')
+    fetch('/api/backup/generate-code/')
       .then(r => r.json())
       .then(data => {
         if(data.success) {
@@ -88,7 +88,7 @@
     btn.disabled = true;
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing…';
 
-    fetch('/panel/api/backup/initiate/', {
+    fetch('/api/backup/initiate/', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
