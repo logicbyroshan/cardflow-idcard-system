@@ -162,11 +162,14 @@ class IDCardCardService(BaseService):
     @classmethod
     def serialize_card(cls, card: IDCard, sr_no: int = None, table_fields: List[dict] = None) -> Dict[str, Any]:
         """Serialize IDCard to dict"""
+        # Strip internal __ref_ keys (used by reupload processor for matching)
+        fd = card.field_data or {}
+        public_fd = {k: v for k, v in fd.items() if not k.startswith('__')}
         data = {
             'id': card.id,
             'table_id': card.table_id,
-            'field_data': card.field_data,
-            'photo': (card.field_data or {}).get('PHOTO') or (card.photo.url if card.photo else None),
+            'field_data': public_fd,
+            'photo': fd.get('PHOTO') or (card.photo.url if card.photo else None),
             'status': card.status,
             'status_display': card.get_status_display(),
             'created_at': localtime(card.created_at).strftime('%d-%b-%Y %H:%M'),

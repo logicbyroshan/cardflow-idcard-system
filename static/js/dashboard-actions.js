@@ -423,10 +423,26 @@ document.addEventListener('DOMContentLoaded', function() {
             const formData = new FormData();
             formData.append('photos_zip', dashReuploadFileInput.files[0]);
 
+            const uploadUrl = `/api/table/${dashReuploadTableId}/reupload-task/`;
+
+            // ── Diagnostic: pre-flight connectivity check ──
+            console.log('[Dashboard Reupload] Pre-flight check: verifying server connectivity...');
+            fetch('/api/health/', { method: 'GET', cache: 'no-store' })
+                .then(function(r) { console.log('[Dashboard Reupload] Pre-flight OK — server reachable (HTTP ' + r.status + ')'); })
+                .catch(function(e) { console.error('[Dashboard Reupload] Pre-flight FAILED — server unreachable:', e.message); });
+
             const xhr = new XMLHttpRequest();
-            xhr.open('POST', `/api/table/${dashReuploadTableId}/reupload-task/`);
-            xhr.setRequestHeader('X-CSRFToken', typeof getCSRFToken === 'function' ? getCSRFToken() : '');
+            xhr.open('POST', uploadUrl);
+            const _csrfToken = typeof getCSRFToken === 'function' ? getCSRFToken() : '';
+            xhr.setRequestHeader('X-CSRFToken', _csrfToken);
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
             xhr.timeout = 300000; // 5-minute timeout for upload phase only
+            const _fileSizeKB = Math.round(dashReuploadFileInput.files[0].size / 1024);
+            const _fileSizeMB = (_fileSizeKB / 1024).toFixed(1);
+            console.log('[Dashboard Reupload] Starting upload to', uploadUrl,
+                '| File:', dashReuploadFileInput.files[0].name,
+                '| Size:', _fileSizeKB + 'KB (' + _fileSizeMB + 'MB)',
+                '| CSRF token:', _csrfToken ? 'present (' + _csrfToken.substring(0, 8) + '...)' : 'MISSING');
 
             xhr.upload.onprogress = function(e) {
                 if (e.lengthComputable) {
@@ -487,7 +503,14 @@ document.addEventListener('DOMContentLoaded', function() {
             };
 
             xhr.onerror = function() {
-                if (typeof showToast === 'function') showToast('Upload failed. Check your connection and try again.', 'error');
+                console.error('[Dashboard Reupload] XHR onerror — status:', xhr.status, 'readyState:', xhr.readyState,
+                    '| This usually means Nginx rejected the upload (check: sudo tail -f /var/log/nginx/error.log)',
+                    '| File size:', _fileSizeMB + 'MB — ensure Nginx has: client_max_body_size 1000M;');
+                const errMsg = xhr.status === 0
+                    ? 'Upload failed. Connection was reset — Nginx likely rejected the file. Check Nginx error log.'
+                    : 'Upload failed. Check your connection and try again.';
+                if (typeof showToast === 'function') showToast(errMsg, 'error');
+                if (dashReuploadStatus) dashReuploadStatus.textContent = errMsg;
                 dashReuploadConfirmBtn.disabled = false; dashReuploadConfirmBtn.textContent = 'Upload & Match';
                 if (dashReuploadProgress) dashReuploadProgress.style.display = 'none';
             };

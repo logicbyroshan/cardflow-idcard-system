@@ -181,7 +181,7 @@ def process_reupload_images(task):
                 card_updated = False
                 
                 for img_field in image_field_names:
-                    current_value = field_data.get(img_field, '')
+                    current_value = field_data.get(img_field) or ''
                     
                     # ── Determine what to match against ──────────────────
                     # We try up to THREE strategies in priority order so
@@ -305,6 +305,18 @@ def process_reupload_images(task):
                 pending_media_deletes = []
                 pending_media_creates = []
                 _db_retry(lambda _idx=idx: task.update_progress(_idx + 1))
+
+        # Safety flush: if the iterator returned fewer rows than total_cards
+        # (e.g. cards deleted mid-iteration), the in-loop condition
+        # `idx == total_cards - 1` never fires and the last batch is lost.
+        if pending_updates or pending_media_creates:
+            _flush_batch(
+                pending_updates, pending_media_deletes,
+                pending_media_creates, IDCard, ImageService, client,
+            )
+            pending_updates = []
+            pending_media_deletes = []
+            pending_media_creates = []
 
         # Build result
         result_msg = f"Updated {updated_count} cards with {matched_count} images matched"

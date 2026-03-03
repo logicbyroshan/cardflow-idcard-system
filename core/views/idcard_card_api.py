@@ -289,7 +289,9 @@ def api_idcard_cards_json(request, table_id):
             'sr_no': sr_base + idx + 1,
             'status': card.status,
             'status_display': card.get_status_display(),
-            'field_data': fd,
+            # Strip internal __ref_ keys (original photo references used by
+            # the reupload processor) — they're not useful to the frontend.
+            'field_data': {k: v for k, v in fd.items() if not k.startswith('__')},
             'ordered_fields': ordered,
             'updated_at': localtime(card.updated_at).strftime('%d-%b-%Y %H:%M') if card.updated_at else None,
             'updated_at_iso': card.updated_at.isoformat() if card.updated_at else None,

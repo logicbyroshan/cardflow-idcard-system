@@ -156,33 +156,37 @@ function downloadImages(cardIds) {
                         }
                         
                         const zipInfo = response.zip_files[downloadIndex];
-                        
-                        fetch('data:application/zip;base64,' + zipInfo.data)
-                        .then(function(r) { return r.blob(); })
-                        .then(function(blob) {
+
+                        try {
+                            // CSP-safe base64 → Blob (no fetch('data:') needed)
+                            var bin = atob(zipInfo.data);
+                            var bytes = new Uint8Array(bin.length);
+                            for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+                            var blob = new Blob([bytes], { type: 'application/zip' });
+
                             const url = window.URL.createObjectURL(blob);
                             const a = document.createElement('a');
                             a.style.display = 'none';
                             a.href = url;
                             a.download = zipInfo.filename;
-                            
+
                             document.body.appendChild(a);
                             a.click();
-                            
+
                             window.URL.revokeObjectURL(url);
                             document.body.removeChild(a);
-                            
+
                             downloadIndex++;
-                            
+
                             if (typeof showProgressToast === 'function') {
                                 showProgressToast(`Downloading ${downloadIndex}/${totalZips} ZIPs...`, Math.round((downloadIndex / totalZips) * 100));
                             }
-                            
+
                             setTimeout(downloadNextZip, 300);
-                        }).catch(function(err) {
+                        } catch (err) {
                             console.error('ZIP download failed:', err);
                             if (typeof showToast === 'function') showToast('Failed to download ZIP file', false);
-                        });
+                        }
                     }
                     
                     downloadNextZip();

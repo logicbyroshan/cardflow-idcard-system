@@ -583,19 +583,22 @@
                             var zipInfo = response.zip_files[downloadIndex];
                             _updateToast(dl, downloadIndex, totalZips);
 
-                            fetch('data:application/zip;base64,' + zipInfo.data)
-                                .then(function (r) { return r.blob(); })
-                                .then(function (blob) {
-                                    _triggerBlobDownload(blob, zipInfo.filename);
-                                    downloadIndex++;
-                                    var pctEl = dl.toastEl ? dl.toastEl.querySelector('.dl-toast-pct') : null;
-                                    if (pctEl) pctEl.textContent = downloadIndex + '/' + totalZips;
-                                    setTimeout(downloadNextZip, 300);
-                                })
-                                .catch(function (err) {
-                                    console.error('ZIP download failed:', err);
-                                    _finishToast(dl, 'error', 'Failed to process ZIP file');
-                                });
+                            try {
+                                // CSP-safe base64 → Blob (no fetch('data:') needed)
+                                var bin = atob(zipInfo.data);
+                                var bytes = new Uint8Array(bin.length);
+                                for (var j = 0; j < bin.length; j++) bytes[j] = bin.charCodeAt(j);
+                                var blob = new Blob([bytes], { type: 'application/zip' });
+
+                                _triggerBlobDownload(blob, zipInfo.filename);
+                                downloadIndex++;
+                                var pctEl = dl.toastEl ? dl.toastEl.querySelector('.dl-toast-pct') : null;
+                                if (pctEl) pctEl.textContent = downloadIndex + '/' + totalZips;
+                                setTimeout(downloadNextZip, 300);
+                            } catch (err) {
+                                console.error('ZIP download failed:', err);
+                                _finishToast(dl, 'error', 'Failed to process ZIP file');
+                            }
                         }
 
                         downloadNextZip();
