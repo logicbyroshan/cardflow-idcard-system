@@ -363,6 +363,7 @@ class IDCardCardService(BaseService):
             )
 
         except Exception as e:
+            logger.error("list_cards error for table_id=%s: %s", table_id, e, exc_info=True)
             return ServiceResult(success=False, message=str(e))
 
     @classmethod

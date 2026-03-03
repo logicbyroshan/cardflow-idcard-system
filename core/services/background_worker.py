@@ -85,10 +85,23 @@ class BackgroundWorker:
         Routes to appropriate handler based on task_type.
         Handles all exceptions and updates task status accordingly.
         Includes a failsafe timeout of TASK_TIMEOUT_SECONDS.
+        
+        CRITICAL: Runs inside a ThreadPoolExecutor thread — not a Django
+        request/response cycle.  We must close stale DB connections at
+        the start (and on error) so PostgreSQL and SQLite both get a
+        fresh, healthy connection.
         """
         from core.models import BackgroundTask
         from django.utils import timezone
+        from django.db import close_old_connections
         from datetime import timedelta
+        
+        # ── Close stale/inherited DB connections ──
+        # Django DB connections are thread-local.  In a long-lived
+        # ThreadPoolExecutor thread the connection can outlive
+        # PostgreSQL's idle timeout or be leftover from a previous
+        # task.  close_old_connections() ensures a fresh connection.
+        close_old_connections()
         
         try:
             task = BackgroundTask.objects.get(id=task_id)
@@ -163,6 +176,14 @@ class BackgroundWorker:
             except Exception as mark_err:
                 logger.warning('Failed to mark task %d as failed: %s', task_id, mark_err)
         finally:
+            # ── Close DB connections after task completes ──
+            # Prevents the background thread from holding an idle
+            # PostgreSQL connection open until the next task arrives.
+            try:
+                from django.db import close_old_connections
+                close_old_connections()
+            except Exception:
+                pass
             # Periodic cleanup of orphaned temp/export files.
             # Both functions are rate-limited internally (_MIN_CLEANUP_INTERVAL=1h)
             # so concurrent workers or rapid task completions skip the scan cheaply.

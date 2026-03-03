@@ -16,11 +16,59 @@ Usage:
 """
 import os
 import logging
+import time
 import zipfile
 
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
+
+
+def _db_retry(fn, max_retries=5, base_delay=1.0):
+    """
+    Retry a callable that does DB writes.
+
+    Handles:
+    - SQLite  : 'database is locked' (single-writer contention)
+    - PostgreSQL: stale / dropped connections
+        - InterfaceError  ('connection already closed')
+        - OperationalError('server closed the connection unexpectedly')
+
+    On a connection-level error we call close_old_connections() so Django
+    opens a fresh connection on the next attempt.
+    """
+    from django.db.utils import OperationalError, InterfaceError
+    last_err = None
+    for attempt in range(max_retries):
+        try:
+            return fn()
+        except (OperationalError, InterfaceError) as e:
+            err_str = str(e).lower()
+            is_lock = 'database is locked' in err_str
+            is_conn = (
+                isinstance(e, InterfaceError)
+                or 'server closed the connection' in err_str
+                or 'connection already closed' in err_str
+                or 'could not connect to server' in err_str
+                or 'ssl connection has been closed' in err_str
+            )
+            if not (is_lock or is_conn):
+                raise  # not a transient issue — propagate immediately
+            last_err = e
+            delay = base_delay * (2 ** attempt)  # 1, 2, 4, 8, 16 s
+            logger.warning(
+                "DB transient error (attempt %d/%d), retrying in %.1fs: %s",
+                attempt + 1, max_retries, delay, e,
+            )
+            if is_conn:
+                try:
+                    from django.db import close_old_connections
+                    close_old_connections()
+                except Exception:
+                    pass
+            time.sleep(delay)
+    # All retries exhausted
+    raise last_err
 
 
 def process_reupload_images(task):
@@ -95,7 +143,7 @@ def process_reupload_images(task):
         task.mark_failed("No cards found to reupload images")
         return
     
-    task.update_progress(0, total_cards)
+    _db_retry(lambda: task.update_progress(0, total_cards))
     _open_zip = None  # Kept open for entire card loop; closed in finally
 
     try:
@@ -122,9 +170,12 @@ def process_reupload_images(task):
         matched_count = 0
         errors = []
         batch_counter = 0
-        pending_updates = []  # Accumulated cards for bulk_update; flushed every 50
+        pending_updates = []  # Accumulated cards for bulk_update; flushed every FLUSH_EVERY
+        pending_media_deletes = []  # (card_pk, field_name) tuples for batch CardMedia cleanup
+        pending_media_creates = []  # kwargs dicts for batch CardMedia creation
+        FLUSH_EVERY = 100  # larger batches → fewer DB writes → less lock contention
 
-        for idx, card in enumerate(cards_qs.iterator(chunk_size=100)):
+        for idx, card in enumerate(cards_qs.iterator(chunk_size=200)):
             try:
                 field_data = card.field_data or {}
                 card_updated = False
@@ -132,18 +183,31 @@ def process_reupload_images(task):
                 for img_field in image_field_names:
                     current_value = field_data.get(img_field, '')
                     
-                    # Determine what to match against
+                    # ── Determine what to match against ──────────────────
+                    # We try up to THREE strategies in priority order so
+                    # that both old cards (no __ref_) and new cards match.
                     match_key = None
                     existing_path = None
                     
                     if current_value.startswith('PENDING:'):
-                        # Extract reference from PENDING:reference
+                        # Strategy 1: PENDING:reference  (always works)
                         match_key = BaseService.normalize_image_identifier(current_value[8:])
                     elif current_value and current_value not in ('NOT_FOUND', ''):
-                        # Has existing image - extract filename for matching
+                        # Has existing saved image
                         existing_path = current_value
-                        existing_filename = os.path.splitext(os.path.basename(current_value))[0]
-                        match_key = BaseService.normalize_image_identifier(existing_filename)
+                        # Strategy 2: stored original reference (added by bulk upload)
+                        ref_key = f'__ref_{img_field}'
+                        original_ref = field_data.get(ref_key, '')
+                        if original_ref:
+                            match_key = BaseService.normalize_image_identifier(original_ref)
+                        else:
+                            # Strategy 3 (fallback): auto-generated filename
+                            # Works only when user names ZIP files to match the
+                            # saved filenames (rare, but keeps backward compat).
+                            existing_filename = os.path.splitext(
+                                os.path.basename(current_value)
+                            )[0]
+                            match_key = BaseService.normalize_image_identifier(existing_filename)
                     else:
                         continue
                     
@@ -173,14 +237,16 @@ def process_reupload_images(task):
                             errors.append(f"Card {card.pk}: Invalid image - {error_msg}")
                             continue
                         
-                        # Save image using single-authority entry point
+                        # Save image FILE to disk (no DB writes yet)
+                        # Pass card=None so replace_image/save_new_image
+                        # skip the per-card CardMedia atomic() block.
                         if existing_path:
                             result = ImageService.replace_image(
                                 image_bytes=image_bytes,
                                 client=client,
                                 field_name=img_field,
                                 existing_path=existing_path,
-                                card=card,
+                                card=None,  # defer CardMedia to batch
                                 batch_counter=batch_counter,
                                 original_ext=zip_entry['ext'],
                             )
@@ -189,14 +255,29 @@ def process_reupload_images(task):
                                 image_bytes=image_bytes,
                                 client=client,
                                 field_name=img_field,
-                                card=card,
+                                card=None,  # defer CardMedia to batch
                                 batch_counter=batch_counter,
                                 original_ext=zip_entry['ext'],
                             )
                         
                         if result.success and result.data.get('final_value'):
-                            field_data[img_field] = result.data['final_value']
+                            saved_path = result.data['final_value']
+                            field_data[img_field] = saved_path
+                            # Preserve original reference for future reuploads
+                            # (the ZIP entry's original name without extension)
+                            ref_key = f'__ref_{img_field}'
+                            if not field_data.get(ref_key):
+                                field_data[ref_key] = zip_entry.get('original_name', '').rsplit('.', 1)[0] or match_key
                             card_updated = True
+                            # Queue CardMedia ops for batch flush
+                            if existing_path:
+                                pending_media_deletes.append((card.pk, img_field))
+                            pending_media_creates.append({
+                                'card': card,
+                                'client': client,
+                                'saved_path': saved_path,
+                                'field_name': img_field,
+                            })
                             logger.debug("Reupload: Card %s field %s updated", card.pk, img_field)
                         else:
                             errors.append(f"Card {card.pk}: Failed to save - {result.message}")
@@ -214,23 +295,21 @@ def process_reupload_images(task):
                 errors.append(f"Card {card.pk}: {str(card_err)}")
                 logger.error("Error processing card %d: %s", card.pk, card_err)
             
-            # Flush bulk updates + report progress every 50 cards
-            if (idx + 1) % 50 == 0 or idx == total_cards - 1:
-                if pending_updates:
-                    from django.utils import timezone as _tz
-                    _now = _tz.now()
-                    for _c in pending_updates:
-                        _c.updated_at = _now
-                    IDCard.objects.bulk_update(
-                        pending_updates, ['field_data', 'updated_at'], batch_size=50
-                    )
-                    pending_updates = []
-                task.update_progress(idx + 1)
+            # Flush bulk updates + CardMedia + progress every FLUSH_EVERY cards
+            if (idx + 1) % FLUSH_EVERY == 0 or idx == total_cards - 1:
+                _flush_batch(
+                    pending_updates, pending_media_deletes,
+                    pending_media_creates, IDCard, ImageService, client,
+                )
+                pending_updates = []
+                pending_media_deletes = []
+                pending_media_creates = []
+                _db_retry(lambda _idx=idx: task.update_progress(_idx + 1))
 
         # Build result
         result_msg = f"Updated {updated_count} cards with {matched_count} images matched"
 
-        # Store results in metadata
+        # Store results in metadata (with retry)
         task.metadata['result'] = {
             'updated_count': updated_count,
             'matched_count': matched_count,
@@ -238,10 +317,10 @@ def process_reupload_images(task):
             'error_count': len(errors),
             'errors': errors[:10] if errors else []
         }
-        task.save(update_fields=['metadata'])
+        _db_retry(lambda: task.save(update_fields=['metadata']))
 
-        # Mark completed
-        task.mark_completed()
+        # Mark completed (with retry)
+        _db_retry(lambda: task.mark_completed())
         logger.info(
             "REUPLOAD_DONE task_id=%d matched=%d updated=%d zip_images=%d errors=%d",
             task.id, matched_count, updated_count, len(zip_image_index), len(errors),
@@ -249,7 +328,10 @@ def process_reupload_images(task):
 
     except Exception as e:
         logger.exception("Reupload processing failed: %s", e)
-        task.mark_failed(str(e))
+        try:
+            _db_retry(lambda: task.mark_failed(str(e)))
+        except Exception:
+            logger.error("Could not mark task %d as failed (DB still locked)", task.id)
     finally:
         if _open_zip is not None:
             try:
@@ -258,6 +340,56 @@ def process_reupload_images(task):
                 pass
         # Cleanup
         _cleanup_task_files(task)
+
+
+def _flush_batch(pending_updates, pending_media_deletes, pending_media_creates,
+                 IDCard, ImageService, client):
+    """
+    Flush accumulated DB writes in a single retried transaction.
+
+    Groups IDCard bulk_update + CardMedia delete/create into one write so
+    SQLite's single-writer lock is acquired only once per batch.
+    """
+    if not pending_updates and not pending_media_creates:
+        return
+
+    def _do_flush():
+        from django.db import transaction
+        from django.utils import timezone as _tz
+        from mediafiles.models import CardMedia
+
+        with transaction.atomic():
+            # 1. Bulk-update IDCard field_data
+            if pending_updates:
+                _now = _tz.now()
+                for _c in pending_updates:
+                    _c.updated_at = _now
+                IDCard.objects.bulk_update(
+                    pending_updates, ['field_data', 'updated_at'], batch_size=100
+                )
+
+            # 2. Batch-delete old CardMedia
+            if pending_media_deletes:
+                from django.db.models import Q
+                q = Q()
+                for card_pk, field_name in pending_media_deletes:
+                    q |= Q(card_id=card_pk, field_name=field_name)
+                CardMedia.objects.filter(q).delete()
+
+            # 3. Batch-create new CardMedia
+            if pending_media_creates:
+                objs = []
+                for item in pending_media_creates:
+                    objs.append(CardMedia(
+                        card=item['card'],
+                        client=item['client'],
+                        file=item['saved_path'],
+                        media_type='photo',
+                        field_name=item['field_name'],
+                    ))
+                CardMedia.objects.bulk_create(objs, batch_size=100)
+
+    _db_retry(_do_flush)
 
 
 def _build_zip_image_index(zip_path):

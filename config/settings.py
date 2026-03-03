@@ -174,7 +174,7 @@ elif DEBUG:
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3',
             'OPTIONS': {
-                'timeout': 30,  # Wait up to 30s for DB lock (default 5s causes failures during bulk uploads)
+                'timeout': 60,  # Wait up to 60s for DB lock (background bulk writes can be slow)
             },
         }
     }

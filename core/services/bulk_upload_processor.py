@@ -168,6 +168,10 @@ def process_bulk_upload(task):
                         
                         if result['success']:
                             field_data[img_field] = result['path']
+                            # Preserve original Excel reference so reupload can
+                            # match by reference even after the file is saved
+                            # with an auto-generated name.
+                            field_data[f'__ref_{img_field}'] = photo_column_value
                             saved_image_paths.append(result['path'])
                             photos_matched += 1
                         else:

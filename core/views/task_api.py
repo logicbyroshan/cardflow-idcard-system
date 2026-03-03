@@ -124,6 +124,12 @@ def api_task_status(request, task_id):
             "error_message": null
         }
     """
+    # ── Prevent session write on every poll (SESSION_SAVE_EVERY_REQUEST). ──
+    # This is a read-only endpoint called every 2 s.  With SQLite the
+    # session-save write competes with the background worker’s writes,
+    # causing "database is locked" when processing large reuploads.
+    request.session.modified = False
+
     try:
         # Users can only see their own tasks (super_admin can see all)
         if PermissionService.is_super_admin(request.user):

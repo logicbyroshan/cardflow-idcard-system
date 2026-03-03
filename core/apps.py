@@ -7,7 +7,7 @@ def _set_sqlite_pragmas(sender, connection, **kwargs):
         cursor = connection.cursor()
         cursor.execute('PRAGMA journal_mode=WAL;')
         cursor.execute('PRAGMA synchronous=NORMAL;')
-        cursor.execute('PRAGMA busy_timeout=30000;')
+        cursor.execute('PRAGMA busy_timeout=60000;')  # 60 s — room for background bulk writes
 
 
 class CoreConfig(AppConfig):
