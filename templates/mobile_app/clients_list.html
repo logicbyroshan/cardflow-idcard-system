@@ -4,7 +4,9 @@
 {% block title %}Clients - Adarsh ID Cards{% endblock %}
 
 {% block content %}
-<div class="flex flex-col" style="height: 100vh; height: 100dvh;">
+<div class="flex flex-col" style="height: 100vh; height: 100dvh;"
+     x-data="clientsApp()"
+     x-init="loadClients()">
 
     <!-- Header -->
     <div class="flex-shrink-0 z-40 bg-white shadow-sm">
@@ -13,53 +15,160 @@
                 <i class="fa-solid fa-arrow-left text-sm"></i>
             </a>
             <div class="flex-1">
-                <h1 class="text-white font-bold text-sm">All Clients</h1>
-                <p class="text-white/70 text-[10px]">{{ client_count }} active client{{ client_count|pluralize }}</p>
+                <h1 class="text-white font-bold text-sm">Manage Clients</h1>
+                <p class="text-white/70 text-[10px]" x-text="clients.length + ' client(s)'"></p>
             </div>
-            <span class="bg-white/20 text-white text-xs font-bold px-2.5 py-1 rounded-full">
-                {{ client_count }}
-            </span>
+            <!-- Filter chip -->
+            <div class="flex gap-1">
+                <button @click="filter = 'all'" class="text-[9px] font-bold px-2 py-1 rounded-full transition"
+                        :class="filter === 'all' ? 'bg-white text-brand-light' : 'bg-white/20 text-white'">All</button>
+                <button @click="filter = 'active'" class="text-[9px] font-bold px-2 py-1 rounded-full transition"
+                        :class="filter === 'active' ? 'bg-white text-brand-light' : 'bg-white/20 text-white'">Active</button>
+                <button @click="filter = 'inactive'" class="text-[9px] font-bold px-2 py-1 rounded-full transition"
+                        :class="filter === 'inactive' ? 'bg-white text-brand-light' : 'bg-white/20 text-white'">Inactive</button>
+            </div>
         </div>
+    </div>
+
+    <!-- Toast -->
+    <div x-show="toast.show" x-transition
+         class="fixed top-14 inset-x-4 z-[100] px-4 py-2.5 rounded-xl shadow-lg text-white text-xs font-semibold flex items-center gap-2 max-w-sm mx-auto"
+         :class="toast.type === 'success' ? 'bg-green-500' : toast.type === 'error' ? 'bg-red-500' : 'bg-gray-700'">
+        <i :class="toast.type === 'success' ? 'fa-solid fa-check-circle' : toast.type === 'error' ? 'fa-solid fa-circle-exclamation' : 'fa-solid fa-info-circle'"></i>
+        <span x-text="toast.message"></span>
     </div>
 
     <!-- Client List -->
     <div class="flex-1 overflow-y-auto px-4 py-3">
         <div class="space-y-2">
-            {% for client in clients %}
-            <a href="{% url 'mobile_app:client_groups' client.id %}" class="flex bg-white rounded-xl border border-gray-100 shadow-sm p-3.5 hover:shadow-md active:scale-[0.99] transition-all">
-                <div class="flex items-center gap-3 flex-1 min-w-0">
-                    <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-sky-400 to-blue-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm">
-                        {{ client.name|make_list|first|upper }}
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm font-bold text-gray-800 truncate">{{ client.name }}</p>
-                        <div class="flex items-center gap-3 mt-0.5">
-                            <span class="text-[10px] text-gray-400">
-                                <i class="fa-solid fa-table-list mr-0.5"></i>{{ client.tables_count }} table{{ client.tables_count|pluralize }}
-                            </span>
-                            <span class="text-[10px] text-gray-400">
-                                <i class="fa-solid fa-id-card mr-0.5"></i>{{ client.cards_count }} card{{ client.cards_count|pluralize }}
-                            </span>
+            <template x-for="c in filteredClients" :key="c.id">
+                <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden"
+                     :class="c.status !== 'active' ? 'opacity-70' : ''">
+                    <div class="flex items-center gap-3 p-3">
+                        <!-- Avatar -->
+                        <div class="w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm"
+                             :class="c.status === 'active' ? 'bg-gradient-to-br from-sky-400 to-blue-500' : 'bg-gray-300'">
+                            <span x-text="(c.name || 'C').substring(0,2).toUpperCase()"></span>
+                        </div>
+                        <!-- Info — tap to open groups (active only) -->
+                        <div class="flex-1 min-w-0 cursor-pointer" @click="c.status === 'active' && openGroups(c.id)">
+                            <div class="flex items-center gap-2">
+                                <p class="text-sm font-bold text-gray-800 truncate" x-text="c.name"></p>
+                                <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase"
+                                      :class="c.status === 'active' ? 'bg-green-50 text-green-600 border border-green-200' : 'bg-gray-100 text-gray-500'">
+                                    <span x-text="c.status"></span>
+                                </span>
+                            </div>
+                            <p class="text-[10px] text-gray-400 mt-0.5">
+                                <span x-text="c.tables_count + ' table(s)'"></span>
+                                <span class="mx-1">·</span>
+                                <span x-text="c.cards_count + ' card(s)'"></span>
+                            </p>
+                        </div>
+                        <!-- Actions -->
+                        <div class="flex items-center gap-1 flex-shrink-0">
+                            <!-- Open groups (active only) -->
+                            <button x-show="c.status === 'active'" @click="openGroups(c.id)"
+                                    class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-500 flex items-center justify-center active:scale-95 transition-all" title="View Groups">
+                                <i class="fa-solid fa-layer-group text-xs"></i>
+                            </button>
+                            <!-- Toggle active/inactive -->
+                            <button @click="toggleClient(c)"
+                                    class="w-8 h-8 rounded-lg flex items-center justify-center active:scale-95 transition-all"
+                                    :class="c.status === 'active' ? 'bg-yellow-50 text-yellow-500' : 'bg-green-50 text-green-500'"
+                                    :title="c.status === 'active' ? 'Deactivate' : 'Activate'">
+                                <i class="text-xs" :class="c.status === 'active' ? 'fa-solid fa-pause' : 'fa-solid fa-play'"></i>
+                            </button>
+                            <!-- Delete (super admin only) -->
+                            {% if is_super_admin %}
+                            <button @click="deleteClient(c)"
+                                    class="w-8 h-8 rounded-lg bg-red-50 text-red-400 flex items-center justify-center active:scale-95 transition-all" title="Delete">
+                                <i class="fa-solid fa-trash text-xs"></i>
+                            </button>
+                            {% endif %}
                         </div>
                     </div>
-                    <div class="flex items-center gap-2 flex-shrink-0">
-                        <span class="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-green-50 text-green-600 border border-green-200 uppercase">Active</span>
-                        <i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
-                    </div>
                 </div>
-            </a>
-            {% empty %}
-            <div class="flex items-center justify-center py-16 text-gray-400">
+            </template>
+
+            <!-- Empty state -->
+            <div x-show="filteredClients.length === 0" class="flex items-center justify-center py-16 text-gray-400">
                 <div class="text-center">
-                    <i class="fa-solid fa-building text-3xl mb-2"></i>
-                    <p class="text-sm">No active clients found</p>
+                    <i class="fa-solid fa-building text-3xl mb-2 block"></i>
+                    <p class="text-sm" x-text="filter !== 'all' ? 'No ' + filter + ' clients' : 'No clients found'"></p>
                 </div>
             </div>
-            {% endfor %}
         </div>
     </div>
 
     <!-- Bottom Nav -->
     {% include "mobile_app/partials/bottom_nav.html" %}
 </div>
+
+<script>
+const CLIENTS_DATA = {{ clients_json|safe }};
+const CSRF_TOKEN = document.cookie.split(';').map(c=>c.trim()).find(c=>c.startsWith('csrftoken='))?.split('=')[1] || '{{ csrf_token }}';
+
+function clientsApp() {
+    return {
+        clients: [],
+        filter: 'all',
+        loading: false,
+        toast: { show: false, message: '', type: 'info' },
+
+        get filteredClients() {
+            if (this.filter === 'all') return this.clients;
+            return this.clients.filter(c => c.status === this.filter);
+        },
+
+        loadClients() {
+            this.clients = CLIENTS_DATA;
+        },
+
+        openGroups(clientId) {
+            window.location.href = '/app/clients/' + clientId + '/groups/';
+        },
+
+        showToast(msg, type='info') {
+            this.toast = { show: true, message: msg, type };
+            setTimeout(() => { this.toast.show = false; }, 2800);
+        },
+
+        async toggleClient(c) {
+            const action = c.status === 'active' ? 'deactivate' : 'activate';
+            if (!confirm(action.charAt(0).toUpperCase() + action.slice(1) + ' ' + c.name + '?')) return;
+            try {
+                const res = await fetch('/app/api/client/' + c.id + '/toggle/', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': CSRF_TOKEN, 'Content-Type': 'application/json' },
+                });
+                const data = await res.json();
+                if (data.success) {
+                    c.status = data.new_status;
+                    this.showToast(data.message, 'success');
+                } else {
+                    this.showToast(data.message || 'Failed', 'error');
+                }
+            } catch (e) { this.showToast('Network error', 'error'); }
+        },
+
+        async deleteClient(c) {
+            if (!confirm('Permanently delete ' + c.name + '? This cannot be undone!')) return;
+            try {
+                const res = await fetch('/app/api/client/' + c.id + '/delete/', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': CSRF_TOKEN, 'Content-Type': 'application/json' },
+                });
+                const data = await res.json();
+                if (data.success) {
+                    this.clients = this.clients.filter(cl => cl.id !== c.id);
+                    this.showToast(data.message, 'success');
+                } else {
+                    this.showToast(data.message || 'Failed', 'error');
+                }
+            } catch (e) { this.showToast('Network error', 'error'); }
+        },
+    };
+}
+</script>
 {% endblock %}

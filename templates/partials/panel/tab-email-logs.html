@@ -1,5 +1,5 @@
 ﻿<!-- === EMAIL MANAGEMENT TAB === -->
-<div class="panel-tab-content" id="tab-email-logs">
+<div class="panel-tab-content panel-tab-full-height" id="tab-email-logs">
 
   <!-- Actions / Filter bar -->
   <div class="notif-actions-bar">
@@ -38,22 +38,23 @@
   </div>
 
   <!-- Email Logs Table -->
-  <div class="notif-table-wrap" style="max-height:calc(100vh - 280px); overflow-y:auto;">
+  <div class="notif-table-wrap">
     <table class="notif-table" id="emailLogsTable">
       <thead>
         <tr>
           <th scope="col" style="width:5%">#</th>
-          <th scope="col" style="width:19%">Recipient</th>
-          <th scope="col" style="width:24%">Email Address</th>
-          <th scope="col" style="width:16%">Type</th>
-          <th scope="col" style="width:12%">Status</th>
-          <th scope="col" style="width:14%">Created</th>
-          <th scope="col" style="width:10%">Note</th>
+          <th scope="col" style="width:18%">Recipient</th>
+          <th scope="col" style="width:22%">Email Address</th>
+          <th scope="col" style="width:15%">Type</th>
+          <th scope="col" style="width:11%">Status</th>
+          <th scope="col" style="width:13%">Created</th>
+          <th scope="col" style="width:9%">Note</th>
+          <th scope="col" style="width:7%">Action</th>
         </tr>
       </thead>
       <tbody id="emailLogsBody">
         <tr class="notif-table-empty">
-          <td colspan="7">
+          <td colspan="8">
             <div class="empty-state">
               <i class="fa-solid fa-envelope"></i>
               <p>No email logs yet</p>
@@ -66,7 +67,7 @@
   </div>
 
   <!-- Pagination -->
-  <div class="notif-actions-bar" style="padding-top:10px; padding-bottom:4px; border-top:1px solid #f1f5f9; margin-top:0;">
+  <div class="notif-pagination-bar">
     <span class="text-xs text-gray-400" id="emailLogCountLabel">—</span>
     <div style="display:flex; gap:6px; align-items:center;">
       <button class="btn btn-sm btn-outline-primary" id="emailPrevBtn" onclick="emailLogPage(-1)" disabled>

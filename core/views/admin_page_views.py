@@ -458,6 +458,7 @@ from panel.views.manage_panel_views import (  # noqa: F401
     notifications_page,
     manage_panel,
     api_email_logs,
+    api_email_resend,
 )
 
 

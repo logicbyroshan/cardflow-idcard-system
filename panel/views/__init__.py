@@ -4,6 +4,7 @@
 from .manage_panel_views import (
     manage_panel,
     api_email_logs,
+    api_email_resend,
     notifications_page,
 )
 

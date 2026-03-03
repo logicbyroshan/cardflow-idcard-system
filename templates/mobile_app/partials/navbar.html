@@ -1,26 +1,39 @@
 <!-- Top Navigation Bar Partial -->
-<div class="sticky top-0 z-50 bg-white/95 backdrop-blur-md shadow-sm">
-    <div class="flex items-center justify-between px-4 py-3">
-        <!-- Left: Profile & Name -->
-        <a href="{% url 'mobile_app:profile' %}" class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-brand-light to-brand-dark flex items-center justify-center text-white font-bold text-sm shadow-md">
+<div class="pwa-topbar sticky top-0 z-50 bg-white shadow-[0_1px_8px_rgba(0,0,0,0.08)]">
+    <div class="flex items-center justify-between px-4" style="height:56px;">
+
+        <!-- ── LEFT: Avatar + Name ── -->
+        <a href="{% url 'mobile_app:profile' %}" class="flex items-center gap-2.5 min-w-0">
+            <!-- Square avatar with rounded corners (NOT a circle) -->
+            <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-[#667eea] to-[#764ba2] flex items-center justify-center text-white font-bold text-sm shadow flex-shrink-0 select-none" style="letter-spacing:0.02em;">
                 {{ user_name|default:"AU"|truncatechars:2|upper }}
             </div>
-            <div>
-                <p class="text-xs text-gray-400 leading-none">Welcome back</p>
-                <p class="text-sm font-semibold text-gray-800">{{ user_name|default:"Admin User" }}</p>
+            <div class="min-w-0">
+                <p class="text-[10px] text-gray-400 leading-none mb-0.5">Welcome back</p>
+                <p class="text-[13px] font-semibold text-gray-800 leading-tight truncate max-w-[130px]">{{ user_name|default:"Admin User" }}</p>
             </div>
         </a>
-        <!-- Right: Notification Bell (hidden for admins) -->
-        {% if not is_super_admin and not is_admin_staff %}
-        <a href="{% url 'mobile_app:notifications' %}" class="relative p-2" x-data="{ hasNew: {{ has_new_activity|yesno:'true,false' }} }">
-            <i class="fa-solid fa-bell text-xl text-gray-600"></i>
-            <span x-show="hasNew" class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
-        </a>
-        {% else %}
-        <a href="{% url 'mobile_app:settings_page' %}" class="relative p-2">
-            <i class="fa-solid fa-gear text-xl text-gray-600"></i>
-        </a>
-        {% endif %}
+
+        <!-- ── RIGHT: Notification + Hamburger ── -->
+        <div class="flex items-center gap-1">
+            <!-- Notification bell -->
+            <a href="{% url 'mobile_app:notifications' %}"
+               class="relative w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 active:bg-gray-100 transition-colors"
+               x-data="{ hasNew: {{ has_new_activity|yesno:'true,false'|default:'false' }} }">
+                <i class="fa-solid fa-bell text-[18px]"></i>
+                <span x-show="hasNew"
+                      class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white pointer-events-none">
+                </span>
+            </a>
+            <!-- Hamburger — opens the side drawer -->
+            <button type="button"
+                    @click="$dispatch('open-hamburger')"
+                    class="w-9 h-9 flex flex-col items-center justify-center gap-[5px] rounded-lg text-gray-600 active:bg-gray-100 transition-colors">
+                <span class="block w-[18px] h-[2px] bg-current rounded-full"></span>
+                <span class="block w-[14px] h-[2px] bg-current rounded-full self-start ml-[2px]"></span>
+                <span class="block w-[18px] h-[2px] bg-current rounded-full"></span>
+            </button>
+        </div>
+
     </div>
 </div>

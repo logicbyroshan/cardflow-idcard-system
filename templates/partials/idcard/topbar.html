@@ -20,7 +20,7 @@
       {% else %}
       <a href="{% url 'active_clients' %}" class="breadcrumb-item">Clients</a>
       <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
-      <span class="breadcrumb-item">{{ client.name }}{% if client.status != 'active' %} <span class="status-badge inactive" style="font-size:11px;margin-left:4px;">{{ client.get_status_display }}</span>{% endif %}</span>
+      <span class="breadcrumb-item">{{ client.name }}{% if client.status != 'active' %} <span class="status-badge inactive" style="font-size:9px;padding:0 4px;line-height:1.5;margin-left:3px;border-radius:4px;">{{ client.get_status_display }}</span>{% endif %}</span>
       <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
       <a href="{% url 'idcard_group' client.id %}" class="breadcrumb-item">ID Card Group</a>
       {% endif %}

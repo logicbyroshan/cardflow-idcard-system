@@ -10,8 +10,8 @@
                             <span class="checkmark checkmark-white"></span>
                         </label>
                     </th>
+                    <th class="px-1 py-2 text-left text-[10px] uppercase tracking-wider font-semibold w-12">Photo</th>
                     <th class="px-1 py-2 text-left text-[10px] uppercase tracking-wider font-semibold w-8">#</th>
-                    <th class="px-1 py-2 text-left text-[10px] uppercase tracking-wider font-semibold w-10">Photo</th>
                     <th class="px-2 py-2 text-left text-[10px] uppercase tracking-wider font-semibold">Name</th>
                     <th class="px-2 py-2 text-left text-[10px] uppercase tracking-wider font-semibold">Roll No</th>
                     <th class="px-1 py-2 text-left text-[10px] uppercase tracking-wider font-semibold w-12">Class</th>
@@ -36,20 +36,20 @@
                             <span class="checkmark"></span>
                         </label>
                     </td>
-                    <td class="px-1 py-2 text-gray-400 font-medium">{{ forloop.counter }}</td>
-                    <td class="px-1 py-2">
+                    <td class="px-1 py-1.5">
                         {% if student.has_photo %}
-                        <img src="{{ student.photo_url }}" class="w-7 h-7 rounded-md object-cover" alt="" loading="lazy"
+                        <img src="{{ student.photo_url }}" class="w-10 h-14 rounded-md object-cover" alt="" loading="lazy"
                              onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-                        <div class="w-7 h-7 rounded-md bg-red-50 items-center justify-center text-red-300 text-[10px]" style="display:none;">
+                        <div class="w-10 h-14 rounded-md bg-red-50 flex items-center justify-center text-red-300 text-[10px]" style="display:none;">
                             <i class="fa-solid fa-image-slash"></i>
                         </div>
                         {% else %}
-                        <div class="w-7 h-7 rounded-md bg-gray-100 flex items-center justify-center text-gray-400 text-[10px]">
+                        <div class="w-10 h-14 rounded-md bg-gray-100 flex items-center justify-center text-gray-400 text-[10px]">
                             <i class="fa-solid fa-image"></i>
                         </div>
                         {% endif %}
                     </td>
+                    <td class="px-1 py-2 text-gray-400 font-medium">{{ forloop.counter }}</td>
                     <td class="px-2 py-2 font-medium text-gray-800 whitespace-nowrap">{{ student.name }}</td>
                     <td class="px-2 py-2 text-gray-600">{{ student.roll_no }}</td>
                     <td class="px-1 py-2">

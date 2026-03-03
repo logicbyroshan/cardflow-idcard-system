@@ -80,10 +80,10 @@
                         </td>
                         <td>
                             <select class="wa-status-select status-{{ c.status }}" onchange="updateContactStatus({{ c.id }}, this.value)">
-                                <option value="new" {% if c.status == 'new' %}selected{% endif %}>🔵 New</option>
-                                <option value="read" {% if c.status == 'read' %}selected{% endif %}>👁️ Read</option>
-                                <option value="replied" {% if c.status == 'replied' %}selected{% endif %}>✅ Replied</option>
-                                <option value="closed" {% if c.status == 'closed' %}selected{% endif %}>⬛ Closed</option>
+                                <option value="new" {% if c.status == 'new' %}selected{% endif %}>● New</option>
+                                <option value="read" {% if c.status == 'read' %}selected{% endif %}>◎ Read</option>
+                                <option value="replied" {% if c.status == 'replied' %}selected{% endif %}>✓ Replied</option>
+                                <option value="closed" {% if c.status == 'closed' %}selected{% endif %}>✕ Closed</option>
                             </select>
                         </td>
                         <td class="wa-actions">

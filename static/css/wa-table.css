@@ -44,7 +44,7 @@
 .wa-table-wrap {
     overflow-x: auto;
     border: 1px solid var(--wa-gray-200);
-    border-radius: var(--wa-radius);
+    border-radius: 0;
     -webkit-overflow-scrolling: touch;
 }
 .wa-table {
@@ -417,3 +417,22 @@
     .wa-table thead th { padding: 9px 12px; }
     .wa-table tbody td { padding: 10px 12px; }
 }
+
+/* ===== CHECKBOX COLUMN ===== */
+.wa-check-th { text-align: center !important; padding: 8px 10px !important; }
+.wa-table tbody td:first-child:has(input[type="checkbox"]) { text-align: center; padding: 0 10px; }
+.wa-table input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; accent-color: var(--wa-primary); }
+
+/* ===== BULK ACTION BAR ===== */
+.wa-bulk-action-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 16px;
+    background: #eff6ff;
+    border-bottom: 2px solid var(--wa-primary);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--wa-primary);
+}
+.wa-bulk-action-bar .btn { padding: 5px 14px; font-size: 12px; }

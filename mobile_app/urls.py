@@ -40,4 +40,8 @@ urlpatterns = [
     # Profile & Search APIs
     path('api/profile/update/', views.api_profile_update, name='api_profile_update'),
     path('api/search/', views.api_search, name='api_search'),
+
+    # Client Management APIs
+    path('api/client/<int:client_id>/toggle/', views.api_client_toggle, name='api_client_toggle'),
+    path('api/client/<int:client_id>/delete/', views.api_client_delete, name='api_client_delete'),
 ]

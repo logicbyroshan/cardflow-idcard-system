@@ -1,243 +1,229 @@
 {% extends "mobile_app/base.html" %}
 {% load static %}
 
-{% block title %}Home - Adarsh ID Cards{% endblock %}
+{% block title %}Dashboard - Adarsh ID Cards{% endblock %}
 
 {% block content %}
-<div x-data="homeApp()">
+<div x-data="homeApp()" class="pwa-home flex flex-col" style="min-height:100dvh;">
 
-    <!-- Sticky Navbar (always visible) -->
-    <div class="sticky top-0 z-50">
-        {% include "mobile_app/partials/navbar.html" %}
-    </div>
+    <!-- === TOP NAV === -->
+    {% include "mobile_app/partials/navbar.html" %}
 
-    <!-- Main Scroll Area -->
-    <div class="overflow-y-auto pb-20" style="-webkit-overflow-scrolling: touch;">
+    <!-- === MAIN SCROLL AREA === -->
+    <div class="pwa-scroll-area flex-1 overflow-y-auto"
+         style="-webkit-overflow-scrolling:touch; padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));">
 
-        <!-- ===== CARDS SECTION ===== -->
-        <div class="flex flex-col">
+        <!-- -------------------------------------------------
+             BLOCK 1 - QUICK STATS (horizontal scroll row)
+             5 display-only cards: Total, Pending, Verified,
+             Approved, Download - NOT clickable
+        --------------------------------------------------- -->
+        <div class="pt-4 pb-2">
+            <div class="px-4 mb-2.5 flex items-center justify-between">
+                <h2 class="pwa-section-title">Overview</h2>
+                <span class="text-[10px] text-gray-400 font-medium">Card Summary</span>
+            </div>
+            <div class="pwa-hscroll px-4 gap-3 pb-1">
 
-            <!-- 2x2 Grid Options -->
-            <div class="px-4 pt-3 flex-1 flex flex-col">
-                <div class="grid grid-cols-2 gap-3 flex-1">
-
-                    <!-- Pending -->
-                    {% if perm_idcard_pending_list %}
-                    <a href="{% url 'mobile_app:table_picker' 'pending' %}" class="grid-card-styled group" style="background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); border-color: #fed7aa;">
-                        <div class="flex items-center justify-between w-full mb-1">
-                            <div class="w-10 h-10 rounded-xl bg-amber-400/15 flex items-center justify-center">
-                                <i class="fa-solid fa-clock text-amber-500 text-base"></i>
-                            </div>
-                            <span class="text-2xl font-extrabold text-amber-600">{{ pending_count }}</span>
-                        </div>
-                        <div class="w-full">
-                            <p class="text-xs font-bold text-gray-700">Pending</p>
-                            <p class="text-[9px] text-gray-400">Awaiting review</p>
-                        </div>
-                        <div class="absolute bottom-0 right-0 w-16 h-16 rounded-tl-[3rem] bg-amber-200/20"></div>
-                    </a>
-                    {% endif %}
-
-                    <!-- Verified -->
-                    {% if perm_idcard_verified_list %}
-                    <a href="{% url 'mobile_app:table_picker' 'verified' %}" class="grid-card-styled group" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-color: #bbf7d0;">
-                        <div class="flex items-center justify-between w-full mb-1">
-                            <div class="w-10 h-10 rounded-xl bg-green-400/15 flex items-center justify-center">
-                                <i class="fa-solid fa-check-circle text-green-500 text-base"></i>
-                            </div>
-                            <span class="text-2xl font-extrabold text-green-600">{{ verified_count }}</span>
-                        </div>
-                        <div class="w-full">
-                            <p class="text-xs font-bold text-gray-700">Verified</p>
-                            <p class="text-[9px] text-gray-400">Ready to approve</p>
-                        </div>
-                        <div class="absolute bottom-0 right-0 w-16 h-16 rounded-tl-[3rem] bg-green-200/20"></div>
-                    </a>
-                    {% endif %}
-
-                    <!-- Approved -->
-                    {% if perm_idcard_approved_list %}
-                    <a href="{% url 'mobile_app:table_picker' 'approved' %}" class="grid-card-styled group" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-color: #bfdbfe;">
-                        <div class="flex items-center justify-between w-full mb-1">
-                            <div class="w-10 h-10 rounded-xl bg-blue-400/15 flex items-center justify-center">
-                                <i class="fa-solid fa-check-double text-blue-500 text-base"></i>
-                            </div>
-                            <span class="text-2xl font-extrabold text-blue-600">{{ approved_count }}</span>
-                        </div>
-                        <div class="w-full">
-                            <p class="text-xs font-bold text-gray-700">Approved</p>
-                            <p class="text-[9px] text-gray-400">Print ready</p>
-                        </div>
-                        <div class="absolute bottom-0 right-0 w-16 h-16 rounded-tl-[3rem] bg-blue-200/20"></div>
-                    </a>
-                    {% endif %}
-
-                    <!-- Download -->
-                    {% if perm_idcard_download_list %}
-                    <a href="{% url 'mobile_app:table_picker' 'download' %}" class="grid-card-styled group" style="background: linear-gradient(135deg, #faf5ff 0%, #ede9fe 100%); border-color: #ddd6fe;">
-                        <div class="flex items-center justify-between w-full mb-1">
-                            <div class="w-10 h-10 rounded-xl bg-purple-400/15 flex items-center justify-center">
-                                <i class="fa-solid fa-download text-purple-500 text-base"></i>
-                            </div>
-                            <span class="text-2xl font-extrabold text-purple-600">{{ download_count }}</span>
-                        </div>
-                        <div class="w-full">
-                            <p class="text-xs font-bold text-gray-700">Download</p>
-                            <p class="text-[9px] text-gray-400">Completed cards</p>
-                        </div>
-                        <div class="absolute bottom-0 right-0 w-16 h-16 rounded-tl-[3rem] bg-purple-200/20"></div>
-                    </a>
-                    {% endif %}
-
-                </div>
-
-                <!-- Pool List -->
-                <div class="py-3">
-                    {% if perm_idcard_pool_list %}
-                    <a href="{% url 'mobile_app:table_picker' 'pool' %}" class="flex items-center justify-between w-full rounded-xl p-3 hover:shadow-md active:scale-[0.98] transition-all group" style="background: linear-gradient(135deg, #fef2f2 0%, #fecaca40 100%); border: 1px solid #fecaca;">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-xl bg-red-400/15 flex items-center justify-center">
-                                <i class="fa-solid fa-layer-group text-red-500 text-base"></i>
-                            </div>
-                            <div>
-                                <p class="text-xs font-bold text-gray-700">Pool List</p>
-                                <p class="text-[9px] text-gray-400">View all pooled cards</p>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span class="bg-red-100 text-red-600 text-xs font-bold px-2.5 py-1 rounded-lg">{{ pool_count }}</span>
-                            <i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
-                        </div>
-                    </a>
-                    {% endif %}
-                </div>
-
-                <!-- Admin Management Section (Super Admin & Admin Staff only) -->
-                {% if is_super_admin or is_admin_staff %}
-                <div class="pb-3">
-                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 px-1">Management</p>
-                    <div class="grid grid-cols-2 gap-2">
-                        <!-- Clients -->
-                        <a href="{% url 'mobile_app:clients_list' %}" class="flex items-center gap-2.5 rounded-xl p-2.5 active:scale-[0.98] transition-all" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 1px solid #bae6fd;">
-                            <div class="w-9 h-9 rounded-lg bg-sky-400/15 flex items-center justify-center">
-                                <i class="fa-solid fa-building text-sky-500 text-sm"></i>
-                            </div>
-                            <div>
-                                <p class="text-[11px] font-bold text-gray-700">Clients</p>
-                                <p class="text-[9px] text-gray-400">{{ admin_client_count|default:0 }} active</p>
-                            </div>
-                        </a>
-                        <!-- Staff -->
-                        <a href="{% url 'mobile_app:staff_manage' %}" class="flex items-center gap-2.5 rounded-xl p-2.5 active:scale-[0.98] transition-all" style="background: linear-gradient(135deg, #fefce8 0%, #fef9c3 100%); border: 1px solid #fde68a;">
-                            <div class="w-9 h-9 rounded-lg bg-yellow-400/15 flex items-center justify-center">
-                                <i class="fa-solid fa-users text-yellow-500 text-sm"></i>
-                            </div>
-                            <div>
-                                <p class="text-[11px] font-bold text-gray-700">Staff</p>
-                                <p class="text-[9px] text-gray-400">{{ admin_staff_count|default:0 }} members</p>
-                            </div>
-                        </a>
-                        <!-- All Tables -->
-                        <a href="{% url 'mobile_app:groups_overview' %}" class="flex items-center gap-2.5 rounded-xl p-2.5 active:scale-[0.98] transition-all" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1px solid #bbf7d0;">
-                            <div class="w-9 h-9 rounded-lg bg-green-400/15 flex items-center justify-center">
-                                <i class="fa-solid fa-table-list text-green-500 text-sm"></i>
-                            </div>
-                            <div>
-                                <p class="text-[11px] font-bold text-gray-700">Tables</p>
-                                <p class="text-[9px] text-gray-400">{{ admin_table_count|default:0 }} active</p>
-                            </div>
-                        </a>
-                        <!-- Settings -->
-                        <a href="{% url 'mobile_app:settings_page' %}" class="flex items-center gap-2.5 rounded-xl p-2.5 active:scale-[0.98] transition-all" style="background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%); border: 1px solid #e9d5ff;">
-                            <div class="w-9 h-9 rounded-lg bg-violet-400/15 flex items-center justify-center">
-                                <i class="fa-solid fa-gear text-violet-500 text-sm"></i>
-                            </div>
-                            <div>
-                                <p class="text-[11px] font-bold text-gray-700">Settings</p>
-                                <p class="text-[9px] text-gray-400">Configuration</p>
-                            </div>
-                        </a>
+                <!-- Total -->
+                <div class="pwa-stat-card flex-shrink-0">
+                    <div class="pwa-stat-icon-wrap" style="background:linear-gradient(135deg,#667eea,#764ba2);">
+                        <i class="fa-solid fa-id-card text-white text-sm"></i>
                     </div>
+                    <p class="pwa-stat-value" style="color:#667eea;">{{ total_cards|default:0 }}</p>
+                    <p class="pwa-stat-label">Total</p>
                 </div>
-                {% endif %}
 
-                <!-- Client Staff Management (Client role only) -->
-                {% if is_client %}
-                <div class="pb-3">
-                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 px-1">Management</p>
-                    <div class="grid grid-cols-2 gap-2">
-                        <!-- Staff -->
-                        <a href="{% url 'mobile_app:staff_manage' %}" class="flex items-center gap-2.5 rounded-xl p-2.5 active:scale-[0.98] transition-all" style="background: linear-gradient(135deg, #fefce8 0%, #fef9c3 100%); border: 1px solid #fde68a;">
-                            <div class="w-9 h-9 rounded-lg bg-yellow-400/15 flex items-center justify-center">
-                                <i class="fa-solid fa-users text-yellow-500 text-sm"></i>
-                            </div>
-                            <div>
-                                <p class="text-[11px] font-bold text-gray-700">My Staff</p>
-                                <p class="text-[9px] text-gray-400">Manage team</p>
-                            </div>
-                        </a>
-                        <!-- Groups -->
-                        <a href="{% url 'mobile_app:groups_overview' %}" class="flex items-center gap-2.5 rounded-xl p-2.5 active:scale-[0.98] transition-all" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1px solid #bbf7d0;">
-                            <div class="w-9 h-9 rounded-lg bg-green-400/15 flex items-center justify-center">
-                                <i class="fa-solid fa-layer-group text-green-500 text-sm"></i>
-                            </div>
-                            <div>
-                                <p class="text-[11px] font-bold text-gray-700">Groups</p>
-                                <p class="text-[9px] text-gray-400">Tables & cards</p>
-                            </div>
-                        </a>
+                <!-- Pending -->
+                <div class="pwa-stat-card flex-shrink-0">
+                    <div class="pwa-stat-icon-wrap bg-amber-400">
+                        <i class="fa-solid fa-clock text-white text-sm"></i>
                     </div>
+                    <p class="pwa-stat-value text-amber-600">{{ pending_count|default:0 }}</p>
+                    <p class="pwa-stat-label">Pending</p>
                 </div>
-                {% endif %}
+
+                <!-- Verified -->
+                <div class="pwa-stat-card flex-shrink-0">
+                    <div class="pwa-stat-icon-wrap bg-green-500">
+                        <i class="fa-solid fa-check-circle text-white text-sm"></i>
+                    </div>
+                    <p class="pwa-stat-value text-green-600">{{ verified_count|default:0 }}</p>
+                    <p class="pwa-stat-label">Verified</p>
+                </div>
+
+                <!-- Approved -->
+                <div class="pwa-stat-card flex-shrink-0">
+                    <div class="pwa-stat-icon-wrap bg-blue-500">
+                        <i class="fa-solid fa-check-double text-white text-sm"></i>
+                    </div>
+                    <p class="pwa-stat-value text-blue-600">{{ approved_count|default:0 }}</p>
+                    <p class="pwa-stat-label">Approved</p>
+                </div>
+
+                <!-- Download -->
+                <div class="pwa-stat-card flex-shrink-0">
+                    <div class="pwa-stat-icon-wrap bg-purple-500">
+                        <i class="fa-solid fa-download text-white text-sm"></i>
+                    </div>
+                    <p class="pwa-stat-value text-purple-600">{{ download_count|default:0 }}</p>
+                    <p class="pwa-stat-label">Download</p>
+                </div>
 
             </div>
         </div>
 
-        <!-- ===== RECENT ACTIVITY SECTION ===== -->
+        <!-- -------------------------------------------------
+             BLOCK 2 - RECENT CLIENTS (horizontal scroll)
+             Each card shows client name + status breakdown
+        --------------------------------------------------- -->
+        {% if recent_client_updates %}
+        <div class="py-2">
+            <div class="px-4 mb-2.5 flex items-center justify-between">
+                <h2 class="pwa-section-title">Recent Clients</h2>
+                <a href="{% url 'mobile_app:clients_list' %}"
+                   class="text-[10px] font-semibold" style="color:#667eea;">View all</a>
+            </div>
+            <div class="pwa-hscroll px-4 gap-3 pb-1">
+                {% for rc in recent_client_updates %}
+                <a href="{% url 'mobile_app:client_groups' rc.client_id %}"
+                   class="pwa-client-card flex-shrink-0 block">
+                    <!-- Client header -->
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0"
+                             style="background:linear-gradient(135deg,#667eea,#764ba2);">
+                            {{ rc.client_name|truncatechars:2|upper }}
+                        </div>
+                        <p class="text-[11px] font-bold text-gray-800 leading-tight line-clamp-2 flex-1 min-w-0">{{ rc.client_name }}</p>
+                    </div>
+                    <!-- Per-status pill grid -->
+                    <div class="grid grid-cols-2 gap-1.5">
+                        <div class="pwa-client-pill pwa-pill-pending">
+                            <span class="pwa-pill-num">{{ rc.pending }}</span>
+                            <span class="pwa-pill-lbl">Pending</span>
+                        </div>
+                        <div class="pwa-client-pill pwa-pill-verified">
+                            <span class="pwa-pill-num">{{ rc.verified }}</span>
+                            <span class="pwa-pill-lbl">Verified</span>
+                        </div>
+                        <div class="pwa-client-pill pwa-pill-approved">
+                            <span class="pwa-pill-num">{{ rc.approved }}</span>
+                            <span class="pwa-pill-lbl">Approved</span>
+                        </div>
+                        <div class="pwa-client-pill pwa-pill-download">
+                            <span class="pwa-pill-num">{{ rc.download }}</span>
+                            <span class="pwa-pill-lbl">Download</span>
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- -------------------------------------------------
+             BLOCK 3 - QUICK ACTIONS BAR (sticky bottom)
+             "Active Clients" big primary + "Manage Website"
+        --------------------------------------------------- -->
+        <div class="pwa-quick-actions-wrap px-4 py-3">
+            <div class="flex gap-2.5">
+                <!-- Active Clients (big primary) -->
+                <a href="{% url 'mobile_app:clients_list' %}"
+                   class="pwa-qa-btn pwa-qa-primary flex-[2.5]">
+                    <i class="fa-solid fa-users-between-lines text-base"></i>
+                    <span>Active Clients</span>
+                </a>
+                <!-- Manage Website (secondary) -->
+                {% if is_super_admin or is_admin_staff %}
+                <a href="/panel/manage-website/"
+                   class="pwa-qa-btn pwa-qa-secondary flex-1">
+                    <i class="fa-solid fa-globe text-sm"></i>
+                    <span>Website</span>
+                </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- -------------------------------------------------
+             BLOCK 4 - RECENT UPDATES (snap-scroll table)
+        --------------------------------------------------- -->
         <div class="px-4 pb-4">
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-3">
-                <!-- Header -->
-                <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-                    <h3 class="text-sm font-bold text-gray-800">
-                        <i class="fa-solid fa-clock-rotate-left text-brand-light mr-1.5"></i>
-                        Recent Activity
-                    </h3>
+            <div class="mb-2.5 flex items-center justify-between">
+                <h2 class="pwa-section-title">Recent Updates</h2>
+                <span class="text-[10px] text-gray-400 font-medium">{{ recent_activities|length }} item{{ recent_activities|pluralize }}</span>
+            </div>
+
+            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+
+                <!-- Column headers -->
+                <div class="flex items-center px-3 py-2 border-b border-gray-100 bg-gray-50/80">
+                    <span class="pwa-th w-7 mr-2"></span>
+                    <span class="pwa-th flex-[2] pr-2">Name</span>
+                    <span class="pwa-th w-[72px]">Status</span>
+                    <span class="pwa-th flex-1 text-right">Table</span>
                 </div>
-                <!-- Activity List -->
-                <div class="divide-y divide-gray-50">
+
+                <!-- Snap-scroll rows -->
+                <div class="overflow-y-auto pwa-snap-y" style="max-height:320px;">
                     {% for activity in recent_activities %}
-                    <div class="flex items-start gap-3 px-4 py-3.5 hover:bg-gray-50/50 transition-colors">
-                        <div class="mt-0.5 w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0
+                    <div class="flex items-center px-3 py-2.5 border-b border-gray-50 last:border-b-0"
+                         style="scroll-snap-align:start;">
+                        <!-- Icon -->
+                        <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mr-2
                             {% if activity.status == 'verified' %}bg-green-50 text-green-500
                             {% elif activity.status == 'approved' %}bg-blue-50 text-blue-500
                             {% elif activity.status == 'download' %}bg-purple-50 text-purple-500
                             {% elif activity.status == 'pending' %}bg-amber-50 text-amber-500
                             {% elif activity.status == 'pool' %}bg-red-50 text-red-500
-                            {% else %}bg-gray-50 text-gray-500{% endif %}
-                        ">
-                            <i class="fa-solid {% if activity.status == 'verified' %}fa-check-circle{% elif activity.status == 'approved' %}fa-check-double{% elif activity.status == 'download' %}fa-download{% elif activity.status == 'pending' %}fa-clock{% elif activity.status == 'pool' %}fa-layer-group{% else %}fa-info-circle{% endif %} text-sm"></i>
+                            {% else %}bg-gray-50 text-gray-400{% endif %}">
+                            <i class="fa-solid text-[10px]
+                                {% if activity.status == 'verified' %}fa-check-circle
+                                {% elif activity.status == 'approved' %}fa-check-double
+                                {% elif activity.status == 'download' %}fa-download
+                                {% elif activity.status == 'pending' %}fa-clock
+                                {% elif activity.status == 'pool' %}fa-layer-group
+                                {% else %}fa-info-circle{% endif %}"></i>
                         </div>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-xs text-gray-700 leading-relaxed font-medium">{{ activity.name }} — {{ activity.status_display }}</p>
-                            <p class="text-[10px] text-gray-400 mt-0.5">{{ activity.table_name }} · {{ activity.updated_at }}</p>
+                        <!-- Name + time -->
+                        <div class="flex-[2] min-w-0 pr-2">
+                            <p class="text-[11px] font-semibold text-gray-800 truncate leading-tight">{{ activity.name }}</p>
+                            <p class="text-[9px] text-gray-400 mt-0.5 leading-none">{{ activity.updated_at }}</p>
+                        </div>
+                        <!-- Status badge -->
+                        <div class="w-[72px] pr-1">
+                            <span class="pwa-status-badge
+                                {% if activity.status == 'verified' %}pwa-badge-green
+                                {% elif activity.status == 'approved' %}pwa-badge-blue
+                                {% elif activity.status == 'download' %}pwa-badge-purple
+                                {% elif activity.status == 'pending' %}pwa-badge-amber
+                                {% elif activity.status == 'pool' %}pwa-badge-red
+                                {% else %}pwa-badge-gray{% endif %}">
+                                {{ activity.status_display }}
+                            </span>
+                        </div>
+                        <!-- Table name -->
+                        <div class="flex-1 text-right min-w-0">
+                            <p class="text-[9px] text-gray-400 truncate">{{ activity.table_name }}</p>
                         </div>
                     </div>
                     {% empty %}
-                    <div class="flex items-center justify-center py-8 text-gray-400">
-                        <div class="text-center">
-                            <i class="fa-solid fa-clock-rotate-left text-2xl mb-2"></i>
-                            <p class="text-xs">No recent activity</p>
-                        </div>
+                    <div class="flex flex-col items-center justify-center py-10">
+                        <i class="fa-solid fa-clock-rotate-left text-3xl text-gray-200 mb-2"></i>
+                        <p class="text-[11px] text-gray-400">No recent updates yet</p>
                     </div>
                     {% endfor %}
                 </div>
-            </div>
+
+            </div><!-- /table card -->
         </div>
 
-    </div><!-- end main scroll area -->
+    </div><!-- /main scroll area -->
 
-    <!-- Bottom Nav -->
+    <!-- === BOTTOM NAV === -->
     {% include "mobile_app/partials/bottom_nav.html" %}
+
+    <!-- === HAMBURGER SIDE DRAWER === -->
+    {% include "mobile_app/partials/hamburger_drawer.html" %}
 
 </div>
 
@@ -245,7 +231,7 @@
 function homeApp() {
     return {
         init() {}
-    }
+    };
 }
 </script>
 {% endblock %}

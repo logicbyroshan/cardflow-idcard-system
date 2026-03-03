@@ -97,19 +97,43 @@
           <i class="fa-solid fa-circle-xmark"></i>
           <span>Engine Not Detected</span>
         </div>
+
+        {# Engine icon + description #}
+        <div class="engine-dl-hero">
+          <img src="{% static 'engine/adarsh_cropper.ico' %}" alt="Adarsh Engine" class="engine-dl-icon">
+          <div class="engine-dl-info">
+            <strong class="engine-dl-name">Adarsh Cropper Engine</strong>
+            <span class="engine-dl-sub">Local photo-processing service for Windows</span>
+          </div>
+        </div>
+
         <p class="engine-help-text">
           The local Adarsh Engine service is not running on this machine.
           Download and install it to enable photo processing.
         </p>
+
         {# Show Download Installer ONLY when no update is available (first-time install) #}
         <div class="engine-actions" x-show="!update.available">
-          <a :href="'{% static 'engine/AdarshCropper.exe' %}'" class="btn btn-primary" download>
+          <a href="{% url 'engine_download' %}" class="btn btn-primary" download="AdarshCropperSetup.exe">
             <i class="fa-solid fa-download"></i> Download Installer
           </a>
         </div>
+
+        {# SmartScreen / browser download help #}
+        <div class="engine-smartscreen-note">
+          <i class="fa-solid fa-shield-halved"></i>
+          <div>
+            <strong>If your browser blocks the download:</strong>
+            Chrome / Edge — click the <em>arrow</em> next to the blocked file → <em>"Keep"</em> or <em>"Keep anyway"</em>.<br>
+            Firefox — click <em>"Keep file"</em> in the download warning.<br>
+            <strong>If Windows SmartScreen appears after installing:</strong> click <em>"More info"</em> → <em>"Run anyway"</em>.
+            This is expected for new software without a paid code-signing certificate.
+          </div>
+        </div>
+
         <p class="engine-note">
           <i class="fa-solid fa-info-circle"></i>
-          After installing, refresh this page to connect.
+          After installing, restart the Adarsh Engine service and refresh this page to connect.
         </p>
       </div>
     </div>

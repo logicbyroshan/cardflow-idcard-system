@@ -18,7 +18,7 @@ from django.http import JsonResponse
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Max
 
 from client.services import (
     ClientAccessService,
@@ -154,6 +154,65 @@ def home(request):
             'has_new_activity': False,
         })
 
+    # ── Recent Clients section ──────────────────────────────────────────────
+    # For admins: show top 8 active clients ordered by most-recently updated card.
+    # For client / client_staff: show the single client's groups as "clients".
+    recent_client_updates = []
+    try:
+        if PermissionService.is_any_admin(user):
+            from client.models import Client as ClientModel
+            # Clients that have cards, ordered by most recent card update
+            clients_qs = (
+                ClientModel.objects
+                .filter(status='active')
+                .annotate(last_update=Max('id_card_groups__tables__id_cards__updated_at'))
+                .filter(last_update__isnull=False)
+                .order_by('-last_update')[:8]
+            )
+            for c in clients_qs:
+                counts_q = (
+                    IDCard.objects
+                    .filter(table__group__client=c)
+                    .values('status')
+                    .annotate(n=Count('id'))
+                )
+                status_map = {row['status']: row['n'] for row in counts_q}
+                recent_client_updates.append({
+                    'client_id': c.id,
+                    'client_name': c.name,
+                    'pending': status_map.get('pending', 0),
+                    'verified': status_map.get('verified', 0),
+                    'approved': status_map.get('approved', 0),
+                    'download': status_map.get('download', 0),
+                })
+        else:
+            # Single client — show per-group (table group) breakdown
+            from idcards.models import IDCardGroup
+            groups_qs = IDCardGroup.objects.filter(client=client).order_by('name')[:6]
+            for grp in groups_qs:
+                counts_q = (
+                    IDCard.objects
+                    .filter(table__group=grp)
+                    .values('status')
+                    .annotate(n=Count('id'))
+                )
+                status_map = {row['status']: row['n'] for row in counts_q}
+                total = sum(status_map.values())
+                if total == 0:
+                    continue
+                recent_client_updates.append({
+                    'client_id': client.id,
+                    'client_name': grp.name,
+                    'pending': status_map.get('pending', 0),
+                    'verified': status_map.get('verified', 0),
+                    'approved': status_map.get('approved', 0),
+                    'download': status_map.get('download', 0),
+                })
+    except Exception:
+        logger.exception('Failed to build recent_client_updates for home view')
+
+    ctx['recent_client_updates'] = recent_client_updates
+
     return render(request, 'mobile_app/home.html', ctx)
 
 
@@ -166,8 +225,7 @@ def clients_list(request):
         return redirect('mobile_app:home')
 
     from client.models import Client
-    from django.db.models import Count, Q
-    clients = Client.objects.filter(status='active').annotate(
+    clients = Client.objects.all().annotate(
         tables_count=Count(
             'id_card_groups__tables',
             filter=Q(id_card_groups__tables__is_active=True),
@@ -191,6 +249,7 @@ def clients_list(request):
     return render(request, 'mobile_app/clients_list.html', {
         'user_name': user.get_full_name() or user.username,
         'clients': client_data,
+        'clients_json': json.dumps(client_data),
         'client_count': len(client_data),
         **perms,
     })
@@ -371,6 +430,7 @@ def card_list(request, table_id, status):
         'client': client,
         'table': table,
         'table_id': table.id,
+        'first_table_id': table.id,
         'group': table.group,
         'students': cards,
         'students_json': json.dumps(cards, default=str),
@@ -584,6 +644,8 @@ def api_card_add(request, table_id):
         table = get_object_or_404(IDCardTable, id=table_id, is_active=True)
         if not PermissionService.is_any_admin(request.user) and not ClientAccessService.can_access_table(request.user, table):
             return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+        if not PermissionService.has(request.user, 'perm_idcard_add'):
+            return JsonResponse({'success': False, 'message': 'No permission to add cards'}, status=403)
 
         field_data_raw = request.POST.get('field_data', '{}')
         try:
@@ -615,6 +677,8 @@ def api_card_update(request, table_id, card_id):
         card = get_object_or_404(IDCard.objects.select_related('table__group'), id=card_id, table_id=table_id)
         if not PermissionService.is_any_admin(request.user) and not ClientAccessService.can_access_card(request.user, card):
             return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+        if not PermissionService.has(request.user, 'perm_idcard_edit'):
+            return JsonResponse({'success': False, 'message': 'No permission to edit cards'}, status=403)
 
         field_data_raw = request.POST.get('field_data', '{}')
         try:
@@ -856,9 +920,9 @@ def api_card_delete(request, card_id):
         data = json.loads(request.body) if request.body else {}
         permanent = data.get('permanent', False)
 
-        if permanent and card.status == 'pool':
-            if not PermissionService.has(user, 'perm_idcard_delete_from_pool'):
-                return JsonResponse({'success': False, 'message': 'No pool delete permission'}, status=403)
+        if permanent:
+            if not PermissionService.has(user, 'perm_idcard_delete'):
+                return JsonResponse({'success': False, 'message': 'No delete permission'}, status=403)
             card.delete()
             return JsonResponse({'success': True, 'message': 'Card permanently deleted'})
         else:
@@ -903,14 +967,26 @@ def api_staff_list(request):
 def api_staff_create(request):
     """Create a new staff member."""
     user = request.user
-    if not PermissionService.is_client(user):
-        return JsonResponse({'success': False, 'message': 'Only clients can create staff'}, status=403)
+    if not (PermissionService.is_client(user) or PermissionService.is_any_admin(user)):
+        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
 
-    result = ClientStaffService.create_staff(user, data)
+    # For admin users, delegate via the client attached to their current context
+    if PermissionService.is_any_admin(user):
+        client, _ = _client_ctx(user)
+        if not client:
+            return JsonResponse({'success': False, 'message': 'No client context found for admin'}, status=400)
+        # Use the client's user to drive the service
+        acting_user = getattr(client, 'user', None)
+        if acting_user is None:
+            return JsonResponse({'success': False, 'message': 'Client has no associated user — please create staff from the desktop panel'}, status=400)
+        result = ClientStaffService.create_staff(acting_user, data)
+    else:
+        result = ClientStaffService.create_staff(user, data)
+
     if result.success:
         return JsonResponse({'success': True, 'message': result.message, **(result.data or {})})
     return JsonResponse({'success': False, 'message': result.message}, status=400)
@@ -921,14 +997,22 @@ def api_staff_create(request):
 def api_staff_update(request, staff_id):
     """Update a staff member."""
     user = request.user
-    if not PermissionService.is_client(user):
-        return JsonResponse({'success': False, 'message': 'Only clients can update staff'}, status=403)
+    if not (PermissionService.is_client(user) or PermissionService.is_any_admin(user)):
+        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
 
-    result = ClientStaffService.update_staff(user, staff_id, data)
+    if PermissionService.is_any_admin(user):
+        client, _ = _client_ctx(user)
+        acting_user = getattr(client, 'user', None) if client else None
+        if acting_user is None:
+            return JsonResponse({'success': False, 'message': 'Cannot update staff without client context'}, status=400)
+        result = ClientStaffService.update_staff(acting_user, staff_id, data)
+    else:
+        result = ClientStaffService.update_staff(user, staff_id, data)
+
     if result.success:
         return JsonResponse({'success': True, 'message': result.message})
     return JsonResponse({'success': False, 'message': result.message}, status=400)
@@ -939,13 +1023,27 @@ def api_staff_update(request, staff_id):
 def api_staff_toggle(request, staff_id):
     """Toggle staff active/inactive."""
     user = request.user
-    if not PermissionService.is_client(user):
-        return JsonResponse({'success': False, 'message': 'Only clients can manage staff'}, status=403)
+    if not (PermissionService.is_client(user) or PermissionService.is_any_admin(user)):
+        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
 
-    result = ClientStaffService.toggle_staff_status(user, staff_id)
-    if result.success:
-        return JsonResponse({'success': True, 'message': result.message, **(result.data or {})})
-    return JsonResponse({'success': False, 'message': result.message}, status=400)
+    if PermissionService.is_client(user):
+        result = ClientStaffService.toggle_staff_status(user, staff_id)
+        if result.success:
+            return JsonResponse({'success': True, 'message': result.message, **(result.data or {})})
+        return JsonResponse({'success': False, 'message': result.message}, status=400)
+    else:
+        # Admin toggle — directly update the Staff user's is_active
+        try:
+            staff = Staff.objects.select_related('user').get(id=staff_id)
+            staff.user.is_active = not staff.user.is_active
+            staff.user.save(update_fields=['is_active'])
+            new_state = 'activated' if staff.user.is_active else 'deactivated'
+            return JsonResponse({'success': True, 'message': f'{staff.user.get_full_name() or staff.user.username} {new_state}', 'is_active': staff.user.is_active})
+        except Staff.DoesNotExist:
+            return JsonResponse({'success': False, 'message': 'Staff not found'}, status=404)
+        except Exception as exc:
+            logger.exception('Admin staff toggle error')
+            return JsonResponse({'success': False, 'message': str(exc)}, status=500)
 
 
 @require_mobile_client
@@ -953,13 +1051,25 @@ def api_staff_toggle(request, staff_id):
 def api_staff_delete(request, staff_id):
     """Delete a staff member."""
     user = request.user
-    if not PermissionService.is_client(user):
-        return JsonResponse({'success': False, 'message': 'Only clients can delete staff'}, status=403)
+    if not (PermissionService.is_client(user) or PermissionService.is_any_admin(user)):
+        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
 
-    result = ClientStaffService.delete_staff(user, staff_id)
-    if result.success:
-        return JsonResponse({'success': True, 'message': result.message})
-    return JsonResponse({'success': False, 'message': result.message}, status=400)
+    if PermissionService.is_client(user):
+        result = ClientStaffService.delete_staff(user, staff_id)
+        if result.success:
+            return JsonResponse({'success': True, 'message': result.message})
+        return JsonResponse({'success': False, 'message': result.message}, status=400)
+    else:
+        try:
+            staff = Staff.objects.select_related('user').get(id=staff_id)
+            name = staff.user.get_full_name() or staff.user.username
+            staff.user.delete()  # cascade deletes staff profile
+            return JsonResponse({'success': True, 'message': f'{name} deleted'})
+        except Staff.DoesNotExist:
+            return JsonResponse({'success': False, 'message': 'Staff not found'}, status=404)
+        except Exception as exc:
+            logger.exception('Admin staff delete error')
+            return JsonResponse({'success': False, 'message': str(exc)}, status=500)
 
 
 @require_mobile_client
@@ -1040,3 +1150,45 @@ def api_search(request):
         })
 
     return JsonResponse({'success': True, 'data': {'results': results, 'count': len(results)}})
+
+
+# ─── Client Management APIs ────────────────────────────────────────────────────
+
+@require_mobile_client
+@require_http_methods(['POST'])
+def api_client_toggle(request, client_id):
+    """Toggle a client between active / inactive."""
+    from client.models import Client
+    if not PermissionService.is_any_admin(request.user):
+        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
+    try:
+        client = get_object_or_404(Client, id=client_id)
+        if client.status == 'active':
+            client.status = 'inactive'
+            label = 'deactivated'
+        else:
+            client.status = 'active'
+            label = 'activated'
+        client.save(update_fields=['status'])
+        return JsonResponse({'success': True, 'message': f'{client.name} {label}', 'new_status': client.status})
+    except Exception as exc:
+        logger.exception('api_client_toggle error: %s', exc)
+        return JsonResponse({'success': False, 'message': str(exc)}, status=500)
+
+
+@require_mobile_client
+@require_http_methods(['POST'])
+def api_client_delete(request, client_id):
+    """Permanently delete a client (super_admin only)."""
+    from client.models import Client
+    if not PermissionService.is_super_admin(request.user):
+        return JsonResponse({'success': False, 'message': 'Only super admin can delete clients'}, status=403)
+    try:
+        client = get_object_or_404(Client, id=client_id)
+        client_name = client.name
+        client.delete()
+        return JsonResponse({'success': True, 'message': f'{client_name} deleted permanently'})
+    except Exception as exc:
+        logger.exception('api_client_delete error: %s', exc)
+        return JsonResponse({'success': False, 'message': str(exc)}, status=500)
+

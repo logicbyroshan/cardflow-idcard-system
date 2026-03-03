@@ -1,0 +1,263 @@
+{% load static %}
+<!-- Hamburger Side Drawer — slides in from the right -->
+<!-- Controlled by Alpine.js; opened via $dispatch('open-hamburger') from navbar btn -->
+<div x-data="hamburgerDrawer()"
+     x-on:open-hamburger.window="open()"
+     class="pwa-drawer-root">
+
+    <!-- Dark overlay -->
+    <div x-show="isOpen"
+         x-transition:enter="transition-opacity ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition-opacity ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         @click="close()"
+         class="fixed inset-0 z-[200] bg-black/40 backdrop-blur-[1px]"
+         style="display:none;">
+    </div>
+
+    <!-- Drawer panel -->
+    <div x-show="isOpen"
+         x-transition:enter="transition-transform ease-out duration-250"
+         x-transition:enter-start="translate-x-full"
+         x-transition:enter-end="translate-x-0"
+         x-transition:leave="transition-transform ease-in duration-200"
+         x-transition:leave-start="translate-x-0"
+         x-transition:leave-end="translate-x-full"
+         class="pwa-drawer-panel fixed top-0 right-0 bottom-0 z-[201] w-[78vw] max-w-[310px] bg-white shadow-2xl flex flex-col"
+         style="display:none;">
+
+        <!-- ── Header ── -->
+        <div class="pwa-drawer-header relative flex items-center justify-between px-5 pt-[calc(env(safe-area-inset-top,0px)+14px)] pb-4 bg-gradient-to-br from-[#667eea] to-[#764ba2]">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center text-white font-bold text-sm select-none border border-white/30">
+                    {{ user_name|default:"AU"|truncatechars:2|upper }}
+                </div>
+                <div>
+                    <p class="text-white font-semibold text-sm leading-tight">{{ user_name|default:"Admin" }}</p>
+                    <p class="text-white/70 text-[10px] leading-none mt-0.5">{{ request.user.role|default:"" }}</p>
+                </div>
+            </div>
+            <button @click="close()" class="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white active:bg-white/30 transition-colors">
+                <i class="fa-solid fa-xmark text-sm"></i>
+            </button>
+        </div>
+
+        <!-- ── Scrollable menu body ── -->
+        <div class="flex-1 overflow-y-auto pb-[env(safe-area-inset-bottom,16px)]">
+
+            <!-- Section: Workflows -->
+            <div class="px-4 pt-4 pb-1">
+                <p class="pwa-drawer-section-label">Workflows</p>
+            </div>
+            <div class="px-3 space-y-1">
+                <!-- Print List -->
+                {% if first_table_id %}
+                <a href="/panel/print/table/{{ first_table_id }}/"
+                   @click="close()"
+                   class="pwa-drawer-item">
+                    <span class="pwa-drawer-icon-wrap bg-indigo-50 text-indigo-600">
+                        <i class="fa-solid fa-print"></i>
+                    </span>
+                    <div class="pwa-drawer-item-text">
+                        <span class="pwa-drawer-item-title">Print List</span>
+                        <span class="pwa-drawer-item-sub">Cards ready to print</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right pwa-drawer-chevron"></i>
+                </a>
+                {% else %}
+                <a href="{% url 'mobile_app:table_picker' 'download' %}"
+                   @click="close()"
+                   class="pwa-drawer-item">
+                    <span class="pwa-drawer-icon-wrap bg-indigo-50 text-indigo-600">
+                        <i class="fa-solid fa-print"></i>
+                    </span>
+                    <div class="pwa-drawer-item-text">
+                        <span class="pwa-drawer-item-title">Print List</span>
+                        <span class="pwa-drawer-item-sub">Cards ready to print</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right pwa-drawer-chevron"></i>
+                </a>
+                {% endif %}
+
+                <!-- Reprint List -->
+                {% if first_table_id %}
+                <a href="/panel/reprint/table/{{ first_table_id }}/"
+                   @click="close()"
+                   class="pwa-drawer-item">
+                    <span class="pwa-drawer-icon-wrap bg-purple-50 text-purple-600">
+                        <i class="fa-solid fa-rotate-right"></i>
+                    </span>
+                    <div class="pwa-drawer-item-text">
+                        <span class="pwa-drawer-item-title">Reprint List</span>
+                        <span class="pwa-drawer-item-sub">Reprinting requests</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right pwa-drawer-chevron"></i>
+                </a>
+                {% else %}
+                <a href="{% url 'mobile_app:table_picker' 'pool' %}"
+                   @click="close()"
+                   class="pwa-drawer-item">
+                    <span class="pwa-drawer-icon-wrap bg-purple-50 text-purple-600">
+                        <i class="fa-solid fa-rotate-right"></i>
+                    </span>
+                    <div class="pwa-drawer-item-text">
+                        <span class="pwa-drawer-item-title">Reprint List</span>
+                        <span class="pwa-drawer-item-sub">Reprinting requests</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right pwa-drawer-chevron"></i>
+                </a>
+                {% endif %}
+
+                <!-- Bulk Actions -->
+                {% if first_table_id %}
+                <a href="{% url 'mobile_app:card_list' first_table_id 'pending' %}"
+                   @click="close()"
+                   class="pwa-drawer-item">
+                    <span class="pwa-drawer-icon-wrap bg-amber-50 text-amber-600">
+                        <i class="fa-solid fa-layer-group"></i>
+                    </span>
+                    <div class="pwa-drawer-item-text">
+                        <span class="pwa-drawer-item-title">Bulk Actions</span>
+                        <span class="pwa-drawer-item-sub">Status, delete &amp; more</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right pwa-drawer-chevron"></i>
+                </a>
+                {% endif %}
+            </div>
+
+            <!-- Section: Management (admins only) -->
+            {% if is_super_admin or is_admin_staff or is_client %}
+            <div class="px-4 pt-4 pb-1">
+                <p class="pwa-drawer-section-label">Management</p>
+            </div>
+            <div class="px-3 space-y-1">
+
+                {% if is_super_admin or is_admin_staff %}
+                <!-- Add Client -->
+                <a href="/panel/manage-clients/"
+                   @click="close()"
+                   class="pwa-drawer-item">
+                    <span class="pwa-drawer-icon-wrap bg-sky-50 text-sky-600">
+                        <i class="fa-solid fa-building-circle-arrow-right"></i>
+                    </span>
+                    <div class="pwa-drawer-item-text">
+                        <span class="pwa-drawer-item-title">Add Client</span>
+                        <span class="pwa-drawer-item-sub">Create new client</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right pwa-drawer-chevron"></i>
+                </a>
+                {% endif %}
+
+                <!-- Add Staff -->
+                <a href="{% url 'mobile_app:staff_manage' %}"
+                   @click="close()"
+                   class="pwa-drawer-item">
+                    <span class="pwa-drawer-icon-wrap bg-green-50 text-green-600">
+                        <i class="fa-solid fa-user-plus"></i>
+                    </span>
+                    <div class="pwa-drawer-item-text">
+                        <span class="pwa-drawer-item-title">Add Staff</span>
+                        <span class="pwa-drawer-item-sub">Invite team member</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right pwa-drawer-chevron"></i>
+                </a>
+
+                <!-- Team Overview -->
+                <a href="{% url 'mobile_app:staff_manage' %}"
+                   @click="close()"
+                   class="pwa-drawer-item">
+                    <span class="pwa-drawer-icon-wrap bg-rose-50 text-rose-600">
+                        <i class="fa-solid fa-people-group"></i>
+                    </span>
+                    <div class="pwa-drawer-item-text">
+                        <span class="pwa-drawer-item-title">Team Overview</span>
+                        <span class="pwa-drawer-item-sub">View all staff members</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right pwa-drawer-chevron"></i>
+                </a>
+            </div>
+            {% endif %}
+
+            <!-- Section: Quick tools -->
+            <div class="px-4 pt-4 pb-1">
+                <p class="pwa-drawer-section-label">Quick Tools</p>
+            </div>
+            <div class="px-3 space-y-1">
+                <a href="{% url 'mobile_app:search_page' %}"
+                   @click="close()"
+                   class="pwa-drawer-item">
+                    <span class="pwa-drawer-icon-wrap bg-gray-100 text-gray-600">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </span>
+                    <div class="pwa-drawer-item-text">
+                        <span class="pwa-drawer-item-title">Search</span>
+                        <span class="pwa-drawer-item-sub">Find cards &amp; clients</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right pwa-drawer-chevron"></i>
+                </a>
+                <a href="{% url 'mobile_app:notifications' %}"
+                   @click="close()"
+                   class="pwa-drawer-item">
+                    <span class="pwa-drawer-icon-wrap bg-orange-50 text-orange-500">
+                        <i class="fa-solid fa-bell"></i>
+                    </span>
+                    <div class="pwa-drawer-item-text">
+                        <span class="pwa-drawer-item-title">Notifications</span>
+                        <span class="pwa-drawer-item-sub">Recent updates</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right pwa-drawer-chevron"></i>
+                </a>
+                <a href="{% url 'mobile_app:settings_page' %}"
+                   @click="close()"
+                   class="pwa-drawer-item">
+                    <span class="pwa-drawer-icon-wrap bg-gray-100 text-gray-600">
+                        <i class="fa-solid fa-gear"></i>
+                    </span>
+                    <div class="pwa-drawer-item-text">
+                        <span class="pwa-drawer-item-title">Settings</span>
+                        <span class="pwa-drawer-item-sub">Profile &amp; preferences</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right pwa-drawer-chevron"></i>
+                </a>
+            </div>
+
+            <!-- Divider -->
+            <div class="mx-4 mt-4 border-t border-gray-100"></div>
+
+            <!-- Logout -->
+            <div class="px-3 mt-2 mb-2">
+                <a href="/panel/auth/logout/"
+                   @click="close()"
+                   class="pwa-drawer-item pwa-drawer-item--danger">
+                    <span class="pwa-drawer-icon-wrap bg-red-50 text-red-500">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </span>
+                    <div class="pwa-drawer-item-text">
+                        <span class="pwa-drawer-item-title text-red-600">Logout</span>
+                        <span class="pwa-drawer-item-sub">Sign out of your account</span>
+                    </div>
+                </a>
+            </div>
+
+        </div><!-- /scrollable body -->
+    </div><!-- /drawer panel -->
+</div><!-- /drawer root -->
+
+<script>
+function hamburgerDrawer() {
+    return {
+        isOpen: false,
+        open() {
+            this.isOpen = true;
+            document.body.classList.add('overflow-hidden');
+        },
+        close() {
+            this.isOpen = false;
+            document.body.classList.remove('overflow-hidden');
+        }
+    };
+}
+</script>

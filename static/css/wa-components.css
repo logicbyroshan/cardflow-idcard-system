@@ -143,11 +143,12 @@
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    margin-bottom: 16px;
-    padding: 12px 16px;
+    margin-bottom: 0;
+    padding: 10px 16px;
     background: var(--wa-gray-50);
-    border-radius: 10px;
-    border: 1px solid var(--wa-gray-100);
+    border-radius: 0;
+    border: none;
+    border-bottom: 1px solid var(--wa-gray-100);
 }
 .wa-filter-btn {
     padding: 5px 16px;
@@ -369,16 +370,12 @@
 /* ===== FILTER TABS (Contacts status bar) ===== */
 .wa-filter-tabs {
     display: flex;
-    gap: 4px;
-    background: var(--wa-gray-50);
-    padding: 4px;
-    border-radius: 8px;
-    border: 1px solid var(--wa-gray-100);
+    gap: 6px;
     flex-wrap: wrap;
 }
 .wa-filter-tab {
-    padding: 6px 12px;
-    border-radius: 6px;
+    padding: 5px 13px;
+    border-radius: 20px;
     text-decoration: none;
     color: var(--wa-gray-500);
     font-size: 13px;
@@ -388,14 +385,18 @@
     align-items: center;
     gap: 6px;
     white-space: nowrap;
+    background: #fff;
+    border: 1.5px solid var(--wa-gray-200);
 }
 .wa-filter-tab:hover {
-    background: #fff;
-    color: var(--wa-gray-700);
+    background: #eff6ff;
+    color: var(--wa-primary);
+    border-color: var(--wa-primary);
 }
 .wa-filter-tab.active {
     background: var(--wa-primary);
     color: #fff;
+    border-color: var(--wa-primary);
     box-shadow: var(--wa-shadow);
 }
 .wa-filter-tab .badge {

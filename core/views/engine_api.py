@@ -590,3 +590,64 @@ def api_engine_delete_image(request):
         "deleted_folder": str(deleted_folder),
         "filename": src.name,
     })
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  GET  /engine/download/
+#  Serve AdarshCropper.exe as a proper attachment download.
+#
+#  Serving via Django (instead of a direct /static/ link) lets us set
+#  Content-Disposition and other headers that help browsers treat the file
+#  as an intentional download rather than a suspicious URL-based fetch.
+# ═══════════════════════════════════════════════════════════════════════════
+@login_required
+@require_any_admin
+@require_GET
+def engine_download(request):
+    """
+    Stream AdarshCropper.exe to the browser as an attachment.
+
+    Looks for the file in:
+      1. STATICFILES_DIRS[0]/engine/AdarshCropper.exe  (dev)
+      2. STATIC_ROOT/engine/AdarshCropper.exe           (production / collectstatic)
+      3. BASE_DIR/static/engine/AdarshCropper.exe       (fallback)
+    """
+    from django.conf import settings
+    from django.http import Http404
+
+    candidates = []
+
+    # Dev: look in each staticfiles dir
+    for sdir in getattr(settings, 'STATICFILES_DIRS', []):
+        candidates.append(Path(sdir) / 'engine' / 'AdarshCropper.exe')
+
+    # Production: collected static root
+    if hasattr(settings, 'STATIC_ROOT') and settings.STATIC_ROOT:
+        candidates.append(Path(settings.STATIC_ROOT) / 'engine' / 'AdarshCropper.exe')
+
+    # Absolute fallback: project-root /static/
+    candidates.append(Path(settings.BASE_DIR) / 'static' / 'engine' / 'AdarshCropper.exe')
+
+    exe_path = None
+    for candidate in candidates:
+        if candidate.exists():
+            exe_path = candidate
+            break
+
+    if exe_path is None:
+        logger.error("AdarshCropper.exe not found in any static path.")
+        raise Http404("AdarshCropper installer not found.")
+
+    logger.info("Serving AdarshCropper.exe from: %s", exe_path)
+
+    response = FileResponse(
+        open(exe_path, 'rb'),
+        content_type='application/octet-stream',
+        as_attachment=True,
+        filename='AdarshCropperSetup.exe',
+    )
+    # Suppress browsers/proxies from sniffing the content type
+    response['X-Content-Type-Options'] = 'nosniff'
+    # Tell the browser the exact byte size so it shows a proper progress bar
+    response['Content-Length'] = exe_path.stat().st_size
+    return response

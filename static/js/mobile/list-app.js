@@ -16,6 +16,10 @@ function listApp() {
         // Add/Edit Form state
         showAddForm: false,
         showImagePicker: false,
+        showCropModal: false,
+        cropSourceUrl: null,
+        cropSourceFile: null,
+        cropperInstance: null,
         editMode: false,
         editingId: null,
         studentsData: typeof STUDENTS_DATA !== 'undefined' ? STUDENTS_DATA : [],
@@ -214,14 +218,61 @@ function listApp() {
         handleImageSelected(event) {
             const file = event.target.files[0];
             if (!file) return;
-            // Validate file type and size
             if (!file.type.startsWith('image/')) { this.showToast('Please select an image file', 'error'); return; }
             if (file.size > 10 * 1024 * 1024) { this.showToast('Image must be less than 10MB', 'error'); return; }
-            this.form.photoFile = file;
+            this.cropSourceFile = file;
             const reader = new FileReader();
-            reader.onload = (e) => { this.form.photoPreview = e.target.result; };
+            reader.onload = (e) => {
+                this.cropSourceUrl = e.target.result;
+                this.showCropModal = true;
+                this.$nextTick(() => this.initCropper());
+            };
             reader.readAsDataURL(file);
             event.target.value = '';
+        },
+        initCropper() {
+            const img = document.getElementById('crop-img-target');
+            if (!img || typeof Cropper === 'undefined') return;
+            if (this.cropperInstance) { this.cropperInstance.destroy(); this.cropperInstance = null; }
+            this.cropperInstance = new Cropper(img, {
+                aspectRatio: 3 / 4,
+                viewMode: 1,
+                dragMode: 'move',
+                autoCropArea: 0.85,
+                responsive: true,
+                restore: false,
+                background: false,
+                movable: true,
+                rotatable: true,
+                scalable: false,
+                zoomable: true,
+                zoomOnTouch: true,
+            });
+        },
+        cropAndUse() {
+            if (!this.cropperInstance) { this.skipCrop(); return; }
+            const canvas = this.cropperInstance.getCroppedCanvas({ width: 600, height: 800, imageSmoothingEnabled: true, imageSmoothingQuality: 'high' });
+            canvas.toBlob((blob) => {
+                const fileName = (this.cropSourceFile && this.cropSourceFile.name) ? this.cropSourceFile.name : 'photo.jpg';
+                const croppedFile = new File([blob], fileName, { type: 'image/jpeg' });
+                this.form.photoFile = croppedFile;
+                const reader = new FileReader();
+                reader.onload = (e) => { this.form.photoPreview = e.target.result; };
+                reader.readAsDataURL(croppedFile);
+                this.closeCropModal();
+            }, 'image/jpeg', 0.92);
+        },
+        skipCrop() {
+            // Use original file without cropping
+            this.form.photoFile = this.cropSourceFile;
+            this.form.photoPreview = this.cropSourceUrl;
+            this.closeCropModal();
+        },
+        closeCropModal() {
+            if (this.cropperInstance) { this.cropperInstance.destroy(); this.cropperInstance = null; }
+            this.showCropModal = false;
+            this.cropSourceUrl = null;
+            this.cropSourceFile = null;
         },
         async submitAddForm() {
             if (!this.form.name.trim()) { this.showToast('Name is required', 'error'); return; }
@@ -265,14 +316,41 @@ function listApp() {
         },
 
         // List action methods — wired to real APIs
-        deleteSelected() { this.apiAction('pool', 'moved to pool'); },
+        viewSelected() {
+            if (!this.selectedIds.length) { this.showToast('Select an item first', 'error'); return; }
+            if (this.selectedIds.length > 1) { this.showToast('Select only 1 item to view', 'error'); return; }
+            window.location.href = '/app/card/' + this.selectedIds[0] + '/';
+        },
+        deleteSelected() { this.permanentlyDelete(); },
         verifySelected() { this.apiAction('verified', 'verified'); },
         approveSelected() { this.apiAction('approved', 'approved'); },
         unapproveSelected() { this.apiAction('verified', 'unapproved'); },
-        downloadPDF() {
+        async downloadPDF() {
             if (!this.selectedIds.length) { this.showToast('Select items first', 'error'); return; }
-            this.showToast('Generating PDF...', 'info');
-            window.open('/api/table/' + TABLE_ID + '/cards/download-pdf/?status=' + LIST_TYPE + '&ids=' + this.selectedIds.join(','), '_blank');
+            this.showToast('Generating PDF…', 'info');
+            try {
+                const res = await fetch('/panel/exports/pdf/' + TABLE_ID + '/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+                    body: JSON.stringify({ card_ids: this.selectedIds, status: LIST_TYPE }),
+                });
+                const ct = res.headers.get('content-type') || '';
+                if (res.ok && ct.includes('application/pdf')) {
+                    const blob = await res.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'cards_' + TABLE_ID + '_' + LIST_TYPE + '.pdf';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    URL.revokeObjectURL(url);
+                    this.showToast('PDF downloaded!', 'success');
+                } else {
+                    const data = await res.json().catch(() => ({}));
+                    this.showToast(data.message || 'PDF generation failed', 'error');
+                }
+            } catch (e) { this.showToast('PDF download failed', 'error'); }
         },
         downloadIMG() {
             if (!this.selectedIds.length) { this.showToast('Select items first', 'error'); return; }
@@ -298,7 +376,7 @@ function listApp() {
             }
             this.loading = false;
             if (success > 0) {
-                this.showToast(success + ' card(s) permanently deleted', 'success');
+                this.showToast(success + ' card(s) deleted', 'success');
                 setTimeout(() => location.reload(), 800);
             } else { this.showToast('Failed to delete cards', 'error'); }
             this.selectedIds = [];

@@ -107,6 +107,65 @@
   gap: 6px;
 }
 
+/* ── Engine Download Hero Row (icon + name inside disconnected card) ── */
+.engine-dl-hero {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.engine-dl-icon {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.engine-dl-info {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.engine-dl-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-gray-800, #1f2937);
+}
+
+.engine-dl-sub {
+  font-size: 12px;
+  color: var(--color-gray-400);
+  margin-top: 2px;
+}
+
+/* ── SmartScreen / browser download help note ── */
+.engine-smartscreen-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #fefce8;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 12px;
+  color: #78350f;
+  line-height: 1.6;
+  max-width: 480px;
+  margin: 0 auto 16px;
+  text-align: left;
+}
+
+.engine-smartscreen-note i {
+  color: #d97706;
+  font-size: 16px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
 /* Loading state */
 .engine-loading {
   display: flex;

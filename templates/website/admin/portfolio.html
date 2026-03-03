@@ -75,10 +75,20 @@
             {% endfor %}
         </div>
 
+        <!-- Bulk action bar (shown when items selected) -->
+        <div class="wa-bulk-action-bar" id="portfolioBulkBar" style="display:none;">
+            <span id="portfolioSelectedCount">0 selected</span>
+            {% if is_super_admin or perm_website_delete %}
+            <button class="btn btn-danger btn-sm" onclick="bulkDeletePortfolio()"><i class="fa-solid fa-trash"></i> Delete Selected</button>
+            {% endif %}
+            <button class="btn btn-neutral btn-sm" onclick="clearPortfolioSelection()"><i class="fa-solid fa-xmark"></i> Clear</button>
+        </div>
+
         <div class="wa-table-wrap">
             <table class="wa-table" id="portfolioTable">
                 <thead>
                     <tr>
+                        <th class="wa-check-th" style="width:40px;"><input type="checkbox" id="selectAllPortfolio" title="Select all" onchange="toggleAllPortfolio(this)"></th>
                         <th>Preview</th>
                         <th>Item</th>
                         <th>Category</th>
@@ -91,6 +101,7 @@
                 <tbody id="portfolioBody">
                     {% for p in items %}
                     <tr data-id="{{ p.id }}" data-cat="{{ p.category_id|default:'' }}">
+                        <td><input type="checkbox" class="portfolio-row-check" value="{{ p.id }}" onchange="updatePortfolioSelection()"></td>
                         <td>
                             {% if p.image %}
                             <img src="{{ p.image.url }}" class="wa-thumb xl" alt="{{ p.title|default:'Item' }}">
@@ -138,7 +149,7 @@
                         </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="7" class="wa-empty">No portfolio items yet.</td></tr>
+                    <tr><td colspan="8" class="wa-empty">No portfolio items yet.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -265,26 +276,28 @@
         </div>
         <form id="bulkUploadForm" enctype="multipart/form-data">
             {% csrf_token %}
-            <div class="wa-form-group">
-                <label for="bulk_category">Category *</label>
-                <select id="bulk_category" name="category" required>
-                    <option value="">— Select Category —</option>
-                    {% for cat in categories %}
-                    <option value="{{ cat.id }}">{{ cat.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="wa-form-group">
-                <label for="bulk_images"><i class="fa-solid fa-images"></i> Select Images (max 50)</label>
-                <input type="file" id="bulk_images" name="images" accept="image/*" multiple required>
-                <small class="form-hint">Select up to 50 images. Orientation is auto-detected. All will be set as Active.</small>
-                <div id="bulkFileCount" class="wa-bulk-file-count" style="display:none;"></div>
-            </div>
-            <div id="bulkProgress" class="wa-bulk-progress" style="display:none;">
-                <div class="wa-bulk-progress-track">
-                    <div id="bulkProgressBar" class="wa-bulk-progress-bar"></div>
+            <div class="wa-modal-body">
+                <div class="wa-form-group">
+                    <label for="bulk_category">Category *</label>
+                    <select id="bulk_category" name="category" required>
+                        <option value="">— Select Category —</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat.id }}">{{ cat.name }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
-                <small id="bulkProgressText">Uploading...</small>
+                <div class="wa-form-group">
+                    <label for="bulk_images"><i class="fa-solid fa-images"></i> Select Images (max 50)</label>
+                    <input type="file" id="bulk_images" name="images" accept="image/*" multiple required>
+                    <small class="form-hint">Select up to 50 images. Orientation is auto-detected. All will be set as Active.</small>
+                    <div id="bulkFileCount" class="wa-bulk-file-count" style="display:none;"></div>
+                </div>
+                <div id="bulkProgress" class="wa-bulk-progress" style="display:none;">
+                    <div class="wa-bulk-progress-track">
+                        <div id="bulkProgressBar" class="wa-bulk-progress-bar"></div>
+                    </div>
+                    <small id="bulkProgressText">Uploading...</small>
+                </div>
             </div>
             <div class="wa-modal-footer">
                 <button type="button" class="btn btn-neutral" onclick="closeBulkUploadModal()"><i class="fa-solid fa-xmark"></i> Cancel</button>
@@ -297,4 +310,51 @@
 
 {% block extra_js %}
 <script src="{% static 'js/website-admin/portfolio.js' %}?v=134"></script>
+<script>
+function toggleAllPortfolio(master) {
+    document.querySelectorAll('.portfolio-row-check').forEach(function(cb) { cb.checked = master.checked; });
+    updatePortfolioSelection();
+}
+function updatePortfolioSelection() {
+    var checked = document.querySelectorAll('.portfolio-row-check:checked');
+    var bar = document.getElementById('portfolioBulkBar');
+    var countEl = document.getElementById('portfolioSelectedCount');
+    var masterCb = document.getElementById('selectAllPortfolio');
+    var total = document.querySelectorAll('.portfolio-row-check').length;
+    if (checked.length > 0) {
+        bar.style.display = 'flex';
+        countEl.textContent = checked.length + ' selected';
+    } else {
+        bar.style.display = 'none';
+    }
+    masterCb.indeterminate = checked.length > 0 && checked.length < total;
+    masterCb.checked = checked.length === total && total > 0;
+}
+function clearPortfolioSelection() {
+    document.querySelectorAll('.portfolio-row-check').forEach(function(cb) { cb.checked = false; });
+    document.getElementById('selectAllPortfolio').checked = false;
+    document.getElementById('portfolioBulkBar').style.display = 'none';
+}
+function bulkDeletePortfolio() {
+    var checked = document.querySelectorAll('.portfolio-row-check:checked');
+    if (!checked.length) return;
+    var ids = Array.from(checked).map(function(cb) { return cb.value; });
+    if (!confirm('Delete ' + ids.length + ' selected item(s)? This cannot be undone.')) return;
+    var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+    var token = csrfToken ? csrfToken.value : '';
+    Promise.all(ids.map(function(id) {
+        return fetch('/website-admin/portfolio/' + id + '/delete/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': token, 'X-Requested-With': 'XMLHttpRequest' }
+        });
+    })).then(function() {
+        ids.forEach(function(id) {
+            var row = document.querySelector('tr[data-id="' + id + '"]');
+            if (row) row.remove();
+        });
+        clearPortfolioSelection();
+        showToast('Deleted ' + ids.length + ' item(s).', 'success');
+    }).catch(function(err) { showToast('Some deletions failed.', 'error'); });
+}
+</script>
 {% endblock %}

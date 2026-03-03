@@ -1,43 +1,66 @@
-<!-- Bottom Navigation Bar -->
-<div class="fixed bottom-0 left-0 right-0 z-50">
-    <div class="max-w-[430px] mx-auto bg-white border-t border-gray-200 shadow-[0_-2px_10px_rgba(0,0,0,0.06)]">
-        <div class="flex items-center justify-around px-2 py-1.5">
-            <!-- Home -->
-            <a href="{% url 'mobile_app:home' %}" class="flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-all active:scale-95 {% if request.resolver_match.url_name == 'home' %}text-brand-light{% else %}text-gray-400 hover:text-gray-600{% endif %}">
-                <i class="fa-solid fa-house text-base"></i>
-                <span class="text-[9px] font-semibold">Home</span>
-            </a>
-            <!-- Search -->
-            <a href="{% url 'mobile_app:search_page' %}" class="flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-all active:scale-95 {% if request.resolver_match.url_name == 'search_page' %}text-brand-light{% else %}text-gray-400 hover:text-gray-600{% endif %}">
-                <i class="fa-solid fa-magnifying-glass text-base"></i>
-                <span class="text-[9px] font-semibold">Search</span>
-            </a>
-            <!-- Groups / Clients — admins see Clients list, others see their Groups -->
-            {% if is_super_admin or is_admin_staff %}
-            <a href="{% url 'mobile_app:clients_list' %}" class="flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-all active:scale-95 {% if request.resolver_match.url_name == 'clients_list' or request.resolver_match.url_name == 'client_groups' %}text-brand-light{% else %}text-gray-400 hover:text-gray-600{% endif %}">
-                <i class="fa-solid fa-building text-base"></i>
-                <span class="text-[9px] font-semibold">Clients</span>
-            </a>
-            {% else %}
-            <a href="{% url 'mobile_app:groups_overview' %}" class="flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-all active:scale-95 {% if request.resolver_match.url_name == 'groups_overview' %}text-brand-light{% else %}text-gray-400 hover:text-gray-600{% endif %}">
-                <i class="fa-solid fa-layer-group text-base"></i>
-                <span class="text-[9px] font-semibold">Groups</span>
-            </a>
-            {% endif %}
-            <!-- Activity / Notifications — hidden for admins -->
-            {% if not is_super_admin and not is_admin_staff %}
-            <a href="{% url 'mobile_app:notifications' %}" class="flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-all active:scale-95 {% if request.resolver_match.url_name == 'notifications' %}text-brand-light{% else %}text-gray-400 hover:text-gray-600{% endif %}">
-                <i class="fa-solid fa-bell text-base"></i>
-                <span class="text-[9px] font-semibold">Activity</span>
-            </a>
-            {% endif %}
-            <!-- Settings -->
-            <a href="{% url 'mobile_app:settings_page' %}" class="flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-all active:scale-95 {% if request.resolver_match.url_name == 'settings_page' %}text-brand-light{% else %}text-gray-400 hover:text-gray-600{% endif %}">
-                <i class="fa-solid fa-gear text-base"></i>
-                <span class="text-[9px] font-semibold">Settings</span>
-            </a>
+<!-- Bottom Navigation Bar — 5 items, Search center prominent -->
+<nav class="pwa-bottom-nav fixed bottom-0 left-0 right-0 z-50">
+    <div class="max-w-[430px] mx-auto relative">
+
+        <!-- Nav bar background with notch cutout above center -->
+        <div class="bg-white border-t border-gray-200 shadow-[0_-2px_12px_rgba(0,0,0,0.07)] relative">
+            <div class="flex items-end px-1" style="height:58px;">
+
+                <!-- Home -->
+                <a href="{% url 'mobile_app:home' %}"
+                   class="pwa-nav-item flex-1 {% if request.resolver_match.url_name == 'home' %}pwa-nav-active{% endif %}">
+                    <i class="fa-solid fa-house pwa-nav-icon"></i>
+                    <span class="pwa-nav-label">Home</span>
+                </a>
+
+                <!-- Clients -->
+                {% if is_super_admin or is_admin_staff %}
+                <a href="{% url 'mobile_app:clients_list' %}"
+                   class="pwa-nav-item flex-1 {% if request.resolver_match.url_name == 'clients_list' or request.resolver_match.url_name == 'client_groups' %}pwa-nav-active{% endif %}">
+                    <i class="fa-solid fa-building pwa-nav-icon"></i>
+                    <span class="pwa-nav-label">Clients</span>
+                </a>
+                {% else %}
+                <a href="{% url 'mobile_app:groups_overview' %}"
+                   class="pwa-nav-item flex-1 {% if request.resolver_match.url_name == 'groups_overview' %}pwa-nav-active{% endif %}">
+                    <i class="fa-solid fa-layer-group pwa-nav-icon"></i>
+                    <span class="pwa-nav-label">Groups</span>
+                </a>
+                {% endif %}
+
+                <!-- Search (center) — spacer so the floating button sits above -->
+                <div class="flex-1 flex flex-col items-center justify-end pb-2" style="position:relative;">
+                    <!-- invisible tap target that mirrors the floating btn -->
+                    <a href="{% url 'mobile_app:search_page' %}"
+                       class="w-14 h-14 block"
+                       aria-label="Search"></a>
+                </div>
+
+                <!-- Staff -->
+                <a href="{% url 'mobile_app:staff_manage' %}"
+                   class="pwa-nav-item flex-1 {% if request.resolver_match.url_name == 'staff_manage' %}pwa-nav-active{% endif %}">
+                    <i class="fa-solid fa-users pwa-nav-icon"></i>
+                    <span class="pwa-nav-label">Staff</span>
+                </a>
+
+                <!-- Settings -->
+                <a href="{% url 'mobile_app:settings_page' %}"
+                   class="pwa-nav-item flex-1 {% if request.resolver_match.url_name == 'settings_page' %}pwa-nav-active{% endif %}">
+                    <i class="fa-solid fa-gear pwa-nav-icon"></i>
+                    <span class="pwa-nav-label">Settings</span>
+                </a>
+
+            </div>
+            <!-- Safe-area padding for phones with home-indicator bar -->
+            <div style="height: env(safe-area-inset-bottom, 0px);"></div>
         </div>
-        <!-- Safe area padding for phones with home indicator -->
-        <div class="h-[env(safe-area-inset-bottom,0px)]"></div>
+
+        <!-- Floating Search button — sits above the center of nav bar -->
+        <a href="{% url 'mobile_app:search_page' %}"
+           class="pwa-nav-search-btn {% if request.resolver_match.url_name == 'search_page' %}pwa-nav-search-active{% endif %}"
+           aria-label="Search">
+            <i class="fa-solid fa-magnifying-glass text-[22px]"></i>
+        </a>
+
     </div>
-</div>
+</nav>

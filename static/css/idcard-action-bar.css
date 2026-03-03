@@ -83,6 +83,11 @@
     height: 28px;
 }
 
+/* Action bar direct buttons (not inside .action-buttons-group) */
+.action-bar .btn.action-btn {
+    border-radius: 4px;
+}
+
 .action-buttons-group .btn.action-btn i {
     font-size: 12px;
 }

@@ -22,6 +22,18 @@
 }
 
 /* ==========================================
+   BODY/HTML SCROLL LOCK — idcard-actions page only
+   Prevents the browser window scrollbar from spanning
+   the full viewport (including topbar/header).
+   The only scrollable element is .idcard-table itself.
+   ========================================== */
+html:has(.idcard-actions-page),
+body:has(.idcard-actions-page) {
+    overflow: hidden;
+    height: 100vh;
+}
+
+/* ==========================================
    ID CARD ACTIONS PAGE — FLEX COLUMN LAYOUT
    Ensures table fills remaining viewport space
    and thead sticks properly within scroll container.
@@ -31,6 +43,7 @@
     flex-direction: column;
     height: 100vh;
     overflow: hidden;
+    gap: 0;
 }
 
 .idcard-actions-page .main-content {
@@ -53,7 +66,7 @@
     background: #fff;
     flex-shrink: 0;
     margin: 0;
-    padding: 4px 8px;
+    padding: 0 8px 4px;  /* top=0 removes gap between topbar and action buttons */
     gap: 2px;
 }
 
@@ -179,7 +192,7 @@
     white-space: normal;
     word-wrap: break-word;
     overflow-wrap: anywhere;
-    min-width: 120px;
+    min-width: 180px;
     line-height: 1.3;
 }
 

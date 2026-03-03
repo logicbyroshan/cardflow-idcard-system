@@ -160,10 +160,18 @@ def api_cropper_latest_version(request):
     if not release:
         return JsonResponse({"available": False})
 
+    # Use stored external URL if present, otherwise fall back to the local
+    # Django download endpoint so the update banner always has a working link.
+    from django.urls import reverse
+    fallback_url = request.build_absolute_uri(reverse('engine_download'))
+    download_url = release.download_url.strip() if release.download_url else ''
+    if not download_url:
+        download_url = fallback_url
+
     return JsonResponse({
         "available": True,
         "version": release.version,
-        "download_url": release.download_url,
+        "download_url": download_url,
         "changelog": release.changelog,
         "released_at": release.released_at.isoformat() if release.released_at else None,
     })

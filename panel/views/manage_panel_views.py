@@ -114,3 +114,68 @@ def api_email_logs(request):
             'failed': EmailLog.objects.filter(status=EmailLog.STATUS_FAILED).count(),
         },
     })
+
+
+# ── Email Resend API ──────────────────────────────────────────────────────
+
+@require_super_admin
+@require_http_methods(['POST'])
+def api_email_resend(request, log_id):
+    """Resend a welcome/activation email for on_hold or failed email log entries.
+    Generates a new temporary password for the user and resends the welcome email."""
+    import secrets
+    import string
+    from django.utils import timezone
+    from core.utils.email_utils import send_welcome_email
+
+    try:
+        log = EmailLog.objects.get(id=log_id)
+    except EmailLog.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Log entry not found.'}, status=404)
+
+    if log.status not in [EmailLog.STATUS_ON_HOLD, EmailLog.STATUS_FAILED]:
+        return JsonResponse({'success': False, 'message': 'Only on_hold or failed emails can be resent.'})
+
+    try:
+        user = User.objects.get(email=log.recipient_email, is_active=True)
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'No active user found with that email address.'})
+
+    # Generate a new temporary password
+    chars = string.ascii_letters + string.digits
+    new_password = ''.join(secrets.choice(chars) for _ in range(10))
+    user.set_password(new_password)
+    user.save(update_fields=['password'])
+
+    try:
+        success, message = send_welcome_email(
+            name=log.recipient_name or user.get_full_name() or user.username,
+            email=log.recipient_email,
+            password=new_password,
+            role=user.role,
+            request=request,
+        )
+    except Exception as e:
+        logger.error('api_email_resend error for log %s: %s', log_id, e)
+        log.status = EmailLog.STATUS_FAILED
+        log.error_message = str(e)
+        log.save(update_fields=['status', 'error_message'])
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+    if success:
+        log.status = EmailLog.STATUS_SENT
+        log.sent_at = timezone.now()
+        log.error_message = ''
+        log.save(update_fields=['status', 'sent_at', 'error_message'])
+    else:
+        log.status = EmailLog.STATUS_FAILED
+        log.error_message = message
+        log.save(update_fields=['status', 'error_message'])
+
+    return JsonResponse({
+        'success': success,
+        'message': message if success else f'Failed: {message}',
+        'new_status': log.status,
+        'new_status_display': log.get_status_display(),
+    })
+

@@ -56,8 +56,8 @@
 
             <!-- Photo Section -->
             <div class="flex flex-col items-center gap-2">
-                <div @click="openImagePicker()"
-                    class="relative w-24 h-24 rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-brand-light hover:bg-brand-light/5 transition-all group overflow-hidden">
+                <div class="relative w-24 h-32 rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-brand-light hover:bg-brand-light/5 transition-all group overflow-hidden"
+                     @click="openImagePicker()">
                     <template x-if="form.photoPreview">
                         <img :src="form.photoPreview" class="absolute inset-0 w-full h-full object-cover rounded-xl">
                     </template>
@@ -69,11 +69,17 @@
                     </template>
                     <template x-if="form.photoPreview">
                         <div class="absolute bottom-1 right-1 w-6 h-6 rounded-full bg-brand-light text-white flex items-center justify-center text-[10px] shadow">
-                            <i class="fa-solid fa-pen"></i>
+                            <i class="fa-solid fa-camera"></i>
                         </div>
                     </template>
                 </div>
-                <p class="text-[10px] text-gray-400">Tap to upload or take photo</p>
+                <!-- Re-crop button (visible when photo is set) -->
+                <button x-show="form.photoPreview" @click="cropSourceUrl = form.photoPreview; cropSourceFile = null; showCropModal = true; $nextTick(() => initCropper())"
+                        class="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-semibold text-brand-light bg-brand-light/10 border border-brand-light/20 rounded-lg hover:bg-brand-light/20 active:scale-95 transition-all">
+                    <i class="fa-solid fa-crop-simple"></i>
+                    Crop / Adjust
+                </button>
+                <p class="text-[10px] text-gray-400">Tap photo to change · Crop to adjust</p>
             </div>
 
             <!-- Image Picker -->
@@ -198,5 +204,38 @@
             </div>
 
         </div>
+    </div>
+</div>
+
+<!-- Image Crop Modal (z-[80] — above add form) -->
+<div x-show="showCropModal" x-cloak class="fixed inset-0 z-[80] flex flex-col bg-black">
+    <!-- Header -->
+    <div class="flex items-center justify-between px-4 py-3 bg-black/80 flex-shrink-0">
+        <div>
+            <h3 class="text-white font-bold text-sm">Crop Photo</h3>
+            <p class="text-white/50 text-[10px]">Drag to adjust · Pinch to zoom</p>
+        </div>
+        <button @click="closeCropModal()" class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-white">
+            <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+    </div>
+
+    <!-- Crop area -->
+    <div class="flex-1 overflow-hidden relative">
+        <img id="crop-img-target"
+             :src="cropSourceUrl"
+             style="max-width: 100%; display: block;">
+    </div>
+
+    <!-- Footer buttons -->
+    <div class="flex gap-3 px-4 py-4 bg-black/80 flex-shrink-0">
+        <button @click="skipCrop()"
+                class="flex-1 py-3 text-xs font-semibold text-white bg-white/15 rounded-xl border border-white/20 active:scale-[0.98] transition-all">
+            <i class="fa-solid fa-forward mr-1.5"></i>Skip Crop
+        </button>
+        <button @click="cropAndUse()"
+                class="flex-[2] py-3 text-xs font-bold text-white bg-gradient-to-r from-brand-light to-brand-dark rounded-xl shadow-lg active:scale-[0.98] transition-all">
+            <i class="fa-solid fa-crop-simple mr-1.5"></i>Crop &amp; Use
+        </button>
     </div>
 </div>

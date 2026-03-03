@@ -86,11 +86,11 @@
 }
 .wa-form-group input[type="file"] {
     font-size: 12.5px;
-    padding: 10px 12px;
+    padding: 4px 12px;
     border: 2px dashed var(--wa-gray-300, #cbd5e1);
     background: linear-gradient(135deg, #fafbff 0%, #f8fafc 100%);
     color: var(--wa-gray-600);
-    height: auto;
+    height: 34px;
     border-radius: 8px;
     cursor: pointer;
     transition: border-color 0.15s, background 0.15s;

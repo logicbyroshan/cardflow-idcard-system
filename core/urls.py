@@ -58,6 +58,9 @@ urlpatterns = [
     # ==================== SERVICES ==
     path('services/adarsh-cropper/', views.adarsh_cropper, name='adarsh_cropper'),
 
+    # Engine installer download (served via Django so headers are correct)
+    path('engine/download/', views.engine_download, name='engine_download'),
+
     # Engine Proxy APIs (browser → Django → Adarsh Engine, avoids CORS)
     path('api/engine/status/', views.api_engine_status, name='api_engine_status'),
     path('api/engine/process-folder/', views.api_engine_process_folder, name='api_engine_process_folder'),
@@ -85,6 +88,7 @@ urlpatterns = [
     # Manage Panel
     path('manage-panel/', views.manage_panel, name='manage_panel'),
     path('api/email-logs/', views.api_email_logs, name='api_email_logs'),
+    path('api/email-resend/<int:log_id>/', views.api_email_resend, name='api_email_resend'),
     
     # ==================== BACKUP ====================
     path('backup/select-clients/', views.backup_select_clients, name='backup_select_clients'),

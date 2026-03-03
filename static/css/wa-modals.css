@@ -36,14 +36,14 @@
     justify-content: space-between;
     align-items: center;
     padding: 14px 20px 12px;
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border-radius: 10px 10px 0 0;
-    border-bottom: 1px solid var(--wa-gray-200);
+    border-bottom: none;
 }
 .wa-modal-header h3 {
     font-size: 15px;
     font-weight: 700;
-    color: #1e293b;
+    color: #fff;
     margin: 0;
 }
 .wa-modal-close {
@@ -52,10 +52,10 @@
     justify-content: center;
     width: 30px;
     height: 30px;
-    background: #f1f5f9;
-    border: 1px solid #e2e8f0;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
     font-size: 14px;
-    color: #64748b;
+    color: rgba(255,255,255,0.9);
     cursor: pointer;
     border-radius: 50%;
     transition: all 0.2s;
@@ -63,9 +63,9 @@
     flex-shrink: 0;
 }
 .wa-modal-close:hover {
-    color: #ef4444;
-    background: #fef2f2;
-    border-color: #fecaca;
+    color: #fff;
+    background: rgba(255,255,255,0.28);
+    border-color: rgba(255,255,255,0.5);
     transform: rotate(90deg);
 }
 .wa-modal form {

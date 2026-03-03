@@ -1,25 +1,87 @@
 {% load static %}
-<!-- Fixed Bottom Action Bar -->
-<div class="flex-shrink-0 z-40 bg-white border-t border-gray-200 shadow-[0_-2px_10px_rgba(0,0,0,0.06)]">
-    <!-- Selected Count -->
-    <div x-show="selectedIds.length > 0" x-transition class="px-3 py-1 bg-brand-light/5 border-b border-gray-100">
-        <p class="text-[10px] text-brand-light font-semibold text-center">
-            <i class="fa-solid fa-check-circle mr-1"></i>
-            <span x-text="selectedIds.length"></span> item(s) selected
-        </p>
+<!-- Top Horizontal Scroll Action Bar -->
+<div class="flex-shrink-0 z-40 bg-white border-b border-gray-200 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+
+    <!-- Selection count chip (shows when items selected) -->
+    <div x-show="selectedIds.length > 0" x-transition
+         class="flex items-center justify-center gap-1.5 px-3 py-1 bg-brand-light/10 border-b border-brand-light/20">
+        <i class="fa-solid fa-check-circle text-brand-light text-[9px]"></i>
+        <span class="text-[9px] font-bold text-brand-light" x-text="selectedIds.length + ' item(s) selected'"></span>
+        <button @click="selectedIds=[]; selectAll=false"
+                class="ml-1 text-[9px] text-gray-400 hover:text-red-400 transition">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
     </div>
-    <!-- Action Buttons -->
-    <div class="px-1 py-1.5">
-        {% if list_type == 'pending' %}
-        {% include "mobile_app/partials/actions_pending.html" %}
-        {% elif list_type == 'verified' %}
-        {% include "mobile_app/partials/actions_verified.html" %}
-        {% elif list_type == 'approved' %}
-        {% include "mobile_app/partials/actions_approved.html" %}
-        {% elif list_type == 'download' %}
-        {% include "mobile_app/partials/actions_download.html" %}
-        {% elif list_type == 'pool' %}
-        {% include "mobile_app/partials/actions_pool.html" %}
-        {% endif %}
+
+    <!-- Scrollable action buttons row -->
+    <div class="overflow-x-auto py-1.5 px-2 scrollbar-hide">
+        <div class="flex items-center gap-1.5 w-max">
+
+            <!-- ADD — only if user has add permission -->
+            {% if perm_idcard_add %}
+            <button @click="addNew()"
+                    class="action-pill bg-indigo-500 hover:bg-indigo-600 text-white shrink-0">
+                <i class="fa-solid fa-plus text-[10px]"></i>
+                <span>Add</span>
+            </button>
+            {% endif %}
+
+            <!-- EDIT — only if user has edit permission -->
+            {% if perm_idcard_edit %}
+            <button @click="editSelected()"
+                    :class="selectedIds.length > 0 ? 'action-pill bg-amber-500 hover:bg-amber-600 text-white shrink-0' : 'action-pill-disabled shrink-0'"
+                    :disabled="selectedIds.length === 0">
+                <i class="fa-solid fa-pen text-[10px]"></i>
+                <span>Edit</span>
+            </button>
+            {% endif %}
+
+            <!-- VIEW (read-only — always visible) -->
+            <button @click="viewSelected()"
+                    :class="selectedIds.length === 1 ? 'action-pill bg-teal-500 hover:bg-teal-600 text-white shrink-0' : 'action-pill-disabled shrink-0'"
+                    :disabled="selectedIds.length !== 1">
+                <i class="fa-solid fa-eye text-[10px]"></i>
+                <span>View</span>
+            </button>
+
+            {% if list_type == 'pending' and perm_idcard_verify %}
+            <!-- VERIFY (pending → verified) -->
+            <button @click="verifySelected()"
+                    :class="selectedIds.length > 0 ? 'action-pill bg-green-500 hover:bg-green-600 text-white shrink-0' : 'action-pill-disabled shrink-0'"
+                    :disabled="selectedIds.length === 0">
+                <i class="fa-solid fa-circle-check text-[10px]"></i>
+                <span>Verify</span>
+            </button>
+            {% elif list_type == 'verified' and perm_idcard_approve %}
+            <!-- APPROVE (verified → approved) -->
+            <button @click="approveSelected()"
+                    :class="selectedIds.length > 0 ? 'action-pill bg-blue-500 hover:bg-blue-600 text-white shrink-0' : 'action-pill-disabled shrink-0'"
+                    :disabled="selectedIds.length === 0">
+                <i class="fa-solid fa-stamp text-[10px]"></i>
+                <span>Approve</span>
+            </button>
+            {% endif %}
+
+            <!-- DELETE — only if user has delete permission -->
+            {% if perm_idcard_delete %}
+            <button @click="permanentlyDelete()"
+                    :class="selectedIds.length > 0 ? 'action-pill bg-red-500 hover:bg-red-600 text-white shrink-0' : 'action-pill-disabled shrink-0'"
+                    :disabled="selectedIds.length === 0">
+                <i class="fa-solid fa-trash text-[10px]"></i>
+                <span>Delete</span>
+            </button>
+            {% endif %}
+
+            <!-- PDF — only if user has bulk download permission -->
+            {% if perm_idcard_bulk_download %}
+            <button @click="downloadPDF()"
+                    :class="selectedIds.length > 0 ? 'action-pill bg-purple-500 hover:bg-purple-600 text-white shrink-0' : 'action-pill-disabled shrink-0'"
+                    :disabled="selectedIds.length === 0">
+                <i class="fa-solid fa-file-pdf text-[10px]"></i>
+                <span>PDF</span>
+            </button>
+            {% endif %}
+
+        </div>
     </div>
 </div>

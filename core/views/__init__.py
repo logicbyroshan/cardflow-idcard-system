@@ -24,6 +24,7 @@ from .base import (
     manage_website,
     manage_panel,
     api_email_logs,
+    api_email_resend,
     settings,
     api_export_settings_get,
     api_export_settings_update,
@@ -137,6 +138,7 @@ from .engine_api import (
     api_engine_serve_image,
     api_engine_save_edited,
     api_engine_delete_image,
+    engine_download,
 )
 
 from .cropper_api import (

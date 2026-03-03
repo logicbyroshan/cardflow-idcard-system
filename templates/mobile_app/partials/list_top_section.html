@@ -23,6 +23,14 @@
         <a href="{% url 'mobile_app:camera_capture' table_id=table.id %}" class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all ml-1">
             <i class="fa-solid fa-camera text-sm"></i>
         </a>
+        <!-- Hamburger — opens side drawer -->
+        <button type="button"
+                @click="$dispatch('open-hamburger')"
+                class="w-8 h-8 rounded-lg bg-white/20 flex flex-col items-center justify-center gap-[4px] text-white hover:bg-white/30 active:scale-95 transition-all ml-1">
+            <span class="block w-[14px] h-[2px] bg-current rounded-full"></span>
+            <span class="block w-[11px] h-[2px] bg-current rounded-full self-start ml-[1.5px]"></span>
+            <span class="block w-[14px] h-[2px] bg-current rounded-full"></span>
+        </button>
     </div>
 
     <!-- Search Bar -->

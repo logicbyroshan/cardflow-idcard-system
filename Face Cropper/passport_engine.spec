@@ -98,8 +98,9 @@ pyz = PYZ(a.pure)
 # ── Version Info (embedded in the EXE → shows in Properties → Details) ───────
 # This makes the EXE look legitimate to Windows Defender / SmartScreen.
 # The version string "2.2.0.0" is auto-stamped by CI from the git tag.
-version_file = os.path.join(PROJECT_DIR, "version_info.txt")
-icon_file = os.path.join(PROJECT_DIR, "adarsh_cropper.ico")
+version_file   = os.path.join(PROJECT_DIR, "version_info.txt")
+icon_file      = os.path.join(PROJECT_DIR, "adarsh_cropper.ico")
+manifest_file  = os.path.join(PROJECT_DIR, "app.manifest")
 
 exe = EXE(
     pyz,
@@ -120,6 +121,12 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    # ── Embed custom icon (adarsh_cropper.ico) ──────────────────────
     icon=icon_file if os.path.exists(icon_file) else None,
+    # ── Embed version info (visible in Properties → Details) ────────
     version=version_file if os.path.exists(version_file) else None,
+    # ── Embed Windows app manifest (DPI-awareness + trust info) ─────
+    # A proper manifest helps SmartScreen inspect the app metadata and
+    # avoids the "Unknown App" heuristic that triggers the hard block.
+    manifest=manifest_file if os.path.exists(manifest_file) else None,
 )

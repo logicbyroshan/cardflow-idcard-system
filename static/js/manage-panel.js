@@ -619,7 +619,7 @@ window.loadEmailLogs = function (page) {
   const tbody = document.getElementById('emailLogsBody');
   if (tbody) {
     tbody.innerHTML =
-      '<tr><td colspan="7" class="notif-table-empty-cell">' +
+      '<tr><td colspan="8" class="notif-table-empty-cell">' +
       '<div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i>' +
       '<p>Loading…</p></div></td></tr>';
   }
@@ -648,7 +648,7 @@ window.loadEmailLogs = function (page) {
 
       if (!data.logs.length) {
         tBody.innerHTML =
-          '<tr class="notif-table-empty"><td colspan="7">' +
+          '<tr class="notif-table-empty"><td colspan="8">' +
           '<div class="empty-state"><i class="fa-solid fa-envelope-open"></i>' +
           '<p>No email logs found</p>' +
           '<span>Logs appear here after emails are sent</span></div></td></tr>';
@@ -660,14 +660,21 @@ window.loadEmailLogs = function (page) {
             ? '<span title="' + escAttr(log.error_message) + '" style="cursor:help;">' +
               '<i class="fa-solid fa-circle-info" style="color:#dc2626;"></i></span>'
             : '<span style="color:#9ca3af;">—</span>';
-          return '<tr>' +
+          const canResend = log.status === 'on_hold' || log.status === 'failed';
+          const actionHtml = canResend
+            ? '<button class="btn btn-icon" style="width:28px;height:28px;padding:0;" ' +
+              'onclick="resendEmail(' + log.id + ')" title="Resend email">' +
+              '<i class="fa-solid fa-paper-plane" style="font-size:11px;"></i></button>'
+            : '<span style="color:#9ca3af;">—</span>';
+          return '<tr id="email-log-row-' + log.id + '">' +
             '<td class="text-center text-xs text-gray-400">' + (((_emailPage - 1) * 50) + i + 1) + '</td>' +
             '<td><strong style="font-size:12.5px;color:#1e293b;">' + escHtml(log.recipient_name || '—') + '</strong></td>' +
             '<td class="notif-time">' + escHtml(log.recipient_email) + '</td>' +
             '<td><span class="notif-badge-cat">' + escHtml(log.email_type_display) + '</span></td>' +
-            '<td><span class="email-status-badge ' + statusCls + '">' + escHtml(log.status_display) + '</span></td>' +
+            '<td><span class="email-status-badge ' + statusCls + '" id="email-log-status-' + log.id + '">' + escHtml(log.status_display) + '</span></td>' +
             '<td class="notif-time">' + escHtml(log.created_at) + '</td>' +
             '<td style="text-align:center;">' + noteHtml + '</td>' +
+            '<td style="text-align:center;" id="email-log-action-' + log.id + '">' + actionHtml + '</td>' +
             '</tr>';
         }).join('');
       }
@@ -688,6 +695,42 @@ window.loadEmailLogs = function (page) {
 window.emailLogPage = function (delta) {
   _emailPage = Math.max(1, _emailPage + delta);
   loadEmailLogs();
+};
+
+window.resendEmail = function (logId) {
+  if (!confirm('Resend welcome email for this log entry? A new temporary password will be generated for the user.')) return;
+  const actionCell = document.getElementById('email-log-action-' + logId);
+  if (actionCell) actionCell.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="color:#667eea;"></i>';
+  fetch('/api/email-resend/' + logId + '/', {
+    method: 'POST',
+    headers: { 'X-CSRFToken': getCSRFToken(), 'X-Requested-With': 'XMLHttpRequest' }
+  })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (data.success) {
+        const statusEl = document.getElementById('email-log-status-' + logId);
+        if (statusEl) {
+          statusEl.className = 'email-status-badge sent';
+          statusEl.textContent = data.new_status_display || 'Sent';
+        }
+        if (actionCell) actionCell.innerHTML = '<span style="color:#9ca3af;">\u2014</span>';
+        if (typeof showToast === 'function') showToast('Email resent successfully.', 'success');
+      } else {
+        if (actionCell) actionCell.innerHTML =
+          '<button class="btn btn-icon" style="width:28px;height:28px;padding:0;" ' +
+          'onclick="resendEmail(' + logId + ')" title="Retry resend">' +
+          '<i class="fa-solid fa-paper-plane" style="font-size:11px;"></i></button>';
+        if (typeof showToast === 'function') showToast(data.message || 'Resend failed.', 'error');
+        else alert(data.message || 'Resend failed.');
+      }
+    })
+    .catch(function (err) {
+      if (actionCell) actionCell.innerHTML =
+        '<button class="btn btn-icon" style="width:28px;height:28px;padding:0;" ' +
+        'onclick="resendEmail(' + logId + ')" title="Retry resend">' +
+        '<i class="fa-solid fa-paper-plane" style="font-size:11px;"></i></button>';
+      console.error('resendEmail error:', err);
+    });
 };
 
 /* ============ Tab switch hook — lazy-load data ============ */

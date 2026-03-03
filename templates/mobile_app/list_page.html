@@ -17,14 +17,17 @@
 
     {% include "mobile_app/partials/list_filter_panel.html" %}
 
-    {% include "mobile_app/partials/list_table.html" %}
-
     {% include "mobile_app/partials/list_bottom_bar.html" %}
+
+    {% include "mobile_app/partials/list_table.html" %}
 
     {% include "mobile_app/partials/list_toast.html" %}
 
     <!-- Add Form Bottom Sheet -->
     {% include "mobile_app/partials/add_form_sheet.html" %}
+
+    <!-- Hamburger Drawer (accessible from list top section) -->
+    {% include "mobile_app/partials/hamburger_drawer.html" %}
 </div>
 
 {% csrf_token %}
@@ -44,5 +47,7 @@ const ALL_STUDENT_IDS = [{% for s in students %}{{ s.id }}{% if not forloop.last
 const TOTAL_COUNT = {{ total_count }};
 const STUDENTS_DATA = JSON.parse('{{ students_json|escapejs }}');
 </script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.1/dist/cropper.min.css">
+<script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.1/dist/cropper.min.js"></script>
 <script src="{% static 'js/mobile/list-app.js' %}"></script>
 {% endblock %}
