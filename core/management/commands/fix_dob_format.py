@@ -72,19 +72,49 @@ class Command(BaseCommand):
             default=None,
             help='Only fix cards belonging to this client ID (optional)',
         )
+        parser.add_argument(
+            '--diagnose',
+            action='store_true',
+            default=False,
+            help='Print all unique DOB-like key names found in field_data (for debugging)',
+        )
 
     def handle(self, *args, **options):
         apply = options['apply']
         client_id = options.get('client_id')
+        diagnose = options.get('diagnose')
         mode = 'APPLY' if apply else 'DRY-RUN'
 
         self.stdout.write(f'\n=== fix_dob_format ({mode}) ===\n')
 
-        qs = IDCard.objects.exclude(field_data__isnull=True)
+        qs_base = IDCard.objects.exclude(field_data__isnull=True)
         if client_id:
-            qs = qs.filter(table__group__client_id=client_id)
+            qs_base = qs_base.filter(table__group__client_id=client_id)
             self.stdout.write(f'Filtering to client_id={client_id}\n')
-        qs = qs.only('id', 'field_data').iterator(chunk_size=BATCH_SIZE)
+
+        # --diagnose: show all DOB-like keys present, and any remaining digit-only values
+        if diagnose:
+            self.stdout.write('=== DIAGNOSE MODE ===\n')
+            all_dob_keys = {}  # key -> list of sample values
+            for card in qs_base.only('id', 'field_data').iterator(chunk_size=BATCH_SIZE):
+                fd = card.field_data
+                if not isinstance(fd, dict):
+                    continue
+                for k, v in fd.items():
+                    if _is_dob_key(k):
+                        if k not in all_dob_keys:
+                            all_dob_keys[k] = []
+                        if len(all_dob_keys[k]) < 5:
+                            all_dob_keys[k].append(repr(v))
+            self.stdout.write('DOB-like keys found and sample values:')
+            for k, samples in sorted(all_dob_keys.items()):
+                self.stdout.write(f'  {k!r:30s} → {", ".join(samples)}')
+            if not all_dob_keys:
+                self.stdout.write('  (no DOB-like keys found — check key name in your template)')
+            self.stdout.write('')
+            return
+
+        qs = qs_base.only('id', 'field_data').iterator(chunk_size=BATCH_SIZE)
 
         total_scanned = 0
         total_fixed_cards = 0
