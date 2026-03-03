@@ -158,9 +158,6 @@ table.data-table td {
 table.data-table td {
     overflow: hidden;
 }
-table.data-table thead tr {
-    background-color: #b0b0b0;
-}
 table.data-table thead th {
     font-size: {{ data_font_size }};
     font-weight: bold;
@@ -175,9 +172,6 @@ table.data-table thead th {
     overflow-wrap: anywhere;
     hyphens: none;
     -webkit-hyphens: none;
-}
-table.data-table tbody tr:nth-child(even) {
-    background-color: #f3f3f3;
 }
 table.data-table tbody tr {
     page-break-inside: avoid;
@@ -274,7 +268,7 @@ table.data-table td.img-cell.placeholder-cell img {
         <thead>
             <tr>
                 {% for col in columns %}
-                <th>{{ col.label }}</th>
+                <th{% if col.header_nowrap %} style="white-space: nowrap;"{% endif %}>{{ col.label }}</th>
                 {% endfor %}
             </tr>
         </thead>

@@ -366,15 +366,16 @@ class PdfExporter:
             font_preset = _FONT_MODES[resolved_font_mode]
 
             # ── Auto-tiered font size based on column count ──────
-            # 19+ cols → 7pt, 16-18 cols → 8pt, ≤15 → 9pt. Floor: 7pt.
-            if total_cols > 18:
-                _auto_pt = 7
+            # >23 cols → 6.5pt, >20 cols → 7pt, >15 cols → 7.5pt, ≤15 → 8pt
+            if total_cols > 23:
+                _auto_pt = '6.5pt'
+            elif total_cols > 20:
+                _auto_pt = '7pt'
             elif total_cols > 15:
-                _auto_pt = 8
+                _auto_pt = '7.5pt'
             else:
-                _auto_pt = 9
-            _auto_pt = max(7, _auto_pt)  # safety floor
-            data_font_size = f'{_auto_pt}pt'
+                _auto_pt = '8pt'
+            data_font_size = _auto_pt
 
             # Compute dynamic row height from tallest image column
             max_img_h = 0
@@ -610,12 +611,15 @@ class PdfExporter:
             humanized = self._humanize_label(name.upper())
             if shorten_titles:
                 humanized = TITLE_SHORTENING_MAP.get(humanized, humanized)
+            # Short single-word headers should not wrap
+            header_nowrap = ' ' not in humanized.strip() and len(humanized) <= 12
             configs.append({
                 'label': humanized,
                 'width': 0,
                 'align': spec.align,
                 'is_image': is_image,
                 'nowrap': not spec.wrap,
+                'header_nowrap': header_nowrap,
                 '_spec': spec,  # carry spec for clamping later
             })
 
