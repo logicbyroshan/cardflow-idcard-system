@@ -14,109 +14,118 @@
          style="-webkit-overflow-scrolling:touch; padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));">
 
         <!-- -------------------------------------------------
-             BLOCK 1 - QUICK STATS (horizontal scroll row)
-             5 display-only cards: Total, Pending, Verified,
-             Approved, Download - NOT clickable
+             BLOCK 1 - QUICK STATS (5-column compact grid)
+             No title, no icons — just dot + number + label
         --------------------------------------------------- -->
-        <div class="pt-4 pb-2">
-            <div class="px-4 mb-2.5 flex items-center justify-between">
-                <h2 class="pwa-section-title">Overview</h2>
-                <span class="text-[10px] text-gray-400 font-medium">Card Summary</span>
-            </div>
-            <div class="pwa-hscroll px-4 gap-3 pb-1">
+        <div class="pt-3 pb-1 px-3">
+            <div class="pwa-stats-grid">
 
                 <!-- Total -->
-                <div class="pwa-stat-card flex-shrink-0">
-                    <div class="pwa-stat-icon-wrap" style="background:linear-gradient(135deg,#667eea,#764ba2);">
-                        <i class="fa-solid fa-id-card text-white text-sm"></i>
-                    </div>
-                    <p class="pwa-stat-value" style="color:#667eea;">{{ total_cards|default:0 }}</p>
-                    <p class="pwa-stat-label">Total</p>
+                <div class="pwa-stat-card-sm">
+                    <div class="pwa-stat-dot" style="background:#667eea;"></div>
+                    <p class="pwa-stat-val-sm" style="color:#667eea;">{{ total_cards|default:0 }}</p>
+                    <p class="pwa-stat-lbl-sm">Total</p>
                 </div>
 
                 <!-- Pending -->
-                <div class="pwa-stat-card flex-shrink-0">
-                    <div class="pwa-stat-icon-wrap bg-amber-400">
-                        <i class="fa-solid fa-clock text-white text-sm"></i>
-                    </div>
-                    <p class="pwa-stat-value text-amber-600">{{ pending_count|default:0 }}</p>
-                    <p class="pwa-stat-label">Pending</p>
+                <div class="pwa-stat-card-sm">
+                    <div class="pwa-stat-dot" style="background:#f59e0b;"></div>
+                    <p class="pwa-stat-val-sm" style="color:#d97706;">{{ pending_count|default:0 }}</p>
+                    <p class="pwa-stat-lbl-sm">Pend.</p>
                 </div>
 
                 <!-- Verified -->
-                <div class="pwa-stat-card flex-shrink-0">
-                    <div class="pwa-stat-icon-wrap bg-green-500">
-                        <i class="fa-solid fa-check-circle text-white text-sm"></i>
-                    </div>
-                    <p class="pwa-stat-value text-green-600">{{ verified_count|default:0 }}</p>
-                    <p class="pwa-stat-label">Verified</p>
+                <div class="pwa-stat-card-sm">
+                    <div class="pwa-stat-dot" style="background:#22c55e;"></div>
+                    <p class="pwa-stat-val-sm" style="color:#16a34a;">{{ verified_count|default:0 }}</p>
+                    <p class="pwa-stat-lbl-sm">Verif.</p>
                 </div>
 
                 <!-- Approved -->
-                <div class="pwa-stat-card flex-shrink-0">
-                    <div class="pwa-stat-icon-wrap bg-blue-500">
-                        <i class="fa-solid fa-check-double text-white text-sm"></i>
-                    </div>
-                    <p class="pwa-stat-value text-blue-600">{{ approved_count|default:0 }}</p>
-                    <p class="pwa-stat-label">Approved</p>
+                <div class="pwa-stat-card-sm">
+                    <div class="pwa-stat-dot" style="background:#3b82f6;"></div>
+                    <p class="pwa-stat-val-sm" style="color:#2563eb;">{{ approved_count|default:0 }}</p>
+                    <p class="pwa-stat-lbl-sm">Appv.</p>
                 </div>
 
                 <!-- Download -->
-                <div class="pwa-stat-card flex-shrink-0">
-                    <div class="pwa-stat-icon-wrap bg-purple-500">
-                        <i class="fa-solid fa-download text-white text-sm"></i>
-                    </div>
-                    <p class="pwa-stat-value text-purple-600">{{ download_count|default:0 }}</p>
-                    <p class="pwa-stat-label">Download</p>
+                <div class="pwa-stat-card-sm">
+                    <div class="pwa-stat-dot" style="background:#8b5cf6;"></div>
+                    <p class="pwa-stat-val-sm" style="color:#7c3aed;">{{ download_count|default:0 }}</p>
+                    <p class="pwa-stat-lbl-sm">Dwnld</p>
                 </div>
 
             </div>
         </div>
 
         <!-- -------------------------------------------------
-             BLOCK 2 - RECENT CLIENTS (horizontal scroll)
-             Each card shows client name + status breakdown
+             BLOCK 2 - RECENT CLIENT UPDATES (full-width table)
+             Scrollable both axes; tap row to expand status detail
         --------------------------------------------------- -->
         {% if recent_client_updates %}
-        <div class="py-2">
-            <div class="px-4 mb-2.5 flex items-center justify-between">
-                <h2 class="pwa-section-title">Recent Clients</h2>
+        <div class="px-3 pb-2 pt-2">
+            <div class="flex items-center justify-between mb-2">
+                <h2 class="pwa-section-title" style="font-size:12px;">Recent Client Updates</h2>
                 <a href="{% url 'mobile_app:clients_list' %}"
                    class="text-[10px] font-semibold" style="color:#667eea;">View all</a>
             </div>
-            <div class="pwa-hscroll px-4 gap-3 pb-1">
-                {% for rc in recent_client_updates %}
-                <a href="{% url 'mobile_app:client_groups' rc.client_id %}"
-                   class="pwa-client-card flex-shrink-0 block">
-                    <!-- Client header -->
-                    <div class="flex items-center gap-2 mb-3">
-                        <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0"
-                             style="background:linear-gradient(135deg,#667eea,#764ba2);">
-                            {{ rc.client_name|truncatechars:2|upper }}
-                        </div>
-                        <p class="text-[11px] font-bold text-gray-800 leading-tight line-clamp-2 flex-1 min-w-0">{{ rc.client_name }}</p>
-                    </div>
-                    <!-- Per-status pill grid -->
-                    <div class="grid grid-cols-2 gap-1.5">
-                        <div class="pwa-client-pill pwa-pill-pending">
-                            <span class="pwa-pill-num">{{ rc.pending }}</span>
-                            <span class="pwa-pill-lbl">Pending</span>
-                        </div>
-                        <div class="pwa-client-pill pwa-pill-verified">
-                            <span class="pwa-pill-num">{{ rc.verified }}</span>
-                            <span class="pwa-pill-lbl">Verified</span>
-                        </div>
-                        <div class="pwa-client-pill pwa-pill-approved">
-                            <span class="pwa-pill-num">{{ rc.approved }}</span>
-                            <span class="pwa-pill-lbl">Approved</span>
-                        </div>
-                        <div class="pwa-client-pill pwa-pill-download">
-                            <span class="pwa-pill-num">{{ rc.download }}</span>
-                            <span class="pwa-pill-lbl">Download</span>
-                        </div>
-                    </div>
-                </a>
-                {% endfor %}
+            <div class="pwa-clients-table-wrap" x-data="recentClientsTable()">
+                <div class="pwa-clients-table-scroll">
+                    <table class="pwa-ct">
+                        <thead>
+                            <tr>
+                                <th style="min-width:100px;">Client</th>
+                                <th class="text-center" style="width:38px;">Pend.</th>
+                                <th class="text-center" style="width:38px;">Verif.</th>
+                                <th class="text-center" style="width:38px;">Appv.</th>
+                                <th class="text-center" style="width:38px;">Dwnld</th>
+                                <th style="width:28px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for rc in recent_client_updates %}
+                            <tr class="cursor-pointer"
+                                :class="expanded === '{{ rc.client_id }}' ? 'bg-indigo-50/40' : 'active:bg-gray-50'"
+                                @click="toggle('{{ rc.client_id }}')">
+                                <td>
+                                    <div class="flex items-center gap-1.5">
+                                        <div class="w-5 h-5 rounded-md flex items-center justify-center text-white text-[8px] font-bold flex-shrink-0"
+                                             style="background:linear-gradient(135deg,#667eea,#764ba2);">
+                                            {{ rc.client_name|truncatechars:2|upper }}
+                                        </div>
+                                        <span class="font-semibold text-gray-800 text-[11px] truncate" style="max-width:80px;">{{ rc.client_name }}</span>
+                                    </div>
+                                </td>
+                                <td class="text-center font-bold text-amber-600 text-[11px]">{{ rc.pending }}</td>
+                                <td class="text-center font-bold text-green-600 text-[11px]">{{ rc.verified }}</td>
+                                <td class="text-center font-bold text-blue-600 text-[11px]">{{ rc.approved }}</td>
+                                <td class="text-center font-bold text-purple-600 text-[11px]">{{ rc.download }}</td>
+                                <td class="text-center">
+                                    <a href="{% url 'mobile_app:client_groups' rc.client_id %}"
+                                       @click.stop
+                                       class="w-5 h-5 rounded-md bg-indigo-50 text-indigo-400 inline-flex items-center justify-center">
+                                        <i class="fa-solid fa-arrow-right text-[8px]"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            <!-- Expandable sub-row -->
+                            <tr x-show="expanded === '{{ rc.client_id }}'"
+                                class="pwa-ct-sub"
+                                style="display:none;">
+                                <td colspan="6">
+                                    <div class="flex flex-wrap items-center gap-1.5 py-0.5">
+                                        <span class="text-[8px] text-gray-400 font-semibold uppercase tracking-wide mr-1">Breakdown:</span>
+                                        <span class="pwa-status-badge pwa-badge-amber">{{ rc.pending }} Pending</span>
+                                        <span class="pwa-status-badge pwa-badge-green">{{ rc.verified }} Verified</span>
+                                        <span class="pwa-status-badge pwa-badge-blue">{{ rc.approved }} Approved</span>
+                                        <span class="pwa-status-badge pwa-badge-purple">{{ rc.download }} Download</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
         {% endif %}
@@ -231,6 +240,15 @@
 function homeApp() {
     return {
         init() {}
+    };
+}
+
+function recentClientsTable() {
+    return {
+        expanded: null,
+        toggle(id) {
+            this.expanded = this.expanded === id ? null : id;
+        }
     };
 }
 </script>

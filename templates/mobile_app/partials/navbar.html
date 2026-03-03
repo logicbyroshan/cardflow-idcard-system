@@ -4,9 +4,17 @@
 
         <!-- ── LEFT: Avatar + Name ── -->
         <a href="{% url 'mobile_app:profile' %}" class="flex items-center gap-2.5 min-w-0">
-            <!-- Square avatar with rounded corners (NOT a circle) -->
-            <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-[#667eea] to-[#764ba2] flex items-center justify-center text-white font-bold text-sm shadow flex-shrink-0 select-none" style="letter-spacing:0.02em;">
-                {{ user_name|default:"AU"|truncatechars:2|upper }}
+            <!-- Role-based avatar icon -->
+            <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-[#667eea] to-[#764ba2] flex items-center justify-center text-white shadow flex-shrink-0 select-none">
+                {% if is_super_admin %}
+                    <i class="fa-solid fa-crown text-[14px]"></i>
+                {% elif is_admin_staff %}
+                    <i class="fa-solid fa-user-tie text-[14px]"></i>
+                {% elif is_client %}
+                    <i class="fa-solid fa-building text-[14px]"></i>
+                {% else %}
+                    <i class="fa-solid fa-id-badge text-[14px]"></i>
+                {% endif %}
             </div>
             <div class="min-w-0">
                 <p class="text-[10px] text-gray-400 leading-none mb-0.5">Welcome back</p>
