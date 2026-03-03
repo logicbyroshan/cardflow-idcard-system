@@ -85,35 +85,46 @@
     box-shadow: 0 0 0 2px rgba(102,126,234,0.15);
 }
 .wa-form-group input[type="file"] {
-    font-size: 12px;
-    padding: 7px 10px;
-    border: 1px dashed var(--wa-gray-300, #cbd5e1);
-    background: #f8fafc;
+    font-size: 12.5px;
+    padding: 10px 12px;
+    border: 2px dashed var(--wa-gray-300, #cbd5e1);
+    background: linear-gradient(135deg, #fafbff 0%, #f8fafc 100%);
     color: var(--wa-gray-600);
     height: auto;
-    border-radius: 6px;
+    border-radius: 8px;
     cursor: pointer;
     transition: border-color 0.15s, background 0.15s;
+    width: 100%;
 }
 .wa-form-group input[type="file"]:hover {
     border-color: var(--wa-primary, #667eea);
-    background: #f1f5f9;
+    background: linear-gradient(135deg, #f0f4ff 0%, #f1f5f9 100%);
 }
 .wa-form-group input[type="file"]::file-selector-button {
-    background: linear-gradient(135deg, #667eea 0%, #5a67d8 100%);
+    background: linear-gradient(135deg, var(--wa-primary, #667eea) 0%, #764ba2 100%);
     color: #fff;
     border: none;
-    padding: 4px 12px;
-    border-radius: 4px;
+    padding: 5px 14px;
+    border-radius: 6px;
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
-    margin-right: 8px;
-    transition: background 0.15s;
+    margin-right: 10px;
+    transition: opacity 0.15s;
 }
 .wa-form-group input[type="file"]::file-selector-button:hover {
-    background: linear-gradient(135deg, #5a67d8 0%, #4c51bf 100%);
+    opacity: 0.88;
 }
+/* File input label wrapper with icon */
+.wa-file-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--wa-gray-500);
+}
+.wa-file-label i { font-size: 12px; color: var(--wa-primary); }
 .wa-form-actions {
     display: flex;
     justify-content: flex-end;
@@ -237,4 +248,34 @@
 @media (max-width: 640px) {
     .wa-form-row { grid-template-columns: 1fr; }
     .wa-form-images { grid-template-columns: repeat(2, 1fr) !important; }
+}
+
+/* ===== FORM GROUP — ALIGN END (checkbox in 2-col row) ===== */
+.wa-form-group.align-end {
+    flex-direction: row;
+    align-items: flex-end;
+    padding-bottom: 4px;
+}
+
+/* ===== BULK UPLOAD — FILE COUNT & PROGRESS ===== */
+.wa-bulk-file-count {
+    margin-top: 6px;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--primary, #3b82f6);
+}
+.wa-bulk-progress { margin-bottom: 10px; }
+.wa-bulk-progress-track {
+    background: var(--gray-200, #e5e7eb);
+    border-radius: 6px;
+    height: 8px;
+    overflow: hidden;
+    margin-bottom: 6px;
+}
+.wa-bulk-progress-bar {
+    height: 100%;
+    width: 0%;
+    background: var(--primary, #3b82f6);
+    border-radius: 6px;
+    transition: width 0.3s;
 }

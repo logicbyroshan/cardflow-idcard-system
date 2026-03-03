@@ -43,10 +43,9 @@
             <table class="wa-table" id="contactsTable">
                 <thead>
                     <tr>
-                        <th>Name</th>
-                        <th>Email</th>
+                        <th>Sender</th>
                         <th>Subject</th>
-                        <th>Message</th>
+                        <th>Preview</th>
                         <th>Date</th>
                         <th>Status</th>
                         <th>Actions</th>
@@ -56,17 +55,28 @@
                     {% for c in contacts %}
                     <tr data-id="{{ c.id }}" class="{% if c.status == 'new' %}wa-row-highlight{% endif %}">
                         <td>
-                            <strong>{{ c.name }}</strong>
-                            {% if c.phone %}<br><small class="text-muted">{{ c.phone }}</small>{% endif %}
+                            <div class="wa-cell-media">
+                                <div class="wa-avatar">{{ c.name|first|upper }}</div>
+                                <div class="wa-cell-info">
+                                    <span class="wa-cell-title">{{ c.name }}</span>
+                                    <span class="wa-cell-sub">
+                                        <a href="mailto:{{ c.email }}" class="wa-email-link">{{ c.email }}</a>
+                                        {% if c.phone %}<br>{{ c.phone }}{% endif %}
+                                    </span>
+                                </div>
+                            </div>
                         </td>
                         <td>
-                            <a href="mailto:{{ c.email }}" class="wa-email-link">{{ c.email }}</a>
+                            <div class="wa-cell-info">
+                                <span class="wa-cell-title">{{ c.subject|truncatewords:6 }}</span>
+                            </div>
                         </td>
-                        <td>{{ c.subject|truncatewords:5 }}</td>
-                        <td class="wa-text-truncate" title="{{ c.message }}">{{ c.message|truncatewords:10 }}</td>
+                        <td><p class="wa-review-snippet">{{ c.message }}</p></td>
                         <td>
-                            <span class="wa-date">{{ c.created_at|date:"d M Y" }}</span>
-                            <br><small class="text-muted">{{ c.created_at|time:"H:i" }}</small>
+                            <div class="wa-cell-info">
+                                <span class="wa-cell-title" style="font-size:12px;">{{ c.created_at|date:"d M Y" }}</span>
+                                <span class="wa-cell-sub">{{ c.created_at|time:"H:i" }}</span>
+                            </div>
                         </td>
                         <td>
                             <select class="wa-status-select status-{{ c.status }}" onchange="updateContactStatus({{ c.id }}, this.value)">
@@ -91,7 +101,7 @@
                         </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="7" class="wa-empty">No contact messages yet.</td></tr>
+                    <tr><td colspan="6" class="wa-empty">No contact messages yet.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -135,110 +145,11 @@
             </div>
         </div>
         <div class="wa-modal-footer">
-            <button type="button" class="btn btn-neutral" onclick="closeContactModal()">Close</button>
+            <button type="button" class="btn btn-neutral" onclick="closeContactModal()"><i class="fa-solid fa-xmark"></i> Close</button>
             <a href="#" id="replyEmailBtn" class="btn btn-primary"><i class="fa-solid fa-reply"></i> Reply via Email</a>
         </div>
     </div>
 </div>
-
-<style>
-.wa-filter-tabs {
-    display: flex;
-    gap: 4px;
-    background: var(--bg-secondary, #f1f5f9);
-    padding: 4px;
-    border-radius: 8px;
-}
-.wa-filter-tab {
-    padding: 6px 12px;
-    border-radius: 6px;
-    text-decoration: none;
-    color: var(--text-secondary, #64748b);
-    font-size: 13px;
-    font-weight: 500;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-.wa-filter-tab:hover {
-    background: var(--bg-primary, #fff);
-    color: var(--text-primary, #1e293b);
-}
-.wa-filter-tab.active {
-    background: var(--primary, #6366f1);
-    color: #fff;
-}
-.wa-filter-tab .badge {
-    background: rgba(0,0,0,0.1);
-    padding: 2px 6px;
-    border-radius: 10px;
-    font-size: 11px;
-}
-.wa-filter-tab.active .badge {
-    background: rgba(255,255,255,0.2);
-}
-.wa-filter-tab .badge.new {
-    background: #ef4444;
-    color: #fff;
-}
-.wa-row-highlight {
-    background: rgba(99, 102, 241, 0.05) !important;
-}
-.wa-row-highlight td:first-child {
-    border-left: 3px solid var(--primary, #6366f1);
-}
-.wa-status-select {
-    padding: 4px 8px;
-    border-radius: 6px;
-    border: 1px solid var(--border, #e2e8f0);
-    font-size: 12px;
-    cursor: pointer;
-    background: var(--bg-primary, #fff);
-}
-.wa-status-select.status-new { border-color: #6366f1; background: #eef2ff; }
-.wa-status-select.status-read { border-color: #0ea5e9; background: #f0f9ff; }
-.wa-status-select.status-replied { border-color: #10b981; background: #ecfdf5; }
-.wa-status-select.status-closed { border-color: #6b7280; background: #f9fafb; }
-.wa-email-link {
-    color: var(--primary, #6366f1);
-    text-decoration: none;
-}
-.wa-email-link:hover {
-    text-decoration: underline;
-}
-.wa-contact-details {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-.wa-detail-row {
-    display: flex;
-    gap: 12px;
-}
-.wa-detail-row.full {
-    flex-direction: column;
-}
-.wa-detail-row label {
-    font-weight: 600;
-    color: var(--text-secondary, #64748b);
-    min-width: 80px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-.wa-detail-row span {
-    color: var(--text-primary, #1e293b);
-}
-.wa-message-content {
-    background: var(--bg-secondary, #f8fafc);
-    padding: 12px 16px;
-    border-radius: 8px;
-    white-space: pre-wrap;
-    line-height: 1.6;
-    margin-top: 6px;
-}
-</style>
 
 <script>
 function viewContact(id) {

@@ -11,7 +11,7 @@
     </div>
     <div class="notif-actions-right">
       <span id="monitoringLastUpdated" class="text-xs text-gray-400" style="margin-right:10px;">—</span>
-      <button class="backup-btn-primary" onclick="loadMonitoring()" id="monitoringRefreshBtn" style="padding:5px 12px;font-size:12px;">
+      <button class="btn btn-sm btn-outline-primary" onclick="loadMonitoring()" id="monitoringRefreshBtn">
         <i class="fa-solid fa-arrows-rotate"></i> Refresh
       </button>
     </div>
@@ -21,26 +21,26 @@
   <div class="system-grid" id="monitoringStats" style="margin-bottom:16px;">
     <div class="system-card">
       <div class="system-card-header"><i class="fa-solid fa-spinner"></i> Active Tasks</div>
-      <div class="system-card-body" style="display:flex;align-items:center;justify-content:center;padding:16px 0;">
-        <span id="statActiveTasks" style="font-size:28px;font-weight:700;color:#667eea;">—</span>
+      <div class="system-card-body">
+        <span id="statActiveTasks" class="monitor-stat-value monitor-stat-active">—</span>
       </div>
     </div>
     <div class="system-card">
       <div class="system-card-header"><i class="fa-solid fa-clock"></i> Pending</div>
-      <div class="system-card-body" style="display:flex;align-items:center;justify-content:center;padding:16px 0;">
-        <span id="statPendingTasks" style="font-size:28px;font-weight:700;color:#f59e0b;">—</span>
+      <div class="system-card-body">
+        <span id="statPendingTasks" class="monitor-stat-value monitor-stat-pending">—</span>
       </div>
     </div>
     <div class="system-card">
       <div class="system-card-header"><i class="fa-solid fa-circle-check"></i> Completed (24 h)</div>
-      <div class="system-card-body" style="display:flex;align-items:center;justify-content:center;padding:16px 0;">
-        <span id="statCompleted24h" style="font-size:28px;font-weight:700;color:#22c55e;">—</span>
+      <div class="system-card-body">
+        <span id="statCompleted24h" class="monitor-stat-value monitor-stat-success">—</span>
       </div>
     </div>
     <div class="system-card">
       <div class="system-card-header"><i class="fa-solid fa-circle-xmark"></i> Failed (24 h)</div>
-      <div class="system-card-body" style="display:flex;align-items:center;justify-content:center;padding:16px 0;">
-        <span id="statFailed24h" style="font-size:28px;font-weight:700;color:#ef4444;">—</span>
+      <div class="system-card-body">
+        <span id="statFailed24h" class="monitor-stat-value monitor-stat-danger">—</span>
       </div>
     </div>
   </div>

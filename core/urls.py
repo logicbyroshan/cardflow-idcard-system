@@ -95,7 +95,7 @@ urlpatterns = [
     path('api/backup/status/<int:task_id>/', views.api_backup_status, name='api_backup_status'),
     path('api/backup/<int:task_id>/cancel-auto-delete/', views.api_backup_cancel_auto_delete, name='api_backup_cancel_auto_delete'),
     path('api/backup/<int:task_id>/delete-now/', views.api_backup_delete_now, name='api_backup_delete_now'),
-    path('api/backup/download/<int:task_id>/<int:client_id>/', views.api_backup_download, name='api_backup_download'),
+    path('api/backup/download/<int:task_id>/', views.api_backup_download, name='api_backup_download'),
     
     # Notifications Page (all authenticated users)
     path('notifications/', views.notifications_page, name='notifications_page'),

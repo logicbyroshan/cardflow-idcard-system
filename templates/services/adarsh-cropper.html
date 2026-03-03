@@ -339,7 +339,7 @@
             <p class="delete-confirm-note">The image will be moved to the <em>deleted/</em> folder and can be viewed in the Deleted tab.</p>
           </div>
           <div class="delete-confirm-modal-footer">
-            <button class="btn btn-neutral" @click="deleteConfirm.visible = false" type="button">Cancel</button>
+            <button class="btn btn-neutral" @click="deleteConfirm.visible = false" type="button"><i class="fa-solid fa-xmark"></i> Cancel</button>
             <button class="btn btn-danger" @click="executeDelete()" :disabled="deleteConfirm.deleting" type="button">
               <template x-if="!deleteConfirm.deleting">
                 <span><i class="fa-solid fa-trash"></i> Delete</span>
@@ -401,7 +401,7 @@
           </div>
 
           <div class="compress-modal-footer">
-            <button class="btn btn-neutral" @click="compressModal.visible = false" type="button">Cancel</button>
+            <button class="btn btn-neutral" @click="compressModal.visible = false" type="button"><i class="fa-solid fa-xmark"></i> Cancel</button>
             <button class="btn btn-compress" @click="startCompress()" :disabled="!compressModal.targetKB || compressModal.targetKB <= 0 || (compressModal.source === 'folder' && !compressModal.folderPath.trim())" type="button">
               <i class="fa-solid fa-compress"></i> Start Compression
             </button>

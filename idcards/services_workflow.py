@@ -269,6 +269,11 @@ class WorkflowService:
                 card.deleted_at = None
                 update_fields.append('deleted_at')
 
+            # Track when status changed — used for default sort so that
+            # plain field edits do NOT push a card to the top of the list.
+            card.status_changed_at = timezone.now()
+            update_fields.append('status_changed_at')
+
             card.save(update_fields=update_fields)
         logger.info("Card %d: %s → %s by user %d", card.pk, current, target_status, user.pk)
 
@@ -421,6 +426,10 @@ class WorkflowService:
             update_kwargs['deleted_at'] = timezone.now()
         elif target_status == 'pending':  # back from pool
             update_kwargs['deleted_at'] = None
+
+        # Track when status changed — used for default sort so that
+        # plain field edits do NOT push a card to the top of the list.
+        update_kwargs['status_changed_at'] = timezone.now()
 
         # Re-check status in WHERE clause to handle concurrent modifications
         # safely (a card whose status changed since step 3 will simply not match)

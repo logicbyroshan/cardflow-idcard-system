@@ -212,9 +212,17 @@ class NotificationService:
             )
         total = qs.count()
         notifications = list(qs[offset:offset + limit])
+        # Aggregate counts across ALL notifications (not just this page)
+        all_active = Notification.objects.filter(is_active=True)
+        stats = {
+            'broadcast': all_active.filter(target='all').count(),
+            'targeted':  all_active.filter(target='selected').count(),
+            'urgent':    all_active.filter(priority='urgent').count(),
+        }
         return {
             'notifications': [cls._serialize_admin(n) for n in notifications],
             'total': total,
+            'stats': stats,
         }
 
     @classmethod

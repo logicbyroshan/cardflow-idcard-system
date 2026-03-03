@@ -69,7 +69,10 @@
     transform: rotate(90deg);
 }
 .wa-modal form {
-    padding: 18px 20px 20px;
+    padding: 20px 22px 22px;
+}
+.wa-modal-body {
+    padding: 20px 22px;
 }
 .wa-modal-footer {
     display: flex;
@@ -77,7 +80,12 @@
     gap: 8px;
     padding-top: 16px;
     border-top: 1px solid var(--wa-gray-100);
-    margin-top: 12px;
+    margin-top: 16px;
+}
+/* Small modal variant */
+.wa-modal-sm {
+    width: 420px;
+    min-height: unset;
 }
 
 /* ===== CONFIRM MODAL (for replacing confirm()) ===== */
@@ -139,4 +147,31 @@
 }
 .wa-confirm-actions .btn {
     min-width: 90px;
+}
+
+/* ===== CONFIRM WARNING BLOCK ===== */
+.wa-confirm-warning {
+    width: 100%;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    padding: 10px 14px;
+    text-align: left;
+    margin-bottom: 16px;
+}
+.wa-confirm-warning-title {
+    font-size: 12px;
+    color: #991b1b;
+    font-weight: 600;
+    margin: 0 0 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.wa-confirm-warning-list {
+    margin: 0;
+    padding: 0 0 0 16px;
+    font-size: 12px;
+    color: #7f1d1d;
+    line-height: 1.7;
 }

@@ -36,7 +36,7 @@
       <div class="backup-page-header">
         <div class="backup-page-header-left">
           <h1><i class="fa-solid fa-database"></i> Select Clients for Backup</h1>
-          <p>Choose the clients whose data you want to backup. Each client will produce a separate ZIP file.</p>
+          <p>Choose the schools whose data you want to backup. All selected schools will be packaged into a single <strong>Adarsh Backup ZIP</strong> with one folder per school.</p>
         </div>
         <div class="backup-page-header-right">
           <a href="{% url 'dashboard' %}" class="backup-btn-secondary">
@@ -115,8 +115,9 @@
             <button type="button" class="backup-modal-close" onclick="closeStartModal()">&times;</button>
           </div>
           <div class="backup-modal-body">
-            <p>You are about to start a <strong>background backup</strong> for <strong><span id="confirmClientCount">0</span> client(s)</strong>.</p>
+            <p>You are about to start a <strong>background backup</strong> for <strong><span id="confirmClientCount">0</span> school(s)</strong>.</p>
             <ul class="backup-confirm-list">
+              <li>A single <strong>"Adarsh Backup {date}.zip"</strong> will be created with one folder per school.</li>
               <li>Backup will run in the background — you can close this page.</li>
               <li>Track progress in <strong>Manage Panel → Backups</strong> tab.</li>
               <li>Files will be <strong>auto-deleted after 24 hours</strong>.</li>

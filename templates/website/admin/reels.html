@@ -29,8 +29,7 @@
             <table class="wa-table" id="reelsTable">
                 <thead>
                     <tr>
-                        <th>Thumbnail</th>
-                        <th>Title</th>
+                        <th>Reel</th>
                         <th>Order</th>
                         <th>Status</th>
                         <th>Actions</th>
@@ -40,14 +39,19 @@
                     {% for r in reels %}
                     <tr data-id="{{ r.id }}">
                         <td>
-                            {% if r.thumbnail %}
-                            <img src="{{ r.thumbnail.url }}" class="wa-thumb" alt="{{ r.title }}">
-                            {% else %}
-                            <span class="wa-no-img"><i class="fa-solid fa-film"></i></span>
-                            {% endif %}
+                            <div class="wa-cell-media">
+                                {% if r.thumbnail %}
+                                <img src="{{ r.thumbnail.url }}" class="wa-thumb xl" alt="{{ r.title }}">
+                                {% else %}
+                                <span class="wa-thumb-icon"><i class="fa-solid fa-film"></i></span>
+                                {% endif %}
+                                <div class="wa-cell-info">
+                                    <span class="wa-cell-title">{{ r.title|default:"Untitled" }}</span>
+                                    <span class="wa-cell-sub"><i class="fa-solid fa-film" style="color:var(--wa-purple,#7c3aed);"></i> Reel</span>
+                                </div>
+                            </div>
                         </td>
-                        <td><strong>{{ r.title|default:"Untitled" }}</strong></td>
-                        <td>{{ r.order }}</td>
+                        <td><span class="wa-order-badge">{{ r.order }}</span></td>
                         <td>
                             <span class="wa-status-badge {% if r.is_active %}active{% else %}inactive{% endif %}"
                                   onclick="toggleReel({{ r.id }}, this)">
@@ -64,7 +68,7 @@
                         </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="5" class="wa-empty">No reels yet. Click "Add Reel" to get started.</td></tr>
+                    <tr><td colspan="4" class="wa-empty">No reels yet. Click "Add Reel" to get started.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -101,7 +105,7 @@
                     <label for="rl_order">Order</label>
                     <input type="number" id="rl_order" name="order" value="0" min="0">
                 </div>
-                <div class="wa-form-group" style="display:flex;align-items:end;">
+                <div class="wa-form-group align-end">
                     <label class="wa-toggle-label">
                         <input type="checkbox" id="rl_active" name="is_active" checked>
                         <span>Active (visible on website)</span>
@@ -109,8 +113,8 @@
                 </div>
             </div>
             <div class="wa-modal-footer">
-                <button type="button" class="btn btn-neutral" onclick="closeReelModal()">Cancel</button>
-                <button type="submit" class="btn btn-primary">Save</button>
+                <button type="button" class="btn btn-neutral" onclick="closeReelModal()"><i class="fa-solid fa-xmark"></i> Cancel</button>
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save</button>
             </div>
         </form>
     </div>

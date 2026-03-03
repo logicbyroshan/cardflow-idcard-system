@@ -824,15 +824,17 @@ class CropperRelease(models.Model):
 
 class BackupTask(models.Model):
     """
-    Tracks a backup request that exports client data as ZIP files.
+    Tracks a backup request that exports client data as a single combined ZIP.
 
     Lifecycle:
         1. Super admin enters 10-digit code → BackupTask created (pending)
-        2. Selects clients → task starts processing in background thread
-        3. Per-client ZIPs created (XLSX per status + images)
-        4. On completion → auto_delete_at set to 24 hrs from now
-        5. After 24 hrs → cleanup thread deletes ZIP files and the task
-        6. Admin can cancel auto-delete or trigger immediate deletion
+        2. Selects schools → task starts processing in background thread
+        3. One combined "Adarsh Backup {date}.zip" created with per-school folders
+           (XLSX per status + images/ folder inside each school folder)
+        4. On completion → auto_delete_at set to 24 hrs from now;
+           ZIP is deleted automatically after 24 hrs
+        5. Admin can cancel auto-delete or trigger immediate file deletion;
+           history record (BackupTask) is always kept for audit purposes
     """
 
     STATUS_CHOICES = [
@@ -871,8 +873,10 @@ class BackupTask(models.Model):
     total = models.IntegerField(default=0, help_text='Total number of clients to process')
     current_client = models.CharField(max_length=200, blank=True, default='')
 
-    # Generated ZIP file paths (relative to MEDIA_ROOT)
-    # Format: { "client_id": {"path": "...", "filename": "...", "size": 12345} }
+    # Generated ZIP file (relative to MEDIA_ROOT).
+    # Format: { "combined": {"path": "...", "filename": "...", "size": 12345} }
+    # A single combined ZIP named "Adarsh Backup {date}.zip" containing all
+    # selected schools as sub-folders.
     zip_files = models.JSONField(default=dict, blank=True)
 
     # Auto-delete timer

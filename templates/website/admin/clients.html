@@ -29,8 +29,7 @@
     <table class="wa-table" id="clientsTable">
         <thead>
             <tr>
-                <th>Logo</th>
-                <th>Name</th>
+                <th>Client</th>
                 <th>Order</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -40,14 +39,19 @@
             {% for c in clients_list %}
             <tr data-id="{{ c.id }}">
                 <td>
-                    {% if c.logo %}
-                    <img src="{{ c.logo.url }}" class="wa-thumb" alt="{{ c.name }}">
-                    {% else %}
-                    <span class="wa-no-img"><i class="fa-solid fa-image"></i></span>
-                    {% endif %}
+                    <div class="wa-cell-media">
+                        {% if c.logo %}
+                        <img src="{{ c.logo.url }}" class="wa-thumb logo" alt="{{ c.name }}">
+                        {% else %}
+                        <span class="wa-no-img"><i class="fa-solid fa-building"></i></span>
+                        {% endif %}
+                        <div class="wa-cell-info">
+                            <span class="wa-cell-title">{{ c.name }}</span>
+                            <span class="wa-cell-sub"><i class="fa-solid fa-handshake" style="color:var(--wa-blue,#2563eb);"></i> Partner</span>
+                        </div>
+                    </div>
                 </td>
-                <td><strong>{{ c.name }}</strong></td>
-                <td>{{ c.order }}</td>
+                <td><span class="wa-order-badge">{{ c.order }}</span></td>
                 <td>
                     <span class="wa-status-badge {% if c.is_active %}active{% else %}inactive{% endif %}"
                           onclick="toggleClient({{ c.id }}, this)">
@@ -64,7 +68,7 @@
                 </td>
             </tr>
             {% empty %}
-            <tr><td colspan="5" class="wa-empty">No clients added yet.</td></tr>
+            <tr><td colspan="4" class="wa-empty">No clients added yet.</td></tr>
             {% endfor %}
         </tbody>
         </table>
@@ -101,8 +105,8 @@
                 </label>
             </div>
             <div class="wa-modal-footer">
-                <button type="button" class="btn btn-neutral" onclick="closeClientModal()">Cancel</button>
-                <button type="submit" class="btn btn-primary">Save</button>
+                <button type="button" class="btn btn-neutral" onclick="closeClientModal()"><i class="fa-solid fa-xmark"></i> Cancel</button>
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save</button>
             </div>
         </form>
     </div>

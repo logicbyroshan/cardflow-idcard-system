@@ -229,6 +229,7 @@ class IDCard(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', db_index=True)
     downloaded_at = models.DateTimeField(null=True, blank=True, help_text='Timestamp when card was moved to downloaded status')
     deleted_at = models.DateTimeField(null=True, blank=True, help_text='Timestamp when card was moved to pool')
+    status_changed_at = models.DateTimeField(null=True, blank=True, help_text='Timestamp when card status last changed (not updated by field edits — used for default list sort)')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     modified_by = models.CharField(
@@ -311,6 +312,7 @@ class IDCard(models.Model):
             models.Index(fields=['table', 'status', '-id'], name='idcard_tbl_status_id_desc'),
             models.Index(fields=['downloaded_at'], name='idcard_downloaded_at_idx'),
             models.Index(fields=['deleted_at'], name='idcard_deleted_at_idx'),
+            models.Index(fields=['status_changed_at'], name='idcard_status_changed_at_idx'),
             # GIN index for fast JSON search is added via migration 0024 (PostgreSQL only)
         ]
 

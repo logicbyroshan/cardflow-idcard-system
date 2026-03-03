@@ -20,9 +20,15 @@ document.addEventListener('DOMContentLoaded', function() {
 /* ============ Tabs ============ */
 function switchTab(tabName) {
   document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.panel-tab-content').forEach(c => c.classList.remove('active'));
-  document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
-  document.getElementById(`tab-${tabName}`).classList.add('active');
+  // Also strip inline display overrides so the CSS .active rule always wins
+  document.querySelectorAll('.panel-tab-content').forEach(c => {
+    c.classList.remove('active');
+    c.style.removeProperty('display');
+  });
+  const tabBtn = document.querySelector(`[data-tab="${tabName}"]`);
+  const tabPane = document.getElementById(`tab-${tabName}`);
+  if (tabBtn) tabBtn.classList.add('active');
+  if (tabPane) tabPane.classList.add('active');
 }
 
 /* ============ Load Notifications ============ */
@@ -41,6 +47,9 @@ async function loadNotifications(append) {
       panelNotifications = data.notifications;
     }
     panelTotal = data.total;
+
+    // Cache server-side aggregate stats so updateStats() is accurate
+    if (data.stats) window._panelNotifStats = data.stats;
 
     renderTable();
     updateStats();
@@ -102,12 +111,11 @@ function renderTable() {
 
 function updateStats() {
   document.getElementById('statTotal').textContent = panelTotal;
-  const broadcasts = panelNotifications.filter(n => n.target === 'all').length;
-  const targeted = panelNotifications.filter(n => n.target === 'selected').length;
-  const urgent = panelNotifications.filter(n => n.priority === 'urgent').length;
-  document.getElementById('statBroadcast').textContent = broadcasts;
-  document.getElementById('statTargeted').textContent = targeted;
-  document.getElementById('statUrgent').textContent = urgent;
+  // Use server-side aggregates (returned by API) for accurate full-dataset counts
+  const s = window._panelNotifStats || {};
+  document.getElementById('statBroadcast').textContent = s.broadcast != null ? s.broadcast : '—';
+  document.getElementById('statTargeted').textContent  = s.targeted  != null ? s.targeted  : '—';
+  document.getElementById('statUrgent').textContent    = s.urgent    != null ? s.urgent    : '—';
 }
 
 /* ============ Search ============ */
@@ -446,7 +454,7 @@ function openCreateTemplateModal() {
   document.getElementById('templateInstructions').value = '';
   document.getElementById('templateIsDefault').checked = false;
   document.getElementById('templateModalTitle').innerHTML = '<i class="fa-solid fa-file-lines"></i> New Template';
-  document.getElementById('templateModal').style.display = 'flex';
+  document.getElementById('templateModal').classList.add('show');
   document.body.style.overflow = 'hidden';
 }
 
@@ -458,12 +466,12 @@ function editTemplate(id) {
   document.getElementById('templateInstructions').value = t.instructions;
   document.getElementById('templateIsDefault').checked = t.is_default;
   document.getElementById('templateModalTitle').innerHTML = '<i class="fa-solid fa-file-lines"></i> Edit Template';
-  document.getElementById('templateModal').style.display = 'flex';
+  document.getElementById('templateModal').classList.add('show');
   document.body.style.overflow = 'hidden';
 }
 
 function closeTemplateModal() {
-  document.getElementById('templateModal').style.display = 'none';
+  document.getElementById('templateModal').classList.remove('show');
   document.body.style.overflow = '';
 }
 
@@ -591,6 +599,96 @@ function renderLogTable() {
     </tr>`;
   }).join('');
 }
+
+/* ================================================================
+   EMAIL MANAGEMENT TAB
+   (Previously embedded in tab-email-logs.html — moved here for
+    proper file-based caching, linting and CSP compliance)
+   ================================================================ */
+let _emailPage = 1;
+
+window.loadEmailLogs = function (page) {
+  if (page !== undefined) _emailPage = page;
+
+  const status = document.getElementById('emailStatusFilter')?.value || '';
+  const type   = document.getElementById('emailTypeFilter')?.value   || '';
+  let url = '/api/email-logs/?page=' + _emailPage + '&per_page=50';
+  if (status) url += '&status='     + encodeURIComponent(status);
+  if (type)   url += '&email_type=' + encodeURIComponent(type);
+
+  const tbody = document.getElementById('emailLogsBody');
+  if (tbody) {
+    tbody.innerHTML =
+      '<tr><td colspan="7" class="notif-table-empty-cell">' +
+      '<div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i>' +
+      '<p>Loading…</p></div></td></tr>';
+  }
+
+  fetch(url, { headers: { 'X-CSRFToken': getCSRFToken() } })
+    .then(r => r.json())
+    .then(function (data) {
+      if (!data.success) return;
+
+      // Update count badges
+      const counts = data.status_counts || {};
+      const setC = function (id, v) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = v || 0;
+      };
+      setC('emailCountOnHold',  counts.on_hold);
+      setC('emailCountPending', counts.pending);
+      setC('emailCountSent',    counts.sent);
+      setC('emailCountFailed',  counts.failed);
+
+      const tBody = document.getElementById('emailLogsBody');
+      if (!tBody) return;
+
+      const total      = data.total;
+      const totalPages = data.total_pages;
+
+      if (!data.logs.length) {
+        tBody.innerHTML =
+          '<tr class="notif-table-empty"><td colspan="7">' +
+          '<div class="empty-state"><i class="fa-solid fa-envelope-open"></i>' +
+          '<p>No email logs found</p>' +
+          '<span>Logs appear here after emails are sent</span></div></td></tr>';
+      } else {
+        const statusClassMap = { on_hold: 'on-hold', pending: 'pending', sent: 'sent', failed: 'failed' };
+        tBody.innerHTML = data.logs.map(function (log, i) {
+          const statusCls = statusClassMap[log.status] || '';
+          const noteHtml  = log.error_message
+            ? '<span title="' + escAttr(log.error_message) + '" style="cursor:help;">' +
+              '<i class="fa-solid fa-circle-info" style="color:#dc2626;"></i></span>'
+            : '<span style="color:#9ca3af;">—</span>';
+          return '<tr>' +
+            '<td class="text-center text-xs text-gray-400">' + (((_emailPage - 1) * 50) + i + 1) + '</td>' +
+            '<td><strong style="font-size:12.5px;color:#1e293b;">' + escHtml(log.recipient_name || '—') + '</strong></td>' +
+            '<td class="notif-time">' + escHtml(log.recipient_email) + '</td>' +
+            '<td><span class="notif-badge-cat">' + escHtml(log.email_type_display) + '</span></td>' +
+            '<td><span class="email-status-badge ' + statusCls + '">' + escHtml(log.status_display) + '</span></td>' +
+            '<td class="notif-time">' + escHtml(log.created_at) + '</td>' +
+            '<td style="text-align:center;">' + noteHtml + '</td>' +
+            '</tr>';
+        }).join('');
+      }
+
+      // Pagination controls
+      const label     = document.getElementById('emailLogCountLabel');
+      const pageLabel = document.getElementById('emailPageLabel');
+      const prevBtn   = document.getElementById('emailPrevBtn');
+      const nextBtn   = document.getElementById('emailNextBtn');
+      if (label)     label.textContent     = 'Page ' + _emailPage + ' of ' + totalPages + ' (' + total + ' total)';
+      if (pageLabel) pageLabel.textContent = _emailPage + ' / ' + totalPages;
+      if (prevBtn)   prevBtn.disabled      = _emailPage <= 1;
+      if (nextBtn)   nextBtn.disabled      = _emailPage >= totalPages;
+    })
+    .catch(function (err) { console.error('Email logs load error:', err); });
+};
+
+window.emailLogPage = function (delta) {
+  _emailPage = Math.max(1, _emailPage + delta);
+  loadEmailLogs();
+};
 
 /* ============ Tab switch hook — lazy-load data ============ */
 const _origSwitchTab = switchTab;

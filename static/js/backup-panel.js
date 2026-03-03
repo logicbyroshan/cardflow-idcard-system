@@ -139,12 +139,20 @@
       html += '<div style="font-size:12px;color:#ef4444;margin-bottom:8px;">' + _esc(b.error_message) + '</div>';
     }
 
-    // Downloads
-    if (b.status === 'completed' && b.zip_count > 0) {
-      html += '<div class="backup-download-list">';
-      // We only have zip_count in list view, need full data from status endpoint for download links
-      html += '<p style="font-size:12px;color:#667eea;font-weight:600;">' + b.zip_count + ' ZIP file(s) ready — <a href="javascript:void(0)" onclick="showBackupDownloads(' + b.id + ')" style="color:#667eea;text-decoration:underline;">View Downloads</a></p>';
-      html += '</div>';
+    // Downloads — single combined ZIP
+    if (b.status === 'completed') {
+      if (b.combined_zip) {
+        const sizeStr = _formatBytes(b.combined_zip.size || 0);
+        const fname = _esc(b.combined_zip.filename || 'Adarsh Backup.zip');
+        html += '<div class="backup-download-list">';
+        html += '<div class="backup-download-item">';
+        html += '<span><span class="backup-download-name">' + fname + '</span><span class="backup-download-size"> (' + sizeStr + ')</span></span>';
+        html += '<a href="/api/backup/download/' + b.id + '/" class="backup-download-link"><i class="fa-solid fa-download"></i> Download ZIP</a>';
+        html += '</div>';
+        html += '</div>';
+      } else {
+        html += '<p style="font-size:12px;color:#94a3b8;margin-bottom:8px;">No backup file available.</p>';
+      }
     }
 
     // Created at
@@ -165,39 +173,6 @@
     html += '</div>'; // card
     return html;
   }
-
-  /* ──── Show downloads (fetch full status) ──── */
-  window.showBackupDownloads = function (taskId) {
-    fetch('/api/backup/status/' + taskId + '/')
-      .then(r => r.json())
-      .then(data => {
-        if (!data.success) return;
-        const zips = data.zip_files || {};
-        const names = data.client_names || {};
-        const keys = Object.keys(zips);
-        if (!keys.length) {
-          if (window.showToast) showToast('No download files found.', 'warning');
-          return;
-        }
-        // Replace the download list in the card
-        const card = document.querySelector('.backup-card[data-backup-id="' + taskId + '"]');
-        if (!card) return;
-        const dlContainer = card.querySelector('.backup-download-list');
-        if (!dlContainer) return;
-
-        let html = '';
-        keys.forEach(cid => {
-          const info = zips[cid];
-          const clientName = names[cid] || 'Client #' + cid;
-          const sizeStr = _formatBytes(info.size || 0);
-          html += '<div class="backup-download-item">';
-          html += '<span><span class="backup-download-name">' + _esc(clientName) + '</span><span class="backup-download-size">(' + sizeStr + ')</span></span>';
-          html += '<a href="/api/backup/download/' + taskId + '/' + cid + '/" class="backup-download-link"><i class="fa-solid fa-download"></i> Download</a>';
-          html += '</div>';
-        });
-        dlContainer.innerHTML = html;
-      });
-  };
 
   /* ──── Cancel auto-delete modal ──── */
   window.openCancelDeleteModal = function (taskId) {

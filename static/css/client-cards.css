@@ -203,7 +203,6 @@
     cursor: pointer;
     font-size: 12px;
     transition: all 0.2s;
-    margin-right: 6px;
   }
   
   .action-btn:hover {

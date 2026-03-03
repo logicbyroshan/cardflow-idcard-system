@@ -335,7 +335,7 @@ class IDCardCardService(BaseService):
                 elif status_filter == 'pool':
                     cards_query = cards_query.order_by('-deleted_at', '-id')
                 else:
-                    cards_query = cards_query.order_by('-updated_at', '-id')
+                    cards_query = cards_query.order_by('-status_changed_at', '-id')
 
             total_count = cards_query.count()
             cards = cards_query[offset:offset + limit]
