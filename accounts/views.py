@@ -13,6 +13,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.utils.decorators import method_decorator
 from django.contrib.auth import login, logout
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from core.services.activity_service import ActivityService
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -42,7 +43,8 @@ class LoginPageView(View):
         if request.user.is_authenticated:
             # Respect ?next= param (e.g. from PWA → login redirect)
             next_url = request.GET.get('next', '')
-            if next_url and next_url.startswith('/') and not next_url.startswith('//'):
+            # S7: use Django's safe-redirect helper — blocks //evil.com, /\evil.com, etc.
+            if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
                 return redirect(next_url)
             redirect_url = AuthService.get_dashboard_url(request.user)
             return redirect(redirect_url)
@@ -64,7 +66,8 @@ class LogoutView(View):
         logout(request)
         # Respect ?next= or POST body next (e.g. from PWA logout)
         next_url = request.POST.get('next', '') or request.GET.get('next', '')
-        if next_url and next_url.startswith('/') and not next_url.startswith('//'):
+        # S7: use Django's safe-redirect helper — blocks //evil.com, /\evil.com, etc.
+        if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
             login_url = reverse('accounts:login') + '?next=' + next_url
             return redirect(login_url)
         # Redirect to the main website landing page if configured,

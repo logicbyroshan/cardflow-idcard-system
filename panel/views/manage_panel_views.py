@@ -156,11 +156,11 @@ def api_email_resend(request, log_id):
     except User.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'No active user found with that email address.'})
 
-    # Generate a new temporary password
+    # S3 fix: generate a new temporary password but do NOT save it yet.
+    # Saving the password before confirming email delivery would lock the user
+    # out if SMTP fails — they'd have a new unknown password with no way to log in.
     chars = string.ascii_letters + string.digits
     new_password = ''.join(secrets.choice(chars) for _ in range(10))
-    user.set_password(new_password)
-    user.save(update_fields=['password'])
 
     try:
         success, message = send_welcome_email(
@@ -175,9 +175,13 @@ def api_email_resend(request, log_id):
         log.status = EmailLog.STATUS_FAILED
         log.error_message = str(e)
         log.save(update_fields=['status', 'error_message'])
-        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+        # Password intentionally NOT changed — email never reached the user
+        return JsonResponse({'success': False, 'message': 'Failed to send email. Password was not changed.'}, status=500)
 
     if success:
+        # Only now save the new password — email delivery confirmed
+        user.set_password(new_password)
+        user.save(update_fields=['password'])
         log.status = EmailLog.STATUS_SENT
         log.sent_at = timezone.now()
         log.error_message = ''

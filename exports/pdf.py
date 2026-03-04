@@ -456,7 +456,10 @@ class PdfExporter:
                 pdf_buffer = io.BytesIO()
                 # xhtml2pdf needs a link_callback to resolve local file paths
                 def link_callback(uri, rel):
-                    """Convert relative paths to absolute paths for xhtml2pdf"""
+                    """Convert relative paths to absolute paths for xhtml2pdf.
+                    S2: validates resolved path stays inside BASE_DIR to prevent
+                    path traversal attacks (e.g. /../../etc/passwd).
+                    """
                     if uri.startswith('file://'):
                         # Strip file:// prefix
                         path = uri[7:]
@@ -465,7 +468,13 @@ class PdfExporter:
                             path = path[1:]
                         return path.replace('/', os.sep)
                     if uri.startswith('/'):
-                        return os.path.join(str(settings.BASE_DIR), uri.lstrip('/'))
+                        base = os.path.realpath(str(settings.BASE_DIR))
+                        resolved = os.path.realpath(os.path.join(base, uri.lstrip('/')))
+                        # Block traversal: resolved path must stay inside BASE_DIR
+                        if not resolved.startswith(base + os.sep) and resolved != base:
+                            logger.warning('link_callback: blocked path traversal attempt: %r', uri)
+                            return os.path.join(base, 'static', 'assets', 'no-image-placeholder.png')
+                        return resolved
                     return uri
                 
                 pisa_status = pisa.CreatePDF(

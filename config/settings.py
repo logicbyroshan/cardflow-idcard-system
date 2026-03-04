@@ -246,12 +246,6 @@ X_FRAME_OPTIONS = 'DENY'
 SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
 SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin'
 
-# ── Additional hardening (production only) ──
-if not DEBUG:
-    # Prevent browser from caching sensitive pages from the back button
-    # (belt-and-suspenders with SecurityHeadersMiddleware Cache-Control)
-    SECURE_BROWSER_XSS_FILTER = True  # for older browsers that don't support CSP
-
 # ── Cookie hardening (always applied, both dev and prod) ──
 SESSION_COOKIE_HTTPONLY = True          # JS cannot read session cookie
 SESSION_COOKIE_SAMESITE = 'Lax'        # CSRF mitigation
@@ -535,40 +529,26 @@ SLOW_QUERY_THRESHOLD = float(os.getenv('SLOW_QUERY_THRESHOLD', '0.1'))
 # LOGGING
 # =============================================================================
 
+# M3: Whether to also write logs to rotating files on disk.
+# Enable on VPS / bare-metal by setting LOG_TO_FILE=true in .env.
+# Leave unset (default False) on ephemeral containers (Render, Docker)
+# where logs/ is wiped on restart — stdout/stderr is captured by the host.
+LOG_TO_FILE = os.getenv('LOG_TO_FILE', 'false').strip().lower() in ('1', 'true', 'yes')
+
 LOG_DIR = os.path.join(BASE_DIR, 'logs')
-os.makedirs(LOG_DIR, exist_ok=True)
+if LOG_TO_FILE:
+    os.makedirs(LOG_DIR, exist_ok=True)
 
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
+# Handler lists — conditionally include file handlers to avoid creating
+# RotatingFileHandler instances (which open file descriptors) on containers.
+_APP_HANDLERS = ['console'] + (['file_app', 'file_error'] if LOG_TO_FILE else [])
+_APP_HANDLER  = ['console'] + (['file_app'] if LOG_TO_FILE else [])
+_SEC_HANDLERS = ['console'] + (['file_security', 'file_app'] if LOG_TO_FILE else [])
+_QRY_HANDLER  = ['file_queries'] if LOG_TO_FILE else ['console']
 
-    'formatters': {
-        'verbose': {
-            'format': '[{asctime}] {levelname} {name} {module}.{funcName}:{lineno} — {message}',
-            'style': '{',
-            'datefmt': '%Y-%m-%d %H:%M:%S',
-        },
-        'simple': {
-            'format': '{levelname} {name}: {message}',
-            'style': '{',
-        },
-    },
-
-    'filters': {
-        'require_debug_false': {
-            '()': 'django.utils.log.RequireDebugFalse',
-        },
-        'require_debug_true': {
-            '()': 'django.utils.log.RequireDebugTrue',
-        },
-    },
-
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'verbose' if not DEBUG else 'simple',
-            'level': 'DEBUG' if DEBUG else 'INFO',
-        },
+_file_handlers: dict = {}
+if LOG_TO_FILE:
+    _file_handlers = {
         'file_app': {
             'class': 'logging.handlers.RotatingFileHandler',
             'filename': os.path.join(LOG_DIR, 'app.log'),
@@ -601,39 +581,73 @@ LOGGING = {
             'formatter': 'verbose',
             'level': 'WARNING',
         },
+    }
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+
+    'formatters': {
+        'verbose': {
+            'format': '[{asctime}] {levelname} {name} {module}.{funcName}:{lineno} — {message}',
+            'style': '{',
+            'datefmt': '%Y-%m-%d %H:%M:%S',
+        },
+        'simple': {
+            'format': '{levelname} {name}: {message}',
+            'style': '{',
+        },
     },
 
-    # Root logger catches everything not handled by specific loggers
+    'filters': {
+        'require_debug_false': {
+            '()': 'django.utils.log.RequireDebugFalse',
+        },
+        'require_debug_true': {
+            '()': 'django.utils.log.RequireDebugTrue',
+        },
+    },
+
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose' if not DEBUG else 'simple',
+            'level': 'DEBUG' if DEBUG else 'INFO',
+        },
+        **_file_handlers,
+    },
+
+    # Root logger — console always; file handlers only when LOG_TO_FILE=true
     'root': {
-        'handlers': ['console', 'file_app', 'file_error'],
+        'handlers': _APP_HANDLERS,
         'level': 'DEBUG' if DEBUG else 'INFO',
     },
 
     'loggers': {
         'django': {
-            'handlers': ['console', 'file_app'],
+            'handlers': _APP_HANDLER,
             'level': 'INFO',
             'propagate': False,
         },
-        # Security-sensitive loggers — also write to security.log
+        # Security-sensitive loggers — also write to security.log when enabled
         'django.security': {
-            'handlers': ['file_security'],
+            'handlers': _SEC_HANDLERS,
             'level': 'INFO',
             'propagate': False,
         },
         'accounts': {
-            'handlers': ['console', 'file_security', 'file_app'],
+            'handlers': _SEC_HANDLERS,
             'level': 'DEBUG' if DEBUG else 'INFO',
             'propagate': False,
         },
         'core.middleware': {
-            'handlers': ['console', 'file_security', 'file_app'],
+            'handlers': _SEC_HANDLERS,
             'level': 'DEBUG' if DEBUG else 'INFO',
             'propagate': False,
         },
-        # Slow/excessive query logging — writes to queries.log
+        # Slow/excessive query logging — file when LOG_TO_FILE, else console
         'slow_queries': {
-            'handlers': ['file_queries'],
+            'handlers': _QRY_HANDLER,
             'level': 'WARNING',
             'propagate': False,
         },

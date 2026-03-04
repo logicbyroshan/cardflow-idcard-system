@@ -31,7 +31,10 @@ from .watermark import (  # noqa: E402
 )
 
 # ── Upload validation constants ──────────────────────────────────────────
-ALLOWED_IMAGE_EXTENSIONS = ('.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg')
+# S4: SVG removed — SVG files can contain inline <script> tags that execute in
+# the browser when served from the same origin, bypassing XSS protections.
+# If SVG uploads are ever needed again, sanitize with nh3/bleach before storing.
+ALLOWED_IMAGE_EXTENSIONS = ('.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp')
 ALLOWED_VIDEO_EXTENSIONS = ('.mp4', '.webm', '.mov', '.avi')
 MAX_IMAGE_UPLOAD_SIZE = 10 * 1024 * 1024   # 10 MB
 MAX_VIDEO_UPLOAD_SIZE = 100 * 1024 * 1024  # 100 MB
@@ -54,8 +57,8 @@ def _validate_upload(file_obj, allowed_extensions, max_size, label='file'):
             f"{label.capitalize()} too large ({file_obj.size // (1024*1024)}MB). "
             f"Maximum is {max_size // (1024*1024)}MB."
         )
-    # For images, verify with Pillow
-    if allowed_extensions == ALLOWED_IMAGE_EXTENSIONS and not name.endswith('.svg'):
+    # For images, verify the file is a valid image with Pillow
+    if allowed_extensions == ALLOWED_IMAGE_EXTENSIONS:
         try:
             from PIL import Image
             from io import BytesIO

@@ -379,11 +379,13 @@
 
 </div><!-- /x-data -->
 
-
+{# S1: json_script escapes </script> sequences; |safe does not. #}
+{{ categories_json|json_script:"categories-json-data" }}
+{{ reels_json|json_script:"reels-json-data" }}
 <script>
 // Data injected from Django
-const CATEGORIES_DATA = {{ categories_json|safe }};
-const REELS_DATA = {{ reels_json|safe }};
+const CATEGORIES_DATA = JSON.parse(document.getElementById('categories-json-data').textContent);
+const REELS_DATA = JSON.parse(document.getElementById('reels-json-data').textContent);
 const CSRF_TOKEN = (document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith('csrftoken=')) || '').split('=')[1]
     || '{{ csrf_token }}';
 
