@@ -52,13 +52,12 @@ def rate_limit(max_requests=5, window_seconds=60, key_prefix='rl'):
         def wrapper(request, *args, **kwargs):
             ip = _get_client_ip(request)
             cache_key = f'{key_prefix}:{view_func.__name__}:{ip}'
-            # Use atomic cache.incr to prevent TOCTOU race conditions
-            try:
-                hits = cache.incr(cache_key)
-            except ValueError:
-                # Key doesn't exist yet — initialize it
-                cache.set(cache_key, 1, window_seconds)
-                hits = 1
+            # P3: atomic cache.add + incr pattern to prevent TOCTOU race.
+            # cache.add is a no-op if the key already exists, so it only
+            # sets the key (with TTL) when it is genuinely absent.
+            # cache.incr then atomically bumps the counter in both cases.
+            cache.add(cache_key, 0, window_seconds)
+            hits = cache.incr(cache_key)
             if hits > max_requests:
                 logger.warning('Rate limit hit: %s from %s', view_func.__name__, ip)
                 return JsonResponse({

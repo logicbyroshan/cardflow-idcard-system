@@ -120,6 +120,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Build image-only list for lightbox slideshow
                 const _imgOnlyItems = catItems.filter(i => i.image && i.type !== 'video' && i.type !== 'reel');
                 const _imgList = _imgOnlyItems.map(i => ({src: i.image, title: i.title || catName}));
+                // B4: O(1) index lookup instead of O(n) indexOf inside forEach
+                const _imgIndexMap = new Map(_imgOnlyItems.map((itm, idx) => [itm, idx]));
 
                 catItems.forEach((item, index) => {
                     const wrapper = document.createElement('div');
@@ -185,7 +187,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         img.alt = item.title || (catName + ' Sample ' + (index + 1));
                         img.loading = 'lazy';
                         wrapper.appendChild(img);
-                        const _imgIdx = _imgOnlyItems.indexOf(item);
+                        const _imgIdx = _imgIndexMap.has(item) ? _imgIndexMap.get(item) : 0;
                         wrapper.addEventListener('click', () => openLightboxAt(_imgList, _imgIdx));
                     }
 

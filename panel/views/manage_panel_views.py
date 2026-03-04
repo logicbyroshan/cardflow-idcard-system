@@ -72,10 +72,21 @@ def api_email_logs(request):
     """Return paginated email log entries for the Email Management tab."""
     status_filter = request.GET.get('status', '')
     email_type_filter = request.GET.get('email_type', '')
-    page = int(request.GET.get('page', 1))
-    per_page = int(request.GET.get('per_page', 50))
 
-    qs = EmailLog.objects.all()
+    # B1: guard against non-integer query params (would cause HTTP 500)
+    try:
+        page = int(request.GET.get('page', 1))
+    except (ValueError, TypeError):
+        page = 1
+    try:
+        per_page = int(request.GET.get('per_page', 50))
+    except (ValueError, TypeError):
+        per_page = 50
+    # B2: clamp per_page to prevent memory-exhaustion DoS
+    per_page = min(max(1, per_page), 200)
+
+    # B3: explicit ordering for stable pagination
+    qs = EmailLog.objects.order_by('-created_at')
     if status_filter:
         qs = qs.filter(status=status_filter)
     if email_type_filter:
@@ -101,6 +112,10 @@ def api_email_logs(request):
         for log in page_obj
     ]
 
+    # P1: single aggregated query instead of 4 separate COUNT queries
+    _sc_qs = EmailLog.objects.values('status').annotate(n=Count('id'))
+    _sc_map = {row['status']: row['n'] for row in _sc_qs}
+
     return JsonResponse({
         'success': True,
         'logs': logs,
@@ -108,10 +123,10 @@ def api_email_logs(request):
         'page': page,
         'total_pages': paginator.num_pages,
         'status_counts': {
-            'on_hold': EmailLog.objects.filter(status=EmailLog.STATUS_ON_HOLD).count(),
-            'pending': EmailLog.objects.filter(status=EmailLog.STATUS_PENDING).count(),
-            'sent': EmailLog.objects.filter(status=EmailLog.STATUS_SENT).count(),
-            'failed': EmailLog.objects.filter(status=EmailLog.STATUS_FAILED).count(),
+            'on_hold': _sc_map.get(EmailLog.STATUS_ON_HOLD, 0),
+            'pending': _sc_map.get(EmailLog.STATUS_PENDING, 0),
+            'sent':    _sc_map.get(EmailLog.STATUS_SENT, 0),
+            'failed':  _sc_map.get(EmailLog.STATUS_FAILED, 0),
         },
     })
 

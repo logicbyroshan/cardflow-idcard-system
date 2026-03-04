@@ -310,7 +310,7 @@ class PermissionValidationMiddleware:
     # How often (seconds) to re-validate user from DB.
     # Between checks, the cached validation in the session is trusted.
     # Set to 0 to check every request (original behavior).
-    REVALIDATION_INTERVAL = 10  # seconds
+    REVALIDATION_INTERVAL = 60  # seconds (P2: raised from 10 → 60 to reduce DB load)
     
     def _validate_user_access(self, request):
         """
