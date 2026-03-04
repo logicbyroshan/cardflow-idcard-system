@@ -66,6 +66,26 @@
   gap: 4px;
 }
 
+.btn-engine-dl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-primary, #4f46e5);
+  background: transparent;
+  border: 1px solid var(--color-primary, #4f46e5);
+  border-radius: 6px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+.btn-engine-dl:hover {
+  background: var(--color-primary, #4f46e5);
+  color: #fff;
+}
+
 /* Disconnected state */
 .engine-error-content {
   text-align: center;

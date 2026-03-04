@@ -87,6 +87,9 @@
           <span x-show="engine.uptime"><i class="fa-solid fa-clock"></i> <span x-text="engine.uptime"></span></span>
           <span x-show="engine.memory"><i class="fa-solid fa-microchip"></i> <span x-text="engine.memory"></span> MB</span>
         </div>
+        <a href="{% url 'engine_download' %}" class="btn btn-sm btn-engine-dl" download="AdarshEngineSetup.exe" title="Download latest installer (re-install to update)">
+          <i class="fa-solid fa-download"></i> Download Latest Installer
+        </a>
       </div>
     </div>
 
