@@ -134,7 +134,6 @@ def home(request):
     if result.success:
         data = result.data
         counts = data.get('counts', data.get('card_counts', {}))
-        recent = data.get('recent_activity', [])
         ctx.update({
             'pending_count': counts.get('pending', 0),
             'verified_count': counts.get('verified', 0),
@@ -142,17 +141,47 @@ def home(request):
             'download_count': counts.get('download', 0),
             'pool_count': counts.get('pool', 0),
             'total_cards': data.get('total_cards', 0),
-            'recent_activities': recent,
-            'has_new_activity': len(recent) > 0,
         })
     else:
         ctx.update({
             'pending_count': 0, 'verified_count': 0,
             'approved_count': 0, 'download_count': 0,
             'pool_count': 0, 'total_cards': 0,
-            'recent_activities': [],
-            'has_new_activity': False,
         })
+
+    # Admins: override with global aggregate card counts across ALL clients
+    if PermissionService.is_any_admin(user):
+        _gcounts = {r['status']: r['n'] for r in IDCard.objects.values('status').annotate(n=Count('id'))}
+        ctx.update({
+            'pending_count': _gcounts.get('pending', 0),
+            'verified_count': _gcounts.get('verified', 0),
+            'approved_count': _gcounts.get('approved', 0),
+            'download_count': _gcounts.get('download', 0),
+            'pool_count': _gcounts.get('pool', 0),
+            'total_cards': sum(v for k, v in _gcounts.items() if k not in ('pool', 'reprint')),
+        })
+
+    # Build card-based recent activity in the exact format the template expects
+    # Admin: all cards across all clients; client roles: scoped to their client
+    from django.utils.timesince import timesince as _timesince
+    from django.utils import timezone as _tz
+    _now = _tz.now()
+    _cards_scope = (
+        IDCard.objects.all() if PermissionService.is_any_admin(user)
+        else IDCard.objects.filter(table__group__client=client)
+    )
+    _recent_acts = []
+    for _card in _cards_scope.select_related('table').order_by('-updated_at')[:10]:
+        _fd = _card.field_data or {}
+        _name = _fd.get('NAME') or _fd.get('name') or _fd.get('Name') or f'Card #{_card.id}'
+        _recent_acts.append({
+            'name': _name,
+            'status': _card.status,
+            'status_display': _card.status.replace('_', ' ').title(),
+            'updated_at': _timesince(_card.updated_at, _now) if _card.updated_at else '—',
+            'table_name': _card.table.name if _card.table else '',
+        })
+    ctx.update({'recent_activities': _recent_acts, 'has_new_activity': bool(_recent_acts)})
 
     # ── Recent Clients section ──────────────────────────────────────────────
     # For admins: show top 8 active clients ordered by most-recently updated card.
@@ -229,10 +258,12 @@ def home(request):
                 recent_client_updates.append({
                     'client_id': client.id,
                     'client_name': grp.name,
+                    'group_id': grp.id,
                     'pending': status_map.get('pending', 0),
                     'verified': status_map.get('verified', 0),
                     'approved': status_map.get('approved', 0),
                     'download': status_map.get('download', 0),
+                    'tables': [],  # No expandable sub-row for client/client_staff
                 })
     except Exception:
         logger.exception('Failed to build recent_client_updates for home view')

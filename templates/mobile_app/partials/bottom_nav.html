@@ -36,12 +36,21 @@
                        aria-label="Search"></a>
                 </div>
 
-                <!-- Staff -->
+                <!-- Staff — admin roles + client can manage staff;
+                     client_staff gets Profile link instead -->
+                {% if is_super_admin or is_admin_staff or is_client %}
                 <a href="{% url 'mobile_app:staff_manage' %}"
                    class="pwa-nav-item flex-1 {% if request.resolver_match.url_name == 'staff_manage' %}pwa-nav-active{% endif %}">
                     <i class="fa-solid fa-users pwa-nav-icon"></i>
                     <span class="pwa-nav-label">Staff</span>
                 </a>
+                {% else %}
+                <a href="{% url 'mobile_app:profile' %}"
+                   class="pwa-nav-item flex-1 {% if request.resolver_match.url_name == 'profile' %}pwa-nav-active{% endif %}">
+                    <i class="fa-solid fa-user pwa-nav-icon"></i>
+                    <span class="pwa-nav-label">Profile</span>
+                </a>
+                {% endif %}
 
                 <!-- Settings -->
                 <a href="{% url 'mobile_app:settings_page' %}"

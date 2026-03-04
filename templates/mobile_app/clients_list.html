@@ -17,7 +17,7 @@
                     <i class="fa-solid fa-arrow-left text-sm"></i>
                 </a>
                 <div class="flex-1">
-                    <h1 class="text-white font-bold text-sm">Active Clients</h1>
+                    <h1 class="text-white font-bold text-sm">{% if is_admin_staff %}Assigned Clients{% else %}Active Clients{% endif %}</h1>
                     <p class="text-white/70 text-[10px]" x-text="filteredClients.length + ' client(s)'"></p>
                 </div>
                 <!-- Status filter chips -->

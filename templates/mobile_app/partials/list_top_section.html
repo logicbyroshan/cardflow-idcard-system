@@ -59,16 +59,28 @@
         </div>
         <!-- Status quick-nav tabs -->
         <div class="flex gap-1.5">
+            {% if perm_idcard_pending_list %}
             <a href="{% url 'mobile_app:card_list' table_id=table.id status='pending' %}"
                class="flex-1 text-center py-1.5 text-[10px] font-bold rounded-lg transition-all border
                {% if list_type == 'pending' %}bg-amber-500 text-white border-amber-500{% else %}bg-amber-50 text-amber-600 border-amber-100{% endif %}">
                 <i class="fa-solid fa-clock mr-1 text-[9px]"></i>Pending
             </a>
+            {% else %}
+            <span class="flex-1 text-center py-1.5 text-[10px] font-bold rounded-lg border bg-gray-50 text-gray-300 border-gray-100 cursor-default">
+                <i class="fa-solid fa-clock mr-1 text-[9px]"></i>Pending
+            </span>
+            {% endif %}
+            {% if perm_idcard_verified_list %}
             <a href="{% url 'mobile_app:card_list' table_id=table.id status='verified' %}"
                class="flex-1 text-center py-1.5 text-[10px] font-bold rounded-lg transition-all border
                {% if list_type == 'verified' %}bg-green-500 text-white border-green-500{% else %}bg-green-50 text-green-600 border-green-100{% endif %}">
                 <i class="fa-solid fa-check-circle mr-1 text-[9px]"></i>Verified
             </a>
+            {% else %}
+            <span class="flex-1 text-center py-1.5 text-[10px] font-bold rounded-lg border bg-gray-50 text-gray-300 border-gray-100 cursor-default">
+                <i class="fa-solid fa-check-circle mr-1 text-[9px]"></i>Verified
+            </span>
+            {% endif %}
             {% if perm_idcard_approved_list %}
             <a href="{% url 'mobile_app:card_list' table_id=table.id status='approved' %}"
                class="flex-1 text-center py-1.5 text-[10px] font-bold rounded-lg transition-all border

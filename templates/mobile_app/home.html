@@ -62,13 +62,19 @@
              BLOCK 2 - RECENT CLIENT UPDATES (admin only)
              Scrollable both axes; tap row to expand status detail
         --------------------------------------------------- -->
-        {% if is_super_admin or (is_admin_staff and perm_idcard_client_list) %}
+        {% if is_super_admin or (is_admin_staff and perm_idcard_client_list) or is_client or is_client_staff %}
         {% if recent_client_updates %}
         <div class="px-3 pb-2 pt-2">
             <div class="flex items-center justify-between mb-2">
+                {% if is_super_admin or is_admin_staff %}
                 <h2 class="pwa-section-title" style="font-size:12px;">Recent Client Updates</h2>
                 <a href="{% url 'mobile_app:clients_list' %}"
                    class="text-[10px] font-semibold" style="color:#667eea;">View all</a>
+                {% else %}
+                <h2 class="pwa-section-title" style="font-size:12px;">My Groups</h2>
+                <a href="{% url 'mobile_app:groups_overview' %}"
+                   class="text-[10px] font-semibold" style="color:#667eea;">View all</a>
+                {% endif %}
             </div>
             <div class="pwa-clients-table-wrap" x-data="recentClientsTable()">
                 <div class="pwa-clients-table-scroll">
@@ -102,14 +108,23 @@
                                 <td class="text-center font-bold text-blue-600 text-[11px]">{{ rc.approved }}</td>
                                 <td class="text-center font-bold text-purple-600 text-[11px]">{{ rc.download }}</td>
                                 <td class="text-center">
+                                    {% if is_super_admin or is_admin_staff %}
                                     <a href="{% url 'mobile_app:client_groups' rc.client_id %}"
                                        @click.stop
                                        class="w-5 h-5 rounded-md bg-indigo-50 text-indigo-400 inline-flex items-center justify-center">
                                         <i class="fa-solid fa-arrow-right text-[8px]"></i>
                                     </a>
+                                    {% else %}
+                                    <a href="{% url 'mobile_app:groups_overview' %}"
+                                       @click.stop
+                                       class="w-5 h-5 rounded-md bg-indigo-50 text-indigo-400 inline-flex items-center justify-center">
+                                        <i class="fa-solid fa-arrow-right text-[8px]"></i>
+                                    </a>
+                                    {% endif %}
                                 </td>
                             </tr>
-                            <!-- Expandable sub-row: table list -->
+                            <!-- Expandable sub-row: table list (admin only) -->
+                            {% if rc.tables %}
                             <tr x-show="expanded === '{{ rc.client_id }}'"
                                 class="pwa-ct-sub"
                                 style="display:none;">
@@ -130,6 +145,7 @@
                                     {% endfor %}
                                 </td>
                             </tr>
+                            {% endif %}
                             {% endfor %}
                         </tbody>
                     </table>
