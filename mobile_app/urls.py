@@ -29,6 +29,7 @@ urlpatterns = [
     path('api/table/<int:table_id>/upload-photo/', views.api_upload_photo, name='api_upload_photo'),
     path('api/table/<int:table_id>/card/add/', views.api_card_add, name='api_card_add'),
     path('api/table/<int:table_id>/card/<int:card_id>/update/', views.api_card_update, name='api_card_update'),
+    path('api/table/<int:table_id>/update-fields/', views.api_table_update_fields, name='api_table_update_fields'),
 
     # Staff management APIs
     path('api/staff/', views.api_staff_list, name='api_staff_list'),

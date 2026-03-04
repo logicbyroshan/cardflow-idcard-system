@@ -108,18 +108,25 @@
                                     </a>
                                 </td>
                             </tr>
-                            <!-- Expandable sub-row -->
+                            <!-- Expandable sub-row: table list -->
                             <tr x-show="expanded === '{{ rc.client_id }}'"
                                 class="pwa-ct-sub"
                                 style="display:none;">
-                                <td colspan="6">
-                                    <div class="flex flex-wrap items-center gap-1.5 py-0.5">
-                                        <span class="text-[8px] text-gray-400 font-semibold uppercase tracking-wide mr-1">Breakdown:</span>
-                                        <span class="pwa-status-badge pwa-badge-amber">{{ rc.pending }} Pending</span>
-                                        <span class="pwa-status-badge pwa-badge-green">{{ rc.verified }} Verified</span>
-                                        <span class="pwa-status-badge pwa-badge-blue">{{ rc.approved }} Approved</span>
-                                        <span class="pwa-status-badge pwa-badge-purple">{{ rc.download }} Download</span>
-                                    </div>
+                                <td colspan="6" class="py-1 px-2">
+                                    {% for tbl in rc.tables %}
+                                    <a href="{% url 'mobile_app:card_list' table_id=tbl.id status='pending' %}"
+                                       class="flex items-center gap-2 py-1.5 px-2 mb-0.5 rounded-lg bg-indigo-50/60 active:bg-indigo-100 text-[10px]">
+                                        <i class="fa-solid fa-table text-indigo-300 flex-shrink-0"></i>
+                                        <span class="font-medium text-gray-700 truncate flex-1" style="max-width:85px;">{{ tbl.name }}</span>
+                                        <span class="text-amber-600 font-bold">{{ tbl.pending }}P</span>
+                                        <span class="text-green-600 font-bold">{{ tbl.verified }}V</span>
+                                        <span class="text-blue-600 font-bold">{{ tbl.approved }}A</span>
+                                        <span class="text-purple-600 font-bold">{{ tbl.download }}D</span>
+                                        <i class="fa-solid fa-chevron-right text-indigo-200 text-[8px] flex-shrink-0"></i>
+                                    </a>
+                                    {% empty %}
+                                    <span class="text-[10px] text-gray-400 pl-2">No tables found</span>
+                                    {% endfor %}
                                 </td>
                             </tr>
                             {% endfor %}

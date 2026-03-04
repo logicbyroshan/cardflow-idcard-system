@@ -1,11 +1,13 @@
 {% extends "mobile_app/base.html" %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}Groups & Tables - Adarsh ID Cards{% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-gray-50 pb-20" x-data="{ activeTab: 'groups', expandedGroup: null }"
+<div class="min-h-screen bg-gray-50 pb-20" x-data="groupsApp()"
      x-init="activeTab = new URLSearchParams(location.search).get('tab') || 'groups'">
+    {% csrf_token %}
     <!-- Header -->
     <div class="sticky top-0 z-40 flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-brand-light to-brand-dark">
         {% if back_to_clients %}
@@ -129,18 +131,19 @@
     <div x-show="activeTab === 'tables'" class="px-4 pt-3 space-y-2">
         {% for table in tables %}
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div class="p-3">
+            <div class="p-3" data-fields="{{ table.fields|json_encode }}">
                 <div class="flex items-center justify-between mb-2">
-                    <div class="flex items-center gap-2.5">
-                        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-brand-light/10 to-brand-dark/10 flex items-center justify-center">
+                    <div class="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer"
+                         @click="openFieldModal({{ table.id }}, '{{ table.name|escapejs }}', $el.closest('[data-fields]').dataset.fields)">
+                        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-brand-light/10 to-brand-dark/10 flex items-center justify-center flex-shrink-0">
                             <i class="fa-solid fa-table text-brand-light text-sm"></i>
                         </div>
-                        <div>
+                        <div class="min-w-0">
                             <p class="text-sm font-bold text-gray-800">{{ table.name }}</p>
-                            <p class="text-[10px] text-gray-400">{{ table.group.name }}</p>
+                            <p class="text-[10px] text-gray-400">{{ table.group.name }} · <span class="text-indigo-500">tap to edit columns</span></p>
                         </div>
                     </div>
-                    <span class="bg-gray-100 text-gray-600 text-xs font-bold px-2 py-1 rounded-lg">{{ table.total_cards }}</span>
+                    <span class="bg-gray-100 text-gray-600 text-xs font-bold px-2 py-1 rounded-lg flex-shrink-0">{{ table.total_cards }}</span>
                 </div>
                 <!-- Status pills -->
                 <div class="flex gap-1.5 flex-wrap">
@@ -182,7 +185,157 @@
         {% endfor %}
     </div>
 
+    <!-- Column Fields Side Modal -->
+    <div x-show="showFieldModal" x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+         class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
+         style="display:none;"
+         @click.self="showFieldModal = false">
+        <div x-show="showFieldModal"
+             x-transition:enter="transition ease-out duration-250"
+             x-transition:enter-start="transform translate-x-full"
+             x-transition:enter-end="transform translate-x-0"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="transform translate-x-0"
+             x-transition:leave-end="transform translate-x-full"
+             class="absolute right-0 top-0 bottom-0 w-full max-w-sm bg-white shadow-2xl flex flex-col"
+             style="display:none;">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between px-4 py-3.5 border-b border-gray-100 bg-gradient-to-r from-brand-light to-brand-dark">
+                <div>
+                    <p class="text-white font-bold text-sm" x-text="fieldModalTitle"></p>
+                    <p class="text-white/60 text-[10px]">Edit column headings</p>
+                </div>
+                <button @click="showFieldModal = false" class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white">
+                    <i class="fa-solid fa-times text-sm"></i>
+                </button>
+            </div>
+            <!-- Fields list -->
+            <div class="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+                <p class="text-[10px] text-gray-400 mb-1">Tap a field name to rename it. Use arrows to reorder or × to remove.</p>
+                <template x-for="(field, idx) in editableFields" :key="field._uid">
+                    <div class="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2.5 border border-gray-100">
+                        <span class="text-[10px] text-gray-400 font-mono w-5 text-center flex-shrink-0" x-text="idx+1"></span>
+                        <input type="text" x-model="field.name"
+                               class="flex-1 text-sm font-medium text-gray-800 bg-transparent outline-none min-w-0"
+                               :placeholder="'Field ' + (idx+1)">
+                        <div class="flex items-center gap-1 flex-shrink-0">
+                            <button @click="moveFieldUp(idx)" :disabled="idx === 0"
+                                    class="w-6 h-6 rounded-md bg-white border border-gray-200 text-gray-400 flex items-center justify-center disabled:opacity-30">
+                                <i class="fa-solid fa-chevron-up text-[8px]"></i>
+                            </button>
+                            <button @click="moveFieldDown(idx)" :disabled="idx === editableFields.length - 1"
+                                    class="w-6 h-6 rounded-md bg-white border border-gray-200 text-gray-400 flex items-center justify-center disabled:opacity-30">
+                                <i class="fa-solid fa-chevron-down text-[8px]"></i>
+                            </button>
+                            <button @click="removeField(idx)"
+                                    class="w-6 h-6 rounded-md bg-red-50 border border-red-100 text-red-400 flex items-center justify-center">
+                                <i class="fa-solid fa-times text-[8px]"></i>
+                            </button>
+                        </div>
+                    </div>
+                </template>
+                <div x-show="editableFields.length === 0" class="text-center py-6 text-gray-400">
+                    <i class="fa-solid fa-table text-2xl mb-2 block"></i>
+                    <p class="text-xs">No fields defined</p>
+                </div>
+            </div>
+            <!-- Save footer -->
+            <div class="px-4 py-3 border-t border-gray-100 bg-gray-50">
+                <div x-show="fieldMsg.show" class="mb-2 text-xs text-center font-medium rounded-lg py-1.5"
+                     :class="fieldMsg.type === 'success' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'"
+                     x-text="fieldMsg.text"></div>
+                <button @click="saveFieldModal()"
+                        :disabled="fieldSaving"
+                        class="w-full py-3 rounded-xl bg-gradient-to-r from-brand-light to-brand-dark text-white text-sm font-bold active:scale-95 transition disabled:opacity-50 flex items-center justify-center gap-2">
+                    <i x-show="fieldSaving" class="fa-solid fa-spinner fa-spin text-sm"></i>
+                    <span x-text="fieldSaving ? 'Saving…' : 'Save Column Order'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Bottom Nav -->
     {% include "mobile_app/partials/bottom_nav.html" %}
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function groupsApp() {
+    return {
+        activeTab: 'groups',
+        expandedGroup: null,
+        showFieldModal: false,
+        fieldModalTitle: '',
+        selectedTableId: null,
+        editableFields: [],
+        fieldSaving: false,
+        fieldMsg: { show: false, text: '', type: '' },
+
+        openFieldModal(tableId, tableName, fieldsJson) {
+            this.selectedTableId = tableId;
+            this.fieldModalTitle = tableName;
+            try {
+                const raw = JSON.parse(fieldsJson || '[]');
+                let uid = 0;
+                this.editableFields = raw.map(f => ({ ...f, _uid: ++uid }));
+            } catch(e) {
+                this.editableFields = [];
+            }
+            this.fieldMsg = { show: false, text: '', type: '' };
+            this.showFieldModal = true;
+        },
+
+        moveFieldUp(idx) {
+            if (idx === 0) return;
+            const arr = [...this.editableFields];
+            [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]];
+            this.editableFields = arr;
+        },
+
+        moveFieldDown(idx) {
+            if (idx >= this.editableFields.length - 1) return;
+            const arr = [...this.editableFields];
+            [arr[idx + 1], arr[idx]] = [arr[idx], arr[idx + 1]];
+            this.editableFields = arr;
+        },
+
+        removeField(idx) {
+            this.editableFields.splice(idx, 1);
+        },
+
+        async saveFieldModal() {
+            this.fieldSaving = true;
+            const fields = this.editableFields.map((f, i) => ({
+                name: (f.name || '').trim().toUpperCase(),
+                type: f.type || 'text',
+                order: i,
+                mandatory: f.mandatory || false,
+            })).filter(f => f.name);
+
+            try {
+                const csrf = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+                const res = await fetch('/app/api/table/' + this.selectedTableId + '/update-fields/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+                    body: JSON.stringify({ fields }),
+                });
+                const data = await res.json();
+                if (data.success) {
+                    this.fieldMsg = { show: true, text: 'Saved successfully!', type: 'success' };
+                    setTimeout(() => { this.showFieldModal = false; this.fieldMsg.show = false; }, 1200);
+                } else {
+                    this.fieldMsg = { show: true, text: data.message || 'Error saving', type: 'error' };
+                }
+            } catch(e) {
+                this.fieldMsg = { show: true, text: 'Network error', type: 'error' };
+            }
+            this.fieldSaving = false;
+        },
+    };
+}
+</script>
 {% endblock %}

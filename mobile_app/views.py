@@ -177,6 +177,31 @@ def home(request):
                     .annotate(n=Count('id'))
                 )
                 status_map = {row['status']: row['n'] for row in counts_q}
+                # Build per-table breakdown for the expandable sub-row
+                tables_qs = (
+                    IDCardTable.objects
+                    .filter(group__client=c, is_active=True)
+                    .select_related('group')
+                    .order_by('group__name', 'name')[:8]
+                )
+                tables_data = []
+                for tbl in tables_qs:
+                    t_counts = (
+                        IDCard.objects
+                        .filter(table=tbl)
+                        .values('status')
+                        .annotate(n=Count('id'))
+                    )
+                    t_map = {r['status']: r['n'] for r in t_counts}
+                    tables_data.append({
+                        'id': tbl.id,
+                        'name': tbl.name,
+                        'group_name': tbl.group.name,
+                        'pending': t_map.get('pending', 0),
+                        'verified': t_map.get('verified', 0),
+                        'approved': t_map.get('approved', 0),
+                        'download': t_map.get('download', 0),
+                    })
                 recent_client_updates.append({
                     'client_id': c.id,
                     'client_name': c.name,
@@ -184,6 +209,7 @@ def home(request):
                     'verified': status_map.get('verified', 0),
                     'approved': status_map.get('approved', 0),
                     'download': status_map.get('download', 0),
+                    'tables': tables_data,
                 })
         else:
             # Single client — show per-group (table group) breakdown
@@ -455,16 +481,14 @@ def camera_capture(request, table_id, card_id=None):
     if not PermissionService.is_any_admin(user) and not ClientAccessService.can_access_table(user, table):
         return redirect('mobile_app:home')
 
-    # If no specific card_id provided, show card picker with cards missing photos
-    cards_without_photo = []
+    # If no specific card_id provided, show card picker with all cards for name-based search
+    all_cards = []
     if card_id is None:
-        cards_qs = IDCard.objects.filter(table=table).exclude(
-            photo__isnull=False
-        ).exclude(photo='').order_by('id')[:100]
+        cards_qs = IDCard.objects.filter(table=table).order_by('id')[:300]
         for card in cards_qs:
             fd = card.field_data or {}
             name = fd.get('NAME') or fd.get('name') or fd.get('Name') or f'Card #{card.id}'
-            cards_without_photo.append({'id': card.id, 'name': name})
+            all_cards.append({'id': card.id, 'name': name})
 
     return render(request, 'mobile_app/camera.html', {
         'user_name': user.get_full_name() or user.username,
@@ -472,7 +496,7 @@ def camera_capture(request, table_id, card_id=None):
         'table': table,
         'table_id': table.id,
         'card_id': card_id or 0,
-        'cards_without_photo': json.dumps(cards_without_photo),
+        'all_cards_json': json.dumps(all_cards),
         **perms,
     })
 
@@ -702,6 +726,54 @@ def api_card_update(request, table_id, card_id):
         return JsonResponse({'success': True, 'message': 'Card updated successfully'})
     except Exception:
         logger.exception('Card update error')
+        return JsonResponse({'success': False, 'message': 'An error occurred'}, status=500)
+
+
+@require_mobile_client
+@require_http_methods(["POST"])
+def api_table_update_fields(request, table_id):
+    """Update the column definitions (fields) of an IDCardTable.
+    Accepts JSON body: { "fields": [{"name": "NAME", "type": "text", "order": 0, "mandatory": false}, ...] }
+    """
+    try:
+        table = get_object_or_404(IDCardTable, id=table_id)
+        if not PermissionService.is_any_admin(request.user) and not ClientAccessService.can_access_table(request.user, table):
+            return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+
+        body = json.loads(request.body or '{}')
+        raw_fields = body.get('fields', [])
+
+        VALID_FIELD_TYPES = {
+            'text', 'number', 'date', 'select', 'photo', 'signature', 'qr_code',
+            'barcode', 'class_section', 'mother_photo', 'father_photo',
+        }
+        MAX_FIELDS = 30
+
+        if len(raw_fields) > MAX_FIELDS:
+            return JsonResponse({'success': False, 'message': f'Maximum {MAX_FIELDS} fields allowed'}, status=400)
+
+        validated = []
+        for idx, f in enumerate(raw_fields):
+            name = str(f.get('name', '')).strip().upper()
+            if not name:
+                continue
+            ftype = f.get('type', 'text')
+            if ftype not in VALID_FIELD_TYPES:
+                ftype = 'text'
+            validated.append({
+                'name': name,
+                'type': ftype,
+                'order': idx,
+                'mandatory': bool(f.get('mandatory', False)),
+            })
+
+        table.fields = validated
+        table.save(update_fields=['fields'])
+        return JsonResponse({'success': True, 'message': 'Column order saved successfully'})
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
+    except Exception:
+        logger.exception('Table update fields error')
         return JsonResponse({'success': False, 'message': 'An error occurred'}, status=500)
 
 

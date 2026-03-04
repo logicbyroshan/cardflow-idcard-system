@@ -39,34 +39,45 @@
     {% endif %}
 
     <!-- Card Picker (when no specific card is targeted) -->
-    <div x-show="!selectedCardId && cardsWithoutPhoto.length > 0 && !photoTaken"
+    <div x-show="!selectedCardId && !photoTaken"
          class="absolute inset-x-0 top-14 z-50 bg-black/95 backdrop-blur-md p-4"
          x-transition>
-        <p class="text-white/70 text-xs mb-2 font-medium">Select a card to capture photo for:</p>
-        <div class="max-h-48 overflow-y-auto space-y-1.5 custom-scroll">
-            <template x-for="card in cardsWithoutPhoto" :key="card.id">
+        <p class="text-white/70 text-xs mb-2 font-medium">Search &amp; select a card to capture photo for:</p>
+        <!-- Search input -->
+        <div class="relative mb-2">
+            <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-xs"></i>
+            <input type="text" x-model="cardSearch" @input="filterCards()"
+                   placeholder="Type name to search…"
+                   class="w-full pl-8 pr-3 py-2.5 rounded-xl bg-white/10 text-white text-sm border border-white/20 focus:border-brand-light outline-none placeholder-white/30">
+            <button x-show="cardSearch" @click="cardSearch=''; filterCards()"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 text-sm">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+        <!-- Results list -->
+        <div class="max-h-40 overflow-y-auto space-y-1.5 custom-scroll">
+            <template x-for="card in filteredCards" :key="card.id">
                 <button @click="selectedCardId = card.id"
                         class="w-full text-left px-3 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 transition text-white text-sm flex items-center gap-2">
                     <i class="fa-solid fa-id-card text-brand-light text-xs"></i>
-                    <span x-text="card.name" class="truncate"></span>
+                    <span x-text="card.name" class="truncate flex-1"></span>
                     <span class="text-white/40 text-[10px] ml-auto">#<span x-text="card.id"></span></span>
                 </button>
             </template>
+            <div x-show="filteredCards.length === 0 && cardSearch" class="text-center py-3">
+                <p class="text-white/50 text-xs">No cards match "<span x-text="cardSearch"></span>"</p>
+            </div>
+            <div x-show="filteredCards.length === 0 && !cardSearch" class="text-center py-3">
+                <p class="text-white/50 text-xs">No cards in this table</p>
+            </div>
         </div>
-    </div>
-
-    <!-- No cards without photo msg -->
-    <div x-show="!selectedCardId && cardsWithoutPhoto.length === 0 && !photoTaken"
-         class="absolute inset-x-0 top-14 z-50 bg-black/95 p-6 text-center" x-transition>
-        <i class="fa-solid fa-circle-check text-green-400 text-3xl mb-3"></i>
-        <p class="text-white text-sm font-medium">All cards already have photos!</p>
-        <p class="text-white/50 text-xs mt-1">You can still capture & replace a photo by entering a card ID.</p>
-        <div class="mt-3 flex items-center gap-2 justify-center">
-            <input type="number" x-model.number="manualCardId" placeholder="Card ID"
-                   class="w-28 px-3 py-2 rounded-lg bg-white/10 text-white text-sm border border-white/20 focus:border-brand-light outline-none">
+        <!-- Manual ID fallback -->
+        <div class="mt-2 flex items-center gap-2">
+            <input type="number" x-model.number="manualCardId" placeholder="Or enter Card ID"
+                   class="flex-1 px-3 py-2 rounded-lg bg-white/10 text-white text-sm border border-white/20 focus:border-brand-light outline-none placeholder-white/30">
             <button @click="if(manualCardId) selectedCardId = manualCardId"
                     class="px-4 py-2 rounded-lg bg-gradient-to-r from-brand-light to-brand-dark text-white text-sm font-semibold">
-                Use
+                Use ID
             </button>
         </div>
     </div>
@@ -166,10 +177,21 @@ function cameraApp() {
         toast: { show: false, message: '', type: 'info' },
         tableId: {{ table_id }},
         selectedCardId: {{ card_id }},
-        cardsWithoutPhoto: {{ cards_without_photo|safe }},
+        allCards: {{ all_cards_json|safe }},
+        filteredCards: [],
+        cardSearch: '',
         manualCardId: null,
 
-        init() { this.startCamera(); },
+        init() {
+            this.filteredCards = this.allCards;
+            this.startCamera();
+        },
+
+        filterCards() {
+            const q = (this.cardSearch || '').trim().toLowerCase();
+            if (!q) { this.filteredCards = this.allCards; return; }
+            this.filteredCards = this.allCards.filter(c => c.name.toLowerCase().includes(q));
+        },
 
         async startCamera() {
             this.cameraError = false;
@@ -260,9 +282,10 @@ function cameraApp() {
                 if (data.success) {
                     this.showMsg('Photo uploaded successfully!', 'success');
                     this.photoTaken = false;
-                    /* Remove this card from the list and reset selection */
-                    this.cardsWithoutPhoto = this.cardsWithoutPhoto.filter(c => c.id !== this.selectedCardId);
+                    /* Reset selection — keep full card list available for next capture */
                     this.selectedCardId = 0;
+                    this.cardSearch = '';
+                    this.filteredCards = this.allCards;
                     /* Navigate back after brief delay */
                     setTimeout(() => { this.goBack(); }, 900);
                 } else {
