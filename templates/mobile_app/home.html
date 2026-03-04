@@ -155,7 +155,7 @@
                 </a>
                 <!-- Manage Website: super_admin always, admin_staff only if perm_website_view -->
                 {% if is_super_admin or perm_website_view %}
-                <a href="/panel/manage-website/"
+                <a href="{% url 'mobile_app:website_manage' %}"
                    class="pwa-qa-btn pwa-qa-secondary flex-1">
                     <i class="fa-solid fa-globe text-sm"></i>
                     <span>Website</span>

@@ -45,4 +45,9 @@ urlpatterns = [
     # Client Management APIs
     path('api/client/<int:client_id>/toggle/', views.api_client_toggle, name='api_client_toggle'),
     path('api/client/<int:client_id>/delete/', views.api_client_delete, name='api_client_delete'),
+
+    # Website management (portfolio + reels upload from mobile)
+    path('website/', views.website_manage, name='website_manage'),
+    path('api/website/portfolio/upload/', views.api_portfolio_upload, name='api_portfolio_upload'),
+    path('api/website/reel/upload/', views.api_reel_upload, name='api_reel_upload'),
 ]

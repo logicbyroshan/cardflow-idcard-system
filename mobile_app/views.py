@@ -1273,3 +1273,122 @@ def api_client_delete(request, client_id):
         logger.exception('api_client_delete error: %s', exc)
         return JsonResponse({'success': False, 'message': str(exc)}, status=500)
 
+
+# ---------------------------------------------------------------------------
+# WEBSITE MANAGEMENT (Portfolio & Reels — mobile upload)
+# ---------------------------------------------------------------------------
+
+@require_mobile_client
+def website_manage(request):
+    """Mobile website management page: portfolio categories + reels upload."""
+    user = request.user
+    if not PermissionService.has(user, 'perm_website_view'):
+        return render(request, 'mobile_app/no_access.html', {
+            'user_name': user.get_full_name() or user.username,
+        }, status=403)
+
+    from website.models import PortfolioCategory, Reel
+
+    categories = PortfolioCategory.objects.filter(is_active=True).annotate(
+        photo_count=Count('items', filter=Q(items__is_active=True))
+    ).order_by('order', 'name')
+
+    reels = Reel.objects.filter(is_active=True).order_by('order', '-created_at')
+
+    _, perms = _client_ctx(user)
+
+    categories_json = json.dumps([
+        {'id': c.id, 'name': c.name, 'icon': c.icon, 'count': c.photo_count}
+        for c in categories
+    ])
+    reels_json = json.dumps([
+        {
+            'id': r.id,
+            'title': r.title,
+            'thumbnail_url': r.thumbnail.url if r.thumbnail else '',
+        }
+        for r in reels
+    ])
+
+    return render(request, 'mobile_app/website_manage.html', {
+        'user_name': user.get_full_name() or user.username,
+        'categories_json': categories_json,
+        'reels_json': reels_json,
+        **perms,
+    })
+
+
+@require_mobile_client
+@require_http_methods(['POST'])
+def api_portfolio_upload(request):
+    """Upload one or more images into a portfolio category from mobile."""
+    user = request.user
+    if not PermissionService.has(user, 'perm_website_view'):
+        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
+
+    from website.models import PortfolioCategory, PortfolioItem
+
+    category_id = request.POST.get('category_id')
+    files = request.FILES.getlist('images')
+
+    if not category_id:
+        return JsonResponse({'success': False, 'message': 'category_id required'}, status=400)
+    if not files:
+        return JsonResponse({'success': False, 'message': 'No images provided'}, status=400)
+
+    try:
+        category = get_object_or_404(PortfolioCategory, id=category_id, is_active=True)
+        created = []
+        for f in files:
+            title_base = f.name.rsplit('.', 1)[0].replace('_', ' ').replace('-', ' ').title().strip()
+            item = PortfolioItem(
+                title=title_base or category.name,
+                category=category,
+                image=f,
+                item_type='image',
+                is_active=True,
+            )
+            item.save()
+            created.append({'id': item.id, 'url': item.image.url if item.image else ''})
+        return JsonResponse({'success': True, 'count': len(created), 'items': created})
+    except Exception as exc:
+        logger.exception('api_portfolio_upload error: %s', exc)
+        return JsonResponse({'success': False, 'message': str(exc)}, status=500)
+
+
+@require_mobile_client
+@require_http_methods(['POST'])
+def api_reel_upload(request):
+    """Create a new reel with a video file (and optional thumbnail)."""
+    user = request.user
+    if not PermissionService.has(user, 'perm_website_view'):
+        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
+
+    from website.models import Reel
+
+    title = request.POST.get('title', '').strip()
+    video_file = request.FILES.get('video')
+    thumbnail = request.FILES.get('thumbnail')
+
+    if not title:
+        return JsonResponse({'success': False, 'message': 'Title is required'}, status=400)
+    if not video_file:
+        return JsonResponse({'success': False, 'message': 'Video file is required'}, status=400)
+
+    try:
+        reel = Reel(title=title, video_file=video_file, is_active=True)
+        if thumbnail:
+            reel.thumbnail = thumbnail
+        reel.save()
+        return JsonResponse({
+            'success': True,
+            'reel': {
+                'id': reel.id,
+                'title': reel.title,
+                'thumbnail_url': reel.thumbnail.url if reel.thumbnail else '',
+            },
+        })
+    except Exception as exc:
+        logger.exception('api_reel_upload error: %s', exc)
+        return JsonResponse({'success': False, 'message': str(exc)}, status=500)
+

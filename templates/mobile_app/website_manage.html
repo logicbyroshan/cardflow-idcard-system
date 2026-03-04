@@ -1,0 +1,507 @@
+{% extends "mobile_app/base.html" %}
+{% load static %}
+
+{% block title %}Manage Website — Adarsh ID Cards{% endblock %}
+
+{% block content %}
+<div class="flex flex-col" style="height:100vh;height:100dvh;" x-data="websiteManageApp()" x-init="init()">
+
+    <!-- ───────────────────── TOP NAV + TABS ───────────────────── -->
+    <div class="flex-shrink-0" style="background:linear-gradient(135deg,#667eea,#764ba2);">
+
+        <!-- Header row -->
+        <div class="flex items-center gap-3 px-4 pt-10 pb-1">
+            <a href="{% url 'mobile_app:home' %}" class="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white active:scale-90 transition-transform">
+                <i class="fa-solid fa-arrow-left text-base"></i>
+            </a>
+            <div class="flex-1 min-w-0">
+                <h1 class="text-white font-bold text-[15px] leading-tight">Manage Website</h1>
+                <p class="text-white/60 text-[10px]">Portfolio & Reels</p>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="flex mt-1">
+            <button @click="tab='portfolio'"
+                    :class="tab==='portfolio' ? 'border-b-2 border-white text-white font-bold' : 'text-white/55 font-medium'"
+                    class="flex-1 py-2.5 text-[13px] transition-colors flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-images text-xs"></i>
+                <span>Portfolio</span>
+            </button>
+            <button @click="tab='reels'"
+                    :class="tab==='reels' ? 'border-b-2 border-white text-white font-bold' : 'text-white/55 font-medium'"
+                    class="flex-1 py-2.5 text-[13px] transition-colors flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-film text-xs"></i>
+                <span>Reels</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ───────────────────── SCROLLABLE CONTENT ───────────────────── -->
+    <div class="flex-1 overflow-y-auto" style="background:#f7f8fc;">
+
+        <!-- ── PORTFOLIO TAB ── -->
+        <div x-show="tab==='portfolio'" x-cloak>
+            <div class="px-3 pt-3 pb-24">
+                <p class="text-[11px] text-gray-400 mb-3 font-medium">Tap a category to upload photos</p>
+                <div class="grid grid-cols-2 gap-2.5">
+                    <template x-for="cat in categories" :key="cat.id">
+                        <button @click="openUploadSheet(cat)"
+                                class="bg-white rounded-2xl p-4 text-left shadow-sm border border-gray-100 active:scale-95 transition-transform relative">
+                            <!-- icon -->
+                            <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white mb-2.5"
+                                 style="background:linear-gradient(135deg,#667eea,#764ba2);">
+                                <i :class="cat.icon + ' text-sm'"></i>
+                            </div>
+                            <!-- name -->
+                            <p class="text-[12px] font-bold text-gray-800 leading-tight truncate" x-text="cat.name"></p>
+                            <!-- count badge -->
+                            <p class="text-[10px] text-gray-400 mt-0.5" x-text="cat.count + ' photo' + (cat.count !== 1 ? 's' : '')"></p>
+                            <!-- upload arrow -->
+                            <div class="absolute top-3 right-3 w-6 h-6 rounded-full bg-indigo-50 flex items-center justify-center">
+                                <i class="fa-solid fa-plus text-indigo-400 text-[9px]"></i>
+                            </div>
+                        </button>
+                    </template>
+                </div>
+                <template x-if="categories.length === 0">
+                    <div class="text-center py-16 text-gray-400">
+                        <i class="fa-solid fa-folder-open text-4xl mb-3 opacity-30"></i>
+                        <p class="text-sm font-medium">No categories found</p>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- ── REELS TAB ── -->
+        <div x-show="tab==='reels'" x-cloak>
+            <div class="px-3 pt-3 pb-28">
+                <p class="text-[11px] text-gray-400 mb-3 font-medium">Your showcase reels visible on the website</p>
+                <template x-if="reels.length === 0">
+                    <div class="text-center py-16 text-gray-400">
+                        <i class="fa-solid fa-film text-4xl mb-3 opacity-30"></i>
+                        <p class="text-sm font-medium">No reels yet</p>
+                        <p class="text-[11px] mt-1">Tap the + button to add your first reel</p>
+                    </div>
+                </template>
+                <div class="grid grid-cols-2 gap-2.5">
+                    <template x-for="reel in reels" :key="reel.id">
+                        <div class="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100">
+                            <!-- Thumbnail -->
+                            <div class="relative" style="padding-top:56.25%;">
+                                <template x-if="reel.thumbnail_url">
+                                    <img :src="reel.thumbnail_url"
+                                         :alt="reel.title"
+                                         class="absolute inset-0 w-full h-full object-cover">
+                                </template>
+                                <template x-if="!reel.thumbnail_url">
+                                    <div class="absolute inset-0 flex items-center justify-center"
+                                         style="background:linear-gradient(135deg,#4c1d95,#6d28d9);">
+                                        <i class="fa-solid fa-film text-white text-2xl opacity-40"></i>
+                                    </div>
+                                </template>
+                                <!-- Play overlay -->
+                                <div class="absolute inset-0 flex items-center justify-center">
+                                    <div class="w-9 h-9 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center">
+                                        <i class="fa-solid fa-play text-white text-xs ml-0.5"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Title -->
+                            <div class="px-3 py-2">
+                                <p class="text-[11px] font-semibold text-gray-800 leading-snug line-clamp-2" x-text="reel.title"></p>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── FAB: Add Reel (visible on reels tab) ─── -->
+    <div x-show="tab==='reels'" x-cloak class="fixed bottom-6 right-5 z-40">
+        <button @click="openReelSheet()"
+                class="w-14 h-14 rounded-full flex items-center justify-center text-white shadow-xl active:scale-90 transition-transform"
+                style="background:linear-gradient(135deg,#667eea,#764ba2);">
+            <i class="fa-solid fa-plus text-xl"></i>
+        </button>
+    </div>
+
+
+    <!-- ═══════════════════════════════════
+         PORTFOLIO UPLOAD SHEET
+    ════════════════════════════════════ -->
+    <div x-show="uploadSheetOpen" x-cloak
+         class="fixed inset-0 z-50 flex flex-col justify-end"
+         @keydown.escape.window="closeUploadSheet()">
+        <!-- Backdrop -->
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-[2px]" @click="closeUploadSheet()"></div>
+
+        <!-- Sheet panel -->
+        <div class="relative bg-white rounded-t-3xl max-h-[90vh] flex flex-col">
+            <!-- Handle -->
+            <div class="flex justify-center pt-3 pb-1">
+                <div class="w-10 h-1 rounded-full bg-gray-300"></div>
+            </div>
+            <!-- Header -->
+            <div class="flex items-center justify-between px-5 pb-3 border-b border-gray-100">
+                <div>
+                    <h3 class="text-[14px] font-bold text-gray-800" x-text="activeCategory ? activeCategory.name : 'Upload Photos'"></h3>
+                    <p class="text-[10px] text-gray-400">Choose source to add photos</p>
+                </div>
+                <button @click="closeUploadSheet()" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
+                    <i class="fa-solid fa-xmark text-xs"></i>
+                </button>
+            </div>
+
+            <!-- Scrollable body -->
+            <div class="overflow-y-auto flex-1 px-4 pt-4 pb-6 space-y-4">
+
+                <!-- Source buttons -->
+                <div class="grid grid-cols-2 gap-3">
+                    <!-- Camera -->
+                    <label class="flex flex-col items-center justify-center gap-2 rounded-2xl p-5 cursor-pointer active:scale-95 transition-transform border-2 border-dashed border-indigo-200 bg-indigo-50">
+                        <div class="w-11 h-11 rounded-full bg-indigo-500 flex items-center justify-center shadow-md shadow-indigo-200">
+                            <i class="fa-solid fa-camera text-white text-base"></i>
+                        </div>
+                        <span class="text-[12px] font-bold text-indigo-700">Camera</span>
+                        <span class="text-[10px] text-indigo-400">Take a photo</span>
+                        <input type="file" class="hidden" accept="image/*" capture="environment"
+                               @change="handlePortfolioFiles($event)">
+                    </label>
+
+                    <!-- Gallery -->
+                    <label class="flex flex-col items-center justify-center gap-2 rounded-2xl p-5 cursor-pointer active:scale-95 transition-transform border-2 border-dashed border-teal-200 bg-teal-50">
+                        <div class="w-11 h-11 rounded-full bg-teal-500 flex items-center justify-center shadow-md shadow-teal-200">
+                            <i class="fa-solid fa-images text-white text-base"></i>
+                        </div>
+                        <span class="text-[12px] font-bold text-teal-700">Gallery</span>
+                        <span class="text-[10px] text-teal-400">Pick multiple</span>
+                        <input type="file" class="hidden" accept="image/*" multiple
+                               @change="handlePortfolioFiles($event)">
+                    </label>
+                </div>
+
+                <!-- Pending previews -->
+                <div x-show="pendingFiles.length > 0">
+                    <p class="text-[11px] text-gray-500 font-medium mb-2"
+                       x-text="pendingFiles.length + ' photo(s) ready'"></p>
+                    <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                        <template x-for="(pf, idx) in pendingFiles" :key="idx">
+                            <div class="relative flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden border border-gray-200 shadow-sm">
+                                <img :src="pf.preview" class="w-full h-full object-cover" alt="">
+                                <button @click.stop="removeFile(idx)"
+                                        class="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-red-500 flex items-center justify-center shadow">
+                                    <i class="fa-solid fa-xmark text-white text-[8px]"></i>
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Upload button -->
+                <button x-show="pendingFiles.length > 0"
+                        @click="uploadPortfolioFiles()"
+                        :disabled="uploading"
+                        :class="uploading ? 'opacity-70 cursor-not-allowed' : 'active:scale-95'"
+                        class="w-full py-3.5 rounded-2xl text-white font-bold text-sm transition-transform flex items-center justify-center gap-2"
+                        style="background:linear-gradient(135deg,#667eea,#764ba2);">
+                    <template x-if="uploading">
+                        <span class="flex items-center gap-2">
+                            <i class="fa-solid fa-spinner fa-spin"></i>Uploading…
+                        </span>
+                    </template>
+                    <template x-if="!uploading">
+                        <span class="flex items-center gap-2">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                            Upload <span x-text="pendingFiles.length"></span> Photo(s)
+                        </span>
+                    </template>
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ═══════════════════════════════════
+         ADD REEL SHEET
+    ════════════════════════════════════ -->
+    <div x-show="reelSheetOpen" x-cloak
+         class="fixed inset-0 z-50 flex flex-col justify-end"
+         @keydown.escape.window="closeReelSheet()">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-[2px]" @click="closeReelSheet()"></div>
+
+        <div class="relative bg-white rounded-t-3xl max-h-[92vh] flex flex-col">
+            <!-- Handle -->
+            <div class="flex justify-center pt-3 pb-1">
+                <div class="w-10 h-1 rounded-full bg-gray-300"></div>
+            </div>
+            <!-- Header -->
+            <div class="flex items-center justify-between px-5 pb-3 border-b border-gray-100">
+                <div>
+                    <h3 class="text-[14px] font-bold text-gray-800">Add New Reel</h3>
+                    <p class="text-[10px] text-gray-400">Upload a video to showcase on your website</p>
+                </div>
+                <button @click="closeReelSheet()" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
+                    <i class="fa-solid fa-xmark text-xs"></i>
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div class="overflow-y-auto flex-1 px-4 pt-4 pb-8 space-y-4">
+
+                <!-- Reel title -->
+                <div>
+                    <label class="text-[11px] font-bold text-gray-600 mb-1 block uppercase tracking-wide">Title *</label>
+                    <input type="text" x-model="reelTitle"
+                           placeholder="e.g. ID Cards Showcase 2024"
+                           maxlength="255"
+                           class="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-indigo-400 bg-gray-50 transition-colors">
+                </div>
+
+                <!-- Video source -->
+                <div>
+                    <label class="text-[11px] font-bold text-gray-600 mb-2 block uppercase tracking-wide">Video *</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <!-- Record -->
+                        <label class="flex flex-col items-center justify-center gap-2 rounded-2xl p-4 cursor-pointer active:scale-95 transition-transform border-2 border-dashed border-purple-200 bg-purple-50">
+                            <div class="w-11 h-11 rounded-full bg-purple-500 flex items-center justify-center shadow-md shadow-purple-200">
+                                <i class="fa-solid fa-video text-white text-base"></i>
+                            </div>
+                            <span class="text-[12px] font-bold text-purple-700">Record</span>
+                            <span class="text-[10px] text-purple-400">Use camera</span>
+                            <input type="file" class="hidden" accept="video/*" capture="environment"
+                                   @change="handleReelVideo($event)">
+                        </label>
+                        <!-- Gallery -->
+                        <label class="flex flex-col items-center justify-center gap-2 rounded-2xl p-4 cursor-pointer active:scale-95 transition-transform border-2 border-dashed border-orange-200 bg-orange-50">
+                            <div class="w-11 h-11 rounded-full bg-orange-500 flex items-center justify-center shadow-md shadow-orange-200">
+                                <i class="fa-solid fa-folder-open text-white text-base"></i>
+                            </div>
+                            <span class="text-[12px] font-bold text-orange-700">Gallery</span>
+                            <span class="text-[10px] text-orange-400">Pick video</span>
+                            <input type="file" class="hidden" accept="video/*"
+                                   @change="handleReelVideo($event)">
+                        </label>
+                    </div>
+
+                    <!-- Video selected indicator -->
+                    <div x-show="reelVideoFile" class="mt-2 flex items-center gap-2 px-3 py-2 bg-green-50 rounded-xl border border-green-200">
+                        <i class="fa-solid fa-circle-check text-green-500 text-sm"></i>
+                        <span class="text-[11px] text-green-700 font-semibold truncate" x-text="reelVideoFile ? reelVideoFile.name : ''"></span>
+                    </div>
+                </div>
+
+                <!-- Video inline preview -->
+                <div x-show="reelVideoPreview" class="rounded-2xl overflow-hidden bg-black shadow-md">
+                    <video :src="reelVideoPreview" controls playsinline
+                           class="w-full max-h-44 object-contain"></video>
+                </div>
+
+                <!-- Optional thumbnail -->
+                <div x-show="reelVideoFile">
+                    <label class="text-[11px] font-bold text-gray-600 mb-1 block uppercase tracking-wide">Thumbnail (optional)</label>
+                    <label class="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 cursor-pointer active:bg-gray-100 transition-colors">
+                        <div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center flex-shrink-0">
+                            <i class="fa-solid fa-image text-gray-500 text-xs"></i>
+                        </div>
+                        <span class="text-[12px] text-gray-500 flex-1 truncate"
+                              x-text="reelThumbnailName || 'Add thumbnail image'"></span>
+                        <i class="fa-solid fa-plus text-indigo-400 text-xs"></i>
+                        <input type="file" class="hidden" accept="image/*"
+                               @change="handleReelThumbnail($event)">
+                    </label>
+                </div>
+
+                <!-- Upload button -->
+                <button @click="uploadReel()"
+                        :disabled="!reelVideoFile || !reelTitle.trim() || uploading"
+                        :class="(!reelVideoFile || !reelTitle.trim() || uploading) ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'"
+                        class="w-full py-3.5 rounded-2xl text-white font-bold text-sm transition-transform flex items-center justify-center gap-2"
+                        style="background:linear-gradient(135deg,#667eea,#764ba2);">
+                    <template x-if="uploading">
+                        <span class="flex items-center gap-2">
+                            <i class="fa-solid fa-spinner fa-spin"></i>Uploading…
+                        </span>
+                    </template>
+                    <template x-if="!uploading">
+                        <span class="flex items-center gap-2">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                            Upload Reel
+                        </span>
+                    </template>
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ─── Toast ─── -->
+    <div x-show="toast.show" x-cloak
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 -translate-y-2"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100 translate-y-0"
+         x-transition:leave-end="opacity-0 -translate-y-2"
+         class="fixed top-16 left-4 right-4 z-[100] rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-xl flex items-center gap-2.5"
+         :class="toast.ok ? 'bg-green-500' : 'bg-red-500'">
+        <i :class="toast.ok ? 'fa-solid fa-circle-check' : 'fa-solid fa-circle-xmark'" class="text-base flex-shrink-0"></i>
+        <span x-text="toast.msg" class="flex-1"></span>
+    </div>
+
+</div><!-- /x-data -->
+
+
+<script>
+// Data injected from Django
+const CATEGORIES_DATA = {{ categories_json|safe }};
+const REELS_DATA = {{ reels_json|safe }};
+const CSRF_TOKEN = (document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith('csrftoken=')) || '').split('=')[1]
+    || '{{ csrf_token }}';
+
+function websiteManageApp() {
+    return {
+        tab: 'portfolio',
+        categories: [],
+        reels: [],
+
+        // Portfolio upload
+        uploadSheetOpen: false,
+        activeCategory: null,
+        pendingFiles: [],
+
+        // Reel upload
+        reelSheetOpen: false,
+        reelTitle: '',
+        reelVideoFile: null,
+        reelVideoPreview: null,
+        reelThumbnailFile: null,
+        reelThumbnailName: '',
+
+        uploading: false,
+        toast: { show: false, ok: true, msg: '' },
+
+        init() {
+            this.categories = CATEGORIES_DATA;
+            this.reels = REELS_DATA;
+        },
+
+        showToast(msg, ok = true) {
+            this.toast = { show: true, ok, msg };
+            setTimeout(() => { this.toast.show = false; }, 3200);
+        },
+
+        /* ── PORTFOLIO ── */
+        openUploadSheet(cat) {
+            this.activeCategory = cat;
+            this.pendingFiles = [];
+            this.uploadSheetOpen = true;
+        },
+        closeUploadSheet() {
+            this.uploadSheetOpen = false;
+            this.activeCategory = null;
+            this.pendingFiles = [];
+        },
+        handlePortfolioFiles(e) {
+            const files = Array.from(e.target.files || []);
+            files.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = ev => {
+                    this.pendingFiles.push({ file, preview: ev.target.result });
+                };
+                reader.readAsDataURL(file);
+            });
+            e.target.value = '';
+        },
+        removeFile(idx) {
+            this.pendingFiles.splice(idx, 1);
+        },
+        async uploadPortfolioFiles() {
+            if (!this.pendingFiles.length || !this.activeCategory || this.uploading) return;
+            this.uploading = true;
+            try {
+                const fd = new FormData();
+                fd.append('category_id', this.activeCategory.id);
+                this.pendingFiles.forEach(pf => fd.append('images', pf.file));
+
+                const res = await fetch('/app/api/website/portfolio/upload/', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': CSRF_TOKEN },
+                    body: fd,
+                });
+                const data = await res.json();
+                if (data.success) {
+                    const cat = this.categories.find(c => c.id === this.activeCategory.id);
+                    if (cat) cat.count += data.count;
+                    this.showToast(data.count + ' photo(s) uploaded successfully!');
+                    this.closeUploadSheet();
+                } else {
+                    this.showToast(data.message || 'Upload failed', false);
+                }
+            } catch (err) {
+                this.showToast('Network error — please try again', false);
+            } finally {
+                this.uploading = false;
+            }
+        },
+
+        /* ── REELS ── */
+        openReelSheet() {
+            this.reelTitle = '';
+            this.reelVideoFile = null;
+            this.reelVideoPreview = null;
+            this.reelThumbnailFile = null;
+            this.reelThumbnailName = '';
+            this.reelSheetOpen = true;
+        },
+        closeReelSheet() {
+            this.reelSheetOpen = false;
+        },
+        handleReelVideo(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            this.reelVideoFile = file;
+            if (this.reelVideoPreview) URL.revokeObjectURL(this.reelVideoPreview);
+            this.reelVideoPreview = URL.createObjectURL(file);
+            e.target.value = '';
+        },
+        handleReelThumbnail(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            this.reelThumbnailFile = file;
+            this.reelThumbnailName = file.name;
+            e.target.value = '';
+        },
+        async uploadReel() {
+            if (!this.reelVideoFile || !this.reelTitle.trim() || this.uploading) return;
+            this.uploading = true;
+            try {
+                const fd = new FormData();
+                fd.append('title', this.reelTitle.trim());
+                fd.append('video', this.reelVideoFile);
+                if (this.reelThumbnailFile) fd.append('thumbnail', this.reelThumbnailFile);
+
+                const res = await fetch('/app/api/website/reel/upload/', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': CSRF_TOKEN },
+                    body: fd,
+                });
+                const data = await res.json();
+                if (data.success) {
+                    this.reels.unshift(data.reel);
+                    this.showToast('Reel "' + data.reel.title + '" uploaded!');
+                    this.closeReelSheet();
+                } else {
+                    this.showToast(data.message || 'Upload failed', false);
+                }
+            } catch (err) {
+                this.showToast('Network error — please try again', false);
+            } finally {
+                this.uploading = false;
+            }
+        },
+    };
+}
+</script>
+{% endblock %}
