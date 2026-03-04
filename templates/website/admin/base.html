@@ -84,20 +84,24 @@
     <!-- Confirm Modal (replaces browser confirm()) -->
     <div class="wa-confirm-overlay" id="waConfirmOverlay">
         <div class="wa-confirm-box">
-            <div class="wa-confirm-icon" id="waConfirmIcon">
-                <i class="fa-solid fa-triangle-exclamation"></i>
+            <!-- Scrollable content area -->
+            <div class="wa-confirm-content">
+                <div class="wa-confirm-icon" id="waConfirmIcon">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <h4 class="wa-confirm-title" id="waConfirmTitle">Are you sure?</h4>
+                <p class="wa-confirm-text" id="waConfirmText">This action cannot be undone.</p>
+                <div id="waConfirmWarning" class="wa-confirm-warning">
+                    <p class="wa-confirm-warning-title">
+                        <i class="fa-solid fa-circle-exclamation"></i> Warning
+                    </p>
+                    <ul class="wa-confirm-warning-list" id="waConfirmWarningList">
+                        <li>This action may affect your data</li>
+                        <li>Please confirm before proceeding</li>
+                    </ul>
+                </div>
             </div>
-            <h4 class="wa-confirm-title" id="waConfirmTitle">Are you sure?</h4>
-            <p class="wa-confirm-text" id="waConfirmText">This action cannot be undone.</p>
-            <div id="waConfirmWarning" class="wa-confirm-warning">
-                <p class="wa-confirm-warning-title">
-                    <i class="fa-solid fa-circle-exclamation"></i> Warning
-                </p>
-                <ul class="wa-confirm-warning-list" id="waConfirmWarningList">
-                    <li>This action may affect your data</li>
-                    <li>Please confirm before proceeding</li>
-                </ul>
-            </div>
+            <!-- Sticky footer actions -->
             <div class="wa-confirm-actions">
                 <button type="button" class="btn btn-neutral" id="waConfirmCancel"><i class="fa-solid fa-xmark"></i> Cancel</button>
                 <button type="button" class="btn btn-danger" id="waConfirmOk"><i class="fa-solid fa-check"></i> Confirm</button>

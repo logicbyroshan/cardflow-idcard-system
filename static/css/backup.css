@@ -19,42 +19,66 @@
   background: #fff;
   width: 650px;
   max-width: 95vw;
-  min-height: 500px;
+  min-height: 200px;
   max-height: 90vh;
-  overflow-y: auto;
   border: 1px solid #e5e7eb;
   border-radius: 10px;
   box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  /* Flex column: header fixed, body scrolls, footer fixed */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
-.backup-modal-sm { width: 440px; min-height: unset; }
+.backup-modal-sm { width: 440px; }
 
 .backup-modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 14px 18px;
-  border-bottom: 1px solid #e5e7eb;
+  /* Gradient header matching project theme */
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-bottom: none;
+  border-radius: 10px 10px 0 0;
+  flex-shrink: 0;
 }
 .backup-modal-header h2 {
   font-size: 14px;
   font-weight: 700;
-  color: #1e293b;
+  color: #fff;
   display: flex;
   align-items: center;
   gap: 8px;
+  margin: 0;
 }
-.backup-modal-header h2 i { color: #667eea; font-size: 15px; }
+.backup-modal-header h2 i { color: rgba(255,255,255,0.85); font-size: 15px; }
 .backup-modal-close {
-  background: none;
-  border: none;
-  font-size: 20px;
-  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.25);
+  font-size: 16px;
+  color: rgba(255,255,255,0.9);
   cursor: pointer;
   line-height: 1;
+  transition: background 0.15s, transform 0.15s;
 }
-.backup-modal-close:hover { color: #475569; }
+.backup-modal-close:hover {
+  background: rgba(255,255,255,0.28);
+  color: #fff;
+  transform: rotate(90deg);
+}
 
-.backup-modal-body { padding: 18px; }
+.backup-modal-body {
+  padding: 18px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
 .backup-modal-footer {
   display: flex;
   align-items: center;
@@ -62,6 +86,9 @@
   gap: 10px;
   padding: 12px 18px;
   border-top: 1px solid #e5e7eb;
+  background: #f8fafc;
+  flex-shrink: 0;
+  border-radius: 0 0 10px 10px;
 }
 
 /* ─── Guidelines ─── */

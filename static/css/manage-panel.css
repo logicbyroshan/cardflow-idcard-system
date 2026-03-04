@@ -754,6 +754,11 @@ textarea.panel-form-input {
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.12);
   animation: panelConfirmIn .15s ease-out;
+  /* Flex column so header/footer are always visible */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-height: 90vh;
 }
 @keyframes panelConfirmIn {
   from { opacity:0; transform: scale(0.96) translateY(6px); }
@@ -764,33 +769,53 @@ textarea.panel-form-input {
   align-items: center;
   justify-content: space-between;
   padding: 14px 18px;
-  border-bottom: 1px solid #e5e7eb;
+  /* Gradient header matching project theme */
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  flex-shrink: 0;
 }
 .panel-confirm-title {
   font-size: 13.5px;
   font-weight: 700;
-  color: #1e293b;
+  color: #fff;
   display: flex;
   align-items: center;
   gap: 8px;
   margin: 0;
 }
+.panel-confirm-title i { color: rgba(255,255,255,0.85); font-size: 14px; }
 .panel-confirm-close {
-  background: none;
-  border: none;
-  font-size: 20px;
-  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.25);
+  font-size: 16px;
+  color: rgba(255,255,255,0.9);
   cursor: pointer;
   line-height: 1;
-  padding: 2px 4px;
+  padding: 0;
+  transition: background 0.15s, transform 0.15s;
 }
-.panel-confirm-close:hover { color: #475569; }
+.panel-confirm-close:hover {
+  background: rgba(255,255,255,0.28);
+  color: #fff;
+  transform: rotate(90deg);
+}
 .panel-confirm-body {
   padding: 18px 20px;
   font-size: 13px;
   color: #475569;
   line-height: 1.65;
   margin: 0;
+  /* Scrollable if content is long */
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 .panel-confirm-footer {
   display: flex;
@@ -799,8 +824,9 @@ textarea.panel-form-input {
   gap: 10px;
   padding: 12px 18px;
   border-top: 1px solid #e5e7eb;
-  background: #fafbfc;
+  background: #f8fafc;
   border-radius: 0 0 8px 8px;
+  flex-shrink: 0;
 }
 
 /* ================================

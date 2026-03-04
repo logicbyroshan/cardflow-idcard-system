@@ -22,9 +22,12 @@
     box-shadow: 0 12px 32px rgba(0,0,0,0.18), 0 2px 6px rgba(0,0,0,0.08);
     width: 650px;
     max-width: 95vw;
-    min-height: 500px;
+    min-height: 320px;
     max-height: 90vh;
-    overflow-y: auto;
+    /* Flex column so header/footer are always visible, body scrolls */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
     animation: waSlide 0.2s ease;
 }
 @keyframes waSlide {
@@ -39,6 +42,8 @@
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border-radius: 10px 10px 0 0;
     border-bottom: none;
+    /* Header never scrolls */
+    flex-shrink: 0;
 }
 .wa-modal-header h3 {
     font-size: 15px;
@@ -69,10 +74,19 @@
     transform: rotate(90deg);
 }
 .wa-modal form {
-    padding: 20px 22px 22px;
+    /* Form is the scrollable area — content scrolls, footer sticks to bottom */
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 20px 22px 0;
+    display: block;
 }
 .wa-modal-body {
     padding: 20px 22px;
+    /* Body (non-form modals) scrolls within the flex column */
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
 }
 .wa-modal-footer {
     display: flex;
@@ -83,7 +97,10 @@
     border-top: 1px solid var(--wa-gray-100);
     background: #fafafa;
     border-radius: 0 0 10px 10px;
+    /* Always visible — sticks to bottom of the scrolling form or modal */
     flex-shrink: 0;
+    position: sticky;
+    bottom: 0;
 }
 
 /* ===== CONTACT DETAIL MODAL ===== */
@@ -176,15 +193,42 @@
     background: #fff;
     border-radius: 10px;
     box-shadow: 0 12px 32px rgba(0,0,0,0.18), 0 2px 6px rgba(0,0,0,0.08);
-    width: 650px;
+    width: 420px;
     max-width: 95vw;
-    text-align: center;
-    padding: 28px 24px 22px;
-    min-height: 500px;
     max-height: 90vh;
-    overflow-y: auto;
+    /* Flex column — icon/title/text scroll if tall, actions always visible */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
     animation: waSlide 0.15s ease;
 }
+/* Scrollable content area inside confirm box */
+.wa-confirm-box > :not(.wa-confirm-actions) {
+    /* handled by padding on the box inner content */
+}
+/* Wrap icon+title+text in a scrollable zone */
+.wa-confirm-content {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 28px 24px 16px;
+    text-align: center;
+}
+/* Actions row sticks to the bottom */
+.wa-confirm-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    padding: 14px 24px 18px;
+    border-top: 1px solid #e5e7eb;
+    background: #fafafa;
+    border-radius: 0 0 10px 10px;
+    flex-shrink: 0;
+}
+.wa-confirm-actions .btn {
+    min-width: 90px;
+}
+
 .wa-confirm-icon {
     display: flex;
     align-items: center;
@@ -209,19 +253,9 @@
 .wa-confirm-text {
     font-size: 13px;
     color: var(--wa-gray-500);
-    margin: 0 0 18px;
+    margin: 0 0 10px;
     line-height: 1.5;
 }
-.wa-confirm-actions {
-    display: flex;
-    gap: 8px;
-    justify-content: center;
-}
-.wa-confirm-actions .btn {
-    min-width: 90px;
-}
-
-/* ===== CONFIRM WARNING BLOCK ===== */
 .wa-confirm-warning {
     width: 100%;
     background: #fef2f2;
