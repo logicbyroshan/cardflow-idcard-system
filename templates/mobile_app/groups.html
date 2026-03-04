@@ -30,7 +30,7 @@
         <div class="flex bg-white rounded-xl shadow-sm border border-gray-100 p-1">
             <button @click="activeTab = 'groups'" class="flex-1 py-2 text-xs font-semibold rounded-lg transition-all"
                     :class="activeTab === 'groups' ? 'bg-gradient-to-r from-brand-light to-brand-dark text-white shadow' : 'text-gray-500'">
-                <i class="fa-solid fa-layer-group mr-1"></i>Groups
+                <i class="fa-solid fa-layer-group mr-1"></i>ID Card Groups
             </button>
             {% if is_super_admin or is_admin_staff or perm_idcard_group_create or perm_idcard_group_delete %}
             <button @click="activeTab = 'tables'" class="flex-1 py-2 text-xs font-semibold rounded-lg transition-all"

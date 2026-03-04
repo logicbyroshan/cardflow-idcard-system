@@ -118,26 +118,33 @@
                                     </td>
                                 </tr>
                                 {% if rc.tables %}
+                                {% for tbl in rc.tables %}
                                 <tr x-show="expanded === '{{ rc.client_id }}'"
-                                    class="pwa-ct-sub"
+                                    class="pwa-ct-sub bg-indigo-50/40"
                                     style="display:none;">
-                                    <td colspan="6" class="py-1 px-2">
-                                        {% for tbl in rc.tables %}
+                                    <td>
                                         <a href="{% url 'mobile_app:card_list' table_id=tbl.id status='pending' %}"
-                                           class="flex items-center gap-2 py-1.5 px-2 mb-0.5 rounded-lg bg-indigo-50/60 active:bg-indigo-100 text-[10px]">
-                                            <i class="fa-solid fa-table text-indigo-300 flex-shrink-0"></i>
-                                            <span class="font-medium text-gray-700 truncate flex-1" style="max-width:85px;">{{ tbl.name }}</span>
-                                            <span class="text-amber-600 font-bold">{{ tbl.pending }}P</span>
-                                            <span class="text-green-600 font-bold">{{ tbl.verified }}V</span>
-                                            <span class="text-blue-600 font-bold">{{ tbl.approved }}A</span>
-                                            <span class="text-purple-600 font-bold">{{ tbl.download }}D</span>
-                                            <i class="fa-solid fa-chevron-right text-indigo-200 text-[8px] flex-shrink-0"></i>
+                                           class="flex items-center gap-1 text-[10px] font-medium text-gray-600 truncate" style="max-width:95px;">
+                                            <i class="fa-solid fa-table text-indigo-300 flex-shrink-0 text-[8px]"></i>
+                                            <span class="truncate">{{ tbl.name }}</span>
                                         </a>
-                                        {% empty %}
-                                        <span class="text-[10px] text-gray-400 pl-2">No tables found</span>
-                                        {% endfor %}
+                                    </td>
+                                    <td class="text-center font-bold text-amber-600 text-[11px]">{{ tbl.pending }}</td>
+                                    <td class="text-center font-bold text-green-600 text-[11px]">{{ tbl.verified }}</td>
+                                    <td class="text-center font-bold text-blue-600 text-[11px]">{{ tbl.approved }}</td>
+                                    <td class="text-center font-bold text-purple-600 text-[11px]">{{ tbl.download }}</td>
+                                    <td class="text-center">
+                                        <a href="{% url 'mobile_app:card_list' table_id=tbl.id status='pending' %}"
+                                           class="w-5 h-5 rounded-md bg-indigo-50 text-indigo-400 inline-flex items-center justify-center">
+                                            <i class="fa-solid fa-arrow-right text-[8px]"></i>
+                                        </a>
                                     </td>
                                 </tr>
+                                {% empty %}
+                                <tr x-show="expanded === '{{ rc.client_id }}'" style="display:none;">
+                                    <td colspan="6" class="py-1 px-3 text-[10px] text-gray-400">No tables found</td>
+                                </tr>
+                                {% endfor %}
                                 {% endif %}
                                 {% endfor %}
                             </tbody>
