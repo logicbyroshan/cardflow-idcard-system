@@ -62,7 +62,7 @@
              BLOCK 2 - RECENT CLIENT UPDATES (admin only)
              Scrollable both axes; tap row to expand status detail
         --------------------------------------------------- -->
-        {% if is_super_admin or (is_admin_staff and perm_idcard_client_list) or is_client or is_client_staff %}
+        {% if is_super_admin or is_admin_staff and perm_idcard_client_list or is_client or is_client_staff %}
         {% if recent_client_updates %}
         <div class="px-3 pb-2 pt-2">
             <div class="flex items-center justify-between mb-2">
