@@ -12,8 +12,7 @@
   display: flex;
   flex-direction: column;
   height: calc(100vh - var(--spacing-topbar, 40px));
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden; /* children scroll independently; tabs bar stays fixed */
 }
 
 /* === Header === */
@@ -46,11 +45,11 @@
 /* === Tabs === */
 .panel-tabs {
   display: flex;
+  flex-shrink: 0; /* never shrinks — always visible */
   gap: 0;
   padding: 0 18px;
   background: #fff;
   border-bottom: 1px solid #e5e7eb;
-  /* Horizontal scroll on narrow screens */
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
@@ -91,10 +90,18 @@
   display: none;
   padding: 16px 18px;
 }
-.panel-tab-content.active { display: block; }
+/* Regular tabs: take remaining height and scroll internally */
+.panel-tab-content.active {
+  display: block;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+/* Full-height tabs (Log History, Email Logs) */
 .panel-tab-content.panel-tab-full-height.active {
   display: flex;
   flex-direction: column;
+  flex: 1;
   overflow: hidden;
   padding: 0;
 }
@@ -109,8 +116,11 @@
 .panel-tab-full-height .notif-table-wrap {
   flex: 1;
   overflow-y: auto;
+  overflow-x: auto;
   height: auto !important;
   max-height: none !important;
+  border-radius: 12px;
+  margin: 8px 18px 18px;
 }
 .panel-tab-full-height .notif-pagination-bar {
   flex-shrink: 0;
@@ -174,6 +184,10 @@
   grid-template-columns: repeat(4, 1fr);
   gap: 0;
   margin-bottom: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.07);
 }
 .notif-stat-card {
   display: flex;
@@ -181,11 +195,10 @@
   gap: 12px;
   padding: 14px 16px;
   background: #fff;
-  border: 1px solid #e5e7eb;
-  margin-left: -1px;
-  margin-top: -1px;
+  border-right: 1px solid #e5e7eb;
+  margin: 0;
 }
-.notif-stat-card:first-child { margin-left: 0; }
+.notif-stat-card:last-child { border-right: none; }
 .notif-stat-icon {
   width: 38px;
   height: 38px;
@@ -212,7 +225,10 @@
 .notif-table-wrap {
   background: #fff;
   border: 1px solid #e5e7eb;
+  border-radius: 12px;
   overflow: hidden;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+  margin-bottom: 4px;
 }
 .notif-table {
   width: 100%;
@@ -222,6 +238,9 @@
 .notif-table thead {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-bottom: none;
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 .notif-table th {
   padding: 9px 14px;
@@ -333,17 +352,17 @@
 .system-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 0;
+  gap: 14px;
+  padding: 0 0 4px;
 }
 .system-card {
   border: 1px solid #e5e7eb;
+  border-radius: 12px;
   background: #fff;
-  margin-left: -1px;
-  margin-top: -1px;
+  overflow: hidden;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+  margin: 0;
 }
-.system-card:first-child,
-.system-card:nth-child(2) { margin-top: 0; }
-.system-card:nth-child(odd) { margin-left: 0; }
 .system-card-header {
   padding: 10px 16px;
   font-size: 12px;
@@ -381,6 +400,10 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.07);
 }
 .quick-action-card {
   display: flex;
@@ -388,18 +411,19 @@
   gap: 14px;
   padding: 18px 20px;
   background: #fff;
-  border: 1px solid #e5e7eb;
-  margin-left: -1px;
-  margin-top: -1px;
+  border-right: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+  margin: 0;
   text-decoration: none;
   color: inherit;
   transition: background .12s;
   cursor: pointer;
 }
+/* Remove right border on last in each row, bottom border on last row */
+.quick-action-card:nth-child(3n) { border-right: none; }
 .quick-action-card:first-child,
 .quick-action-card:nth-child(2),
-.quick-action-card:nth-child(3) { margin-top: 0; }
-.quick-action-card:nth-child(3n+1) { margin-left: 0; }
+.quick-action-card:nth-child(3) { border-bottom: 1px solid #e5e7eb; }
 .quick-action-card:hover { background: #fafbfe; }
 .qa-icon {
   width: 42px;
@@ -783,9 +807,10 @@ textarea.panel-form-input {
    RESPONSIVE
    ================================ */
 @media (max-width: 900px) {
-  .notif-stats { grid-template-columns: repeat(2, 1fr); }
-  .system-grid { grid-template-columns: 1fr; }
-  .quick-actions-grid { grid-template-columns: repeat(2, 1fr); }
+  .notif-stats { grid-template-columns: repeat(2, 1fr); border-radius: 10px; }
+  .system-grid { grid-template-columns: 1fr; gap: 14px; }
+  .quick-actions-grid { grid-template-columns: repeat(2, 1fr); border-radius: 10px; }
+  .quick-action-card:nth-child(2n) { border-right: none; }
   .panel-form-row { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
