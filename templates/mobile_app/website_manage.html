@@ -233,37 +233,48 @@
          @keydown.escape.window="closeReelSheet()">
         <div class="absolute inset-0 bg-black/50 backdrop-blur-[2px]" @click="closeReelSheet()"></div>
 
-        <div class="relative bg-white rounded-t-3xl max-h-[92vh] flex flex-col">
-            <!-- Handle -->
-            <div class="flex justify-center pt-3 pb-1">
-                <div class="w-10 h-1 rounded-full bg-gray-300"></div>
-            </div>
-            <!-- Header -->
-            <div class="flex items-center justify-between px-5 pb-3 border-b border-gray-100">
-                <div>
-                    <h3 class="text-[14px] font-bold text-gray-800">Add New Reel</h3>
-                    <p class="text-[10px] text-gray-400">Upload a video to showcase on your website</p>
+        <div class="relative rounded-t-3xl max-h-[92vh] flex flex-col overflow-hidden bg-white">
+
+            <!-- Gradient top: handle + title -->
+            <div class="flex-shrink-0 rounded-t-3xl pb-5"
+                 style="background:linear-gradient(135deg,#667eea,#764ba2);">
+                <!-- Handle -->
+                <div class="flex justify-center pt-3 pb-3">
+                    <div class="w-10 h-1 rounded-full bg-white/30"></div>
                 </div>
-                <button @click="closeReelSheet()" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
-                    <i class="fa-solid fa-xmark text-xs"></i>
-                </button>
+                <!-- Header row -->
+                <div class="flex items-center justify-between px-5">
+                    <div>
+                        <h3 class="text-[15px] font-bold text-white">Add New Reel</h3>
+                        <p class="text-white/60 text-[11px]">Upload a video for your website showcase</p>
+                    </div>
+                    <button @click="closeReelSheet()"
+                            class="w-9 h-9 rounded-full flex items-center justify-center text-white/80 hover:text-white active:scale-90 transition-transform"
+                            style="background:rgba(255,255,255,0.15);">
+                        <i class="fa-solid fa-xmark text-sm"></i>
+                    </button>
+                </div>
             </div>
 
-            <!-- Body -->
-            <div class="overflow-y-auto flex-1 px-4 pt-4 pb-8 space-y-4">
+            <!-- Scrollable body -->
+            <div class="overflow-y-auto flex-1 px-4 pt-5 pb-3 space-y-5 bg-white">
 
-                <!-- Reel title -->
-                <div>
-                    <label class="text-[11px] font-bold text-gray-600 mb-1 block uppercase tracking-wide">Title *</label>
+                <!-- Title -->
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-3.5 flex items-center pointer-events-none">
+                        <i class="fa-solid fa-heading text-gray-400 text-xs"></i>
+                    </div>
                     <input type="text" x-model="reelTitle"
-                           placeholder="e.g. ID Cards Showcase 2024"
+                           placeholder="Title (auto-generated if blank)"
                            maxlength="255"
-                           class="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-indigo-400 bg-gray-50 transition-colors">
+                           class="w-full pl-9 pr-4 py-3.5 rounded-xl border border-gray-200 text-[13px] focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 bg-gray-50 transition-colors">
                 </div>
 
                 <!-- Video source -->
                 <div>
-                    <label class="text-[11px] font-bold text-gray-600 mb-2 block uppercase tracking-wide">Video *</label>
+                    <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-2.5">
+                        <i class="fa-solid fa-video mr-1 text-indigo-400"></i>Video File *
+                    </p>
                     <div class="grid grid-cols-2 gap-3">
                         <!-- Record -->
                         <label class="flex flex-col items-center justify-center gap-2 rounded-2xl p-4 cursor-pointer active:scale-95 transition-transform border-2 border-dashed border-purple-200 bg-purple-50">
@@ -288,10 +299,10 @@
                     </div>
 
                     <!-- Video selected indicator -->
-                    <div x-show="reelVideoFile" class="mt-2 flex items-center gap-2 px-3 py-2 bg-green-50 rounded-xl border border-green-200">
-                        <i class="fa-solid fa-circle-check text-green-500 text-sm"></i>
+                    <div x-show="reelVideoFile" class="mt-2.5 flex items-center gap-2 px-3 py-2.5 bg-green-50 rounded-xl border border-green-200">
+                        <i class="fa-solid fa-circle-check text-green-500 text-sm flex-shrink-0"></i>
                         <span class="text-[11px] text-green-700 font-semibold truncate flex-1" x-text="reelVideoFile ? reelVideoFile.name : ''"></span>
-                        <span class="text-[10px] text-green-500 flex-shrink-0" x-text="reelVideoSize"></span>
+                        <span class="text-[10px] text-green-500 font-medium bg-green-100 px-1.5 py-0.5 rounded-md flex-shrink-0" x-text="reelVideoSize"></span>
                     </div>
                 </div>
 
@@ -303,12 +314,18 @@
 
                 <!-- Optional thumbnail -->
                 <div x-show="reelVideoFile">
-                    <label class="text-[11px] font-bold text-gray-600 mb-1 block uppercase tracking-wide">Thumbnail (optional)</label>
-                    <label class="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 cursor-pointer active:bg-gray-100 transition-colors">
-                        <div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center flex-shrink-0">
-                            <i class="fa-solid fa-image text-gray-500 text-xs"></i>
+                    <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-2">
+                        <i class="fa-solid fa-image mr-1 text-indigo-400"></i>Thumbnail
+                        <span class="normal-case font-normal text-gray-400 ml-1">(optional)</span>
+                    </p>
+                    <label class="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 transition-colors">
+                        <div class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                             :class="reelThumbnailName ? 'bg-indigo-100' : 'bg-gray-200'">
+                            <i class="fa-solid fa-image text-xs"
+                               :class="reelThumbnailName ? 'text-indigo-500' : 'text-gray-500'"></i>
                         </div>
-                        <span class="text-[12px] text-gray-500 flex-1 truncate"
+                        <span class="text-[12px] flex-1 truncate"
+                              :class="reelThumbnailName ? 'text-gray-800 font-semibold' : 'text-gray-400'"
                               x-text="reelThumbnailName || 'Add thumbnail image'"></span>
                         <i class="fa-solid fa-plus text-indigo-400 text-xs"></i>
                         <input type="file" class="hidden" accept="image/*"
@@ -316,12 +333,19 @@
                     </label>
                 </div>
 
-                <!-- Upload button -->
+            </div><!-- /scrollable body -->
+
+            <!-- Sticky footer buttons -->
+            <div class="flex-shrink-0 px-4 py-3 bg-white border-t border-gray-100 flex gap-2.5">
+                <button @click="closeReelSheet()"
+                        class="flex-1 py-3 rounded-xl text-gray-600 font-semibold text-[13px] bg-gray-100 active:scale-95 active:bg-gray-200 transition-transform flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-xmark text-xs"></i>Cancel
+                </button>
                 <button @click="uploadReel()"
-                        :disabled="!reelVideoFile || !reelTitle.trim() || uploading"
-                        :class="(!reelVideoFile || !reelTitle.trim() || uploading) ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'"
-                        class="w-full py-3.5 rounded-2xl text-white font-bold text-sm transition-transform flex items-center justify-center gap-2"
-                        style="background:linear-gradient(135deg,#667eea,#764ba2);">
+                        :disabled="!reelVideoFile || uploading"
+                        :class="(!reelVideoFile || uploading) ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'"
+                        class="py-3 px-6 rounded-xl text-white font-bold text-[13px] transition-transform flex items-center justify-center gap-2"
+                        style="background:linear-gradient(135deg,#667eea,#764ba2);flex:2;">
                     <template x-if="uploading">
                         <span class="flex items-center gap-2">
                             <i class="fa-solid fa-spinner fa-spin"></i>Uploading…
@@ -329,12 +353,12 @@
                     </template>
                     <template x-if="!uploading">
                         <span class="flex items-center gap-2">
-                            <i class="fa-solid fa-cloud-arrow-up"></i>
-                            Upload Reel
+                            <i class="fa-solid fa-cloud-arrow-up"></i>Upload Reel
                         </span>
                     </template>
                 </button>
             </div>
+
         </div>
     </div>
 
@@ -499,7 +523,7 @@ function websiteManageApp() {
             e.target.value = '';
         },
         async uploadReel() {
-            if (!this.reelVideoFile || !this.reelTitle.trim() || this.uploading) return;
+            if (!this.reelVideoFile || this.uploading) return;
             this.uploading = true;
             try {
                 const fd = new FormData();

@@ -44,8 +44,10 @@
 .wa-table-wrap {
     overflow-x: auto;
     border: 1px solid var(--wa-gray-200);
-    border-radius: 0;
+    border-radius: 10px;
+    overflow: hidden;
     -webkit-overflow-scrolling: touch;
+    margin-top: 4px;
 }
 .wa-table {
     width: 100%;
@@ -54,7 +56,7 @@
     min-width: 520px;
 }
 .wa-table thead {
-    background: linear-gradient(135deg, #f8fafc 0%, #f0f4f8 100%);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     position: sticky;
     top: 0;
     z-index: 1;
@@ -65,10 +67,14 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.07em;
-    color: #64748b;
+    color: rgba(255,255,255,0.92);
     text-align: left;
     white-space: nowrap;
-    border-bottom: 2px solid var(--wa-gray-200);
+    border-bottom: none;
+}
+.wa-table thead th input[type="checkbox"] {
+    accent-color: #fff;
+    opacity: 0.85;
 }
 .wa-table tbody tr {
     border-bottom: 1px solid var(--wa-gray-100);

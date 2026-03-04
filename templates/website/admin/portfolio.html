@@ -104,7 +104,7 @@
                         <td><input type="checkbox" class="portfolio-row-check" value="{{ p.id }}" onchange="updatePortfolioSelection()"></td>
                         <td>
                             {% if p.image %}
-                            <img src="{{ p.image.url }}" class="wa-thumb xl" alt="{{ p.title|default:'Item' }}">
+                            <img src="{{ p.image.url }}" class="wa-thumb xl" alt="{{ p.title|default:'Item' }}" style="cursor:zoom-in;" onclick="previewImage(this.src, this.alt)">
                             {% elif p.item_type == 'video' or p.item_type == 'reel' %}
                             <span class="wa-thumb-icon"></span>
                             {% else %}
@@ -306,6 +306,31 @@
         </form>
     </div>
 </div>
+
+<!-- Image Preview Lightbox -->
+<div id="imagePreviewOverlay" onclick="closeImagePreview()"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out;">
+    <button onclick="event.stopPropagation();closeImagePreview()"
+            style="position:absolute;top:18px;right:18px;width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,0.12);border:none;color:#fff;font-size:19px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;">
+        <i class="fa-solid fa-xmark"></i>
+    </button>
+    <img id="imagePreviewImg" src="" alt=""
+         style="max-width:92vw;max-height:88vh;border-radius:10px;box-shadow:0 24px 64px rgba(0,0,0,0.5);object-fit:contain;user-select:none;" onclick="event.stopPropagation()">
+</div>
+<script>
+function previewImage(src, alt) {
+    var overlay = document.getElementById('imagePreviewOverlay');
+    var img = document.getElementById('imagePreviewImg');
+    img.src = src; img.alt = alt || '';
+    overlay.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+function closeImagePreview() {
+    document.getElementById('imagePreviewOverlay').style.display = 'none';
+    document.body.style.overflow = '';
+}
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeImagePreview(); });
+</script>
 {% endblock %}
 
 {% block extra_js %}
