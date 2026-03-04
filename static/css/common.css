@@ -427,32 +427,45 @@ body[style*="overflow:hidden"] {
 }
 
 .center-modal-code {
-  border-radius: 6px;
-  padding: 10px;
-  margin: 0 0 10px;
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: 6px;
+  border-radius: 10px;
+  padding: 10px 20px;
+  margin: 8px 0 12px;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 8px;
   border-width: 2px;
-  border-style: solid;
+  border-style: dashed;
+  text-align: center;
+  font-family: 'Courier New', monospace;
+  user-select: all;
 }
 
 .center-modal-input {
   width: 100%;
-  padding: 10px;
-  font-size: 15px;
+  padding: 10px 12px;
+  font-size: 20px;
   text-align: center;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  letter-spacing: 4px;
-  font-weight: 600;
+  border: 2px solid #d1d5db;
+  border-radius: 8px;
+  letter-spacing: 6px;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
   margin-bottom: 12px;
   outline: none;
-  transition: border-color 0.2s;
+  transition: border-color 0.15s, box-shadow 0.15s;
   box-sizing: border-box;
 }
 .center-modal-input:focus {
   border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+.center-modal-input.valid {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+.center-modal-input.invalid {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
 }
 
 .center-modal-dropzone {

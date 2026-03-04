@@ -18,9 +18,9 @@
       This will permanently delete <strong id="deleteAllCount"></strong> cards from <strong>ALL lists</strong> (Pending, Verified, Approved, Download, Pool).
     </p>
     <p class="center-modal-warning">This action CANNOT be undone.</p>
-    <p class="center-modal-label">Enter the 6-digit code below to confirm:</p>
+    <p class="center-modal-label">Type this code to confirm:</p>
     <div class="center-modal-code" id="deleteAllCode"></div>
-    <input type="text" id="deleteAllCodeInput" class="center-modal-input" maxlength="6" placeholder="Enter code here">
+    <input type="text" id="deleteAllCodeInput" class="center-modal-input" maxlength="6" placeholder="_ _ _ _ _ _" autocomplete="off" oninput="this.value=this.value.replace(/[^0-9]/g,'');">
     </div><!-- end body-area -->
     <!-- Footer -->
     <div class="center-modal-footer-area">

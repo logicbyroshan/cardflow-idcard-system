@@ -12,7 +12,10 @@
     justify-content: space-between;
     gap: 12px;
     flex-wrap: wrap;
-    margin-bottom: 16px;
+    padding: 8px 20px;
+    border-bottom: 1px solid var(--wa-gray-200);
+    background: #fff;
+    margin: 0;
 }
 .wa-action-left {
     display: flex;
@@ -42,11 +45,11 @@
 
 /* ===== TABLE WRAPPER ===== */
 .wa-table-wrap {
-    overflow: auto; /* allows horizontal scroll while border-radius clips corners */
-    border: 1px solid var(--wa-gray-200);
-    border-radius: 10px;
+    overflow: auto;
+    border: none;
+    border-radius: 0;
     -webkit-overflow-scrolling: touch;
-    margin-top: 4px;
+    margin: 0;
 }
 .wa-table {
     width: 100%;

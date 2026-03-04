@@ -31,25 +31,24 @@
               </ul>
             </div>
             <!-- 6-digit confirmation code -->
-            <div style="width:100%;margin-top:16px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 14px;">
-              <p style="font-size:12px;color:#92400e;font-weight:600;margin:0 0 8px;display:flex;align-items:center;gap:6px">
-                <i class="fa-solid fa-shield-halved"></i> Verification Required
-              </p>
-              <p style="font-size:12px;color:#78350f;margin:0 0 10px">
-                To confirm deletion, enter this 6-digit code:
-                <strong style="font-size:18px;letter-spacing:4px;color:#dc2626;display:block;margin-top:4px;font-family:monospace;" x-text="deleteCode || ''"></strong>
-              </p>
+            <div style="width:100%;margin-top:16px;">
+              <p style="font-size:12px;color:#6b7280;text-align:center;margin:0 0 8px;">Type this code to confirm:</p>
+              <div style="font-size:32px;font-weight:800;letter-spacing:8px;color:#dc2626;font-family:monospace;text-align:center;padding:10px 20px;background:#fef2f2;border:2px dashed #fca5a5;border-radius:10px;margin-bottom:12px;user-select:all;"
+                   x-text="deleteCode || '------'"></div>
               <input type="text" x-model="deleteCodeInput"
                   maxlength="6"
                   inputmode="numeric"
                   pattern="[0-9]{6}"
-                  placeholder="Enter 6-digit code"
+                  placeholder="_ _ _ _ _ _"
                   autocomplete="off"
-                  style="width:100%;padding:8px 12px;border:2px solid #fca5a5;border-radius:6px;font-size:16px;letter-spacing:4px;text-align:center;font-family:monospace;outline:none;transition:border-color 0.2s;"
+                  style="width:100%;padding:10px 12px;border:2px solid #d1d5db;border-radius:8px;font-size:22px;letter-spacing:6px;text-align:center;font-family:monospace;font-weight:700;outline:none;transition:border-color .15s, box-shadow .15s;box-sizing:border-box;"
                   oninput="this.value=this.value.replace(/[^0-9]/g,'')"
-                  :style="deleteCodeInput && deleteCodeInput.length===6 ? (deleteCodeInput===deleteCode ? 'border-color:#86efac' : 'border-color:#fca5a5') : 'border-color:#fca5a5'"
+                  :style="deleteCodeInput.length===0 ? 'border-color:#d1d5db' : (deleteCodeInput===deleteCode ? 'border-color:#86efac;box-shadow:0 0 0 3px rgba(134,239,172,0.2)' : 'border-color:#fca5a5;box-shadow:0 0 0 3px rgba(252,165,165,0.2)')"
+                  @focus="$el.style.borderColor='#667eea'; $el.style.boxShadow='0 0 0 3px rgba(102,126,234,0.15)'"
+                  @blur="$el.style.borderColor=deleteCodeInput.length===0?'#d1d5db':(deleteCodeInput===deleteCode?'#86efac':'#fca5a5'); $el.style.boxShadow=''"
               >
-              <p style="font-size:11px;color:#dc2626;margin:4px 0 0;" x-show="deleteCodeInput && deleteCodeInput.length===6 && deleteCodeInput!==deleteCode">
+              <p style="font-size:12px;color:#dc2626;margin:6px 0 0;text-align:center;font-weight:500;"
+                 x-show="deleteCodeInput.length===6 && deleteCodeInput!==deleteCode">
                 <i class="fa-solid fa-circle-xmark"></i> Incorrect code. Please try again.
               </p>
             </div>

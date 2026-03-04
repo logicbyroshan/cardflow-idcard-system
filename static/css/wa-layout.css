@@ -77,8 +77,17 @@
     padding: 0;
 }
 .wa-dashboard {
-    padding: 0 0 20px;
+    padding: 0;
     margin: 0;
+}
+
+/* ===== SECTION CONTENT PADDING =====
+   Direct children of wa-dashboard-section that need horizontal padding
+   (action-bars and table-wraps are full-width intentionally)
+   ===================================================== */
+.wa-dashboard-section > .wa-stats-grid,
+.wa-dashboard-section > .wa-quick-links-grid {
+    padding: 14px 20px;
 }
 
 /* ===== STATUS BANNER ===== */
@@ -114,19 +123,20 @@
 /* ===== DASHBOARD SECTIONS ===== */
 .wa-dashboard-section {
     background: #fff;
-    border: 1px solid var(--wa-gray-200);
-    border-radius: 14px;
-    padding: 20px;
-    margin: 16px 20px;
-    box-shadow: 0 1px 6px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
+    border: none;
+    border-bottom: 1px solid var(--wa-gray-200);
+    border-radius: 0;
+    padding: 0;
+    margin: 0;
+    box-shadow: none;
 }
 .wa-dashboard-section-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 16px;
-    padding-bottom: 12px;
+    padding: 10px 20px;
     border-bottom: 1px solid var(--wa-gray-100);
+    margin-bottom: 0;
 }
 .wa-dashboard-section-title {
     display: flex;
@@ -147,10 +157,11 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 0;
-    margin: 16px 20px;
-    border: 1px solid var(--wa-gray-200);
-    border-radius: 14px;
-    box-shadow: 0 1px 6px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    border-bottom: 1px solid var(--wa-gray-200);
+    box-shadow: none;
     overflow: hidden;
 }
 .wa-dashboard-row .wa-dashboard-section {
@@ -158,7 +169,7 @@
     border-radius: 0;
     border: none;
     box-shadow: none;
-    border-bottom: 1px solid var(--wa-gray-200);
+    border-bottom: none;
 }
 .wa-dashboard-row .wa-dashboard-section:first-child {
     border-right: 1px solid var(--wa-gray-200);
@@ -167,8 +178,9 @@
     border-radius: 0;
 }
 @media (max-width: 768px) {
-    .wa-dashboard-row { grid-template-columns: 1fr; margin: 16px 20px; }
-    .wa-dashboard-row .wa-dashboard-section { border-radius: 0 !important; border-right: none !important; }
+    .wa-dashboard-row { grid-template-columns: 1fr; }
+    .wa-dashboard-row .wa-dashboard-section { border-radius: 0 !important; border-right: none !important; border-bottom: 1px solid var(--wa-gray-200) !important; }
+    .wa-dashboard-row .wa-dashboard-section:last-child { border-bottom: none !important; }
 }
 
 /* ===== RESPONSIVE (Layout) ===== */

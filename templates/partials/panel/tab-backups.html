@@ -24,11 +24,15 @@
         <button type="button" class="backup-modal-close" onclick="closeCancelDeleteModal()">&times;</button>
       </div>
       <div class="backup-modal-body">
-        <p>Enter the <strong>10-digit confirmation code</strong> used when creating this backup to cancel auto-delete.</p>
-        <div class="backup-code-input-wrap">
-          <input type="text" id="cancelDeleteCode" class="backup-code-input" maxlength="10" placeholder="Enter 10-digit code" autocomplete="off">
+        <p style="font-size:13px;color:#475569;margin-bottom:14px;">This will cancel the 24-hour auto-delete timer. Backup files will be kept until manually deleted.</p>
+        <div class="backup-code-section">
+          <p class="backup-code-label">Type this code to confirm:</p>
+          <div class="backup-code-display" id="cancelDeleteCodeDisplay">----</div>
+          <div class="backup-code-input-wrap">
+            <input type="text" id="cancelDeleteCode" class="backup-code-input" maxlength="4" placeholder="Enter 4-digit code" autocomplete="off">
+          </div>
+          <p class="backup-code-hint" id="cancelDeleteError" style="display:none;"></p>
         </div>
-        <p class="backup-code-hint" id="cancelDeleteError" style="display:none;"></p>
       </div>
       <div class="backup-modal-footer">
         <button type="button" class="backup-btn-cancel" onclick="closeCancelDeleteModal()">Cancel</button>
@@ -47,11 +51,15 @@
         <button type="button" class="backup-modal-close" onclick="closeDeleteNowModal()">&times;</button>
       </div>
       <div class="backup-modal-body">
-        <p>This will <strong>permanently delete</strong> all backup files for this task. Enter the <strong>10-digit confirmation code</strong> to proceed.</p>
-        <div class="backup-code-input-wrap">
-          <input type="text" id="deleteNowCode" class="backup-code-input" maxlength="10" placeholder="Enter 10-digit code" autocomplete="off">
+        <p style="font-size:13px;color:#475569;margin-bottom:14px;">This will <strong>permanently delete</strong> all backup files for this task. This action cannot be undone.</p>
+        <div class="backup-code-section">
+          <p class="backup-code-label">Type this code to confirm:</p>
+          <div class="backup-code-display" id="deleteNowCodeDisplay">----</div>
+          <div class="backup-code-input-wrap">
+            <input type="text" id="deleteNowCode" class="backup-code-input" maxlength="4" placeholder="Enter 4-digit code" autocomplete="off">
+          </div>
+          <p class="backup-code-hint" id="deleteNowError" style="display:none;"></p>
         </div>
-        <p class="backup-code-hint" id="deleteNowError" style="display:none;"></p>
       </div>
       <div class="backup-modal-footer">
         <button type="button" class="backup-btn-cancel" onclick="closeDeleteNowModal()">Cancel</button>

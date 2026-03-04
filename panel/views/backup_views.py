@@ -200,21 +200,10 @@ def api_backup_list(request):
 @require_super_admin
 @require_http_methods(['POST'])
 def api_backup_cancel_auto_delete(request, task_id):
-    """Cancel the 24-hour auto-delete timer (requires 10-digit code)."""
-    try:
-        body = json.loads(request.body)
-    except (json.JSONDecodeError, ValueError):
-        return _json_error('Invalid request body.')
-
-    code = str(body.get('code', '')).strip()
-    if len(code) != 10 or not code.isdigit():
-        return _json_error('Please enter a valid 10-digit code.')
-
+    """Cancel the 24-hour auto-delete timer."""
     task = get_object_or_404(BackupTask, pk=task_id)
     if task.status != 'completed':
         return _json_error('Can only cancel auto-delete on completed backups.')
-    if task.confirmation_code != code:
-        return _json_error('Incorrect confirmation code.')
 
     task.is_auto_delete_cancelled = True
     task.save(update_fields=['is_auto_delete_cancelled'])
@@ -225,21 +214,10 @@ def api_backup_cancel_auto_delete(request, task_id):
 @require_super_admin
 @require_http_methods(['POST'])
 def api_backup_delete_now(request, task_id):
-    """Immediately delete backup files (requires 10-digit code)."""
-    try:
-        body = json.loads(request.body)
-    except (json.JSONDecodeError, ValueError):
-        return _json_error('Invalid request body.')
-
-    code = str(body.get('code', '')).strip()
-    if len(code) != 10 or not code.isdigit():
-        return _json_error('Please enter a valid 10-digit code.')
-
+    """Immediately delete backup files."""
     task = get_object_or_404(BackupTask, pk=task_id)
     if task.status not in ('completed', 'failed'):
         return _json_error('Cannot delete an active or already deleted backup.')
-    if task.confirmation_code != code:
-        return _json_error('Incorrect confirmation code.')
 
     from panel.services.backup_service import delete_backup_files
     delete_backup_files(task.pk)

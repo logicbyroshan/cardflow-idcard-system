@@ -14,6 +14,8 @@
   let _backups = [];
   let _pollTimer = null;
   let _activeModalTaskId = null;
+  let _cancelDeleteCode = '';
+  let _deleteNowCode = '';
 
   /* ──── Init ──── */
   document.addEventListener('DOMContentLoaded', function () {
@@ -177,9 +179,13 @@
   /* ──── Cancel auto-delete modal ──── */
   window.openCancelDeleteModal = function (taskId) {
     _activeModalTaskId = taskId;
+    const freshCode = String(Math.floor(1000 + Math.random() * 9000));
+    _cancelDeleteCode = freshCode;
     document.getElementById('cancelDeleteCode').value = '';
+    document.getElementById('cancelDeleteCodeDisplay').textContent = freshCode;
     document.getElementById('cancelDeleteError').style.display = 'none';
     document.getElementById('cancelDeleteModal').style.display = 'flex';
+    setTimeout(() => document.getElementById('cancelDeleteCode').focus(), 100);
   };
 
   window.closeCancelDeleteModal = function () {
@@ -188,11 +194,11 @@
   };
 
   window.submitCancelDelete = function () {
-    const code = document.getElementById('cancelDeleteCode').value.trim();
+    const entered = document.getElementById('cancelDeleteCode').value.trim();
     const errEl = document.getElementById('cancelDeleteError');
 
-    if (code.length !== 10 || !/^\d{10}$/.test(code)) {
-      errEl.textContent = 'Please enter a valid 10-digit code.';
+    if (entered !== _cancelDeleteCode) {
+      errEl.textContent = 'Incorrect code. Please enter the code shown above.';
       errEl.style.display = 'block';
       return;
     }
@@ -206,7 +212,7 @@
         'Content-Type': 'application/json',
         'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || '',
       },
-      body: JSON.stringify({ code: code }),
+      body: JSON.stringify({}),
     })
       .then(r => r.json())
       .then(data => {
@@ -230,9 +236,13 @@
   /* ──── Delete now modal ──── */
   window.openDeleteNowModal = function (taskId) {
     _activeModalTaskId = taskId;
+    const freshCode = String(Math.floor(1000 + Math.random() * 9000));
+    _deleteNowCode = freshCode;
     document.getElementById('deleteNowCode').value = '';
+    document.getElementById('deleteNowCodeDisplay').textContent = freshCode;
     document.getElementById('deleteNowError').style.display = 'none';
     document.getElementById('deleteNowModal').style.display = 'flex';
+    setTimeout(() => document.getElementById('deleteNowCode').focus(), 100);
   };
 
   window.closeDeleteNowModal = function () {
@@ -241,11 +251,11 @@
   };
 
   window.submitDeleteNow = function () {
-    const code = document.getElementById('deleteNowCode').value.trim();
+    const entered = document.getElementById('deleteNowCode').value.trim();
     const errEl = document.getElementById('deleteNowError');
 
-    if (code.length !== 10 || !/^\d{10}$/.test(code)) {
-      errEl.textContent = 'Please enter a valid 10-digit code.';
+    if (entered !== _deleteNowCode) {
+      errEl.textContent = 'Incorrect code. Please enter the code shown above.';
       errEl.style.display = 'block';
       return;
     }
@@ -259,7 +269,7 @@
         'Content-Type': 'application/json',
         'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || '',
       },
-      body: JSON.stringify({ code: code }),
+      body: JSON.stringify({}),
     })
       .then(r => r.json())
       .then(data => {
