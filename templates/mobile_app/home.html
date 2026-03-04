@@ -59,9 +59,10 @@
         </div>
 
         <!-- -------------------------------------------------
-             BLOCK 2 - RECENT CLIENT UPDATES (full-width table)
+             BLOCK 2 - RECENT CLIENT UPDATES (admin only)
              Scrollable both axes; tap row to expand status detail
         --------------------------------------------------- -->
+        {% if is_super_admin or is_admin_staff %}
         {% if recent_client_updates %}
         <div class="px-3 pb-2 pt-2">
             <div class="flex items-center justify-between mb-2">
@@ -136,26 +137,43 @@
             </div>
         </div>
         {% endif %}
+        {% endif %}
 
         <!-- -------------------------------------------------
-             BLOCK 3 - QUICK ACTIONS BAR (sticky bottom)
-             "Active Clients" big primary + "Manage Website"
+             BLOCK 3 - QUICK ACTIONS BAR
+             Admin: Active Clients + Website
+             Client: ID Card Groups (+ Group Settings if perm)
         --------------------------------------------------- -->
         <div class="pwa-quick-actions-wrap px-4 py-3">
             <div class="flex gap-2.5">
-                <!-- Active Clients (big primary) -->
+                {% if is_super_admin or is_admin_staff %}
+                <!-- ADMIN: Active Clients (big primary) -->
                 <a href="{% url 'mobile_app:clients_list' %}"
                    class="pwa-qa-btn pwa-qa-primary flex-[2.5]">
                     <i class="fa-solid fa-users-between-lines text-base"></i>
                     <span>Active Clients</span>
                 </a>
-                <!-- Manage Website (secondary) -->
-                {% if is_super_admin or is_admin_staff %}
+                <!-- Manage Website (secondary, admin only) -->
                 <a href="/panel/manage-website/"
                    class="pwa-qa-btn pwa-qa-secondary flex-1">
                     <i class="fa-solid fa-globe text-sm"></i>
                     <span>Website</span>
                 </a>
+                {% else %}
+                <!-- CLIENT: Go to their ID Card Groups page -->
+                <a href="{% url 'mobile_app:groups_overview' %}"
+                   class="pwa-qa-btn pwa-qa-primary {% if perm_idcard_group_create or perm_idcard_group_delete %}flex-[2.5]{% else %}flex-1{% endif %}">
+                    <i class="fa-solid fa-layer-group text-base"></i>
+                    <span>ID Card Groups</span>
+                </a>
+                <!-- Group Settings — only if they have group management permission -->
+                {% if perm_idcard_group_create or perm_idcard_group_delete %}
+                <a href="{% url 'mobile_app:groups_overview' %}?tab=tables"
+                   class="pwa-qa-btn pwa-qa-secondary flex-1">
+                    <i class="fa-solid fa-gear text-sm"></i>
+                    <span>Group Settings</span>
+                </a>
+                {% endif %}
                 {% endif %}
             </div>
         </div>
