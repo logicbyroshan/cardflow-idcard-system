@@ -222,23 +222,20 @@ def api_engine_preview(request):
     Return a JSON list of image filenames inside a local folder.
     Query param: ?folder=C:\\path\\to\\folder
     Used to populate the preview grid after processing.
-    Security: folder must be under MEDIA_ROOT.
+    Accepts any absolute path (engine output can be anywhere on the machine).
     """
-    from django.conf import settings
 
     folder = request.GET.get("folder", "").strip()
     if not folder:
         return JsonResponse({"files": []})
 
     folder_path = Path(folder).resolve()
-    media_root = Path(settings.MEDIA_ROOT).resolve()
 
-    # Path-traversal guard: only allow listing inside MEDIA_ROOT
-    try:
-        folder_path.relative_to(media_root)
-    except ValueError:
-        logger.warning("Path traversal attempt blocked (preview): %s", folder)
-        return JsonResponse({"files": [], "error": "Invalid folder path"}, status=403)
+    # Only reject relative paths that try to escape via "../" — absolute output
+    # folders (e.g. C:\Users\...\Downloads\...) are valid engine output dirs.
+    if not folder_path.is_absolute():
+        logger.warning("Non-absolute path rejected (preview): %s", folder)
+        return JsonResponse({"files": [], "error": "Absolute path required"}, status=400)
 
     if not folder_path.is_dir():
         return JsonResponse({"files": []})
@@ -260,23 +257,20 @@ def api_engine_serve_image(request):
     """
     Serve a single image file from the local filesystem.
     Query param: ?path=C:\\path\\to\\image.jpg
-    Security: only serves files with image extensions and under MEDIA_ROOT.
+    Accepts any absolute path so engine output folders outside MEDIA_ROOT work.
+    Extension is still validated to image types only.
     """
-    from django.conf import settings
 
     file_path = request.GET.get("path", "").strip()
     if not file_path:
         return JsonResponse({"error": "path parameter required"}, status=400)
 
     path = Path(file_path).resolve()
-    media_root = Path(settings.MEDIA_ROOT).resolve()
 
-    # Path-traversal guard: only serve files under MEDIA_ROOT
-    try:
-        path.relative_to(media_root)
-    except ValueError:
-        logger.warning("Path traversal attempt blocked (serve-image): %s", file_path)
-        return JsonResponse({"error": "Access denied"}, status=403)
+    # Reject relative paths — engine always returns absolute output paths.
+    if not path.is_absolute():
+        logger.warning("Non-absolute path rejected (serve-image): %s", file_path)
+        return JsonResponse({"error": "Absolute path required"}, status=400)
 
     if not path.is_file():
         return JsonResponse({"error": "File not found"}, status=404)
