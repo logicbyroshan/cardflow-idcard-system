@@ -244,3 +244,204 @@ def apply_logo_watermark(file_obj):
         except Exception:
             pass
         return file_obj
+
+
+# ── Image compression pipeline ───────────────────────────────────────────────
+
+def process_portfolio_image(file_obj, max_kb: int = 500) -> ContentFile:
+    """
+    Full processing pipeline for portfolio images:
+      1. Apply text watermark (brand protection)
+      2. Convert to WebP (better compression, modern format)
+      3. Progressively reduce quality until file size <= max_kb KB
+
+    Falls back to the watermarked JPEG/PNG if WebP conversion fails.
+    Never raises — always returns a usable file object.
+    """
+    if not file_obj:
+        return file_obj
+
+    try:
+        # Step 1: watermark
+        watermarked = apply_text_watermark(file_obj)
+
+        # Step 2: open watermarked image
+        if hasattr(watermarked, 'seek'):
+            watermarked.seek(0)
+        img = Image.open(watermarked)
+
+        # WebP supports both RGBA and RGB
+        if img.mode not in ('RGB', 'RGBA'):
+            img = img.convert('RGBA' if 'A' in img.getbands() else 'RGB')
+
+        orig_name = (
+            getattr(watermarked, 'name', None)
+            or getattr(file_obj, 'name', 'image.webp')
+        )
+        base_name = orig_name.rsplit('.', 1)[0] if '.' in orig_name else orig_name
+        webp_name = base_name + '.webp'
+        max_bytes = max_kb * 1024
+
+        # Step 3: compress — reduce quality until <= max_kb
+        for quality in range(85, 15, -5):
+            buf = io.BytesIO()
+            img.save(buf, format='WEBP', quality=quality, method=4)
+            if buf.tell() <= max_bytes:
+                buf.seek(0)
+                return ContentFile(buf.read(), name=webp_name)
+
+        # Still too large → resize to 70 % and retry lower qualities
+        w, h = img.size
+        img_sm = img.resize((max(1, int(w * 0.70)), max(1, int(h * 0.70))), Image.LANCZOS)
+        for quality in (60, 40, 20):
+            buf = io.BytesIO()
+            img_sm.save(buf, format='WEBP', quality=quality, method=4)
+            if buf.tell() <= max_bytes:
+                buf.seek(0)
+                return ContentFile(buf.read(), name=webp_name)
+
+        # Absolute last resort: return whatever quality=20 gives
+        buf.seek(0)
+        return ContentFile(buf.read(), name=webp_name)
+
+    except Exception:
+        logger.warning("process_portfolio_image failed", exc_info=True)
+        try:
+            file_obj.seek(0)
+        except Exception:
+            pass
+        return file_obj
+
+
+# ── Video compression pipeline ───────────────────────────────────────────────
+
+def compress_video_file(file_obj, max_bytes: int = 10 * 1024 * 1024):
+    """
+    Compress a video file to at most *max_bytes* using ffmpeg.
+
+    Strategy:
+    - Calculate target bitrate based on video duration and max_bytes
+    - Re-encode with H.264 + AAC, capping resolution at 1280×720
+    - Returns a ContentFile (.mp4) on success
+    - Falls back to the original file_obj silently if ffmpeg is not available
+      or if the original is already within the size limit
+
+    Requires: ffmpeg must be installed and on PATH.
+    """
+    if not file_obj:
+        return file_obj
+
+    import os
+    import subprocess
+    import tempfile
+
+    orig_name = getattr(file_obj, 'name', 'video.mp4')
+    ext = orig_name.rsplit('.', 1)[-1].lower() if '.' in orig_name else 'mp4'
+
+    # Read original bytes
+    try:
+        file_obj.seek(0)
+        original_bytes = file_obj.read()
+    except Exception:
+        return file_obj
+
+    # Already within limit → skip compression
+    if len(original_bytes) <= max_bytes:
+        try:
+            file_obj.seek(0)
+        except Exception:
+            pass
+        return file_obj
+
+    # Check ffmpeg availability
+    try:
+        subprocess.run(
+            ['ffmpeg', '-version'],
+            capture_output=True, timeout=10, check=True,
+        )
+    except Exception:
+        logger.info("compress_video_file: ffmpeg not available — skipping compression")
+        try:
+            file_obj.seek(0)
+        except Exception:
+            pass
+        return file_obj
+
+    tmp_in = tmp_out = None
+    try:
+        # Write to temp input file
+        with tempfile.NamedTemporaryFile(suffix=f'.{ext}', delete=False) as f:
+            f.write(original_bytes)
+            tmp_in = f.name
+
+        tmp_out = tmp_in + '_compressed.mp4'
+
+        # Probe duration for bitrate calculation
+        probe = subprocess.run(
+            [
+                'ffprobe', '-v', 'error',
+                '-show_entries', 'format=duration',
+                '-of', 'default=noprint_wrappers=1:nokey=1',
+                tmp_in,
+            ],
+            capture_output=True, text=True, timeout=30,
+        )
+        try:
+            duration = float(probe.stdout.strip())
+        except (ValueError, AttributeError):
+            duration = 60.0  # conservative default
+
+        # target bitrate = max_bytes * 8 bits / duration, minus 64kbps for audio
+        target_video_kbps = max(200, int((max_bytes * 8 / max(duration, 1)) / 1000) - 64)
+
+        result = subprocess.run(
+            [
+                'ffmpeg', '-y', '-i', tmp_in,
+                '-c:v', 'libx264',
+                '-b:v', f'{target_video_kbps}k',
+                '-maxrate', f'{int(target_video_kbps * 1.5)}k',
+                '-bufsize', f'{int(target_video_kbps * 2)}k',
+                '-vf', (
+                    'scale='
+                    "if(gt(iw\\,1280)\\,1280\\,-2)"
+                    ':if(gt(ih\\,720)\\,720\\,-2)'
+                ),
+                '-c:a', 'aac', '-b:a', '64k',
+                '-preset', 'fast',
+                '-movflags', '+faststart',
+                tmp_out,
+            ],
+            capture_output=True,
+            timeout=600,
+        )
+
+        if result.returncode == 0 and os.path.exists(tmp_out):
+            with open(tmp_out, 'rb') as f:
+                compressed_bytes = f.read()
+            # Only use compressed if it is genuinely smaller
+            if len(compressed_bytes) < len(original_bytes):
+                base_name = orig_name.rsplit('.', 1)[0] if '.' in orig_name else orig_name
+                return ContentFile(compressed_bytes, name=base_name + '.mp4')
+        else:
+            logger.warning(
+                "compress_video_file: ffmpeg returned %s\nstderr: %s",
+                result.returncode,
+                result.stderr[-500:] if result.stderr else '',
+            )
+
+    except Exception:
+        logger.warning("compress_video_file failed", exc_info=True)
+    finally:
+        for p in (tmp_in, tmp_out):
+            if p:
+                try:
+                    os.unlink(p)
+                except Exception:
+                    pass
+
+    # Fallback: return original
+    try:
+        file_obj.seek(0)
+    except Exception:
+        pass
+    return file_obj

@@ -1357,7 +1357,8 @@ def api_portfolio_upload(request):
     if not PermissionService.has(user, 'perm_website_view'):
         return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
 
-    from website.models import PortfolioCategory, PortfolioItem
+    from website.models import PortfolioCategory
+    from website.services import PortfolioItemService
 
     category_id = request.POST.get('category_id')
     files = request.FILES.getlist('images')
@@ -1368,18 +1369,16 @@ def api_portfolio_upload(request):
         return JsonResponse({'success': False, 'message': 'No images provided'}, status=400)
 
     try:
-        category = get_object_or_404(PortfolioCategory, id=category_id, is_active=True)
+        get_object_or_404(PortfolioCategory, id=category_id, is_active=True)
         created = []
         for f in files:
-            title_base = f.name.rsplit('.', 1)[0].replace('_', ' ').replace('-', ' ').title().strip()
-            item = PortfolioItem(
-                title=title_base or category.name,
-                category=category,
+            # Runs full pipeline: watermark → WebP → compress <500 KB
+            item = PortfolioItemService.create(
+                category_id=category_id,
                 image=f,
                 item_type='image',
                 is_active=True,
             )
-            item.save()
             created.append({'id': item.id, 'url': item.image.url if item.image else ''})
         return JsonResponse({'success': True, 'count': len(created), 'items': created})
     except Exception as exc:
@@ -1395,7 +1394,7 @@ def api_reel_upload(request):
     if not PermissionService.has(user, 'perm_website_view'):
         return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
 
-    from website.models import Reel
+    from website.services import ReelService
 
     title = request.POST.get('title', '').strip()
     video_file = request.FILES.get('video')
@@ -1407,10 +1406,13 @@ def api_reel_upload(request):
         return JsonResponse({'success': False, 'message': 'Video file is required'}, status=400)
 
     try:
-        reel = Reel(title=title, video_file=video_file, is_active=True)
-        if thumbnail:
-            reel.thumbnail = thumbnail
-        reel.save()
+        # Runs full pipeline: compress video to <10 MB + watermark thumbnail
+        reel = ReelService.create(
+            title=title,
+            video_file=video_file,
+            thumbnail=thumbnail,
+            is_active=True,
+        )
         return JsonResponse({
             'success': True,
             'reel': {
