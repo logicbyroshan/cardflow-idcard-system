@@ -68,13 +68,15 @@
 
   <!-- Pagination -->
   <div class="notif-pagination-bar">
-    <span class="text-xs text-gray-400" id="emailLogCountLabel">—</span>
-    <div style="display:flex; gap:6px; align-items:center;">
-      <button class="btn btn-sm btn-outline-primary" id="emailPrevBtn" onclick="emailLogPage(-1)" disabled>
+    <div class="pagination-left">
+      <span class="pagination-info" id="emailLogCountLabel">—</span>
+    </div>
+    <div class="pagination-center">
+      <button class="pagination-btn" id="emailPrevBtn" onclick="emailLogPage(-1)" disabled>
         <i class="fa-solid fa-chevron-left"></i>
       </button>
       <span id="emailPageLabel" style="font-size:12px; color:#64748b; padding:0 6px;">—</span>
-      <button class="btn btn-sm btn-outline-primary" id="emailNextBtn" onclick="emailLogPage(1)" disabled>
+      <button class="pagination-btn" id="emailNextBtn" onclick="emailLogPage(1)" disabled>
         <i class="fa-solid fa-chevron-right"></i>
       </button>
     </div>

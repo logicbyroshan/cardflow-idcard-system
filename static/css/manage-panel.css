@@ -109,7 +109,7 @@
 /* === Full-height Tab Layout (Log History, Email Logs) === */
 .panel-tab-full-height .notif-actions-bar {
   flex-shrink: 0;
-  padding: 10px 18px;
+  padding: 0 18px 10px;
   border-bottom: 1px solid #f1f5f9;
   margin: 0;
 }
@@ -124,8 +124,11 @@
 }
 .panel-tab-full-height .notif-pagination-bar {
   flex-shrink: 0;
-  border-top: 1px solid #f1f5f9;
-  padding: 8px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid #e5e7eb;
+  padding: 4px 18px;
   background: #fff;
 }
 
@@ -139,7 +142,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 8px 18px;
+  padding: 0 18px 8px;
   background: #fff;
   border-bottom: 1px solid #e5e7eb;
 }
@@ -364,6 +367,14 @@
 }
 .system-card:nth-child(even) { border-right: none; }
 .system-card:last-child:nth-child(odd) { border-right: none; }
+
+/* Monitoring stats: 4 cards in a single row */
+#monitoringStats {
+  grid-template-columns: repeat(4, 1fr);
+}
+#monitoringStats .system-card { border-right: 1px solid #e5e7eb; }
+#monitoringStats .system-card:nth-child(4n) { border-right: none; }
+#monitoringStats .system-card:last-child { border-right: none; }
 .system-card-header {
   padding: 10px 16px;
   font-size: 12px;
