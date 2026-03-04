@@ -85,19 +85,21 @@ def _save_image(img: Image.Image, fmt: str, orig_name: str) -> ContentFile:
 
 def apply_text_watermark(file_obj):
     """
-    Stamp two semi-transparent text watermarks onto a portfolio image.
+    Tile the entire image with diagonal 'adarsh id card' watermarks.
 
-    Watermark design:
-    - Two different brand-name variants (randomly chosen from _WATERMARK_TEXTS)
-    - Randomly placed, avoiding a 10 % margin from each edge
-    - Rotated ~15–22 degrees for a natural diagonal look
-    - White text at alpha ≈ 95/255  +  dark shadow at alpha ≈ 70/255
-      (readable on both light and dark backgrounds)
-    - Font size ≈ 2.5 % of image width (min 13 px, max 55 px)
+    Pattern design:
+    - Font size ≈ 3 % of image width (min 16 px, max 60 px)
+    - Text variants alternate across the tile grid
+    - White text (alpha ≈ 80) + dark shadow (alpha ≈ 55) for visibility on
+      both light and dark backgrounds
+    - The tile layer is rotated 28° before compositing so rows run diagonally
+    - Every other tile row is offset by half a step for a staggered look
 
     Returns the watermarked image as a ContentFile with the original filename.
     Falls back to the original file_obj on any error.
     """
+    import math as _math
+
     if not file_obj:
         return file_obj
 
@@ -107,66 +109,58 @@ def apply_text_watermark(file_obj):
         orig_fmt  = img.format or 'JPEG'
         orig_name = getattr(file_obj, 'name', 'image.jpg')
 
-        # Work in RGBA for alpha compositing
         img = img.convert('RGBA')
         w, h = img.size
 
-        # Font size proportional to image width
-        font_size = max(13, min(55, int(w * 0.025)))
+        # Font proportional to image width
+        font_size = max(16, min(60, int(w * 0.030)))
         font = _load_font(font_size)
 
-        # Pick 2 unique text variants
-        texts = random.sample(_WATERMARK_TEXTS, min(2, len(_WATERMARK_TEXTS)))
+        # Measure one text cell for spacing
+        _probe = ImageDraw.Draw(Image.new('RGBA', (1, 1)))
+        _ref_bbox = _probe.textbbox((0, 0), 'adarsh id cards', font=font)
+        cell_w = (_ref_bbox[2] - _ref_bbox[0]) + int(font_size * 2.0)   # horizontal gap
+        cell_h = font_size + int(font_size * 1.4)                        # vertical gap
 
-        # Full-image transparent overlay
-        overlay = Image.new('RGBA', img.size, (0, 0, 0, 0))
-        draw_probe = ImageDraw.Draw(overlay)   # just to measure text bbox
+        # Large canvas — must cover the full image after a 28° rotation
+        # diagonal of the image + generous padding
+        diag = int(_math.sqrt(w * w + h * h))
+        pad  = diag // 2
+        canvas_sz = diag + pad * 2          # square canvas
 
-        for text in texts:
-            bbox = draw_probe.textbbox((0, 0), text, font=font)
-            text_w = bbox[2] - bbox[0]
-            text_h = bbox[3] - bbox[1]
+        tile = Image.new('RGBA', (canvas_sz, canvas_sz), (0, 0, 0, 0))
+        td   = ImageDraw.Draw(tile)
 
-            # Margins: at least 10 % of each dimension from the edges
-            margin_x = max(8, int(w * 0.10))
-            margin_y = max(8, int(h * 0.10))
+        row_i = 0
+        y = 0
+        while y < canvas_sz + cell_h:
+            x_offset = (row_i % 2) * (cell_w // 2)   # stagger alternate rows
+            col_i = 0
+            x = -cell_w + x_offset
+            while x < canvas_sz + cell_w:
+                text = _WATERMARK_TEXTS[(row_i + col_i) % len(_WATERMARK_TEXTS)]
+                # Shadow
+                for ox, oy in ((-1, -1), (-1, 1), (1, -1), (1, 1), (0, 2), (2, 0)):
+                    td.text((x + ox, y + oy), text, font=font, fill=(0, 0, 0, 55))
+                # Main text
+                td.text((x, y), text, font=font, fill=(255, 255, 255, 80))
+                x += cell_w
+                col_i += 1
+            y += cell_h
+            row_i += 1
 
-            # Safe placement range
-            x_max = max(margin_x + 1, w - text_w - margin_x)
-            y_max = max(margin_y + 1, h - text_h - margin_y)
-            x = random.randint(margin_x, x_max)
-            y = random.randint(margin_y, y_max)
+        # Rotate the tile layer 28° (PIL rotates counter-clockwise; negative = clockwise)
+        tile_rot = tile.rotate(-28, resample=Image.BICUBIC, expand=False)
 
-            # Random slight angle (clockwise, 10–22°)
-            angle = random.choice([12, 15, 17, 19, 22])
+        # Crop the centre (w × h) from the rotated tile
+        cx = (tile_rot.width  - w) // 2
+        cy = (tile_rot.height - h) // 2
+        overlay = tile_rot.crop((cx, cy, cx + w, cy + h))
 
-            # --- Build a small canvas for this single text stamp ---
-            pad = max(20, font_size)
-            stamp_w = text_w + pad * 4
-            stamp_h = text_h + pad * 4
-            stamp = Image.new('RGBA', (stamp_w, stamp_h), (0, 0, 0, 0))
-            sd = ImageDraw.Draw(stamp)
+        # Safety: ensure overlay matches image size exactly
+        if overlay.size != (w, h):
+            overlay = overlay.resize((w, h), Image.LANCZOS)
 
-            tx, ty = pad * 2, pad * 2
-
-            # Dark shadow offsets (improve contrast on bright backgrounds)
-            for ox, oy in [(-1, -1), (-1, 1), (1, -1), (1, 1), (0, 2), (2, 0)]:
-                sd.text((tx + ox, ty + oy), text, font=font, fill=(0, 0, 0, 70))
-
-            # Main white text
-            sd.text((tx, ty), text, font=font, fill=(255, 255, 255, 95))
-
-            # Rotate the stamp
-            stamp_r = stamp.rotate(angle, resample=Image.BICUBIC, expand=True)
-
-            # Paste into overlay: offset so the visual centre stays near (x, y)
-            cx = x + text_w // 2 - stamp_r.width // 2
-            cy = y + text_h // 2 - stamp_r.height // 2
-            cx = max(0, min(cx, w - stamp_r.width))
-            cy = max(0, min(cy, h - stamp_r.height))
-            overlay.paste(stamp_r, (cx, cy), stamp_r)
-
-        # Composite watermark onto original
         result = Image.alpha_composite(img, overlay)
         return _save_image(result, orig_fmt, orig_name)
 
@@ -248,10 +242,10 @@ def apply_logo_watermark(file_obj):
 
 # ── Image compression pipeline ───────────────────────────────────────────────
 
-def process_portfolio_image(file_obj, max_kb: int = 500) -> ContentFile:
+def process_portfolio_image(file_obj, max_kb: int = 200) -> ContentFile:
     """
     Full processing pipeline for portfolio images:
-      1. Apply text watermark (brand protection)
+      1. Apply text watermark (brand protection — full diagonal tile)
       2. Convert to WebP (better compression, modern format)
       3. Progressively reduce quality until file size <= max_kb KB
 

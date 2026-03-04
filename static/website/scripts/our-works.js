@@ -103,6 +103,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (fallbackImages.length === 0) {
                     galleryGrid.innerHTML = '<p style="text-align: center; padding: 60px 20px; color: #666;">No samples available for this category yet.</p>';
                 } else {
+                    const _fbList = fallbackImages.map((u, i) => ({src: u, title: catName + ' Sample ' + (i + 1)}));
                     fallbackImages.forEach((imgUrl, index) => {
                         const wrapper = document.createElement('div');
                         wrapper.className = 'gallery-item';
@@ -111,11 +112,15 @@ document.addEventListener('DOMContentLoaded', function() {
                         img.alt = catName + ' Sample ' + (index + 1);
                         img.loading = 'lazy';
                         wrapper.appendChild(img);
-                        wrapper.addEventListener('click', () => openLightbox(imgUrl, catName + ' Sample'));
+                        wrapper.addEventListener('click', () => openLightboxAt(_fbList, index));
                         galleryGrid.appendChild(wrapper);
                     });
                 }
             } else {
+                // Build image-only list for lightbox slideshow
+                const _imgOnlyItems = catItems.filter(i => i.image && i.type !== 'video' && i.type !== 'reel');
+                const _imgList = _imgOnlyItems.map(i => ({src: i.image, title: i.title || catName}));
+
                 catItems.forEach((item, index) => {
                     const wrapper = document.createElement('div');
                     wrapper.className = 'gallery-item';
@@ -180,7 +185,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         img.alt = item.title || (catName + ' Sample ' + (index + 1));
                         img.loading = 'lazy';
                         wrapper.appendChild(img);
-                        wrapper.addEventListener('click', () => openLightbox(item.image, item.title || catName));
+                        const _imgIdx = _imgOnlyItems.indexOf(item);
+                        wrapper.addEventListener('click', () => openLightboxAt(_imgList, _imgIdx));
                     }
 
                     galleryGrid.appendChild(wrapper);
@@ -235,12 +241,69 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- 3. Lightbox Functionality ---
     const lightbox = document.getElementById('lightbox');
     const lightboxImg = document.getElementById('lightboxImage');
+    const lightboxPrev = document.getElementById('lightboxPrev');
+    const lightboxNext = document.getElementById('lightboxNext');
+    const lightboxCounter = document.getElementById('lightboxCounter');
 
-    function openLightbox(src, caption) {
-        lightboxImg.src = src;
-        document.getElementById('lightboxCaption').textContent = caption || '';
+    // Slideshow state
+    let _lbImages = [];   // [{src, title}, ...]
+    let _lbIndex  = 0;
+
+    function _updateLightboxSlide() {
+        const item = _lbImages[_lbIndex];
+        if (!item) return;
+        lightboxImg.src = item.src;
+        document.getElementById('lightboxCaption').textContent = item.title || '';
+        if (_lbImages.length > 1) {
+            lightboxCounter.textContent = (_lbIndex + 1) + ' / ' + _lbImages.length;
+            lightboxCounter.style.display = 'block';
+            lightboxPrev.style.display = 'flex';
+            lightboxNext.style.display = 'flex';
+        } else {
+            lightboxCounter.style.display = 'none';
+            lightboxPrev.style.display  = 'none';
+            lightboxNext.style.display  = 'none';
+        }
+    }
+
+    function openLightboxAt(images, index) {
+        _lbImages = images || [];
+        _lbIndex  = Math.max(0, Math.min(index, _lbImages.length - 1));
+        _updateLightboxSlide();
         lightbox.classList.add('active');
     }
+
+    function openLightbox(src, caption) {
+        openLightboxAt([{src: src, title: caption || ''}], 0);
+    }
+
+    lightboxPrev.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (_lbImages.length < 2) return;
+        _lbIndex = (_lbIndex - 1 + _lbImages.length) % _lbImages.length;
+        _updateLightboxSlide();
+    });
+
+    lightboxNext.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (_lbImages.length < 2) return;
+        _lbIndex = (_lbIndex + 1) % _lbImages.length;
+        _updateLightboxSlide();
+    });
+
+    // Touch / swipe support
+    (function() {
+        let _touchStartX = null;
+        lightbox.addEventListener('touchstart', (e) => { _touchStartX = e.touches[0].clientX; }, {passive: true});
+        lightbox.addEventListener('touchend', (e) => {
+            if (_touchStartX === null) return;
+            const dx = e.changedTouches[0].clientX - _touchStartX;
+            _touchStartX = null;
+            if (Math.abs(dx) < 40) return;
+            if (dx < 0) lightboxNext.click();
+            else        lightboxPrev.click();
+        }, {passive: true});
+    })();
 
     // Click on any portfolio item opens lightbox (image) or plays video
     document.querySelectorAll('.portfolio-item').forEach(item => {
@@ -275,7 +338,12 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             const src = item.dataset.src;
             if (src) {
-                openLightbox(src, item.dataset.title);
+                // Collect all currently-visible image portfolio items for slideshow
+                const _visibleImgItems = Array.from(document.querySelectorAll('.portfolio-item'))
+                    .filter(el => el.style.display !== 'none' && el.dataset.src && !el.dataset.videoUrl);
+                const _pList = _visibleImgItems.map(el => ({src: el.dataset.src, title: el.dataset.title || ''}));
+                const _pIdx  = _visibleImgItems.indexOf(item);
+                openLightboxAt(_pList, Math.max(0, _pIdx));
             }
         }
         item.addEventListener('click', handleActivation);
@@ -305,6 +373,8 @@ document.addEventListener('DOMContentLoaded', function() {
     function closeLightbox() {
         lightbox.classList.remove('active');
         lightboxImg.src = '';
+        _lbImages = [];
+        _lbIndex  = 0;
         // Don't touch body overflow if gallery modal is still open
         if (!productModal.classList.contains('active')) {
             document.body.classList.remove('modal-open');
@@ -350,7 +420,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // ESC key handling - close topmost modal first
+    // ESC key handling - close topmost modal first; arrow keys navigate lightbox
     window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             if (lightbox.classList.contains('active')) {
@@ -360,6 +430,9 @@ document.addEventListener('DOMContentLoaded', function() {
             } else if (productModal.classList.contains('active')) {
                 closeGalleryModal();
             }
+        } else if (lightbox.classList.contains('active')) {
+            if (e.key === 'ArrowLeft')  { e.preventDefault(); lightboxPrev.click(); }
+            if (e.key === 'ArrowRight') { e.preventDefault(); lightboxNext.click(); }
         }
     });
 });

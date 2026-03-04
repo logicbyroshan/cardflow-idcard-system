@@ -4,8 +4,8 @@
 {% block title %}Our Works{% endblock %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'website/styles/our-works.css' %}?v=136">
-    <link rel="stylesheet" href="{% static 'website/styles/our-works-responsive.css' %}?v=136">
+    <link rel="stylesheet" href="{% static 'website/styles/our-works.css' %}?v=137">
+    <link rel="stylesheet" href="{% static 'website/styles/our-works-responsive.css' %}?v=137">
 {% endblock %}
 
 {% block content %}
@@ -140,9 +140,14 @@
 
     <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Image preview">
         <button class="lightbox-close" id="lightboxClose" aria-label="Close image preview"><i class="fas fa-times" aria-hidden="true"></i></button>
+        <button class="lightbox-nav lightbox-prev" id="lightboxPrev" aria-label="Previous image"><i class="fas fa-chevron-left" aria-hidden="true"></i></button>
+        <button class="lightbox-nav lightbox-next" id="lightboxNext" aria-label="Next image"><i class="fas fa-chevron-right" aria-hidden="true"></i></button>
         <div class="lightbox-content">
             <img src="" id="lightboxImage" alt="Image preview">
-            <div class="lightbox-caption" id="lightboxCaption"></div>
+            <div class="lightbox-footer">
+                <div class="lightbox-caption" id="lightboxCaption"></div>
+                <div class="lightbox-counter" id="lightboxCounter"></div>
+            </div>
         </div>
     </div>
 
@@ -155,5 +160,5 @@
 {% endblock %}
 
 {% block extra_js %}
-    <script src="{% static 'website/scripts/our-works.js' %}?v=136"></script>
+    <script src="{% static 'website/scripts/our-works.js' %}?v=137"></script>
 {% endblock %}
