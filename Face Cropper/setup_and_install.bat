@@ -13,13 +13,16 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-set SRC=C:\Users\roshan\Desktop\Face Cropper
-set DST=C:\Program Files\PassportEngine
-set NSSM_DIR=C:\Users\roshan\AppData\Local\Microsoft\WinGet\Packages
+:: Resolve script directory automatically (works on any machine)
+set SRC=%~dp0
+if "%SRC:~-1%"=="\" set SRC=%SRC:~0,-1%
+
+set DST=C:\Program Files\Adarsh Engine
+set NSSM_DIR=C:\Users\%USERNAME%\AppData\Local\Microsoft\WinGet\Packages
 
 echo.
 echo ========================================
-echo  PassportEngine Full Setup
+echo  Adarsh Engine Full Setup
 echo ========================================
 echo.
 
@@ -55,8 +58,8 @@ if not exist "%DST%\models" mkdir "%DST%\models"
 if not exist "%DST%\logs" mkdir "%DST%\logs"
 
 REM ── Copy files ─────────────────────────────────────────────
-echo [4/7] Copying PassportEngine.exe...
-copy /Y "%SRC%\dist\PassportEngine.exe" "%DST%\PassportEngine.exe"
+echo [4/7] Copying AdarshEngine.exe...
+copy /Y "%SRC%\dist\AdarshEngine.exe" "%DST%\AdarshEngine.exe"
 
 echo [5/7] Copying models...
 xcopy /Y /Q "%SRC%\models\*" "%DST%\models\"
@@ -66,37 +69,41 @@ copy /Y "%SRC%\VERSION.txt" "%DST%\VERSION.txt"
 
 REM ── Install service ────────────────────────────────────────
 echo [6/7] Installing service...
-"%NSSM%" install PassportEngine "%DST%\PassportEngine.exe"
+"%NSSM%" stop AdarshEngine >nul 2>&1
+"%NSSM%" remove AdarshEngine confirm >nul 2>&1
+timeout /t 2 /nobreak >nul
+
+"%NSSM%" install AdarshEngine "%DST%\AdarshEngine.exe"
 if %errorlevel% neq 0 (
     echo ERROR: Service install failed!
     pause
     exit /b 1
 )
 
-"%NSSM%" set PassportEngine DisplayName "Passport Photo Processing Engine"
-"%NSSM%" set PassportEngine Description "Local Passport Photo Processing Engine - API on 127.0.0.1:4765"
-"%NSSM%" set PassportEngine Start SERVICE_AUTO_START
-"%NSSM%" set PassportEngine ObjectName LocalSystem
-"%NSSM%" set PassportEngine AppEnvironmentExtra PASSPORT_ENGINE_MODE=service
-"%NSSM%" set PassportEngine AppExit Default Restart
-"%NSSM%" set PassportEngine AppRestartDelay 5000
-"%NSSM%" set PassportEngine AppStdout "%DST%\logs\service.log"
-"%NSSM%" set PassportEngine AppStderr "%DST%\logs\error.log"
-"%NSSM%" set PassportEngine AppStdoutCreationDisposition 4
-"%NSSM%" set PassportEngine AppStderrCreationDisposition 4
-"%NSSM%" set PassportEngine AppRotateFiles 1
-"%NSSM%" set PassportEngine AppRotateBytes 5242880
+"%NSSM%" set AdarshEngine DisplayName "Adarsh Engine - Photo Processing Engine"
+"%NSSM%" set AdarshEngine Description "Adarsh Engine - Local Photo Processing Engine. API on 127.0.0.1:4765"
+"%NSSM%" set AdarshEngine Start SERVICE_AUTO_START
+"%NSSM%" set AdarshEngine ObjectName LocalSystem
+"%NSSM%" set AdarshEngine AppEnvironmentExtra PASSPORT_ENGINE_MODE=service
+"%NSSM%" set AdarshEngine AppExit Default Restart
+"%NSSM%" set AdarshEngine AppRestartDelay 5000
+"%NSSM%" set AdarshEngine AppStdout "%DST%\logs\service.log"
+"%NSSM%" set AdarshEngine AppStderr "%DST%\logs\error.log"
+"%NSSM%" set AdarshEngine AppStdoutCreationDisposition 4
+"%NSSM%" set AdarshEngine AppStderrCreationDisposition 4
+"%NSSM%" set AdarshEngine AppRotateFiles 1
+"%NSSM%" set AdarshEngine AppRotateBytes 5242880
 
 REM ── Start service ──────────────────────────────────────────
 echo [7/7] Starting service...
-"%NSSM%" start PassportEngine
+"%NSSM%" start AdarshEngine
 timeout /t 10 /nobreak >nul
 
 echo.
 echo ========================================
 echo  Service Status:
 echo ========================================
-sc query PassportEngine
+sc query AdarshEngine
 echo.
 echo ========================================
 echo  Port Check:

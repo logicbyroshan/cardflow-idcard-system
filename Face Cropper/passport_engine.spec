@@ -99,7 +99,7 @@ pyz = PYZ(a.pure)
 # This makes the EXE look legitimate to Windows Defender / SmartScreen.
 # The version string "2.2.0.0" is auto-stamped by CI from the git tag.
 version_file   = os.path.join(PROJECT_DIR, "version_info.txt")
-icon_file      = os.path.join(PROJECT_DIR, "adarsh_cropper.ico")
+icon_file      = os.path.join(PROJECT_DIR, "adarsh_engine.ico")
 manifest_file  = os.path.join(PROJECT_DIR, "app.manifest")
 
 exe = EXE(
@@ -108,7 +108,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name="AdarshCropper",
+    name="AdarshEngine",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

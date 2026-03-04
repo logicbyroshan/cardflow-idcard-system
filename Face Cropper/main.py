@@ -81,7 +81,7 @@ def _port_in_use(host: str, port: int) -> bool:
 # Early double-start guard — before any file I/O that could fail
 if __name__ == "__main__" and _port_in_use(HOST, PORT):
     print(
-        f"AdarshCropper is already running on {HOST}:{PORT} \u2014 exiting.",
+        f"AdarshEngine is already running on {HOST}:{PORT} \u2014 exiting.",
         file=sys.stderr,
     )
     sys.exit(0)
@@ -106,7 +106,7 @@ def _configure_logging() -> None:
 
     # ── Rotating file ────────────────────────────────────────────────
     if SERVICE_MODE:
-        log_dir = Path(r"C:\Program Files\Adarsh Cropper\logs")
+        log_dir = Path(r"C:\Program Files\Adarsh Engine\logs")
     elif getattr(sys, "frozen", False):
         # PyInstaller exe – put logs next to the .exe, not in temp dir
         log_dir = Path(sys.executable).resolve().parent / "logs"
@@ -115,7 +115,7 @@ def _configure_logging() -> None:
 
     try:
         log_dir.mkdir(parents=True, exist_ok=True)
-        log_file = log_dir / "adarsh_cropper.log"
+        log_file = log_dir / "adarsh_engine.log"
         file_handler = logging.handlers.RotatingFileHandler(
             log_file,
             maxBytes=5 * 1024 * 1024,   # 5 MB
@@ -124,7 +124,7 @@ def _configure_logging() -> None:
         )
     except PermissionError:
         # Fallback: user ran exe outside service context without write perms
-        fallback = Path(tempfile.gettempdir()) / "AdarshCropper" / "logs"
+        fallback = Path(tempfile.gettempdir()) / "AdarshEngine" / "logs"
         fallback.mkdir(parents=True, exist_ok=True)
         log_file = fallback / "adarsh_cropper.log"
         file_handler = logging.handlers.RotatingFileHandler(
@@ -154,15 +154,15 @@ async def lifespan(app: FastAPI):
     global _start_time
     _start_time = time.monotonic()
     logger.info(
-        "AdarshCropper v%s started on %s:%d", ENGINE_VERSION, HOST, PORT
+        "AdarshEngine v%s started on %s:%d", ENGINE_VERSION, HOST, PORT
     )
     yield
-    logger.info("AdarshCropper v%s shut down.", ENGINE_VERSION)
+    logger.info("AdarshEngine v%s shut down.", ENGINE_VERSION)
 
 
 # ── App ──────────────────────────────────────────────────────────────────
 app = FastAPI(
-    title="AdarshCropper",
+    title="AdarshEngine",
     version=ENGINE_VERSION,
     lifespan=lifespan,
     docs_url=None,
@@ -264,7 +264,7 @@ def health():
     uptime = round(time.monotonic() - _start_time, 2) if _start_time else 0.0
 
     info: dict = {
-        "engine": "AdarshCropper",
+        "engine": "AdarshEngine",
         "version": ENGINE_VERSION,
         "status": "healthy",
         "uptime_seconds": uptime,

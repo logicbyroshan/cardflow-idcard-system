@@ -38,12 +38,12 @@
 ;    Output/AdarshCropperSetup.exe
 ; ═══════════════════════════════════════════════════════════════════════
 
-#define MyAppName "Adarsh Cropper"
+#define MyAppName "Adarsh Engine"
 #define MyAppVersion "2.2.0"
 #define MyAppPublisher "Adarsh ID Card"
 #define MyAppCopyright "© 2026 Adarsh ID Card. Developed by Roshan Damor."
-#define MyAppExeName "AdarshCropper.exe"
-#define MyServiceName "AdarshCropper"
+#define MyAppExeName "AdarshEngine.exe"
+#define MyServiceName "AdarshEngine"
 
 [Setup]
 AppId={{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}
@@ -61,8 +61,8 @@ DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 OutputDir=Output
-OutputBaseFilename=AdarshCropperSetup
-SetupIconFile=adarsh_cropper.ico
+OutputBaseFilename=AdarshEngineSetup
+SetupIconFile=adarsh_engine.ico
 UninstallDisplayIcon={app}\{#MyAppExeName},0
 Compression=lzma2/ultra64
 SolidCompression=yes
@@ -156,7 +156,7 @@ Filename: "{app}\nssm.exe"; Parameters: "install {#MyServiceName} ""{app}\{#MyAp
     Flags: runhidden; StatusMsg: "Installing service..."
 
 ; ── Configure service ────────────────────────────────────────────────
-Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} DisplayName ""Adarsh Cropper — Photo Processing Engine"""; \
+Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} DisplayName \"Adarsh Engine — Photo Processing Engine\"";
     Flags: runhidden
 Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} Description ""Adarsh Cropper — Local Photo Processing Engine - API on 127.0.0.1:4765"""; \
     Flags: runhidden

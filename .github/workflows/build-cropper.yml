@@ -1,13 +1,13 @@
 # =============================================================================
-# Build & Release Adarsh Cropper (Face Cropper)
+# Build & Release Adarsh Engine
 #
-# Triggered by pushing a tag like:  cropper-v3.0.1
+# Triggered by pushing a tag like:  engine-v3.0.1
 # The version is extracted from the tag automatically.
 #
 # Steps:
 #   1. Extract version from tag → update VERSION.txt, config.py, installer.iss
-#   2. Build AdarshCropper.exe with PyInstaller (Windows runner)
-#   3. Build AdarshCropperSetup.exe with Inno Setup
+#   2. Build AdarshEngine.exe with PyInstaller (Windows runner)
+#   3. Build AdarshEngineSetup.exe with Inno Setup
 #   4. Create a GitHub Release with the installer as an asset
 #   5. Notify the production Django server via webhook
 #
@@ -16,16 +16,17 @@
 #   CROPPER_WEBHOOK_SECRET  — shared secret matching the server's env var
 # =============================================================================
 
-name: Build Adarsh Cropper
+name: Build Adarsh Engine
 
 on:
   push:
     tags:
-      - "cropper-v*"    # e.g.  cropper-v3.0.1
+      - "engine-v*"    # e.g.  engine-v3.0.1
+      - "cropper-v*"   # legacy tag format — keep working
 
 # Cancel previous runs for the same tag
 concurrency:
-  group: cropper-build-${{ github.ref }}
+  group: engine-build-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -47,8 +48,8 @@ jobs:
         shell: pwsh
         run: |
           $tag = "${{ github.ref_name }}"
-          # cropper-v3.0.1 → 3.0.1
-          $ver = $tag -replace '^cropper-v', ''
+          # engine-v3.0.1 or cropper-v3.0.1 → 3.0.1
+          $ver = $tag -replace '^(engine|cropper)-v', ''
           Write-Host "Extracted version: $ver"
           echo "VERSION=$ver" >> $env:GITHUB_OUTPUT
           echo "VERSION_DOTTED=$ver.0" >> $env:GITHUB_OUTPUT
@@ -102,19 +103,19 @@ jobs:
           pip install pyinstaller
 
       # ── 5. Build EXE with PyInstaller ──────────────────────────────
-      - name: Build AdarshCropper.exe
+      - name: Build AdarshEngine.exe
         shell: pwsh
         working-directory: Face Cropper
         run: |
           pyinstaller passport_engine.spec --noconfirm
           
-          if (-not (Test-Path "dist/AdarshCropper.exe")) {
-            Write-Error "PyInstaller build failed — AdarshCropper.exe not found"
+          if (-not (Test-Path "dist/AdarshEngine.exe")) {
+            Write-Error "PyInstaller build failed — AdarshEngine.exe not found"
             exit 1
           }
           
-          $size = (Get-Item "dist/AdarshCropper.exe").Length / 1MB
-          Write-Host "Built AdarshCropper.exe ($([math]::Round($size, 1)) MB)"
+          $size = (Get-Item "dist/AdarshEngine.exe").Length / 1MB
+          Write-Host "Built AdarshEngine.exe ($([math]::Round($size, 1)) MB)"
 
       # ── 5b. Code-sign the EXE (if certificate is configured) ──────
       #
@@ -129,7 +130,7 @@ jobs:
       #   - Sectigo / Comodo:               ~$85/yr
       #   - EV Code Signing (instant trust): ~$300+/yr (hardware token)
       #
-      - name: Sign AdarshCropper.exe
+      - name: Sign AdarshEngine.exe
         if: env.SIGN_CERT_BASE64 != ''
         shell: pwsh
         working-directory: Face Cropper
@@ -149,19 +150,19 @@ jobs:
             /fd sha256 `
             /tr http://timestamp.digicert.com `
             /td sha256 `
-            /d "Adarsh Cropper — Photo Processing Engine" `
+            /d "Adarsh Engine — Photo Processing Engine" `
             /du "https://adarshbhopal.in" `
-            "dist\AdarshCropper.exe"
+            "dist\AdarshEngine.exe"
           
           if ($LASTEXITCODE -ne 0) {
             Write-Error "Code signing failed!"
             exit 1
           }
           
-          Write-Host "AdarshCropper.exe signed successfully"
+          Write-Host "AdarshEngine.exe signed successfully"
           
           # Verify signature
-          & signtool verify /pa "dist\AdarshCropper.exe"
+          & signtool verify /pa "dist\AdarshEngine.exe"
           
           # Clean up certificate
           Remove-Item -Path $certPath -Force
@@ -181,16 +182,16 @@ jobs:
           
           & $iscc installer.iss
           
-          if (-not (Test-Path "Output/AdarshCropperSetup.exe")) {
-            Write-Error "Inno Setup build failed — AdarshCropperSetup.exe not found"
+          if (-not (Test-Path "Output/AdarshEngineSetup.exe")) {
+            Write-Error "Inno Setup build failed — AdarshEngineSetup.exe not found"
             exit 1
           }
           
-          $size = (Get-Item "Output/AdarshCropperSetup.exe").Length / 1MB
-          Write-Host "Built AdarshCropperSetup.exe ($([math]::Round($size, 1)) MB)"
+          $size = (Get-Item "Output/AdarshEngineSetup.exe").Length / 1MB
+          Write-Host "Built AdarshEngineSetup.exe ($([math]::Round($size, 1)) MB)"
 
       # ── 6b. Code-sign the installer (if certificate is configured) ─
-      - name: Sign AdarshCropperSetup.exe
+      - name: Sign AdarshEngineSetup.exe
         if: env.SIGN_CERT_BASE64 != ''
         shell: pwsh
         working-directory: Face Cropper
@@ -208,15 +209,15 @@ jobs:
             /fd sha256 `
             /tr http://timestamp.digicert.com `
             /td sha256 `
-            /d "Adarsh Cropper Installer" `
+            /d "Adarsh Engine Installer" `
             /du "https://adarshbhopal.in" `
-            "Output\AdarshCropperSetup.exe"
+            "Output\AdarshEngineSetup.exe"
           
           if ($LASTEXITCODE -ne 0) {
             Write-Warning "Installer signing failed — continuing without signature"
           } else {
-            Write-Host "AdarshCropperSetup.exe signed successfully"
-            & signtool verify /pa "Output\AdarshCropperSetup.exe"
+            Write-Host "AdarshEngineSetup.exe signed successfully"
+            & signtool verify /pa "Output\AdarshEngineSetup.exe"
           }
           
           Remove-Item -Path $certPath -Force
@@ -227,22 +228,22 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: "Adarsh Cropper v${{ steps.version.outputs.VERSION }}"
+          name: "Adarsh Engine v${{ steps.version.outputs.VERSION }}"
           body: |
-            ## Adarsh Cropper v${{ steps.version.outputs.VERSION }}
+            ## Adarsh Engine v${{ steps.version.outputs.VERSION }}
             
             **Download the installer below and run it.** The installer will
             automatically stop the old service, replace files, and restart.
             
             ### Installation
-            1. Download `AdarshCropperSetup.exe` below
+            1. Download `AdarshEngineSetup.exe` below
             2. Run the installer (accept admin prompt)
             3. The service restarts automatically
             
             ---
             _Built automatically by CI/CD on ${{ github.event.head_commit.timestamp }}_
           files: |
-            Face Cropper/Output/AdarshCropperSetup.exe
+            Face Cropper/Output/AdarshEngineSetup.exe
           draft: false
           prerelease: false
 
@@ -265,7 +266,7 @@ jobs:
           $downloadUrl = ""
           $assets = "${{ steps.release.outputs.assets }}" | ConvertFrom-Json -ErrorAction SilentlyContinue
           if ($assets) {
-            $asset = $assets | Where-Object { $_.name -eq "AdarshCropperSetup.exe" } | Select-Object -First 1
+            $asset = $assets | Where-Object { $_.name -eq "AdarshEngineSetup.exe" } | Select-Object -First 1
             if ($asset) {
               $downloadUrl = $asset.browser_download_url
             }
@@ -275,13 +276,13 @@ jobs:
           if (-not $downloadUrl) {
             $repo = "${{ github.repository }}"
             $tag = "${{ github.ref_name }}"
-            $downloadUrl = "https://github.com/$repo/releases/download/$tag/AdarshCropperSetup.exe"
+            $downloadUrl = "https://github.com/$repo/releases/download/$tag/AdarshEngineSetup.exe"
           }
           
           $payload = @{
             version      = $ver
             download_url = $downloadUrl
-            changelog    = "Adarsh Cropper v$ver — automated build from CI/CD."
+            changelog    = "Adarsh Engine v$ver — automated build from CI/CD."
           } | ConvertTo-Json -Compress
           
           Write-Host "Notifying server at $($env:WEBHOOK_URL) for v$ver ..."
