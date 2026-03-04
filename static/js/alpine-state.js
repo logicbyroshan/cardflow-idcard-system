@@ -136,9 +136,9 @@ function layoutState() {
         openModal(name, data) {
             this.activeModal = name;
             this.modalData = data || null;
-            // Generate a fresh 6-digit verification code for Alpine-driven delete modals
+            // Generate a fresh 10-digit verification code for Alpine-driven delete modals
             if (name === 'delete') {
-                this.deleteCode = (Math.floor(100000 + Math.random() * 900000)).toString();
+                this.deleteCode = (Math.floor(1000000000 + Math.random() * 9000000000)).toString();
                 this.deleteCodeInput = '';
             }
             document.body.style.overflow = 'hidden';

@@ -722,7 +722,7 @@ def api_idcard_bulk_delete(request, table_id):
 @require_http_methods(["POST"])
 @api_require_permission('perm_delete_all_idcard')
 def api_generate_delete_code(request, table_id):
-    """Generate a 6-digit confirmation code for delete-all, stored in session."""
+    """Generate a 10-digit confirmation code for delete-all, stored in session."""
     import secrets
     _tbl, err = _check_client_scope_by_table(request.user, table_id)
     if err: return err
@@ -730,7 +730,7 @@ def api_generate_delete_code(request, table_id):
         table = _tbl  # Reuse already-fetched table from scope check
         total = IDCard.objects.filter(table=table).count()
         
-        code = str(secrets.randbelow(900000) + 100000)
+        code = str(secrets.randbelow(9000000000) + 1000000000)
         request.session[f'delete_all_code_{table_id}'] = code
         request.session.modified = True
         
@@ -747,7 +747,7 @@ def api_generate_delete_code(request, table_id):
 @require_http_methods(["POST"])
 @api_require_permission('perm_idcard_upgrade_all')
 def api_generate_upgrade_code(request, table_id):
-    """Generate a 6-digit confirmation code for upgrade-all-classes, stored in session."""
+    """Generate a 10-digit confirmation code for upgrade-all-classes, stored in session."""
     import secrets
     _tbl, err = _check_client_scope_by_table(request.user, table_id)
     if err: return err
@@ -755,7 +755,7 @@ def api_generate_upgrade_code(request, table_id):
         table = _tbl  # Reuse already-fetched table from scope check
         download_count = IDCard.objects.filter(table=table, status='download').count()
 
-        code = str(secrets.randbelow(900000) + 100000)
+        code = str(secrets.randbelow(9000000000) + 1000000000)
         request.session[f'upgrade_all_code_{table_id}'] = code
         request.session.modified = True
 

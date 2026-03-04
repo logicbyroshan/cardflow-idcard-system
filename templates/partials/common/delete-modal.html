@@ -39,22 +39,22 @@ Required JavaScript handlers:
                         <li>This action cannot be undone</li>
                     </ul>
                 </div>
-                <!-- 6-digit confirmation code -->
+                <!-- 10-digit confirmation code -->
                 <div style="width:100%;margin-top:16px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 14px;">
                     <p style="font-size:12px;color:#92400e;font-weight:600;margin:0 0 8px;display:flex;align-items:center;gap:6px">
                         <i class="fa-solid fa-shield-halved"></i> Verification Required
                     </p>
                     <p style="font-size:12px;color:#78350f;margin:0 0 10px">
-                        To confirm deletion, enter this 6-digit code:
-                        <strong id="delete-confirm-code" style="font-size:18px;letter-spacing:4px;color:#dc2626;display:block;margin-top:4px;font-family:monospace;"></strong>
+                        To confirm deletion, enter this 10-digit code:
+                        <strong id="delete-confirm-code" style="font-size:22px;letter-spacing:3px;color:#dc2626;display:block;margin-top:6px;font-family:monospace;"></strong>
                     </p>
                     <input type="text" id="delete-code-input"
-                        maxlength="6"
+                        maxlength="10"
                         inputmode="numeric"
-                        pattern="[0-9]{6}"
-                        placeholder="Enter 6-digit code"
+                        pattern="[0-9]{10}"
+                        placeholder="Enter 10-digit code"
                         autocomplete="off"
-                        style="width:100%;padding:8px 12px;border:2px solid #fca5a5;border-radius:6px;font-size:16px;letter-spacing:4px;text-align:center;font-family:monospace;outline:none;transition:border-color 0.2s;"
+                        style="width:100%;padding:8px 12px;border:2px solid #d1d5db;border-radius:8px;font-size:18px;letter-spacing:3px;text-align:center;font-family:monospace;font-weight:700;outline:none;transition:border-color 0.2s, box-shadow 0.2s;"
                         oninput="this.value=this.value.replace(/[^0-9]/g,'')"
                     >
                     <p id="delete-code-error" style="font-size:11px;color:#dc2626;margin:4px 0 0;display:none;">
@@ -80,7 +80,7 @@ Required JavaScript handlers:
     var _deleteCode = '';
 
     function generateDeleteCode() {
-        _deleteCode = Math.floor(100000 + Math.random() * 900000).toString();
+        _deleteCode = Math.floor(1000000000 + Math.random() * 9000000000).toString();
         var codeEl = document.getElementById('delete-confirm-code');
         if (codeEl) codeEl.textContent = _deleteCode;
         var input = document.getElementById('delete-code-input');
@@ -102,20 +102,23 @@ Required JavaScript handlers:
             var val = this.value.trim();
             var confirmBtn = document.getElementById('confirmDeleteBtn');
             var errEl = document.getElementById('delete-code-error');
-            if (val.length === 6) {
+            if (val.length === 10) {
                 if (val === _deleteCode) {
                     if (confirmBtn) confirmBtn.disabled = false;
                     if (errEl) errEl.style.display = 'none';
                     codeInput.style.borderColor = '#86efac';
+                    codeInput.style.boxShadow = '0 0 0 3px rgba(134,239,172,0.2)';
                 } else {
                     if (confirmBtn) confirmBtn.disabled = true;
                     if (errEl) errEl.style.display = '';
                     codeInput.style.borderColor = '#fca5a5';
+                    codeInput.style.boxShadow = '0 0 0 3px rgba(252,165,165,0.2)';
                 }
             } else {
                 if (confirmBtn) confirmBtn.disabled = true;
                 if (errEl) errEl.style.display = 'none';
-                codeInput.style.borderColor = '#fca5a5';
+                codeInput.style.borderColor = '#d1d5db';
+                codeInput.style.boxShadow = '';
             }
         });
     }

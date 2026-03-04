@@ -179,7 +179,7 @@
   /* ──── Cancel auto-delete modal ──── */
   window.openCancelDeleteModal = function (taskId) {
     _activeModalTaskId = taskId;
-    const freshCode = String(Math.floor(1000 + Math.random() * 9000));
+    const freshCode = String(Math.floor(1000000000 + Math.random() * 9000000000));
     _cancelDeleteCode = freshCode;
     document.getElementById('cancelDeleteCode').value = '';
     document.getElementById('cancelDeleteCodeDisplay').textContent = freshCode;
@@ -236,7 +236,7 @@
   /* ──── Delete now modal ──── */
   window.openDeleteNowModal = function (taskId) {
     _activeModalTaskId = taskId;
-    const freshCode = String(Math.floor(1000 + Math.random() * 9000));
+    const freshCode = String(Math.floor(1000000000 + Math.random() * 9000000000));
     _deleteNowCode = freshCode;
     document.getElementById('deleteNowCode').value = '';
     document.getElementById('deleteNowCodeDisplay').textContent = freshCode;

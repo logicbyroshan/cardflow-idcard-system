@@ -105,8 +105,8 @@ document.addEventListener('DOMContentLoaded', function() {
           return;
         }
 
-        // Generate random 6-digit code
-        tempPwVerificationCode = String(Math.floor(100000 + Math.random() * 900000));
+        // Generate random 10-digit code
+        tempPwVerificationCode = String(Math.floor(1000000000 + Math.random() * 9000000000));
 
         // Reset modal to step 1
         var modal = document.getElementById('temp-password-modal');

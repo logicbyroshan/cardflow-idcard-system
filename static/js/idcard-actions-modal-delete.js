@@ -9,9 +9,9 @@
 // DELETE MODAL (Permanent Delete - Pool List)
 // ==========================================
 
-// Generate random 6-digit numeric code
+// Generate random 10-digit numeric code
 function generateVerificationCode() {
-    return String(Math.floor(100000 + Math.random() * 900000));
+    return String(Math.floor(1000000000 + Math.random() * 9000000000));
 }
 
 // Current verification code for permanent delete
@@ -117,7 +117,7 @@ function initDeleteModal() {
             const confirmBtn = document.getElementById('confirmDeleteModal');
             const verificationStatus = document.getElementById('verificationStatus');
             
-            if (entered.length === 6) {
+            if (entered.length === 10) {
                 if (entered === currentVerificationCode) {
                     this.classList.remove('invalid');
                     this.classList.add('valid');

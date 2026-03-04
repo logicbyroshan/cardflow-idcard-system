@@ -428,11 +428,11 @@ body[style*="overflow:hidden"] {
 
 .center-modal-code {
   border-radius: 10px;
-  padding: 10px 20px;
+  padding: 10px 16px;
   margin: 8px 0 12px;
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 800;
-  letter-spacing: 8px;
+  letter-spacing: 4px;
   border-width: 2px;
   border-style: dashed;
   text-align: center;
@@ -443,11 +443,11 @@ body[style*="overflow:hidden"] {
 .center-modal-input {
   width: 100%;
   padding: 10px 12px;
-  font-size: 20px;
+  font-size: 18px;
   text-align: center;
   border: 2px solid #d1d5db;
   border-radius: 8px;
-  letter-spacing: 6px;
+  letter-spacing: 3px;
   font-weight: 700;
   font-family: 'Courier New', monospace;
   margin-bottom: 12px;

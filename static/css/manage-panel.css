@@ -159,25 +159,28 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
-  padding: 6px 12px;
-  min-width: 260px;
+  background: #fff;
+  border: 1.5px solid #d1d5db;
+  border-radius: 6px;
+  padding: 5px 12px;
+  min-width: 240px;
+  height: 30px;
+  box-sizing: border-box;
 }
 .notif-search-box i { color: #94a3b8; font-size: 12px; }
 .notif-search-box input {
   border: none;
   background: none;
   outline: none;
-  font-size: 12.5px;
+  font-size: 13px;
   color: #334155;
   width: 100%;
   font-family: inherit;
+  line-height: 1;
 }
-.notif-search-box input:focus-visible {
-  box-shadow: 0 0 0 2px #667eea;
-  border-radius: 2px;
+.notif-search-box:focus-within {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102,126,234,0.12);
 }
 
 /* Stats Row */
@@ -668,22 +671,23 @@ textarea.panel-form-input {
 .log-action-badge.verify { background: #fefce8; color: #a16207; }
 .log-action-badge.approve{ background: #f0fdf4; color: #15803d; }
 
-/* Filter select — matches global .form-select visual design */
+/* Filter select — matches .dropdown-toggle visual design */
 .form-select-sm {
   -webkit-appearance: none;
   appearance: none;
   font-family: inherit;
-  font-size: 12.5px;
-  height: 32px;
+  font-size: 13px;
+  height: 30px;
   padding: 4px 28px 4px 10px;
-  border: 1px solid #e2e8f0;
+  border: 1.5px solid #d1d5db;
   border-radius: 6px;
   background-color: #fff;
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
   background-position: right 6px center;
   background-repeat: no-repeat;
   background-size: 14px 14px;
-  color: #334155;
+  color: #374151;
+  font-weight: 500;
   cursor: pointer;
   transition: border-color .15s, box-shadow .15s;
 }

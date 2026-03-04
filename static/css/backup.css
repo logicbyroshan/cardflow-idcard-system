@@ -134,12 +134,12 @@
 }
 .backup-code-display {
   text-align: center;
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 800;
-  letter-spacing: 6px;
+  letter-spacing: 3px;
   color: #667eea;
   background: #eef2ff;
-  padding: 12px 20px;
+  padding: 12px 16px;
   margin-bottom: 12px;
   border: 2px dashed #c7d2fe;
   border-radius: 10px;
@@ -154,14 +154,14 @@
 .backup-code-input {
   width: 100%;
   padding: 10px 12px;
-  font-size: 20px;
-  letter-spacing: 4px;
+  font-size: 18px;
+  letter-spacing: 3px;
   text-align: center;
   border: 2px solid #d1d5db;
   border-radius: 8px;
   outline: none;
   font-family: monospace;
-  font-weight: 600;
+  font-weight: 700;
   color: #1e293b;
   box-sizing: border-box;
   transition: border-color .15s, box-shadow .15s;
