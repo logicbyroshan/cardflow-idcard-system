@@ -252,15 +252,17 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
-    align-items: flex-start;   /* prevent tailwind centering h3+p horizontally */
-    gap: 1px;                  /* reset tailwind gap: calc(var(--spacing)*2) ≈ 8px */
+    align-items: flex-start;
+    gap: 2px;
     min-height: 38px;
-    /* Reset tailwind.css .section-title overrides (blue gradient bg / white text) */
-    background: none;
+    /* Reset tailwind.css .section-title overrides (blue gradient bg / white text / flex-row / gap) */
+    background: none !important;
     color: inherit;
     border-radius: 0;
     padding: 0;
     margin-bottom: 0;
+    font-size: inherit;
+    font-weight: inherit;
 }
 
 .section-title h3 {
