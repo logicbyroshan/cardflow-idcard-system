@@ -10,6 +10,13 @@
     <meta name="mobile-web-app-capable" content="yes">
     <title>{% block title %}Adarsh ID Cards{% endblock %}</title>
 
+    <!-- DNS preconnect hints — reduce CDN latency on first load -->
+    <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>

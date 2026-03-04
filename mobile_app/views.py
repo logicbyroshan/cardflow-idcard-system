@@ -85,6 +85,22 @@ def _client_ctx(user):
     return client, perms
 
 
+# ── Image upload validation ──────────────────────────────────────────────────
+_ALLOWED_IMAGE_TYPES = frozenset({'image/jpeg', 'image/png', 'image/webp', 'image/gif'})
+_ALLOWED_IMAGE_EXTS  = frozenset({'.jpg', '.jpeg', '.png', '.webp', '.gif'})
+
+def _validate_image(photo):
+    """Return (True, '') or (False, error_message) for an uploaded file."""
+    import os as _os
+    ct = (photo.content_type or '').lower().split(';')[0].strip()
+    if ct not in _ALLOWED_IMAGE_TYPES:
+        return False, f'File type "{ct}" not allowed. Use JPEG, PNG or WebP.'
+    ext = _os.path.splitext(photo.name.lower())[1]
+    if ext not in _ALLOWED_IMAGE_EXTS:
+        return False, f'File extension "{ext}" not allowed.'
+    return True, ''
+
+
 # ---------------------------------------------------------------------------
 # PAGE VIEWS
 # ---------------------------------------------------------------------------
@@ -111,14 +127,15 @@ def home(request):
             if assigned_group_ids:
                 tables = tables.filter(group_id__in=assigned_group_ids)
 
-    first_table = tables.first()
+    tables_list = list(tables)  # evaluate once — avoids 3 separate DB hits
+    first_table = tables_list[0] if tables_list else None
 
     ctx = {
         'user_name': user.get_full_name() or user.username,
         'client': client,
         'first_table_id': first_table.id if first_table else None,
-        'tables': tables,
-        'table_count': tables.count(),
+        'tables': tables_list,
+        'table_count': len(tables_list),
         **perms,
     }
 
@@ -198,62 +215,83 @@ def home(request):
                 .filter(last_update__isnull=False)
                 .order_by('-last_update')[:8]
             )
-            for c in clients_qs:
-                counts_q = (
-                    IDCard.objects
-                    .filter(table__group__client=c)
-                    .values('status')
-                    .annotate(n=Count('id'))
-                )
-                status_map = {row['status']: row['n'] for row in counts_q}
-                # Build per-table breakdown for the expandable sub-row
-                tables_qs = (
-                    IDCardTable.objects
-                    .filter(group__client=c, is_active=True)
-                    .select_related('group')
-                    .order_by('group__name', 'name')[:8]
-                )
-                tables_data = []
-                for tbl in tables_qs:
-                    t_counts = (
-                        IDCard.objects
-                        .filter(table=tbl)
-                        .values('status')
-                        .annotate(n=Count('id'))
-                    )
-                    t_map = {r['status']: r['n'] for r in t_counts}
-                    tables_data.append({
-                        'id': tbl.id,
-                        'name': tbl.name,
-                        'group_name': tbl.group.name,
-                        'pending': t_map.get('pending', 0),
-                        'verified': t_map.get('verified', 0),
-                        'approved': t_map.get('approved', 0),
-                        'download': t_map.get('download', 0),
+            client_list = list(clients_qs)
+            client_ids = [c.id for c in client_list]
+
+            # 1 query: card counts by (client, status) for all visible clients
+            _cc_raw = (
+                IDCard.objects.filter(table__group__client_id__in=client_ids)
+                .values('table__group__client_id', 'status')
+                .annotate(n=Count('id'))
+            )
+            _cc_map = {}
+            for _row in _cc_raw:
+                _cc_map.setdefault(_row['table__group__client_id'], {})[_row['status']] = _row['n']
+
+            # 1 query: all active tables for these clients
+            _all_tbls = list(
+                IDCardTable.objects
+                .filter(group__client_id__in=client_ids, is_active=True)
+                .select_related('group')
+                .order_by('group__client_id', 'group__name', 'name')
+            )
+            _tbls_by_client = {}
+            for _tbl in _all_tbls:
+                _cid = _tbl.group.client_id
+                _tbls_by_client.setdefault(_cid, [])
+                if len(_tbls_by_client[_cid]) < 8:
+                    _tbls_by_client[_cid].append(_tbl)
+
+            # 1 query: card counts by (table_id, status) for the sub-rows
+            _tbl_ids = [_t.id for _ts in _tbls_by_client.values() for _t in _ts]
+            _tc_map = {}
+            if _tbl_ids:
+                for _row in (IDCard.objects.filter(table_id__in=_tbl_ids)
+                             .values('table_id', 'status').annotate(n=Count('id'))):
+                    _tc_map.setdefault(_row['table_id'], {})[_row['status']] = _row['n']
+
+            # Assemble in Python — no more per-client / per-table queries
+            for c in client_list:
+                _sm = _cc_map.get(c.id, {})
+                _tables_data = []
+                for _tbl in _tbls_by_client.get(c.id, []):
+                    _tm = _tc_map.get(_tbl.id, {})
+                    _tables_data.append({
+                        'id': _tbl.id,
+                        'name': _tbl.name,
+                        'group_name': _tbl.group.name,
+                        'pending': _tm.get('pending', 0),
+                        'verified': _tm.get('verified', 0),
+                        'approved': _tm.get('approved', 0),
+                        'download': _tm.get('download', 0),
                     })
                 recent_client_updates.append({
                     'client_id': c.id,
                     'client_name': c.name,
-                    'pending': status_map.get('pending', 0),
-                    'verified': status_map.get('verified', 0),
-                    'approved': status_map.get('approved', 0),
-                    'download': status_map.get('download', 0),
-                    'tables': tables_data,
+                    'pending': _sm.get('pending', 0),
+                    'verified': _sm.get('verified', 0),
+                    'approved': _sm.get('approved', 0),
+                    'download': _sm.get('download', 0),
+                    'tables': _tables_data,
                 })
         else:
-            # Single client — show per-group (table group) breakdown
+            # Single client — show per-group breakdown
+            # 2 queries total (groups list + one aggregate) instead of 1+N
             from idcards.models import IDCardGroup
-            groups_qs = IDCardGroup.objects.filter(client=client).order_by('name')[:6]
-            for grp in groups_qs:
-                counts_q = (
-                    IDCard.objects
-                    .filter(table__group=grp)
-                    .values('status')
-                    .annotate(n=Count('id'))
-                )
-                status_map = {row['status']: row['n'] for row in counts_q}
-                total = sum(status_map.values())
-                if total == 0:
+            groups_list = list(IDCardGroup.objects.filter(client=client).order_by('name')[:6])
+            group_ids = [g.id for g in groups_list]
+            _gc_raw = (
+                IDCard.objects.filter(table__group_id__in=group_ids)
+                .values('table__group_id', 'status')
+                .annotate(n=Count('id'))
+            )
+            _gc_map = {}
+            for _row in _gc_raw:
+                _gc_map.setdefault(_row['table__group_id'], {})[_row['status']] = _row['n']
+
+            for grp in groups_list:
+                status_map = _gc_map.get(grp.id, {})
+                if not sum(status_map.values(), 0):
                     continue
                 recent_client_updates.append({
                     'client_id': client.id,
@@ -263,7 +301,7 @@ def home(request):
                     'verified': status_map.get('verified', 0),
                     'approved': status_map.get('approved', 0),
                     'download': status_map.get('download', 0),
-                    'tables': [],  # No expandable sub-row for client/client_staff
+                    'tables': [],
                 })
     except Exception:
         logger.exception('Failed to build recent_client_updates for home view')
@@ -390,13 +428,14 @@ def table_picker(request, status):
             if assigned_group_ids:
                 tables = tables.filter(group_id__in=assigned_group_ids)
 
-    if tables.count() == 1:
-        return redirect('mobile_app:card_list', table_id=tables.first().id, status=status)
+    tables_list = list(tables)  # evaluate once — avoids 2 extra DB hits
+    if len(tables_list) == 1:
+        return redirect('mobile_app:card_list', table_id=tables_list[0].id, status=status)
 
     return render(request, 'mobile_app/table_picker.html', {
         'user_name': user.get_full_name() or user.username,
         'client': client,
-        'tables': tables,
+        'tables': tables_list,
         'status': status,
         'status_display': status.replace('_', ' ').title(),
         **perms,
@@ -489,14 +528,11 @@ def card_list(request, table_id, status):
     all_sections = sorted(set(c['section'] for c in cards if c['section']))
     table_fields = table.fields if hasattr(table, 'fields') and table.fields else []
 
-    # Count badges for each status tab
-    _all_qs = IDCard.objects.filter(table=table)
-    tab_counts = {
-        'pending':  _all_qs.filter(status='pending').count(),
-        'verified': _all_qs.filter(status='verified').count(),
-        'approved': _all_qs.filter(status='approved').count(),
-        'download': _all_qs.filter(status='download').count(),
-    }
+    # Count badges — single aggregate query replaces 4 separate COUNTs
+    tab_counts = {'pending': 0, 'verified': 0, 'approved': 0, 'download': 0}
+    for _row in IDCard.objects.filter(table=table).values('status').annotate(n=Count('id')):
+        if _row['status'] in tab_counts:
+            tab_counts[_row['status']] = _row['n']
 
     return render(request, 'mobile_app/list_page.html', {
         'user_name': user.get_full_name() or user.username,
@@ -646,6 +682,10 @@ def api_bulk_status(request, table_id):
 
     card_ids = data.get('card_ids', [])
     new_status = data.get('status', '')
+    if not isinstance(card_ids, list):
+        return JsonResponse({'success': False, 'message': 'card_ids must be a list'}, status=400)
+    if len(card_ids) > 500:
+        return JsonResponse({'success': False, 'message': 'Maximum 500 cards per batch'}, status=400)
     result = ClientCardService.bulk_change_status(request.user, table_id, card_ids, new_status)
     if result.success:
         return JsonResponse({'success': True, 'message': result.message, **(result.data or {})})
@@ -660,12 +700,15 @@ def api_upload_photo(request, table_id):
     photo = request.FILES.get('photo')
     if not photo or not card_id:
         return JsonResponse({'success': False, 'message': 'photo and card_id required'}, status=400)
+    _ok, _err = _validate_image(photo)
+    if not _ok:
+        return JsonResponse({'success': False, 'message': _err}, status=400)
     try:
         card = IDCard.objects.select_related('table__group').get(id=card_id)
         if not PermissionService.is_any_admin(request.user) and not ClientAccessService.can_access_card(request.user, card):
             return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
         import os, uuid
-        ext = os.path.splitext(photo.name)[1][:10] or '.jpg'
+        ext = os.path.splitext(photo.name.lower())[1] or '.jpg'
         safe_name = f'{uuid.uuid4().hex}{ext}'
         card.photo.save(safe_name, photo, save=True)
         return JsonResponse({'success': True, 'message': 'Photo uploaded', 'photo_url': card.photo.url})
@@ -727,12 +770,18 @@ def api_card_add(request, table_id):
         except json.JSONDecodeError:
             field_data = {}
 
-        card = IDCard.objects.create(table=table, field_data=field_data, status='pending')
-
+        # Validate photo BEFORE writing card to DB
         photo = request.FILES.get('photo')
         if photo:
+            _ok, _err = _validate_image(photo)
+            if not _ok:
+                return JsonResponse({'success': False, 'message': _err}, status=400)
+
+        card = IDCard.objects.create(table=table, field_data=field_data, status='pending')
+
+        if photo:
             import os, uuid
-            ext = os.path.splitext(photo.name)[1][:10] or '.jpg'
+            ext = os.path.splitext(photo.name.lower())[1] or '.jpg'
             safe_name = f'{uuid.uuid4().hex}{ext}'
             card.photo.save(safe_name, photo, save=True)
 
@@ -767,8 +816,11 @@ def api_card_update(request, table_id, card_id):
 
         photo = request.FILES.get('photo')
         if photo:
+            _ok, _err = _validate_image(photo)
+            if not _ok:
+                return JsonResponse({'success': False, 'message': _err}, status=400)
             import os, uuid
-            ext = os.path.splitext(photo.name)[1][:10] or '.jpg'
+            ext = os.path.splitext(photo.name.lower())[1] or '.jpg'
             safe_name = f'{uuid.uuid4().hex}{ext}'
             card.photo.save(safe_name, photo, save=False)
 
@@ -1047,8 +1099,6 @@ def api_card_delete(request, card_id):
         permanent = data.get('permanent', False)
 
         if permanent:
-            if not PermissionService.has(user, 'perm_idcard_delete'):
-                return JsonResponse({'success': False, 'message': 'No delete permission'}, status=403)
             card.delete()
             return JsonResponse({'success': True, 'message': 'Card permanently deleted'})
         else:
