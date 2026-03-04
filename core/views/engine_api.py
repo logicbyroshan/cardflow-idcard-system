@@ -594,7 +594,7 @@ def api_engine_delete_image(request):
 
 # ═══════════════════════════════════════════════════════════════════════════
 #  GET  /engine/download/
-#  Serve AdarshEngine.exe as a proper attachment download.
+#  Serve AdarshEngineSetup.exe (Inno Setup installer) as a proper attachment download.
 #
 #  Serving via Django (instead of a direct /static/ link) lets us set
 #  Content-Disposition and other headers that help browsers treat the file
@@ -605,12 +605,12 @@ def api_engine_delete_image(request):
 @require_GET
 def engine_download(request):
     """
-    Stream AdarshEngine.exe to the browser as an attachment.
+    Stream AdarshEngineSetup.exe (Inno Setup installer) to the browser as an attachment.
 
     Looks for the file in:
-      1. STATICFILES_DIRS[0]/engine/AdarshEngine.exe  (dev)
-      2. STATIC_ROOT/engine/AdarshEngine.exe           (production / collectstatic)
-      3. BASE_DIR/static/engine/AdarshEngine.exe       (fallback)
+      1. STATICFILES_DIRS[0]/engine/AdarshEngineSetup.exe  (dev)
+      2. STATIC_ROOT/engine/AdarshEngineSetup.exe           (production / collectstatic)
+      3. BASE_DIR/static/engine/AdarshEngineSetup.exe       (fallback)
     """
     from django.conf import settings
     from django.http import Http404
@@ -619,14 +619,14 @@ def engine_download(request):
 
     # Dev: look in each staticfiles dir
     for sdir in getattr(settings, 'STATICFILES_DIRS', []):
-        candidates.append(Path(sdir) / 'engine' / 'AdarshEngine.exe')
+        candidates.append(Path(sdir) / 'engine' / 'AdarshEngineSetup.exe')
 
     # Production: collected static root
     if hasattr(settings, 'STATIC_ROOT') and settings.STATIC_ROOT:
-        candidates.append(Path(settings.STATIC_ROOT) / 'engine' / 'AdarshEngine.exe')
+        candidates.append(Path(settings.STATIC_ROOT) / 'engine' / 'AdarshEngineSetup.exe')
 
     # Absolute fallback: project-root /static/
-    candidates.append(Path(settings.BASE_DIR) / 'static' / 'engine' / 'AdarshEngine.exe')
+    candidates.append(Path(settings.BASE_DIR) / 'static' / 'engine' / 'AdarshEngineSetup.exe')
 
     exe_path = None
     for candidate in candidates:
@@ -635,10 +635,10 @@ def engine_download(request):
             break
 
     if exe_path is None:
-        logger.error("AdarshEngine.exe not found in any static path.")
+        logger.error("AdarshEngineSetup.exe not found in any static path.")
         raise Http404("AdarshEngine installer not found.")
 
-    logger.info("Serving AdarshEngine.exe from: %s", exe_path)
+    logger.info("Serving AdarshEngineSetup.exe from: %s", exe_path)
 
     response = FileResponse(
         open(exe_path, 'rb'),

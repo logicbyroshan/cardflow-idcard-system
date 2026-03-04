@@ -108,12 +108,12 @@ begin
     wpSelectDir,
     'Output Folder for Cropped Photos',
     'Where should cropped photos be saved?',
-    'Select the folder where Adarsh Cropper will save cropped photos by default.' + #13#10 +
+    'Select the folder where Adarsh Engine will save cropped photos by default.' + #13#10 +
     'You can change this later from the panel.',
     False, ''
   );
   OutputDirPage.Add('');
-  OutputDirPage.Values[0] := ExpandConstant('{userdocs}\AdarshCropper Output');
+  OutputDirPage.Values[0] := ExpandConstant('{userdocs}\AdarshEngine Output');
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
@@ -156,9 +156,9 @@ Filename: "{app}\nssm.exe"; Parameters: "install {#MyServiceName} ""{app}\{#MyAp
     Flags: runhidden; StatusMsg: "Installing service..."
 
 ; ── Configure service ────────────────────────────────────────────────
-Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} DisplayName \"Adarsh Engine — Photo Processing Engine\"";
+Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} DisplayName ""Adarsh Engine — Photo Processing Engine"""; \
     Flags: runhidden
-Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} Description ""Adarsh Cropper — Local Photo Processing Engine - API on 127.0.0.1:4765"""; \
+Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} Description ""Adarsh Engine — Local Photo Processing Engine - API on 127.0.0.1:4765"""; \
     Flags: runhidden
 Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} Start SERVICE_AUTO_START"; \
     Flags: runhidden
