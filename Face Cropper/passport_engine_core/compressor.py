@@ -14,8 +14,8 @@ Strategy:
     4. If the original file is already ≤ target KB, copy it unchanged.
 
 Output:
-    Creates a ``{folder}_compressed`` sibling directory for successes
-    and a ``{folder}_compressed_failed`` directory for failures.
+    Creates a ``compressed/`` sub-directory inside the source folder for
+    successes and a ``compressed_failed/`` sub-directory for failures.
 """
 
 import logging
@@ -75,9 +75,9 @@ def compress_folder(folder_path: str, target_kb: float) -> dict:
     if not images:
         raise ValueError(f"No images found in: {folder_path}")
 
-    # Output directories — sibling to source
-    out_dir = src.parent / (src.name + "_compressed")
-    fail_dir = src.parent / (src.name + "_compressed_failed")
+    # Output directories — inside the source folder
+    out_dir  = src / "compressed"
+    fail_dir = src / "compressed_failed"
     out_dir.mkdir(parents=True, exist_ok=True)
     fail_dir.mkdir(parents=True, exist_ok=True)
 

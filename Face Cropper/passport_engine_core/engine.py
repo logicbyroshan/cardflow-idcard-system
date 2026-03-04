@@ -211,11 +211,11 @@ def process_folder(folder_path: str) -> Dict[str, Any]:
     Process a folder of portrait images through the passport crop
     pipeline.
 
-    Output folders are created **next to the input folder**::
+    Output folders are created **inside the input folder**::
 
         input:   C:/Users/Name/Photos
-        output:  C:/Users/Name/Photos_cropped/
-                 C:/Users/Name/Photos_failed/
+        output:  C:/Users/Name/Photos/cropped/
+                 C:/Users/Name/Photos/failed/
 
     Args:
         folder_path: Path to a directory containing image files.
@@ -230,7 +230,7 @@ def process_folder(folder_path: str) -> Dict[str, Any]:
     if not folder.is_dir():
         raise ValueError(f"Path is not a directory: {folder_path}")
 
-    # Collect images.
+    # Collect images (only files — skips cropped/failed subdirs automatically).
     image_paths = _collect_image_paths(folder)
 
     if len(image_paths) > config.MAX_IMAGES_PER_ZIP:
@@ -239,10 +239,11 @@ def process_folder(folder_path: str) -> Dict[str, Any]:
             f"maximum allowed is {config.MAX_IMAGES_PER_ZIP}."
         )
 
-    # Output dirs: next to the input folder, named after it.
-    cropped_dir, failed_dir = _build_output_dirs(
-        folder.parent, folder.name,
-    )
+    # Output dirs: inside the input folder itself.
+    cropped_dir = folder / "cropped"
+    failed_dir  = folder / "failed"
+    cropped_dir.mkdir(parents=True, exist_ok=True)
+    failed_dir.mkdir(parents=True, exist_ok=True)
 
     if not image_paths:
         return _empty_summary(cropped_dir, failed_dir)
