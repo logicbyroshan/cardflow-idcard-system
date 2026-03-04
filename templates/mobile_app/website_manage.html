@@ -92,6 +92,8 @@
                                 <template x-if="reel.thumbnail_url">
                                     <img :src="reel.thumbnail_url"
                                          :alt="reel.title"
+                                         loading="lazy"
+                                         decoding="async"
                                          class="absolute inset-0 w-full h-full object-cover">
                                 </template>
                                 <template x-if="!reel.thumbnail_url">
@@ -288,7 +290,8 @@
                     <!-- Video selected indicator -->
                     <div x-show="reelVideoFile" class="mt-2 flex items-center gap-2 px-3 py-2 bg-green-50 rounded-xl border border-green-200">
                         <i class="fa-solid fa-circle-check text-green-500 text-sm"></i>
-                        <span class="text-[11px] text-green-700 font-semibold truncate" x-text="reelVideoFile ? reelVideoFile.name : ''"></span>
+                        <span class="text-[11px] text-green-700 font-semibold truncate flex-1" x-text="reelVideoFile ? reelVideoFile.name : ''"></span>
+                        <span class="text-[10px] text-green-500 flex-shrink-0" x-text="reelVideoSize"></span>
                     </div>
                 </div>
 
@@ -376,10 +379,7 @@ function websiteManageApp() {
         reelTitle: '',
         reelVideoFile: null,
         reelVideoPreview: null,
-        reelThumbnailFile: null,
-        reelThumbnailName: '',
-
-        uploading: false,
+            reelVideoSize: '',
         toast: { show: false, ok: true, msg: '' },
 
         init() {
@@ -404,8 +404,19 @@ function websiteManageApp() {
             this.pendingFiles = [];
         },
         handlePortfolioFiles(e) {
+            const MAX_FILES = 20;
+            const MAX_MB = 15;
             const files = Array.from(e.target.files || []);
-            files.forEach(file => {
+            if (this.pendingFiles.length + files.length > MAX_FILES) {
+                this.showToast(`Maximum ${MAX_FILES} images per upload`, false);
+                e.target.value = '';
+                return;
+            }
+            const oversized = files.filter(f => f.size > MAX_MB * 1024 * 1024);
+            if (oversized.length) {
+                this.showToast(`${oversized.length} file(s) exceed ${MAX_MB} MB and were skipped`, false);
+            }
+            files.filter(f => f.size <= MAX_MB * 1024 * 1024).forEach(file => {
                 const reader = new FileReader();
                 reader.onload = ev => {
                     this.pendingFiles.push({ file, preview: ev.target.result });
@@ -451,6 +462,7 @@ function websiteManageApp() {
             this.reelTitle = '';
             this.reelVideoFile = null;
             this.reelVideoPreview = null;
+            this.reelVideoSize = '';
             this.reelThumbnailFile = null;
             this.reelThumbnailName = '';
             this.reelSheetOpen = true;
@@ -461,7 +473,14 @@ function websiteManageApp() {
         handleReelVideo(e) {
             const file = e.target.files[0];
             if (!file) return;
+            const MAX_VIDEO_MB = 100;
+            if (file.size > MAX_VIDEO_MB * 1024 * 1024) {
+                this.showToast(`Video exceeds ${MAX_VIDEO_MB} MB limit`, false);
+                e.target.value = '';
+                return;
+            }
             this.reelVideoFile = file;
+            this.reelVideoSize = (file.size / (1024 * 1024)).toFixed(1) + ' MB';
             if (this.reelVideoPreview) URL.revokeObjectURL(this.reelVideoPreview);
             this.reelVideoPreview = URL.createObjectURL(file);
             e.target.value = '';
@@ -469,6 +488,12 @@ function websiteManageApp() {
         handleReelThumbnail(e) {
             const file = e.target.files[0];
             if (!file) return;
+            const MAX_THUMB_MB = 10;
+            if (file.size > MAX_THUMB_MB * 1024 * 1024) {
+                this.showToast(`Thumbnail exceeds ${MAX_THUMB_MB} MB limit`, false);
+                e.target.value = '';
+                return;
+            }
             this.reelThumbnailFile = file;
             this.reelThumbnailName = file.name;
             e.target.value = '';

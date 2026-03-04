@@ -1392,13 +1392,24 @@ def website_manage(request):
 
     from website.models import PortfolioCategory, Reel
 
-    categories = PortfolioCategory.objects.filter(is_active=True).annotate(
-        photo_count=Count('items', filter=Q(items__is_active=True))
-    ).order_by('order', 'name')
+    # Fetch only the fields needed for JSON serialisation — no full ORM hydration
+    categories = (
+        PortfolioCategory.objects
+        .filter(is_active=True)
+        .annotate(photo_count=Count('items', filter=Q(items__is_active=True)))
+        .order_by('order', 'name')
+        .only('id', 'name', 'icon', 'order')
+    )
 
-    reels = Reel.objects.filter(is_active=True).order_by('order', '-created_at')
+    reels = (
+        Reel.objects
+        .filter(is_active=True)
+        .order_by('order', '-created_at')
+        .only('id', 'title', 'thumbnail', 'order')
+    )
 
-    _, perms = _client_ctx(user)
+    # Skip the client lookup — website_manage doesn’t need a client object
+    perms = PermissionService.get_permission_context(user)
 
     categories_json = json.dumps([
         {'id': c.id, 'name': c.name, 'icon': c.icon, 'count': c.photo_count}
@@ -1426,7 +1437,8 @@ def website_manage(request):
 def api_portfolio_upload(request):
     """Upload one or more images into a portfolio category from mobile."""
     user = request.user
-    if not PermissionService.has(user, 'perm_website_view'):
+    # perm_website_edit required — view-only users must not be able to write content
+    if not PermissionService.has(user, 'perm_website_edit'):
         return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
 
     from website.models import PortfolioCategory
@@ -1439,6 +1451,8 @@ def api_portfolio_upload(request):
         return JsonResponse({'success': False, 'message': 'category_id required'}, status=400)
     if not files:
         return JsonResponse({'success': False, 'message': 'No images provided'}, status=400)
+    if len(files) > 20:
+        return JsonResponse({'success': False, 'message': 'Maximum 20 images per upload'}, status=400)
 
     try:
         get_object_or_404(PortfolioCategory, id=category_id, is_active=True)
@@ -1463,12 +1477,20 @@ def api_portfolio_upload(request):
 def api_reel_upload(request):
     """Create a new reel with a video file (and optional thumbnail)."""
     user = request.user
-    if not PermissionService.has(user, 'perm_website_view'):
+    # perm_website_edit required — view-only users must not be able to write content
+    if not PermissionService.has(user, 'perm_website_edit'):
         return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
 
     from website.services import ReelService
 
-    title = request.POST.get('title', '').strip()
+    # Strip to plain text — prevent script injection via title field
+    import html as _html
+    raw_title = request.POST.get('title', '')
+    title = _html.unescape(raw_title).strip()[:255]
+    # Remove any HTML/script tags
+    import re as _re
+    title = _re.sub(r'<[^>]+>', '', title).strip()
+
     video_file = request.FILES.get('video')
     thumbnail = request.FILES.get('thumbnail')
 
