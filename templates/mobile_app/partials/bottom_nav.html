@@ -13,12 +13,12 @@
                     <span class="pwa-nav-label">Home</span>
                 </a>
 
-                <!-- Clients -->
+                <!-- Active Clients (admin) / Groups (client) -->
                 {% if is_super_admin or is_admin_staff %}
                 <a href="{% url 'mobile_app:clients_list' %}"
                    class="pwa-nav-item flex-1 {% if request.resolver_match.url_name == 'clients_list' or request.resolver_match.url_name == 'client_groups' %}pwa-nav-active{% endif %}">
-                    <i class="fa-solid fa-building pwa-nav-icon"></i>
-                    <span class="pwa-nav-label">Clients</span>
+                    <i class="fa-solid fa-users-between-lines pwa-nav-icon"></i>
+                    <span class="pwa-nav-label">Active Clients</span>
                 </a>
                 {% else %}
                 <a href="{% url 'mobile_app:groups_overview' %}"
@@ -36,9 +36,14 @@
                        aria-label="Search"></a>
                 </div>
 
-                <!-- Staff — admin roles + client can manage staff;
-                     client_staff gets Profile link instead -->
-                {% if is_super_admin or is_admin_staff or is_client %}
+                <!-- Website (admin) / Staff (client) / Profile (client_staff) -->
+                {% if is_super_admin or is_admin_staff %}
+                <a href="{% url 'mobile_app:website_manage' %}"
+                   class="pwa-nav-item flex-1 {% if request.resolver_match.url_name == 'website_manage' %}pwa-nav-active{% endif %}">
+                    <i class="fa-solid fa-globe pwa-nav-icon"></i>
+                    <span class="pwa-nav-label">Website</span>
+                </a>
+                {% elif is_client %}
                 <a href="{% url 'mobile_app:staff_manage' %}"
                    class="pwa-nav-item flex-1 {% if request.resolver_match.url_name == 'staff_manage' %}pwa-nav-active{% endif %}">
                     <i class="fa-solid fa-users pwa-nav-icon"></i>
