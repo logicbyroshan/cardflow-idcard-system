@@ -68,7 +68,15 @@
                 </td>
             </tr>
             {% empty %}
-            <tr><td colspan="4" class="wa-empty">No clients added yet.</td></tr>
+            <tr>
+                <td colspan="4">
+                    <div class="empty-state">
+                        <i class="fa-solid fa-building-slash"></i>
+                        <h3>No Clients Added</h3>
+                        <p>No clients have been linked to the website yet.</p>
+                    </div>
+                </td>
+            </tr>
             {% endfor %}
         </tbody>
         </table>

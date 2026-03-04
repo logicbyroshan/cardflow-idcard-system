@@ -149,7 +149,15 @@
                         </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="8" class="wa-empty">No portfolio items yet.</td></tr>
+                    <tr>
+                        <td colspan="8">
+                            <div class="empty-state">
+                                <i class="fa-solid fa-images"></i>
+                                <h3>No Portfolio Items</h3>
+                                <p>Add your first portfolio item to showcase your work.</p>
+                            </div>
+                        </td>
+                    </tr>
                     {% endfor %}
                 </tbody>
             </table>

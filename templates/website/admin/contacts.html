@@ -79,12 +79,18 @@
                             </div>
                         </td>
                         <td>
-                            <select class="wa-status-select status-{{ c.status }}" onchange="updateContactStatus({{ c.id }}, this.value)">
-                                <option value="new" {% if c.status == 'new' %}selected{% endif %}>● New</option>
-                                <option value="read" {% if c.status == 'read' %}selected{% endif %}>◎ Read</option>
-                                <option value="replied" {% if c.status == 'replied' %}selected{% endif %}>✓ Replied</option>
-                                <option value="closed" {% if c.status == 'closed' %}selected{% endif %}>✕ Closed</option>
-                            </select>
+                            <div class="custom-dropdown wa-status-dropdown" data-id="{{ c.id }}">
+                                <button type="button" class="dropdown-toggle wa-status-toggle status-{{ c.status }}" onclick="this.closest('.wa-status-dropdown').classList.toggle('open');event.stopPropagation();">
+                                    <span>{% if c.status == 'new' %}● New{% elif c.status == 'read' %}◎ Read{% elif c.status == 'replied' %}✓ Replied{% elif c.status == 'closed' %}✕ Closed{% endif %}</span>
+                                    <i class="fa-solid fa-chevron-down"></i>
+                                </button>
+                                <div class="dropdown-options">
+                                    <div class="dropdown-option{% if c.status == 'new' %} selected{% endif %}" onclick="pickContactStatus(this,'new')">● New</div>
+                                    <div class="dropdown-option{% if c.status == 'read' %} selected{% endif %}" onclick="pickContactStatus(this,'read')">◎ Read</div>
+                                    <div class="dropdown-option{% if c.status == 'replied' %} selected{% endif %}" onclick="pickContactStatus(this,'replied')">✓ Replied</div>
+                                    <div class="dropdown-option{% if c.status == 'closed' %} selected{% endif %}" onclick="pickContactStatus(this,'closed')">✕ Closed</div>
+                                </div>
+                            </div>
                         </td>
                         <td class="wa-actions">
                             <button class="btn btn-icon" title="View Full Message" onclick="viewContact({{ c.id }})">
@@ -101,7 +107,15 @@
                         </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="6" class="wa-empty">No contact messages yet.</td></tr>
+                    <tr>
+                        <td colspan="6">
+                            <div class="empty-state">
+                                <i class="fa-solid fa-envelope-open"></i>
+                                <h3>No Messages Yet</h3>
+                                <p>Contact form submissions will appear here.</p>
+                            </div>
+                        </td>
+                    </tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -191,6 +205,25 @@ function closeContactModal() {
     document.getElementById('contactModal').classList.remove('show');
 }
 
+function pickContactStatus(optEl, status) {
+    const drop = optEl.closest('.wa-status-dropdown');
+    drop.classList.remove('open');
+    const id = drop.dataset.id;
+    const labels = { new: '● New', read: '◎ Read', replied: '✓ Replied', closed: '✕ Closed' };
+    const toggle = drop.querySelector('.dropdown-toggle');
+    toggle.querySelector('span').textContent = labels[status] || status;
+    toggle.className = 'dropdown-toggle wa-status-toggle status-' + status;
+    drop.querySelectorAll('.dropdown-option').forEach(o => o.classList.remove('selected'));
+    optEl.classList.add('selected');
+    updateContactStatus(id, status);
+}
+
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.wa-status-dropdown')) {
+        document.querySelectorAll('.wa-status-dropdown.open').forEach(d => d.classList.remove('open'));
+    }
+});
+
 function updateContactStatus(id, status) {
     fetch('/panel/website/api/contacts/' + id + '/status/', {
         method: 'POST',
@@ -206,10 +239,6 @@ function updateContactStatus(id, status) {
             const row = document.querySelector('tr[data-id="' + id + '"]');
             if (row) {
                 row.classList.remove('wa-row-highlight');
-                const select = row.querySelector('.wa-status-select');
-                if (select) {
-                    select.className = 'wa-status-select status-' + status;
-                }
             }
             if (typeof showToast === 'function') showToast('Status updated', true);
         } else {

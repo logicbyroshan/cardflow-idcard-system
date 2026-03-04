@@ -81,7 +81,15 @@
                 </td>
             </tr>
             {% empty %}
-            <tr><td colspan="5" class="wa-empty">No reviews yet. Add or wait for public submissions.</td></tr>
+            <tr>
+                <td colspan="5">
+                    <div class="empty-state">
+                        <i class="fa-solid fa-star"></i>
+                        <h3>No Reviews Yet</h3>
+                        <p>Reviews will appear here once submitted or added.</p>
+                    </div>
+                </td>
+            </tr>
             {% endfor %}
         </tbody>
         </table>
