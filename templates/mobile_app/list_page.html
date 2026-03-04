@@ -46,6 +46,7 @@ const LIST_TYPE = '{{ list_type }}';
 const ALL_STUDENT_IDS = [{% for s in students %}{{ s.id }}{% if not forloop.last %},{% endif %}{% endfor %}];
 const TOTAL_COUNT = {{ total_count }};
 const STUDENTS_DATA = JSON.parse('{{ students_json|escapejs }}');
+const IS_VIEW_ONLY = {{ view_only_list|yesno:"true,false" }};
 </script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.1/dist/cropper.min.css">
 <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.1/dist/cropper.min.js"></script>

@@ -251,7 +251,14 @@ def clients_list(request):
         return redirect('mobile_app:home')
 
     from client.models import Client
-    clients = Client.objects.all().annotate(
+    base_qs = Client.objects.all()
+    # Admin staff: restrict to their assigned clients only
+    if PermissionService.is_admin_staff(user):
+        staff = getattr(user, 'staff_profile', None)
+        if staff:
+            assigned_ids = list(staff.assigned_clients.values_list('id', flat=True))
+            base_qs = base_qs.filter(id__in=assigned_ids)
+    clients = base_qs.annotate(
         tables_count=Count(
             'id_card_groups__tables',
             filter=Q(id_card_groups__tables__is_active=True),
@@ -465,6 +472,8 @@ def card_list(request, table_id, status):
         'classes': all_classes,
         'sections': all_sections,
         'table_fields': json.dumps(table_fields, default=str),
+        # View-only mode: clients on approved/download lists can only view, not act
+        'view_only_list': status in ('approved', 'download') and not PermissionService.is_any_admin(user),
         **perms,
     })
 

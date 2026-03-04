@@ -5,10 +5,12 @@
             <thead class="sticky top-0 z-10">
                 <tr class="bg-gradient-to-r from-brand-light to-brand-dark text-white">
                     <th class="px-2 py-2 text-left w-8">
+                        {% if not view_only_list %}
                         <label class="custom-checkbox">
                             <input type="checkbox" x-model="selectAll" @change="toggleSelectAll()">
                             <span class="checkmark checkmark-white"></span>
                         </label>
+                        {% endif %}
                     </th>
                     <th class="px-1 py-2 text-left text-[10px] uppercase tracking-wider font-semibold w-8">#</th>
                     <th class="px-1 py-2 text-left text-[10px] uppercase tracking-wider font-semibold w-12">Photo</th>
@@ -26,15 +28,17 @@
                 {% for student in students %}
                 <tr
                     data-sid="{{ student.id }}"
-                    class="hover:bg-brand-light/5 transition-colors cursor-pointer"
-                    :class="selectedIds.includes({{ student.id }}) ? 'bg-blue-50/80 !border-l-2 !border-l-brand-light' : ''"
-                    @click="toggleSelect({{ student.id }})"
+                    class="hover:bg-brand-light/5 transition-colors {% if not view_only_list %}cursor-pointer{% endif %}"
+                    :class="{% if not view_only_list %}selectedIds.includes({{ student.id }}) ? 'bg-blue-50/80 !border-l-2 !border-l-brand-light' : ''{% else %}''{% endif %}"
+                    {% if not view_only_list %}@click="toggleSelect({{ student.id }})"{% endif %}
                 >
                     <td class="px-2 py-2">
+                        {% if not view_only_list %}
                         <label class="custom-checkbox" @click.stop>
                             <input type="checkbox" :checked="selectedIds.includes({{ student.id }})" @change="toggleSelect({{ student.id }})">
                             <span class="checkmark"></span>
                         </label>
+                        {% endif %}
                     </td>
                     <td class="px-1 py-2 text-gray-400 font-medium text-center">{{ forloop.counter }}</td>
                     <td class="px-1 py-1.5">

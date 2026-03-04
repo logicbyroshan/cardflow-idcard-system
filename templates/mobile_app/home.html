@@ -62,7 +62,7 @@
              BLOCK 2 - RECENT CLIENT UPDATES (admin only)
              Scrollable both axes; tap row to expand status detail
         --------------------------------------------------- -->
-        {% if is_super_admin or is_admin_staff %}
+        {% if is_super_admin or (is_admin_staff and perm_idcard_client_list) %}
         {% if recent_client_updates %}
         <div class="px-3 pb-2 pt-2">
             <div class="flex items-center justify-between mb-2">
@@ -147,18 +147,20 @@
         <div class="pwa-quick-actions-wrap px-4 py-3">
             <div class="flex gap-2.5">
                 {% if is_super_admin or is_admin_staff %}
-                <!-- ADMIN: Active Clients (big primary) -->
+                <!-- ADMIN / ADMIN-STAFF: Clients list -->
                 <a href="{% url 'mobile_app:clients_list' %}"
-                   class="pwa-qa-btn pwa-qa-primary flex-[2.5]">
+                   class="pwa-qa-btn pwa-qa-primary {% if is_super_admin or perm_website_view %}flex-[2.5]{% else %}flex-1{% endif %}">
                     <i class="fa-solid fa-users-between-lines text-base"></i>
-                    <span>Active Clients</span>
+                    {% if is_super_admin %}<span>Active Clients</span>{% else %}<span>Assigned Clients</span>{% endif %}
                 </a>
-                <!-- Manage Website (secondary, admin only) -->
+                <!-- Manage Website: super_admin always, admin_staff only if perm_website_view -->
+                {% if is_super_admin or perm_website_view %}
                 <a href="/panel/manage-website/"
                    class="pwa-qa-btn pwa-qa-secondary flex-1">
                     <i class="fa-solid fa-globe text-sm"></i>
                     <span>Website</span>
                 </a>
+                {% endif %}
                 {% else %}
                 <!-- CLIENT: Go to their ID Card Groups page -->
                 <a href="{% url 'mobile_app:groups_overview' %}"
