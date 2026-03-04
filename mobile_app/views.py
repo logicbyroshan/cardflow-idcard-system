@@ -978,19 +978,21 @@ def search_page(request):
     results = []
 
     if query and len(query) >= 2:
-        cards_qs = IDCard.objects.filter(
-            table__group__client=client,
-        ).select_related('table', 'table__group').order_by('-updated_at')
+        from django.db.models.functions import Cast
+        from django.db.models import TextField as TF
 
-        # Search in field_data
-        cards_qs = cards_qs.filter(
-            Q(field_data__NAME__icontains=query) |
-            Q(field_data__name__icontains=query) |
-            Q(field_data__Name__icontains=query) |
-            Q(field_data__ROLL_NO__icontains=query) |
-            Q(field_data__roll_no__icontains=query) |
-            Q(field_data__ID__icontains=query)
-        )[:50]
+        # Admins search all cards; clients search their own client only
+        if PermissionService.is_any_admin(user):
+            base_qs = IDCard.objects.select_related('table', 'table__group', 'table__group__client').order_by('-updated_at')
+        else:
+            base_qs = IDCard.objects.filter(
+                table__group__client=client,
+            ).select_related('table', 'table__group').order_by('-updated_at')
+
+        # Cast field_data JSON to text so we can search ANY key/value (incl. 'ROLL NO' with space)
+        cards_qs = base_qs.annotate(
+            fd_str=Cast('field_data', output_field=TF())
+        ).filter(fd_str__icontains=query)[:50]
 
         for card in cards_qs:
             fd = card.field_data or {}
@@ -1009,8 +1011,10 @@ def search_page(request):
                 'roll_no': roll_no,
                 'status': card.status,
                 'table_name': card.table.name,
-                'group_name': card.table.group.name,
+                'group_name': getattr(card.table.group, 'name', ''),
+                'client_name': getattr(getattr(card.table.group, 'client', None), 'name', ''),
                 'photo_url': photo_url,
+                'table_id': card.table.id,
             })
 
     return render(request, 'mobile_app/search.html', {
@@ -1243,18 +1247,23 @@ def api_search(request):
     if not query or len(query) < 2:
         return JsonResponse({'success': True, 'data': {'results': [], 'count': 0}})
 
-    cards_qs = IDCard.objects.filter(
-        table__group__client=client,
-    ).select_related('table', 'table__group').order_by('-updated_at')
+    from django.db.models.functions import Cast
+    from django.db.models import TextField as TF
 
-    cards_qs = cards_qs.filter(
-        Q(field_data__NAME__icontains=query) |
-        Q(field_data__name__icontains=query) |
-        Q(field_data__Name__icontains=query) |
-        Q(field_data__ROLL_NO__icontains=query) |
-        Q(field_data__roll_no__icontains=query) |
-        Q(field_data__ID__icontains=query)
-    )[:30]
+    # Admins search all cards; clients search their own client only
+    if PermissionService.is_any_admin(user):
+        base_qs = IDCard.objects.select_related(
+            'table', 'table__group', 'table__group__client'
+        ).order_by('-updated_at')
+    else:
+        base_qs = IDCard.objects.filter(
+            table__group__client=client,
+        ).select_related('table', 'table__group').order_by('-updated_at')
+
+    # Cast JSON to text — searches ANY field including keys with spaces like 'ROLL NO'
+    cards_qs = base_qs.annotate(
+        fd_str=Cast('field_data', output_field=TF())
+    ).filter(fd_str__icontains=query)[:30]
 
     results = []
     for card in cards_qs:
@@ -1268,7 +1277,10 @@ def api_search(request):
             'roll_no': roll_no,
             'status': card.status,
             'table_name': card.table.name,
+            'group_name': getattr(card.table.group, 'name', ''),
+            'client_name': getattr(getattr(card.table.group, 'client', None), 'name', ''),
             'photo_url': photo_url,
+            'table_id': card.table.id,
         })
 
     return JsonResponse({'success': True, 'data': {'results': results, 'count': len(results)}})
