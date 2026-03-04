@@ -33,11 +33,12 @@ Required context:
                 <td>{{ client.updated_at|date:"d-m-Y H:i" }}</td>
             </tr>
             {% empty %}
-            <tr class="no-data-row">
-                <td colspan="6" class="no-data-cell">
-                    <div class="no-data">
+            <tr>
+                <td colspan="6">
+                    <div class="empty-state">
                         <i class="fa-solid fa-building-slash"></i>
-                        <span>No clients found</span>
+                        <h3>No Clients Found</h3>
+                        <p>No clients match your current filters. Try adjusting your search.</p>
                     </div>
                 </td>
             </tr>

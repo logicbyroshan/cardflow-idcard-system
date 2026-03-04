@@ -81,13 +81,13 @@
             {% endwith %}
             {% empty %}
             <tr>
-                <td colspan="{% if is_client or is_client_staff %}2{% else %}3{% endif %}" class="text-center p-4">
-                    <div class=\"empty-state\" style=\"display:block;\">
-                        <i class=\"fa-solid fa-table-list\"></i>
+                <td colspan="{% if is_client or is_client_staff %}2{% else %}3{% endif %}">
+                    <div class="empty-state">
+                        <i class="fa-solid fa-table-list"></i>
                         <h3>No Tables Found</h3>
                         <p>This client has no ID card tables yet. Go to Group Settings to create tables.</p>
-                        <a href=\"{% if is_client or is_client_staff %}{% url 'client:group_settings' %}{% else %}{% url 'group_settings' client.id %}{% endif %}\" class=\"btn btn-md btn-primary mt-2\">
-                            <i class=\"fa-solid fa-gear\"></i> Go to Group Settings
+                        <a href="{% if is_client or is_client_staff %}{% url 'client:group_settings' %}{% else %}{% url 'group_settings' client.id %}{% endif %}" class="btn btn-md btn-primary btn-sm mt-3">
+                            <i class="fa-solid fa-gear"></i> Go to Group Settings
                         </a>
                     </div>
                 </td>
