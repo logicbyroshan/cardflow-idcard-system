@@ -95,7 +95,7 @@
 (function () {
     const _API    = "{% url 'mobile_app:api_search' %}";
     const _TMPL   = document.getElementById('_card_url_tmpl').getAttribute('href');
-    const _BASE   = _TMPL.replace('123456789', '');   // e.g. "/app/card/"
+    const _BASE   = _TMPL.replace('/123456789/', '/');   // e.g. "/app/card/"
 
     const _initResults = JSON.parse(document.getElementById('_search_init_results').textContent || '[]');
     const _initQuery   = JSON.parse(document.getElementById('_search_init_query').textContent   || '""') || '';

@@ -485,7 +485,7 @@ html, body {
 /* Floating Search Button (center) */
 .pwa-nav-search-btn {
     position: absolute;
-    bottom: 40px;
+    bottom: 12px;
     left: 50%;
     transform: translateX(-50%);
     width: 54px;
@@ -935,11 +935,11 @@ html, body {
 .pwa-ct {
     width: 100%;
     border-collapse: collapse;
-    min-width: 320px;
+    min-width: 420px;
 }
 
 .pwa-ct th {
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.06em;
@@ -952,8 +952,8 @@ html, body {
 }
 
 .pwa-ct td {
-    padding: 7px 8px;
-    font-size: 11px;
+    padding: 9px 10px;
+    font-size: 12px;
     border-bottom: 1px solid #f9fafb;
     vertical-align: middle;
 }

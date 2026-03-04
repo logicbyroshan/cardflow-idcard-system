@@ -75,12 +75,11 @@
                         <table class="pwa-ct">
                             <thead>
                                 <tr>
-                                    <th style="min-width:100px;">Client</th>
-                                    <th class="text-center" style="width:38px;">Pend.</th>
-                                    <th class="text-center" style="width:38px;">Verif.</th>
-                                    <th class="text-center" style="width:38px;">Appv.</th>
-                                    <th class="text-center" style="width:38px;">Dwnld</th>
-                                    <th style="width:28px;"></th>
+                                    <th style="min-width:110px;">Client</th>
+                                    <th class="text-center" style="width:44px;">Pend.</th>
+                                    <th class="text-center" style="width:44px;">Verif.</th>
+                                    <th class="text-center" style="width:44px;">Appv.</th>
+                                    <th class="text-center" style="width:44px;">Dwnld</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -101,21 +100,6 @@
                                     <td class="text-center font-bold text-green-600 text-[11px]">{{ rc.verified }}</td>
                                     <td class="text-center font-bold text-blue-600 text-[11px]">{{ rc.approved }}</td>
                                     <td class="text-center font-bold text-purple-600 text-[11px]">{{ rc.download }}</td>
-                                    <td class="text-center">
-                                        {% if is_super_admin or is_admin_staff %}
-                                        <a href="{% url 'mobile_app:client_groups' rc.client_id %}"
-                                           @click.stop
-                                           class="w-5 h-5 rounded-md bg-indigo-50 text-indigo-400 inline-flex items-center justify-center">
-                                            <i class="fa-solid fa-arrow-right text-[8px]"></i>
-                                        </a>
-                                        {% else %}
-                                        <a href="{% url 'mobile_app:groups_overview' %}"
-                                           @click.stop
-                                           class="w-5 h-5 rounded-md bg-indigo-50 text-indigo-400 inline-flex items-center justify-center">
-                                            <i class="fa-solid fa-arrow-right text-[8px]"></i>
-                                        </a>
-                                        {% endif %}
-                                    </td>
                                 </tr>
                                 {% if rc.tables %}
                                 {% for tbl in rc.tables %}
@@ -133,16 +117,10 @@
                                     <td class="text-center font-bold text-green-600 text-[11px]">{{ tbl.verified }}</td>
                                     <td class="text-center font-bold text-blue-600 text-[11px]">{{ tbl.approved }}</td>
                                     <td class="text-center font-bold text-purple-600 text-[11px]">{{ tbl.download }}</td>
-                                    <td class="text-center">
-                                        <a href="{% url 'mobile_app:card_list' table_id=tbl.id status='pending' %}"
-                                           class="w-5 h-5 rounded-md bg-indigo-50 text-indigo-400 inline-flex items-center justify-center">
-                                            <i class="fa-solid fa-arrow-right text-[8px]"></i>
-                                        </a>
-                                    </td>
                                 </tr>
                                 {% empty %}
                                 <tr x-show="expanded === '{{ rc.client_id }}'" style="display:none;">
-                                    <td colspan="6" class="py-1 px-3 text-[10px] text-gray-400">No tables found</td>
+                                    <td colspan="5" class="py-1 px-3 text-[10px] text-gray-400">No tables found</td>
                                 </tr>
                                 {% endfor %}
                                 {% endif %}

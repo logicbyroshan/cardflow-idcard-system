@@ -612,7 +612,7 @@ window.loadEmailLogs = function (page) {
 
   const status = document.getElementById('emailStatusFilter')?.value || '';
   const type   = document.getElementById('emailTypeFilter')?.value   || '';
-  let url = '/api/email-logs/?page=' + _emailPage + '&per_page=50';
+  let url = (window.EMAIL_LOGS_API_URL || '/api/email-logs/') + '?page=' + _emailPage + '&per_page=50';
   if (status) url += '&status='     + encodeURIComponent(status);
   if (type)   url += '&email_type=' + encodeURIComponent(type);
 
@@ -701,7 +701,7 @@ window.resendEmail = function (logId) {
   if (!confirm('Resend welcome email for this log entry? A new temporary password will be generated for the user.')) return;
   const actionCell = document.getElementById('email-log-action-' + logId);
   if (actionCell) actionCell.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="color:#667eea;"></i>';
-  fetch('/api/email-resend/' + logId + '/', {
+  fetch((window.EMAIL_RESEND_BASE_URL || '/api/email-resend/') + logId + '/', {
     method: 'POST',
     headers: { 'X-CSRFToken': getCSRFToken(), 'X-Requested-With': 'XMLHttpRequest' }
   })
