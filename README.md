@@ -3,6 +3,7 @@
 A production-grade, full-stack Django application for professional ID card design, printing, and management. Built for schools, colleges, and organizations to manage bulk ID card workflows end-to-end — from data upload to final print-ready output.
 
 > **Live:** [adarshbhopal.in](https://adarshbhopal.in) (website) · [panel.adarshbhopal.in](https://panel.adarshbhopal.in) (admin)
+> **Version:** v2.18.0
 
 ---
 
@@ -19,18 +20,20 @@ A production-grade, full-stack Django application for professional ID card desig
 9. [Middleware Stack](#middleware-stack)
 10. [Services Architecture](#services-architecture)
 11. [Background Task System](#background-task-system)
-12. [Notification System](#notification-system)
-13. [Activity Logging & Audit Trail](#activity-logging--audit-trail)
-14. [Export System](#export-system)
-15. [Face Cropper Engine](#face-cropper-engine)
-16. [URL Structure & Routing](#url-structure--routing)
-17. [PWA — Mobile App](#pwa--mobile-app)
-18. [Public Website](#public-website)
-19. [Email System](#email-system)
-20. [Setup & Installation](#setup--installation)
-21. [Environment Variables](#environment-variables)
-22. [Deployment](#deployment)
-23. [License](#license)
+12. [Image & Media Processing Pipeline](#image--media-processing-pipeline)
+13. [Notification System](#notification-system)
+14. [Activity Logging & Audit Trail](#activity-logging--audit-trail)
+15. [Export System](#export-system)
+16. [Face Cropper Engine](#face-cropper-engine)
+17. [URL Structure & Routing](#url-structure--routing)
+18. [PWA — Mobile App](#pwa--mobile-app)
+19. [Public Website](#public-website)
+20. [Email System](#email-system)
+21. [Setup & Installation](#setup--installation)
+22. [Environment Variables](#environment-variables)
+23. [Deployment](#deployment)
+24. [Changelog](#changelog)
+25. [License](#license)
 
 ---
 
@@ -46,7 +49,8 @@ A production-grade, full-stack Django application for professional ID card desig
 | **Excel** | openpyxl, xlrd | XLSX import/export |
 | **Word** | python-docx | DOCX document generation |
 | **Digital Signing** | pyHanko | PDF digital signatures |
-| **Image Processing** | Pillow | Resize, crop, thumbnail generation |
+| **Image Processing** | Pillow | Resize, crop, watermark, WebP conversion, size compression |
+| **Video Processing** | ffmpeg (subprocess) | H.264 compression, scale, re-encode for web delivery |
 | **Static Files** | WhiteNoise | Production-ready static serving with cache busting |
 | **PWA** | Service Worker, Web App Manifest | Installable mobile app experience |
 | **Deployment** | Gunicorn, Nginx, systemd | Production WSGI serving |
@@ -58,95 +62,99 @@ A production-grade, full-stack Django application for professional ID card desig
 ## Architecture Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        NGINX (Reverse Proxy)                        │
-│                   SSL termination · Static files                    │
-├─────────────┬───────────────────────────────────┬───────────────────┤
-│  Website    │         Panel Subdomain           │   PWA (/app/)     │
-│  Subdomain  │   panel.adarshbhopal.in           │                   │
-│  (public)   │                                   │                   │
-└──────┬──────┴─────────────────┬─────────────────┴──────┬────────────┘
-       │                        │                         │
-       ▼                        ▼                         ▼
-┌──────────────┐  ┌──────────────────────────┐  ┌────────────────────┐
-│  Website     │  │     Admin Panel           │  │   Mobile PWA       │
-│  URL Config  │  │     URL Config            │  │   (Alpine.js)      │
-│  (public     │  │  ┌─────────────────────┐  │  │                    │
-│   landing,   │  │  │   Django Views      │  │  │  Camera capture,   │
-│   portfolio, │  │  │  (ultra-thin)       │  │  │  card list,        │
-│   contact)   │  │  │       │             │  │  │  status changes    │
-│              │  │  │       ▼             │  │  │                    │
-│              │  │  │  Service Layer      │  │  │                    │
-│              │  │  │  ┌───────────────┐  │  │  │                    │
-│              │  │  │  │ Permission    │  │  │  │                    │
-│              │  │  │  │ Service       │  │  │  │                    │
-│              │  │  │  ├───────────────┤  │  │  │                    │
-│              │  │  │  │ IDCard        │  │  │  │                    │
-│              │  │  │  │ Service       │  │  │  │                    │
-│              │  │  │  ├───────────────┤  │  │  │                    │
-│              │  │  │  │ Workflow      │  │  │  │                    │
-│              │  │  │  │ Service       │  │  │  │                    │
-│              │  │  │  ├───────────────┤  │  │  │                    │
-│              │  │  │  │ Export        │  │  │  │                    │
-│              │  │  │  │ Service       │  │  │  │                    │
-│              │  │  │  ├───────────────┤  │  │  │                    │
-│              │  │  │  │ Background    │  │  │  │                    │
-│              │  │  │  │ Worker (1)    │  │  │  │                    │
-│              │  │  │  └───────┬───────┘  │  │  │                    │
-│              │  │  │          │          │  │  │                    │
-│              │  │  │          ▼          │  │  │                    │
-│              │  │  │    Django ORM       │  │  │                    │
-│              │  │  └─────────────────────┘  │  │                    │
-└──────────────┘  └──────────────────────────┘  └────────────────────┘
-                              │
-                              ▼
-                  ┌──────────────────────┐
-                  │   SQLite / PostgreSQL │
-                  └──────────────────────┘
++---------------------------------------------------------------------+
+|                        NGINX (Reverse Proxy)                        |
+|                   SSL termination · Static files                    |
++-------------+-----------------------------------+-------------------+
+|  Website    |         Panel Subdomain           |   PWA (/app/)     |
+|  Subdomain  |   panel.adarshbhopal.in           |                   |
+|  (public)   |                                   |                   |
++------+------+-----------------+-----------------+------+------------+
+       |                        |                         |
+       v                        v                         v
++--------------+  +--------------------------+  +--------------------+
+|  Website     |  |     Admin Panel          |  |   Mobile PWA       |
+|  URL Config  |  |     URL Config           |  |   (Alpine.js)      |
+|  (public     |  |  +---------------------+  |  |                    |
+|   landing,   |  |  |   Django Views      |  |  |  Camera capture,   |
+|   portfolio, |  |  |  (ultra-thin)       |  |  |  card list,        |
+|   contact)   |  |  |       |             |  |  |  status changes,   |
+|              |  |  |       v             |  |  |  website manage    |
+|              |  |  |  Service Layer      |  |  |                    |
+|              |  |  |  +---------------+  |  |  |                    |
+|              |  |  |  | Permission    |  |  |  |                    |
+|              |  |  |  | Service       |  |  |  |                    |
+|              |  |  |  +---------------+  |  |  |                    |
+|              |  |  |  | IDCard        |  |  |  |                    |
+|              |  |  |  | Service       |  |  |  |                    |
+|              |  |  |  +---------------+  |  |  |                    |
+|              |  |  |  | Workflow      |  |  |  |                    |
+|              |  |  |  | Service       |  |  |  |                    |
+|              |  |  |  +---------------+  |  |  |                    |
+|              |  |  |  | Export        |  |  |  |                    |
+|              |  |  |  | Service       |  |  |  |                    |
+|              |  |  |  +---------------+  |  |  |                    |
+|              |  |  |  | Media         |  |  |  |                    |
+|              |  |  |  | Pipeline      |  |  |  |                    |
+|              |  |  |  +---------------+  |  |  |                    |
+|              |  |  |  | Background    |  |  |  |                    |
+|              |  |  |  | Worker (1)    |  |  |  |                    |
+|              |  |  |  +-------+-------+  |  |  |                    |
+|              |  |  |          |          |  |  |                    |
+|              |  |  |          v          |  |  |                    |
+|              |  |  |    Django ORM       |  |  |                    |
+|              |  |  +---------------------+  |  |                    |
++--------------+  +--------------------------+  +--------------------+
+                              |
+                              v
+                  +----------------------+
+                  |   SQLite / PostgreSQL |
+                  +----------------------+
 
-                  ┌──────────────────────┐
-                  │   Face Cropper       │
-                  │   (FastAPI @ :4765)  │
-                  │   Local Windows Svc  │
-                  └──────────────────────┘
+                  +----------------------+
+                  |   Face Cropper       |
+                  |   (FastAPI @ :4765)  |
+                  |   Local Windows Svc  |
+                  +----------------------+
 ```
 
 ### Design Principles
 
 1. **Ultra-Thin Views** — Views only parse requests, call services, and return responses. No model mutations (`.save()`, `.create()`, `.delete()`) in view files.
-2. **Service Layer Authority** — All business logic lives in service classes under `core/services/`. Each service is the single authority for its domain.
+2. **Service Layer Authority** — All business logic lives in service classes under `core/services/` and app-level `services.py`. Each service is the single authority for its domain.
 3. **Permission-First** — Every API and page view checks permissions via `PermissionService` before any operation. Decorators enforce role requirements.
-4. **Memory-Conscious** — Designed for 1 GB RAM VPS. Background worker uses single thread. Files processed from disk, never loaded fully into memory.
+4. **Memory-Conscious** — Designed for 1 GB RAM VPS. Background worker uses single thread. Files processed from disk, never fully loaded into memory.
 5. **Audit Everything** — `ActivityService` logs 30+ action types. All sensitive operations recorded with IP, user, and timestamp.
+6. **Shared Service Layer (Desktop + Mobile)** — PWA mobile API endpoints route through the same service classes as the desktop panel. No duplicate logic exists between the two interfaces.
 
 ### Request Flow
 
 ```
-Browser → Nginx → Gunicorn → SubdomainRoutingMiddleware
-                                    │
-                    ┌───────────────┴───────────────┐
-                    ▼                               ▼
+Browser -> Nginx -> Gunicorn -> SubdomainRoutingMiddleware
+                                    |
+                    +---------------+---------------+
+                    v                               v
              Website URLs                    Panel URLs
-                    │                               │
-                    ▼                               ▼
+                    |                               |
+                    v                               v
             PermissionValidation            PermissionValidation
             Middleware                      Middleware
-                    │                               │
-                    ▼                               ▼
+                    |                               |
+                    v                               v
               View Function                  View Function
-                    │                               │
-                    ▼                               ▼
+                    |                               |
+                    v                               v
              Template Render               Service Layer
-                                                │
-                                    ┌───────────┼───────────┐
-                                    ▼           ▼           ▼
+                                                |
+                                    +-----------+-----------+
+                                    v           v           v
                               Permission   Workflow    Activity
                               Service      Service     Service
-                                    │           │           │
-                                    ▼           ▼           ▼
+                                    |           |           |
+                                    v           v           v
                                         Django ORM
-                                            │
-                                            ▼
+                                            |
+                                            v
                                         Database
 ```
 
@@ -156,142 +164,193 @@ Browser → Nginx → Gunicorn → SubdomainRoutingMiddleware
 
 ```
 Adarsh FInal Deploye/
-├── accounts/                  # Authentication app
-│   ├── models.py              #   (no custom models — uses core.User)
-│   ├── services.py            #   OTP, login, password reset logic
-│   ├── rate_limit.py          #   IP-based rate limiting
-│   ├── views.py               #   Login, logout, OTP views
-│   └── urls.py                #   Auth URL patterns
-│
-├── cardprint/                 # Card printing workflow app
-│   ├── models.py              #   (no custom models — uses core.IDCard)
-│   ├── services.py            #   Print workflow: send to print, finalize, pool
-│   ├── views.py               #   3-step print pages + APIs
-│   └── urls.py                #   Print URL patterns
-│
-├── client/                    # Client organization management app
-│   ├── models.py              #   Client model (org/school profile + perms)
-│   ├── services.py            #   Client dashboard, staff ops, image upload
-│   ├── views.py               #   Client CRUD pages + APIs
-│   └── urls.py                #   Client URL patterns
-│
-├── config/                    # Django project configuration
-│   ├── settings.py            #   All settings (env-driven, production-ready)
-│   ├── urls.py                #   Root URL config (local dev — both site + panel)
-│   ├── urls_website.py        #   Website-only URL config (subdomain)
-│   ├── urls_panel.py          #   Panel-only URL config (subdomain)
-│   ├── wsgi.py                #   WSGI application entry point
-│   └── asgi.py                #   ASGI application entry point
-│
-├── core/                      # Central app — models, permissions, base views
-│   ├── models.py              #   Re-exports: User, Notification, ActivityLog, etc.
-│   ├── middleware.py           #   7 custom middleware classes
-│   ├── context_processors.py  #   Permission injection into all templates
-│   ├── services/              #   Business logic layer (15+ service modules)
-│   │   ├── permission_service.py    # Single authority for all permission checks
-│   │   ├── idcard_service.py        # IDCard CRUD, search, field management
-│   │   ├── workflow_service.py      # Status transitions (print + reprint)
-│   │   ├── client_service.py        # Client CRUD
-│   │   ├── staff_service.py         # Staff CRUD
-│   │   ├── notification_service.py  # Notification broadcast + targeting
-│   │   ├── activity_service.py      # Audit trail logging
-│   │   ├── background_worker.py     # Singleton ThreadPoolExecutor
-│   │   ├── bulk_upload_service.py   # XLSX + ZIP import
-│   │   ├── bulk_upload_processor.py # Memory-efficient bulk processing
-│   │   ├── reupload_processor.py    # Image reupload from ZIP
-│   │   ├── export_processor.py      # Background export handlers
-│   │   ├── user_profile_service.py  # Profile management
-│   │   ├── task_cleanup.py          # Stale task & file cleanup
-│   │   └── base.py                  # ServiceResult dataclass
-│   ├── views/                 #   Split view modules
-│   │   ├── base.py            #     Dashboard, staff/client mgmt, settings
-│   │   ├── auth.py            #     Login/logout/OTP/password reset
-│   │   ├── idcard_api.py      #     IDCard CRUD APIs (30+ endpoints)
-│   │   ├── notification_api.py#     Notification list/read/create APIs
-│   │   ├── engine_api.py      #     Face Cropper proxy APIs
-│   │   ├── cropper_api.py     #     Cropper version/webhook APIs
-│   │   └── task_api.py        #     Background task status/cancel APIs
-│   ├── utils/                 #   Utility modules
-│   │   ├── htmx.py            #     HTMX detection and partial rendering
-│   │   ├── threaded_email.py  #     Async email sending (background thread)
-│   │   └── image_helpers.py   #     Image manipulation utilities
-│   ├── templatetags/          #   Custom template filters
-│   │   └── custom_filters.py  #     humanize_header, wrap_header, etc.
-│   ├── management/            #   Custom management commands
-│   └── migrations/            #   Database migration files
-│
-├── exports/                   # Export generation app
-│   ├── pdf.py                 #   PDF table export (ReportLab + xhtml2pdf)
-│   ├── excel.py               #   XLSX export (openpyxl)
-│   ├── word.py                #   DOCX export (python-docx)
-│   ├── zip.py                 #   ZIP image bundling
-│   ├── column_spec.py         #   Column sizing intelligence (90+ field patterns)
-│   ├── services.py            #   Export orchestration (read-only)
-│   ├── tasks.py               #   Background export task creation
-│   └── urls.py                #   Export URL patterns
-│
-├── mediafiles/                # Protected media management app
-│   ├── models.py              #   CardMedia, ImageProcessingLog
-│   ├── services/              #   Image upload, thumbnail, optimization
-│   ├── constants.py           #   Max sizes, allowed formats
-│   └── urls.py                #   Media URL patterns
-│
-├── reprintcard/               # Card reprinting workflow app
-│   ├── models.py              #   (no custom models — uses core.IDCard)
-│   ├── services.py            #   Reprint workflow: request, confirm, download
-│   ├── views.py               #   4-step reprint pages + APIs
-│   └── urls.py                #   Reprint URL patterns
-│
-├── staff/                     # Admin staff management app
-│   ├── models.py              #   Staff model (profile + perms + assignments)
-│   └── urls.py                #   Staff URL patterns
-│
-├── website/                   # Public website app
-│   ├── models.py              #   10+ content models (hero, portfolio, FAQ, etc.)
-│   ├── services.py            #   Website content CRUD
-│   ├── views.py               #   Landing, portfolio, contact, sitemap
-│   └── urls.py                #   Public URL patterns
-│
-├── workflows/                 # Workflow engine app
-│   ├── models.py              #   IDCardGroup, IDCardTable, IDCard models
-│   └── (views in core)        #   Views handled by core app
-│
-├── PWA/                       # Progressive Web App
-│   ├── mobile_app/            #   Mobile-specific views, templates, APIs
-│   ├── static/                #   Service worker, manifest, offline assets
-│   └── templates/             #   Mobile UI templates
-│
-├── Face Cropper/              # Standalone face cropping engine
-│   ├── main.py                #   FastAPI application
-│   ├── passport_engine_core/  #   Image processing module
-│   ├── installer/             #   InnoSetup installer scripts
-│   └── DEPLOYMENT.md          #   Engine deployment guide
-│
-├── templates/                 # Django HTML templates
-│   ├── base.html              #   Base template (shared layout)
-│   ├── dashboard/             #   Role-specific dashboards
-│   ├── partials/              #   Reusable template partials
-│   ├── components/            #   UI components (toast, modal, etc.)
-│   └── ...                    #   Page templates
-│
-├── static/                    # Static assets (source)
-│   ├── css/                   #   Stylesheets (Tailwind + custom)
-│   ├── js/                    #   JavaScript modules
-│   ├── assets/                #   Images, fonts, favicon
-│   └── vendor/                #   Third-party libraries
-│
-├── deployment/                # Production deployment configs
-│   ├── nginx_example.conf     #   Nginx reverse proxy config
-│   ├── gunicorn_example.service #  Systemd service file
-│   ├── gunicorn.conf_example.py # Gunicorn worker config
-│   ├── setup_swap_example.sh  #   Swap file setup script
-│   └── README.md              #   Deployment instructions
-│
-├── manage.py                  # Django management CLI
-├── requirements.txt           # Python dependencies
-├── package.json               # Node.js (Tailwind CSS CLI)
-├── tailwind-input.css         # Tailwind CSS input file
-└── db.sqlite3                 # Development database
+|-- accounts/                  # Authentication app
+|   |-- models.py              #   (no custom models -- uses core.User)
+|   |-- services.py            #   OTP, login, password reset logic
+|   |-- rate_limit.py          #   IP-based rate limiting
+|   |-- services_profile.py    #   Profile image / settings helpers
+|   |-- views.py               #   Login, logout, OTP views
+|   +-- urls.py                #   Auth URL patterns
+|
+|-- cardprint/                 # Card printing workflow app
+|   |-- models.py              #   (no custom models -- uses core.IDCard)
+|   |-- services.py            #   Print workflow: send to print, finalize, pool
+|   |-- views.py               #   3-step print pages + APIs
+|   +-- urls.py                #   Print URL patterns
+|
+|-- client/                    # Client organization management app
+|   |-- models.py              #   Client model (org/school profile + perms)
+|   |-- services.py            #   Client dashboard, staff ops, image upload
+|   |-- services_access.py     #   Access-scoping helpers
+|   |-- services_card.py       #   Card-level helpers for client scope
+|   |-- services_client_core.py#   Core client CRUD
+|   |-- services_dashboard.py  #   Dashboard stat queries
+|   |-- services_image.py      #   Image handling for client profile
+|   |-- services_staff.py      #   Client staff management
+|   |-- views.py               #   Client CRUD pages + APIs
+|   |-- views_api.py           #   REST API endpoints
+|   |-- views_decorators.py    #   Permission decorators
+|   |-- views_pages.py         #   HTML page views
+|   |-- views_shared_pages.py  #   Shared page fragments
+|   +-- urls.py                #   Client URL patterns
+|
+|-- config/                    # Django project configuration
+|   |-- settings.py            #   All settings (env-driven, production-ready)
+|   |-- urls.py                #   Root URL config (local dev -- both site + panel)
+|   |-- urls_website.py        #   Website-only URL config (subdomain)
+|   |-- urls_panel.py          #   Panel-only URL config (subdomain)
+|   |-- wsgi.py                #   WSGI application entry point
+|   +-- asgi.py                #   ASGI application entry point
+|
+|-- core/                      # Central app -- models, permissions, base views
+|   |-- models.py              #   Re-exports: User, Notification, ActivityLog, etc.
+|   |-- middleware.py          #   7 custom middleware classes
+|   |-- context_processors.py  #   Permission injection into all templates
+|   |-- services/              #   Business logic layer (15+ service modules)
+|   |   |-- permission_service.py    # Single authority for all permission checks
+|   |   |-- idcard_service.py        # IDCard CRUD, search, field management
+|   |   |-- workflow_service.py      # Status transitions (print + reprint)
+|   |   |-- client_service.py        # Client CRUD
+|   |   |-- staff_service.py         # Staff CRUD
+|   |   |-- notification_service.py  # Notification broadcast + targeting
+|   |   |-- activity_service.py      # Audit trail logging
+|   |   |-- background_worker.py     # Singleton ThreadPoolExecutor
+|   |   |-- bulk_upload_service.py   # XLSX + ZIP import
+|   |   |-- bulk_upload_processor.py # Memory-efficient bulk processing
+|   |   |-- reupload_processor.py    # Image reupload from ZIP
+|   |   |-- export_processor.py      # Background export handlers
+|   |   |-- user_profile_service.py  # Profile management
+|   |   |-- task_cleanup.py          # Stale task & file cleanup
+|   |   +-- base.py                  # ServiceResult dataclass
+|   |-- views/                 #   Split view modules
+|   |   |-- base.py            #     Dashboard, staff/client mgmt, settings
+|   |   |-- auth.py            #     Login/logout/OTP/password reset
+|   |   |-- idcard_api.py      #     IDCard CRUD APIs (30+ endpoints)
+|   |   |-- notification_api.py#     Notification list/read/create APIs
+|   |   |-- engine_api.py      #     Face Cropper proxy APIs
+|   |   |-- cropper_api.py     #     Cropper version/webhook APIs
+|   |   +-- task_api.py        #     Background task status/cancel APIs
+|   |-- utils/                 #   Utility modules
+|   |   |-- htmx.py            #     HTMX detection and partial rendering
+|   |   |-- threaded_email.py  #     Async email sending (background thread)
+|   |   +-- image_helpers.py   #     Image manipulation utilities
+|   |-- templatetags/          #   Custom template filters
+|   |   +-- custom_filters.py  #     humanize_header, wrap_header, etc.
+|   |-- management/            #   Custom management commands
+|   +-- migrations/            #   Database migration files
+|
+|-- exports/                   # Export generation app
+|   |-- pdf.py                 #   PDF table export (ReportLab + xhtml2pdf)
+|   |-- excel.py               #   XLSX export (openpyxl)
+|   |-- word.py                #   DOCX export (python-docx)
+|   |-- zip.py                 #   ZIP image bundling
+|   |-- column_spec.py         #   Column sizing intelligence (90+ field patterns)
+|   |-- services.py            #   Export orchestration (read-only)
+|   |-- tasks.py               #   Background export task creation
+|   +-- urls.py                #   Export URL patterns
+|
+|-- idcards/                   # ID card app (models + routing)
+|   |-- models.py              #   IDCardGroup, IDCardTable, IDCard models
+|   +-- urls.py                #   ID card URL patterns
+|
+|-- mediafiles/                # Protected media management app
+|   |-- models.py              #   CardMedia, ImageProcessingLog
+|   |-- services/              #   Image upload, thumbnail, optimization
+|   |-- constants.py           #   Max sizes, allowed formats
+|   +-- urls.py                #   Media URL patterns
+|
+|-- mobile_app/                # PWA mobile-specific app
+|   |-- views.py               #   All PWA page views + API endpoints (40+)
+|   +-- urls.py                #   Mobile URL patterns (35+ routes)
+|
+|-- reprintcard/               # Card reprinting workflow app
+|   |-- models.py              #   (no custom models -- uses core.IDCard)
+|   |-- services.py            #   Reprint workflow: request, confirm, download
+|   |-- views.py               #   4-step reprint pages + APIs
+|   +-- urls.py                #   Reprint URL patterns
+|
+|-- staff/                     # Admin staff management app
+|   |-- models.py              #   Staff model (profile + perms + assignments)
+|   +-- urls.py                #   Staff URL patterns
+|
+|-- website/                   # Public website app
+|   |-- models.py              #   10+ content models (hero, portfolio, FAQ, etc.)
+|   |-- services.py            #   Website content CRUD service classes
+|   |-- watermark.py           #   Image watermarking, WebP conversion, video compression
+|   |-- views.py               #   Landing, portfolio, contact, sitemap
+|   +-- urls.py                #   Public URL patterns
+|
+|-- PWA/                       # PWA static assets
+|   |-- static/                #   Service worker, manifest, offline assets
+|   +-- templates/             #   (mobile templates live in templates/mobile_app/)
+|
+|-- Face Cropper/              # Standalone face cropping engine
+|   |-- main.py                #   FastAPI application
+|   |-- passport_engine_core/  #   Image processing module
+|   |-- installer/             #   InnoSetup installer scripts
+|   +-- DEPLOYMENT.md          #   Engine deployment guide
+|
+|-- templates/                 # Django HTML templates
+|   |-- base.html              #   Base template (shared layout)
+|   |-- dashboard/             #   Role-specific dashboards
+|   |-- mobile_app/            #   Mobile PWA templates (15 pages + 15 partials)
+|   |   |-- base.html          #     PWA base layout
+|   |   |-- home.html          #     Role-aware dashboard
+|   |   |-- clients_list.html  #     Client list (admin: "Active Clients", admin_staff: "Assigned Clients")
+|   |   |-- groups.html        #     Client group browser
+|   |   |-- table_picker.html  #     Status-based table selector
+|   |   |-- list_page.html     #     Card list with search + bulk actions
+|   |   |-- card_detail.html   #     Individual card view
+|   |   |-- camera.html        #     Camera photo capture
+|   |   |-- notifications.html #     In-app notification center
+|   |   |-- profile.html       #     User profile management
+|   |   |-- staff_manage.html  #     Staff CRUD (admin roles)
+|   |   |-- search.html        #     Cross-table search
+|   |   |-- settings.html      #     App settings
+|   |   |-- no_access.html     #     Permission denied page
+|   |   |-- website_manage.html#     Portfolio + Reels management (admin/staff)
+|   |   +-- partials/
+|   |       |-- navbar.html
+|   |       |-- bottom_nav.html          # Role-aware: client_staff sees Profile not Staff
+|   |       |-- hamburger_drawer.html
+|   |       |-- list_top_section.html    # Status tabs gated by perm flags
+|   |       |-- list_table.html
+|   |       |-- list_bottom_bar.html
+|   |       |-- list_filter_panel.html
+|   |       |-- list_toast.html
+|   |       |-- searchbar.html
+|   |       |-- hero_carousel.html
+|   |       |-- add_form_sheet.html
+|   |       |-- actions_pending.html     # Perm-gated action buttons per status
+|   |       |-- actions_verified.html
+|   |       |-- actions_pool.html
+|   |       |-- actions_approved.html
+|   |       +-- actions_download.html
+|   |-- partials/              #   Reusable template partials (desktop)
+|   |-- components/            #   UI components (toast, modal, etc.)
+|   +-- ...                    #   Page templates
+|
+|-- static/                    # Static assets (source)
+|   |-- css/                   #   Stylesheets (Tailwind + custom)
+|   |-- js/                    #   JavaScript modules
+|   |-- assets/                #   Images, fonts, favicon
+|   +-- vendor/                #   Third-party libraries
+|
+|-- deployment/                # Production deployment configs
+|   |-- nginx_example.conf           #   Nginx single-domain config
+|   |-- nginx_subdomain_example.conf #   Nginx subdomain config
+|   |-- gunicorn_example.service     #   Systemd service file
+|   |-- gunicorn.conf_example.py     #   Gunicorn worker config
+|   |-- setup_swap_example.sh        #   Swap file setup script
+|   |-- cron_cleanup_example.txt     #   Cron for periodic cleanup tasks
+|   +-- README.md              #   Deployment instructions
+|
+|-- manage.py                  # Django management CLI
+|-- requirements.txt           # Python dependencies
+|-- package.json               # Node.js (Tailwind CSS CLI)
+|-- tailwind-input.css         # Tailwind CSS input file
+|-- VERSION.txt                # Current version (v2.18.0)
++-- db.sqlite3                 # Development database
 ```
 
 ---
@@ -304,13 +363,13 @@ Adarsh FInal Deploye/
 | `accounts` | Authentication — login, OTP verification, password reset, rate limiting, session management | No (uses core.User) |
 | `client` | Client organization CRUD — company/school profiles, client staff management, group settings | Yes (Client) |
 | `staff` | Admin staff management — role assignment, client assignment, permissions | Yes (Staff) |
-| `workflows` | Data models for ID card workflow — groups, tables, cards | Yes (IDCardGroup, IDCardTable, IDCard) |
-| `cardprint` | Card printing workflow — 3-step: Print List → Finalized → Pool | No (uses workflow models) |
-| `reprintcard` | Card reprinting workflow — 4-step: Requested → Confirmed → Downloaded → Pool | No (uses workflow models) |
-| `exports` | Multi-format export engine — PDF, XLSX, DOCX, ZIP generation | No (uses workflow models) |
+| `idcards` | Data models for ID card workflow — groups, tables, cards | Yes (IDCardGroup, IDCardTable, IDCard) |
+| `cardprint` | Card printing workflow — 3-step: Print List → Finalized → Pool | No (uses idcard models) |
+| `reprintcard` | Card reprinting workflow — 4-step: Requested → Confirmed → Downloaded → Pool | No (uses idcard models) |
+| `exports` | Multi-format export engine — PDF, XLSX, DOCX, ZIP generation | No (uses idcard models) |
 | `mediafiles` | Protected media file management — image upload, thumbnails, optimization | Yes (CardMedia, ImageProcessingLog) |
+| `mobile_app` | PWA mobile app — all mobile views and API endpoints | No (proxy to service layer) |
 | `website` | Public-facing website — landing page, portfolio, testimonials, FAQ, contact, SEO | Yes (10+ content models) |
-| `PWA` | Progressive Web App — mobile-optimized interface with camera capture | No (proxy APIs to core) |
 
 ---
 
@@ -319,53 +378,53 @@ Adarsh FInal Deploye/
 ### Core Domain Models
 
 ```
-┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
-│      User        │     │     Client       │     │     Staff        │
-│  ─────────────── │     │  ─────────────── │     │  ─────────────── │
-│  role (enum)     │◄────│  user (1:1)      │     │  user (1:1)      │
-│  email           │     │  name            │     │  client (FK)     │
-│  phone           │     │  address/city    │     │  assigned_clients│
-│  is_active       │     │  status          │     │  assigned_groups │
-│                  │◄────│  image_folder    │     │  allowed_classes │
-│                  │     │  32 perm_* flags │     │  37 perm_* flags │
-└──────────────────┘     └────────┬─────────┘     └──────────────────┘
-                                  │
-                    ┌─────────────┴─────────────┐
-                    ▼                           ▼
-          ┌──────────────────┐        ┌──────────────────┐
-          │   IDCardGroup    │        │    CardMedia      │
-          │  ─────────────── │        │  ─────────────── │
-          │  client (FK)     │        │  card (FK)        │
-          │  name            │        │  field_name       │
-          │                  │        │  image file       │
-          └────────┬─────────┘        │  thumbnail        │
-                   │                  └──────────────────┘
-                   ▼
-          ┌──────────────────┐
-          │   IDCardTable    │
-          │  ─────────────── │
-          │  group (FK)      │
-          │  name            │
-          │  fields (JSON)   │◄── [{name, type, order}]
-          │  max 20 fields   │
-          └────────┬─────────┘
-                   │               Field Types:
-                   ▼               ─────────────
-          ┌──────────────────┐     text, email, class,
-          │     IDCard       │     section, photo,
-          │  ─────────────── │     mother_photo,
-          │  table (FK)      │     father_photo,
-          │  field_data (JSON)│    barcode, qr_code,
-          │  status (enum)   │     signature
-          │  created_by      │
-          │  updated_by      │
-          └──────────────────┘
++-----------------+     +-----------------+     +-----------------+
+|      User       |     |     Client      |     |     Staff       |
+|  -------------- |     |  -------------- |     |  -------------- |
+|  role (enum)    |<----+  user (1:1)     |     |  user (1:1)     |
+|  email          |     |  name           |     |  client (FK)    |
+|  phone          |     |  address/city   |     |  assigned_      |
+|  is_active      |     |  status         |     |    clients      |
+|                 |<----+  image_folder   |     |  assigned_      |
+|                 |     |  32 perm_*flags |     |    groups       |
++-----------------+     +--------+--------+     |  37 perm_*flags |
+                                 |              +-----------------+
+                   +-------------+-------------+
+                   v                           v
+         +-----------------+        +-----------------+
+         |   IDCardGroup   |        |    CardMedia    |
+         |  -------------- |        |  -------------- |
+         |  client (FK)    |        |  card (FK)      |
+         |  name           |        |  field_name     |
+         |                 |        |  image file     |
+         +--------+--------+        |  thumbnail      |
+                  |                 +-----------------+
+                  v
+         +-----------------+
+         |   IDCardTable   |
+         |  -------------- |
+         |  group (FK)     |
+         |  name           |
+         |  fields (JSON)  |<-- [{name, type, order}]
+         |  max 20 fields  |
+         +--------+--------+
+                  |                 Field Types:
+                  v                 ----------------
+         +-----------------+        text, email, class,
+         |     IDCard      |        section, photo,
+         |  -------------- |        mother_photo,
+         |  table (FK)     |        father_photo,
+         |  field_data(JSON)|       barcode, qr_code,
+         |  status (enum)  |        signature
+         |  created_by     |
+         |  updated_by     |
+         +-----------------+
 
 Status Workflow:
-  pending → verified → pool → approved → download
-                                            │
-                                            ▼
-                                         reprint
+  pending -> verified -> pool -> approved -> download
+                                                |
+                                                v
+                                             reprint
 ```
 
 ### System Models
@@ -389,11 +448,11 @@ Status Workflow:
 | **HeroImage** | Dynamic hero slider — unlimited images with ordering, per-image title/subtitle |
 | **Feature** | "Why Choose Us" section items — icon, title, description |
 | **PortfolioCategory** | 9 default categories (ID Cards, Lanyards, Certificates, etc.) + custom |
-| **PortfolioItem** | Gallery items — image/video/reel support, orientation variants |
+| **PortfolioItem** | Gallery items — every upload processed to WebP, compressed below 500 KB, text-watermarked |
 | **TrustedClient** | Logo carousel for social proof |
 | **Testimonial** | Customer reviews with star ratings |
 | **FAQ** | Frequently asked questions |
-| **Reel** | Short video showcases |
+| **Reel** | Short video showcases — compressed via ffmpeg to H.264 below 10 MB; thumbnail logo-watermarked |
 | **ContactSubmission** | Form submissions with email automation retry (exponential backoff) |
 
 ---
@@ -411,6 +470,7 @@ Status Workflow:
 - **Humanized headers** — automatic word splitting for concatenated field names
 
 ### Card Printing (3-Step)
+
 | Step | Status | Action |
 |------|--------|--------|
 | 1 | **Print List** | Cards sent from Approved status → ready for printing |
@@ -418,6 +478,7 @@ Status Workflow:
 | 3 | **Pool** | Finalized cards moved to permanent pool |
 
 ### Card Reprinting (4-Step)
+
 | Step | Status | Action |
 |------|--------|--------|
 | 1 | **Requested** | Reprint request created from pool/download cards |
@@ -433,6 +494,7 @@ Status Workflow:
 - **Bulk Status Change** — Move multiple cards between statuses
 
 ### Export System
+
 | Format | Content | Features |
 |--------|---------|----------|
 | **PDF** | Text + images | Landscape A4, dynamic columns, thumbnails, repeating headers, digital signing (pyHanko) |
@@ -442,8 +504,8 @@ Status Workflow:
 
 ### Dashboard & Management
 - **Role-specific dashboards** — Super Admin, Admin Staff, Client, Client Staff each see relevant data
-- **Real-time stats** — pending, verified, approved, downloaded card counts
-- **Recent activity feed** — role-filtered activity log
+- **Real-time stats** — Pending, verified, approved, downloaded card counts (global aggregate for admins; client-scoped for clients)
+- **Recent activity feed** — role-filtered, card-based activity showing name, status, and timestamp
 - **Notification bar** — in-app notifications with unread badge
 - **Global search** — search across ID cards from any page
 - **Manage Panel** — system administration with tabs:
@@ -454,10 +516,11 @@ Status Workflow:
 
 ### Public Website
 - **Landing page** — hero slider, product carousel, features section
-- **Portfolio gallery** — categorized gallery with lightbox viewer
+- **Portfolio gallery** — categorized gallery; all images stored as WebP, compressed below 500 KB, watermarked
 - **Testimonials** — customer reviews with star ratings
 - **FAQ section** — collapsible Q&A
 - **Contact form** — AJAX submission with email automation
+- **Reels section** — short H.264 video showcases (below 10 MB, thumbnail watermarked)
 - **SEO optimized** — robots.txt, sitemap.xml, structured data, meta tags
 - **Maintenance mode** — toggle website offline with 503 page
 
@@ -465,16 +528,12 @@ Status Workflow:
 - **Installable** — service worker + web app manifest
 - **Camera capture** — take photos directly from mobile
 - **Card management** — view, add, edit, status change on mobile
-- **Role-based UI** — adapts to user role
+- **Staff management** — create, edit, toggle, delete staff from mobile
+- **Group overview** — browse client groups and tables
+- **Website content management** — upload portfolio images by category and reels (admin/staff only)
+- **Role-based UI** — all 4 roles fully supported with appropriate access controls
+- **Perm-gated status tabs** — Pending/Verified/Approved/Download tabs only visible when role has the matching permission
 - **Offline support** — cached pages for offline access
-
-### Email System
-- **Branded HTML emails** — gradient header, styled body, branded footer
-- **OTP verification** — 6-digit code with expiry, styled email template
-- **Welcome email** — sent on account creation
-- **Password change notification** — security alert on password change
-- **Contact form auto-reply** — with exponential retry backoff
-- **Async sending** — all emails dispatched via background thread (non-blocking)
 
 ---
 
@@ -483,28 +542,28 @@ Status Workflow:
 ### Role Hierarchy
 
 ```
-┌─────────────────────────────────────────────────┐
-│                 SUPER ADMIN                      │
-│  Full access to everything. Always passes all   │
-│  permission checks. Manages the entire system.  │
-├─────────────────────────────────────────────────┤
-│               ADMIN STAFF                        │
-│  Scoped to assigned clients only. Has granular  │
-│  per-feature toggles. Website management.       │
-│  Can perform bulk operations and exports.       │
-├─────────────────────────────────────────────────┤
-│                 CLIENT                           │
-│  Organization/school owner. Manages their own   │
-│  groups, tables, and cards. Can delegate        │
-│  permissions to their client staff.             │
-│  ⛔ No bulk operations or image reupload.       │
-├─────────────────────────────────────────────────┤
-│              CLIENT STAFF                        │
-│  Delegated access from parent client.           │
-│  Double-gated: staff perm AND client perm       │
-│  must both be True. Most restricted role.       │
-│  ⛔ No bulk operations or image reupload.       │
-└─────────────────────────────────────────────────┘
++-------------------------------------------------+
+|                 SUPER ADMIN                     |
+|  Full access to everything. Always passes all  |
+|  permission checks. Manages the entire system. |
++-------------------------------------------------+
+|               ADMIN STAFF                       |
+|  Scoped to assigned clients only. Has granular |
+|  per-feature toggles. Website management.      |
+|  Can perform bulk operations and exports.      |
++-------------------------------------------------+
+|                 CLIENT                          |
+|  Organization/school owner. Manages their own  |
+|  groups, tables, and cards. Can delegate       |
+|  permissions to their client staff.            |
+|  [X] No bulk operations or image reupload.     |
++-------------------------------------------------+
+|              CLIENT STAFF                       |
+|  Delegated access from parent client.          |
+|  Double-gated: staff perm AND client perm      |
+|  must both be True. Most restricted role.      |
+|  [X] No bulk operations or image reupload.     |
++-------------------------------------------------+
 ```
 
 ### Permission Resolution
@@ -514,9 +573,9 @@ Status Workflow:
 | **Super Admin** | Always `True` — bypasses all permission checks |
 | **Admin Staff** | `staff_profile.<perm>` must be `True`. If a client is specified, staff must also be assigned to that client. |
 | **Client** | `client_profile.<perm>` must be `True`. Client status must be `active`. |
-| **Client Staff** | **Double-gated**: `staff_profile.<perm> AND client.<perm>` must both be `True`. Client status must be `active`. If the perm doesn't exist on the Staff model, inherits from client. |
+| **Client Staff** | **Double-gated**: `staff_profile.<perm> AND client.<perm>` must both be `True`. Client status must be `active`. |
 
-### Blocked Permissions (Admin Only)
+### Blocked Permissions (Always Denied for Clients)
 
 These permissions are **always denied** for Client and Client Staff roles at the service level, regardless of database flags:
 
@@ -528,80 +587,97 @@ These permissions are **always denied** for Client and Client Staff roles at the
 | `perm_delete_all_idcard` | Delete all cards in a table |
 | `perm_reupload_idcard_image` | Reupload individual card image |
 
-Only **Super Admin** and **Admin Staff** can perform these operations.
+### Mobile Bottom Navigation (Role-Based)
+
+The PWA bottom navigation bar adapts based on role:
+
+| Nav Item | Super Admin | Admin Staff | Client | Client Staff |
+|----------|:-----------:|:-----------:|:------:|:------------:|
+| Home | Yes | Yes | Yes | Yes |
+| Cards | Yes | Yes | Yes | Yes |
+| Camera | Yes | Yes | Yes | Yes |
+| Staff | Yes | Yes | Yes | **Profile instead** |
+| More | Yes | Yes | Yes | Yes |
+
+`client_staff` users see **Profile** in place of **Staff** — they cannot manage staff.
 
 ---
 
 ## Permission Matrix
 
 ### Legend
-- ✅ = Available (can be toggled on/off per user)
-- ⛔ = Blocked (always denied regardless of flags)
-- 🔓 = Always granted
-- 🔗 = Inherited (double-gated from parent client)
+- **Yes** = Available (can be toggled on/off per user)
+- **Blocked** = Always denied regardless of flags
+- **Always** = Always granted (super admin bypass)
+- **Inherited** = Double-gated from parent client
+- **—** = Not applicable to this role
 
 ### ID Card Client & Settings Permissions
 
 | Permission | Super Admin | Admin Staff | Client | Client Staff |
 |------------|:-----------:|:-----------:|:------:|:------------:|
-| View client list (`perm_idcard_client_list`) | 🔓 | ✅ | ✅ | 🔗 |
-| View settings (`perm_idcard_setting_list`) | 🔓 | ✅ | ✅ | 🔗 |
-| Add table (`perm_idcard_setting_add`) | 🔓 | ✅ | ✅ | 🔗 |
-| Edit table (`perm_idcard_setting_edit`) | 🔓 | ✅ | ✅ | 🔗 |
-| Delete table (`perm_idcard_setting_delete`) | 🔓 | ✅ | ✅ | 🔗 |
-| Toggle table status (`perm_idcard_setting_status`) | 🔓 | ✅ | ✅ | 🔗 |
-| Create group (`perm_idcard_group_create`) | 🔓 | ✅ | ✅ | 🔗 |
-| Delete group (`perm_idcard_group_delete`) | 🔓 | ✅ | ✅ | 🔗 |
+| View client list (`perm_idcard_client_list`) | Always | Yes | Yes | Inherited |
+| View settings (`perm_idcard_setting_list`) | Always | Yes | Yes | Inherited |
+| Add table (`perm_idcard_setting_add`) | Always | Yes | Yes | Inherited |
+| Edit table (`perm_idcard_setting_edit`) | Always | Yes | Yes | Inherited |
+| Delete table (`perm_idcard_setting_delete`) | Always | Yes | Yes | Inherited |
+| Toggle table status (`perm_idcard_setting_status`) | Always | Yes | Yes | Inherited |
+| Create group (`perm_idcard_group_create`) | Always | Yes | Yes | Inherited |
+| Delete group (`perm_idcard_group_delete`) | Always | Yes | Yes | Inherited |
 
 ### ID Card List (Tab Visibility) Permissions
 
+These permissions gate which **status tabs** are visible and clickable in both the desktop panel and the mobile PWA. Without the permission, the tab renders as plain non-clickable text.
+
 | Permission | Super Admin | Admin Staff | Client | Client Staff |
 |------------|:-----------:|:-----------:|:------:|:------------:|
-| Pending list (`perm_idcard_pending_list`) | 🔓 | ✅ | ✅ | 🔗 |
-| Verified list (`perm_idcard_verified_list`) | 🔓 | ✅ | ✅ | 🔗 |
-| Pool list (`perm_idcard_pool_list`) | 🔓 | ✅ | ✅ | 🔗 |
-| Approved list (`perm_idcard_approved_list`) | 🔓 | ✅ | ✅ | 🔗 |
-| Download list (`perm_idcard_download_list`) | 🔓 | ✅ | ✅ | 🔗 |
-| Reprint list (`perm_idcard_reprint_list`) | 🔓 | ✅ | ✅ | 🔗 |
+| Pending list (`perm_idcard_pending_list`) | Always | Yes | Yes | Inherited |
+| Verified list (`perm_idcard_verified_list`) | Always | Yes | Yes | Inherited |
+| Pool list (`perm_idcard_pool_list`) | Always | Yes | Yes | Inherited |
+| Approved list (`perm_idcard_approved_list`) | Always | Yes | Yes | Inherited |
+| Download list (`perm_idcard_download_list`) | Always | Yes | Yes | Inherited |
+| Reprint list (`perm_idcard_reprint_list`) | Always | Yes | Yes | Inherited |
+
+> Clients with `perm_idcard_approved_list` or `perm_idcard_download_list` see those tabs but get **view-only** mode — action buttons are hidden.
 
 ### ID Card Action Permissions
 
 | Permission | Super Admin | Admin Staff | Client | Client Staff |
 |------------|:-----------:|:-----------:|:------:|:------------:|
-| Add card (`perm_idcard_add`) | 🔓 | ✅ | ✅ | 🔗 |
-| Edit card (`perm_idcard_edit`) | 🔓 | ✅ | ✅ | 🔗 |
-| Delete card (`perm_idcard_delete`) | 🔓 | ✅ | ✅ | 🔗 |
-| View card info (`perm_idcard_info`) | 🔓 | ✅ | ✅ | 🔗 |
-| Approve card (`perm_idcard_approve`) | 🔓 | ✅ | ✅ | 🔗 |
-| Verify card (`perm_idcard_verify`) | 🔓 | ✅ | ✅ | 🔗 |
-| Show created date (`perm_idcard_created_at`) | 🔓 | ✅ | ✅ | 🔗 |
-| Show updated date (`perm_idcard_updated_at`) | 🔓 | ✅ | ✅ | 🔗 |
-| Delete from pool (`perm_idcard_delete_from_pool`) | 🔓 | ✅ | ✅ | 🔗 |
-| Retrieve from pool (`perm_idcard_retrieve`) | 🔓 | ✅ | ✅ | 🔗 |
-| Upgrade all classes (`perm_idcard_upgrade_all`) | 🔓 | ✅ | ✅ | 🔗 |
+| Add card (`perm_idcard_add`) | Always | Yes | Yes | Inherited |
+| Edit card (`perm_idcard_edit`) | Always | Yes | Yes | Inherited |
+| Delete card (`perm_idcard_delete`) | Always | Yes | Yes | Inherited |
+| View card info (`perm_idcard_info`) | Always | Yes | Yes | Inherited |
+| Approve card (`perm_idcard_approve`) | Always | Yes | Yes | Inherited |
+| Verify card (`perm_idcard_verify`) | Always | Yes | Yes | Inherited |
+| Show created date (`perm_idcard_created_at`) | Always | Yes | Yes | Inherited |
+| Show updated date (`perm_idcard_updated_at`) | Always | Yes | Yes | Inherited |
+| Delete from pool (`perm_idcard_delete_from_pool`) | Always | Yes | Yes | Inherited |
+| Retrieve from pool (`perm_idcard_retrieve`) | Always | Yes | Yes | Inherited |
+| Upgrade all classes (`perm_idcard_upgrade_all`) | Always | Yes | Yes | Inherited |
 
 ### Bulk & Reupload Permissions (Admin Only)
 
 | Permission | Super Admin | Admin Staff | Client | Client Staff |
 |------------|:-----------:|:-----------:|:------:|:------------:|
-| Bulk upload (`perm_idcard_bulk_upload`) | 🔓 | ✅ | ⛔ | ⛔ |
-| Bulk download (`perm_idcard_bulk_download`) | 🔓 | ✅ | ⛔ | ⛔ |
-| Bulk reupload (`perm_idcard_bulk_reupload`) | 🔓 | ✅ | ⛔ | ⛔ |
-| Delete all cards (`perm_delete_all_idcard`) | 🔓 | ✅ | ⛔ | ⛔ |
-| Reupload image (`perm_reupload_idcard_image`) | 🔓 | ✅ | ⛔ | ⛔ |
+| Bulk upload (`perm_idcard_bulk_upload`) | Always | Yes | **Blocked** | **Blocked** |
+| Bulk download (`perm_idcard_bulk_download`) | Always | Yes | **Blocked** | **Blocked** |
+| Bulk reupload (`perm_idcard_bulk_reupload`) | Always | Yes | **Blocked** | **Blocked** |
+| Delete all cards (`perm_delete_all_idcard`) | Always | Yes | **Blocked** | **Blocked** |
+| Reupload image (`perm_reupload_idcard_image`) | Always | Yes | **Blocked** | **Blocked** |
 
 ### Website & Mobile Permissions
 
 | Permission | Super Admin | Admin Staff | Client | Client Staff |
 |------------|:-----------:|:-----------:|:------:|:------------:|
-| View website content (`perm_website_view`) | 🔓 | ✅ | — | — |
-| Add website content (`perm_website_add`) | 🔓 | ✅ | — | — |
-| Edit website content (`perm_website_edit`) | 🔓 | ✅ | — | — |
-| Delete website content (`perm_website_delete`) | 🔓 | ✅ | — | — |
-| Publish website (`perm_website_publish`) | 🔓 | ✅ | — | — |
-| Mobile app access (`perm_mobile_app`) | 🔓 | ✅ | ✅ | 🔗 |
+| View website content (`perm_website_view`) | Always | Yes | — | — |
+| Add website content (`perm_website_add`) | Always | Yes | — | — |
+| Edit website content (`perm_website_edit`) | Always | Yes | — | — |
+| Delete website content (`perm_website_delete`) | Always | Yes | — | — |
+| Publish website (`perm_website_publish`) | Always | Yes | — | — |
+| Mobile app access (`perm_mobile_app`) | Always | Yes | Yes | Inherited |
 
-> **Note:** Website permissions only exist on the Staff model. Client/Client Staff roles do not have website management capabilities.
+Website permissions only exist on the Staff model. Client/Client Staff roles cannot manage website content.
 
 ---
 
@@ -618,36 +694,38 @@ Middleware executes in order for every request. Custom middleware enforces secur
 | 5 | `CommonMiddleware` | Django | URL normalization, `Content-Length` header |
 | 6 | `CsrfViewMiddleware` | Django | CSRF protection for POST/PUT/DELETE |
 | 7 | `AuthenticationMiddleware` | Django | Associates `request.user` from session |
-| 8 | `MessageMiddleware` | Django | Flash messages (placed before custom middleware) |
+| 8 | `MessageMiddleware` | Django | Flash messages |
 | 9 | `RequestTimingMiddleware` | core | Logs request duration via `Server-Timing` header. Warns on >1.5s requests, >50 queries, >0.1s individual queries. |
 | 10 | `PermissionValidationMiddleware` | core | Re-fetches user from DB every 10s to detect deactivation. Forces logout if user inactive, client suspended, or staff reassigned. Annotates `request.user_scope`. |
 | 11 | `SessionIdleTimeoutMiddleware` | core | Auto-logout after configurable idle timeout (default 30 days). Handles both browser and AJAX/HTMX requests. |
 | 12 | `SecurityHeadersMiddleware` | core | Adds `Permissions-Policy`, `Cache-Control: no-store` for panel pages, `X-Robots-Tag: noindex` on panel subdomain. |
-| 13 | `WebsiteOfflineMiddleware` | core | Returns 503 offline page when `WebsiteStatus` is `draft`. Only affects public routes — admin, static, media, API bypass. |
+| 13 | `WebsiteOfflineMiddleware` | core | Returns 503 offline page when `WebsiteStatus` is `draft`. Admin, static, media, API bypass. |
 | 14 | `XFrameOptionsMiddleware` | Django | Clickjacking protection (`X-Frame-Options: DENY`) |
 
 ---
 
 ## Services Architecture
 
-All business logic resides in the service layer (`core/services/`). Views are ultra-thin — they parse the request, call a service, and return the response. No model mutations ever occur in view files.
+All business logic resides in the service layer. Views are ultra-thin — they parse the request, call a service, and return the response. No model mutations ever occur in view files.
 
 ### Service Modules
 
 | Service | File | Responsibility |
 |---------|------|----------------|
-| **PermissionService** | `permission_service.py` | **Single authority** for all permission checks. Role identification, `has()` method, client scoping, context generation, decorators. |
-| **IDCardService** | `idcard_service.py` | **Single authority** for IDCard/IDCardTable mutations. CRUD, search, field upgrades, default-group provisioning. |
-| **WorkflowService** | `workflow_service.py` | **Single authority** for card status transitions. Enforces transition matrix, validates mandatory fields, checks image presence. |
-| **ReprintWorkflowService** | `workflow_service.py` | Status transitions for reprint cards — parallel workflow service. |
-| **ClientService** | `client_service.py` | Client CRUD, serialization, image folder management. |
-| **StaffService** | `staff_service.py` | Staff CRUD for both admin_staff and client_staff, permission management. |
-| **NotificationService** | `notification_service.py` | Create/broadcast/target notifications, read tracking, optional email alerts. |
-| **ActivityService** | `activity_service.py` | Non-blocking audit logging. 30+ action types. Role-filtered queries. |
-| **BackgroundWorker** | `background_worker.py` | Singleton `ThreadPoolExecutor` (max_workers=1). Task routing, timeout, cleanup. |
-| **UserProfileService** | `user_profile_service.py` | Profile updates, password changes, validation. |
+| **PermissionService** | `core/services/permission_service.py` | Single authority for all permission checks. Role identification, `has()` method, client scoping, context generation, decorators. |
+| **IDCardService** | `core/services/idcard_service.py` | Single authority for IDCard/IDCardTable mutations. CRUD, search, field upgrades, default-group provisioning. |
+| **WorkflowService** | `core/services/workflow_service.py` | Single authority for card status transitions. Enforces transition matrix, validates mandatory fields, checks image presence. |
+| **ReprintWorkflowService** | `core/services/workflow_service.py` | Status transitions for reprint cards — parallel workflow service. |
+| **ClientService** | `core/services/client_service.py` | Client CRUD, serialization, image folder management. |
+| **StaffService** | `core/services/staff_service.py` | Staff CRUD for both admin_staff and client_staff, permission management. |
+| **NotificationService** | `core/services/notification_service.py` | Create/broadcast/target notifications, read tracking, optional email alerts. |
+| **ActivityService** | `core/services/activity_service.py` | Non-blocking audit logging. 30+ action types. Role-filtered queries. |
+| **BackgroundWorker** | `core/services/background_worker.py` | Singleton `ThreadPoolExecutor` (max_workers=1). Task routing, timeout, cleanup. |
+| **UserProfileService** | `core/services/user_profile_service.py` | Profile updates, password changes, validation. |
 | **ExportService** | `exports/services.py` | Export orchestration — delegates to PDF, Excel, Word, ZIP modules. |
 | **ImageService** | `mediafiles/services/` | Image upload, thumbnail generation, optimization. |
+| **PortfolioItemService** | `website/services.py` | Portfolio item CRUD — applies full media pipeline on every save (watermark → WebP → compress below 500 KB). |
+| **ReelService** | `website/services.py` | Reel CRUD — applies video compression (ffmpeg H.264 below 10 MB) + thumbnail logo watermark on every save. |
 
 ### ServiceResult Pattern
 
@@ -671,20 +749,20 @@ Designed for **1 GB RAM VPS** — uses a single-threaded worker to prevent memor
 ### Architecture
 
 ```
-User Request → Create BackgroundTask (DB) → BackgroundWorker Queue
-                                                    │
-                                              Single Thread
-                                                    │
-                                    ┌───────────────┼───────────────┐
-                                    ▼               ▼               ▼
-                              Bulk Upload     Export (PDF/     Reupload
-                              Processor       XLSX/DOCX/ZIP)  Processor
-                                    │               │               │
-                                    ▼               ▼               ▼
-                              Disk-Based Processing (never in-memory)
-                                    │               │               │
-                                    ▼               ▼               ▼
-                              Update Progress → Mark Complete → Cleanup
+User Request --> Create BackgroundTask (DB) --> BackgroundWorker Queue
+                                                      |
+                                                Single Thread
+                                                      |
+                                  +-----------------+-+---------------+
+                                  v                 v                 v
+                            Bulk Upload       Export (PDF/       Reupload
+                            Processor         XLSX/DOCX/ZIP)    Processor
+                                  |                 |                 |
+                                  v                 v                 v
+                            Disk-Based Processing (never in-memory)
+                                  |                 |                 |
+                                  v                 v                 v
+                            Update Progress --> Mark Complete --> Cleanup
 ```
 
 ### Task Types & Handlers
@@ -712,9 +790,119 @@ User Request → Create BackgroundTask (DB) → BackgroundWorker Queue
 ### Status Flow
 
 ```
-pending → processing → completed
-                    └→ failed
-                    └→ cancelled
+pending -> processing -> completed
+                      -> failed
+                      -> cancelled
+```
+
+---
+
+## Image & Media Processing Pipeline
+
+All portfolio images and reels pass through a unified media processing pipeline defined in `website/watermark.py`. The **same pipeline is shared by the desktop admin panel and the mobile PWA** — mobile uploads route through `PortfolioItemService` and `ReelService`, not directly to the database.
+
+### Portfolio Image Pipeline
+
+Every portfolio image — uploaded via the desktop panel or the mobile PWA — goes through this exact sequence:
+
+```
+Raw Upload (any size, any format)
+        |
+        v
+apply_text_watermark()
+  · Tile "ADARSH ID CARDS" text across image
+  · Semi-transparent, diagonal, rotated
+        |
+        v
+Convert to WebP
+  · Smaller than JPEG/PNG at equivalent quality
+  · Supports transparency
+        |
+        v
+Progressive Quality Reduction  (target <= 500 KB)
+  · Quality: 85 -> 80 -> 75 -> ... -> 15  (step -5)
+  · Stops as soon as file size <= 500 KB
+        |
+        v
+Fallback Resize  (if still > 500 KB)
+  · Scale image to 70% of original dimensions
+  · Retry at quality 60 -> 40 -> 20
+        |
+        v
+Saved as .webp  (guaranteed <= 500 KB)
+```
+
+**Function:** `process_portfolio_image(file_obj, max_kb=500) -> ContentFile`
+**Called by:** `PortfolioItemService.create()`, `PortfolioItemService.update()`
+
+### Reel Video Pipeline
+
+Every reel video — uploaded via the desktop panel or the mobile PWA — goes through this sequence:
+
+```
+Raw Video Upload (any size, any codec)
+        |
+        v
+Size Check
+  · If already <= 10 MB --> skip compression
+        |
+        v
+ffmpeg Availability Check
+  · If ffmpeg not installed --> skip, log warning
+        |
+        v
+ffprobe Duration Probe
+  · Needed to calculate target bitrate
+        |
+        v
+Target Bitrate Calculation
+  · target_kbps = (10 MB x 8 / duration) / 1000 - 64  (64 reserved for audio)
+  · Minimum 200 kbps video bitrate enforced
+        |
+        v
+ffmpeg Re-encode
+  · Codec: H.264 (libx264), AAC 64k audio
+  · Max resolution: 1280x720 (scale down if larger, preserve smaller)
+  · Preset: fast  (good encode speed, reasonable quality)
+  · movflags faststart  (metadata at start for streaming)
+        |
+        v
+Output Size Verification
+  · If compressed < original --> use compressed
+  · Otherwise --> keep original
+        |
+        v
+Saved as .mp4  (target <= 10 MB)
+```
+
+**Function:** `compress_video_file(file_obj, max_bytes=10*1024*1024) -> ContentFile`
+**Called by:** `ReelService.create()`, `ReelService.update()`
+
+### Reel Thumbnail Pipeline
+
+```
+Thumbnail Image --> apply_logo_watermark() --> Saved
+```
+
+The Adarsh logo is composited onto the thumbnail at a fixed corner position.
+
+### Watermark Module Reference (`website/watermark.py`)
+
+| Function | Input | Output | Purpose |
+|----------|-------|--------|---------|
+| `apply_text_watermark(file_obj)` | Any image | ContentFile | Tiled semi-transparent text watermark |
+| `apply_logo_watermark(file_obj)` | Any image | ContentFile | Logo composite onto thumbnail |
+| `process_portfolio_image(file_obj, max_kb=500)` | Any image | ContentFile (.webp) | Full pipeline: watermark → WebP → compress |
+| `compress_video_file(file_obj, max_bytes=10MB)` | Any video | ContentFile (.mp4) | ffmpeg H.264 re-encode to size target |
+
+### Desktop vs Mobile — Identical Pipeline
+
+```
+Desktop upload  --> PortfolioItemService.create() --> pipeline --> saved
+Mobile upload   --> api_portfolio_upload()
+                      --> PortfolioItemService.create() --> pipeline --> saved
+
+Same service. Same result. No duplicate code.
 ```
 
 ---
@@ -750,12 +938,6 @@ Multi-channel notification system supporting broadcast and targeted delivery.
 | **Target** | all, super_admin, admin_staff, client, client_staff, selected (specific users) |
 | **Email Alert** | Optional — sent via background thread |
 
-### Dashboard Integration
-
-- **Notification bar** on all dashboards — shows 5 most recent with unread count badge
-- **Notifications page** (`/notifications/`) — full list with pagination and mark-all-read
-- Click-to-mark-read behavior
-
 ---
 
 ## Activity Logging & Audit Trail
@@ -787,12 +969,6 @@ Non-blocking, append-only audit logging covering 30+ action types.
 
 Each entry records: user, action type, description, target model/ID/name, IP address, timestamp, icon class, and color for dashboard rendering.
 
-### API
-
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| `GET` | `/api/activity-logs/` | Paginated, searchable, filterable by action type |
-
 ---
 
 ## Export System
@@ -804,16 +980,11 @@ Each entry records: user, action type, description, target model/ID/name, IP add
 | `pdf.py` | PDF | Text + images | Landscape A4, dynamic column widths (via `column_spec.py`), thumbnails, repeating header/footer, UPPERCASE text, 1cm margins |
 | `excel.py` | XLSX | Text only | Auto-sized columns, frozen header row, consistent formatting |
 | `word.py` | DOCX | Text + images | Landscape A4, institution header, branded footer, 7 entries/page, image borders |
-| `zip.py` | ZIP | Images only | Separate ZIP per image field, Base64 output for JS downloads, sanitized filenames |
+| `zip.py` | ZIP | Images only | Separate ZIP per image field, Base64 for JS downloads, sanitized filenames |
 
 ### Column Intelligence
 
-`column_spec.py` is the **single source of truth** for column sizing across all formats. It recognizes **90+ field-name variations** common in Indian ID card, school, and HR systems — automatically determining:
-
-- Min/preferred/max character widths
-- Wrap behavior
-- Text alignment
-- PDF percentage / Word centimeters / HTML Tailwind classes
+`column_spec.py` is the **single source of truth** for column sizing across all formats. It recognizes **90+ field-name variations** common in Indian ID card, school, and HR systems — automatically determining min/preferred/max character widths, wrap behavior, text alignment, PDF percentage, Word centimeters, and HTML Tailwind classes.
 
 ### Export Safety
 
@@ -854,7 +1025,7 @@ A **standalone FastAPI application** (compiled to Windows EXE via PyInstaller) f
 
 - **Cropper page** compares installed version vs latest `CropperRelease`
 - **CI/CD webhook** (`/api/cropper/release-webhook/`) auto-creates release records
-- **Proxy APIs** in Django — browser talks to Django, Django proxies to engine (avoids CORS):
+- **Django proxy APIs** — browser talks to Django, Django proxies to engine (avoids CORS):
   - `/api/engine/status/` — check engine status
   - `/api/engine/process-folder/` — trigger folder processing
   - `/api/engine/preview/` — preview cropped image
@@ -863,7 +1034,6 @@ A **standalone FastAPI application** (compiled to Windows EXE via PyInstaller) f
   - `/api/engine/delete-image/` — delete image
 
 ### Deployment
-
 - Installs to `C:\Program Files\PassportEngine\`
 - Auto-starts on boot, auto-restarts on crash (5s delay)
 - Rotating log files (5 MB, 3 backups)
@@ -896,14 +1066,14 @@ In local development, both URL configs merge into `config.urls` for single-domai
 | `/exports/` | exports | Export download endpoints |
 | `/images/` | mediafiles | Protected media serving |
 | `/website/` | website | Website content admin |
-| `/work/` | workflows | Workflow management |
-| `/app/` | PWA | Progressive web app (mobile) |
+| `/work/` | idcards | ID card workflow management |
+| `/app/` | mobile_app | Progressive web app (mobile) |
 | `/notifications/` | core | Notifications page (all users) |
 | `/manage-panel/` | core | System administration (super admin) |
 | `/settings/` | core | User settings & profile |
 | `/admin/` | Django | Built-in Django admin |
 
-### Key API Endpoints
+### Key API Endpoints (80+)
 
 | Category | Endpoints | Count |
 |----------|-----------|-------|
@@ -918,36 +1088,119 @@ In local development, both URL configs merge into `config.urls` for single-domai
 | Profile | get, update, change-password, upload-image, remove-image | 5 |
 | Engine | status, process-folder, preview, serve-image, save-edited, delete-image | 6 |
 | Settings | export-settings, export-templates CRUD, activity-logs | 6 |
-| **Total** | | **80+** |
 
 ---
 
 ## PWA — Mobile App
 
-Progressive Web App for mobile access, enforcing `perm_mobile_app` permission.
+Progressive Web App for mobile access at `/app/`, enforcing `perm_mobile_app` permission.
 
-### Features
+### Pages
 
-| Feature | Description |
-|---------|-------------|
-| Home dashboard | Real card counts + recent activity |
-| Client list | For admin roles |
-| Table picker | Select by status |
-| Card list | Per table/status with search |
-| Card detail | Individual card view |
-| Camera capture | Photograph directly from mobile |
-| Notifications | In-app notification center |
-| Profile | User profile management |
-| Staff management | CRUD (for admin roles) |
-| Groups | ID card group overview |
-| Search | Cross-table search |
+| Page | Template | Description |
+|------|----------|-------------|
+| **Home** | `home.html` | Role-aware dashboard — card stats + recent activity + client groups |
+| **Client List** | `clients_list.html` | Client browser (admin: "Active Clients"; admin_staff: "Assigned Clients") |
+| **Client Groups** | `groups.html` | Browse groups and tables within a client |
+| **Table Picker** | `table_picker.html` | Select a table by status |
+| **Card List** | `list_page.html` | Cards in a table — search, filter, bulk actions, column toggle |
+| **Card Detail** | `card_detail.html` | Individual card view with all field data |
+| **Camera** | `camera.html` | Live camera capture for direct photo upload |
+| **Notifications** | `notifications.html` | Full notification list with mark-read |
+| **Profile** | `profile.html` | User profile management |
+| **Staff Manage** | `staff_manage.html` | Staff CRUD (super_admin, admin_staff, client roles) |
+| **Groups Overview** | `groups.html` | Top-level group navigation for client/client_staff |
+| **Search** | `search.html` | Cross-table full-text search |
+| **Settings** | `settings.html` | App settings and preferences |
+| **Website Manage** | `website_manage.html` | Portfolio + Reels management (admin/staff only) |
+| **No Access** | `no_access.html` | Permission denied block page |
+
+### Home Dashboard — Role-Aware Behavior
+
+| Section | Super Admin / Admin Staff | Client / Client Staff |
+|---------|---------------------------|-----------------------|
+| **Stats cards** | Global aggregate counts across all clients | Scoped to own client only |
+| **Recent activity** | Latest 10 cards across all clients | Latest 10 cards for own client |
+| **Block 2 header** | "Recent Client Updates" + link to clients list | "My Groups" + link to groups overview |
+| **Block 2 arrow link** | Links to that client's group detail | Links to groups overview |
+| **Expandable sub-rows** | Shows table names per client | Hidden (no tables list) |
+
+### Card List — Status Tabs
+
+The status tab bar renders conditionally based on permissions:
+
+| Tab | Condition to show as link |
+|-----|--------------------------|
+| Pending | `perm_idcard_pending_list` is True |
+| Verified | `perm_idcard_verified_list` is True |
+| Pool | `perm_idcard_pool_list` is True |
+| Approved | `perm_idcard_approved_list` is True |
+| Download | `perm_idcard_download_list` is True |
+
+Without the permission, the tab renders as plain text. Clients on Approved/Download tabs see cards in view-only mode — the action bar is hidden.
+
+### Action Sheets (Per Status)
+
+| Partial | Status | Available Actions |
+|---------|--------|------------------|
+| `actions_pending.html` | pending | Verify (if perm), Delete (if perm), Camera (if perm) |
+| `actions_verified.html` | verified | Approve (if perm), Delete (if perm), Camera (if perm) |
+| `actions_pool.html` | pool | Retrieve (if perm), Delete from pool (if perm) |
+| `actions_approved.html` | approved | Admin: full actions; Client: view-only |
+| `actions_download.html` | download | Admin: full actions; Client: view-only |
+
+### Website Management Page (Mobile)
+
+Available to **super_admin** and **admin_staff** with `perm_website_add`.
+
+**Portfolio Tab:**
+- Category grid — tap any category to expand its upload sheet
+- Upload multiple images from camera or gallery (bulk select supported)
+- Preview strip shows pending images before submission
+- POST to `/app/api/website/portfolio/upload/` — routes through `PortfolioItemService`
+- Full pipeline applied: text watermark → WebP → compressed below 500 KB
+
+**Reels Tab:**
+- Scrollable grid of existing reels
+- FAB opens the add-reel sheet
+- Enter title, record or pick video from gallery, optionally set thumbnail image
+- POST to `/app/api/website/reel/upload/` — routes through `ReelService`
+- Video compressed via ffmpeg to H.264 below 10 MB; thumbnail logo-watermarked
+
+### Mobile API Endpoints (all under `/app/api/`)
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| `POST` | `card/<id>/status/` | Change single card status |
+| `GET` | `card/<id>/detail/` | Fetch card field data |
+| `DELETE` | `card/<id>/delete/` | Delete a card |
+| `GET` | `table/<id>/cards/` | Load cards for a table |
+| `POST` | `table/<id>/bulk-status/` | Bulk status change |
+| `POST` | `table/<id>/upload-photo/` | Upload photo for a card |
+| `POST` | `table/<id>/card/add/` | Create a new card |
+| `PUT` | `table/<id>/card/<card_id>/update/` | Update card fields |
+| `POST` | `table/<id>/update-fields/` | Reorder / rename table columns |
+| `GET` | `staff/` | List staff (scoped) |
+| `POST` | `staff/create/` | Create staff member |
+| `PUT` | `staff/<id>/update/` | Update staff member |
+| `POST` | `staff/<id>/toggle/` | Toggle staff active/inactive |
+| `DELETE` | `staff/<id>/delete/` | Delete staff member |
+| `POST` | `profile/update/` | Update user profile |
+| `GET` | `search/` | Full-text cross-table search |
+| `POST` | `client/<id>/toggle/` | Toggle client active/inactive |
+| `DELETE` | `client/<id>/delete/` | Delete client |
+| `POST` | `website/portfolio/upload/` | Upload portfolio images (batch, per category) |
+| `POST` | `website/reel/upload/` | Upload a reel video + thumbnail |
 
 ### Access Control
 
-- All 4 roles supported
-- `perm_mobile_app` enforced (super admin always passes)
-- Desktop users see a block page
-- Login redirect preserves `?next=/panel/app/`
+| Check | Detail |
+|-------|--------|
+| `perm_mobile_app` | Enforced on every page and API endpoint |
+| Desktop block | Non-mobile user-agent sees a redirect block page |
+| Login redirect | Preserves `?next=/panel/app/` after login |
+| Role guards | Staff Manage, Website Manage, Clients List require appropriate role/perm |
+| Action button gates | Every action button checks its specific permission before rendering |
 
 ---
 
@@ -963,34 +1216,43 @@ Progressive Web App for mobile access, enforcing `perm_mobile_app` permission.
 | Trusted Clients | `TrustedClient` | Logo carousel for social proof |
 | Testimonials | `Testimonial` | Star-rated customer reviews |
 | FAQ | `FAQ` | Collapsible question-answer pairs |
-| Reels | `Reel` | Short video showcases |
-| Contact | `ContactSubmission` | AJAX form with admin notification |
-| Business Info | `BusinessDetails` | Site name, tagline, contact details, social media, SEO |
+| Reels | `Reel` | Short video showcases (H.264, below 10 MB) |
+| Contact | `ContactSubmission` | AJAX form with admin notification and auto-reply |
+| Business Info | `BusinessDetails` | Site name, tagline, contact details, social media, SEO meta |
+
+### Media Storage Guarantees
+
+| Asset | Format | Max Size | Processing Applied |
+|-------|--------|----------|--------------------|
+| Portfolio images | WebP | 500 KB | Text watermark → WebP conversion → progressive quality compression |
+| Reel videos | MP4 (H.264) | 10 MB | ffmpeg re-encode, max 1280×720, AAC 64k audio, faststart |
+| Reel thumbnails | JPEG/PNG | — | Logo watermark composite |
+| Hero images | Original | — | None (admin-managed directly) |
 
 ### SEO Features
 
 - `robots.txt` — crawl instructions
-- `sitemap.xml` — XML sitemap generation
+- `sitemap.xml` — XML sitemap
 - Structured data (JSON-LD)
 - Meta tags (title, description, keywords)
 - Open Graph / Twitter Card tags
-- `X-Robots-Tag: noindex` on panel subdomain
+- `X-Robots-Tag: noindex` injected on panel subdomain
 
 ### Maintenance Mode
 
-`WebsiteStatus` singleton — toggle between **Live** and **Draft**. Draft mode shows 503 maintenance page. Admin panel, static files, media, and API routes always bypass.
+`WebsiteStatus` singleton — toggle between **Live** and **Draft**. Draft returns a 503 maintenance page. Admin panel, static files, media, and API routes bypass this check.
 
 ---
 
 ## Email System
 
-All emails are sent asynchronously via background threads to prevent request blocking.
+All emails sent asynchronously via background threads.
 
 ### Email Types
 
 | Email | Trigger | Format |
 |-------|---------|--------|
-| **OTP Verification** | Password reset request | Branded HTML — gradient header, large OTP code box, security notice, branded footer |
+| **OTP Verification** | Password reset request | Branded HTML — gradient header, large OTP code box, security notice |
 | **Welcome Email** | Account creation | Branded HTML — welcome message with login link |
 | **Password Changed** | Password change | Branded HTML — security alert notification |
 | **Contact Auto-Reply** | Contact form submission | HTML with exponential retry backoff |
@@ -1000,7 +1262,7 @@ All emails are sent asynchronously via background threads to prevent request blo
 - `send_html_email_async()` — dispatches HTML email via `threading.Thread`
 - `send_mail_async()` — dispatches plain text email via background thread
 - Non-blocking — email failures never break the main request
-- Retry with exponential backoff for contact form emails (1min → 10min → 1hr → 24hr)
+- Retry with exponential backoff for contact form emails (1 min → 10 min → 1 hr → 24 hr)
 
 ---
 
@@ -1011,6 +1273,7 @@ All emails are sent asynchronously via background threads to prevent request blo
 - Python 3.11+
 - Node.js 18+ (for Tailwind CSS CLI)
 - SQLite (development) or PostgreSQL (production)
+- ffmpeg (optional — enables video compression for reels; graceful fallback if missing)
 
 ### Quick Start
 
@@ -1058,6 +1321,20 @@ python manage.py runserver
 4. Clients can create groups and tables for ID card management
 5. Upload ID card data via individual entry or bulk XLSX + ZIP
 
+### Optional: ffmpeg for Video Compression
+
+```bash
+# Ubuntu / Debian
+sudo apt install ffmpeg
+
+# macOS
+brew install ffmpeg
+
+# Windows — download from https://ffmpeg.org/download.html and add to PATH
+```
+
+Without ffmpeg, video uploads work but are stored at original size (no compression applied). A warning is written to the log.
+
 ---
 
 ## Environment Variables
@@ -1068,8 +1345,8 @@ python manage.py runserver
 | `DEBUG` | Debug mode (`True`/`False`) | No | `False` |
 | `ALLOWED_HOSTS` | Comma-separated hostnames | **Yes (prod)** | `*` in DEBUG |
 | `DATABASE_URL` | Database connection URL | No | SQLite (dev) |
-| `WEBSITE_DOMAIN` | Public website domain (e.g., `www.adarshbhopal.in`) | No | — |
-| `PANEL_DOMAIN` | Admin panel domain (e.g., `panel.adarshbhopal.in`) | No | — |
+| `WEBSITE_DOMAIN` | Public website domain | No | — |
+| `PANEL_DOMAIN` | Admin panel domain | No | — |
 | `WEBSITE_URL` | Full website URL with protocol | No | Auto from WEBSITE_DOMAIN |
 | `PANEL_URL` | Full panel URL with protocol | No | Auto from PANEL_DOMAIN |
 | `EMAIL_HOST` | SMTP server hostname | No | — |
@@ -1078,7 +1355,7 @@ python manage.py runserver
 | `EMAIL_HOST_PASSWORD` | SMTP password | No | — |
 | `DEFAULT_FROM_EMAIL` | Sender email address | No | — |
 
-Generate a secret key with:
+Generate a secret key:
 ```bash
 python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
 ```
@@ -1097,7 +1374,7 @@ python -c "from django.core.management.utils import get_random_secret_key; print
 ### Step-by-Step
 
 1. **Setup swap** (2 GB) — see `deployment/setup_swap_example.sh`
-2. **Install system packages**: `python3.11`, `python3.11-venv`, `nginx`, `certbot`
+2. **Install system packages**: `python3.11`, `python3.11-venv`, `nginx`, `certbot`, `ffmpeg`
 3. **Clone repository** and setup virtualenv
 4. **Install dependencies**: `pip install -r requirements.txt`
 5. **Configure `.env`** with production settings
@@ -1122,6 +1399,39 @@ max_requests_jitter = 50
 ```
 
 See [`deployment/README.md`](deployment/README.md) for comprehensive deployment instructions.
+
+---
+
+## Changelog
+
+### v2.18.0 (March 2026)
+
+**Image & Video Processing Pipeline**
+- Portfolio images now go through a unified pipeline on every upload (desktop + mobile): text watermark → convert to WebP → progressive quality compression to target below 500 KB with fallback resize
+- Reel videos compressed via ffmpeg subprocess to H.264/AAC below 10 MB, max 1280×720, with `movflags faststart` for streaming; graceful fallback if ffmpeg is not installed
+- Reel thumbnails now receive logo watermark on every create and update
+
+**Mobile PWA — Service Layer Parity**
+- `api_portfolio_upload` now delegates to `PortfolioItemService.create()` instead of creating `PortfolioItem` directly — mobile uploads are now identical to desktop uploads
+- `api_reel_upload` now delegates to `ReelService.create()` instead of creating `Reel` directly — same compression and watermark pipeline applied on mobile
+
+**Mobile PWA — Permission Audit (6 fixes)**
+- Admin home stats now show global aggregate counts across all clients (previously showed first-client only)
+- Recent activity feed rebuilt to use card-based format (name, status, status_display, updated_at) matching the template's expected data shape
+- Home Block 2 now visible to all 4 roles: admins see "Recent Client Updates" with client list link; clients/client_staff see "My Groups" with groups overview link
+- Pending and Verified status tabs in card list now gated by `perm_idcard_pending_list` / `perm_idcard_verified_list` — tabs without permission render as plain text
+- `client_staff` users now see **Profile** link in the bottom navigation instead of **Staff** (they cannot manage staff)
+- Clients list page header now shows "Assigned Clients" for admin_staff and "Active Clients" for super_admin
+
+**Mobile PWA — Website Manage Page**
+- New `website_manage.html` page for managing portfolio and reels from mobile
+- Portfolio tab: category grid with per-category upload sheet, camera/gallery input, multi-image preview strip, bulk upload
+- Reels tab: scrollable reel grid, FAB to add new reel, title + video + optional thumbnail, full pipeline applied on upload
+- Accessible to super_admin and admin_staff only (`perm_website_add` required)
+
+### v2.17.x and earlier
+
+See git log for previous changes.
 
 ---
 
