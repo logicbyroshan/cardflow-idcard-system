@@ -369,23 +369,70 @@
 
 /* ===== CONTACT STATUS SELECT ===== */
 .wa-status-select {
-    padding: 5px 8px;
-    border-radius: 8px;
-    border: 1px solid var(--wa-gray-200);
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    padding: 6px 30px 6px 12px;
+    border-radius: 20px;
+    border: 1.5px solid var(--wa-gray-200);
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
-    background: #fff;
+    background-color: #fff;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='7' viewBox='0 0 11 7'%3E%3Cpath d='M1 1l4.5 4.5L10 1' stroke='%239ca3af' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
     color: var(--wa-gray-700);
     outline: none;
-    transition: border-color 0.15s, box-shadow 0.15s;
-    min-width: 90px;
+    transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s;
+    min-width: 106px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    line-height: 1.4;
 }
-.wa-status-select:focus { border-color: var(--wa-primary); box-shadow: 0 0 0 2px rgba(102,126,234,0.14); }
-.wa-status-select.status-new     { border-color: var(--wa-primary); background: #eef2ff; color: #3730a3; }
-.wa-status-select.status-read    { border-color: var(--wa-blue);    background: #eff6ff; color: #1d4ed8; }
-.wa-status-select.status-replied { border-color: var(--wa-green);   background: #f0fdf4; color: #166534; }
-.wa-status-select.status-closed  { border-color: var(--wa-gray-400); background: var(--wa-gray-50); color: var(--wa-gray-600); }
+.wa-status-select:hover {
+    border-color: var(--wa-gray-300);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.09);
+}
+.wa-status-select:focus {
+    border-color: var(--wa-primary);
+    box-shadow: 0 0 0 3px rgba(102,126,234,0.18);
+    outline: none;
+}
+/* Options — rounded with spacing (Firefox/Safari support; Chrome ignores border-radius on option) */
+.wa-status-select option {
+    border-radius: 8px;
+    padding: 7px 12px;
+    font-weight: 600;
+    font-size: 12px;
+    background: #fff;
+    color: var(--wa-gray-800);
+    margin: 2px 0;
+}
+/* Per-status colour pill */
+.wa-status-select.status-new {
+    border-color: var(--wa-primary);
+    background-color: #eef2ff;
+    color: #3730a3;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='7' viewBox='0 0 11 7'%3E%3Cpath d='M1 1l4.5 4.5L10 1' stroke='%233730a3' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+.wa-status-select.status-read {
+    border-color: var(--wa-blue);
+    background-color: #eff6ff;
+    color: #1d4ed8;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='7' viewBox='0 0 11 7'%3E%3Cpath d='M1 1l4.5 4.5L10 1' stroke='%231d4ed8' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+.wa-status-select.status-replied {
+    border-color: var(--wa-green);
+    background-color: #f0fdf4;
+    color: #166534;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='7' viewBox='0 0 11 7'%3E%3Cpath d='M1 1l4.5 4.5L10 1' stroke='%23166534' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+.wa-status-select.status-closed {
+    border-color: var(--wa-gray-400);
+    background-color: var(--wa-gray-100);
+    color: var(--wa-gray-600);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='7' viewBox='0 0 11 7'%3E%3Cpath d='M1 1l4.5 4.5L10 1' stroke='%236b7280' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
 
 /* ===== EMPTY STATE ===== */
 .wa-empty {
