@@ -224,7 +224,7 @@ def api_crop_batch_serve_image(request, batch_id):
         return JsonResponse({"error": "Not an image file"}, status=400)
 
     content_type = mimetypes.guess_type(str(file_path))[0] or "image/jpeg"
-    return FileResponse(file_path, content_type=content_type)
+    return FileResponse(open(file_path, "rb"), content_type=content_type)
 
 
 # ═══════════════════════════════════════════════════════════════════════════

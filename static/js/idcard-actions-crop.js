@@ -21,8 +21,9 @@
     // ── State ──────────────────────────────────────────────────────
     let _batchId = null;
     let _currentTab = 'cropped';
-    let _pendingIds = [];    // card IDs waiting for user to confirm path
+    let _pendingIds = [];    // card IDs waiting for user to confirm
     let _pendingTableId = null;
+    let _confirmCode = '';   // 4-digit code shown in Step 0
 
     // ── DOM references (cached on first use) ───────────────────────
     const $ = (id) => document.getElementById(id);
@@ -122,36 +123,45 @@
         _pendingTableId = tableId;
         _batchId = null;
 
-        // Show modal on Step 0 (path input)
+        // Generate 4-digit confirmation code
+        _confirmCode = String(Math.floor(1000 + Math.random() * 9000));
+        const codeDisplay = $('cropConfirmCodeDisplay');
+        if (codeDisplay) codeDisplay.textContent = _confirmCode;
+
+        // Set selected count text
+        const countText = $('cropSelectedCountText');
+        if (countText) countText.textContent = ids.length + ' card' + (ids.length !== 1 ? 's' : '');
+
+        // Reset input & error
+        const codeInput = $('cropConfirmCodeInput');
+        if (codeInput) { codeInput.value = ''; setTimeout(() => codeInput.focus(), 100); }
+        const codeError = $('cropConfirmCodeError');
+        if (codeError) codeError.style.display = 'none';
+
+        // Show modal on Step 0
         _openModal();
         _showOnly(0);
         _show($('cropStartBtn'));
         _hide($('cropReuploadBtn'));
         _hide($('cropDoneCloseBtn'));
-
-        // Reset path field
-        const pathInput = $('cropOutputPath');
-        if (pathInput) { pathInput.value = ''; setTimeout(() => pathInput.focus(), 100); }
-        const pathError = $('cropPathError');
-        if (pathError) { pathError.textContent = ''; pathError.style.display = 'none'; }
     }
 
     /**
-     * Called when user clicks "Start Crop" after entering a path.
-     * Validates path then kicks off the prepare → process → preview flow.
+     * Called when user clicks "Start Crop" after entering the confirmation code.
+     * Validates code then kicks off the prepare → process → preview flow.
      */
-    function _startWithPath() {
-        const pathInput = $('cropOutputPath');
-        const outputPath = pathInput ? pathInput.value.trim() : '';
-        const pathError = $('cropPathError');
+    function _startWithConfirmCode() {
+        const codeInput = $('cropConfirmCodeInput');
+        const entered = codeInput ? codeInput.value.trim() : '';
+        const codeError = $('cropConfirmCodeError');
 
-        if (!outputPath) {
-            if (pathError) { pathError.textContent = 'Please enter a folder path.'; pathError.style.display = ''; }
-            if (pathInput) pathInput.focus();
+        if (entered !== _confirmCode) {
+            if (codeError) codeError.style.display = '';
+            if (codeInput) codeInput.select();
             return;
         }
 
-        if (pathError) { pathError.textContent = ''; pathError.style.display = 'none'; }
+        if (codeError) codeError.style.display = 'none';
 
         const ids = _pendingIds;
         const tableId = _pendingTableId;
@@ -166,7 +176,8 @@
         if (status1) status1.textContent = `Preparing ${ids.length} card(s)…`;
         if (progress1) progress1.style.width = '20%';
 
-        _post(`/api/table/${tableId}/cards/prepare-crop/`, { card_ids: ids, output_path: outputPath })
+        // No output_path — backend auto-creates a temp folder inside MEDIA_ROOT
+        _post(`/api/table/${tableId}/cards/prepare-crop/`, { card_ids: ids })
             .then((data) => {
                 if (!data.success) {
                     _showError(data.message || 'Failed to prepare images');
@@ -435,13 +446,13 @@
         }
 
         // Start Crop button (Step 0)
-        $('cropStartBtn')?.addEventListener('click', _startWithPath);
+        $('cropStartBtn')?.addEventListener('click', _startWithConfirmCode);
 
-        // Allow Enter key in path input to trigger Start Crop
-        const pathInput = $('cropOutputPath');
-        if (pathInput) {
-            pathInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') { e.preventDefault(); _startWithPath(); }
+        // Allow Enter key in confirmation input to trigger Start Crop
+        const codeInput = $('cropConfirmCodeInput');
+        if (codeInput) {
+            codeInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); _startWithConfirmCode(); }
             });
         }
 

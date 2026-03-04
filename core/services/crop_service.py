@@ -55,18 +55,18 @@ class CropService:
 
     @staticmethod
     def _cropped_dir(batch_dir: Path) -> Path:
-        """Engine creates  <folder>_cropped/  next to the input folder."""
-        return batch_dir.parent / f"{batch_dir.name}_cropped"
+        """Engine places cropped images in <folder>/cropped/ (engine v2.2.0+)."""
+        return batch_dir / "cropped"
 
     @staticmethod
     def _failed_dir(batch_dir: Path) -> Path:
-        """Engine creates  <folder>_failed/  next to the input folder."""
-        return batch_dir.parent / f"{batch_dir.name}_failed"
+        """Engine places failed images in <folder>/failed/ (engine v2.2.0+)."""
+        return batch_dir / "failed"
 
     @staticmethod
     def _edited_dir(batch_dir: Path) -> Path:
-        """Edited images sit in  <parent>/edited/ ."""
-        return batch_dir.parent / "edited"
+        """Edited images sit in <folder>/edited/ ."""
+        return batch_dir / "edited"
 
     # ── 1. Prepare images ────────────────────────────────────────────
 
@@ -373,13 +373,10 @@ class CropService:
                 errors.append(f"Card {card_id}: {exc}")
                 logger.exception("Reupload cropped error for card %d", card_id)
 
-        # Cleanup batch folder
+        # Cleanup batch folder (cropped/failed/edited are subdirs inside batch_dir,
+        # so rmtree on batch_dir removes everything).
         try:
             shutil.rmtree(str(batch_dir), ignore_errors=True)
-            shutil.rmtree(str(cropped_dir), ignore_errors=True)
-            shutil.rmtree(str(cls._failed_dir(batch_dir)), ignore_errors=True)
-            if edited_dir.is_dir():
-                shutil.rmtree(str(edited_dir), ignore_errors=True)
         except Exception:
             pass
 

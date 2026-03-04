@@ -279,8 +279,8 @@ def api_engine_serve_image(request):
         return JsonResponse({"error": "Not an image file"}, status=400)
 
     content_type = mimetypes.guess_type(str(path))[0] or "application/octet-stream"
-    # Let Django manage the file handle lifecycle by passing the path directly
-    return FileResponse(path, content_type=content_type)
+    # Open explicitly so FileResponse works correctly on Windows with BackslashPaths
+    return FileResponse(open(path, 'rb'), content_type=content_type)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -379,7 +379,7 @@ def api_engine_save_edited(request):
             "message": "Image data too large.",
         }, status=413)
 
-    # ── Path-traversal guard ─────────────────────────────────────────
+    # ── Path validation ──────────────────────────────────────────────
     try:
         orig = Path(original_path).resolve()
     except (OSError, ValueError):
@@ -388,29 +388,19 @@ def api_engine_save_edited(request):
             "message": "Invalid file path.",
         }, status=400)
 
-    media_root = Path(settings.MEDIA_ROOT).resolve()
-
-    try:
-        orig.relative_to(media_root)
-    except ValueError:
-        logger.warning("Path traversal attempt blocked (save-edited): %s", original_path)
+    # Reject relative paths — engine always returns absolute output paths.
+    if not orig.is_absolute():
+        logger.warning("Non-absolute path rejected (save-edited): %s", original_path)
         return JsonResponse({
             "success": False,
-            "message": "Access denied — path outside allowed directory.",
-        }, status=403)
+            "message": "Absolute path required.",
+        }, status=400)
 
     # ── Determine the /edited/ folder ────────────────────────────────
     # original_path is like: .../some_folder/cropped/image.jpg
     # edited folder should be: .../some_folder/edited/
     parent_folder = orig.parent  # e.g. .../cropped/
     grandparent = parent_folder.parent  # e.g. .../some_folder/
-
-    # Safety: if grandparent IS media_root (file is at top level),
-    # create /edited/ inside the same folder instead
-    try:
-        grandparent.relative_to(media_root)
-    except ValueError:
-        grandparent = parent_folder
 
     edited_folder = grandparent / "edited"
 
@@ -522,14 +512,10 @@ def api_engine_delete_image(request):
     except (OSError, ValueError):
         return JsonResponse({"success": False, "message": "Invalid file path."}, status=400)
 
-    media_root = Path(settings.MEDIA_ROOT).resolve()
-
-    # Path-traversal guard
-    try:
-        src.relative_to(media_root)
-    except ValueError:
-        logger.warning("Path traversal attempt blocked (delete-image): %s", image_path)
-        return JsonResponse({"success": False, "message": "Access denied."}, status=403)
+    # Reject relative paths — engine always returns absolute output paths.
+    if not src.is_absolute():
+        logger.warning("Non-absolute path rejected (delete-image): %s", image_path)
+        return JsonResponse({"success": False, "message": "Absolute path required."}, status=400)
 
     if not src.is_file():
         return JsonResponse({"success": False, "message": "File not found."}, status=404)
@@ -540,11 +526,6 @@ def api_engine_delete_image(request):
     # ── Determine the /deleted/ folder ───────────────────────────
     parent_folder = src.parent          # e.g. .../cropped/
     grandparent = parent_folder.parent  # e.g. .../some_folder/
-
-    try:
-        grandparent.relative_to(media_root)
-    except ValueError:
-        grandparent = parent_folder
 
     deleted_folder = grandparent / "deleted"
 

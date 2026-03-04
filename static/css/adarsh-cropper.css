@@ -5,19 +5,21 @@
    ============================================ */
 
 .cropper-page {
-  padding: 12px 16px;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0;
+  background: var(--color-white);
 }
 
 /* ── Engine Status Card ─────────────────────────────────────────── */
 
 .engine-status-card {
   background: var(--color-white);
-  border: 1px solid var(--color-gray-200);
-  border-radius: 8px;
-  padding: 16px 20px;
+  border: none;
+  border-bottom: 1px solid var(--color-gray-200);
+  border-radius: 0;
+  padding: 14px 20px;
 }
 
 .engine-info-row {
@@ -25,7 +27,15 @@
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 10px;
+}
+
+/* Left group: status indicator + meta inline */
+.engine-info-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .engine-status-indicator {
@@ -201,9 +211,10 @@
 
 .update-banner {
   background: linear-gradient(135deg, #eff6ff 0%, #eef2ff 100%);
-  border: 1px solid #93c5fd;
-  border-radius: 8px;
-  padding: 14px 20px;
+  border: none;
+  border-bottom: 1px solid #93c5fd;
+  border-radius: 0;
+  padding: 12px 20px;
 }
 
 .update-banner-content {
@@ -311,14 +322,15 @@
 .processing-sections {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0;
 }
 
 .process-card {
   background: var(--color-white);
-  border: 1px solid var(--color-gray-200);
-  border-radius: 8px;
-  padding: 20px;
+  border: none;
+  border-bottom: 1px solid var(--color-gray-200);
+  border-radius: 0;
+  padding: 18px 20px;
 }
 
 .card-header h3 {
@@ -404,9 +416,10 @@
 
 .progress-section {
   background: var(--color-white);
-  border: 1px solid var(--color-gray-200);
-  border-radius: 8px;
-  padding: 16px 20px;
+  border: none;
+  border-bottom: 1px solid var(--color-gray-200);
+  border-radius: 0;
+  padding: 14px 20px;
 }
 
 .progress-header {
@@ -469,8 +482,9 @@
 
 .result-section {
   background: var(--color-white);
-  border: 1px solid var(--color-gray-200);
-  border-radius: 8px;
+  border: none;
+  border-bottom: 1px solid var(--color-gray-200);
+  border-radius: 0;
   padding: 16px 20px;
 }
 
@@ -651,9 +665,10 @@
 
 .error-section {
   background: var(--color-danger-bg);
-  border: 1px solid var(--color-danger-light);
-  border-radius: 8px;
-  padding: 14px 20px;
+  border: none;
+  border-bottom: 1px solid var(--color-danger-light);
+  border-radius: 0;
+  padding: 12px 20px;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -712,7 +727,7 @@
 
 @media (max-width: 640px) {
   .cropper-page {
-    padding: 8px;
+    padding: 0;
   }
   .update-banner-content {
     flex-direction: column;
@@ -735,6 +750,11 @@
   .engine-info-row {
     flex-direction: column;
     align-items: flex-start;
+  }
+  .engine-info-left {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
   }
 }
 

@@ -653,13 +653,9 @@ function cropperApp() {
           var self = this;
           this.preview.images = data.files.map(function (name) {
             var fullPath = folder + '\\' + name;
-            if (self.engine.direct) {
-              return {
-                name: name,
-                url: self.engine.url + '/serve-image?path=' + encodeURIComponent(fullPath),
-                path: fullPath,
-              };
-            }
+            // Always use Django proxy for img src to avoid Mixed Content on HTTPS pages.
+            // (Direct engine connection via fetch() works on HTTPS due to localhost exemption,
+            //  but <img src="http://127.0.0.1:"> is blocked as passive mixed content.)
             return {
               name: name,
               url: '/api/engine/serve-image/?path=' + encodeURIComponent(fullPath),
@@ -744,13 +740,7 @@ function cropperApp() {
           var self = this;
           var images = data.files.map(function (name) {
             var fullPath = folder + '\\' + name;
-            if (self.engine.direct) {
-              return {
-                name: name,
-                url: self.engine.url + '/serve-image?path=' + encodeURIComponent(fullPath),
-                path: fullPath,
-              };
-            }
+            // Always proxy for img src — avoids Mixed Content on HTTPS pages.
             return {
               name: name,
               url: '/api/engine/serve-image/?path=' + encodeURIComponent(fullPath),

@@ -27,21 +27,44 @@ Requires: idcard-actions-crop.js
     <!-- Body -->
     <div class="crop-modal-body">
 
-      <!-- Step 0: Choose Output Path -->
+      <!-- Step 0: Confirm -->
       <div class="crop-step" id="cropStep0" style="display:none;">
-        <div class="crop-step-icon"><i class="fa-solid fa-folder-open" style="color:#f97316;"></i></div>
-        <h3>Choose Download Location</h3>
-        <p class="crop-step-desc">Enter the full folder path where cropped images will be saved. The folder will be created if it doesn't exist.</p>
-        <div class="crop-path-input-wrap">
-          <label class="crop-path-label"><i class="fa-solid fa-folder"></i> Save folder path:</label>
-          <input id="cropOutputPath" type="text" class="crop-path-input"
-            placeholder="e.g. C:\Users\Name\Desktop\CroppedCards"
-            autocomplete="off" spellcheck="false">
-          <p class="crop-path-hint">
-            <i class="fa-solid fa-circle-info"></i>
-            The engine will create a <code>_cropped</code> sub-folder next to the folder you specify.
+        <div class="crop-step-icon"><i class="fa-solid fa-scissors"></i></div>
+        <h3>Crop Selected Images</h3>
+        <p class="crop-step-desc">
+          <span id="cropSelectedCountText">0 cards</span> selected.
+          The engine will automatically crop the images and the results will be re-uploaded to the pending list.
+        </p>
+
+        <!-- How it works -->
+        <div class="crop-how-it-works">
+          <div class="crop-how-step">
+            <span class="crop-how-num">1</span>
+            <span>Selected card images are copied to a temporary folder</span>
+          </div>
+          <div class="crop-how-step">
+            <span class="crop-how-num">2</span>
+            <span>Face Cropper Engine processes them automatically</span>
+          </div>
+          <div class="crop-how-step">
+            <span class="crop-how-num">3</span>
+            <span>Cropped images are re-uploaded back to the pending list</span>
+          </div>
+          <div class="crop-how-step">
+            <span class="crop-how-num">4</span>
+            <span>Failed images can be handled manually from the Adarsh Engine page</span>
+          </div>
+        </div>
+
+        <!-- Confirmation code -->
+        <div class="crop-confirm-wrap">
+          <p class="crop-confirm-label">Type this code to confirm and start:</p>
+          <div class="crop-confirm-code-display" id="cropConfirmCodeDisplay">----</div>
+          <input id="cropConfirmCodeInput" type="text" class="crop-confirm-input"
+            maxlength="4" autocomplete="off" spellcheck="false" placeholder="_ _ _ _">
+          <p class="crop-confirm-error" id="cropConfirmCodeError" style="display:none;">
+            <i class="fa-solid fa-triangle-exclamation"></i> Wrong code — please try again.
           </p>
-          <p class="crop-path-error" id="cropPathError" style="display:none;"></p>
         </div>
       </div>
 
@@ -274,58 +297,77 @@ Requires: idcard-actions-crop.js
   100% { transform: translateX(433%); }
 }
 
-/* Step 0: Path input */
-#cropStep0 { text-align: left; }
-#cropStep0 h3 { text-align: center; }
-#cropStep0 .crop-step-icon { text-align: center; }
-#cropStep0 .crop-step-desc { text-align: center; }
-.crop-path-input-wrap {
-  max-width: 560px;
-  margin: 18px auto 0;
+/* Step 0: How it works + confirmation code */
+#cropStep0 { text-align: center; }
+.crop-how-it-works {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 460px;
+  margin: 16px auto;
   text-align: left;
 }
-.crop-path-label {
-  display: block;
-  font-size: 13px;
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 8px;
-}
-.crop-path-label i { margin-right: 6px; color: #f97316; }
-.crop-path-input {
-  width: 100%;
-  padding: 10px 14px;
-  border: 1.5px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 14px;
-  color: #1f2937;
-  background: #f9fafb;
-  outline: none;
-  transition: border-color .15s, box-shadow .15s;
-  box-sizing: border-box;
-  font-family: monospace;
-}
-.crop-path-input:focus {
-  border-color: #f97316;
-  box-shadow: 0 0 0 3px rgba(249,115,22,.15);
-  background: #fff;
-}
-.crop-path-hint {
-  font-size: 12px;
-  color: #9ca3af;
-  margin-top: 8px;
+.crop-how-step {
   display: flex;
   align-items: flex-start;
-  gap: 6px;
-}
-.crop-path-hint code {
-  background: #f3f4f6;
-  padding: 1px 5px;
-  border-radius: 4px;
-  font-size: 11px;
+  gap: 12px;
+  font-size: 13px;
   color: #374151;
 }
-.crop-path-error {
+.crop-how-num {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.crop-confirm-wrap {
+  margin: 20px auto 0;
+  max-width: 300px;
+}
+.crop-confirm-label {
+  font-size: 13px;
+  color: #6b7280;
+  margin-bottom: 8px;
+}
+.crop-confirm-code-display {
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: 10px;
+  color: #f97316;
+  font-family: monospace;
+  margin-bottom: 12px;
+  padding: 10px 20px;
+  background: #fff7ed;
+  border-radius: 10px;
+  border: 2px dashed #fdba74;
+  display: inline-block;
+  min-width: 160px;
+}
+.crop-confirm-input {
+  width: 100%;
+  text-align: center;
+  font-size: 28px;
+  font-family: monospace;
+  letter-spacing: 8px;
+  padding: 10px 14px;
+  border: 2px solid #d1d5db;
+  border-radius: 10px;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color .15s, box-shadow .15s;
+}
+.crop-confirm-input:focus {
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgba(249,115,22,.15);
+}
+.crop-confirm-error {
   font-size: 13px;
   color: #ef4444;
   margin-top: 8px;

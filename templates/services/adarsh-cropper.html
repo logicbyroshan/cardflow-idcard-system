@@ -78,14 +78,16 @@
     {# Connected — shown only after engine is confirmed connected #}
     <div class="engine-connected" x-show="engine.checked && engine.connected" x-cloak x-transition>
       <div class="engine-info-row">
-        <div class="engine-status-indicator connected">
-          <i class="fa-solid fa-check-circle"></i>
-          <span>Engine Connected</span>
-        </div>
-        <div class="engine-meta">
-          <span><i class="fa-solid fa-code-branch"></i> v<span x-text="engine.version"></span></span>
-          <span x-show="engine.uptime"><i class="fa-solid fa-clock"></i> <span x-text="engine.uptime"></span></span>
-          <span x-show="engine.memory"><i class="fa-solid fa-microchip"></i> <span x-text="engine.memory"></span> MB</span>
+        <div class="engine-info-left">
+          <div class="engine-status-indicator connected">
+            <i class="fa-solid fa-check-circle"></i>
+            <span>Engine Connected</span>
+          </div>
+          <div class="engine-meta">
+            <span><i class="fa-solid fa-code-branch"></i> v<span x-text="engine.version"></span></span>
+            <span x-show="engine.uptime"><i class="fa-solid fa-clock"></i> <span x-text="engine.uptime"></span></span>
+            <span x-show="engine.memory"><i class="fa-solid fa-microchip"></i> <span x-text="engine.memory"></span> MB</span>
+          </div>
         </div>
         <a href="{% url 'engine_download' %}" class="btn btn-sm btn-engine-dl" download="AdarshEngineSetup.exe" title="Download latest installer (re-install to update)">
           <i class="fa-solid fa-download"></i> Download Latest Installer
