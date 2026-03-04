@@ -30,19 +30,41 @@
         </button>
     </div>
 
-    <!-- Editing card banner (when specific card targeted from edit) -->
-    {% if card_id %}
-    <div class="px-4 py-2 bg-indigo-900/80 flex items-center gap-2">
-        <i class="fa-solid fa-pen text-indigo-300 text-xs"></i>
-        <span class="text-white/80 text-xs font-medium">Replacing photo for card #{{ card_id }}</span>
+    <!-- Selected card info banner -->
+    <div x-show="selectedCardId && !photoTaken"
+         x-transition
+         class="px-4 py-2.5 bg-brand-light/90 backdrop-blur-sm flex items-center gap-3"
+         style="display:none;">
+        <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
+            <i class="fa-solid fa-user text-white text-sm"></i>
+        </div>
+        <div class="flex-1 min-w-0">
+            <p class="text-white/70 text-[9px] font-medium uppercase tracking-wide">Capturing photo for</p>
+            <p class="text-white font-bold text-sm truncate"
+               x-text="allCards.find(c => c.id === selectedCardId)?.name || ('Card #' + selectedCardId)"></p>
+        </div>
+        {% if not card_id %}
+        <button @click="selectedCardId = null; cardSearch = ''" class="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center text-white/70 hover:text-white transition flex-shrink-0">
+            <i class="fa-solid fa-xmark text-xs"></i>
+        </button>
+        {% endif %}
     </div>
-    {% endif %}
+
+    <!-- Photo-taken selected banner -->
+    <div x-show="selectedCardId && photoTaken"
+         x-transition
+         class="px-4 py-2 bg-black/60 flex items-center gap-2"
+         style="display:none;">
+        <i class="fa-solid fa-user-check text-green-400 text-xs"></i>
+        <p class="text-white/80 text-xs font-medium"
+           x-text="'Photo for: ' + (allCards.find(c => c.id === selectedCardId)?.name || ('Card #' + selectedCardId))"></p>
+    </div>
 
     <!-- Card Picker (when no specific card is targeted) -->
     <div x-show="!selectedCardId && !photoTaken"
          class="absolute inset-x-0 top-14 z-50 bg-black/95 backdrop-blur-md p-4"
          x-transition>
-        <p class="text-white/70 text-xs mb-2 font-medium">Search &amp; select a card to capture photo for:</p>
+        <p class="text-white/70 text-xs mb-2 font-medium">Search &amp; select a student:</p>
         <!-- Search input -->
         <div class="relative mb-2">
             <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-xs"></i>
@@ -55,30 +77,20 @@
             </button>
         </div>
         <!-- Results list -->
-        <div class="max-h-40 overflow-y-auto space-y-1.5 custom-scroll">
+        <div class="max-h-44 overflow-y-auto space-y-1.5 custom-scroll">
             <template x-for="card in filteredCards" :key="card.id">
-                <button @click="selectedCardId = card.id"
-                        class="w-full text-left px-3 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 transition text-white text-sm flex items-center gap-2">
-                    <i class="fa-solid fa-id-card text-brand-light text-xs"></i>
-                    <span x-text="card.name" class="truncate flex-1"></span>
-                    <span class="text-white/40 text-[10px] ml-auto">#<span x-text="card.id"></span></span>
+                <button @click="selectedCardId = card.id; cardSearch = card.name"
+                        class="w-full text-left px-3 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 active:bg-white/30 transition text-white text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-user text-brand-light text-xs flex-shrink-0"></i>
+                    <span x-text="card.name" class="truncate flex-1 font-medium"></span>
                 </button>
             </template>
             <div x-show="filteredCards.length === 0 && cardSearch" class="text-center py-3">
-                <p class="text-white/50 text-xs">No cards match "<span x-text="cardSearch"></span>"</p>
+                <p class="text-white/50 text-xs">No students match "<span x-text="cardSearch"></span>"</p>
             </div>
             <div x-show="filteredCards.length === 0 && !cardSearch" class="text-center py-3">
-                <p class="text-white/50 text-xs">No cards in this table</p>
+                <p class="text-white/50 text-xs">No students in this table</p>
             </div>
-        </div>
-        <!-- Manual ID fallback -->
-        <div class="mt-2 flex items-center gap-2">
-            <input type="number" x-model.number="manualCardId" placeholder="Or enter Card ID"
-                   class="flex-1 px-3 py-2 rounded-lg bg-white/10 text-white text-sm border border-white/20 focus:border-brand-light outline-none placeholder-white/30">
-            <button @click="if(manualCardId) selectedCardId = manualCardId"
-                    class="px-4 py-2 rounded-lg bg-gradient-to-r from-brand-light to-brand-dark text-white text-sm font-semibold">
-                Use ID
-            </button>
         </div>
     </div>
 
@@ -105,33 +117,34 @@
     </div>
 
     <!-- Camera Controls -->
-    <div class="fixed bottom-0 left-0 right-0 bg-black/90 backdrop-blur-md py-6">
-        <div class="max-w-[430px] mx-auto flex items-center justify-center gap-8">
-            <button @click="$refs.galleryFile.click()" class="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center text-white">
+    <div class="fixed bottom-0 left-0 right-0 bg-black/90 backdrop-blur-md py-5">
+        <div class="max-w-[430px] mx-auto flex items-center justify-center gap-5">
+            <button @click="$refs.galleryFile.click()" class="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-white active:scale-95 transition-transform">
                 <i class="fa-solid fa-images text-lg"></i>
             </button>
             <input type="file" x-ref="galleryFile" accept="image/*" class="hidden" @change="onGalleryPick($event)">
             <template x-if="!photoTaken">
-                <button @click="capturePhoto()" class="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-lg shadow-white/20 hover:scale-95 transition-transform">
-                    <div class="w-14 h-14 rounded-full border-4 border-gray-200"></div>
+                <button @click="capturePhoto()" class="w-16 h-16 rounded-2xl bg-white flex items-center justify-center shadow-lg shadow-white/20 active:scale-95 transition-transform">
+                    <div class="w-12 h-12 rounded-xl border-4 border-gray-300"></div>
                 </button>
             </template>
             <template x-if="photoTaken">
-                <div class="flex gap-4">
-                    <button @click="retakePhoto()" class="w-14 h-14 rounded-full bg-red-500 flex items-center justify-center text-white">
+                <div class="flex gap-3">
+                    <button @click="retakePhoto()" class="w-14 h-14 rounded-2xl bg-red-500 flex items-center justify-center text-white shadow-lg shadow-red-500/30 active:scale-95 transition-transform">
                         <i class="fa-solid fa-xmark text-xl"></i>
                     </button>
-                    <button @click="openCropper()" class="w-14 h-14 rounded-full bg-blue-500 flex items-center justify-center text-white">
-                        <i class="fa-solid fa-crop text-xl"></i>
+                    <button @click="openCropper()" class="w-14 h-14 rounded-2xl bg-blue-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/30 active:scale-95 transition-transform">
+                        <i class="fa-solid fa-crop-simple text-xl"></i>
                     </button>
-                    <button @click="savePhoto()" class="w-14 h-14 rounded-full bg-green-500 flex items-center justify-center text-white" :disabled="uploading">
-                        <i class="fa-solid fa-check" :class="uploading ? 'fa-spinner fa-spin' : 'fa-check'" style="font-size:1.25rem;"></i>
+                    <button @click="savePhoto()" class="w-14 h-14 rounded-2xl bg-green-500 flex items-center justify-center text-white shadow-lg shadow-green-500/30 active:scale-95 transition-transform" :disabled="uploading">
+                        <span x-show="!uploading"><i class="fa-solid fa-check text-xl"></i></span>
+                        <span x-show="uploading"><i class="fa-solid fa-spinner fa-spin text-xl"></i></span>
                     </button>
                 </div>
             </template>
-            <button @click="toggleFlash()" class="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center text-white"
-                    :class="{ 'bg-amber-500/30 text-amber-400': flashOn }">
-                <i class="fa-solid fa-bolt-slash" :class="flashOn ? 'fa-bolt' : 'fa-bolt-slash'" style="font-size:1.125rem;"></i>
+            <button @click="toggleFlash()" class="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-white active:scale-95 transition-transform"
+                    :class="{ 'bg-amber-500/40 text-amber-300': flashOn }">
+                <i :class="flashOn ? 'fa-solid fa-bolt' : 'fa-solid fa-bolt-slash'" style="font-size:1.125rem;"></i>
             </button>
         </div>
     </div>

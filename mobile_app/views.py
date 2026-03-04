@@ -489,6 +489,15 @@ def card_list(request, table_id, status):
     all_sections = sorted(set(c['section'] for c in cards if c['section']))
     table_fields = table.fields if hasattr(table, 'fields') and table.fields else []
 
+    # Count badges for each status tab
+    _all_qs = IDCard.objects.filter(table=table)
+    tab_counts = {
+        'pending':  _all_qs.filter(status='pending').count(),
+        'verified': _all_qs.filter(status='verified').count(),
+        'approved': _all_qs.filter(status='approved').count(),
+        'download': _all_qs.filter(status='download').count(),
+    }
+
     return render(request, 'mobile_app/list_page.html', {
         'user_name': user.get_full_name() or user.username,
         'client': client,
@@ -505,6 +514,7 @@ def card_list(request, table_id, status):
         'table_fields': json.dumps(table_fields, default=str),
         # View-only mode: clients on approved/download lists can only view, not act
         'view_only_list': status in ('approved', 'download') and not PermissionService.is_any_admin(user),
+        'tab_counts': tab_counts,
         **perms,
     })
 

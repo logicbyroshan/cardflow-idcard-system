@@ -20,8 +20,6 @@
                     <th class="px-2 py-2 text-left text-[10px] uppercase tracking-wider font-semibold">Section</th>
                     <th class="px-2 py-2 text-left text-[10px] uppercase tracking-wider font-semibold">Father</th>
                     <th class="px-2 py-2 text-left text-[10px] uppercase tracking-wider font-semibold">DOB</th>
-                    <th class="px-2 py-2 text-left text-[10px] uppercase tracking-wider font-semibold">Status</th>
-                    <th class="px-1 py-2 text-center text-[10px] uppercase tracking-wider font-semibold w-8">View</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-50 bg-white">
@@ -62,28 +60,10 @@
                     <td class="px-2 py-2 text-gray-600 whitespace-nowrap">{{ student.section }}</td>
                     <td class="px-2 py-2 text-gray-600 whitespace-nowrap">{{ student.father_name }}</td>
                     <td class="px-2 py-2 text-gray-500 whitespace-nowrap">{{ student.dob }}</td>
-                    <td class="px-2 py-2">
-                        {% if student.status == 'pending' %}
-                        <span class="status-badge bg-amber-50 text-amber-700 border-amber-200">Pending</span>
-                        {% elif student.status == 'verified' %}
-                        <span class="status-badge bg-green-50 text-green-700 border-green-200">Verified</span>
-                        {% elif student.status == 'approved' %}
-                        <span class="status-badge bg-blue-50 text-blue-700 border-blue-200">Approved</span>
-                        {% elif student.status == 'download' %}
-                        <span class="status-badge bg-purple-50 text-purple-700 border-purple-200">Download</span>
-                        {% elif student.status == 'pool' %}
-                        <span class="status-badge bg-red-50 text-red-700 border-red-200">Pool</span>
-                        {% endif %}
-                    </td>
-                    <td class="px-1 py-2 text-center">
-                        <a href="{% url 'mobile_app:card_detail' card_id=student.id %}" @click.stop class="inline-flex items-center justify-center w-6 h-6 rounded-md bg-brand-light/10 text-brand-light hover:bg-brand-light/20 transition">
-                            <i class="fa-solid fa-eye text-[9px]"></i>
-                        </a>
-                    </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="11" class="text-center py-10 text-gray-400">
+                    <td colspan="9" class="text-center py-10 text-gray-400">
                         <i class="fa-solid fa-inbox text-3xl mb-2 block"></i>
                         <p class="text-sm">No records found</p>
                     </td>
