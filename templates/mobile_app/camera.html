@@ -20,15 +20,23 @@
 <div class="min-h-screen bg-black" x-data="cameraApp()">
     <!-- Header -->
     <div class="sticky top-0 z-40 flex items-center gap-3 px-4 py-3 bg-black/80 backdrop-blur-md">
-        <a href="{% url 'mobile_app:home' %}" class="text-white">
+        <button @click="goBack()" class="text-white">
             <i class="fa-solid fa-arrow-left text-lg"></i>
-        </a>
+        </button>
         <h1 class="text-white font-bold text-base flex-1">Capture Photo</h1>
         <span class="text-white/50 text-xs">{% if table %}{{ table.name }}{% endif %}</span>
         <button @click="switchCamera()" class="text-white/70 ml-2">
             <i class="fa-solid fa-camera-rotate text-lg"></i>
         </button>
     </div>
+
+    <!-- Editing card banner (when specific card targeted from edit) -->
+    {% if card_id %}
+    <div class="px-4 py-2 bg-indigo-900/80 flex items-center gap-2">
+        <i class="fa-solid fa-pen text-indigo-300 text-xs"></i>
+        <span class="text-white/80 text-xs font-medium">Replacing photo for card #{{ card_id }}</span>
+    </div>
+    {% endif %}
 
     <!-- Card Picker (when no specific card is targeted) -->
     <div x-show="!selectedCardId && cardsWithoutPhoto.length > 0 && !photoTaken"
@@ -255,6 +263,8 @@ function cameraApp() {
                     /* Remove this card from the list and reset selection */
                     this.cardsWithoutPhoto = this.cardsWithoutPhoto.filter(c => c.id !== this.selectedCardId);
                     this.selectedCardId = 0;
+                    /* Navigate back after brief delay */
+                    setTimeout(() => { this.goBack(); }, 900);
                 } else {
                     this.showMsg(data.message || 'Upload failed', 'error');
                 }
@@ -271,6 +281,22 @@ function cameraApp() {
             this.facingMode = this.facingMode === 'environment' ? 'user' : 'environment';
             if (this.stream) this.stream.getTracks().forEach(t => t.stop());
             await this.startCamera();
+        },
+
+        goBack() {
+            if (this.stream) this.stream.getTracks().forEach(t => t.stop());
+            // Use stored return URL or referrer for a fresh page load
+            const retUrl = sessionStorage.getItem('cam_return_url');
+            if (retUrl) {
+                sessionStorage.removeItem('cam_return_url');
+                window.location.href = retUrl;
+            } else if (document.referrer && !document.referrer.includes('/camera/')) {
+                window.location.href = document.referrer;
+            } else if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                window.location.href = '/app/';
+            }
         },
 
         toggleFlash() {

@@ -1,6 +1,7 @@
 {% load static %}
-<!-- Top Horizontal Scroll Action Bar -->
-<div class="flex-shrink-0 z-40 bg-white border-b border-gray-200 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+<!-- Fixed Bottom Action Bar -->
+<div class="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-[0_-2px_12px_rgba(0,0,0,0.08)]"
+     style="padding-bottom: env(safe-area-inset-bottom, 0px);">
 
     <!-- Selection count chip (shows when items selected) -->
     <div x-show="selectedIds.length > 0" x-transition
@@ -14,7 +15,7 @@
     </div>
 
     <!-- Scrollable action buttons row -->
-    <div class="overflow-x-auto py-1.5 px-2 scrollbar-hide">
+    <div class="overflow-x-auto py-2 px-2 scrollbar-hide">
         <div class="flex items-center gap-1.5 w-max">
 
             <!-- ADD — only if user has add permission -->

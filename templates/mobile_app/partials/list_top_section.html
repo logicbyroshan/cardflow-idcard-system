@@ -33,9 +33,9 @@
         </button>
     </div>
 
-    <!-- Search Bar -->
+    <!-- Search Bar + Status Tabs -->
     <div class="px-3 py-2 bg-white border-b border-gray-100">
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 mb-2">
             <div class="relative flex-1">
                 <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
                 <input
@@ -54,6 +54,29 @@
                 <i class="fa-solid fa-sliders text-sm"></i>
                 <span x-show="filtersActive" class="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full"></span>
             </button>
+        </div>
+        <!-- Status quick-nav tabs -->
+        <div class="flex gap-1.5">
+            <a href="{% url 'mobile_app:card_list' table_id=table.id status='pending' %}"
+               class="flex-1 text-center py-1.5 text-[10px] font-bold rounded-lg transition-all border
+               {% if list_type == 'pending' %}bg-amber-500 text-white border-amber-500{% else %}bg-amber-50 text-amber-600 border-amber-100{% endif %}">
+                <i class="fa-solid fa-clock mr-1 text-[9px]"></i>Pending
+            </a>
+            <a href="{% url 'mobile_app:card_list' table_id=table.id status='verified' %}"
+               class="flex-1 text-center py-1.5 text-[10px] font-bold rounded-lg transition-all border
+               {% if list_type == 'verified' %}bg-green-500 text-white border-green-500{% else %}bg-green-50 text-green-600 border-green-100{% endif %}">
+                <i class="fa-solid fa-check-circle mr-1 text-[9px]"></i>Verified
+            </a>
+            <a href="{% url 'mobile_app:card_list' table_id=table.id status='approved' %}"
+               class="flex-1 text-center py-1.5 text-[10px] font-bold rounded-lg transition-all border
+               {% if list_type == 'approved' %}bg-blue-500 text-white border-blue-500{% else %}bg-blue-50 text-blue-600 border-blue-100{% endif %}">
+                <i class="fa-solid fa-check-double mr-1 text-[9px]"></i>Approved
+            </a>
+            <a href="{% url 'mobile_app:card_list' table_id=table.id status='download' %}"
+               class="flex-1 text-center py-1.5 text-[10px] font-bold rounded-lg transition-all border
+               {% if list_type == 'download' %}bg-purple-500 text-white border-purple-500{% else %}bg-purple-50 text-purple-600 border-purple-100{% endif %}">
+                <i class="fa-solid fa-download mr-1 text-[9px]"></i>Download
+            </a>
         </div>
     </div>
 </div>

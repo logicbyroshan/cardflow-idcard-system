@@ -10,22 +10,38 @@
 
     <!-- Header -->
     <div class="flex-shrink-0 z-40 bg-white shadow-sm">
-        <div class="flex items-center gap-3 px-4 py-2.5 bg-gradient-to-r from-brand-light to-brand-dark">
-            <a href="{% url 'mobile_app:home' %}" class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all">
-                <i class="fa-solid fa-arrow-left text-sm"></i>
-            </a>
-            <div class="flex-1">
-                <h1 class="text-white font-bold text-sm">Manage Clients</h1>
-                <p class="text-white/70 text-[10px]" x-text="clients.length + ' client(s)'"></p>
+        <div class="px-4 pt-3 pb-2 bg-gradient-to-r from-brand-light to-brand-dark">
+            <!-- Top row: back + title + count -->
+            <div class="flex items-center gap-3 mb-2.5">
+                <a href="{% url 'mobile_app:home' %}" class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all">
+                    <i class="fa-solid fa-arrow-left text-sm"></i>
+                </a>
+                <div class="flex-1">
+                    <h1 class="text-white font-bold text-sm">Active Clients</h1>
+                    <p class="text-white/70 text-[10px]" x-text="filteredClients.length + ' client(s)'"></p>
+                </div>
+                <!-- Status filter chips -->
+                <div class="flex gap-1">
+                    <button @click="filter = 'all'" class="text-[9px] font-bold px-2 py-1 rounded-full transition"
+                            :class="filter === 'all' ? 'bg-white text-brand-light' : 'bg-white/20 text-white'">All</button>
+                    <button @click="filter = 'active'" class="text-[9px] font-bold px-2 py-1 rounded-full transition"
+                            :class="filter === 'active' ? 'bg-white text-brand-light' : 'bg-white/20 text-white'">Active</button>
+                </div>
             </div>
-            <!-- Filter chip -->
-            <div class="flex gap-1">
-                <button @click="filter = 'all'" class="text-[9px] font-bold px-2 py-1 rounded-full transition"
-                        :class="filter === 'all' ? 'bg-white text-brand-light' : 'bg-white/20 text-white'">All</button>
-                <button @click="filter = 'active'" class="text-[9px] font-bold px-2 py-1 rounded-full transition"
-                        :class="filter === 'active' ? 'bg-white text-brand-light' : 'bg-white/20 text-white'">Active</button>
-                <button @click="filter = 'inactive'" class="text-[9px] font-bold px-2 py-1 rounded-full transition"
-                        :class="filter === 'inactive' ? 'bg-white text-brand-light' : 'bg-white/20 text-white'">Inactive</button>
+            <!-- Two big action tabs -->
+            <div class="grid grid-cols-2 gap-2">
+                <button @click="targetTab = 'groups'"
+                        class="flex items-center justify-center gap-2 py-2 rounded-xl font-semibold text-xs transition-all"
+                        :class="targetTab === 'groups' ? 'bg-white text-brand-light shadow' : 'bg-white/15 text-white border border-white/20'">
+                    <i class="fa-solid fa-layer-group text-xs"></i>
+                    <span>ID Card Groups</span>
+                </button>
+                <button @click="targetTab = 'tables'"
+                        class="flex items-center justify-center gap-2 py-2 rounded-xl font-semibold text-xs transition-all"
+                        :class="targetTab === 'tables' ? 'bg-white text-brand-light shadow' : 'bg-white/15 text-white border border-white/20'">
+                    <i class="fa-solid fa-gear text-xs"></i>
+                    <span>Group Settings</span>
+                </button>
             </div>
         </div>
     </div>
@@ -69,8 +85,10 @@
                         <div class="flex items-center gap-1 flex-shrink-0">
                             <!-- Open groups (active only) -->
                             <button x-show="c.status === 'active'" @click="openGroups(c.id)"
-                                    class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-500 flex items-center justify-center active:scale-95 transition-all" title="View Groups">
-                                <i class="fa-solid fa-layer-group text-xs"></i>
+                                    class="w-8 h-8 rounded-lg flex items-center justify-center active:scale-95 transition-all"
+                                    :class="targetTab === 'tables' ? 'bg-amber-50 text-amber-500' : 'bg-indigo-50 text-indigo-500'"
+                                    :title="targetTab === 'tables' ? 'Group Settings' : 'ID Card Groups'">
+                                <i class="text-xs" :class="targetTab === 'tables' ? 'fa-solid fa-gear' : 'fa-solid fa-layer-group'"></i>
                             </button>
                             <!-- Toggle active/inactive -->
                             <button @click="toggleClient(c)"
@@ -113,6 +131,7 @@ function clientsApp() {
     return {
         clients: [],
         filter: 'all',
+        targetTab: 'groups',
         loading: false,
         toast: { show: false, message: '', type: 'info' },
 
@@ -126,7 +145,8 @@ function clientsApp() {
         },
 
         openGroups(clientId) {
-            window.location.href = '/app/clients/' + clientId + '/groups/';
+            const suffix = this.targetTab === 'tables' ? '?tab=tables' : '';
+            window.location.href = '/app/clients/' + clientId + '/groups/' + suffix;
         },
 
         showToast(msg, type='info') {

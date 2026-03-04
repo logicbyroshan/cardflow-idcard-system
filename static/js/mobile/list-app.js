@@ -29,6 +29,22 @@ function listApp() {
             bloodGroup: '', aadhar: '', photoFile: null, photoPreview: null,
         },
 
+        init() {
+            // Re-open edit form if we just returned from camera.html
+            const camReturnEdit = sessionStorage.getItem('cam_return_edit');
+            if (camReturnEdit) {
+                sessionStorage.removeItem('cam_return_edit');
+                const eid = parseInt(camReturnEdit, 10);
+                if (eid) {
+                    this.$nextTick(() => {
+                        this.selectedIds = [eid];
+                        this.editSelected();
+                        this.showToast('Photo saved! Edit form re-opened.', 'success');
+                    });
+                }
+            }
+        },
+
         toggleSelectAll() {
             if (this.selectAll) {
                 // Only select visible (non-hidden) rows
@@ -208,8 +224,16 @@ function listApp() {
         },
         openImagePicker() { this.showImagePicker = !this.showImagePicker; },
         takePhoto() {
-            if (this.$refs.cameraInput) this.$refs.cameraInput.click();
-            this.showImagePicker = false;
+            if (this.editMode && this.editingId) {
+                // Redirect to full camera.html — same as top-bar camera button
+                sessionStorage.setItem('cam_return_edit', String(this.editingId));
+                sessionStorage.setItem('cam_return_url', window.location.href);
+                window.location.href = '/app/camera/' + TABLE_ID + '/' + this.editingId + '/';
+            } else {
+                // Add-new mode: use native camera input (no card_id yet)
+                if (this.$refs.cameraInput) this.$refs.cameraInput.click();
+                this.showImagePicker = false;
+            }
         },
         pickFromGallery() {
             if (this.$refs.galleryInput) this.$refs.galleryInput.click();

@@ -4,7 +4,8 @@
 {% block title %}Groups & Tables - Adarsh ID Cards{% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-gray-50 pb-20" x-data="{ activeTab: 'groups', expandedGroup: null }">
+<div class="min-h-screen bg-gray-50 pb-20" x-data="{ activeTab: 'groups', expandedGroup: null }"
+     x-init="activeTab = new URLSearchParams(location.search).get('tab') || 'groups'">
     <!-- Header -->
     <div class="sticky top-0 z-40 flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-brand-light to-brand-dark">
         {% if back_to_clients %}

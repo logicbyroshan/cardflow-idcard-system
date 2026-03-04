@@ -1,5 +1,5 @@
 <!-- Filter Side Panel -->
-<div x-show="showFilters" x-transition class="fixed inset-0 z-50" @click.self="showFilters = false">
+<div x-show="showFilters" x-cloak x-transition class="fixed inset-0 z-50" @click.self="showFilters = false" style="display:none;">
     <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="showFilters = false"></div>
     <div
         x-show="showFilters"
