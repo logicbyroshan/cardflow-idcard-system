@@ -21,7 +21,7 @@
         {% endif %}
         <div class="flex-1">
             <h1 class="text-white font-bold text-sm">{% if client_name %}{{ client_name }}{% else %}Groups & Tables{% endif %}</h1>
-            <p class="text-white/70 text-[10px]">{{ groups|length }} group(s) Â· {{ tables|length }} table(s)</p>
+            <p class="text-white/70 text-[10px]">{{ groups|length }} group(s) &middot; {{ tables|length }} table(s)</p>
         </div>
     </div>
 
@@ -53,7 +53,7 @@
                     </div>
                     <div>
                         <p class="text-sm font-bold text-gray-800">{{ group.name }}</p>
-                        <p class="text-[10px] text-gray-400">{{ group.table_count }} table(s) Â· {{ group.total_cards }} card(s)</p>
+                        <p class="text-[10px] text-gray-400">{{ group.table_count }} table(s) &middot; {{ group.total_cards }} card(s)</p>
                     </div>
                 </div>
                 <i class="fa-solid fa-chevron-down text-gray-300 text-xs transition-transform"
@@ -155,7 +155,7 @@
                         </div>
                         <div class="min-w-0">
                             <p class="text-sm font-bold text-gray-800">{{ table.name }}</p>
-                            <p class="text-[10px] text-gray-400">{{ table.group.name }} Â· <span class="text-indigo-500">tap to edit columns</span></p>
+                            <p class="text-[10px] text-gray-400">{{ table.group.name }} &middot; <span class="text-indigo-500">tap to edit columns</span></p>
                         </div>
                     </div>
                     <span class="bg-gray-100 text-gray-600 text-xs font-bold px-2 py-1 rounded-lg flex-shrink-0">{{ table.total_cards }}</span>
@@ -279,7 +279,7 @@
                         :disabled="fieldSaving"
                         class="w-full py-3 rounded-md bg-gradient-to-r from-brand-light to-brand-dark text-white text-sm font-bold active:scale-95 transition disabled:opacity-50 flex items-center justify-center gap-2">
                     <i x-show="fieldSaving" class="fa-solid fa-spinner fa-spin text-sm"></i>
-                    <span x-text="fieldSaving ? 'Savingâ€¦' : 'Save Column Order'"></span>
+                    <span x-text="fieldSaving ? 'Saving...' : 'Save Column Order'"></span>
                 </button>
             </div>
         </div>

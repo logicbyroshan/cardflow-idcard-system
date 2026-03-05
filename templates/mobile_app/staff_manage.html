@@ -50,7 +50,7 @@
                         </div>
                         <p class="text-[11px] text-gray-500 truncate" x-text="staff.email"></p>
                         <p class="text-[10px] text-gray-400 mt-0.5">
-                            <span x-show="staff.department" x-text="staff.department + ' Â· '"></span>
+                            <span x-show="staff.department" x-text="staff.department + ' \u00B7 '"></span>
                             <span x-show="staff.designation" x-text="staff.designation"></span>
                         </p>
                     </div>
@@ -88,7 +88,7 @@
     <!-- Add/Edit Staff Bottom Sheet -->
     <div x-show="showForm" x-cloak class="fixed inset-0 z-[70]">
         <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="closeForm()" x-transition></div>
-        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl flex flex-col max-w-[430px] mx-auto"
+        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-lg shadow-2xl flex flex-col max-w-[430px] mx-auto"
              style="height: 85vh; height: 85dvh;"
              x-transition:enter="transition ease-out duration-400" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
              x-transition:leave="transition ease-in duration-300" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full">
@@ -174,7 +174,7 @@
     <!-- Staff Detail Modal -->
     <div x-show="showDetail" x-cloak class="fixed inset-0 z-[70]">
         <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="showDetail = false" x-transition></div>
-        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl max-w-[430px] mx-auto p-4 max-h-[70vh] overflow-y-auto"
+        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-lg shadow-2xl max-w-[430px] mx-auto p-4 max-h-[70vh] overflow-y-auto"
              x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0">
             <div class="flex justify-center pt-1 pb-3"><div class="w-10 h-1 rounded-full bg-gray-300"></div></div>
             <div class="text-center mb-4">
@@ -187,15 +187,15 @@
             <div class="space-y-2">
                 <div class="flex justify-between p-2.5 bg-gray-50 rounded-lg">
                     <span class="text-xs text-gray-500">Phone</span>
-                    <span class="text-xs font-medium text-gray-800" x-text="detailStaff.phone || 'â€”'"></span>
+                    <span class="text-xs font-medium text-gray-800" x-text="detailStaff.phone || '—'"></span>
                 </div>
                 <div class="flex justify-between p-2.5 bg-gray-50 rounded-lg">
                     <span class="text-xs text-gray-500">Department</span>
-                    <span class="text-xs font-medium text-gray-800" x-text="detailStaff.department || 'â€”'"></span>
+                    <span class="text-xs font-medium text-gray-800" x-text="detailStaff.department || '—'"></span>
                 </div>
                 <div class="flex justify-between p-2.5 bg-gray-50 rounded-lg">
                     <span class="text-xs text-gray-500">Designation</span>
-                    <span class="text-xs font-medium text-gray-800" x-text="detailStaff.designation || 'â€”'"></span>
+                    <span class="text-xs font-medium text-gray-800" x-text="detailStaff.designation || '—'"></span>
                 </div>
                 <div class="flex justify-between p-2.5 bg-gray-50 rounded-lg">
                     <span class="text-xs text-gray-500">Status</span>
@@ -204,7 +204,7 @@
                 </div>
                 <div class="flex justify-between p-2.5 bg-gray-50 rounded-lg">
                     <span class="text-xs text-gray-500">Created</span>
-                    <span class="text-xs font-medium text-gray-800" x-text="detailStaff.created_at || 'â€”'"></span>
+                    <span class="text-xs font-medium text-gray-800" x-text="detailStaff.created_at || '—'"></span>
                 </div>
             </div>
             <button @click="showDetail = false" class="w-full mt-4 py-2.5 text-xs font-semibold text-gray-500 bg-gray-100 rounded-md">Close</button>
