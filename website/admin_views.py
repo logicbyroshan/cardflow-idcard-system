@@ -243,6 +243,7 @@ def reviews_page(request):
 @website_admin_required
 def portfolio_page(request):
     """Our Works / Portfolio management page."""
+    from django.db.models import Count
     context = _get_base_context(request, 'portfolio')
     # Cache ensure_defaults to avoid 9 get_or_create queries per page load
     from django.core.cache import cache
@@ -250,7 +251,7 @@ def portfolio_page(request):
         PortfolioCategory.ensure_defaults()
         cache.set('portfolio_defaults_ensured', True, 3600)
     context['items'] = PortfolioItem.objects.select_related('category').all().order_by('order', '-created_at')
-    context['categories'] = PortfolioCategory.objects.all().order_by('order')
+    context['categories'] = PortfolioCategory.objects.annotate(item_count=Count('items')).order_by('order')
     return render(request, 'website/admin/portfolio.html', context)
 
 
@@ -530,6 +531,7 @@ def api_portfolio_list(request):
     qs = PortfolioItemService.list_all()
     data = [{
         'id': p.id,
+        'title': p.title,
         'image': p.image.url if p.image else None,
         'category': p.category.name if p.category else '—',
         'category_id': p.category_id,

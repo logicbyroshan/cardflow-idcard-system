@@ -33,7 +33,7 @@
                 <div class="wa-chip-label">
                     <span class="wa-chip-name">{{ cat.name }}</span>
                     <div class="wa-chip-meta">
-                        <span class="wa-chip-count">{{ cat.items.count }} items</span>
+                        <span class="wa-chip-count">{{ cat.item_count }} items</span>
                         {% if cat.is_bento %}<small class="wa-bento-badge" title="In bento grid">Bento</small>{% endif %}
                     </div>
                 </div>
@@ -119,7 +119,7 @@
                         </td>
                         <td>
                             {% if p.category %}
-                            <span class="wa-type-badge image" style="background:#f0fdf4;color:#15803d;border-color:rgba(34,197,94,0.2);">
+                            <span class="wa-type-badge cat">
                                 <i class="{{ p.category.icon }}"></i> {{ p.category.name }}
                             </span>
                             {% else %}

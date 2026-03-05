@@ -117,7 +117,7 @@ const CSRF_TOKEN = document.cookie.split(';').map(c=>c.trim()).find(c=>c.startsW
 function clientsApp() {
     return {
         clients: [],
-        filter: 'all',
+        filter: 'active',
         targetTab: 'groups',
         loading: false,
         toast: { show: false, message: '', type: 'info' },

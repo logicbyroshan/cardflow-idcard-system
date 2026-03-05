@@ -279,6 +279,7 @@
 .wa-type-badge.image { background: #eff6ff; color: var(--wa-blue);   border: 1px solid rgba(59,130,246,0.2); }
 .wa-type-badge.video { background: #f5f3ff; color: var(--wa-purple); border: 1px solid rgba(139,92,246,0.2);  }
 .wa-type-badge.reel  { background: #fff7ed; color: var(--wa-orange); border: 1px solid rgba(249,115,22,0.2); }
+.wa-type-badge.cat   { background: #f0fdf4; color: #15803d;          border: 1px solid rgba(34,197,94,0.2); }
 
 /* ===== ACTION BUTTONS ===== */
 .wa-actions {
