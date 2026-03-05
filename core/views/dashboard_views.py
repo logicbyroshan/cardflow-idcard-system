@@ -153,7 +153,16 @@ def api_recent_client_updates(request):
     try:
         limit = int(request.GET.get('limit', 500))  # default: show all active clients
         user = request.user
-        
+
+        # Cache per-user with 20-second TTL — tolerable staleness for a dashboard poll.
+        # admin_staff sees a scoped view (their assigned clients only), so the key
+        # must include user.pk to prevent cross-user data leakage.
+        is_scoped = PermissionService.is_admin_staff(user)
+        cache_key = f'dash_rcu:{user.pk if is_scoped else "sa"}:{limit}'
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return JsonResponse({'success': True, 'clients': cached})
+
         # Get recent active clients - scoped by PermissionService
         # Order by most-recently-approved card data (latest approved card update first)
         clients = PermissionService.get_accessible_clients(
@@ -221,7 +230,8 @@ def api_recent_client_updates(request):
                 'approved': cc.get('approved', 0),
                 'downloaded': cc.get('downloaded', 0),
             })
-        
+
+        cache.set(cache_key, results, 20)
         return JsonResponse({
             'success': True,
             'clients': results
@@ -247,6 +257,13 @@ def api_print_reprint_overview(request):
 
         limit = int(request.GET.get('limit', 500))  # default: show all active clients
         user = request.user
+
+        # 20-second per-user cache — same pattern as api_recent_client_updates.
+        is_scoped = PermissionService.is_admin_staff(user)
+        cache_key = f'dash_ppr:{user.pk if is_scoped else "sa"}:{limit}'
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return JsonResponse({'success': True, **cached})
 
         clients = PermissionService.get_accessible_clients(
             user, Client.objects.filter(status='active')
@@ -341,6 +358,11 @@ def api_print_reprint_overview(request):
                 'tables': reprint_tables_map.get(c.id, []),
             })
 
+        payload = {
+            'print_clients': print_clients,
+            'reprint_clients': reprint_clients,
+        }
+        cache.set(cache_key, payload, 20)
         return JsonResponse({
             'success': True,
             'print_clients': print_clients,

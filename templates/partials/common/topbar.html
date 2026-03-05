@@ -5,7 +5,6 @@ Usage: {% include 'partials/common/topbar.html' with breadcrumb="Page Name" brea
 Variables:
 - breadcrumb: Main breadcrumb text (required)
 - breadcrumb_sub: Sub breadcrumb text (optional)
-- topbar_extra: Extra content for right side (use block in parent)
 {% endcomment %}
 
 <!-- topbar start -->
@@ -14,15 +13,15 @@ Variables:
         <button class="sidebar-toggle" id="sidebarToggle" @click="toggleSidebar()" title="Toggle Sidebar" aria-label="Toggle sidebar">
             <i class="fa-solid fa-bars" :class="sidebarOpen ? 'fa-xmark' : 'fa-bars'"></i>
         </button>
-        <span class="breadcrumb">
-            <span>{{ breadcrumb }}</span>
+        <div class="breadcrumb">
+            <span class="breadcrumb-item">{{ breadcrumb }}</span>
             {% if breadcrumb_sub %}
-                <span class="breadcrumb-sub">» {{ breadcrumb_sub }}</span>
+                <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+                <span class="breadcrumb-item active">{{ breadcrumb_sub }}</span>
             {% endif %}
-        </span>
+        </div>
     </div>
     <div class="nav-right" id="topbar-right">
-        {% block topbar_extra %}{% endblock %}
     </div>
 </header>
 <!-- topbar end -->

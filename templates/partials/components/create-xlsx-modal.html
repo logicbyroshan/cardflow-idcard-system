@@ -80,20 +80,20 @@ and the JS block at the bottom which wires up the logic.
       </p>
 
       <!-- Data rows count -->
-      <div id="cxDataRowsInfo" style="margin:8px 0;padding:6px 10px;background:#eff6ff;border-radius:6px;border:1px solid #bfdbfe;display:flex;align-items:center;gap:6px;">
-        <i class="fa-solid fa-table-list" style="color:#3b82f6;font-size:12px;"></i>
-        <span style="font-size:12px;font-weight:500;color:#1e40af;" id="cxDataRowsCount">0 data rows found</span>
+      <div id="cxDataRowsInfo" class="modal-alert modal-alert-info" style="margin:8px 0;display:flex;align-items:center;gap:6px;">
+        <i class="fa-solid fa-table-list" style="font-size:12px;"></i>
+        <span id="cxDataRowsCount">0 data rows found</span>
       </div>
 
       <!-- Field table -->
-      <div style="max-height:300px;overflow-y:auto;margin-top:8px;border:1px solid #e2e8f0;border-radius:8px;">
-        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <div class="cm-field-table-wrap">
+        <table class="cm-field-table">
           <thead>
-            <tr style="background:#f8fafc;position:sticky;top:0;z-index:1;">
-              <th style="text-align:left;padding:8px 10px;font-weight:600;color:#475569;border-bottom:1px solid #e2e8f0;">#</th>
-              <th style="text-align:left;padding:8px 10px;font-weight:600;color:#475569;border-bottom:1px solid #e2e8f0;">Column Name</th>
-              <th style="text-align:left;padding:8px 10px;font-weight:600;color:#475569;border-bottom:1px solid #e2e8f0;">Type</th>
-              <th style="text-align:center;padding:8px 10px;font-weight:600;color:#475569;border-bottom:1px solid #e2e8f0;">Mandatory</th>
+            <tr>
+              <th>#</th>
+              <th>Column Name</th>
+              <th>Type</th>
+              <th style="text-align:center;">Mandatory</th>
             </tr>
           </thead>
           <tbody id="cxFieldsBody">

@@ -45,7 +45,10 @@ def client_idcard_group(request):
     
     # Always render the page — show empty if no permissions
     if has_any_list_perm:
-        tables_qs = IDCardTable.objects.filter(group__client=client).select_related('group', 'group__client')
+        tables_qs = IDCardTable.objects.filter(
+            group__client=client,
+            deleted_by_client=False,   # hide client-soft-deleted tables
+        ).select_related('group', 'group__client')
 
         # For client_staff with assigned groups: restrict to those groups only
         if PermissionService.is_client_staff(user):

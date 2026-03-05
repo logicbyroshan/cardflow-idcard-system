@@ -8,15 +8,15 @@
       <button class="modal-close" onclick="closeConfirmModal()" aria-label="Close">&times;</button>
     </div>
     <div class="modal-body" style="display:flex;flex-direction:column;align-items:center;text-align:center;">
-      <div style="width:52px;height:52px;border-radius:50%;background:#fee2e2;display:flex;align-items:center;justify-content:center;margin-bottom:14px" id="confirmIconWrap">
-        <i class="fa-solid fa-triangle-exclamation" style="font-size:22px;color:#ef4444" id="confirmIconEl"></i>
+      <div class="modal-icon-circle modal-icon-danger" id="confirmIconWrap">
+        <i class="fa-solid fa-triangle-exclamation modal-icon-i-danger" id="confirmIconEl"></i>
       </div>
-      <p id="confirmMessage" style="font-size:13px;color:#374151;margin:0 0 14px;line-height:1.6"></p>
-      <div style="width:100%;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;text-align:left" id="confirmWarningBox">
-        <p style="font-size:12px;color:#991b1b;font-weight:600;margin:0 0 6px;display:flex;align-items:center;gap:6px">
+      <p id="confirmMessage" class="modal-body-subtitle"></p>
+      <div class="modal-alert modal-alert-danger" id="confirmWarningBox">
+        <p class="modal-alert-title">
           <i class="fa-solid fa-circle-exclamation"></i> Warning
         </p>
-        <ul style="margin:0;padding:0 0 0 16px;font-size:12px;color:#7f1d1d;line-height:1.7">
+        <ul>
           <li>This action may affect the staff member's data</li>
           <li>Please confirm before proceeding</li>
         </ul>

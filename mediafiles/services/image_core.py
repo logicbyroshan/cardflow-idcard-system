@@ -29,6 +29,11 @@ from .image_thumbnail import ThumbnailService
 
 logger = logging.getLogger(__name__)
 
+# Process-lifetime cache of confirmed-existing image folders.
+# Avoids repeated os.makedirs syscalls during bulk upload
+# (5000 images × 2 makedirs = 10 000 redundant filesystem calls).
+_confirmed_folders: set = set()
+
 
 # =============================================================================
 # SERVICE RESULT
@@ -111,21 +116,24 @@ class ImageCoreMixin:
         
         try:
             from PIL import Image
-            
+
             # MAX_IMAGE_PIXELS is set once at app startup (core/apps.py)
-            
-            # Try to open and verify the image
+
+            # Phase 1: verify file integrity (header + checksum check).
+            # img.verify() is fast — it does NOT decode pixels.
+            # After verify(), PIL corrupts the internal state, so we must
+            # re-open to read the format string.
             with Image.open(BytesIO(image_bytes)) as img:
                 img.verify()
-            
-            # Re-open to check it's actually readable
+
+            # Phase 2: read format — do NOT call img.load() here.
+            # load() would decode the full pixel data (~15 MB for a 5 MP JPEG)
+            # just to throw it away. format is populated by open() alone.
             with Image.open(BytesIO(image_bytes)) as img:
-                img.load()
-                
-                # Check format is supported
-                if img.format and img.format.lower() not in ['jpeg', 'jpg', 'png', 'gif', 'bmp', 'webp']:
+                fmt = (img.format or '').lower()
+                if fmt and fmt not in ['jpeg', 'jpg', 'png', 'gif', 'bmp', 'webp']:
                     return False, f"Unsupported image format: {img.format}"
-            
+
             return True, None
             
         except Exception as e:
@@ -153,16 +161,22 @@ class ImageCoreMixin:
         
         folder_path = f"{CLIENT_IMAGE_BASE_FOLDER}/{folder_code}"
         
-        # Ensure folder exists in filesystem
-        try:
-            full_path = os.path.join(settings.MEDIA_ROOT, folder_path)
-            os.makedirs(full_path, exist_ok=True)
-            
-            # Also ensure thumbs folder exists
-            thumbs_path = os.path.join(settings.MEDIA_ROOT, CLIENT_IMAGE_BASE_FOLDER, 'thumbs', folder_code)
-            os.makedirs(thumbs_path, exist_ok=True)
-        except Exception as e:
-            logger.warning("Could not create folder %s: %s", folder_path, e)
+        # Only call makedirs once per folder per process lifetime.
+        # During bulk upload every image calls this function; without the
+        # guard that means 10 000 redundant makedirs syscalls (already-exists).
+        if folder_path not in _confirmed_folders:
+            try:
+                full_path = os.path.join(settings.MEDIA_ROOT, folder_path)
+                os.makedirs(full_path, exist_ok=True)
+
+                thumbs_path = os.path.join(
+                    settings.MEDIA_ROOT, CLIENT_IMAGE_BASE_FOLDER, 'thumbs', folder_code
+                )
+                os.makedirs(thumbs_path, exist_ok=True)
+
+                _confirmed_folders.add(folder_path)
+            except Exception as e:
+                logger.warning("Could not create folder %s: %s", folder_path, e)
         
         return folder_path
 

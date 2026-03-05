@@ -342,10 +342,18 @@ class PermissionValidationMiddleware:
         
         if fresh_user is None:
             try:
-                # Re-fetch from DB to get latest state
-                fresh_user = User.objects.only(
-                    'pk', 'username', 'is_active', 'role', 'first_name', 'last_name'
-                ).get(pk=user.pk)
+                # Re-fetch from DB with related profiles in one query.
+                # select_related('staff_profile', 'client_profile') means the
+                # context processor and PermissionService.get_profile() calls
+                # that happen later in the same request (template rendering)
+                # will find the profiles already cached on the user object —
+                # no additional DB queries needed.
+                fresh_user = (
+                    User.objects
+                    .select_related('staff_profile', 'client_profile')
+                    .only('pk', 'username', 'is_active', 'role', 'first_name', 'last_name')
+                    .get(pk=user.pk)
+                )
                 setattr(request, _cache_attr, fresh_user)
             except User.DoesNotExist:
                 # User was deleted - force logout

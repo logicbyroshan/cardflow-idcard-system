@@ -48,7 +48,7 @@
         </div>
       </div>
       {% block topbar_right %}
-      <div class="nav-right" style="display:flex;align-items:center;gap:6px;">
+      <div class="nav-right">
         <button class="global-search-btn" id="globalSearchBtn">
           <i class="fa-solid fa-magnifying-glass"></i>
           <span>Search ID cards...</span>
@@ -89,70 +89,6 @@
       </button>
     </div>
   </div>
-  <style>
-    .blocking-overlay {
-      position: fixed;
-      inset: 0;
-      z-index: 999998;
-      background: rgba(0, 0, 0, 0.65);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      backdrop-filter: blur(2px);
-    }
-    .blocking-overlay-content {
-      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-      border-radius: 16px;
-      padding: 32px 40px;
-      text-align: center;
-      color: #fff;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-      min-width: 320px;
-    }
-    .blocking-overlay-spinner {
-      font-size: 48px;
-      margin-bottom: 20px;
-      color: #6366f1;
-    }
-    .blocking-overlay-message {
-      font-size: 16px;
-      font-weight: 500;
-      margin-bottom: 20px;
-      color: #e2e8f0;
-    }
-    .blocking-overlay-progress {
-      background: rgba(255, 255, 255, 0.15);
-      border-radius: 8px;
-      height: 10px;
-      overflow: hidden;
-      margin-bottom: 24px;
-    }
-    .blocking-overlay-bar {
-      height: 100%;
-      width: 0%;
-      background: linear-gradient(90deg, #6366f1, #818cf8);
-      border-radius: 8px;
-      transition: width 0.3s ease;
-    }
-    .blocking-overlay-cancel {
-      background: #ef4444;
-      color: #fff;
-      border: none;
-      padding: 12px 28px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 600;
-      transition: background 0.2s;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .blocking-overlay-cancel:hover {
-      background: #dc2626;
-    }
-  </style>
-
   <!-- Vendor static URLs for LazyLoad (WhiteNoise-hashed paths) -->
   <script>
     window.__STATIC_URLS = {

@@ -11,27 +11,6 @@
   <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
   <link rel="stylesheet" href="{% static 'css/auth.css' %}">
   <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
-  <style>
-    .maintenance-pulse {
-      animation: pulse-ring 2s ease-in-out infinite;
-    }
-    @keyframes pulse-ring {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.3); }
-      50%      { box-shadow: 0 0 0 12px rgba(245, 158, 11, 0); }
-    }
-    .status-dot {
-      display: inline-block;
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: #f59e0b;
-      margin-right: 6px;
-      animation: blink-dot 1.5s ease-in-out infinite;
-    }
-    @keyframes blink-dot {
-      0%, 100% { opacity: 1; }
-      50%      { opacity: 0.3; }
-    }
-  </style>
 </head>
 <body class="auth-body">
   <main class="auth-container">
@@ -42,14 +21,14 @@
       </div>
 
       <!-- Maintenance Icon -->
-      <div style="text-align: center; margin-bottom: 1.5rem;">
-        <div class="maintenance-pulse" style="display: inline-flex; align-items: center; justify-content: center; width: 80px; height: 80px; border-radius: 50%; background: #fef3c7; margin-bottom: 1rem;">
-          <i class="fa-solid fa-wrench" style="font-size: 2rem; color: #d97706;" aria-hidden="true"></i>
+      <div class="auth-icon-header">
+        <div class="modal-icon-circle-xl auth-icon-circle-warning maintenance-pulse">
+          <i class="fa-solid fa-wrench modal-icon-i-warning" aria-hidden="true"></i>
         </div>
-        <h2 style="font-size: 1.25rem; font-weight: 700; color: #1a1a2e; margin: 0 0 0.5rem 0;">
+        <h2 class="auth-icon-title">
           Account Under Maintenance
         </h2>
-        <p style="font-size: 0.875rem; color: #6b7280; line-height: 1.6; margin: 0;">
+        <p class="auth-icon-desc">
           {% if reason %}
             {{ reason }}
           {% else %}
@@ -59,13 +38,13 @@
       </div>
 
       <!-- Status Indicator -->
-      <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
-        <div style="display: flex; gap: 0.75rem; align-items: flex-start;">
-          <i class="fa-solid fa-circle-info" style="color: #d97706; margin-top: 2px; flex-shrink: 0;" aria-hidden="true"></i>
-          <div style="font-size: 0.8125rem; color: #92400e; line-height: 1.6;">
+      <div class="auth-info-box auth-info-box-warning">
+        <div class="auth-info-box-body">
+          <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+          <div class="auth-info-box-text auth-info-box-text-warning">
             <strong>Why am I seeing this?</strong><br>
             Your organization's account status has been changed to inactive. This may be due to:
-            <ul style="margin: 0.5rem 0 0 1rem; padding: 0;">
+            <ul>
               <li>Pending administrative review</li>
               <li>Account renewal required</li>
               <li>Temporary suspension by administrator</li>
@@ -75,20 +54,16 @@
       </div>
 
       <!-- Live Status Check -->
-      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1.5rem; text-align: center;">
+      <div class="maintenance-status-bar">
         <span class="status-dot"></span>
-        <span id="statusText" style="font-size: 0.8125rem; color: #475569; font-weight: 500;">
-          Checking account status...
-        </span>
+        <span id="statusText">Checking account status...</span>
       </div>
 
       <!-- Actions -->
-      <div style="text-align: center; display: flex; flex-direction: column; gap: 0.75rem; align-items: center;">
-        <p style="font-size: 0.8125rem; color: #6b7280; margin: 0;">
-          Please contact your administrator to restore access. This page will automatically redirect once your account is reactivated.
-        </p>
+      <div class="auth-action-footer">
+        <p>Please contact your administrator to restore access. This page will automatically redirect once your account is reactivated.</p>
         <div style="display: flex; gap: 0.5rem;">
-          <button onclick="checkStatus()" class="btn btn-md btn-primary" style="text-decoration: none;">
+          <button onclick="checkStatus()" class="btn btn-md btn-primary">
             <i class="fa-solid fa-rotate"></i> Check Status
           </button>
           <a href="{% url 'logout' %}" class="btn btn-md btn-cancel" style="text-decoration: none;">

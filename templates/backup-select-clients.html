@@ -22,7 +22,7 @@
   {% include 'partials/sidebar.html' %}
 
   <main class="main" id="main-content">
-    {% include 'partials/panel/topbar.html' %}
+    {% include 'partials/panel/topbar.html' with breadcrumb_label="Backup" %}
 
     <div class="backup-page">
       {% if error %}

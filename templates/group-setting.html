@@ -52,7 +52,7 @@
             <a href="{% url 'active_clients' %}" class="breadcrumb-item">Clients</a>
             <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
             {% if client %}
-            <span class="breadcrumb-item active">{{ client.name }}{% if client.status != 'active' %} <span class="status-badge inactive" style="font-size:11px;margin-left:4px;">{{ client.get_status_display }}</span>{% endif %} - Group Settings</span>
+            <span class="breadcrumb-item active">{{ client.name }}{% if client.status != 'active' %} <span class="status-badge inactive status-badge--sm">{{ client.get_status_display }}</span>{% endif %} - Group Settings</span>
             {% else %}
             <span class="breadcrumb-item active">Group Settings</span>
             {% endif %}
@@ -61,7 +61,7 @@
       </div>
 
       <!-- Right - Page Switch Buttons -->
-      <div class="nav-right" style="display:flex;align-items:center;gap:6px;">
+      <div class="nav-right">
         {% include 'partials/notification-bell.html' %}
         <div class="page-switch-btns">
           {% if client %}

@@ -8,10 +8,10 @@
     <div class="breadcrumb">
       <a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
       <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
-      <span class="breadcrumb-item active">Manage Panel</span>
+      <span class="breadcrumb-item active">{{ breadcrumb_label|default:"Manage Panel" }}</span>
     </div>
   </div>
-  <div class="nav-right" style="display:flex;align-items:center;gap:6px;">
+  <div class="nav-right">
     <button class="global-search-btn" id="globalSearchBtn">
       <i class="fa-solid fa-magnifying-glass"></i>
       <span>Search ID cards...</span>

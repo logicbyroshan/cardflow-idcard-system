@@ -14,6 +14,7 @@ Public surface:
     api_engine_save_edited(request)     POST → save edited image to /edited/ subfolder
 """
 import base64
+import concurrent.futures
 import json
 import logging
 import mimetypes
@@ -56,23 +57,26 @@ def api_engine_status(request):
         { connected: true, status: {...}, health: {...} }
     or  { connected: false, error: "..." }
     """
-    try:
-        status_resp = http_client.get(
-            f"{ENGINE_BASE}/status", timeout=3
-        )
-        status_resp.raise_for_status()
-        status_data = status_resp.json()
+    def _fetch_status():
+        r = http_client.get(f"{ENGINE_BASE}/status", timeout=3)
+        r.raise_for_status()
+        return r.json()
 
-        # Health is optional — don't fail if it errors
-        health_data = {}
+    def _fetch_health():
         try:
-            health_resp = http_client.get(
-                f"{ENGINE_BASE}/health", timeout=3
-            )
-            health_resp.raise_for_status()
-            health_data = health_resp.json()
+            r = http_client.get(f"{ENGINE_BASE}/health", timeout=3)
+            r.raise_for_status()
+            return r.json()
         except Exception:
-            pass
+            return {}
+
+    try:
+        # Fire both calls concurrently — worst-case latency drops from 6 s → 3 s.
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+            status_future = pool.submit(_fetch_status)
+            health_future = pool.submit(_fetch_health)
+            status_data = status_future.result()   # raises on engine error
+            health_data = health_future.result()
 
         return JsonResponse({
             "connected": True,

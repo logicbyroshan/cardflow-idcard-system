@@ -19,7 +19,7 @@
 
       <!-- Format selector -->
       <div style="margin:10px 0;">
-        <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:6px;">Select Format</label>
+        <label class="center-modal-label">Select Format</label>
         <select class="center-modal-select" id="downloadAllFormat">
           {% if not is_client and not is_client_staff %}
           <option value="all">All Formats (ZIP)</option>
@@ -51,7 +51,7 @@
     <div class="center-modal-footer-area" id="downloadAllFooter">
       <button class="center-modal-btn center-modal-btn-cancel" @click="closeModal()">Cancel</button>
       <button class="center-modal-btn center-modal-btn-confirm" id="downloadAllStartBtn">
-        <i class="fa-solid fa-download" style="margin-right:4px;"></i> Download
+        <i class="fa-solid fa-download mr-1"></i> Download
       </button>
     </div>
   </div>

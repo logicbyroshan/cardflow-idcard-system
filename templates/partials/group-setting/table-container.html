@@ -32,7 +32,7 @@ Required context:
                 <td>{{ table.name }}{% if table.deleted_by_client %} <small style="color:#9ca3af;">(removed by client)</small>{% endif %}</td>
                 <td>
                   {% if table.deleted_by_client %}
-                    <span class="status-badge" style="background:#f3f4f6;color:#6b7280;border:1px solid #d1d5db;">User Deleted</span>
+                    <span class="status-badge deleted">User Deleted</span>
                   {% elif table.is_active %}
                     <span class="status-badge active">Active</span>
                   {% else %}

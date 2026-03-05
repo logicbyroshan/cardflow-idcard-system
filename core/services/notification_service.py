@@ -13,6 +13,7 @@ ARCHITECTURE: Service layer only — no direct model mutations in views.
 import logging
 from datetime import timedelta
 
+from django.core.cache import cache as _cache
 from django.db import transaction
 from django.db.models import Q, Exists, OuterRef, Subquery, Value, BooleanField
 from django.utils import timezone
@@ -147,7 +148,16 @@ class NotificationService:
 
     @classmethod
     def get_unread_count(cls, user):
-        """Fast count of unread notifications for badge display."""
+        """Fast count of unread notifications for badge display.
+        
+        Cached per user for 30 s — this endpoint is polled on every page load.
+        Cache is invalidated immediately when the user marks notifications read.
+        """
+        cache_key = f'notif_unread:{user.pk}'
+        cached = _cache.get(cache_key)
+        if cached is not None:
+            return cached
+
         qs = Notification.objects.filter(is_active=True)
 
         role_filter = Q(target='all') | Q(target=user.role)
@@ -157,7 +167,9 @@ class NotificationService:
         read_ids = NotificationRead.objects.filter(user=user).values_list(
             'notification_id', flat=True
         )
-        return qs.exclude(id__in=read_ids).count()
+        count = qs.exclude(id__in=read_ids).count()
+        _cache.set(cache_key, count, 30)
+        return count
 
     # ── read tracking ───────────────────────────────────────
 
@@ -169,6 +181,7 @@ class NotificationService:
                 user=user,
                 notification_id=notification_id,
             )
+            _cache.delete(f'notif_unread:{user.pk}')
             return ServiceResult(success=True)
         except Notification.DoesNotExist:
             return ServiceResult(success=False, message='Notification not found.')
@@ -195,6 +208,7 @@ class NotificationService:
         if new_reads:
             NotificationRead.objects.bulk_create(new_reads, ignore_conflicts=True)
 
+        _cache.delete(f'notif_unread:{user.pk}')
         return ServiceResult(
             success=True,
             message=f'Marked {len(new_reads)} notification(s) as read.'

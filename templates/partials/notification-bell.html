@@ -5,7 +5,7 @@
                notification-bell.js
      Hidden for admin users (super_admin / admin_staff).
      ================================================= -->
-{% if not is_super_admin and not is_admin_staff %}
+{% if not is_super_admin and active_page == 'dashboard' %}
 <style>
   /* Notification bell dropdown — larger font sizes */
   .notif-item .notif-title { font-size: 14px !important; }

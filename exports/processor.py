@@ -160,24 +160,37 @@ def process_export_zip(task):
                     
                     try:
                         if default_storage.exists(img_path):
-                            # Read image from storage and add to ZIP
-                            with default_storage.open(img_path, 'rb') as img_file:
-                                img_data = img_file.read()
-                                
-                                # Minimum valid image size check
+                            # Prefer direct-to-disk write (no Python-level byte buffer).
+                            # FileSystemStorage exposes the real path; ZipFile.write()
+                            # copies in 8 KB chunks internally — peak RAM ~8 KB vs
+                            # img_size * 2 with writestr().
+                            try:
+                                real_path = default_storage.path(img_path)
+                                file_size = os.path.getsize(real_path)
+                            except (NotImplementedError, AttributeError, OSError):
+                                real_path = None
+                                file_size = 0
+
+                            base = os.path.basename(img_path)
+
+                            # Handle duplicate filenames
+                            if base in used_names:
+                                used_names[base] += 1
+                                name, ext = os.path.splitext(base)
+                                download_filename = f"{name}_{used_names[base]}{ext}"
+                            else:
+                                used_names[base] = 0
+                                download_filename = base
+
+                            if real_path and file_size >= 100:
+                                # Fast path: stream directly from filesystem (no RAM copy)
+                                zf.write(real_path, arcname=download_filename)
+                                images_in_zip += 1
+                            elif not real_path:
+                                # Fallback: remote/custom storage — read into memory
+                                with default_storage.open(img_path, 'rb') as img_file:
+                                    img_data = img_file.read()
                                 if img_data and len(img_data) >= 100:
-                                    base = os.path.basename(img_path)
-                                    
-                                    # Handle duplicate filenames
-                                    if base in used_names:
-                                        used_names[base] += 1
-                                        name, ext = os.path.splitext(base)
-                                        download_filename = f"{name}_{used_names[base]}{ext}"
-                                    else:
-                                        used_names[base] = 0
-                                        download_filename = base
-                                    
-                                    # Write to ZIP
                                     zf.writestr(download_filename, img_data)
                                     images_in_zip += 1
                     except Exception as e:

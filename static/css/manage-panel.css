@@ -36,6 +36,11 @@
   color: #667eea;
   font-size: 16px;
 }
+/* Compact panel title for use inside notif-actions-bar */
+.notif-actions-bar .panel-title {
+  font-size: 13px;
+  font-weight: 600;
+}
 .panel-subtitle {
   font-size: 12px;
   color: #64748b;
@@ -387,6 +392,8 @@
 }
 .system-card-header i { color: #667eea; font-size: 13px; }
 .system-card-body { padding: 6px 0; }
+/* Accent left-border variant (e.g. active backup highlight) */
+.system-card--accent { border-left: 3px solid #667eea; }
 .system-row {
   display: flex;
   justify-content: space-between;

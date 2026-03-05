@@ -178,3 +178,39 @@ body.auth-page {
     letter-spacing: 4px;
     margin-top: 4px;
 }
+
+/* ── Maintenance page ── */
+.maintenance-pulse {
+    animation: pulse-ring 2s ease-in-out infinite;
+}
+@keyframes pulse-ring {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.3); }
+    50%       { box-shadow: 0 0 0 12px rgba(245, 158, 11, 0); }
+}
+.status-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #f59e0b;
+    margin-right: 6px;
+    animation: blink-dot 1.5s ease-in-out infinite;
+}
+@keyframes blink-dot {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.3; }
+}
+.maintenance-status-bar {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+.maintenance-status-bar span {
+    font-size: 0.8125rem;
+    color: #475569;
+    font-weight: 500;
+}
+

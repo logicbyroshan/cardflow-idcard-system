@@ -338,6 +338,7 @@ def staff_dashboard(request):
     
     context = {
         'page_title': 'Admin Staff Dashboard',
+        'active_page': 'dashboard',
         'scope': scope,
         'permissions': permissions,
     }

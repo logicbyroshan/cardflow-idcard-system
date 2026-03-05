@@ -11,7 +11,7 @@
    ==================== */
 .center-modal {
   background: var(--bg-white, #fff);
-  border-radius: 10px;
+  border-radius: 6px;
   box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.35);
   width: 420px;
   max-width: 95%;
@@ -64,7 +64,7 @@
 }
 .center-modal .modal-footer .btn {
   min-width: 100px; padding: 10px 20px;
-  font-weight: 500; border-radius: 8px; transition: all 0.2s;
+  font-weight: 500; border-radius: 6px; transition: all 0.2s;
 }
 .center-modal .modal-footer .btn-secondary {
   background: var(--gray-200, #e5e7eb); color: var(--gray-700, #374151); border: none;

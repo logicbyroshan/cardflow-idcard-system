@@ -21,12 +21,12 @@
       </div>
 
       <!-- Inactive Status Icon -->
-      <div style="text-align: center; margin-bottom: 1.5rem;">
-        <div style="display: inline-flex; align-items: center; justify-content: center; width: 72px; height: 72px; border-radius: 50%; background: #fef2f2; margin-bottom: 1rem;">
-          <i class="fa-solid fa-user-lock" style="font-size: 2rem; color: #dc2626;" aria-hidden="true"></i>
+      <div class="auth-icon-header">
+        <div class="modal-icon-circle-lg auth-icon-circle-danger">
+          <i class="fa-solid fa-user-lock modal-icon-i-danger" aria-hidden="true"></i>
         </div>
-        <h2 style="font-size: 1.25rem; font-weight: 600; color: #1a1a2e; margin: 0 0 0.5rem 0;">Account Deactivated</h2>
-        <p style="font-size: 0.875rem; color: #6b7280; line-height: 1.5; margin: 0;">
+        <h2 class="auth-icon-title">Account Deactivated</h2>
+        <p class="auth-icon-desc">
           {% if reason %}
             {{ reason }}
           {% else %}
@@ -36,13 +36,13 @@
       </div>
 
       <!-- Info Box -->
-      <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
-        <div style="display: flex; gap: 0.75rem; align-items: flex-start;">
-          <i class="fa-solid fa-circle-info" style="color: #0284c7; margin-top: 2px;" aria-hidden="true"></i>
-          <div style="font-size: 0.8125rem; color: #0369a1; line-height: 1.5;">
+      <div class="auth-info-box auth-info-box-info">
+        <div class="auth-info-box-body">
+          <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+          <div class="auth-info-box-text auth-info-box-text-info">
             <strong>What happened?</strong><br>
             Your account status was changed to inactive. This may be due to:
-            <ul style="margin: 0.5rem 0 0 1rem; padding: 0;">
+            <ul>
               <li>Organization account suspension</li>
               <li>Staff account deactivation</li>
               <li>Administrative changes</li>
@@ -52,10 +52,8 @@
       </div>
 
       <!-- Action -->
-      <div style="text-align: center;">
-        <p style="font-size: 0.8125rem; color: #6b7280; margin-bottom: 1rem;">
-          Please contact your administrator to restore access.
-        </p>
+      <div class="auth-action-footer">
+        <p>Please contact your administrator to restore access.</p>
         <a href="{% url 'login' %}" class="btn btn-md btn-primary" style="text-decoration: none;">
           <i class="fa-solid fa-arrow-left"></i> Back to Login
         </a>

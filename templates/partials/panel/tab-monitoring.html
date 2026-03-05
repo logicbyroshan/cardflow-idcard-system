@@ -4,13 +4,13 @@
   <!-- Header bar -->
   <div class="notif-actions-bar">
     <div class="notif-actions-left">
-      <span class="panel-title" style="font-size:13px;font-weight:600;color:#1e293b;">
-        <i class="fa-solid fa-chart-line" style="color:#667eea;margin-right:6px;"></i>
+      <span class="panel-title">
+        <i class="fa-solid fa-chart-line"></i>
         Background Task Monitor
       </span>
     </div>
     <div class="notif-actions-right">
-      <span id="monitoringLastUpdated" class="text-xs text-gray-400" style="margin-right:10px;">—</span>
+      <span id="monitoringLastUpdated" class="text-xs text-gray-400 mr-2.5">—</span>
       <button class="btn btn-sm btn-outline-primary" onclick="loadMonitoring()" id="monitoringRefreshBtn">
         <i class="fa-solid fa-arrows-rotate"></i> Refresh
       </button>
@@ -18,7 +18,7 @@
   </div>
 
   <!-- Stats cards -->
-  <div class="system-grid" id="monitoringStats" style="margin-bottom:16px;">
+  <div class="system-grid mb-4" id="monitoringStats">
     <div class="system-card">
       <div class="system-card-header"><i class="fa-solid fa-spinner"></i> Active Tasks</div>
       <div class="system-card-body">
@@ -47,7 +47,7 @@
 
   <!-- Active Backup Tasks (shown only when backups are in progress) -->
   <div id="monitoringBackups" style="display:none;margin-bottom:16px;">
-    <div class="system-card" style="border-left:3px solid #667eea;">
+    <div class="system-card system-card--accent">
       <div class="system-card-header"><i class="fa-solid fa-database"></i> Active Backup Tasks</div>
       <div class="system-card-body" id="monitoringBackupBody" style="padding:6px 0;"></div>
     </div>
@@ -55,11 +55,11 @@
 
   <!-- Recent Background Tasks table -->
   <div class="system-card" style="padding:0;overflow:hidden;">
-    <div class="system-card-header" style="border-bottom:1px solid #f1f5f9;padding:10px 14px;">
+    <div class="system-card-header">
       <i class="fa-solid fa-list-check"></i> Recent Background Tasks
-      <span id="monitoringTaskCount" class="panel-tab-badge" style="margin-left:6px;">0</span>
+      <span id="monitoringTaskCount" class="panel-tab-badge ml-1.5">0</span>
     </div>
-    <div class="notif-table-wrap" style="max-height:380px;overflow-y:auto;">
+    <div class="notif-table-wrap max-h-[380px] overflow-y-auto">
       <table class="notif-table">
         <thead>
           <tr>

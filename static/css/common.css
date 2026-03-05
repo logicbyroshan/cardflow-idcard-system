@@ -46,20 +46,20 @@ body[style*="overflow:hidden"] {
    Small: Action bar CRUD buttons (Add, Edit, Delete, etc.)
    Standard: Navigation buttons (Group Setting, ID Card Group)
    =========================================== */
-.action-right .actions {
+:is(.action-right, .action-bar-right) .actions {
   display: flex;
   gap: var(--space-sm);
   align-items: center;
 }
 
-.action-right .btn-group {
+:is(.action-right, .action-bar-right) .btn-group {
   display: flex;
   gap: var(--space-sm);
   align-items: center;
 }
 
 /* Small Action Bar Button (CRUD operations) */
-.action-right .btn {
+:is(.action-right, .action-bar-right) .btn {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -73,18 +73,18 @@ body[style*="overflow:hidden"] {
   height: 28px;
 }
 
-.action-right .btn i { font-size: 14px; }
+:is(.action-right, .action-bar-right) .btn i { font-size: 14px; }
 
 /* Standard Navigation Button (Group Setting, ID Card Group) */
-.action-right .btn-group-setting,
-.action-right .btn-idcard-group {
+:is(.action-right, .action-bar-right) .btn-group-setting,
+:is(.action-right, .action-bar-right) .btn-idcard-group {
   padding: 4px 10px;
   font-size: var(--font-size-md);
   height: 28px;
 }
 
-.action-right .btn-group-setting i,
-.action-right .btn-idcard-group i {
+:is(.action-right, .action-bar-right) .btn-group-setting i,
+:is(.action-right, .action-bar-right) .btn-idcard-group i {
   font-size: var(--font-size-base);
 }
 
@@ -159,81 +159,81 @@ body[style*="overflow:hidden"] {
   font-size: 14px;
 }
 
-.action-right .btn-idcard-group i {
+:is(.action-right, .action-bar-right) .btn-idcard-group i {
   font-size: var(--font-size-base);
 }
 
 /* Action Button Variants - Using variables for DRY code */
-.action-right .btn-add,
-.action-right .btn-edit {
+:is(.action-right, .action-bar-right) .btn-add,
+:is(.action-right, .action-bar-right) .btn-edit {
   background: var(--blue) !important;
   color: var(--text-white) !important;
 }
-.action-right .btn-add:hover:not(:disabled),
-.action-right .btn-edit:hover:not(:disabled) {
+:is(.action-right, .action-bar-right) .btn-add:hover:not(:disabled),
+:is(.action-right, .action-bar-right) .btn-edit:hover:not(:disabled) {
   background: var(--blue-dark) !important;
 }
 
-.action-right .btn-view {
+:is(.action-right, .action-bar-right) .btn-view {
   background: var(--gray-500) !important;
   color: var(--text-white) !important;
 }
-.action-right .btn-view:hover:not(:disabled) {
+:is(.action-right, .action-bar-right) .btn-view:hover:not(:disabled) {
   background: var(--gray-600) !important;
 }
 
-.action-right .btn-view-staff,
-.action-right .btn-settings,
-.action-right .btn-group-setting {
+:is(.action-right, .action-bar-right) .btn-view-staff,
+:is(.action-right, .action-bar-right) .btn-settings,
+:is(.action-right, .action-bar-right) .btn-group-setting {
   background: var(--purple) !important;
   color: var(--text-white) !important;
 }
-.action-right .btn-view-staff:hover:not(:disabled),
-.action-right .btn-settings:hover:not(:disabled),
-.action-right .btn-group-setting:hover:not(:disabled) {
+:is(.action-right, .action-bar-right) .btn-view-staff:hover:not(:disabled),
+:is(.action-right, .action-bar-right) .btn-settings:hover:not(:disabled),
+:is(.action-right, .action-bar-right) .btn-group-setting:hover:not(:disabled) {
   background: var(--purple-dark) !important;
 }
 
-.action-right .btn-delete {
+:is(.action-right, .action-bar-right) .btn-delete {
   background: var(--red) !important;
   color: var(--text-white) !important;
 }
-.action-right .btn-delete:hover:not(:disabled) {
+:is(.action-right, .action-bar-right) .btn-delete:hover:not(:disabled) {
   background: var(--red-dark) !important;
 }
 
 /* Inactive button - neutral light gray with good contrast */
-.action-right .btn-inactive {
+:is(.action-right, .action-bar-right) .btn-inactive {
   background-color: #f1f3f7 !important;
   color: #2d3748 !important;
   border: 1px solid #d1d5db !important;
   box-shadow: none;
 }
-.action-right .btn-inactive:hover:not(:disabled) {
+:is(.action-right, .action-bar-right) .btn-inactive:hover:not(:disabled) {
   background-color: #e2e8f0 !important;
   border-color: #cbd5e0 !important;
   transform: translateY(-1px);
 }
 
-.action-right .btn-active {
+:is(.action-right, .action-bar-right) .btn-active {
   background: #5b6cff !important;
   color: var(--text-white) !important;
   border: none !important;
 }
-.action-right .btn-active:hover:not(:disabled) {
+:is(.action-right, .action-bar-right) .btn-active:hover:not(:disabled) {
   background: #4a5df0 !important;
 }
 
-.action-right .btn-idcard-group {
+:is(.action-right, .action-bar-right) .btn-idcard-group {
   background: var(--teal) !important;
   color: var(--text-white) !important;
 }
-.action-right .btn-idcard-group:hover:not(:disabled) {
+:is(.action-right, .action-bar-right) .btn-idcard-group:hover:not(:disabled) {
   background: var(--teal-dark) !important;
 }
 
 /* Disabled states */
-.action-right .btn:disabled {
+:is(.action-right, .action-bar-right) .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
   color: var(--text-white) !important;
@@ -421,9 +421,11 @@ body[style*="overflow:hidden"] {
 }
 
 .center-modal-label {
+  display: block;
   color: #374151;
+  font-size: 12px;
+  font-weight: 600;
   margin: 0 0 6px;
-  font-size: 14px;
 }
 
 .center-modal-code {
@@ -582,6 +584,33 @@ body[style*="overflow:hidden"] {
 .center-modal-theme-green .center-modal-btn-confirm { background: #22c55e; }
 .center-modal-theme-green .center-modal-btn-confirm:hover:not(:disabled) { background: #16a34a; }
 .center-modal-theme-green .center-modal-progress-bar { background: #22c55e; }
+
+/* XLSX modal field preview table */
+.cm-field-table-wrap {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-top: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+.cm-field-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.cm-field-table thead tr {
+  background: #f8fafc;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.cm-field-table th {
+  text-align: left;
+  padding: 8px 10px;
+  font-weight: 600;
+  color: #475569;
+  border-bottom: 1px solid #e2e8f0;
+}
 
 /* Download Modal Specific Styles */
 .center-modal-select {
@@ -797,7 +826,7 @@ body[style*="overflow:hidden"] {
   .switch-btn { padding: var(--space-sm) var(--space-md); }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 640px) {
   table { min-width: 500px; font-size: var(--font-size-xs); }
 
   .drawer-content,
@@ -830,7 +859,7 @@ body[style*="overflow:hidden"] {
   font-size: 15px;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 640px) {
   .alpine-toast-wrapper {
     left: 16px;
     right: 16px;
@@ -979,7 +1008,7 @@ td.email-col {
   left: 8px !important;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 640px) {
   .toast {
     right: auto !important;
     left: 16px !important;

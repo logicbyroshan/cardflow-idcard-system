@@ -53,27 +53,56 @@ class IDCardBulkService(BaseService):
         card_ids: List[int] = None,
         delete_all: bool = False
     ) -> ServiceResult:
-        """Delete multiple ID Cards"""
+        """Delete multiple ID Cards.
+
+        Performance: collects all image paths with a cheap values() query,
+        deletes the files outside the transaction (no row locks held during I/O),
+        then performs the SQL DELETE in a single atomic statement.
+        """
         try:
             table = get_object_or_404(IDCardTable, id=table_id)
 
             if delete_all:
-                cards_qs = IDCard.objects.filter(table=table)
+                target_qs = IDCard.objects.filter(table=table)
             else:
-                cards_qs = IDCard.objects.filter(table=table, id__in=card_ids or [])
+                target_qs = IDCard.objects.filter(table=table, id__in=card_ids or [])
 
+            # ── Step 1: harvest image paths without loading full model objects ──
+            # Only select the two columns we need — avoids fetching field_data JSON
+            # for every card.  Use .only() so Django defers the heavy JSONField.
+            image_paths: List[str] = []
+            legacy_photos: List[str] = []
+            for row in target_qs.only('id', 'field_data', 'photo'):
+                fd = row.field_data or {}
+                for val in fd.values():
+                    if val and isinstance(val, str) and val not in ('NOT_FOUND', ''):
+                        if 'adarshimg/' in val or 'id_card_images/' in val:
+                            image_paths.append(val)
+                if row.photo:
+                    legacy_photos.append(row.photo.name)
+
+            # ── Step 2: delete files outside the transaction (I/O, not DB) ──
+            from mediafiles.services import ImageService
+            from django.core.files.storage import default_storage
+            for path in image_paths:
+                try:
+                    ImageService.delete_image(path)
+                except Exception as e:
+                    logger.warning("bulk_delete: could not delete image %s: %s", path, e)
+            for path in legacy_photos:
+                try:
+                    if default_storage.exists(path):
+                        default_storage.delete(path)
+                except Exception as e:
+                    logger.warning("bulk_delete: could not delete photo %s: %s", path, e)
+
+            # ── Step 3: SQL DELETE inside a short atomic transaction ──
             from django.db import transaction
             with transaction.atomic():
-                # Lock rows to prevent concurrent modifications during delete
                 if delete_all:
                     locked_qs = IDCard.objects.select_for_update().filter(table=table)
                 else:
                     locked_qs = IDCard.objects.select_for_update().filter(table=table, id__in=card_ids or [])
-
-                # Collect image cleanup before deleting
-                for card in list(locked_qs):
-                    card.delete_images()
-
                 deleted_count = locked_qs.count()
                 locked_qs.delete()
 
@@ -197,8 +226,7 @@ class IDCardBulkService(BaseService):
                 )
 
             cards = IDCard.objects.filter(table=table, status='download')
-            total = cards.count()
-            if total == 0:
+            if not cards.exists():
                 return ServiceResult(
                     success=False,
                     message='No cards in the Download list to upgrade'
@@ -288,7 +316,7 @@ class IDCardBulkService(BaseService):
                     'skipped': skipped,
                     'moved_to_pool': moved_to_pool,
                     'moved_to_pending': moved_to_pending,
-                    'total': total,
+                    'total': upgraded + skipped,
                     'client_name': getattr(table.group.client, 'name', ''),
                 }
             )

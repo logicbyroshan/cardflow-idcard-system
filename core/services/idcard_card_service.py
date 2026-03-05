@@ -11,8 +11,11 @@ Part of the IDCardService split. Handles:
 import logging
 from typing import Dict, Any, List
 
+from django.core.cache import cache
 from django.shortcuts import get_object_or_404
-from django.db.models import Count
+from django.db.models import Count, Q, CharField
+from django.db.models.fields.json import KeyTextTransform
+from django.db.models.functions import Cast
 from django.utils.timezone import localtime
 
 from idcards.models import IDCardGroup, IDCardTable, IDCard
@@ -107,27 +110,37 @@ class IDCardCardService(BaseService):
         return class_field, section_field
 
     @classmethod
-    def _apply_class_filter(cls, qs, class_filter, class_field_name):
+    def _apply_class_filter(cls, qs, class_filter, class_field_name, table_id=None):
         """Apply class filter with canonical normalization.
 
         Finds all raw variants that normalize to the same canonical class
         and matches them all.  E.g. filtering by 'KG1' also finds
         'KG-I', 'KGI', 'LKG', 'kgI', etc.
+
+        table_id is used to cache the distinct raw values per table (60 s TTL)
+        so that repeated filtered-list requests skip the pre-scan DB round-trip.
         """
-        from django.db.models.fields.json import KeyTextTransform
-        from django.db.models.functions import Cast
-        from django.db.models import CharField, Q
         from core.utils.field_utils import normalize_class_value
 
         norm_filter = normalize_class_value(class_filter)
 
-        # Get all distinct raw class values
-        all_raw = list(
-            qs.annotate(_cv_raw=Cast(KeyTextTransform(class_field_name, 'field_data'), CharField()))
-            .exclude(_cv_raw__isnull=True).exclude(_cv_raw='')
-            .order_by()
-            .values_list('_cv_raw', flat=True).distinct()
-        )
+        # Cache distinct raw class values per (table, field) — 60-second TTL.
+        # Query against the full table (no status restriction) so one cached scan
+        # serves all status-filtered list views for the same table.
+        cache_key = f'cls_raw_vals:{table_id}:{class_field_name}' if table_id else None
+        all_raw = cache.get(cache_key) if cache_key else None
+
+        if all_raw is None:
+            base_qs = qs.model.objects.filter(table_id=table_id) if table_id else qs
+            all_raw = list(
+                base_qs
+                .annotate(_cv_raw=Cast(KeyTextTransform(class_field_name, 'field_data'), CharField()))
+                .exclude(_cv_raw__isnull=True).exclude(_cv_raw='')
+                .order_by()
+                .values_list('_cv_raw', flat=True).distinct()
+            )
+            if cache_key:
+                cache.set(cache_key, all_raw, 60)
 
         matching_raw = [r for r in all_raw if normalize_class_value(r) == norm_filter]
 
@@ -242,10 +255,6 @@ class IDCardCardService(BaseService):
         to_date: str = '',
     ) -> ServiceResult:
         """List ID Cards for a table with pagination and server-side filtering."""
-        from django.db.models.fields.json import KeyTextTransform
-        from django.db.models.functions import Cast
-        from django.db.models import Q, CharField
-
         try:
             table = get_object_or_404(IDCardTable, id=table_id)
 
@@ -263,7 +272,7 @@ class IDCardCardService(BaseService):
             if class_filter or section_filter:
                 class_field_name, section_field_name = cls._get_class_section_field_names(table)
                 if class_filter and class_field_name:
-                    cards_query = cls._apply_class_filter(cards_query, class_filter, class_field_name)
+                    cards_query = cls._apply_class_filter(cards_query, class_filter, class_field_name, table_id=table_id)
                 if section_filter and section_field_name:
                     cards_query = cards_query.annotate(
                         _sec=KeyTextTransform(section_field_name, 'field_data')
@@ -390,10 +399,6 @@ class IDCardCardService(BaseService):
                          from_date: str = '', to_date: str = '',
                          image_column: str = '', image_condition: str = '') -> ServiceResult:
         """Get all card IDs for a table (for Select All). Capped at 50,000."""
-        from django.db.models.fields.json import KeyTextTransform
-        from django.db.models.functions import Cast
-        from django.db.models import Q, CharField
-
         MAX_CARD_IDS = 10000
         try:
             table = get_object_or_404(IDCardTable, id=table_id)
@@ -410,7 +415,7 @@ class IDCardCardService(BaseService):
             if class_filter or section_filter:
                 class_field_name, section_field_name = cls._get_class_section_field_names(table)
                 if class_filter and class_field_name:
-                    cards_query = cls._apply_class_filter(cards_query, class_filter, class_field_name)
+                    cards_query = cls._apply_class_filter(cards_query, class_filter, class_field_name, table_id=table_id)
                 if section_filter and section_field_name:
                     cards_query = cards_query.annotate(
                         _sec=KeyTextTransform(section_field_name, 'field_data')
