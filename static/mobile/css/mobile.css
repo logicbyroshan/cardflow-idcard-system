@@ -935,11 +935,11 @@ html, body {
 .pwa-ct {
     width: 100%;
     border-collapse: collapse;
-    min-width: 420px;
+    table-layout: fixed;
 }
 
 .pwa-ct th {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.06em;
@@ -949,13 +949,18 @@ html, body {
     background: #f9fafb;
     border-bottom: 1px solid #f0f0f4;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .pwa-ct td {
     padding: 9px 10px;
-    font-size: 12px;
+    font-size: 13px;
     border-bottom: 1px solid #f9fafb;
     vertical-align: middle;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .pwa-ct tbody tr:last-child td {
@@ -965,5 +970,8 @@ html, body {
 .pwa-ct-sub td {
     background: #f9fafb;
     border-bottom: 1px solid #f3f4f6;
-    padding: 5px 8px 5px 24px;
+    padding: 5px 8px 5px 18px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }

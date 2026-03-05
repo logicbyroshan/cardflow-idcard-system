@@ -57,7 +57,7 @@
 
             <!-- RECENT CLIENT UPDATES — fills remaining height of section -->
             {% if is_super_admin or is_admin_staff and perm_idcard_client_list or is_client or is_client_staff %}
-            <div class="px-3 pb-3 flex-1 flex flex-col min-h-0">
+            <div class="px-3 pb-3 mt-2 flex-1 flex flex-col min-h-0">
                 <div class="flex items-center justify-between mb-2 flex-shrink-0">
                     {% if is_super_admin or is_admin_staff %}
                     <h2 class="pwa-section-title" style="font-size:12px;">Recent Client Updates</h2>
@@ -75,11 +75,11 @@
                         <table class="pwa-ct">
                             <thead>
                                 <tr>
-                                    <th style="min-width:110px;">Client</th>
-                                    <th class="text-center" style="width:44px;">Pend.</th>
-                                    <th class="text-center" style="width:44px;">Verif.</th>
-                                    <th class="text-center" style="width:44px;">Appv.</th>
-                                    <th class="text-center" style="width:44px;">Dwnld</th>
+                                    <th style="width:40%;">Client</th>
+                                    <th class="text-center" style="width:15%;">Pend.</th>
+                                    <th class="text-center" style="width:15%;">Verif.</th>
+                                    <th class="text-center" style="width:15%;">Appv.</th>
+                                    <th class="text-center" style="width:15%;">Dwnld</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -88,18 +88,12 @@
                                     :class="expanded === '{{ rc.client_id }}' ? 'bg-indigo-50/40' : 'active:bg-gray-50'"
                                     @click="toggle('{{ rc.client_id }}')">
                                     <td>
-                                        <div class="flex items-center gap-1.5">
-                                            <div class="w-5 h-5 rounded-md flex items-center justify-center text-white text-[8px] font-bold flex-shrink-0"
-                                                 style="background:linear-gradient(135deg,#667eea,#764ba2);">
-                                                {{ rc.client_name|truncatechars:2|upper }}
-                                            </div>
-                                            <span class="font-semibold text-gray-800 text-[11px] truncate" style="max-width:80px;">{{ rc.client_name }}</span>
-                                        </div>
+                                        <span class="font-semibold text-gray-800 truncate block">{{ rc.client_name }}</span>
                                     </td>
-                                    <td class="text-center font-bold text-amber-600 text-[11px]">{{ rc.pending }}</td>
-                                    <td class="text-center font-bold text-green-600 text-[11px]">{{ rc.verified }}</td>
-                                    <td class="text-center font-bold text-blue-600 text-[11px]">{{ rc.approved }}</td>
-                                    <td class="text-center font-bold text-purple-600 text-[11px]">{{ rc.download }}</td>
+                                    <td class="text-center font-bold text-amber-600">{{ rc.pending }}</td>
+                                    <td class="text-center font-bold text-green-600">{{ rc.verified }}</td>
+                                    <td class="text-center font-bold text-blue-600">{{ rc.approved }}</td>
+                                    <td class="text-center font-bold text-purple-600">{{ rc.download }}</td>
                                 </tr>
                                 {% if rc.tables %}
                                 {% for tbl in rc.tables %}
@@ -108,15 +102,15 @@
                                     style="display:none;">
                                     <td>
                                         <a href="{% url 'mobile_app:card_list' table_id=tbl.id status='pending' %}"
-                                           class="flex items-center gap-1 text-[10px] font-medium text-gray-600 truncate" style="max-width:95px;">
+                                           class="flex items-center gap-1 text-[10px] font-medium text-gray-600 truncate">
                                             <i class="fa-solid fa-table text-indigo-300 flex-shrink-0 text-[8px]"></i>
                                             <span class="truncate">{{ tbl.name }}</span>
                                         </a>
                                     </td>
-                                    <td class="text-center font-bold text-amber-600 text-[11px]">{{ tbl.pending }}</td>
-                                    <td class="text-center font-bold text-green-600 text-[11px]">{{ tbl.verified }}</td>
-                                    <td class="text-center font-bold text-blue-600 text-[11px]">{{ tbl.approved }}</td>
-                                    <td class="text-center font-bold text-purple-600 text-[11px]">{{ tbl.download }}</td>
+                                    <td class="text-center font-bold text-amber-600">{{ tbl.pending }}</td>
+                                    <td class="text-center font-bold text-green-600">{{ tbl.verified }}</td>
+                                    <td class="text-center font-bold text-blue-600">{{ tbl.approved }}</td>
+                                    <td class="text-center font-bold text-purple-600">{{ tbl.download }}</td>
                                 </tr>
                                 {% empty %}
                                 <tr x-show="expanded === '{{ rc.client_id }}'" style="display:none;">
