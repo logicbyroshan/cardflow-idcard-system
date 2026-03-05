@@ -1,6 +1,6 @@
 <!-- Hero Image Carousel Partial -->
 <div class="px-4 pt-2 pb-1" x-data="heroCarousel()" x-init="startAutoSlide()">
-    <div class="relative rounded-xl overflow-hidden shadow-md" style="height: 18vh; min-height: 120px;">
+    <div class="relative rounded-md overflow-hidden shadow-md" style="height: 18vh; min-height: 120px;">
         <template x-for="(img, index) in images" :key="index">
             <div
                 x-show="current === index"

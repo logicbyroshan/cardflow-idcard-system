@@ -18,7 +18,7 @@
 
     <!-- Overview Stats -->
     <div class="px-4 pt-4">
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
             <div class="px-4 py-3 border-b border-gray-100">
                 <h3 class="text-sm font-bold text-gray-800">
                     <i class="fa-solid fa-chart-bar text-brand-light mr-1.5"></i>Overview
@@ -44,7 +44,7 @@
     {% if is_super_admin or is_admin_staff %}
     <!-- Admin Stats -->
     <div class="px-4 pt-3">
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
             <div class="px-4 py-3 border-b border-gray-100">
                 <h3 class="text-sm font-bold text-gray-800">
                     <i class="fa-solid fa-shield-halved text-amber-500 mr-1.5"></i>Admin Overview
@@ -86,7 +86,7 @@
 
     <!-- Quick Links -->
     <div class="px-4 pt-3">
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
             <div class="px-4 py-3 border-b border-gray-100">
                 <h3 class="text-sm font-bold text-gray-800">
                     <i class="fa-solid fa-link text-brand-light mr-1.5"></i>Quick Links
@@ -139,7 +139,7 @@
     <!-- Client Info -->
     {% if client %}
     <div class="px-4 pt-3">
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
             <div class="px-4 py-3 border-b border-gray-100">
                 <h3 class="text-sm font-bold text-gray-800">
                     <i class="fa-solid fa-building text-brand-light mr-1.5"></i>Client Info
@@ -176,7 +176,7 @@
         <form method="post" action="/auth/logout/">
             {% csrf_token %}
             <input type="hidden" name="next" value="/app/">
-            <button type="submit" class="block w-full py-3 text-center text-sm font-semibold text-red-500 bg-red-50 border border-red-100 rounded-2xl hover:bg-red-100 transition">
+            <button type="submit" class="block w-full py-3 text-center text-sm font-semibold text-red-500 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 transition">
                 <i class="fa-solid fa-right-from-bracket mr-2"></i>Logout
             </button>
         </form>

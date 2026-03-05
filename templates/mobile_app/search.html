@@ -4,7 +4,7 @@
 {% block title %}Search - Adarsh ID Cards{% endblock %}
 
 {% block content %}
-{# Seed JS with server-side results (present when page loaded via ?q=…) #}
+{# Seed JS with server-side results (present when page loaded via ?q=â€¦) #}
 {{ results|json_script:"_search_init_results" }}
 {{ query|json_script:"_search_init_query" }}
 
@@ -50,7 +50,7 @@
         <div class="space-y-2" x-show="!loading">
             <template x-for="card in results" :key="card.id">
                 <a :href="cardUrl(card.id)"
-                   class="flex items-center gap-3 bg-white rounded-xl p-3 shadow-sm border border-gray-100 hover:shadow-md active:scale-[0.98] transition-all">
+                   class="flex items-center gap-3 bg-white rounded-md p-3 shadow-sm border border-gray-100 hover:shadow-md active:scale-[0.98] transition-all">
                     <!-- Photo -->
                     <div class="w-11 h-11 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
                         <img x-show="card.photo_url" :src="card.photo_url" class="w-full h-full object-cover" alt="">
@@ -62,7 +62,7 @@
                         <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
                             <span class="text-[10px] text-gray-500" x-show="card.roll_no" x-text="card.roll_no"></span>
                             <span class="text-[10px] text-gray-400" x-text="card.table_name"></span>
-                            <span class="text-[10px] text-gray-400" x-show="card.client_name" x-text="'· ' + card.client_name"></span>
+                            <span class="text-[10px] text-gray-400" x-show="card.client_name" x-text="'Â· ' + card.client_name"></span>
                         </div>
                     </div>
                     <!-- Status badge -->

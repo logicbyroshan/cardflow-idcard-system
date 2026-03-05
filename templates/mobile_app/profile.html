@@ -18,7 +18,7 @@
 
     <!-- Profile Card -->
     <div class="px-4 pt-6">
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
             <!-- Avatar Section -->
             <div class="bg-gradient-to-br from-brand-light to-brand-dark px-6 py-8 text-center">
                 <div class="w-20 h-20 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white text-2xl font-bold mx-auto mb-3 border-4 border-white/30">
@@ -31,7 +31,7 @@
 
             <!-- View Mode Details -->
             <div x-show="!editing" class="p-5 space-y-4">
-                <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-md">
                     <div class="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500">
                         <i class="fa-solid fa-envelope text-sm"></i>
                     </div>
@@ -41,7 +41,7 @@
                     </div>
                 </div>
 
-                <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-md">
                     <div class="w-9 h-9 rounded-lg bg-green-50 flex items-center justify-center text-green-500">
                         <i class="fa-solid fa-phone text-sm"></i>
                     </div>
@@ -51,7 +51,7 @@
                     </div>
                 </div>
 
-                <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-md">
                     <div class="w-9 h-9 rounded-lg bg-purple-50 flex items-center justify-center text-purple-500">
                         <i class="fa-solid fa-shield-halved text-sm"></i>
                     </div>
@@ -88,7 +88,7 @@
 
     <!-- Quick Settings -->
     <div class="px-4 pt-4 pb-2" x-data="{ darkMode: false, pushNotif: true }">
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
             <div class="px-4 py-3 border-b border-gray-100">
                 <h3 class="text-sm font-bold text-gray-800">Quick Settings</h3>
             </div>
@@ -119,7 +119,7 @@
 
     <!-- Quick Links -->
     <div class="px-4 pb-2">
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-50">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-50">
             {% if is_client %}
             <a href="{% url 'mobile_app:staff_manage' %}" class="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition">
                 <div class="flex items-center gap-3">
@@ -151,7 +151,7 @@
         <form method="post" action="/auth/logout/">
             {% csrf_token %}
             <input type="hidden" name="next" value="/app/">
-            <button type="submit" class="block w-full py-3 text-center text-sm font-semibold text-red-500 bg-red-50 border border-red-100 rounded-2xl hover:bg-red-100 transition">
+            <button type="submit" class="block w-full py-3 text-center text-sm font-semibold text-red-500 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 transition">
                 <i class="fa-solid fa-right-from-bracket mr-2"></i>Logout
             </button>
         </form>
@@ -159,7 +159,7 @@
 
     <!-- Toast -->
     <div x-show="toast.show" x-transition class="fixed top-4 left-1/2 -translate-x-1/2 z-[80] max-w-[380px] w-full px-4">
-        <div class="rounded-xl px-4 py-3 shadow-lg text-xs font-medium text-white"
+        <div class="rounded-md px-4 py-3 shadow-lg text-xs font-medium text-white"
              :class="toast.type === 'success' ? 'bg-green-500' : toast.type === 'error' ? 'bg-red-500' : 'bg-brand-light'"
              x-text="toast.message"></div>
     </div>

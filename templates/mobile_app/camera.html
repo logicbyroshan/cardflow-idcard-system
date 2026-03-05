@@ -69,7 +69,7 @@
         <div class="relative mb-2">
             <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-xs"></i>
             <input type="text" x-model="cardSearch" @input="filterCards()"
-                   placeholder="Type name to search…"
+                   placeholder="Type name to searchâ€¦"
                    class="w-full pl-8 pr-3 py-2.5 rounded-xl bg-white/10 text-white text-sm border border-white/20 focus:border-brand-light outline-none placeholder-white/30">
             <button x-show="cardSearch" @click="cardSearch=''; filterCards()"
                     class="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 text-sm">
@@ -119,30 +119,30 @@
     <!-- Camera Controls -->
     <div class="fixed bottom-0 left-0 right-0 bg-black/90 backdrop-blur-md py-5">
         <div class="max-w-[430px] mx-auto flex items-center justify-center gap-5">
-            <button @click="$refs.galleryFile.click()" class="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-white active:scale-95 transition-transform">
+            <button @click="$refs.galleryFile.click()" class="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center text-white active:scale-95 transition-transform">
                 <i class="fa-solid fa-images text-lg"></i>
             </button>
             <input type="file" x-ref="galleryFile" accept="image/*" class="hidden" @change="onGalleryPick($event)">
             <template x-if="!photoTaken">
-                <button @click="capturePhoto()" class="w-16 h-16 rounded-2xl bg-white flex items-center justify-center shadow-lg shadow-white/20 active:scale-95 transition-transform">
+                <button @click="capturePhoto()" class="w-16 h-16 rounded-lg bg-white flex items-center justify-center shadow-lg shadow-white/20 active:scale-95 transition-transform">
                     <div class="w-12 h-12 rounded-xl border-4 border-gray-300"></div>
                 </button>
             </template>
             <template x-if="photoTaken">
                 <div class="flex gap-3">
-                    <button @click="retakePhoto()" class="w-14 h-14 rounded-2xl bg-red-500 flex items-center justify-center text-white shadow-lg shadow-red-500/30 active:scale-95 transition-transform">
+                    <button @click="retakePhoto()" class="w-14 h-14 rounded-lg bg-red-500 flex items-center justify-center text-white shadow-lg shadow-red-500/30 active:scale-95 transition-transform">
                         <i class="fa-solid fa-xmark text-xl"></i>
                     </button>
-                    <button @click="openCropper()" class="w-14 h-14 rounded-2xl bg-blue-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/30 active:scale-95 transition-transform">
+                    <button @click="openCropper()" class="w-14 h-14 rounded-lg bg-blue-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/30 active:scale-95 transition-transform">
                         <i class="fa-solid fa-crop-simple text-xl"></i>
                     </button>
-                    <button @click="savePhoto()" class="w-14 h-14 rounded-2xl bg-green-500 flex items-center justify-center text-white shadow-lg shadow-green-500/30 active:scale-95 transition-transform" :disabled="uploading">
+                    <button @click="savePhoto()" class="w-14 h-14 rounded-lg bg-green-500 flex items-center justify-center text-white shadow-lg shadow-green-500/30 active:scale-95 transition-transform" :disabled="uploading">
                         <span x-show="!uploading"><i class="fa-solid fa-check text-xl"></i></span>
                         <span x-show="uploading"><i class="fa-solid fa-spinner fa-spin text-xl"></i></span>
                     </button>
                 </div>
             </template>
-            <button @click="toggleFlash()" class="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-white active:scale-95 transition-transform"
+            <button @click="toggleFlash()" class="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center text-white active:scale-95 transition-transform"
                     :class="{ 'bg-amber-500/40 text-amber-300': flashOn }">
                 <i :class="flashOn ? 'fa-solid fa-bolt' : 'fa-solid fa-bolt-slash'" style="font-size:1.125rem;"></i>
             </button>
@@ -297,7 +297,7 @@ function cameraApp() {
                 if (data.success) {
                     this.showMsg('Photo uploaded successfully!', 'success');
                     this.photoTaken = false;
-                    /* Reset selection — keep full card list available for next capture */
+                    /* Reset selection â€” keep full card list available for next capture */
                     this.selectedCardId = 0;
                     this.cardSearch = '';
                     this.filteredCards = this.allCards;

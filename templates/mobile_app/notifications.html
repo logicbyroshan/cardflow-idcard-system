@@ -17,7 +17,7 @@
     <!-- Notification List -->
     <div class="p-4 space-y-3">
         {% for notif in notifications %}
-        <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100 {% if not notif.read %}border-l-4 border-l-brand-light{% endif %} transition hover:shadow-md">
+        <div class="bg-white rounded-md p-4 shadow-sm border border-gray-100 {% if not notif.read %}border-l-4 border-l-brand-light{% endif %} transition hover:shadow-md">
             <div class="flex items-start gap-3">
                 <div class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0
                     {% if notif.color == 'green' %}bg-green-50 text-green-500

@@ -1,7 +1,7 @@
 {% extends "mobile_app/base.html" %}
 {% load static %}
 
-{% block title %}Select Table — {{ status_display }}{% endblock %}
+{% block title %}Select Table â€” {{ status_display }}{% endblock %}
 
 {% block content %}
 <div class="min-h-screen bg-gray-50">
@@ -20,10 +20,10 @@
     <div class="p-4 pb-24 space-y-3">
         {% for table in tables %}
         <a href="{% url 'mobile_app:card_list' table_id=table.id status=status %}"
-           class="block bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md active:scale-[0.98] transition-all">
+           class="block bg-white rounded-md p-4 shadow-sm border border-gray-100 hover:shadow-md active:scale-[0.98] transition-all">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-light/10 to-brand-dark/10 flex items-center justify-center">
+                    <div class="w-10 h-10 rounded-md bg-gradient-to-br from-brand-light/10 to-brand-dark/10 flex items-center justify-center">
                         <i class="fa-solid fa-table text-brand-light text-base"></i>
                     </div>
                     <div>

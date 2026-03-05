@@ -3,7 +3,7 @@
 <div class="flex-shrink-0 z-40 bg-white shadow-sm">
     <!-- Back Navigation Header -->
     <div class="flex items-center gap-3 px-4 py-2.5 bg-gradient-to-r from-brand-light to-brand-dark">
-        <a href="{% url 'mobile_app:home' %}" class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all">
+        <a href="{% url 'mobile_app:home' %}" class="w-8 h-8 rounded-md bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all">
             <i class="fa-solid fa-arrow-left text-sm"></i>
         </a>
         <div class="flex-1">
@@ -21,14 +21,14 @@
             {{ total_count }}
         </span>
         {% if perm_idcard_edit or perm_idcard_add %}
-        <a href="{% url 'mobile_app:camera_capture' table_id=table.id %}" class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all">
+        <a href="{% url 'mobile_app:camera_capture' table_id=table.id %}" class="w-8 h-8 rounded-md bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all">
             <i class="fa-solid fa-camera text-sm"></i>
         </a>
         {% endif %}
         <!-- Hamburger -->
         <button type="button"
                 @click="$dispatch('open-hamburger')"
-                class="w-8 h-8 rounded-lg bg-white/20 flex flex-col items-center justify-center gap-[4px] text-white hover:bg-white/30 active:scale-95 transition-all">
+                class="w-8 h-8 rounded-md bg-white/20 flex flex-col items-center justify-center gap-[4px] text-white hover:bg-white/30 active:scale-95 transition-all">
             <span class="block w-[14px] h-[2px] bg-current rounded-full"></span>
             <span class="block w-[11px] h-[2px] bg-current rounded-full self-start ml-[1.5px]"></span>
             <span class="block w-[14px] h-[2px] bg-current rounded-full"></span>
@@ -45,13 +45,13 @@
                     x-model="searchQuery"
                     @input="filterStudents()"
                     placeholder="Search by name, roll no..."
-                    class="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition"
+                    class="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-md text-xs text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition"
                 >
             </div>
             <button
                 @click="showFilters = !showFilters"
                 :class="showFilters ? 'bg-brand-light text-white border-brand-light' : filtersActive ? 'bg-brand-light/10 text-brand-light border-brand-light' : 'bg-gray-50 text-gray-600 border-gray-200'"
-                class="relative w-9 h-9 rounded-lg border flex items-center justify-center flex-shrink-0 transition-all"
+                class="relative w-9 h-9 rounded-md border flex items-center justify-center flex-shrink-0 transition-all"
             >
                 <i class="fa-solid fa-sliders text-sm"></i>
                 <span x-show="filtersActive" class="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full"></span>

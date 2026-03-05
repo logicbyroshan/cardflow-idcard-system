@@ -11,7 +11,7 @@
 >
     <div
         :class="{'bg-green-500': toast.type==='success', 'bg-red-500': toast.type==='error', 'bg-gradient-to-r from-brand-light to-brand-dark': toast.type==='info'}"
-        class="text-white text-xs font-medium px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2"
+        class="text-white text-xs font-medium px-4 py-2.5 rounded-md shadow-lg flex items-center gap-2"
     >
         <i :class="{'fa-solid fa-check-circle': toast.type==='success', 'fa-solid fa-exclamation-circle': toast.type==='error', 'fa-solid fa-info-circle': toast.type==='info'}"></i>
         <span x-text="toast.message"></span>

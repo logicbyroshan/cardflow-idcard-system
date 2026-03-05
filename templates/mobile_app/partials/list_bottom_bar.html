@@ -1,98 +1,93 @@
 {% load static %}
 <!-- Fixed Bottom Action Bar -->
-<div class="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-[0_-2px_12px_rgba(0,0,0,0.08)]"
+<div class="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-[0_-4px_16px_rgba(0,0,0,0.10)]"
      style="padding-bottom: env(safe-area-inset-bottom, 0px);">
 
-    <!-- Selection count chip (shows when items selected) -->
+    <!-- Selection count strip (shows when items selected) -->
     <div x-show="selectedIds.length > 0" x-transition
-         class="flex items-center justify-center gap-1.5 px-3 py-1 bg-brand-light/10 border-b border-brand-light/20">
-        <i class="fa-solid fa-check-circle text-brand-light text-[9px]"></i>
-        <span class="text-[9px] font-bold text-brand-light" x-text="selectedIds.length + ' item(s) selected'"></span>
+         class="flex items-center justify-between px-4 py-1.5 bg-indigo-50 border-b border-indigo-100">
+        <div class="flex items-center gap-1.5">
+            <div class="w-4 h-4 rounded-full bg-indigo-500 flex items-center justify-center">
+                <i class="fa-solid fa-check text-white" style="font-size:7px;"></i>
+            </div>
+            <span class="text-[10px] font-bold text-indigo-700" x-text="selectedIds.length + ' selected'"></span>
+        </div>
         <button @click="selectedIds=[]; selectAll=false"
-                class="ml-1 text-[9px] text-gray-400 hover:text-red-400 transition">
-            <i class="fa-solid fa-xmark"></i>
+                class="text-[9px] font-semibold text-indigo-400 hover:text-red-500 flex items-center gap-1 transition">
+            <i class="fa-solid fa-xmark"></i> Clear
         </button>
     </div>
 
-    <!-- Scrollable action buttons row -->
-    <div class="overflow-x-auto py-2 px-2 scrollbar-hide">
-        <div class="flex items-center gap-1.5 w-max">
+    <!-- Action buttons row -->
+    <div class="overflow-x-auto scrollbar-hide">
+        <div class="flex items-stretch gap-0 px-0" style="min-height:52px;">
 
         {% if view_only_list %}
-            <!-- VIEW-ONLY mode (client on approved/download): only detail link, no selection actions -->
-            <span class="text-[9px] text-gray-400 font-medium px-2">View only</span>
-            <a href="#" @click.prevent
-               class="action-pill-disabled shrink-0 cursor-default">
-                <i class="fa-solid fa-eye text-[10px]"></i>
-                <span>Tap row eye icon to view</span>
-            </a>
+            <div class="flex-1 flex items-center justify-center gap-1.5 text-[10px] text-gray-400 font-medium px-4">
+                <i class="fa-solid fa-eye text-[11px]"></i>
+                <span>View only — no actions available</span>
+            </div>
         {% else %}
-            <!-- ADD — only if user has add permission -->
+
             {% if perm_idcard_add %}
             <button @click="addNew()"
-                    class="action-pill bg-indigo-500 hover:bg-indigo-600 text-white shrink-0">
-                <i class="fa-solid fa-plus text-[10px]"></i>
-                <span>Add</span>
+                    class="mab-btn mab-btn-indigo flex-col">
+                <i class="fa-solid fa-plus mab-icon"></i>
+                <span class="mab-label">Add</span>
             </button>
             {% endif %}
 
-            <!-- EDIT — only if user has edit permission -->
             {% if perm_idcard_edit %}
             <button @click="editSelected()"
-                    :class="selectedIds.length > 0 ? 'action-pill bg-amber-500 hover:bg-amber-600 text-white shrink-0' : 'action-pill-disabled shrink-0'"
-                    :disabled="selectedIds.length === 0">
-                <i class="fa-solid fa-pen text-[10px]"></i>
-                <span>Edit</span>
+                    :disabled="selectedIds.length === 0"
+                    :class="selectedIds.length > 0 ? 'mab-btn mab-btn-amber flex-col' : 'mab-btn mab-btn-disabled flex-col'">
+                <i class="fa-solid fa-pen mab-icon"></i>
+                <span class="mab-label">Edit</span>
             </button>
             {% endif %}
 
-            <!-- VIEW (read-only — always visible) -->
             <button @click="viewSelected()"
-                    :class="selectedIds.length === 1 ? 'action-pill bg-teal-500 hover:bg-teal-600 text-white shrink-0' : 'action-pill-disabled shrink-0'"
-                    :disabled="selectedIds.length !== 1">
-                <i class="fa-solid fa-eye text-[10px]"></i>
-                <span>View</span>
+                    :disabled="selectedIds.length !== 1"
+                    :class="selectedIds.length === 1 ? 'mab-btn mab-btn-teal flex-col' : 'mab-btn mab-btn-disabled flex-col'">
+                <i class="fa-solid fa-eye mab-icon"></i>
+                <span class="mab-label">View</span>
             </button>
 
             {% if list_type == 'pending' and perm_idcard_verify %}
-            <!-- VERIFY (pending → verified) -->
             <button @click="verifySelected()"
-                    :class="selectedIds.length > 0 ? 'action-pill bg-green-500 hover:bg-green-600 text-white shrink-0' : 'action-pill-disabled shrink-0'"
-                    :disabled="selectedIds.length === 0">
-                <i class="fa-solid fa-circle-check text-[10px]"></i>
-                <span>Verify</span>
+                    :disabled="selectedIds.length === 0"
+                    :class="selectedIds.length > 0 ? 'mab-btn mab-btn-green flex-col' : 'mab-btn mab-btn-disabled flex-col'">
+                <i class="fa-solid fa-circle-check mab-icon"></i>
+                <span class="mab-label">Verify</span>
             </button>
             {% elif list_type == 'verified' and perm_idcard_approve %}
-            <!-- APPROVE (verified → approved) -->
             <button @click="approveSelected()"
-                    :class="selectedIds.length > 0 ? 'action-pill bg-blue-500 hover:bg-blue-600 text-white shrink-0' : 'action-pill-disabled shrink-0'"
-                    :disabled="selectedIds.length === 0">
-                <i class="fa-solid fa-stamp text-[10px]"></i>
-                <span>Approve</span>
+                    :disabled="selectedIds.length === 0"
+                    :class="selectedIds.length > 0 ? 'mab-btn mab-btn-blue flex-col' : 'mab-btn mab-btn-disabled flex-col'">
+                <i class="fa-solid fa-stamp mab-icon"></i>
+                <span class="mab-label">Approve</span>
             </button>
             {% endif %}
 
-            <!-- DELETE — only if user has delete permission -->
             {% if perm_idcard_delete %}
             <button @click="permanentlyDelete()"
-                    :class="selectedIds.length > 0 ? 'action-pill bg-red-500 hover:bg-red-600 text-white shrink-0' : 'action-pill-disabled shrink-0'"
-                    :disabled="selectedIds.length === 0">
-                <i class="fa-solid fa-trash text-[10px]"></i>
-                <span>Delete</span>
+                    :disabled="selectedIds.length === 0"
+                    :class="selectedIds.length > 0 ? 'mab-btn mab-btn-red flex-col' : 'mab-btn mab-btn-disabled flex-col'">
+                <i class="fa-solid fa-trash mab-icon"></i>
+                <span class="mab-label">Delete</span>
             </button>
             {% endif %}
 
-            <!-- PDF — only if user has bulk download permission -->
             {% if perm_idcard_bulk_download %}
             <button @click="downloadPDF()"
-                    :class="selectedIds.length > 0 ? 'action-pill bg-purple-500 hover:bg-purple-600 text-white shrink-0' : 'action-pill-disabled shrink-0'"
-                    :disabled="selectedIds.length === 0">
-                <i class="fa-solid fa-file-pdf text-[10px]"></i>
-                <span>PDF</span>
+                    :disabled="selectedIds.length === 0"
+                    :class="selectedIds.length > 0 ? 'mab-btn mab-btn-purple flex-col' : 'mab-btn mab-btn-disabled flex-col'">
+                <i class="fa-solid fa-file-pdf mab-icon"></i>
+                <span class="mab-label">PDF</span>
             </button>
             {% endif %}
-        {% endif %}
 
+        {% endif %}
         </div>
     </div>
 </div>

@@ -1,12 +1,12 @@
 {% extends "mobile_app/base.html" %}
 {% load static %}
 
-{% block title %}Manage Website — Adarsh ID Cards{% endblock %}
+{% block title %}Manage Website â€” Adarsh ID Cards{% endblock %}
 
 {% block content %}
 <div class="flex flex-col" style="height:100vh;height:100dvh;" x-data="websiteManageApp()" x-init="init()">
 
-    <!-- ───────────────────── TOP NAV + TABS ───────────────────── -->
+    <!-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ TOP NAV + TABS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
     <div class="flex-shrink-0" style="background:linear-gradient(135deg,#667eea,#764ba2);">
 
         <!-- Header row -->
@@ -37,19 +37,19 @@
         </div>
     </div>
 
-    <!-- ───────────────────── SCROLLABLE CONTENT ───────────────────── -->
+    <!-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ SCROLLABLE CONTENT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
     <div class="flex-1 overflow-y-auto" style="background:#f7f8fc;">
 
-        <!-- ── PORTFOLIO TAB ── -->
+        <!-- â”€â”€ PORTFOLIO TAB â”€â”€ -->
         <div x-show="tab==='portfolio'" x-cloak>
             <div class="px-3 pt-3 pb-24">
                 <p class="text-[11px] text-gray-400 mb-3 font-medium">Tap a category to upload photos</p>
                 <div class="grid grid-cols-2 gap-2.5">
                     <template x-for="cat in categories" :key="cat.id">
                         <button @click="openUploadSheet(cat)"
-                                class="bg-white rounded-2xl p-4 text-left shadow-sm border border-gray-100 active:scale-95 transition-transform relative">
+                                class="bg-white rounded-lg p-4 text-left shadow-sm border border-gray-100 active:scale-95 transition-transform relative">
                             <!-- icon -->
-                            <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white mb-2.5"
+                            <div class="w-10 h-10 rounded-md flex items-center justify-center text-white mb-2.5"
                                  style="background:linear-gradient(135deg,#667eea,#764ba2);">
                                 <i :class="cat.icon + ' text-sm'"></i>
                             </div>
@@ -73,7 +73,7 @@
             </div>
         </div>
 
-        <!-- ── REELS TAB ── -->
+        <!-- â”€â”€ REELS TAB â”€â”€ -->
         <div x-show="tab==='reels'" x-cloak>
             <div class="px-3 pt-3 pb-28">
                 <p class="text-[11px] text-gray-400 mb-3 font-medium">Your showcase reels visible on the website</p>
@@ -86,7 +86,7 @@
                 </template>
                 <div class="grid grid-cols-2 gap-2.5">
                     <template x-for="reel in reels" :key="reel.id">
-                        <div class="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100">
+                        <div class="bg-white rounded-lg overflow-hidden shadow-sm border border-gray-100">
                             <!-- Thumbnail -->
                             <div class="relative" style="padding-top:56.25%;">
                                 <template x-if="reel.thumbnail_url">
@@ -120,7 +120,7 @@
         </div>
     </div>
 
-    <!-- ─── FAB: Add Reel (visible on reels tab) ─── -->
+    <!-- â”€â”€â”€ FAB: Add Reel (visible on reels tab) â”€â”€â”€ -->
     <div x-show="tab==='reels'" x-cloak class="fixed bottom-6 right-5 z-40">
         <button @click="openReelSheet()"
                 class="w-14 h-14 rounded-full flex items-center justify-center text-white shadow-xl active:scale-90 transition-transform"
@@ -130,9 +130,9 @@
     </div>
 
 
-    <!-- ═══════════════════════════════════
+    <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
          PORTFOLIO UPLOAD SHEET
-    ════════════════════════════════════ -->
+    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
     <div x-show="uploadSheetOpen" x-cloak
          class="fixed inset-0 z-50 flex flex-col justify-end"
          @keydown.escape.window="closeUploadSheet()">
@@ -162,7 +162,7 @@
                 <!-- Source buttons -->
                 <div class="grid grid-cols-2 gap-3">
                     <!-- Camera -->
-                    <label class="flex flex-col items-center justify-center gap-2 rounded-2xl p-5 cursor-pointer active:scale-95 transition-transform border-2 border-dashed border-indigo-200 bg-indigo-50">
+                    <label class="flex flex-col items-center justify-center gap-2 rounded-lg p-5 cursor-pointer active:scale-95 transition-transform border-2 border-dashed border-indigo-200 bg-indigo-50">
                         <div class="w-11 h-11 rounded-full bg-indigo-500 flex items-center justify-center shadow-md shadow-indigo-200">
                             <i class="fa-solid fa-camera text-white text-base"></i>
                         </div>
@@ -173,7 +173,7 @@
                     </label>
 
                     <!-- Gallery -->
-                    <label class="flex flex-col items-center justify-center gap-2 rounded-2xl p-5 cursor-pointer active:scale-95 transition-transform border-2 border-dashed border-teal-200 bg-teal-50">
+                    <label class="flex flex-col items-center justify-center gap-2 rounded-lg p-5 cursor-pointer active:scale-95 transition-transform border-2 border-dashed border-teal-200 bg-teal-50">
                         <div class="w-11 h-11 rounded-full bg-teal-500 flex items-center justify-center shadow-md shadow-teal-200">
                             <i class="fa-solid fa-images text-white text-base"></i>
                         </div>
@@ -190,7 +190,7 @@
                        x-text="pendingFiles.length + ' photo(s) ready'"></p>
                     <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
                         <template x-for="(pf, idx) in pendingFiles" :key="idx">
-                            <div class="relative flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden border border-gray-200 shadow-sm">
+                            <div class="relative flex-shrink-0 w-16 h-16 rounded-md overflow-hidden border border-gray-200 shadow-sm">
                                 <img :src="pf.preview" class="w-full h-full object-cover" alt="">
                                 <button @click.stop="removeFile(idx)"
                                         class="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-red-500 flex items-center justify-center shadow">
@@ -206,11 +206,11 @@
                         @click="uploadPortfolioFiles()"
                         :disabled="uploading"
                         :class="uploading ? 'opacity-70 cursor-not-allowed' : 'active:scale-95'"
-                        class="w-full py-3.5 rounded-2xl text-white font-bold text-sm transition-transform flex items-center justify-center gap-2"
+                        class="w-full py-3.5 rounded-lg text-white font-bold text-sm transition-transform flex items-center justify-center gap-2"
                         style="background:linear-gradient(135deg,#667eea,#764ba2);">
                     <template x-if="uploading">
                         <span class="flex items-center gap-2">
-                            <i class="fa-solid fa-spinner fa-spin"></i>Uploading…
+                            <i class="fa-solid fa-spinner fa-spin"></i>Uploadingâ€¦
                         </span>
                     </template>
                     <template x-if="!uploading">
@@ -225,9 +225,9 @@
     </div>
 
 
-    <!-- ═══════════════════════════════════
+    <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
          ADD REEL SHEET
-    ════════════════════════════════════ -->
+    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
     <div x-show="reelSheetOpen" x-cloak
          class="fixed inset-0 z-50 flex flex-col justify-end"
          @keydown.escape.window="closeReelSheet()">
@@ -267,7 +267,7 @@
                     <input type="text" x-model="reelTitle"
                            placeholder="Title (auto-generated if blank)"
                            maxlength="255"
-                           class="w-full pl-9 pr-4 py-3.5 rounded-xl border border-gray-200 text-[13px] focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 bg-gray-50 transition-colors">
+                           class="w-full pl-9 pr-4 py-3.5 rounded-md border border-gray-200 text-[13px] focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 bg-gray-50 transition-colors">
                 </div>
 
                 <!-- Video source -->
@@ -277,7 +277,7 @@
                     </p>
                     <div class="grid grid-cols-2 gap-3">
                         <!-- Record -->
-                        <label class="flex flex-col items-center justify-center gap-2 rounded-2xl p-4 cursor-pointer active:scale-95 transition-transform border-2 border-dashed border-purple-200 bg-purple-50">
+                        <label class="flex flex-col items-center justify-center gap-2 rounded-lg p-4 cursor-pointer active:scale-95 transition-transform border-2 border-dashed border-purple-200 bg-purple-50">
                             <div class="w-11 h-11 rounded-full bg-purple-500 flex items-center justify-center shadow-md shadow-purple-200">
                                 <i class="fa-solid fa-video text-white text-base"></i>
                             </div>
@@ -287,7 +287,7 @@
                                    @change="handleReelVideo($event)">
                         </label>
                         <!-- Gallery -->
-                        <label class="flex flex-col items-center justify-center gap-2 rounded-2xl p-4 cursor-pointer active:scale-95 transition-transform border-2 border-dashed border-orange-200 bg-orange-50">
+                        <label class="flex flex-col items-center justify-center gap-2 rounded-lg p-4 cursor-pointer active:scale-95 transition-transform border-2 border-dashed border-orange-200 bg-orange-50">
                             <div class="w-11 h-11 rounded-full bg-orange-500 flex items-center justify-center shadow-md shadow-orange-200">
                                 <i class="fa-solid fa-folder-open text-white text-base"></i>
                             </div>
@@ -299,7 +299,7 @@
                     </div>
 
                     <!-- Video selected indicator -->
-                    <div x-show="reelVideoFile" class="mt-2.5 flex items-center gap-2 px-3 py-2.5 bg-green-50 rounded-xl border border-green-200">
+                    <div x-show="reelVideoFile" class="mt-2.5 flex items-center gap-2 px-3 py-2.5 bg-green-50 rounded-md border border-green-200">
                         <i class="fa-solid fa-circle-check text-green-500 text-sm flex-shrink-0"></i>
                         <span class="text-[11px] text-green-700 font-semibold truncate flex-1" x-text="reelVideoFile ? reelVideoFile.name : ''"></span>
                         <span class="text-[10px] text-green-500 font-medium bg-green-100 px-1.5 py-0.5 rounded-md flex-shrink-0" x-text="reelVideoSize"></span>
@@ -307,7 +307,7 @@
                 </div>
 
                 <!-- Video inline preview -->
-                <div x-show="reelVideoPreview" class="rounded-2xl overflow-hidden bg-black shadow-md">
+                <div x-show="reelVideoPreview" class="rounded-lg overflow-hidden bg-black shadow-md">
                     <video :src="reelVideoPreview" controls playsinline
                            class="w-full max-h-44 object-contain"></video>
                 </div>
@@ -318,7 +318,7 @@
                         <i class="fa-solid fa-image mr-1 text-indigo-400"></i>Thumbnail
                         <span class="normal-case font-normal text-gray-400 ml-1">(optional)</span>
                     </p>
-                    <label class="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 transition-colors">
+                    <label class="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-md border border-gray-200 cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 transition-colors">
                         <div class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
                              :class="reelThumbnailName ? 'bg-indigo-100' : 'bg-gray-200'">
                             <i class="fa-solid fa-image text-xs"
@@ -338,17 +338,17 @@
             <!-- Sticky footer buttons -->
             <div class="flex-shrink-0 px-4 py-3 bg-white border-t border-gray-100 flex gap-2.5">
                 <button @click="closeReelSheet()"
-                        class="flex-1 py-3 rounded-xl text-gray-600 font-semibold text-[13px] bg-gray-100 active:scale-95 active:bg-gray-200 transition-transform flex items-center justify-center gap-1.5">
+                        class="flex-1 py-3 rounded-md text-gray-600 font-semibold text-[13px] bg-gray-100 active:scale-95 active:bg-gray-200 transition-transform flex items-center justify-center gap-1.5">
                     <i class="fa-solid fa-xmark text-xs"></i>Cancel
                 </button>
                 <button @click="uploadReel()"
                         :disabled="!reelVideoFile || uploading"
                         :class="(!reelVideoFile || uploading) ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'"
-                        class="py-3 px-6 rounded-xl text-white font-bold text-[13px] transition-transform flex items-center justify-center gap-2"
+                        class="py-3 px-6 rounded-md text-white font-bold text-[13px] transition-transform flex items-center justify-center gap-2"
                         style="background:linear-gradient(135deg,#667eea,#764ba2);flex:2;">
                     <template x-if="uploading">
                         <span class="flex items-center gap-2">
-                            <i class="fa-solid fa-spinner fa-spin"></i>Uploading…
+                            <i class="fa-solid fa-spinner fa-spin"></i>Uploadingâ€¦
                         </span>
                     </template>
                     <template x-if="!uploading">
@@ -363,7 +363,7 @@
     </div>
 
 
-    <!-- ─── Toast ─── -->
+    <!-- â”€â”€â”€ Toast â”€â”€â”€ -->
     <div x-show="toast.show" x-cloak
          x-transition:enter="transition ease-out duration-200"
          x-transition:enter-start="opacity-0 -translate-y-2"
@@ -371,7 +371,7 @@
          x-transition:leave="transition ease-in duration-200"
          x-transition:leave-start="opacity-100 translate-y-0"
          x-transition:leave-end="opacity-0 -translate-y-2"
-         class="fixed top-16 left-4 right-4 z-[100] rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-xl flex items-center gap-2.5"
+         class="fixed top-16 left-4 right-4 z-[100] rounded-lg px-4 py-3 text-sm font-semibold text-white shadow-xl flex items-center gap-2.5"
          :class="toast.ok ? 'bg-green-500' : 'bg-red-500'">
         <i :class="toast.ok ? 'fa-solid fa-circle-check' : 'fa-solid fa-circle-xmark'" class="text-base flex-shrink-0"></i>
         <span x-text="toast.msg" class="flex-1"></span>
@@ -418,7 +418,7 @@ function websiteManageApp() {
             setTimeout(() => { this.toast.show = false; }, 3200);
         },
 
-        /* ── PORTFOLIO ── */
+        /* â”€â”€ PORTFOLIO â”€â”€ */
         openUploadSheet(cat) {
             this.activeCategory = cat;
             this.pendingFiles = [];
@@ -477,13 +477,13 @@ function websiteManageApp() {
                     this.showToast(data.message || 'Upload failed', false);
                 }
             } catch (err) {
-                this.showToast('Network error — please try again', false);
+                this.showToast('Network error â€” please try again', false);
             } finally {
                 this.uploading = false;
             }
         },
 
-        /* ── REELS ── */
+        /* â”€â”€ REELS â”€â”€ */
         openReelSheet() {
             this.reelTitle = '';
             this.reelVideoFile = null;
@@ -547,7 +547,7 @@ function websiteManageApp() {
                     this.showToast(data.message || 'Upload failed', false);
                 }
             } catch (err) {
-                this.showToast('Network error — please try again', false);
+                this.showToast('Network error â€” please try again', false);
             } finally {
                 this.uploading = false;
             }

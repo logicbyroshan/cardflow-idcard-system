@@ -28,12 +28,12 @@
 
     <!-- Photo & Name Section -->
     <div class="px-4 pt-4">
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
             <div class="flex items-center gap-4 p-4">
                 {% if card.photo_url %}
-                <img src="{{ card.photo_url }}" alt="{{ card.name }}" class="w-20 h-20 rounded-xl object-cover border-2 border-gray-100 shadow-sm">
+                <img src="{{ card.photo_url }}" alt="{{ card.name }}" class="w-20 h-20 rounded-md object-cover border-2 border-gray-100 shadow-sm">
                 {% else %}
-                <div class="w-20 h-20 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-gray-400 border-2 border-gray-100">
+                <div class="w-20 h-20 rounded-md bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-gray-400 border-2 border-gray-100">
                     <i class="fa-solid fa-user text-2xl"></i>
                 </div>
                 {% endif %}
@@ -50,37 +50,37 @@
     <div class="px-4 pt-3">
         <div class="grid grid-cols-2 gap-2">
             {% if card.father_name %}
-            <div class="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
+            <div class="bg-white rounded-md p-3 shadow-sm border border-gray-100">
                 <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Father's Name</p>
                 <p class="text-sm font-medium text-gray-800 truncate">{{ card.father_name }}</p>
             </div>
             {% endif %}
             {% if card.mother_name %}
-            <div class="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
+            <div class="bg-white rounded-md p-3 shadow-sm border border-gray-100">
                 <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Mother's Name</p>
                 <p class="text-sm font-medium text-gray-800 truncate">{{ card.mother_name }}</p>
             </div>
             {% endif %}
             {% if card.dob %}
-            <div class="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
+            <div class="bg-white rounded-md p-3 shadow-sm border border-gray-100">
                 <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Date of Birth</p>
                 <p class="text-sm font-medium text-gray-800">{{ card.dob }}</p>
             </div>
             {% endif %}
             {% if card.blood_group %}
-            <div class="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
+            <div class="bg-white rounded-md p-3 shadow-sm border border-gray-100">
                 <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Blood Group</p>
                 <p class="text-sm font-medium text-gray-800">{{ card.blood_group }}</p>
             </div>
             {% endif %}
             {% if card.contact %}
-            <div class="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
+            <div class="bg-white rounded-md p-3 shadow-sm border border-gray-100">
                 <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Contact</p>
                 <p class="text-sm font-medium text-gray-800">{{ card.contact }}</p>
             </div>
             {% endif %}
             {% if card.session %}
-            <div class="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
+            <div class="bg-white rounded-md p-3 shadow-sm border border-gray-100">
                 <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Session</p>
                 <p class="text-sm font-medium text-gray-800">{{ card.session }}</p>
             </div>
@@ -90,7 +90,7 @@
 
     {% if card.address %}
     <div class="px-4 pt-3">
-        <div class="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
+        <div class="bg-white rounded-md p-3 shadow-sm border border-gray-100">
             <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Address</p>
             <p class="text-sm font-medium text-gray-800">{{ card.address }}</p>
         </div>
@@ -99,7 +99,7 @@
 
     <!-- All Field Data -->
     <div class="px-4 pt-3">
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
             <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
                 <h3 class="text-sm font-bold text-gray-800">
                     <i class="fa-solid fa-list text-brand-light mr-1.5"></i>All Fields
@@ -121,7 +121,7 @@
 
     <!-- Timestamps -->
     <div class="px-4 pt-3">
-        <div class="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
+        <div class="bg-white rounded-md p-3 shadow-sm border border-gray-100">
             <div class="flex items-center justify-between text-xs mb-1">
                 <span class="text-gray-400"><i class="fa-solid fa-calendar-plus mr-1"></i>Created</span>
                 <span class="text-gray-600 font-medium">{{ card.created_at }}</span>
@@ -136,12 +136,12 @@
     <!-- Action Buttons -->
     <div class="px-4 pt-4 pb-4 space-y-2">
         {% if perm_idcard_edit %}
-        <button @click="changeStatus()" class="w-full py-3 text-center text-sm font-semibold text-white bg-gradient-to-r from-brand-light to-brand-dark rounded-xl shadow-md active:scale-[0.98] transition-all">
+        <button @click="changeStatus()" class="w-full py-3 text-center text-sm font-semibold text-white bg-gradient-to-r from-brand-light to-brand-dark rounded-md shadow-md active:scale-[0.98] transition-all">
             <i class="fa-solid fa-arrows-rotate mr-1.5"></i>Change Status
         </button>
         {% endif %}
         {% if perm_idcard_delete %}
-        <button @click="deleteCard()" class="w-full py-3 text-center text-sm font-semibold text-red-500 bg-red-50 border border-red-100 rounded-xl hover:bg-red-100 transition">
+        <button @click="deleteCard()" class="w-full py-3 text-center text-sm font-semibold text-red-500 bg-red-50 border border-red-100 rounded-md hover:bg-red-100 transition">
             <i class="fa-solid fa-trash-can mr-1.5"></i>Delete Card
         </button>
         {% endif %}
@@ -154,26 +154,26 @@
             <div class="flex justify-center pt-1 pb-3"><div class="w-10 h-1 rounded-full bg-gray-300"></div></div>
             <h3 class="text-sm font-bold text-gray-800 mb-3">Change Status</h3>
             <div class="grid grid-cols-2 gap-2">
-                <button @click="setStatus('pending')" class="py-3 text-xs font-semibold rounded-xl border transition-all active:scale-95 bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100">
+                <button @click="setStatus('pending')" class="py-3 text-xs font-semibold rounded-md border transition-all active:scale-95 bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100">
                     <i class="fa-solid fa-clock mr-1"></i>Pending
                 </button>
-                <button @click="setStatus('verified')" class="py-3 text-xs font-semibold rounded-xl border transition-all active:scale-95 bg-green-50 text-green-700 border-green-200 hover:bg-green-100">
+                <button @click="setStatus('verified')" class="py-3 text-xs font-semibold rounded-md border transition-all active:scale-95 bg-green-50 text-green-700 border-green-200 hover:bg-green-100">
                     <i class="fa-solid fa-check-circle mr-1"></i>Verified
                 </button>
-                <button @click="setStatus('approved')" class="py-3 text-xs font-semibold rounded-xl border transition-all active:scale-95 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
+                <button @click="setStatus('approved')" class="py-3 text-xs font-semibold rounded-md border transition-all active:scale-95 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
                     <i class="fa-solid fa-check-double mr-1"></i>Approved
                 </button>
-                <button @click="setStatus('download')" class="py-3 text-xs font-semibold rounded-xl border transition-all active:scale-95 bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100">
+                <button @click="setStatus('download')" class="py-3 text-xs font-semibold rounded-md border transition-all active:scale-95 bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100">
                     <i class="fa-solid fa-download mr-1"></i>Download
                 </button>
             </div>
-            <button @click="showStatusModal = false" class="w-full mt-3 py-2.5 text-xs font-semibold text-gray-500 bg-gray-100 border border-gray-200 rounded-xl">Cancel</button>
+            <button @click="showStatusModal = false" class="w-full mt-3 py-2.5 text-xs font-semibold text-gray-500 bg-gray-100 border border-gray-200 rounded-md">Cancel</button>
         </div>
     </div>
 
     <!-- Toast -->
     <div x-show="toast.show" x-transition class="fixed top-4 left-1/2 -translate-x-1/2 z-[80] max-w-[380px] w-full px-4">
-        <div class="rounded-xl px-4 py-3 shadow-lg text-xs font-medium text-white"
+        <div class="rounded-md px-4 py-3 shadow-lg text-xs font-medium text-white"
              :class="toast.type === 'success' ? 'bg-green-500' : toast.type === 'error' ? 'bg-red-500' : 'bg-brand-light'"
              x-text="toast.message"></div>
     </div>

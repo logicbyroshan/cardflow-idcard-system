@@ -51,7 +51,7 @@ html, body {
     gap: 6px;
     padding: 12px 4px;
     background: #fff;
-    border-radius: 12px;
+    border-radius: 7px;
     border: 1px solid rgba(0,0,0,0.04);
     box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     transition: all 0.2s ease;
@@ -70,7 +70,7 @@ html, body {
     display: flex;
     flex-direction: column;
     padding: 14px;
-    border-radius: 14px;
+    border-radius: 8px;
     border: 1px solid;
     box-shadow: 0 2px 12px rgba(0,0,0,0.05);
     transition: all 0.2s ease;
@@ -86,7 +86,7 @@ html, body {
 .grid-icon {
     width: 40px;
     height: 40px;
-    border-radius: 12px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -222,7 +222,7 @@ html, body {
 }
 .filter-chip {
     padding: 6px 12px;
-    border-radius: 8px;
+    border-radius: 5px;
     font-size: 11px;
     font-weight: 500;
     background: #f3f4f6;
@@ -236,7 +236,7 @@ html, body {
 }
 .filter-chip-active {
     padding: 6px 12px;
-    border-radius: 8px;
+    border-radius: 5px;
     font-size: 11px;
     font-weight: 600;
     background: linear-gradient(135deg, #667eea, #764ba2);
@@ -248,7 +248,7 @@ html, body {
 .filter-select {
     width: 100%;
     padding: 8px 12px;
-    border-radius: 10px;
+    border-radius: 6px;
     border: 1px solid #d1d5db;
     font-size: 12px;
     color: #374151;
@@ -267,7 +267,7 @@ html, body {
 .filter-input {
     width: 100%;
     padding: 8px 12px;
-    border-radius: 10px;
+    border-radius: 6px;
     border: 1px solid #d1d5db;
     font-size: 12px;
     color: #374151;
@@ -296,7 +296,7 @@ html, body {
     width: 16px;
     height: 16px;
     border: 2px solid #d1d5db;
-    border-radius: 4px;
+    border-radius: 3px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -488,9 +488,9 @@ html, body {
     bottom: 12px;
     left: 50%;
     transform: translateX(-50%);
-    width: 54px;
-    height: 54px;
-    border-radius: 16px;
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
     background: linear-gradient(135deg, #667eea, #764ba2);
     color: #fff;
     display: flex;
@@ -514,7 +514,7 @@ html, body {
 .pwa-drawer-root {}
 
 .pwa-drawer-panel {
-    border-radius: 20px 0 0 20px;
+    border-radius: 12px 0 0 12px;
 }
 
 .pwa-drawer-header {
@@ -535,7 +535,7 @@ html, body {
     align-items: center;
     gap: 12px;
     padding: 10px 12px;
-    border-radius: 12px;
+    border-radius: 7px;
     text-decoration: none;
     color: #1f2937;
     transition: background 0.12s ease;
@@ -554,7 +554,7 @@ html, body {
 .pwa-drawer-icon-wrap {
     width: 36px;
     height: 36px;
-    border-radius: 10px;
+    border-radius: 7px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -625,7 +625,7 @@ html, body {
     min-width: 80px;
     max-width: 90px;
     background: #ffffff;
-    border-radius: 14px;
+    border-radius: 8px;
     border: 1px solid #f0f0f4;
     box-shadow: 0 2px 10px rgba(0,0,0,0.04);
     padding: 12px 10px;
@@ -638,7 +638,7 @@ html, body {
 .pwa-stat-icon-wrap {
     width: 34px;
     height: 34px;
-    border-radius: 10px;
+    border-radius: 7px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -664,7 +664,7 @@ html, body {
 .pwa-client-card {
     width: 160px;
     background: #ffffff;
-    border-radius: 14px;
+    border-radius: 8px;
     border: 1px solid #f0f0f4;
     box-shadow: 0 2px 10px rgba(0,0,0,0.04);
     padding: 14px;
@@ -724,7 +724,7 @@ html, body {
     justify-content: center;
     gap: 7px;
     padding: 14px 12px;
-    border-radius: 14px;
+    border-radius: 8px;
     font-size: 13px;
     font-weight: 700;
     text-decoration: none;
@@ -783,7 +783,7 @@ html, body {
     text-transform: uppercase;
     letter-spacing: 0.04em;
     padding: 2px 6px;
-    border-radius: 6px;
+    border-radius: 3px;
     white-space: nowrap;
 }
 .pwa-badge-amber  { background: #fef3c7; color: #d97706; }
@@ -794,13 +794,13 @@ html, body {
 .pwa-badge-gray   { background: #f3f4f6; color: #6b7280; }
 
 
-/* -- ACTION BAR PILLS ----------------------------------------------------- */
+/* -- ACTION BAR PILLS (legacy, kept for compatibility) -------------------- */
 .action-pill {
     display: inline-flex;
     align-items: center;
     gap: 4px;
     padding: 5px 12px;
-    border-radius: 6px;
+    border-radius: 5px;
     font-size: 11px;
     font-weight: 700;
     white-space: nowrap;
@@ -816,7 +816,7 @@ html, body {
     align-items: center;
     gap: 4px;
     padding: 5px 12px;
-    border-radius: 6px;
+    border-radius: 5px;
     font-size: 11px;
     font-weight: 600;
     white-space: nowrap;
@@ -825,6 +825,45 @@ html, body {
     background: #f3f4f6;
     color: #d1d5db;
 }
+
+/* -- MOBILE ACTION BAR BUTTONS (new design) ------------------------------- */
+.mab-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 58px;
+    padding: 8px 6px 7px;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.12s ease, transform 0.1s ease;
+    -webkit-tap-highlight-color: transparent;
+    border-right: 1px solid rgba(0,0,0,0.05);
+    border-radius: 0;
+    outline: none;
+    gap: 3px;
+    flex: 1;
+}
+.mab-btn:last-child { border-right: none; }
+.mab-btn:active { opacity: 0.8; transform: scale(0.96); }
+.mab-btn:disabled,
+.mab-btn-disabled {
+    background: #f8f9fa !important;
+    cursor: not-allowed;
+    opacity: 1;
+}
+
+.mab-icon { font-size: 14px; line-height: 1; display: block; }
+.mab-label { font-size: 9px; font-weight: 700; letter-spacing: 0.01em; line-height: 1; white-space: nowrap; display: block; }
+
+/* mab colour themes */
+.mab-btn-indigo  { background: #eef2ff; color: #4f46e5; }
+.mab-btn-amber   { background: #fffbeb; color: #d97706; }
+.mab-btn-teal    { background: #f0fdfa; color: #0d9488; }
+.mab-btn-green   { background: #f0fdf4; color: #16a34a; }
+.mab-btn-blue    { background: #eff6ff; color: #2563eb; }
+.mab-btn-red     { background: #fef2f2; color: #dc2626; }
+.mab-btn-purple  { background: #faf5ff; color: #7c3aed; }
+.mab-btn-disabled { background: #f3f4f6; color: #c9cdd4; }
 
 /* -- status-badge (used in list table) ------------------------------------ */
 .status-badge {
@@ -878,7 +917,7 @@ html, body {
 
 .pwa-stat-card-sm {
     background: #ffffff;
-    border-radius: 6px;
+    border-radius: 5px;
     padding: 6px 4px;
     display: flex;
     flex-direction: column;
@@ -905,7 +944,7 @@ html, body {
 /* ── RECENT CLIENTS TABLE (home page) ──────────────────────────── */
 .pwa-clients-table-wrap {
     background: #ffffff;
-    border-radius: 14px;
+    border-radius: 8px;
     border: 1px solid #f0f0f4;
     box-shadow: 0 2px 10px rgba(0,0,0,0.04);
     overflow: hidden;

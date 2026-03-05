@@ -1,10 +1,10 @@
 <!-- Table Area - Takes ALL remaining space -->
 <div class="flex-1 overflow-hidden">
-    <div class="h-full overflow-x-auto overflow-y-auto custom-scrollbar" style="padding-bottom:72px;">
-        <table class="w-full min-w-[600px] text-xs font-condensed">
+    <div class="h-full overflow-y-auto" style="padding-bottom:72px;">
+        <table class="w-full text-xs font-condensed">
             <thead class="sticky top-0 z-10">
                 <tr class="bg-gradient-to-r from-brand-light to-brand-dark text-white">
-                    <th class="px-2 py-2 text-left w-8">
+                    <th class="px-2 py-2.5 text-left" style="width:32px;">
                         {% if not view_only_list %}
                         <label class="custom-checkbox">
                             <input type="checkbox" x-model="selectAll" @change="toggleSelectAll()">
@@ -12,22 +12,17 @@
                         </label>
                         {% endif %}
                     </th>
-                    <th class="px-1 py-2 text-left text-[10px] uppercase tracking-wider font-semibold w-8">#</th>
-                    <th class="px-1 py-2 text-left text-[10px] uppercase tracking-wider font-semibold w-12">Photo</th>
-                    <th class="px-2 py-2 text-left text-[10px] uppercase tracking-wider font-semibold">Name</th>
-                    <th class="px-2 py-2 text-left text-[10px] uppercase tracking-wider font-semibold">Roll No</th>
-                    <th class="px-1 py-2 text-left text-[10px] uppercase tracking-wider font-semibold w-12">Class</th>
-                    <th class="px-2 py-2 text-left text-[10px] uppercase tracking-wider font-semibold">Section</th>
-                    <th class="px-2 py-2 text-left text-[10px] uppercase tracking-wider font-semibold">Father</th>
-                    <th class="px-2 py-2 text-left text-[10px] uppercase tracking-wider font-semibold">DOB</th>
+                    <th class="px-1 py-2.5 text-center font-semibold text-white/80" style="width:28px;font-size:10px;">#</th>
+                    <th class="px-1 py-2.5 font-semibold text-white/80" style="width:44px;font-size:10px;">Photo</th>
+                    <th class="px-2 py-2.5 text-left font-semibold text-white/80" style="font-size:10px;">Name &amp; Details</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-50 bg-white">
                 {% for student in students %}
                 <tr
                     data-sid="{{ student.id }}"
-                    class="hover:bg-brand-light/5 transition-colors {% if not view_only_list %}cursor-pointer{% endif %}"
-                    :class="{% if not view_only_list %}selectedIds.includes({{ student.id }}) ? 'bg-blue-50/80 !border-l-2 !border-l-brand-light' : ''{% else %}''{% endif %}"
+                    class="transition-colors {% if not view_only_list %}cursor-pointer{% endif %}"
+                    :class="{% if not view_only_list %}selectedIds.includes({{ student.id }}) ? 'bg-indigo-50 border-l-2 border-l-brand-light' : 'hover:bg-gray-50'{% else %}''{% endif %}"
                     {% if not view_only_list %}@click="toggleSelect({{ student.id }})"{% endif %}
                 >
                     <td class="px-2 py-2">
@@ -38,34 +33,42 @@
                         </label>
                         {% endif %}
                     </td>
-                    <td class="px-1 py-2 text-gray-400 font-medium text-center">{{ forloop.counter }}</td>
+                    <td class="px-1 py-2 text-gray-400 font-medium text-center" style="font-size:11px;">{{ forloop.counter }}</td>
                     <td class="px-1 py-1.5">
                         {% if student.has_photo %}
-                        <img src="{{ student.photo_url }}" class="w-9 h-12 rounded object-cover object-top border border-gray-100" alt="" loading="lazy"
+                        <img src="{{ student.photo_url }}"
+                             class="w-9 h-12 object-cover object-top border border-gray-100"
+                             style="border-radius:3px;" alt="" loading="lazy"
                              onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-                        <div class="w-9 h-12 rounded bg-red-50 flex items-center justify-center text-red-300 text-[10px]" style="display:none;">
+                        <div class="w-9 h-12 bg-red-50 flex items-center justify-center text-red-300"
+                             style="border-radius:3px;font-size:9px;display:none;">
                             <i class="fa-solid fa-image-slash"></i>
                         </div>
                         {% else %}
-                        <div class="w-9 h-12 rounded bg-gray-100 flex items-center justify-center text-gray-400 text-[10px]">
+                        <div class="w-9 h-12 bg-gray-100 flex items-center justify-center text-gray-300"
+                             style="border-radius:3px;font-size:9px;">
                             <i class="fa-solid fa-image"></i>
                         </div>
                         {% endif %}
                     </td>
-                    <td class="px-2 py-2 font-medium text-gray-800 whitespace-nowrap">{{ student.name }}</td>
-                    <td class="px-2 py-2 text-gray-600">{{ student.roll_no }}</td>
-                    <td class="px-1 py-2">
-                        <span class="inline-block bg-gray-100 text-gray-700 text-[10px] font-semibold px-1.5 py-0.5 rounded">{{ student.class_name }}</span>
+                    <td class="px-2 py-2">
+                        <p class="font-semibold text-gray-800 leading-tight" style="font-size:12px;">{{ student.name }}</p>
+                        <div class="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+                            {% for key, val in student.field_data.items %}
+                            {% if val %}{% with kl=key|lower %}{% if 'photo' not in kl and 'image' not in kl and kl != 'name' %}
+                            <span class="text-gray-500" style="font-size:10px;line-height:1.4;">
+                                <span class="font-semibold text-gray-600">{{ key|truncatechars:12 }}:</span>&nbsp;{{ val|stringformat:"s"|truncatechars:16 }}
+                            </span>
+                            {% endif %}{% endwith %}{% endif %}
+                            {% endfor %}
+                        </div>
                     </td>
-                    <td class="px-2 py-2 text-gray-600 whitespace-nowrap">{{ student.section }}</td>
-                    <td class="px-2 py-2 text-gray-600 whitespace-nowrap">{{ student.father_name }}</td>
-                    <td class="px-2 py-2 text-gray-500 whitespace-nowrap">{{ student.dob }}</td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="9" class="text-center py-10 text-gray-400">
-                        <i class="fa-solid fa-inbox text-3xl mb-2 block"></i>
-                        <p class="text-sm">No records found</p>
+                    <td colspan="4" class="text-center py-12 text-gray-400">
+                        <i class="fa-solid fa-inbox text-4xl mb-3 block opacity-50"></i>
+                        <p class="text-sm font-medium">No records found</p>
                     </td>
                 </tr>
                 {% endfor %}

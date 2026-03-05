@@ -31,13 +31,13 @@
             <!-- Two big action tabs -->
             <div class="grid grid-cols-2 gap-2">
                 <button @click="targetTab = 'groups'"
-                        class="flex items-center justify-center gap-2 py-2 rounded-xl font-semibold text-xs transition-all"
+                        class="flex items-center justify-center gap-2 py-2 rounded-md font-semibold text-xs transition-all"
                         :class="targetTab === 'groups' ? 'bg-white text-brand-light shadow' : 'bg-white/15 text-white border border-white/20'">
                     <i class="fa-solid fa-layer-group text-xs"></i>
                     <span>ID Card Groups</span>
                 </button>
                 <button @click="targetTab = 'tables'"
-                        class="flex items-center justify-center gap-2 py-2 rounded-xl font-semibold text-xs transition-all"
+                        class="flex items-center justify-center gap-2 py-2 rounded-md font-semibold text-xs transition-all"
                         :class="targetTab === 'tables' ? 'bg-white text-brand-light shadow' : 'bg-white/15 text-white border border-white/20'">
                     <i class="fa-solid fa-gear text-xs"></i>
                     <span>Group Settings</span>
@@ -48,7 +48,7 @@
 
     <!-- Toast -->
     <div x-show="toast.show" x-transition
-         class="fixed top-14 inset-x-4 z-[100] px-4 py-2.5 rounded-xl shadow-lg text-white text-xs font-semibold flex items-center gap-2 max-w-sm mx-auto"
+         class="fixed top-14 inset-x-4 z-[100] px-4 py-2.5 rounded-md shadow-lg text-white text-xs font-semibold flex items-center gap-2 max-w-sm mx-auto"
          :class="toast.type === 'success' ? 'bg-green-500' : toast.type === 'error' ? 'bg-red-500' : 'bg-gray-700'">
         <i :class="toast.type === 'success' ? 'fa-solid fa-check-circle' : toast.type === 'error' ? 'fa-solid fa-circle-exclamation' : 'fa-solid fa-info-circle'"></i>
         <span x-text="toast.message"></span>
@@ -58,15 +58,17 @@
     <div class="flex-1 overflow-y-auto px-4 py-3">
         <div class="space-y-2">
             <template x-for="c in filteredClients" :key="c.id">
-                <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden"
+                <div class="bg-white border border-gray-100 shadow-sm overflow-hidden"
+                     style="border-radius:8px;"
                      :class="c.status !== 'active' ? 'opacity-70' : ''">
                     <div class="flex items-center gap-3 p-3">
                         <!-- Avatar -->
-                        <div class="w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm"
+                        <div class="w-11 h-11 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm"
+                             style="border-radius:7px;"
                              :class="c.status === 'active' ? 'bg-gradient-to-br from-sky-400 to-blue-500' : 'bg-gray-300'">
                             <span x-text="(c.name || 'C').substring(0,2).toUpperCase()"></span>
                         </div>
-                        <!-- Info — tap to open groups (active only) -->
+                        <!-- Info â€” tap to open groups (active only) -->
                         <div class="flex-1 min-w-0 cursor-pointer" @click="c.status === 'active' && openGroups(c.id)">
                             <div class="flex items-center gap-2">
                                 <p class="text-sm font-bold text-gray-800 truncate" x-text="c.name"></p>
@@ -77,7 +79,7 @@
                             </div>
                             <p class="text-[10px] text-gray-400 mt-0.5">
                                 <span x-text="c.tables_count + ' table(s)'"></span>
-                                <span class="mx-1">·</span>
+                                <span class="mx-1">Â·</span>
                                 <span x-text="c.cards_count + ' card(s)'"></span>
                             </p>
                         </div>
@@ -85,7 +87,8 @@
                         <div class="flex items-center gap-1 flex-shrink-0">
                             <!-- Open groups (active only) -->
                             <button x-show="c.status === 'active'" @click="openGroups(c.id)"
-                                    class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-500 flex items-center justify-center active:scale-95 transition-all"
+                                    class="w-8 h-8 bg-indigo-50 text-indigo-500 flex items-center justify-center active:scale-95 transition-all"
+                                    style="border-radius:6px;"
                                     title="ID Card Groups">
                                 <i class="fa-solid fa-arrow-right text-xs"></i>
                             </button>

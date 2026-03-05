@@ -13,9 +13,9 @@
     <div class="flex-1 overflow-y-scroll pwa-home-snap"
          style="scroll-snap-type:y mandatory; -webkit-overflow-scrolling:touch;">
 
-        <!-- ═══════════════════════════════════════════════════
-             SNAP SECTION 1 — Stats + Recent Client Updates
-        ═══════════════════════════════════════════════════ -->
+        <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+             SNAP SECTION 1 â€” Stats + Recent Client Updates
+        â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
         <div class="flex flex-col pwa-snap-section">
 
             <!-- STATS GRID -->
@@ -55,7 +55,7 @@
                 </div>
             </div>
 
-            <!-- RECENT CLIENT UPDATES — fills remaining height of section -->
+            <!-- RECENT CLIENT UPDATES â€” fills remaining height of section -->
             {% if is_super_admin or is_admin_staff and perm_idcard_client_list or is_client or is_client_staff %}
             <div class="px-3 pb-3 mt-2 flex-1 flex flex-col min-h-0">
                 <div class="flex items-center justify-between mb-2 flex-shrink-0">
@@ -133,9 +133,9 @@
 
         </div><!-- /snap section 1 -->
 
-        <!-- ═══════════════════════════════════════════════════
-             SNAP SECTION 2 — Recent Updates
-        ═══════════════════════════════════════════════════ -->
+        <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+             SNAP SECTION 2 â€” Recent Updates
+        â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
         <div class="flex flex-col pwa-snap-section">
             <!-- Header -->
             <div class="px-4 pt-3 pb-2 flex items-center justify-between flex-shrink-0">
@@ -143,9 +143,9 @@
                 <span class="text-[10px] text-gray-400 font-medium">{{ recent_activities|length }} item{{ recent_activities|pluralize }}</span>
             </div>
 
-            <!-- Table card — fills remaining height -->
+            <!-- Table card â€” fills remaining height -->
             <div class="px-4 pb-4 flex-1 flex flex-col min-h-0">
-                <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex-1 flex flex-col min-h-0">
+                <div class="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden flex-1 flex flex-col min-h-0">
 
                     <!-- Column headers -->
                     <div class="flex items-center px-3 py-2 border-b border-gray-100 bg-gray-50/80 flex-shrink-0">
