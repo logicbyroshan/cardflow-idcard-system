@@ -123,8 +123,8 @@
         _pendingTableId = tableId;
         _batchId = null;
 
-        // Generate 4-digit confirmation code
-        _confirmCode = String(Math.floor(1000 + Math.random() * 9000));
+        // Generate 10-digit confirmation code
+        _confirmCode = (typeof ConfirmationCode !== 'undefined') ? ConfirmationCode.generate() : String(Math.floor(1000000000 + Math.random() * 9000000000));
         const codeDisplay = $('cropConfirmCodeDisplay');
         if (codeDisplay) codeDisplay.textContent = _confirmCode;
 

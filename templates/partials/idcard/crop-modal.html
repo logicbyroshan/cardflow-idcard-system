@@ -59,9 +59,11 @@ Requires: idcard-actions-crop.js
         <!-- Confirmation code -->
         <div class="crop-confirm-wrap">
           <p class="crop-confirm-label">Type this code to confirm and start:</p>
-          <div class="crop-confirm-code-display" id="cropConfirmCodeDisplay">----</div>
+          <div class="crop-confirm-code-display" id="cropConfirmCodeDisplay">----------</div>
           <input id="cropConfirmCodeInput" type="text" class="crop-confirm-input"
-            maxlength="4" autocomplete="off" spellcheck="false" placeholder="_ _ _ _">
+            maxlength="10" autocomplete="off" spellcheck="false" placeholder="_ _ _ _ _ _ _ _ _ _"
+            inputmode="numeric" pattern="[0-9]{10}"
+            oninput="this.value=this.value.replace(/[^0-9]/g,'')">
           <p class="crop-confirm-error" id="cropConfirmCodeError" style="display:none;">
             <i class="fa-solid fa-triangle-exclamation"></i> Wrong code — please try again.
           </p>
@@ -329,7 +331,7 @@ Requires: idcard-actions-crop.js
 }
 .crop-confirm-wrap {
   margin: 20px auto 0;
-  max-width: 300px;
+  max-width: 420px;
 }
 .crop-confirm-label {
   font-size: 13px;
@@ -337,9 +339,9 @@ Requires: idcard-actions-crop.js
   margin-bottom: 8px;
 }
 .crop-confirm-code-display {
-  font-size: 40px;
+  font-size: 28px;
   font-weight: 800;
-  letter-spacing: 10px;
+  letter-spacing: 4px;
   color: #f97316;
   font-family: monospace;
   margin-bottom: 12px;
@@ -349,16 +351,18 @@ Requires: idcard-actions-crop.js
   border: 2px dashed #fdba74;
   display: inline-block;
   min-width: 160px;
+  user-select: all;
 }
 .crop-confirm-input {
   width: 100%;
   text-align: center;
-  font-size: 28px;
+  font-size: 18px;
+  font-weight: 700;
   font-family: monospace;
-  letter-spacing: 8px;
-  padding: 10px 14px;
+  letter-spacing: 3px;
+  padding: 10px 12px;
   border: 2px solid #d1d5db;
-  border-radius: 10px;
+  border-radius: 8px;
   outline: none;
   box-sizing: border-box;
   transition: border-color .15s, box-shadow .15s;

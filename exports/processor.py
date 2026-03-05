@@ -25,8 +25,35 @@ from datetime import datetime
 from django.conf import settings
 from django.utils import timezone as django_tz
 from django.core.files.storage import default_storage
+from django.http import StreamingHttpResponse
 
 logger = logging.getLogger(__name__)
+
+
+def _extract_response_bytes(response):
+    """
+    Extract raw bytes from an HttpResponse or StreamingHttpResponse.
+    
+    stream_file_response returns HttpResponse for files <10 MB and
+    StreamingHttpResponse for larger files. This helper handles both
+    so that background export processors can reliably save the content.
+    
+    Returns bytes or None if the response has no content.
+    """
+    if response is None:
+        return None
+    if isinstance(response, StreamingHttpResponse):
+        # Read streaming chunks into bytes
+        chunks = []
+        for chunk in response.streaming_content:
+            if isinstance(chunk, str):
+                chunk = chunk.encode('utf-8')
+            chunks.append(chunk)
+        return b''.join(chunks) if chunks else None
+    # Regular HttpResponse — has .content
+    if hasattr(response, 'content') and response.content:
+        return response.content
+    return None
 
 
 def process_export_zip(task):
@@ -293,12 +320,13 @@ def process_export_pdf(task):
             task.mark_failed(result.message)
             return
         
-        # Validate response has content
-        if not result.response or not hasattr(result.response, 'content') or not result.response.content:
+        # Extract bytes from response (handles both HttpResponse and StreamingHttpResponse)
+        pdf_bytes = _extract_response_bytes(result.response)
+        if not pdf_bytes:
             task.mark_failed("PDF exporter returned empty response")
             return
         
-        # Save response content to file
+        # Save to file
         exports_dir = ensure_exports_directory()
         client_name = table.group.client.name if table.group and table.group.client else ''
         filename = generate_export_filename(table.name, 'pdf', client_name=client_name, status=status_filter)
@@ -306,7 +334,7 @@ def process_export_pdf(task):
         pdf_path = os.path.join(exports_dir, filename)
         
         with open(pdf_path, 'wb') as f:
-            f.write(result.response.content)
+            f.write(pdf_bytes)
         
         relative_path = os.path.relpath(pdf_path, settings.MEDIA_ROOT)
         
@@ -390,12 +418,13 @@ def process_export_docx(task):
             task.mark_failed(result.message)
             return
         
-        # Validate response has content
-        if not result.response or not hasattr(result.response, 'content') or not result.response.content:
+        # Extract bytes from response (handles both HttpResponse and StreamingHttpResponse)
+        docx_bytes = _extract_response_bytes(result.response)
+        if not docx_bytes:
             task.mark_failed("DOCX exporter returned empty response")
             return
         
-        # Save response content to file
+        # Save to file
         exports_dir = ensure_exports_directory()
         client_name = table.group.client.name if table.group and table.group.client else ''
         filename = generate_export_filename(table.name, 'docx', client_name=client_name, status=status_filter)
@@ -403,7 +432,7 @@ def process_export_docx(task):
         docx_path = os.path.join(exports_dir, filename)
         
         with open(docx_path, 'wb') as f:
-            f.write(result.response.content)
+            f.write(docx_bytes)
         
         relative_path = os.path.relpath(docx_path, settings.MEDIA_ROOT)
         
@@ -487,12 +516,13 @@ def process_export_excel(task):
             task.mark_failed(result.message)
             return
         
-        # Validate response has content
-        if not result.response or not hasattr(result.response, 'content') or not result.response.content:
+        # Extract bytes from response (handles both HttpResponse and StreamingHttpResponse)
+        xlsx_bytes = _extract_response_bytes(result.response)
+        if not xlsx_bytes:
             task.mark_failed("Excel exporter returned empty response")
             return
         
-        # Save response content to file
+        # Save to file
         exports_dir = ensure_exports_directory()
         client_name = table.group.client.name if table.group and table.group.client else ''
         filename = generate_export_filename(table.name, 'xlsx', client_name=client_name, status=status_filter)
@@ -500,7 +530,7 @@ def process_export_excel(task):
         excel_path = os.path.join(exports_dir, filename)
         
         with open(excel_path, 'wb') as f:
-            f.write(result.response.content)
+            f.write(xlsx_bytes)
         
         relative_path = os.path.relpath(excel_path, settings.MEDIA_ROOT)
         

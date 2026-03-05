@@ -297,18 +297,23 @@ def send_welcome_email(name, email, password, role, request=None, phone='', **kw
             logger.info("Welcome email queued (async) for %s", email)
             return True, 'Welcome email queued for delivery.'
 
-        # Synchronous fallback (with 30s timeout to avoid blocking forever)
-        import socket
-        old_timeout = socket.getdefaulttimeout()
+        # Synchronous fallback (with 30s per-connection timeout)
+        # NOTE: We no longer use socket.setdefaulttimeout() because it is
+        # process-global and causes race conditions with other threads
+        # (background email threads, HTTP requests to FastAPI engine, etc.).
+        from django.core.mail import get_connection
         try:
-            socket.setdefaulttimeout(30)
-            msg = EmailMultiAlternatives(subject, plain_content, from_email, to_email)
+            connection = get_connection(timeout=30)
+            msg = EmailMultiAlternatives(
+                subject, plain_content, from_email, to_email,
+                connection=connection,
+            )
             msg.attach_alternative(html_content, "text/html")
             msg.send(fail_silently=False)
             logger.info("Welcome email sent to %s", email)
             return True, 'Welcome email sent successfully!'
         finally:
-            socket.setdefaulttimeout(old_timeout)
+            pass  # connection auto-closes
 
     except Exception as e:
         logger.error("Failed to send welcome email to %s: %s", email, e)

@@ -70,20 +70,40 @@
       {% include 'partials/panel/create-notification-modal.html' %}
 
       <!-- Confirm / delete dialog (replaces browser confirm() — used for notifications, templates, etc.) -->
-      <div id="panelDeleteConfirmModal" class="panel-confirm-overlay" style="display:none;"
+      <div id="panelDeleteConfirmModal" class="modal-backdrop" style="display:none;"
            role="dialog" aria-modal="true" aria-labelledby="panelConfirmTitle">
-        <div class="panel-confirm-box">
-          <div class="panel-confirm-header">
-            <h2 class="panel-confirm-title" id="panelConfirmTitle">
-              <i class="fa-solid fa-triangle-exclamation" style="color:#f59e0b;"></i>
+        <div class="modal-center modal-warning" @click.stop>
+          <div class="modal-header">
+            <h3 id="panelConfirmTitle">
+              <i class="fa-solid fa-triangle-exclamation"></i>
               <span id="panelConfirmTitleText">Confirm Delete</span>
-            </h2>
-            <button type="button" class="panel-confirm-close" onclick="closePanelConfirmModal()" aria-label="Close">&times;</button>
+            </h3>
+            <button type="button" class="modal-close" onclick="closePanelConfirmModal()" aria-label="Close">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
           </div>
-          <p id="panelConfirmMessage" class="panel-confirm-body"></p>
-          <div class="panel-confirm-footer">
-            <button type="button" class="backup-btn-cancel" onclick="closePanelConfirmModal()">Cancel</button>
-            <button type="button" class="backup-btn-danger" id="panelConfirmOkBtn">
+          <div class="modal-body">
+            <div class="modal-body-centered">
+              <div class="modal-icon-circle modal-icon-circle--warning">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+              </div>
+              <p id="panelConfirmMessage" class="modal-body-subtitle" style="font-size:14px;margin:0 0 14px;line-height:1.6"></p>
+              <div class="alert-box alert-box--warning">
+                <p class="alert-box-heading">
+                  <i class="fa-solid fa-circle-exclamation"></i> Warning
+                </p>
+                <ul class="alert-box-list">
+                  <li>This action cannot be undone</li>
+                  <li>The item will be permanently removed</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-md btn-neutral" onclick="closePanelConfirmModal()">
+              <i class="fa-solid fa-xmark"></i> Cancel
+            </button>
+            <button type="button" class="btn btn-md btn-danger" id="panelConfirmOkBtn">
               <i class="fa-solid fa-trash"></i> Delete
             </button>
           </div>
@@ -100,6 +120,7 @@
   <script defer src="{% static 'js/core/toast.js' %}"></script>
   <script defer src="{% static 'js/core/modal.js' %}"></script>
   <script defer src="{% static 'js/core/utils.js' %}"></script>
+  <script defer src="{% static 'js/core/confirmation-code.js' %}"></script>
   <script defer src="{% static 'js/init.js' %}"></script>
   <script defer src="{% static 'js/global-search.js' %}"></script>
   <script>

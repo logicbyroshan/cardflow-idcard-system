@@ -22,42 +22,42 @@ Required JavaScript handlers:
             </button>
         </div>
         <div class="modal-body">
-            <div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:18px 12px 8px">
-                <div style="width:52px;height:52px;border-radius:50%;background:#fee2e2;display:flex;align-items:center;justify-content:center;margin-bottom:14px">
-                    <i class="fa-solid fa-trash-can" style="font-size:22px;color:#ef4444"></i>
+            <div class="modal-body-centered">
+                <div class="modal-icon-circle modal-icon-circle--danger">
+                    <i class="fa-solid fa-trash-can"></i>
                 </div>
-                <p style="font-size:15px;font-weight:600;color:#1f2937;margin:0 0 4px">Delete {{ item_name|default:'item' }}?</p>
-                <p style="font-size:13px;color:#6b7280;margin:0 0 14px">
-                    You are about to delete <strong id="deleteStaffName" style="color:#1f2937">this {{ item_name|default:'item' }}</strong>.
+                <p class="modal-body-title">Delete {{ item_name|default:'item' }}?</p>
+                <p class="modal-body-subtitle">
+                    You are about to delete <strong id="deleteStaffName">this {{ item_name|default:'item' }}</strong>.
                 </p>
-                <div style="width:100%;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;text-align:left">
-                    <p style="font-size:12px;color:#991b1b;font-weight:600;margin:0 0 6px;display:flex;align-items:center;gap:6px">
+                <div class="alert-box alert-box--danger">
+                    <p class="alert-box-heading">
                         <i class="fa-solid fa-circle-exclamation"></i> Warning
                     </p>
-                    <ul style="margin:0;padding:0 0 0 16px;font-size:12px;color:#7f1d1d;line-height:1.7">
+                    <ul class="alert-box-list">
                         <li>All associated data will be permanently removed</li>
                         <li>This action cannot be undone</li>
                     </ul>
                 </div>
                 <!-- 10-digit confirmation code -->
-                <div style="width:100%;margin-top:16px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 14px;">
-                    <p style="font-size:12px;color:#92400e;font-weight:600;margin:0 0 8px;display:flex;align-items:center;gap:6px">
+                <div class="verify-section">
+                    <p class="verify-heading">
                         <i class="fa-solid fa-shield-halved"></i> Verification Required
                     </p>
-                    <p style="font-size:12px;color:#78350f;margin:0 0 10px">
-                        To confirm deletion, enter this 10-digit code:
-                        <strong id="delete-confirm-code" style="font-size:22px;letter-spacing:3px;color:#dc2626;display:block;margin-top:6px;font-family:monospace;"></strong>
+                    <p class="verify-hint">
+                        To confirm deletion, type this code:
                     </p>
+                    <div id="delete-confirm-code" class="verify-code">----------</div>
                     <input type="text" id="delete-code-input"
                         maxlength="10"
                         inputmode="numeric"
                         pattern="[0-9]{10}"
-                        placeholder="Enter 10-digit code"
+                        placeholder="_ _ _ _ _ _ _ _ _ _"
                         autocomplete="off"
-                        style="width:100%;padding:8px 12px;border:2px solid #d1d5db;border-radius:8px;font-size:18px;letter-spacing:3px;text-align:center;font-family:monospace;font-weight:700;outline:none;transition:border-color 0.2s, box-shadow 0.2s;"
+                        class="verify-input"
                         oninput="this.value=this.value.replace(/[^0-9]/g,'')"
                     >
-                    <p id="delete-code-error" style="font-size:11px;color:#dc2626;margin:4px 0 0;display:none;">
+                    <p id="delete-code-error" class="verify-error" style="display:none;">
                         <i class="fa-solid fa-circle-xmark"></i> Incorrect code. Please try again.
                     </p>
                 </div>
@@ -76,11 +76,11 @@ Required JavaScript handlers:
 
 <script>
 (function() {
-    // Generate a random 6-digit code when the modal opens
+    // Generate a random 10-digit code when the modal opens
     var _deleteCode = '';
 
     function generateDeleteCode() {
-        _deleteCode = Math.floor(1000000000 + Math.random() * 9000000000).toString();
+        _deleteCode = (typeof ConfirmationCode !== 'undefined') ? ConfirmationCode.generate() : Math.floor(1000000000 + Math.random() * 9000000000).toString();
         var codeEl = document.getElementById('delete-confirm-code');
         if (codeEl) codeEl.textContent = _deleteCode;
         var input = document.getElementById('delete-code-input');
@@ -98,6 +98,23 @@ Required JavaScript handlers:
     // Validate input as user types
     var codeInput = document.getElementById('delete-code-input');
     if (codeInput) {
+        codeInput.addEventListener('focus', function() {
+            this.style.borderColor = '#667eea';
+            this.style.boxShadow = '0 0 0 3px rgba(102,126,234,0.15)';
+        });
+        codeInput.addEventListener('blur', function() {
+            var val = this.value.trim();
+            if (val.length === 0) {
+                this.style.borderColor = '#d1d5db';
+                this.style.boxShadow = '';
+            } else if (val === _deleteCode) {
+                this.style.borderColor = '#86efac';
+                this.style.boxShadow = '0 0 0 3px rgba(134,239,172,0.2)';
+            } else {
+                this.style.borderColor = '#fca5a5';
+                this.style.boxShadow = '0 0 0 3px rgba(252,165,165,0.2)';
+            }
+        });
         codeInput.addEventListener('input', function() {
             var val = this.value.trim();
             var confirmBtn = document.getElementById('confirmDeleteBtn');

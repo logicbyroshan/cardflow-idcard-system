@@ -35,7 +35,7 @@ class IDCardBulkService(BaseService):
         Kept as a thin wrapper so existing callers don't break.
         """
         try:
-            from .workflow_service import WorkflowService
+            from idcards.services_workflow import WorkflowService
 
             table = get_object_or_404(IDCardTable, id=table_id)
             return WorkflowService.bulk_transition(

@@ -331,7 +331,7 @@
    * @param {string}   filename - Display name for header.
    * @param {function} onSave   - Callback: (dataUrl, filename) → void.
    */
-  AdarshEngine.prototype.open = function (srcUrl, filename, onSave) {
+  AdarshEngine.prototype.open = function (srcUrl, filename, onSave, fsPath) {
     this._resolveElements();
     var self = this;
     var e = this._els;
@@ -350,6 +350,7 @@
     this.currentFilename = filename || 'image.jpg';
     this.onSaveCallback = onSave || null;
     this.sourceUrl = srcUrl || '';
+    this.sourcePath = fsPath || null;  // explicit filesystem path (for blob URLs)
 
     e.filename.textContent = this.currentFilename;
     this._resetSliders();

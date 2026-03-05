@@ -32,10 +32,16 @@
                 <!-- Action — fit buttons -->
                 <th class="w-[60px] min-w-[60px] text-center">Action</th>
                 {% endif %}
-                {% if perm_idcard_updated_at and not is_client and not is_client_staff %}
-                <!-- Updated At / Updated By — admin only, hidden from client/client_staff -->
+                {% if perm_idcard_updated_at %}
+                {% if not is_client and not is_client_staff %}
+                <!-- Updated At / Updated By — all statuses for admin users -->
                 <th class="w-[90px] min-w-[90px] text-center">Last Updated</th>
                 <th class="w-[65px] min-w-[65px] text-center">Updated By</th>
+                {% elif current_status == 'pending' or current_status == 'verified' %}
+                <!-- Updated At / Updated By — pending/verified only for client users -->
+                <th class="w-[90px] min-w-[90px] text-center">Last Updated</th>
+                <th class="w-[65px] min-w-[65px] text-center">Updated By</th>
+                {% endif %}
                 {% endif %}
             </tr>
         </thead>

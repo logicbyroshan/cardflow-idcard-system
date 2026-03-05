@@ -62,6 +62,12 @@ def validate_zip_safety(zip_path_or_file, *, max_entries=None, max_total_bytes=N
                 if info.is_dir():
                     continue
                 
+                # Check for path traversal (e.g. ../../etc/passwd)
+                # Normalize and reject any entry that escapes the extraction root
+                clean_name = os.path.normpath(info.filename)
+                if clean_name.startswith('..') or os.path.isabs(clean_name):
+                    return False, f'ZIP contains path traversal entry: {info.filename}. Upload rejected.'
+                
                 # Check for nested ZIP files
                 entry_ext = os.path.splitext(info.filename)[1].lower()
                 if entry_ext in NESTED_ZIP_EXTENSIONS:

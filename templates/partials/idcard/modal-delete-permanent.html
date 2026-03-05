@@ -1,4 +1,4 @@
-<!-- Delete Permanent Confirmation Modal (Pool List - requires 6-digit code) -->
+<!-- Delete Permanent Confirmation Modal (Pool List - requires 10-digit code) -->
 <div class="upload-modal-overlay" id="deleteModalOverlay">
   <div class="upload-modal delete-modal">
     <div class="upload-modal-header delete-header">
@@ -28,9 +28,12 @@
             <input type="text" 
                    id="deleteVerificationInput" 
                    class="verification-input" 
-                   placeholder="Enter 10-digit code"
+                   placeholder="_ _ _ _ _ _ _ _ _ _"
                    maxlength="10"
-                   autocomplete="off">
+                   inputmode="numeric"
+                   pattern="[0-9]{10}"
+                   autocomplete="off"
+                   oninput="this.value=this.value.replace(/[^0-9]/g,'')">
             <span class="verification-status" id="verificationStatus"></span>
           </div>
         </div>

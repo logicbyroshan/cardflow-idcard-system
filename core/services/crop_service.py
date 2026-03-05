@@ -183,10 +183,9 @@ class CropService:
 
         # Persist the image_map as a JSON file inside the batch folder for
         # later use during re-upload (avoids passing large payloads around)
-        import json
         map_file = batch_dir / "_image_map.json"
-        with open(map_file, "w") as f:
-            json.dump(image_map, f)
+        with open(map_file, "w", encoding="utf-8") as f:
+            json.dump(image_map, f, ensure_ascii=False)
 
         return {
             "success": True,

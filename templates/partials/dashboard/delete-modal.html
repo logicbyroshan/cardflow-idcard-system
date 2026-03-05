@@ -11,29 +11,33 @@
       </button>
     </div>
     <div class="modal-body">
-      <div class="flex flex-col items-center text-center" style="padding:18px 12px 8px">
-        <div style="width:52px;height:52px;border-radius:50%;background:var(--color-danger-bg,#fee2e2);display:flex;align-items:center;justify-content:center;margin-bottom:14px">
-          <i class="fa-solid fa-triangle-exclamation" style="font-size:22px;color:var(--color-danger,#ef4444)"></i>
+      <div class="modal-body-centered">
+        <div class="modal-icon-circle modal-icon-circle--danger">
+          <i class="fa-solid fa-triangle-exclamation"></i>
         </div>
-        <p style="font-size:15px;font-weight:600;color:#1f2937;margin:0 0 4px">Delete All ID Cards?</p>
+        <p class="modal-body-title">Delete All ID Cards?</p>
         <p class="text-sm text-gray-600" style="margin-bottom:6px">Table: <strong id="dashDeleteTableName"></strong></p>
         <p class="text-sm text-gray-600" style="margin-bottom:12px">This will permanently delete <strong id="dashDeleteCount"></strong> cards from <strong>ALL lists</strong>.</p>
 
-        <div style="width:100%;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;text-align:left;margin-bottom:14px">
-          <p style="font-size:12px;color:#991b1b;font-weight:600;margin:0 0 6px;display:flex;align-items:center;gap:6px">
+        <div class="alert-box alert-box--danger" style="margin-bottom:14px">
+          <p class="alert-box-heading">
             <i class="fa-solid fa-circle-exclamation"></i> Warning
           </p>
-          <ul style="margin:0;padding:0 0 0 16px;font-size:12px;color:#7f1d1d;line-height:1.7">
+          <ul class="alert-box-list">
             <li>All ID cards will be permanently deleted</li>
             <li>Cards from all lists (Pool, Active, Printed) will be removed</li>
             <li>This action <strong>CANNOT</strong> be undone</li>
           </ul>
         </div>
 
-        <p style="font-size:13px;color:#374151;margin:0 0 8px;font-weight:500">Type this code to confirm:</p>
-        <div style="font-size:28px;font-weight:800;letter-spacing:4px;color:#ef4444;font-family:monospace;text-align:center;padding:10px 20px;background:#fef2f2;border:2px dashed #fca5a5;border-radius:10px;margin-bottom:12px;user-select:all;" id="dashDeleteCode"></div>
-        <input type="text" id="dashDeleteCodeInput" maxlength="10" placeholder="Enter 10-digit code"
-               style="width:220px;padding:8px 12px;border:2px solid #d1d5db;border-radius:8px;font-size:18px;letter-spacing:3px;text-align:center;font-family:monospace;font-weight:700;outline:none;transition:border-color .15s, box-shadow .15s;box-sizing:border-box;margin-bottom:4px;"
+        <p class="verify-hint" style="text-align:center;margin-bottom:8px;">Type this code to confirm:</p>
+        <div class="verify-code" id="dashDeleteCode">----------</div>
+        <input type="text" id="dashDeleteCodeInput" maxlength="10"
+               inputmode="numeric"
+               pattern="[0-9]{10}"
+               placeholder="_ _ _ _ _ _ _ _ _ _"
+               autocomplete="off"
+               class="verify-input"
                oninput="this.value=this.value.replace(/[^0-9]/g,'');">
       </div>
     </div>

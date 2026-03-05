@@ -190,6 +190,22 @@ def _check_export_permission(request):
     return None
 
 
+def _check_client_pdf_only(request):
+    """
+    Block client / client_staff from non-PDF export formats.
+    Clients are only allowed PDF downloads; xlsx, docx, images are admin-only.
+
+    Returns:
+        None if permitted, JsonResponse with error if blocked.
+    """
+    if request.user.role in ('client', 'client_staff'):
+        return JsonResponse({
+            'success': False,
+            'message': 'Only PDF download is available for your account'
+        }, status=403)
+    return None
+
+
 def _check_export_client_scope(request, table_id):
     """
     Check if user has access to the client owning this table.
@@ -258,6 +274,11 @@ def api_export_xlsx(request, table_id: int) -> HttpResponse:
     if perm_error:
         return perm_error
     
+    # Client/client_staff can only download PDF
+    pdf_only = _check_client_pdf_only(request)
+    if pdf_only:
+        return pdf_only
+    
     # Check client scope for admin_staff
     scope_error = _check_export_client_scope(request, table_id)
     if scope_error:
@@ -320,6 +341,11 @@ def api_export_docx(request, table_id: int) -> HttpResponse:
     perm_error = _check_export_permission(request)
     if perm_error:
         return perm_error
+    
+    # Client/client_staff can only download PDF
+    pdf_only = _check_client_pdf_only(request)
+    if pdf_only:
+        return pdf_only
     
     # Check client scope for admin_staff
     scope_error = _check_export_client_scope(request, table_id)
@@ -628,6 +654,11 @@ def api_export_images(request, table_id: int) -> JsonResponse:
     if perm_error:
         return perm_error
     
+    # Client/client_staff can only download PDF
+    pdf_only = _check_client_pdf_only(request)
+    if pdf_only:
+        return pdf_only
+    
     # Check client scope for admin_staff
     scope_error = _check_export_client_scope(request, table_id)
     if scope_error:
@@ -838,29 +869,36 @@ def api_download_all_cards(request, table_id: int) -> JsonResponse:
                 if xlsx_result.success and xlsx_result.response:
                     xlsx_filename = f"{base_name}.xlsx"
                     xlsx_path = os.path.join(EXPORT_TEMP_DIR, f"{task_id}_{xlsx_filename}")
-                    with open(xlsx_path, 'wb') as f:
-                        f.write(xlsx_result.response.content)
-                    file_entries.append((xlsx_filename, xlsx_path))
-                    temp_files.append(xlsx_path)
+                    # Handle both HttpResponse (.content) and StreamingHttpResponse (.streaming_content)
+                    resp = xlsx_result.response
+                    if hasattr(resp, 'content'):
+                        xlsx_bytes = resp.content
+                    elif hasattr(resp, 'streaming_content'):
+                        xlsx_bytes = b''.join(
+                            ch.encode('utf-8') if isinstance(ch, str) else ch
+                            for ch in resp.streaming_content
+                        )
+                    else:
+                        xlsx_bytes = b''
+                    if xlsx_bytes:
+                        with open(xlsx_path, 'wb') as f:
+                            f.write(xlsx_bytes)
+                        file_entries.append((xlsx_filename, xlsx_path))
+                        temp_files.append(xlsx_path)
+                    del xlsx_bytes
                     del xlsx_result
             except Exception as e:
                 logger.error("XLSX export failed for status %s: %s", status_key, e)
             
-            # Write ZIP(s) for image fields to disk
+            # Write ZIP(s) for image fields directly to disk (memory-safe, no base64)
             try:
-                zip_result = zip_exporter.export_images(table, cards, status=status_key)
-                if zip_result.success and zip_result.zip_files:
-                    for zf in zip_result.zip_files:
-                        field_label = zf.field_name.upper().replace(' ', '_')
-                        zip_filename = f"{base_name}_{field_label}.zip"
-                        zip_path = os.path.join(EXPORT_TEMP_DIR, f"{task_id}_{zip_filename}")
-                        # zf.data is base64 — decode to raw bytes and write to disk
-                        import base64 as _b64
-                        with open(zip_path, 'wb') as f:
-                            f.write(_b64.b64decode(zf.data))
-                        file_entries.append((zip_filename, zip_path))
-                        temp_files.append(zip_path)
-                del zip_result
+                from .zip import export_images_to_disk as _export_images_disk
+                disk_result = _export_images_disk(table, cards, output_dir=EXPORT_TEMP_DIR, status=status_label)
+                if disk_result.success and disk_result.zip_files:
+                    for dzi in disk_result.zip_files:
+                        file_entries.append((dzi.filename, dzi.path))
+                        temp_files.append(dzi.path)
+                del disk_result
             except Exception as e:
                 logger.error("ZIP export failed for status %s: %s", status_key, e)
         

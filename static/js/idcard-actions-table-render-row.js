@@ -209,11 +209,20 @@ function createRowFromCard(card, index) {
         </td>`;
     }
     
-    // Last Updated / Updated By — only shown to admin users, never to client/client_staff
-    if (!isClientUser && (typeof PERMS === 'undefined' || PERMS.idcard_updated_at)) {
-        html += `<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">${card.updated_at || ''}</td>`;
-        const updatedByLabel = (card.modified_by && card.modified_by.trim()) ? card.modified_by : 'Admin';
-        html += `<td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center">${updatedByLabel}</td>`;
+    // Last Updated / Updated By
+    // Admin users: shown on all statuses
+    // Client users: shown only on pending/verified, and only if modified by a client/client_staff
+    if (typeof PERMS === 'undefined' || PERMS.idcard_updated_at) {
+        if (!isClientUser) {
+            // Admin view — show all updated_at/modified_by as-is
+            html += `<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">${card.updated_at || ''}</td>`;
+            const updatedByLabel = (card.modified_by && card.modified_by.trim()) ? card.modified_by : 'Admin';
+            html += `<td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center">${updatedByLabel}</td>`;
+        } else if (status === 'pending' || status === 'verified') {
+            // Client view — only pending/verified; API already filters admin edits out
+            html += `<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">${card.updated_at || ''}</td>`;
+            html += `<td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center">${card.modified_by || ''}</td>`;
+        }
     }
     
     tr.innerHTML = html;

@@ -63,6 +63,11 @@ def dashboard(request):
     is_scoped = PermissionService.is_admin_staff(user)
     cache_suffix = f':{user.pk}' if is_scoped else ''
 
+    # Pre-fetch accessible client IDs ONCE for admin_staff users.
+    # This must be computed before any cache block so it's always available
+    # when is_scoped=True, regardless of which cache keys hit/miss.
+    accessible_ids = PermissionService.get_accessible_client_ids(user) if is_scoped else []
+
     # Combine card status counts into a single aggregate query (cached 30s)
     # Exclude 'pool' status from total count
     card_cache_key = f'dashboard_card_stats{cache_suffix}'
@@ -70,7 +75,6 @@ def dashboard(request):
     if card_stats is None:
         card_qs = IDCard.objects.all()
         if is_scoped:
-            accessible_ids = PermissionService.get_accessible_client_ids(user)
             card_qs = card_qs.filter(table__group__client_id__in=accessible_ids)
         card_stats = card_qs.aggregate(
             total=Count('id', filter=Q(status__in=['pending', 'verified', 'approved', 'download'])),
@@ -106,7 +110,10 @@ def dashboard(request):
     staff_cache_key = f'dashboard_staff_stats{cache_suffix}'
     staff_stats = cache.get(staff_cache_key)
     if staff_stats is None:
-        staff_stats = Staff.objects.aggregate(
+        staff_qs = Staff.objects.all()
+        if is_scoped:
+            staff_qs = staff_qs.filter(client_id__in=accessible_ids)
+        staff_stats = staff_qs.aggregate(
             total=Count('id'),
             active=Count('id', filter=Q(user__is_active=True)),
         )

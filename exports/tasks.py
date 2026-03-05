@@ -131,10 +131,12 @@ class BackgroundExportManager:
             message = 'Queued, waiting to start...'
         elif task.status == 'processing':
             total = task.total or 0
-            message = (
-                f'Generating PDF... ({task.progress}/{total} cards)'
-                if total else 'Generating PDF...'
-            )
+            if task.progress and total:
+                message = f'Generating PDF... ({task.progress}/{total} cards)'
+            elif total:
+                message = f'Generating PDF for {total} cards...'
+            else:
+                message = 'Generating PDF...'
         elif task.status == 'completed':
             result_meta = task.metadata.get('result', {})
             count = result_meta.get('card_count', '')

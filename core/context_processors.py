@@ -50,8 +50,22 @@ def permissions(request):
     if cached is not None:
         return cached
     
-    # Get all permissions from the centralized PermissionService
-    context = PermissionService.get_permission_context(request.user)
+    # Get all permissions from the centralized PermissionService.
+    # Wrapped in try/except because a transient DB error here would crash
+    # every single page render (this processor runs on every template).
+    try:
+        context = PermissionService.get_permission_context(request.user)
+    except Exception:
+        import logging as _log
+        _log.getLogger(__name__).exception(
+            'PermissionService.get_permission_context failed for user %s',
+            request.user.pk,
+        )
+        context = {
+            'is_super_admin': False, 'is_admin_staff': False,
+            'is_client': False, 'is_client_staff': False,
+            'user_role': getattr(request.user, 'role', None),
+        }
     
     # Add is_client_admin for backward compatibility with client-sidebar.html
     context['is_client_admin'] = context.get('is_client', False)

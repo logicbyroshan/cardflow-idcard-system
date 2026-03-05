@@ -362,7 +362,7 @@
         dstData = null;
 
         // ── v2: Save to /edited/ folder via backend ─────────────
-        var originalPath = self._extractPathFromUrl(self.sourceUrl);
+        var originalPath = self.sourcePath || self._extractPathFromUrl(self.sourceUrl);
         if (originalPath) {
           self._saveToEditedFolder(dataUrl, originalPath, self.currentFilename);
         } else {

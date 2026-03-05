@@ -93,6 +93,7 @@ class SubdomainRoutingMiddleware:
             response.set_cookie(
                 '_panel_ctx', '1',
                 httponly=True, samesite='Lax', max_age=86400,
+                secure=request.is_secure(),
             )
 
         return response

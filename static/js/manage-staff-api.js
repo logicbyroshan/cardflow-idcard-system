@@ -84,7 +84,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        tempPwVerificationCode = String(Math.floor(1000000000 + Math.random() * 9000000000));
+        tempPwVerificationCode = (typeof ConfirmationCode !== 'undefined') ? ConfirmationCode.generate() : String(Math.floor(1000000000 + Math.random() * 9000000000));
 
         var modal = document.getElementById('temp-password-modal');
         document.getElementById('tempPwStep1').style.display = '';

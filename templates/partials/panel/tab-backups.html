@@ -17,26 +17,42 @@
   </div>
 
   <!-- Cancel auto-delete modal -->
-  <div id="cancelDeleteModal" class="backup-modal-overlay" style="display:none;">
-    <div class="backup-modal backup-modal-sm">
-      <div class="backup-modal-header">
-        <h2><i class="fa-solid fa-shield-halved"></i> Cancel Auto-Delete</h2>
-        <button type="button" class="backup-modal-close" onclick="closeCancelDeleteModal()">&times;</button>
+  <div id="cancelDeleteModal" class="modal-backdrop" style="display:none;">
+    <div class="modal-center modal-purple" @click.stop>
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-shield-halved"></i> Cancel Auto-Delete</h3>
+        <button type="button" class="modal-close" onclick="closeCancelDeleteModal()" aria-label="Close">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
       </div>
-      <div class="backup-modal-body">
-        <p style="font-size:13px;color:#475569;margin-bottom:14px;">This will cancel the 24-hour auto-delete timer. Backup files will be kept until manually deleted.</p>
-        <div class="backup-code-section">
-          <p class="backup-code-label">Type this code to confirm:</p>
-          <div class="backup-code-display" id="cancelDeleteCodeDisplay">----------</div>
-          <div class="backup-code-input-wrap">
-            <input type="text" id="cancelDeleteCode" class="backup-code-input" maxlength="10" placeholder="Enter 10-digit code" autocomplete="off">
+      <div class="modal-body">
+        <div class="flex flex-col items-center text-center" style="padding:18px 12px 8px">
+          <div style="width:52px;height:52px;border-radius:50%;background:#f3e8ff;display:flex;align-items:center;justify-content:center;margin-bottom:14px">
+            <i class="fa-solid fa-shield-halved" style="font-size:22px;color:#7c3aed"></i>
           </div>
-          <p class="backup-code-hint" id="cancelDeleteError" style="display:none;"></p>
+          <p style="font-size:15px;font-weight:600;color:#1f2937;margin:0 0 4px">Cancel Auto-Delete?</p>
+          <p style="font-size:13px;color:#6b7280;margin:0 0 14px;">This will cancel the 24-hour auto-delete timer. Backup files will be kept until manually deleted.</p>
+          <div style="width:100%;margin-top:4px;">
+            <p style="font-size:12px;color:#6b7280;text-align:center;margin:0 0 8px;">Type this code to confirm:</p>
+            <div class="backup-code-display" id="cancelDeleteCodeDisplay">----------</div>
+            <input type="text" id="cancelDeleteCode"
+                maxlength="10"
+                inputmode="numeric"
+                pattern="[0-9]{10}"
+                placeholder="_ _ _ _ _ _ _ _ _ _"
+                autocomplete="off"
+                style="width:100%;padding:10px 12px;border:2px solid #d1d5db;border-radius:8px;font-size:18px;letter-spacing:3px;text-align:center;font-family:monospace;font-weight:700;outline:none;transition:border-color .15s, box-shadow .15s;box-sizing:border-box;"
+                oninput="this.value=this.value.replace(/[^0-9]/g,'')"
+            >
+            <p class="backup-code-hint" id="cancelDeleteError" style="display:none;font-size:12px;color:#dc2626;margin:6px 0 0;text-align:center;font-weight:500;"></p>
+          </div>
         </div>
       </div>
-      <div class="backup-modal-footer">
-        <button type="button" class="backup-btn-cancel" onclick="closeCancelDeleteModal()">Cancel</button>
-        <button type="button" class="backup-btn-confirm" id="cancelDeleteBtn" onclick="submitCancelDelete()">
+      <div class="modal-footer">
+        <button type="button" class="btn btn-md btn-neutral" onclick="closeCancelDeleteModal()">
+          <i class="fa-solid fa-xmark"></i> Cancel
+        </button>
+        <button type="button" class="btn btn-md btn-primary" id="cancelDeleteBtn" onclick="submitCancelDelete()">
           <i class="fa-solid fa-ban"></i> Cancel Auto-Delete
         </button>
       </div>
@@ -44,26 +60,51 @@
   </div>
 
   <!-- Delete now modal -->
-  <div id="deleteNowModal" class="backup-modal-overlay" style="display:none;">
-    <div class="backup-modal backup-modal-sm">
-      <div class="backup-modal-header">
-        <h2><i class="fa-solid fa-trash" style="color:#ef4444;"></i> Delete Backup Now</h2>
-        <button type="button" class="backup-modal-close" onclick="closeDeleteNowModal()">&times;</button>
+  <div id="deleteNowModal" class="modal-backdrop" style="display:none;">
+    <div class="modal-center modal-danger" @click.stop>
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-trash"></i> Delete Backup Now</h3>
+        <button type="button" class="modal-close" onclick="closeDeleteNowModal()" aria-label="Close">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
       </div>
-      <div class="backup-modal-body">
-        <p style="font-size:13px;color:#475569;margin-bottom:14px;">This will <strong>permanently delete</strong> all backup files for this task. This action cannot be undone.</p>
-        <div class="backup-code-section">
-          <p class="backup-code-label">Type this code to confirm:</p>
-          <div class="backup-code-display" id="deleteNowCodeDisplay">----------</div>
-          <div class="backup-code-input-wrap">
-            <input type="text" id="deleteNowCode" class="backup-code-input" maxlength="10" placeholder="Enter 10-digit code" autocomplete="off">
+      <div class="modal-body">
+        <div class="flex flex-col items-center text-center" style="padding:18px 12px 8px">
+          <div style="width:52px;height:52px;border-radius:50%;background:#fee2e2;display:flex;align-items:center;justify-content:center;margin-bottom:14px">
+            <i class="fa-solid fa-trash-can" style="font-size:22px;color:#ef4444"></i>
           </div>
-          <p class="backup-code-hint" id="deleteNowError" style="display:none;"></p>
+          <p style="font-size:15px;font-weight:600;color:#1f2937;margin:0 0 4px">Delete Backup Now?</p>
+          <p style="font-size:13px;color:#6b7280;margin:0 0 14px;">This will <strong>permanently delete</strong> all backup files for this task. This action cannot be undone.</p>
+          <div style="width:100%;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;text-align:left;margin-bottom:16px;">
+            <p style="font-size:12px;color:#991b1b;font-weight:600;margin:0 0 6px;display:flex;align-items:center;gap:6px">
+              <i class="fa-solid fa-circle-exclamation"></i> Warning
+            </p>
+            <ul style="margin:0;padding:0 0 0 16px;font-size:12px;color:#7f1d1d;line-height:1.7">
+              <li>All backup files will be permanently removed</li>
+              <li>This action cannot be undone</li>
+            </ul>
+          </div>
+          <div style="width:100%;">
+            <p style="font-size:12px;color:#6b7280;text-align:center;margin:0 0 8px;">Type this code to confirm:</p>
+            <div class="backup-code-display" id="deleteNowCodeDisplay">----------</div>
+            <input type="text" id="deleteNowCode"
+                maxlength="10"
+                inputmode="numeric"
+                pattern="[0-9]{10}"
+                placeholder="_ _ _ _ _ _ _ _ _ _"
+                autocomplete="off"
+                style="width:100%;padding:10px 12px;border:2px solid #d1d5db;border-radius:8px;font-size:18px;letter-spacing:3px;text-align:center;font-family:monospace;font-weight:700;outline:none;transition:border-color .15s, box-shadow .15s;box-sizing:border-box;"
+                oninput="this.value=this.value.replace(/[^0-9]/g,'')"
+            >
+            <p class="backup-code-hint" id="deleteNowError" style="display:none;font-size:12px;color:#dc2626;margin:6px 0 0;text-align:center;font-weight:500;"></p>
+          </div>
         </div>
       </div>
-      <div class="backup-modal-footer">
-        <button type="button" class="backup-btn-cancel" onclick="closeDeleteNowModal()">Cancel</button>
-        <button type="button" class="backup-btn-danger" id="deleteNowBtn" onclick="submitDeleteNow()">
+      <div class="modal-footer">
+        <button type="button" class="btn btn-md btn-neutral" onclick="closeDeleteNowModal()">
+          <i class="fa-solid fa-xmark"></i> Cancel
+        </button>
+        <button type="button" class="btn btn-md btn-danger" id="deleteNowBtn" onclick="submitDeleteNow()">
           <i class="fa-solid fa-trash"></i> Delete Now
         </button>
       </div>

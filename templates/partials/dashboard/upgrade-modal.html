@@ -11,16 +11,36 @@
       </button>
     </div>
     <div class="modal-body">
-      <div class="flex flex-col items-center text-center py-2">
-        <div class="w-10 h-10 rounded-sm bg-warning-bg flex items-center justify-center mb-2">
-          <i class="fa-solid fa-arrow-up text-warning text-sm"></i>
+      <div class="flex flex-col items-center text-center" style="padding:18px 12px 8px">
+        <div style="width:52px;height:52px;border-radius:50%;background:var(--color-warning-bg,#fef9c3);display:flex;align-items:center;justify-content:center;margin-bottom:14px">
+          <i class="fa-solid fa-arrow-up" style="font-size:22px;color:var(--color-warning,#f59e0b)"></i>
         </div>
-        <p class="text-sm text-gray-600 mb-1">Table: <strong id="dashUpgradeTableName"></strong></p>
-        <p class="text-sm text-gray-600 mb-1">This will upgrade the class value of <strong id="dashUpgradeCount"></strong> cards in the <strong>Download list</strong> to the next level (e.g. V &rarr; VI).</p>
-        <p class="text-xs text-warning-dark font-semibold mb-2">This action CANNOT be undone.</p>
-        <p class="text-sm text-gray-700 mb-1">Enter the 6-digit code below to confirm:</p>
-        <div class="bg-warning-bg border-2 border-warning-light text-warning-dark font-bold mb-2 px-2 py-1 text-lg tracking-widest rounded-sm" id="dashUpgradeCode"></div>
-        <input type="text" id="dashUpgradeCodeInput" maxlength="6" placeholder="Enter code here" class="form-input text-center font-semibold mb-2 w-44 tracking-wider text-xs">
+        <p style="font-size:15px;font-weight:600;color:#1f2937;margin:0 0 4px">Upgrade All Classes</p>
+        <p style="font-size:13px;color:#6b7280;margin:0 0 4px">Table: <strong id="dashUpgradeTableName" style="color:#1f2937"></strong></p>
+        <p style="font-size:13px;color:#6b7280;margin:0 0 14px">This will upgrade the class value of <strong id="dashUpgradeCount" style="color:#1f2937"></strong> cards in the <strong>Download list</strong> to the next level (e.g. V &rarr; VI).</p>
+        <div style="width:100%;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;text-align:left;margin-bottom:16px;">
+          <p style="font-size:12px;color:#92400e;font-weight:600;margin:0 0 6px;display:flex;align-items:center;gap:6px">
+            <i class="fa-solid fa-circle-exclamation"></i> Warning
+          </p>
+          <ul style="margin:0;padding:0 0 0 16px;font-size:12px;color:#78350f;line-height:1.7">
+            <li>This action <strong>CANNOT</strong> be undone</li>
+            <li>All cards in the Download list will be upgraded</li>
+          </ul>
+        </div>
+        <!-- 10-digit confirmation code -->
+        <div style="width:100%;">
+          <p style="font-size:12px;color:#6b7280;text-align:center;margin:0 0 8px;">Type this code to confirm:</p>
+          <div id="dashUpgradeCode" style="font-size:28px;font-weight:800;letter-spacing:4px;color:#d97706;font-family:monospace;text-align:center;padding:10px 20px;background:#fffbeb;border:2px dashed #fde68a;border-radius:10px;margin-bottom:12px;user-select:all;">----------</div>
+          <input type="text" id="dashUpgradeCodeInput"
+              maxlength="10"
+              inputmode="numeric"
+              pattern="[0-9]{10}"
+              placeholder="_ _ _ _ _ _ _ _ _ _"
+              autocomplete="off"
+              style="width:100%;padding:10px 12px;border:2px solid #d1d5db;border-radius:8px;font-size:18px;letter-spacing:3px;text-align:center;font-family:monospace;font-weight:700;outline:none;transition:border-color .15s, box-shadow .15s;box-sizing:border-box;"
+              oninput="this.value=this.value.replace(/[^0-9]/g,'')"
+          >
+        </div>
       </div>
     </div>
     <div class="modal-footer">

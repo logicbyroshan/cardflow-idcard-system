@@ -528,7 +528,7 @@ class IDCardCardService(BaseService):
 
             # Atomic block: card creation + media records together
             with transaction.atomic():
-                from .workflow_service import WorkflowService
+                from idcards.services_workflow import WorkflowService
                 card = IDCard.objects.create(
                     table=table,
                     field_data=field_data,
@@ -805,7 +805,7 @@ class IDCardCardService(BaseService):
         user/request are supplied.
         """
         try:
-            from .workflow_service import WorkflowService
+            from idcards.services_workflow import WorkflowService
 
             card = get_object_or_404(IDCard, id=card_id)
             return WorkflowService.transition(

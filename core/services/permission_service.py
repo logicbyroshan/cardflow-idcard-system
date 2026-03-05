@@ -100,7 +100,7 @@ class PermissionService:
     CLIENT_BLOCKED_PERMS: set = {
         # Bulk operations — admin/staff only
         'perm_idcard_bulk_upload',
-        'perm_idcard_bulk_download',
+        # perm_idcard_bulk_download — allowed for client (PDF-only, gated in export views)
         'perm_idcard_bulk_reupload',
         'perm_delete_all_idcard',    # super_admin-only
         'perm_reupload_idcard_image',

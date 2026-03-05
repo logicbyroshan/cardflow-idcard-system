@@ -22,11 +22,13 @@
 
       <!-- Code section -->
       <div class="backup-code-section">
-        <p class="backup-code-label">Enter the 10-digit confirmation code shown below to proceed:</p>
+        <p class="backup-code-label">Type this code to confirm:</p>
         <div class="backup-code-display" id="backupCodeDisplay">Loading…</div>
         <div class="backup-code-input-wrap">
           <input type="text" id="backupCodeInput" class="backup-code-input" maxlength="10"
-                 placeholder="Enter 10-digit code" autocomplete="off">
+                 placeholder="_ _ _ _ _ _ _ _ _ _" autocomplete="off"
+                 inputmode="numeric" pattern="[0-9]{10}"
+                 oninput="this.value=this.value.replace(/[^0-9]/g,'')">
         </div>
         <p class="backup-code-hint" id="backupCodeError" style="display:none;"></p>
       </div>

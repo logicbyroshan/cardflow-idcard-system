@@ -12,28 +12,28 @@
           </button>
         </div>
         <div class="modal-body">
-          <div class="flex flex-col items-center text-center" style="padding:18px 12px 8px">
-            <div style="width:52px;height:52px;border-radius:50%;background:var(--color-danger-bg,#fee2e2);display:flex;align-items:center;justify-content:center;margin-bottom:14px">
-              <i class="fa-solid fa-trash-can" style="font-size:22px;color:var(--color-danger,#ef4444)"></i>
+          <div class="modal-body-centered">
+            <div class="modal-icon-circle modal-icon-circle--danger">
+              <i class="fa-solid fa-trash-can"></i>
             </div>
-            <p style="font-size:15px;font-weight:600;color:#1f2937;margin:0 0 4px">Delete Client?</p>
-            <p style="font-size:13px;color:#6b7280;margin:0 0 14px">
-              You are about to delete <strong id="deleteClientName" style="color:#1f2937">this client</strong>.
+            <p class="modal-body-title">Delete Client?</p>
+            <p class="modal-body-subtitle">
+              You are about to delete <strong id="deleteClientName">this client</strong>.
             </p>
-            <div style="width:100%;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;text-align:left">
-              <p style="font-size:12px;color:#991b1b;font-weight:600;margin:0 0 6px;display:flex;align-items:center;gap:6px">
+            <div class="alert-box alert-box--danger">
+              <p class="alert-box-heading">
                 <i class="fa-solid fa-circle-exclamation"></i> Warning
               </p>
-              <ul style="margin:0;padding:0 0 0 16px;font-size:12px;color:#7f1d1d;line-height:1.7">
+              <ul class="alert-box-list">
                 <li>Client profile and all related data will be removed</li>
                 <li>All ID cards for this client will be deleted</li>
                 <li>This action cannot be undone</li>
               </ul>
             </div>
             <!-- 6-digit confirmation code -->
-            <div style="width:100%;margin-top:16px;">
-              <p style="font-size:12px;color:#6b7280;text-align:center;margin:0 0 8px;">Type this code to confirm:</p>
-              <div style="font-size:28px;font-weight:800;letter-spacing:4px;color:#dc2626;font-family:monospace;text-align:center;padding:10px 20px;background:#fef2f2;border:2px dashed #fca5a5;border-radius:10px;margin-bottom:12px;user-select:all;"
+            <div class="verify-section">
+              <p class="verify-hint" style="text-align:center;">Type this code to confirm:</p>
+              <div class="verify-code"
                    x-text="deleteCode || '----------'"></div>
               <input type="text" x-model="deleteCodeInput"
                   maxlength="10"
@@ -41,13 +41,11 @@
                   pattern="[0-9]{10}"
                   placeholder="_ _ _ _ _ _ _ _ _ _"
                   autocomplete="off"
-                  style="width:100%;padding:10px 12px;border:2px solid #d1d5db;border-radius:8px;font-size:18px;letter-spacing:3px;text-align:center;font-family:monospace;font-weight:700;outline:none;transition:border-color .15s, box-shadow .15s;box-sizing:border-box;"
+                  class="verify-input"
                   oninput="this.value=this.value.replace(/[^0-9]/g,'')"
-                  :style="deleteCodeInput.length===0 ? 'border-color:#d1d5db' : (deleteCodeInput===deleteCode ? 'border-color:#86efac;box-shadow:0 0 0 3px rgba(134,239,172,0.2)' : 'border-color:#fca5a5;box-shadow:0 0 0 3px rgba(252,165,165,0.2)')"
-                  @focus="$el.style.borderColor='#667eea'; $el.style.boxShadow='0 0 0 3px rgba(102,126,234,0.15)'"
-                  @blur="$el.style.borderColor=deleteCodeInput.length===0?'#d1d5db':(deleteCodeInput===deleteCode?'#86efac':'#fca5a5'); $el.style.boxShadow=''"
+                  :class="deleteCodeInput.length===0 ? '' : (deleteCodeInput===deleteCode ? 'valid' : 'invalid')"
               >
-              <p style="font-size:12px;color:#dc2626;margin:6px 0 0;text-align:center;font-weight:500;"
+              <p class="verify-error"
                  x-show="deleteCodeInput.length===10 && deleteCodeInput!==deleteCode">
                 <i class="fa-solid fa-circle-xmark"></i> Incorrect code. Please try again.
               </p>

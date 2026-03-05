@@ -262,6 +262,26 @@ def api_idcard_cards_json(request, table_id):
     results = []
     # sr_no base: for cursor mode, use offset param if provided, otherwise 0
     sr_base = offset if not cursor else offset
+
+    # For client/client_staff users: hide updated_at/modified_by when the
+    # modification was made by an admin (super_admin or admin_staff).
+    # Clients should only see edits made by client/client_staff users.
+    _is_client_viewer = request.user.role in ('client', 'client_staff')
+    _admin_modifier_usernames = set()
+    if _is_client_viewer:
+        modifier_names = set(
+            c.modified_by for c in cards
+            if c.modified_by and c.modified_by.strip()
+        )
+        if modifier_names:
+            from core.models import User as _User
+            _admin_modifier_usernames = set(
+                _User.objects.filter(
+                    username__in=modifier_names,
+                    role__in=('super_admin', 'admin_staff'),
+                ).values_list('username', flat=True)
+            )
+
     for idx, card in enumerate(cards):
         fd = card.field_data or {}
         fd_upper = {k.upper(): v for k, v in fd.items()}
@@ -285,6 +305,15 @@ def api_idcard_cards_json(request, table_id):
                 entry['thumb'] = _thumb(val) if val else ''
             ordered.append(entry)
 
+        # For client viewers, hide updated_at/modified_by when the modifier is admin
+        _modifier = card.modified_by or ''
+        _card_updated_at = localtime(card.updated_at).strftime('%d-%b-%Y %H:%M') if card.updated_at else None
+        _card_updated_at_iso = card.updated_at.isoformat() if card.updated_at else None
+        if _is_client_viewer and _modifier in _admin_modifier_usernames:
+            _modifier = ''
+            _card_updated_at = None
+            _card_updated_at_iso = None
+
         results.append({
             'id': card.id,
             'sr_no': sr_base + idx + 1,
@@ -294,11 +323,11 @@ def api_idcard_cards_json(request, table_id):
             # the reupload processor) — they're not useful to the frontend.
             'field_data': {k: v for k, v in fd.items() if not k.startswith('__')},
             'ordered_fields': ordered,
-            'updated_at': localtime(card.updated_at).strftime('%d-%b-%Y %H:%M') if card.updated_at else None,
-            'updated_at_iso': card.updated_at.isoformat() if card.updated_at else None,
+            'updated_at': _card_updated_at,
+            'updated_at_iso': _card_updated_at_iso,
             'downloaded_at': localtime(card.downloaded_at).strftime('%d-%b-%Y %H:%M') if card.downloaded_at else None,
             'deleted_at': localtime(card.deleted_at).strftime('%d-%b-%Y %H:%M') if card.deleted_at else None,
-            'modified_by': card.modified_by or '',
+            'modified_by': _modifier,
         })
 
     return JsonResponse({
@@ -664,7 +693,7 @@ def api_idcard_bulk_status(request, table_id):
 @api_require_any_authenticated
 def api_idcard_bulk_delete(request, table_id):
     """API endpoint to delete multiple ID Cards.
-    When delete_all=True, requires perm_delete_all_idcard + 6-digit confirmation_code.
+    When delete_all=True, requires perm_delete_all_idcard + 10-digit confirmation_code.
     When delete_all=False (selected cards), requires perm_idcard_delete_from_pool.
     """
     _tbl, err = _check_client_scope_by_table(request.user, table_id)
@@ -777,7 +806,7 @@ def api_upgrade_all_classes(request, table_id):
     Each class value is bumped to the next level (e.g. V → VI).
     Cards already at XII remain unchanged.
     Only affects cards with status='download'.
-    Requires 6-digit confirmation code.
+    Requires 10-digit confirmation code.
     """
     _tbl, err = _check_client_scope_by_table(request.user, table_id)
     if err: return err

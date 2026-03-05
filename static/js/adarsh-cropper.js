@@ -115,6 +115,7 @@ function cropperApp() {
     _progressTimer: null,
     _keepaliveId: null,
     _retryGaveUp: false,   // true once all retry stages exhausted
+    _pendingPreviewReload: false, // true when restored state needs image URL refresh
 
     // ── Update state ──
     update: {
@@ -163,6 +164,12 @@ function cropperApp() {
           await this.checkEngine();
           if (this.engine.connected) {
             console.log('[Cropper] Engine connected (stage ' + (s + 1) + ', attempt ' + a + ')');
+            // If state was restored from sessionStorage, re-fetch preview
+            // images so URLs match the current connection mode.
+            if (this._pendingPreviewReload && this.preview.folder) {
+              this._pendingPreviewReload = false;
+              this._loadPreview(this.preview.folder);
+            }
             return;  // success — keepalive will handle ongoing monitoring
           }
           // Use debug level so these don't clutter the console by default
@@ -612,6 +619,9 @@ function cropperApp() {
           this.preview.editedImages = state.preview.editedImages || [];
           this.preview.failedImages = state.preview.failedImages || [];
           this.preview.deletedImages = state.preview.deletedImages || [];
+          // When engine is direct, stored Django proxy URLs won't work —
+          // re-fetch previews from the engine after it connects.
+          this._pendingPreviewReload = true;
         }
 
         console.log('[Cropper] State restored from session');
@@ -624,7 +634,91 @@ function cropperApp() {
     // ══════════════════════════════════════════════════════════════════
     //  IMAGE PREVIEW — always available after processing
     // ══════════════════════════════════════════════════════════════════
+
+    /**
+     * Build the image URL for a given filesystem path.
+     *
+     * When engine.direct is true the images live on the USER'S local
+     * machine, not on the Django server.  In that case:
+     *   • On HTTP pages we can point <img src> straight at the engine.
+     *   • On HTTPS pages the browser blocks http://127.0.0.1 as mixed
+     *     content for sub-resources, so we fetch()→blob→objectURL
+     *     (fetch() has a localhost exemption; <img> does not).
+     *
+     * When using the Django proxy (engine.direct === false) the server
+     * and engine share a filesystem, so the existing proxy URL works.
+     */
+    _imageUrl(fullPath) {
+      if (this.engine.direct) {
+        // HTTP → direct engine URL is fine for <img>
+        if (window.location.protocol === 'http:') {
+          return this.engine.url + '/serve-image?path=' + encodeURIComponent(fullPath);
+        }
+        // HTTPS → return empty; caller must use _loadBlobUrls()
+        return '';
+      }
+      return '/api/engine/serve-image/?path=' + encodeURIComponent(fullPath);
+    },
+
+    /**
+     * For HTTPS + direct engine: fetch each image via JS fetch() (which
+     * has a localhost exemption) and convert to a blob object URL that
+     * the browser will happily load in an <img> tag.
+     * Processes up to 6 images concurrently to avoid flooding.
+     */
+    async _loadBlobUrls(images) {
+      var self = this;
+      var CONCURRENCY = 6;
+      var idx = 0;
+
+      async function next() {
+        while (idx < images.length) {
+          var i = idx++;
+          var img = images[i];
+          if (img.url) continue;  // already has a URL
+          try {
+            var resp = await fetch(
+              self.engine.url + '/serve-image?path=' + encodeURIComponent(img.path)
+            );
+            if (resp.ok) {
+              var blob = await resp.blob();
+              img.url = URL.createObjectURL(blob);
+            }
+          } catch (_) {
+            // Leave url empty — the card will show the grey placeholder
+          }
+        }
+      }
+
+      var workers = [];
+      for (var w = 0; w < Math.min(CONCURRENCY, images.length); w++) {
+        workers.push(next());
+      }
+      await Promise.all(workers);
+    },
+
+    /** True when HTTPS + direct engine → need blob URLs */
+    _needsBlobUrls() {
+      return this.engine.direct && window.location.protocol === 'https:';
+    },
+
+    /** Revoke any blob object URLs to free memory */
+    _revokeBlobUrls(images) {
+      if (!images) return;
+      for (var i = 0; i < images.length; i++) {
+        if (images[i].url && images[i].url.startsWith('blob:')) {
+          try { URL.revokeObjectURL(images[i].url); } catch (_) {}
+        }
+      }
+    },
+
     async _loadPreview(folderPath) {
+      // Revoke previous blob URLs before clearing
+      this._revokeBlobUrls(this.preview.images);
+      this._revokeBlobUrls(this.preview.editedImages);
+      this._revokeBlobUrls(this.preview.failedImages);
+      this._revokeBlobUrls(this.preview.deletedImages);
+
       this.preview.loading = true;
       this.preview.visible = true;
       this.preview.images = [];
@@ -641,6 +735,7 @@ function cropperApp() {
           var resp = await fetch(previewUrl, {
             headers: { 'X-ENGINE-KEY': ENGINE_API_KEY },
           });
+          if (!resp.ok) throw new Error('Engine preview error ' + resp.status);
           data = await resp.json();
         } else {
           data = await ApiClient.get(
@@ -653,15 +748,17 @@ function cropperApp() {
           var self = this;
           this.preview.images = data.files.map(function (name) {
             var fullPath = folder + '\\' + name;
-            // Always use Django proxy for img src to avoid Mixed Content on HTTPS pages.
-            // (Direct engine connection via fetch() works on HTTPS due to localhost exemption,
-            //  but <img src="http://127.0.0.1:"> is blocked as passive mixed content.)
             return {
               name: name,
-              url: '/api/engine/serve-image/?path=' + encodeURIComponent(fullPath),
+              url: self._imageUrl(fullPath),
               path: fullPath,
             };
           });
+
+          // HTTPS + direct engine: fetch blob URLs for every image
+          if (this._needsBlobUrls()) {
+            await this._loadBlobUrls(this.preview.images);
+          }
         }
       } catch (err) {
         console.warn('[Cropper] Preview load failed:', err);
@@ -728,6 +825,7 @@ function cropperApp() {
           var resp = await fetch(url, {
             headers: { 'X-ENGINE-KEY': ENGINE_API_KEY },
           });
+          if (!resp.ok) throw new Error('Engine preview error ' + resp.status);
           data = await resp.json();
         } else {
           data = await ApiClient.get(
@@ -740,13 +838,17 @@ function cropperApp() {
           var self = this;
           var images = data.files.map(function (name) {
             var fullPath = folder + '\\' + name;
-            // Always proxy for img src — avoids Mixed Content on HTTPS pages.
             return {
               name: name,
-              url: '/api/engine/serve-image/?path=' + encodeURIComponent(fullPath),
+              url: self._imageUrl(fullPath),
               path: fullPath,
             };
           });
+
+          // HTTPS + direct engine: fetch blob URLs
+          if (this._needsBlobUrls()) {
+            await this._loadBlobUrls(images);
+          }
 
           if (tab === 'edited')  this.preview.editedImages  = images;
           if (tab === 'failed')  this.preview.failedImages   = images;
@@ -767,7 +869,7 @@ function cropperApp() {
       window.AdarshEngine.open(img.url, img.name, function (dataUrl, name) {
         // Update the currently displayed image URL
         img.url = dataUrl;
-      });
+      }, img.path);
 
       // Build image list for navigation inside the editor
       var engineList = images.map(function (i) {

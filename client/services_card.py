@@ -355,7 +355,7 @@ class ClientCardService(BaseService):
                 return ServiceResult(success=False, message='Access denied')
             
             # Delegate entirely to WorkflowService (handles permissions + all guards)
-            from core.services.workflow_service import WorkflowService
+            from idcards.services_workflow import WorkflowService
             return WorkflowService.transition(card, new_status, user=user)
             
         except Exception as e:
@@ -384,7 +384,7 @@ class ClientCardService(BaseService):
                 return ServiceResult(success=False, message='Access denied')
             
             # Delegate entirely to WorkflowService (handles permissions + all guards)
-            from core.services.workflow_service import WorkflowService
+            from idcards.services_workflow import WorkflowService
             return WorkflowService.bulk_transition(table, card_ids, new_status, user=user)
             
         except Exception as e:
