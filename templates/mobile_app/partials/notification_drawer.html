@@ -1,0 +1,136 @@
+{% load static %}
+<!-- Notification Drawer — slides in from the RIGHT -->
+<!-- Triggered by $dispatch('open-notification-drawer') from navbar bell -->
+<div x-data="notificationDrawer()"
+     x-on:open-notification-drawer.window="open()"
+     class="pwa-drawer-root">
+
+    <!-- Dark overlay -->
+    <div x-show="isOpen"
+         x-transition:enter="transition-opacity ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition-opacity ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         @click="close()"
+         class="fixed inset-0 z-[300] bg-black/40 backdrop-blur-[1px]"
+         style="display:none;">
+    </div>
+
+    <!-- Drawer panel -->
+    <div x-show="isOpen"
+         x-transition:enter="transition-transform ease-out duration-250"
+         x-transition:enter-start="translate-x-full"
+         x-transition:enter-end="translate-x-0"
+         x-transition:leave="transition-transform ease-in duration-200"
+         x-transition:leave-start="translate-x-0"
+         x-transition:leave-end="translate-x-full"
+         class="fixed top-0 right-0 bottom-0 z-[301] w-[82vw] max-w-[320px] bg-white shadow-2xl flex flex-col"
+         style="display:none;">
+
+        <!-- Header -->
+        <div class="relative flex items-center justify-between px-5 pt-[calc(env(safe-area-inset-top,0px)+14px)] pb-4 bg-gradient-to-br from-orange-400 to-rose-500 flex-shrink-0">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center text-white border border-white/30">
+                    <i class="fa-solid fa-bell text-sm"></i>
+                </div>
+                <div>
+                    <p class="text-white font-semibold text-sm leading-tight">Notifications</p>
+                    {% if notification_count > 0 %}
+                    <p class="text-white/70 text-[10px] leading-none mt-0.5">{{ notification_count }} unread</p>
+                    {% else %}
+                    <p class="text-white/70 text-[10px] leading-none mt-0.5">All caught up</p>
+                    {% endif %}
+                </div>
+            </div>
+            <button @click="close()" class="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white active:bg-white/30 transition-colors">
+                <i class="fa-solid fa-xmark text-sm"></i>
+            </button>
+        </div>
+
+        <!-- Activities list -->
+        <div class="flex-1 overflow-y-auto pb-[env(safe-area-inset-bottom,16px)]" style="-webkit-overflow-scrolling:touch;">
+            {% if recent_activities %}
+                {% for activity in recent_activities %}
+                <div class="flex items-start gap-3 px-4 py-3 border-b border-gray-50">
+                    <!-- Icon -->
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5
+                         {% if activity.status == 'verified' %}bg-green-100 text-green-500
+                         {% elif activity.status == 'approved' %}bg-blue-100 text-blue-500
+                         {% elif activity.status == 'download' %}bg-purple-100 text-purple-500
+                         {% elif activity.status == 'pending' %}bg-amber-100 text-amber-500
+                         {% elif activity.status == 'pool' %}bg-red-100 text-red-500
+                         {% else %}bg-gray-100 text-gray-400{% endif %}">
+                        <i class="fa-solid text-[11px]
+                             {% if activity.status == 'verified' %}fa-check-circle
+                             {% elif activity.status == 'approved' %}fa-check-double
+                             {% elif activity.status == 'download' %}fa-download
+                             {% elif activity.status == 'pending' %}fa-clock
+                             {% elif activity.status == 'pool' %}fa-layer-group
+                             {% else %}fa-info-circle{% endif %}"></i>
+                    </div>
+                    <!-- Text -->
+                    <div class="flex-1 min-w-0">
+                        <p class="text-[12px] font-semibold text-gray-800 leading-snug truncate">{{ activity.name }}</p>
+                        <p class="text-[10px] text-gray-500 mt-0.5 leading-snug">
+                            <span class="font-medium
+                                {% if activity.status == 'verified' %}text-green-600
+                                {% elif activity.status == 'approved' %}text-blue-600
+                                {% elif activity.status == 'download' %}text-purple-600
+                                {% elif activity.status == 'pending' %}text-amber-600
+                                {% elif activity.status == 'pool' %}text-red-600
+                                {% else %}text-gray-500{% endif %}">
+                                {{ activity.status_display }}
+                            </span>
+                            &middot; {{ activity.table_name }}
+                        </p>
+                        <p class="text-[9px] text-gray-400 mt-0.5">{{ activity.updated_at }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+
+                <!-- View All link -->
+                <div class="px-4 py-4">
+                    <a href="{% url 'mobile_app:notifications' %}"
+                       @click="close()"
+                       class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-[12px] font-semibold border border-orange-200 text-orange-500 active:bg-orange-50 transition-colors">
+                        <i class="fa-solid fa-bell text-sm"></i>
+                        View All Notifications
+                    </a>
+                </div>
+            {% else %}
+                <!-- Empty state -->
+                <div class="flex flex-col items-center justify-center h-64 px-6 text-center">
+                    <div class="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mb-3">
+                        <i class="fa-solid fa-bell-slash text-2xl text-gray-300"></i>
+                    </div>
+                    <p class="text-[12px] font-semibold text-gray-500">No recent updates</p>
+                    <p class="text-[10px] text-gray-400 mt-1">Card activity will appear here</p>
+                    <a href="{% url 'mobile_app:notifications' %}"
+                       @click="close()"
+                       class="mt-4 px-4 py-2 rounded-lg text-[11px] font-semibold text-orange-500 border border-orange-200 active:bg-orange-50">
+                        Open Notifications
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+
+    </div><!-- /drawer panel -->
+</div><!-- /drawer root -->
+
+<script>
+function notificationDrawer() {
+    return {
+        isOpen: false,
+        open() {
+            this.isOpen = true;
+            document.body.classList.add('overflow-hidden');
+        },
+        close() {
+            this.isOpen = false;
+            document.body.classList.remove('overflow-hidden');
+        }
+    };
+}
+</script>

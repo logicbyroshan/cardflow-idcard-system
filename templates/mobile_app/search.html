@@ -8,7 +8,8 @@
 {{ results|json_script:"_search_init_results" }}
 {{ query|json_script:"_search_init_query" }}
 
-{# Hidden anchor used to build client-side card-detail URLs #}
+{# Hidden anchor used to build client-side card-detail URLs.
+   123456789 is a placeholder ID that gets stripped to extract the base path. #}
 <a id="_card_url_tmpl" href="{% url 'mobile_app:card_detail' card_id=123456789 %}" style="display:none"></a>
 
 <div class="min-h-screen bg-gray-50 pb-20" x-data="searchApp()">
@@ -53,7 +54,7 @@
                    class="flex items-center gap-3 bg-white rounded-md p-3 shadow-sm border border-gray-100 hover:shadow-md active:scale-[0.98] transition-all">
                     <!-- Photo -->
                     <div class="w-11 h-11 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
-                        <img x-show="card.photo_url" :src="card.photo_url" class="w-full h-full object-cover" alt="">
+                        <img x-show="card.photo_url" :src="card.photo_url" class="w-full h-full object-cover" :alt="card.name + ' photo'">
                         <i x-show="!card.photo_url" class="fa-solid fa-user text-gray-400 text-sm"></i>
                     </div>
                     <!-- Info -->
@@ -138,7 +139,7 @@
                     const json = await res.json();
                     if (json.success) this.results = json.data.results;
                 } catch (e) {
-                    console.error('Search error', e);
+                    // silently ignore network errors
                 } finally {
                     this.loading = false;
                 }

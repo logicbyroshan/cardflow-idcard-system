@@ -13,121 +13,173 @@
     <div class="flex-1 overflow-y-scroll pwa-home-snap"
          style="scroll-snap-type:y mandatory; -webkit-overflow-scrolling:touch;">
 
-        <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-             SNAP SECTION 1 â€” Stats + Recent Client Updates
-        â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+        <!-- SNAP SECTION 1 - Stats + Recent Client Updates -->
         <div class="flex flex-col pwa-snap-section">
 
-            <!-- STATS GRID -->
-            <div class="pt-3 pb-2 px-3 flex-shrink-0">
-                <div class="pwa-stats-grid">
+            <!-- STATS: 2x2 grid + full-width Total -->
+            <div class="px-3 pt-3 pb-2 flex-shrink-0">
 
-                    <!-- Total -->
-                    <div class="pwa-stat-card-sm" style="border-bottom:3px solid #667eea;">
-                        <p class="pwa-stat-val-sm" style="color:#667eea;">{{ total_cards|default:0 }}</p>
-                        <p class="pwa-stat-lbl-sm">Total</p>
-                    </div>
+                <!-- 2-column grid: Pending / Verified / Approved / Download -->
+                <div class="grid grid-cols-2 gap-2 mb-2">
 
-                    <!-- Pending -->
-                    <div class="pwa-stat-card-sm" style="border-bottom:3px solid #f59e0b;">
-                        <p class="pwa-stat-val-sm" style="color:#d97706;">{{ pending_count|default:0 }}</p>
-                        <p class="pwa-stat-lbl-sm">Pend.</p>
-                    </div>
+                    <!-- Pending — tappable link to pending list (H1 fix) -->
+                    <a {% if perm_idcard_pending_list %}href="{% url 'mobile_app:table_picker' status='pending' %}"{% endif %}
+                       class="bg-white rounded-xl px-3.5 py-3 border border-amber-100 shadow-sm flex items-center gap-3 active:scale-[0.98] transition-transform">
+                        <div class="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
+                            <i class="fa-solid fa-clock text-amber-500 text-[15px]"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-[22px] font-extrabold text-gray-800 leading-none tracking-tight">{{ pending_count|default:0 }}</p>
+                            <p class="text-[10px] text-gray-400 mt-0.5 font-medium">Pending</p>
+                        </div>
+                    </a>
 
-                    <!-- Verified -->
-                    <div class="pwa-stat-card-sm" style="border-bottom:3px solid #22c55e;">
-                        <p class="pwa-stat-val-sm" style="color:#16a34a;">{{ verified_count|default:0 }}</p>
-                        <p class="pwa-stat-lbl-sm">Verif.</p>
-                    </div>
+                    <!-- Verified — tappable link to verified list (H1 fix) -->
+                    <a {% if perm_idcard_verified_list %}href="{% url 'mobile_app:table_picker' status='verified' %}"{% endif %}
+                       class="bg-white rounded-xl px-3.5 py-3 border border-green-100 shadow-sm flex items-center gap-3 active:scale-[0.98] transition-transform">
+                        <div class="w-9 h-9 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0">
+                            <i class="fa-solid fa-circle-check text-green-500 text-[15px]"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-[22px] font-extrabold text-gray-800 leading-none tracking-tight">{{ verified_count|default:0 }}</p>
+                            <p class="text-[10px] text-gray-400 mt-0.5 font-medium">Verified</p>
+                        </div>
+                    </a>
 
-                    <!-- Approved -->
-                    <div class="pwa-stat-card-sm" style="border-bottom:3px solid #3b82f6;">
-                        <p class="pwa-stat-val-sm" style="color:#2563eb;">{{ approved_count|default:0 }}</p>
-                        <p class="pwa-stat-lbl-sm">Appv.</p>
-                    </div>
+                    <!-- Approved — tappable link to approved list (H1 fix) -->
+                    <a {% if perm_idcard_approved_list %}href="{% url 'mobile_app:table_picker' status='approved' %}"{% endif %}
+                       class="bg-white rounded-xl px-3.5 py-3 border border-blue-100 shadow-sm flex items-center gap-3 active:scale-[0.98] transition-transform">
+                        <div class="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+                            <i class="fa-solid fa-check-double text-blue-500 text-[15px]"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-[22px] font-extrabold text-gray-800 leading-none tracking-tight">{{ approved_count|default:0 }}</p>
+                            <p class="text-[10px] text-gray-400 mt-0.5 font-medium">Approved</p>
+                        </div>
+                    </a>
 
-                    <!-- Download -->
-                    <div class="pwa-stat-card-sm" style="border-bottom:3px solid #8b5cf6;">
-                        <p class="pwa-stat-val-sm" style="color:#7c3aed;">{{ download_count|default:0 }}</p>
-                        <p class="pwa-stat-lbl-sm">Dwnld</p>
-                    </div>
+                    <!-- Download — tappable link to download list (H1 fix) -->
+                    <a {% if perm_idcard_download_list %}href="{% url 'mobile_app:table_picker' status='download' %}"{% endif %}
+                       class="bg-white rounded-xl px-3.5 py-3 border border-purple-100 shadow-sm flex items-center gap-3 active:scale-[0.98] transition-transform">
+                        <div class="w-9 h-9 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0">
+                            <i class="fa-solid fa-download text-purple-500 text-[15px]"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-[22px] font-extrabold text-gray-800 leading-none tracking-tight">{{ download_count|default:0 }}</p>
+                            <p class="text-[10px] text-gray-400 mt-0.5 font-medium">Download</p>
+                        </div>
+                    </a>
 
                 </div>
+
+                <!-- Full-width Total card -->
+                <div class="rounded-xl px-4 py-3 flex items-center justify-between shadow-md"
+                     style="background:linear-gradient(135deg,#667eea,#764ba2);">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
+                            <i class="fa-solid fa-id-card text-white text-[16px]"></i>
+                        </div>
+                        <div>
+                            <p class="text-white/70 text-[10px] font-medium uppercase tracking-wide">Total ID Cards</p>
+                            <p class="text-[28px] font-extrabold text-white leading-none tracking-tight">{{ total_cards|default:0 }}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-white/50 text-[9px]">All statuses</p>
+                        <i class="fa-solid fa-chevron-right text-white/30 text-sm mt-1 block"></i>
+                    </div>
+                </div>
+
             </div>
 
-            <!-- RECENT CLIENT UPDATES â€” fills remaining height of section -->
-            {% if is_super_admin or is_admin_staff and perm_idcard_client_list or is_client or is_client_staff %}
-            <div class="px-3 pb-3 mt-2 flex-1 flex flex-col min-h-0">
+            <!-- RECENT CLIENT UPDATES - 2 columns: Pending + Verified -->
+            {% if is_super_admin or is_admin_staff or is_client or is_client_staff %}
+            <div class="px-3 pb-3 mt-1 flex-1 flex flex-col min-h-0">
+
                 <div class="flex items-center justify-between mb-2 flex-shrink-0">
                     {% if is_super_admin or is_admin_staff %}
-                    <h2 class="pwa-section-title" style="font-size:12px;">Recent Client Updates</h2>
-                    <a href="{% url 'mobile_app:clients_list' %}"
-                       class="text-[10px] font-semibold" style="color:#667eea;">View all</a>
+                    <h2 class="text-[12px] font-bold text-gray-700 tracking-tight uppercase">Recent Client Updates</h2>
+                    <a href="{% url 'mobile_app:clients_list' %}" class="text-[10px] font-semibold text-[#667eea]">View all</a>
                     {% else %}
-                    <h2 class="pwa-section-title" style="font-size:12px;">My Groups</h2>
-                    <a href="{% url 'mobile_app:groups_overview' %}"
-                       class="text-[10px] font-semibold" style="color:#667eea;">View all</a>
+                    <h2 class="text-[12px] font-bold text-gray-700 tracking-tight uppercase">My Groups</h2>
+                    <a href="{% url 'mobile_app:groups_overview' %}" class="text-[10px] font-semibold text-[#667eea]">View all</a>
                     {% endif %}
                 </div>
+
                 {% if recent_client_updates %}
-                <div class="pwa-clients-table-wrap flex-1 flex flex-col min-h-0" x-data="recentClientsTable()">
-                    <div class="pwa-clients-table-scroll flex-1" style="max-height:unset; overflow-y:auto;">
-                        <table class="pwa-ct">
-                            <thead>
-                                <tr>
-                                    <th style="width:40%;">Client</th>
-                                    <th class="text-center" style="width:15%;">Pend.</th>
-                                    <th class="text-center" style="width:15%;">Verif.</th>
-                                    <th class="text-center" style="width:15%;">Appv.</th>
-                                    <th class="text-center" style="width:15%;">Dwnld</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for rc in recent_client_updates %}
-                                <tr class="cursor-pointer"
-                                    :class="expanded === '{{ rc.client_id }}' ? 'bg-indigo-50/40' : 'active:bg-gray-50'"
-                                    @click="toggle('{{ rc.client_id }}')">
-                                    <td>
-                                        <span class="font-semibold text-gray-800 truncate block">{{ rc.client_name }}</span>
-                                    </td>
-                                    <td class="text-center font-bold text-amber-600">{{ rc.pending }}</td>
-                                    <td class="text-center font-bold text-green-600">{{ rc.verified }}</td>
-                                    <td class="text-center font-bold text-blue-600">{{ rc.approved }}</td>
-                                    <td class="text-center font-bold text-purple-600">{{ rc.download }}</td>
-                                </tr>
-                                {% if rc.tables %}
-                                {% for tbl in rc.tables %}
-                                <tr x-show="expanded === '{{ rc.client_id }}'"
-                                    class="pwa-ct-sub bg-indigo-50/40"
-                                    style="display:none;">
-                                    <td>
-                                        <a href="{% url 'mobile_app:card_list' table_id=tbl.id status='pending' %}"
-                                           class="flex items-center gap-1 text-[10px] font-medium text-gray-600 truncate">
-                                            <i class="fa-solid fa-table text-indigo-300 flex-shrink-0 text-[8px]"></i>
-                                            <span class="truncate">{{ tbl.name }}</span>
-                                        </a>
-                                    </td>
-                                    <td class="text-center font-bold text-amber-600">{{ tbl.pending }}</td>
-                                    <td class="text-center font-bold text-green-600">{{ tbl.verified }}</td>
-                                    <td class="text-center font-bold text-blue-600">{{ tbl.approved }}</td>
-                                    <td class="text-center font-bold text-purple-600">{{ tbl.download }}</td>
-                                </tr>
-                                {% empty %}
-                                <tr x-show="expanded === '{{ rc.client_id }}'" style="display:none;">
-                                    <td colspan="5" class="py-1 px-3 text-[10px] text-gray-400">No tables found</td>
-                                </tr>
-                                {% endfor %}
-                                {% endif %}
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                <div class="flex-1 min-h-0 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden flex flex-col"
+                     x-data="recentClientsTable()">
+
+                    <!-- Table header -->
+                    <div class="flex items-center border-b border-gray-100 bg-gray-50 flex-shrink-0" style="min-height:38px;">
+                        <div class="flex-1 px-3 py-2 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Client / Table</div>
+                        <div class="w-[70px] text-center py-2 text-[10px] font-bold text-amber-600 uppercase tracking-wider">Pending</div>
+                        <div class="w-[70px] text-center py-2 text-[10px] font-bold text-green-600 uppercase tracking-wider">Verified</div>
+                    </div>
+
+                    <!-- Scrollable rows -->
+                    <div class="flex-1 overflow-y-auto" style="-webkit-overflow-scrolling:touch;">
+                        {% for rc in recent_client_updates %}
+
+                        <!-- Client parent row — expand (admins) or navigate to groups (clients) — C3 fix -->
+                        <div class="flex items-center border-b border-gray-50 cursor-pointer select-none"
+                             style="min-height:46px;"
+                             :class="expanded === '{{ rc.client_id }}_{{ forloop.counter }}' ? 'bg-indigo-50/60' : 'active:bg-gray-50'"
+                             @click="{% if rc.tables %}toggle('{{ rc.client_id }}_{{ forloop.counter }}'){% else %}window.location.href='{% url 'mobile_app:groups_overview' %}'{% endif %}">
+                            <div class="flex-1 px-3 py-2 flex items-center gap-2 min-w-0">
+                                <i class="fa-solid text-[9px] text-gray-300 flex-shrink-0 transition-transform duration-200"
+                                   :class="expanded === '{{ rc.client_id }}_{{ forloop.counter }}' ? 'fa-chevron-down text-indigo-400' : 'fa-chevron-right'"
+                                   {% if not rc.tables %}style="visibility:hidden;"{% endif %}></i>
+                                <span class="text-[13px] font-semibold text-gray-800 truncate leading-tight">{{ rc.client_name }}</span>
+                            </div>
+                            <div class="w-[70px] text-center py-2">
+                                <span class="text-[15px] font-extrabold {% if rc.pending > 0 %}text-amber-500{% else %}text-gray-300{% endif %}">{{ rc.pending }}</span>
+                            </div>
+                            <div class="w-[70px] text-center py-2">
+                                <span class="text-[15px] font-extrabold {% if rc.verified > 0 %}text-green-500{% else %}text-gray-300{% endif %}">{{ rc.verified }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Expanded sub-rows: one per table -->
+                        {% if rc.tables %}
+                        {% for tbl in rc.tables %}
+                        <div x-show="expanded === '{{ rc.client_id }}_{{ forloop.parentloop.counter }}'"
+                             x-transition:enter="transition-all duration-150"
+                             x-transition:enter-start="opacity-0 -translate-y-1"
+                             x-transition:enter-end="opacity-100 translate-y-0"
+                             class="flex items-center border-b border-indigo-50 bg-indigo-50/30"
+                             style="min-height:40px; display:none;">
+                            <div class="flex-1 px-3 py-2 flex items-center gap-2 min-w-0 pl-8">
+                                <i class="fa-solid fa-table-cells text-indigo-300 text-[9px] flex-shrink-0"></i>
+                                <a href="{% url 'mobile_app:card_list' table_id=tbl.id status='pending' %}"
+                                   class="text-[11px] font-medium text-indigo-600 truncate leading-tight">{{ tbl.name }}</a>
+                            </div>
+                            <div class="w-[70px] text-center py-2">
+                                <span class="text-[13px] font-bold {% if tbl.pending > 0 %}text-amber-500{% else %}text-gray-300{% endif %}">{{ tbl.pending }}</span>
+                            </div>
+                            <div class="w-[70px] text-center py-2">
+                                <span class="text-[13px] font-bold {% if tbl.verified > 0 %}text-green-500{% else %}text-gray-300{% endif %}">{{ tbl.verified }}</span>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div x-show="expanded === '{{ rc.client_id }}_{{ forloop.counter }}'" style="display:none;"
+                             class="px-8 py-2 text-[10px] text-gray-400 bg-indigo-50/20 border-b border-indigo-50">
+                            No active tables
+                        </div>
+                        {% endfor %}
+                        {% endif %}
+
+                        {% endfor %}
                     </div>
                 </div>
+
                 {% else %}
-                <div class="flex-1 flex items-center justify-center">
-                    <p class="text-[11px] text-gray-400">No recent client activity</p>
+                <div class="flex-1 flex flex-col items-center justify-center text-gray-300">
+                    <i class="fa-solid fa-chart-bar text-3xl mb-2 opacity-50"></i>
+                    <p class="text-[11px] font-medium text-gray-400">No recent client activity</p>
                 </div>
                 {% endif %}
+
             </div>
             {% endif %}
 
@@ -217,6 +269,12 @@
 
     <!-- === HAMBURGER SIDE DRAWER === -->
     {% include "mobile_app/partials/hamburger_drawer.html" %}
+
+    <!-- === NOTIFICATION RIGHT DRAWER === -->
+    {% include "mobile_app/partials/notification_drawer.html" %}
+
+    <!-- === PROFILE LEFT DRAWER === -->
+    {% include "mobile_app/partials/profile_drawer.html" %}
 
 </div>
 

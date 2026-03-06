@@ -4,185 +4,454 @@
 {% block title %}Settings - Adarsh ID Cards{% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-gray-50 pb-20">
-    <!-- Header -->
-    <div class="sticky top-0 z-40 flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-brand-light to-brand-dark">
-        <a href="{% url 'mobile_app:home' %}" class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all">
-            <i class="fa-solid fa-arrow-left text-sm"></i>
-        </a>
-        <div class="flex-1">
-            <h1 class="text-white font-bold text-sm">Settings</h1>
-            <p class="text-white/70 text-[10px]">App configuration</p>
-        </div>
-    </div>
+<div x-data="settingsApp()" class="flex flex-col bg-gray-50" style="height:100dvh; overflow:hidden;">
 
-    <!-- Overview Stats -->
-    <div class="px-4 pt-4">
-        <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-            <div class="px-4 py-3 border-b border-gray-100">
-                <h3 class="text-sm font-bold text-gray-800">
-                    <i class="fa-solid fa-chart-bar text-brand-light mr-1.5"></i>Overview
-                </h3>
-            </div>
-            <div class="grid grid-cols-3 gap-0 divide-x divide-gray-100">
-                <div class="text-center py-4">
-                    <p class="text-xl font-bold text-brand-light">{{ group_count }}</p>
-                    <p class="text-[10px] text-gray-500 mt-0.5">Groups</p>
-                </div>
-                <div class="text-center py-4">
-                    <p class="text-xl font-bold text-green-500">{{ table_count }}</p>
-                    <p class="text-[10px] text-gray-500 mt-0.5">Tables</p>
-                </div>
-                <div class="text-center py-4">
-                    <p class="text-xl font-bold text-purple-500">{{ total_cards }}</p>
-                    <p class="text-[10px] text-gray-500 mt-0.5">Total Cards</p>
-                </div>
+    <!-- HEADER + TAB BAR -->
+    <div class="flex-shrink-0">
+
+        <!-- Title row -->
+        <div class="flex items-center gap-3 px-4 pt-[calc(env(safe-area-inset-top,0px)+10px)] pb-3.5
+                    bg-gradient-to-r from-[#667eea] to-[#764ba2]">
+            <a href="{% url 'mobile_app:home' %}"
+               class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white active:bg-white/30 transition-colors flex-shrink-0">
+                <i class="fa-solid fa-arrow-left text-sm"></i>
+            </a>
+            <div class="flex-1 min-w-0">
+                <h1 class="text-white font-bold text-[14px] leading-tight">Settings</h1>
+                <p class="text-white/70 text-[10px]">App configuration &amp; info</p>
             </div>
         </div>
-    </div>
 
-    {% if is_super_admin or is_admin_staff %}
-    <!-- Admin Stats -->
-    <div class="px-4 pt-3">
-        <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-            <div class="px-4 py-3 border-b border-gray-100">
-                <h3 class="text-sm font-bold text-gray-800">
-                    <i class="fa-solid fa-shield-halved text-amber-500 mr-1.5"></i>Admin Overview
-                </h3>
-            </div>
-            <div class="grid grid-cols-2 gap-0">
-                <div class="flex items-center gap-3 p-3 border-b border-r border-gray-100">
-                    <div class="w-9 h-9 rounded-lg bg-sky-50 flex items-center justify-center text-sky-500"><i class="fa-solid fa-building text-sm"></i></div>
-                    <div>
-                        <p class="text-lg font-bold text-gray-800">{{ admin_client_count|default:0 }}</p>
-                        <p class="text-[10px] text-gray-500">Clients</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-3 p-3 border-b border-gray-100">
-                    <div class="w-9 h-9 rounded-lg bg-yellow-50 flex items-center justify-center text-yellow-500"><i class="fa-solid fa-users text-sm"></i></div>
-                    <div>
-                        <p class="text-lg font-bold text-gray-800">{{ admin_staff_count|default:0 }}</p>
-                        <p class="text-[10px] text-gray-500">Staff</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-3 p-3 border-r border-gray-100">
-                    <div class="w-9 h-9 rounded-lg bg-green-50 flex items-center justify-center text-green-500"><i class="fa-solid fa-table-list text-sm"></i></div>
-                    <div>
-                        <p class="text-lg font-bold text-gray-800">{{ admin_table_count|default:0 }}</p>
-                        <p class="text-[10px] text-gray-500">All Tables</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-3 p-3">
-                    <div class="w-9 h-9 rounded-lg bg-violet-50 flex items-center justify-center text-violet-500"><i class="fa-solid fa-id-card text-sm"></i></div>
-                    <div>
-                        <p class="text-lg font-bold text-gray-800">{{ admin_total_cards|default:0 }}</p>
-                        <p class="text-[10px] text-gray-500">All Cards</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- Quick Links -->
-    <div class="px-4 pt-3">
-        <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-            <div class="px-4 py-3 border-b border-gray-100">
-                <h3 class="text-sm font-bold text-gray-800">
-                    <i class="fa-solid fa-link text-brand-light mr-1.5"></i>Quick Links
-                </h3>
-            </div>
-            <div class="divide-y divide-gray-50">
-                <a href="{% url 'mobile_app:groups_overview' %}" class="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-lg bg-brand-light/10 flex items-center justify-center"><i class="fa-solid fa-layer-group text-brand-light text-xs"></i></div>
-                        <span class="text-sm text-gray-700">Groups & Tables</span>
-                    </div>
-                    <i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
-                </a>
-                {% if is_client %}
-                <a href="{% url 'mobile_app:staff_manage' %}" class="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-lg bg-yellow-50 flex items-center justify-center"><i class="fa-solid fa-users text-yellow-500 text-xs"></i></div>
-                        <span class="text-sm text-gray-700">Manage Staff</span>
-                    </div>
-                    <i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
-                </a>
+        <!-- Tab bar -->
+        <div class="flex bg-white border-b border-gray-100 shadow-sm">
+            <button @click="tab='notifications'"
+                    :class="tab==='notifications' ? 'border-b-2 border-[#667eea] text-[#667eea]' : 'text-gray-400'"
+                    class="flex-1 flex flex-col items-center gap-1 px-1 py-2.5 text-[9px] font-semibold transition-colors relative">
+                <i class="fa-solid fa-bell text-[14px]"></i>
+                <span>Notify</span>
+                {% if unread_system_count > 0 %}
+                <span class="absolute top-1.5 left-[calc(50%+4px)] w-3.5 h-3.5 bg-red-500 rounded-full text-[7px] text-white flex items-center justify-center font-bold leading-none">{{ unread_system_count }}</span>
                 {% endif %}
-                <a href="{% url 'mobile_app:notifications' %}" class="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center"><i class="fa-solid fa-bell text-red-500 text-xs"></i></div>
-                        <span class="text-sm text-gray-700">Notifications</span>
-                    </div>
-                    <i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
-                </a>
-                <a href="{% url 'mobile_app:profile' %}" class="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center"><i class="fa-solid fa-user text-purple-500 text-xs"></i></div>
-                        <span class="text-sm text-gray-700">My Profile</span>
-                    </div>
-                    <i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
-                </a>
-                {% if is_super_admin or is_admin_staff %}
-                <a href="/" class="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center"><i class="fa-solid fa-desktop text-gray-500 text-xs"></i></div>
-                        <span class="text-sm text-gray-700">Desktop Panel</span>
-                    </div>
-                    <i class="fa-solid fa-arrow-up-right-from-square text-gray-300 text-xs"></i>
-                </a>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-
-    <!-- Client Info -->
-    {% if client %}
-    <div class="px-4 pt-3">
-        <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-            <div class="px-4 py-3 border-b border-gray-100">
-                <h3 class="text-sm font-bold text-gray-800">
-                    <i class="fa-solid fa-building text-brand-light mr-1.5"></i>Client Info
-                </h3>
-            </div>
-            <div class="p-4 space-y-2">
-                <div class="flex items-center justify-between">
-                    <span class="text-xs text-gray-500">Name</span>
-                    <span class="text-xs font-medium text-gray-800">{{ client.name }}</span>
-                </div>
-                {% if client.email %}
-                <div class="flex items-center justify-between">
-                    <span class="text-xs text-gray-500">Email</span>
-                    <span class="text-xs font-medium text-gray-800">{{ client.email }}</span>
-                </div>
-                {% endif %}
-                {% if client.phone %}
-                <div class="flex items-center justify-between">
-                    <span class="text-xs text-gray-500">Phone</span>
-                    <span class="text-xs font-medium text-gray-800">{{ client.phone }}</span>
-                </div>
-                {% endif %}
-                <div class="flex items-center justify-between">
-                    <span class="text-xs text-gray-500">Status</span>
-                    <span class="text-xs font-semibold {% if client.status == 'active' %}text-green-600{% else %}text-red-500{% endif %}">{{ client.status|title }}</span>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- Logout -->
-    <div class="px-4 pt-4 pb-4">
-        <form method="post" action="/auth/logout/">
-            {% csrf_token %}
-            <input type="hidden" name="next" value="/app/">
-            <button type="submit" class="block w-full py-3 text-center text-sm font-semibold text-red-500 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 transition">
-                <i class="fa-solid fa-right-from-bracket mr-2"></i>Logout
             </button>
-        </form>
+            <button @click="tab='logs'"
+                    :class="tab==='logs' ? 'border-b-2 border-[#667eea] text-[#667eea]' : 'text-gray-400'"
+                    class="flex-1 flex flex-col items-center gap-1 px-1 py-2.5 text-[9px] font-semibold transition-colors">
+                <i class="fa-solid fa-clock-rotate-left text-[14px]"></i>
+                <span>Logs</span>
+            </button>
+            <button @click="tab='email'"
+                    :class="tab==='email' ? 'border-b-2 border-[#667eea] text-[#667eea]' : 'text-gray-400'"
+                    class="flex-1 flex flex-col items-center gap-1 px-1 py-2.5 text-[9px] font-semibold transition-colors">
+                <i class="fa-solid fa-envelope text-[14px]"></i>
+                <span>Email</span>
+            </button>
+            <button @click="tab='system'"
+                    :class="tab==='system' ? 'border-b-2 border-[#667eea] text-[#667eea]' : 'text-gray-400'"
+                    class="flex-1 flex flex-col items-center gap-1 px-1 py-2.5 text-[9px] font-semibold transition-colors">
+                <i class="fa-solid fa-circle-info text-[14px]"></i>
+                <span>System</span>
+            </button>
+        </div>
     </div>
 
-    <!-- Bottom Nav -->
+    <!-- SCROLLABLE CONTENT AREA -->
+    <div class="flex-1 overflow-y-auto" style="-webkit-overflow-scrolling:touch; padding-bottom:calc(env(safe-area-inset-bottom,0px) + 70px);">
+
+        <!-- ======== TAB: NOTIFICATIONS ======== -->
+        <div x-show="tab==='notifications'">
+            <div class="px-4 pt-4 pb-2 flex items-center justify-between">
+                <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">System Notifications</p>
+                {% if unread_system_count > 0 %}
+                <span class="text-[10px] font-semibold text-[#667eea]">{{ unread_system_count }} unread</span>
+                {% else %}
+                <span class="text-[10px] text-gray-400">All caught up</span>
+                {% endif %}
+            </div>
+
+            {% if system_notifications %}
+            <div class="px-4 flex flex-col gap-2 pb-4">
+                {% for notif in system_notifications %}
+                <div class="bg-white rounded-xl border shadow-sm overflow-hidden
+                            {% if not notif.is_read %}border-l-4 border-l-[#667eea]{% else %}border-gray-100{% endif %}">
+                    <div class="flex items-start gap-3 p-3.5">
+                        <div class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                             style="background-color:{{ notif.priority_color }}20;">
+                            <i class="fa-solid {{ notif.icon_class }} text-[13px]"
+                               style="color:{{ notif.priority_color }};"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-start justify-between gap-2">
+                                <p class="text-[12px] font-bold text-gray-800 leading-snug">{{ notif.title }}</p>
+                                {% if not notif.is_read %}
+                                <span class="w-2 h-2 rounded-full bg-[#667eea] flex-shrink-0 mt-1"></span>
+                                {% endif %}
+                            </div>
+                            <p class="text-[11px] text-gray-500 mt-0.5 leading-snug">{{ notif.message }}</p>
+                            <div class="flex items-center gap-2 mt-1.5">
+                                <span class="text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
+                                      style="background-color:{{ notif.priority_color }}18;color:{{ notif.priority_color }};">
+                                    {{ notif.priority|title }}
+                                </span>
+                                <span class="text-[9px] text-gray-400">{{ notif.category }}</span>
+                                <span class="text-[9px] text-gray-300 ml-auto">{{ notif.created_at }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="flex flex-col items-center justify-center py-16 px-6 text-center">
+                <div class="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mb-3">
+                    <i class="fa-solid fa-bell-slash text-2xl text-gray-300"></i>
+                </div>
+                <p class="text-[13px] font-semibold text-gray-400">No notifications</p>
+                <p class="text-[11px] text-gray-300 mt-1">System announcements will appear here</p>
+            </div>
+            {% endif %}
+
+            <div class="px-4 pb-4">
+                <a href="{% url 'mobile_app:notifications' %}"
+                   class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-[12px] font-semibold border border-[#667eea]/30 text-[#667eea] active:bg-indigo-50 transition-colors">
+                    <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                    View Activity Notifications
+                </a>
+            </div>
+        </div>
+
+
+        <!-- ======== TAB: LOGS ======== -->
+        <div x-show="tab==='logs'" style="display:none;">
+            <div class="px-4 pt-4 pb-2 flex items-center justify-between">
+                <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Recent Card Activity</p>
+                <span class="text-[10px] text-gray-400">Last {{ log_activities|length }} events</span>
+            </div>
+
+            {% if log_activities %}
+            <div class="bg-white mx-4 rounded-xl border border-gray-100 shadow-sm overflow-hidden mb-4">
+                <div class="flex items-center px-3 py-2 bg-gray-50 border-b border-gray-100">
+                    <span class="w-7 flex-shrink-0 mr-2"></span>
+                    <span class="flex-[3] text-[9px] font-bold text-gray-400 uppercase tracking-wider pr-2">Name</span>
+                    <span class="w-[68px] text-[9px] font-bold text-gray-400 uppercase tracking-wider text-center">Status</span>
+                    <span class="flex-1 text-[9px] font-bold text-gray-400 uppercase tracking-wider text-right">Time</span>
+                </div>
+                {% for act in log_activities %}
+                <div class="flex items-center px-3 py-2.5 border-b border-gray-50 last:border-b-0">
+                    <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mr-2
+                        {% if act.status == 'verified' %}bg-green-50 text-green-500
+                        {% elif act.status == 'approved' %}bg-blue-50 text-blue-500
+                        {% elif act.status == 'download' %}bg-purple-50 text-purple-500
+                        {% elif act.status == 'pending' %}bg-amber-50 text-amber-500
+                        {% elif act.status == 'pool' %}bg-red-50 text-red-500
+                        {% else %}bg-gray-50 text-gray-400{% endif %}">
+                        <i class="fa-solid text-[10px]
+                            {% if act.status == 'verified' %}fa-check-circle
+                            {% elif act.status == 'approved' %}fa-check-double
+                            {% elif act.status == 'download' %}fa-download
+                            {% elif act.status == 'pending' %}fa-clock
+                            {% elif act.status == 'pool' %}fa-layer-group
+                            {% else %}fa-info-circle{% endif %}"></i>
+                    </div>
+                    <div class="flex-[3] min-w-0 pr-2">
+                        <p class="text-[11px] font-semibold text-gray-800 truncate leading-tight">{{ act.name }}</p>
+                        <p class="text-[9px] text-gray-400 mt-0.5 truncate leading-none">{{ act.group_name }} &rsaquo; {{ act.table_name }}</p>
+                    </div>
+                    <div class="w-[68px] flex justify-center">
+                        <span class="pwa-status-badge
+                            {% if act.status == 'verified' %}pwa-badge-green
+                            {% elif act.status == 'approved' %}pwa-badge-blue
+                            {% elif act.status == 'download' %}pwa-badge-purple
+                            {% elif act.status == 'pending' %}pwa-badge-amber
+                            {% elif act.status == 'pool' %}pwa-badge-red
+                            {% else %}pwa-badge-gray{% endif %}">
+                            {{ act.status_display }}
+                        </span>
+                    </div>
+                    <div class="flex-1 text-right">
+                        <span class="text-[9px] text-gray-400">{{ act.updated_at }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="flex flex-col items-center justify-center py-16 px-6 text-center">
+                <div class="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mb-3">
+                    <i class="fa-solid fa-clock-rotate-left text-2xl text-gray-300"></i>
+                </div>
+                <p class="text-[13px] font-semibold text-gray-400">No activity yet</p>
+            </div>
+            {% endif %}
+        </div>
+
+
+        <!-- ======== TAB: EMAIL ======== -->
+        <div x-show="tab==='email'" style="display:none;">
+            <div class="px-4 pt-4 flex flex-col gap-3">
+
+                <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center">
+                            <i class="fa-solid fa-user text-indigo-500 text-[11px]"></i>
+                        </div>
+                        <p class="text-[12px] font-bold text-gray-700">Account Info</p>
+                    </div>
+                    <div class="divide-y divide-gray-50">
+                        <div class="flex items-center justify-between px-4 py-3">
+                            <span class="text-[11px] text-gray-500">Full Name</span>
+                            <span class="text-[12px] font-semibold text-gray-800">{{ user_name }}</span>
+                        </div>
+                        <div class="flex items-center justify-between px-4 py-3">
+                            <span class="text-[11px] text-gray-500">Email Address</span>
+                            <span class="text-[12px] font-semibold text-gray-800 truncate max-w-[180px]">{{ user_email|default:"—" }}</span>
+                        </div>
+                        <div class="flex items-center justify-between px-4 py-3">
+                            <span class="text-[11px] text-gray-500">Role</span>
+                            <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full
+                                {% if is_super_admin %}bg-violet-100 text-violet-600
+                                {% elif is_admin_staff %}bg-indigo-100 text-indigo-600
+                                {% elif is_client %}bg-sky-100 text-sky-600
+                                {% else %}bg-gray-100 text-gray-600{% endif %}">
+                                {% if is_super_admin %}Super Admin
+                                {% elif is_admin_staff %}Admin Staff
+                                {% elif is_client %}Client Admin
+                                {% else %}Client Staff{% endif %}
+                            </span>
+                        </div>
+                        {% if client %}
+                        <div class="flex items-center justify-between px-4 py-3">
+                            <span class="text-[11px] text-gray-500">Organization</span>
+                            <span class="text-[12px] font-semibold text-gray-800 truncate max-w-[180px]">{{ client.name }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if client and client.email %}
+                <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-lg bg-orange-50 flex items-center justify-center">
+                            <i class="fa-solid fa-envelope text-orange-500 text-[11px]"></i>
+                        </div>
+                        <p class="text-[12px] font-bold text-gray-700">Client Contact</p>
+                    </div>
+                    <div class="px-4 py-3">
+                        <p class="text-[11px] text-gray-500 mb-1">Registered email for this client</p>
+                        <p class="text-[13px] font-semibold text-gray-800">{{ client.email }}</p>
+                        {% if client.phone %}
+                        <p class="text-[11px] text-gray-500 mt-2.5 mb-0.5">Phone</p>
+                        <p class="text-[13px] font-semibold text-gray-800">{{ client.phone }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center">
+                            <i class="fa-solid fa-gear text-gray-500 text-[11px]"></i>
+                        </div>
+                        <p class="text-[12px] font-bold text-gray-700">Account Actions</p>
+                    </div>
+                    <div class="divide-y divide-gray-50">
+                        <a href="/panel/auth/change-password/"
+                           class="flex items-center justify-between px-4 py-3.5 active:bg-gray-50 transition-colors">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
+                                    <i class="fa-solid fa-lock text-amber-500 text-[11px]"></i>
+                                </div>
+                                <div>
+                                    <p class="text-[12px] font-semibold text-gray-800">Change Password</p>
+                                    <p class="text-[10px] text-gray-400">Update your login credentials</p>
+                                </div>
+                            </div>
+                            <i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
+                        </a>
+                        {% if is_super_admin or is_admin_staff %}
+                        <a href="/"
+                           class="flex items-center justify-between px-4 py-3.5 active:bg-gray-50 transition-colors">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
+                                    <i class="fa-solid fa-desktop text-gray-500 text-[11px]"></i>
+                                </div>
+                                <div>
+                                    <p class="text-[12px] font-semibold text-gray-800">Desktop Panel</p>
+                                    <p class="text-[10px] text-gray-400">Full management interface</p>
+                                </div>
+                            </div>
+                            <i class="fa-solid fa-arrow-up-right-from-square text-gray-300 text-xs"></i>
+                        </a>
+                        {% endif %}
+                        <a href="/panel/auth/logout/"
+                           class="flex items-center justify-between px-4 py-3.5 active:bg-red-50 transition-colors">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center">
+                                    <i class="fa-solid fa-right-from-bracket text-red-500 text-[11px]"></i>
+                                </div>
+                                <div>
+                                    <p class="text-[12px] font-semibold text-red-600">Logout</p>
+                                    <p class="text-[10px] text-gray-400">Sign out of app</p>
+                                </div>
+                            </div>
+                            <i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+
+        <!-- ======== TAB: SYSTEM INFO ======== -->
+        <div x-show="tab==='system'" style="display:none;">
+            <div class="px-4 pt-4 flex flex-col gap-3 pb-4">
+
+                <!-- App version card -->
+                <div class="rounded-xl overflow-hidden shadow-md"
+                     style="background:linear-gradient(135deg,#667eea,#764ba2);">
+                    <div class="px-5 py-4 flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center border border-white/30 flex-shrink-0">
+                            <i class="fa-solid fa-id-card text-white text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-white font-bold text-[15px] leading-tight">Adarsh ID Cards</p>
+                            <p class="text-white/70 text-[12px] mt-0.5">Mobile PWA</p>
+                            <p class="text-white/90 text-[13px] font-mono font-bold mt-1">{{ app_version }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Platform info -->
+                <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center">
+                            <i class="fa-solid fa-server text-indigo-500 text-[11px]"></i>
+                        </div>
+                        <p class="text-[12px] font-bold text-gray-700">Platform</p>
+                    </div>
+                    <div class="divide-y divide-gray-50">
+                        <div class="flex items-center justify-between px-4 py-3">
+                            <span class="text-[11px] text-gray-500">Django</span>
+                            <span class="text-[12px] font-semibold text-gray-800 font-mono">{{ django_version }}</span>
+                        </div>
+                        <div class="flex items-center justify-between px-4 py-3">
+                            <span class="text-[11px] text-gray-500">Python</span>
+                            <span class="text-[12px] font-semibold text-gray-800 font-mono">{{ python_version }}</span>
+                        </div>
+                        <div class="flex items-center justify-between px-4 py-3">
+                            <span class="text-[11px] text-gray-500">Environment</span>
+                            <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full
+                                {% if debug_mode %}bg-amber-100 text-amber-600{% else %}bg-green-100 text-green-600{% endif %}">
+                                {% if debug_mode %}Development{% else %}Production{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Platform stats -->
+                <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-lg bg-green-50 flex items-center justify-center">
+                            <i class="fa-solid fa-chart-pie text-green-500 text-[11px]"></i>
+                        </div>
+                        <p class="text-[12px] font-bold text-gray-700">
+                            {% if is_super_admin or is_admin_staff %}Platform Stats{% else %}Your Data{% endif %}
+                        </p>
+                    </div>
+                    {% if is_super_admin or is_admin_staff %}
+                    <div class="grid grid-cols-2">
+                        <div class="flex flex-col items-center justify-center py-4 border-b border-r border-gray-100">
+                            <p class="text-[22px] font-extrabold text-sky-500 leading-none">{{ admin_client_count|default:0 }}</p>
+                            <p class="text-[9px] text-gray-400 mt-1 font-medium">Active Clients</p>
+                        </div>
+                        <div class="flex flex-col items-center justify-center py-4 border-b border-gray-100">
+                            <p class="text-[22px] font-extrabold text-emerald-500 leading-none">{{ admin_staff_count|default:0 }}</p>
+                            <p class="text-[9px] text-gray-400 mt-1 font-medium">Team Members</p>
+                        </div>
+                        <div class="flex flex-col items-center justify-center py-4 border-r border-gray-100">
+                            <p class="text-[22px] font-extrabold text-violet-500 leading-none">{{ admin_table_count|default:0 }}</p>
+                            <p class="text-[9px] text-gray-400 mt-1 font-medium">Active Tables</p>
+                        </div>
+                        <div class="flex flex-col items-center justify-center py-4">
+                            <p class="text-[22px] font-extrabold text-amber-500 leading-none">{{ admin_total_cards|default:0 }}</p>
+                            <p class="text-[9px] text-gray-400 mt-1 font-medium">Total ID Cards</p>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="grid grid-cols-3 divide-x divide-gray-100">
+                        <div class="flex flex-col items-center justify-center py-4">
+                            <p class="text-[20px] font-extrabold text-indigo-500 leading-none">{{ group_count }}</p>
+                            <p class="text-[9px] text-gray-400 mt-1 font-medium">Groups</p>
+                        </div>
+                        <div class="flex flex-col items-center justify-center py-4">
+                            <p class="text-[20px] font-extrabold text-green-500 leading-none">{{ table_count }}</p>
+                            <p class="text-[9px] text-gray-400 mt-1 font-medium">Tables</p>
+                        </div>
+                        <div class="flex flex-col items-center justify-center py-4">
+                            <p class="text-[20px] font-extrabold text-purple-500 leading-none">{{ total_cards }}</p>
+                            <p class="text-[9px] text-gray-400 mt-1 font-medium">Cards</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- PWA info -->
+                <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-lg bg-purple-50 flex items-center justify-center">
+                            <i class="fa-solid fa-bolt text-purple-500 text-[11px]"></i>
+                        </div>
+                        <p class="text-[12px] font-bold text-gray-700">PWA</p>
+                    </div>
+                    <div class="divide-y divide-gray-50">
+                        <div class="flex items-center justify-between px-4 py-3">
+                            <span class="text-[11px] text-gray-500">Service Worker</span>
+                            <span class="text-[11px] font-semibold text-green-600 flex items-center gap-1.5">
+                                <span class="w-1.5 h-1.5 rounded-full bg-green-400 inline-block"></span>Active
+                            </span>
+                        </div>
+                        <div class="flex items-center justify-between px-4 py-3">
+                            <span class="text-[11px] text-gray-500">Cache Strategy</span>
+                            <span class="text-[12px] font-semibold text-gray-800">Network First</span>
+                        </div>
+                        <div class="px-4 py-3">
+                            <button onclick="clearPWACache()"
+                                    class="w-full py-2.5 rounded-lg text-[12px] font-semibold text-purple-500 border border-purple-200 active:bg-purple-50 transition-colors">
+                                <i class="fa-solid fa-rotate mr-1.5"></i>Clear App Cache
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div><!-- /scroll area -->
+
     {% include "mobile_app/partials/bottom_nav.html" %}
+
 </div>
+
+<script>
+function settingsApp() {
+    return { tab: 'notifications' };
+}
+
+function clearPWACache() {
+    if ('caches' in window) {
+        caches.keys().then(function(names) {
+            Promise.all(names.map(n => caches.delete(n))).then(function() {
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.getRegistrations().then(function(regs) {
+                        regs.forEach(r => r.update());
+                    });
+                }
+                alert('Cache cleared. Reloading with fresh assets.');
+                window.location.reload(true);
+            });
+        });
+    } else {
+        alert('Cache API not available in this browser.');
+    }
+}
+</script>
 {% endblock %}

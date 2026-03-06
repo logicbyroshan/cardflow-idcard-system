@@ -69,7 +69,7 @@
         <div class="relative mb-2">
             <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-xs"></i>
             <input type="text" x-model="cardSearch" @input="filterCards()"
-                   placeholder="Type name to search...
+                   placeholder="Type name to search..."
                    class="w-full pl-8 pr-3 py-2.5 rounded-xl bg-white/10 text-white text-sm border border-white/20 focus:border-brand-light outline-none placeholder-white/30">
             <button x-show="cardSearch" @click="cardSearch=''; filterCards()"
                     class="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 text-sm">
@@ -215,7 +215,7 @@ function cameraApp() {
                     video: { facingMode: this.facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
                     audio: false
                 });
-                this.$refs.video.srcObject = this.stream;
+                if (this.$refs.video) this.$refs.video.srcObject = this.stream;
             } catch (err) { this.cameraError = true; }
         },
 

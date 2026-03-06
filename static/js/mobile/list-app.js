@@ -23,6 +23,8 @@ function listApp() {
         editMode: false,
         editingId: null,
         studentsData: typeof STUDENTS_DATA !== 'undefined' ? STUDENTS_DATA : [],
+        hasMore: typeof HAS_MORE !== 'undefined' ? HAS_MORE : false,
+        loadMoreOffset: typeof STUDENTS_DATA !== 'undefined' ? STUDENTS_DATA.length : 0,
         form: {
             name: '', fatherName: '', motherName: '', rollNo: '', dob: '',
             className: '', section: '', phone: '', address: '',
@@ -54,6 +56,10 @@ function listApp() {
                 });
                 this.selectedIds = visible;
             } else { this.selectedIds = []; }
+            // Sync classes for dynamically loaded rows
+            document.querySelectorAll('tbody tr[data-sid]').forEach(tr => {
+                this._updateRowClass(parseInt(tr.dataset.sid));
+            });
         },
         toggleSelect(id) {
             const idx = this.selectedIds.indexOf(id);
@@ -61,6 +67,7 @@ function listApp() {
             else { this.selectedIds.push(id); }
             const visibleCount = document.querySelectorAll('tbody tr[data-sid]:not([style*="display: none"])').length;
             this.selectAll = this.selectedIds.length === visibleCount && visibleCount > 0;
+            this._updateRowClass(id);
         },
 
         // --- Filtering & Sorting ---
@@ -142,6 +149,173 @@ function listApp() {
         },
 
         showToast(msg, type='info') { this.toast = { show: true, message: msg, type }; setTimeout(() => { this.toast.show = false; }, 2500); },
+
+        _escHtml(s) {
+            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        },
+
+        // Update class on a dynamically-added row (no Alpine :class binding)
+        _updateRowClass(id) {
+            const tr = document.querySelector(`tbody tr[data-sid="${id}"]`);
+            if (!tr || tr.hasAttribute(':class') || tr.hasAttribute('x-bind:class')) return;
+            const sel = this.selectedIds.includes(id);
+            tr.classList.toggle('bg-indigo-50', sel);
+            tr.classList.toggle('border-l-2', sel);
+            tr.classList.toggle('border-l-brand-light', sel);
+            tr.classList.toggle('hover:bg-gray-50', !sel);
+            const cb = tr.querySelector('input[type=checkbox]');
+            if (cb) cb.checked = sel;
+        },
+
+        // Build a <tr> DOM element for a dynamically loaded card
+        _buildCardRow(card) {
+            const isViewOnly = IS_VIEW_ONLY;
+            const fd = card.field_data || {};
+
+            const tr = document.createElement('tr');
+            tr.setAttribute('data-sid', String(card.id));
+            tr.className = 'transition-colors border-b border-gray-50';
+            if (!isViewOnly) {
+                tr.classList.add('cursor-pointer', 'hover:bg-gray-50');
+                tr.addEventListener('click', (e) => {
+                    if (e.target.closest('label, input')) return;
+                    this.toggleSelect(card.id);
+                });
+            }
+
+            // Checkbox td
+            const tdCheck = document.createElement('td');
+            tdCheck.className = 'px-2 py-2';
+            if (!isViewOnly) {
+                const lbl = document.createElement('label');
+                lbl.className = 'custom-checkbox';
+                lbl.addEventListener('click', e => e.stopPropagation());
+                const inp = document.createElement('input');
+                inp.type = 'checkbox';
+                inp.addEventListener('change', () => this.toggleSelect(card.id));
+                const span = document.createElement('span');
+                span.className = 'checkmark';
+                lbl.appendChild(inp);
+                lbl.appendChild(span);
+                tdCheck.appendChild(lbl);
+            }
+            tr.appendChild(tdCheck);
+
+            // Sr no td
+            const tdSr = document.createElement('td');
+            tdSr.className = 'px-1 py-2 text-gray-400 font-medium text-center';
+            tdSr.style.fontSize = '11px';
+            tdSr.textContent = card.sr_no;
+            tr.appendChild(tdSr);
+
+            // Photo td
+            const tdPhoto = document.createElement('td');
+            tdPhoto.className = 'px-1 py-1.5';
+            if (card.photo_url) {
+                const img = document.createElement('img');
+                img.src = card.photo_url;
+                img.className = 'w-9 h-12 object-cover object-top border border-gray-100';
+                img.style.borderRadius = '3px';
+                img.alt = '';
+                img.loading = 'lazy';
+                const errDiv = document.createElement('div');
+                errDiv.className = 'w-9 h-12 bg-red-50 flex items-center justify-center text-red-300';
+                errDiv.style.cssText = 'border-radius:3px;font-size:9px;display:none;';
+                errDiv.innerHTML = '<i class="fa-solid fa-image-slash"></i>';
+                img.onerror = () => { img.style.display = 'none'; errDiv.style.display = 'flex'; };
+                tdPhoto.appendChild(img);
+                tdPhoto.appendChild(errDiv);
+            } else {
+                const noImg = document.createElement('div');
+                noImg.className = 'w-9 h-12 bg-gray-100 flex items-center justify-center text-gray-300';
+                noImg.style.cssText = 'border-radius:3px;font-size:9px;';
+                noImg.innerHTML = '<i class="fa-solid fa-image"></i>';
+                tdPhoto.appendChild(noImg);
+            }
+            tr.appendChild(tdPhoto);
+
+            // Details td
+            const tdDetails = document.createElement('td');
+            tdDetails.className = 'px-2 py-2';
+            const nameP = document.createElement('p');
+            nameP.className = 'font-semibold text-gray-800 leading-tight';
+            nameP.style.fontSize = '12px';
+            nameP.textContent = card.name;
+            tdDetails.appendChild(nameP);
+            const detailsDiv = document.createElement('div');
+            detailsDiv.className = 'flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5';
+            for (const [key, val] of Object.entries(fd)) {
+                if (!val) continue;
+                const kl = key.toLowerCase();
+                if (kl.includes('photo') || kl.includes('image') || kl === 'name') continue;
+                const truncKey = key.length > 12 ? key.slice(0, 11) + '…' : key;
+                const valStr = String(val);
+                const truncVal = valStr.length > 16 ? valStr.slice(0, 15) + '…' : valStr;
+                const sp = document.createElement('span');
+                sp.className = 'text-gray-500';
+                sp.style.cssText = 'font-size:10px;line-height:1.4;';
+                sp.innerHTML = `<span class="font-semibold text-gray-600">${this._escHtml(truncKey)}:</span>&nbsp;${this._escHtml(truncVal)}`;
+                detailsDiv.appendChild(sp);
+            }
+            tdDetails.appendChild(detailsDiv);
+            tr.appendChild(tdDetails);
+            return tr;
+        },
+
+        async loadMore() {
+            if (this.loading || !this.hasMore) return;
+            this.loading = true;
+            try {
+                const offset = this.loadMoreOffset;
+                const page = Math.floor(offset / 50) + 1;
+                const url = `/app/api/table/${TABLE_ID}/cards/?status=${LIST_TYPE}&per_page=50&page=${page}`;
+                const res = await fetch(url, { headers: { 'X-CSRFToken': CSRF } });
+                const json = await res.json();
+                if (!json.success) { this.showToast('Failed to load more', 'error'); this.loading = false; return; }
+                const apiData = json.data;
+                const existingIds = new Set(this.studentsData.map(s => s.id));
+                const rawCards = apiData.cards || [];
+                const newCards = rawCards
+                    .filter(c => !existingIds.has(c.id))
+                    .map((c, i) => {
+                        const f = c.field_data || {};
+                        return {
+                            id: c.id,
+                            sr_no: offset + i + 1,
+                            name: c.name || '',
+                            roll_no: c.id_number || f['ROLL NO'] || f['ROLL_NO'] || f['roll_no'] || '',
+                            father_name: f['FATHER NAME'] || f["FATHER'S NAME"] || f['FATHER_NAME'] || f['father_name'] || '',
+                            mother_name: f['MOTHER NAME'] || f['MOTHER_NAME'] || f['mother_name'] || '',
+                            class_name: c.class_designation || f['CLASS'] || f['class'] || '',
+                            section: f['SECTION'] || f['section'] || '',
+                            dob: f['DOB'] || f['dob'] || f['DATE OF BIRTH'] || f['DATE_OF_BIRTH'] || '',
+                            photo_url: c.photo_url || null,
+                            has_photo: !!c.photo_url,
+                            status: c.status,
+                            field_data: f,
+                        };
+                    });
+                if (!newCards.length) {
+                    this.hasMore = false;
+                    this.showToast('All records loaded', 'info');
+                    this.loading = false;
+                    return;
+                }
+                this.studentsData.push(...newCards);
+                this.loadMoreOffset += newCards.length;
+                const tbody = document.querySelector('tbody');
+                if (tbody) {
+                    const emptyRow = tbody.querySelector('tr:not([data-sid])');
+                    if (emptyRow) emptyRow.remove();
+                    newCards.forEach(card => tbody.appendChild(this._buildCardRow(card)));
+                }
+                this.hasMore = apiData.has_more;
+                if (!this.hasMore) this.showToast('All ' + this.studentsData.length + ' records loaded', 'info');
+                else this.showToast('+' + newCards.length + ' loaded', 'success');
+                this._applyAllFilters();
+            } catch (e) { this.showToast('Load failed', 'error'); }
+            this.loading = false;
+        },
 
         // --------- API helpers ---------
         async apiAction(status, label) {

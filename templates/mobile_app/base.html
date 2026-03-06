@@ -11,35 +11,16 @@
     <title>{% block title %}Adarsh ID Cards{% endblock %}</title>
 
     <!-- DNS preconnect hints â€” reduce CDN latency on first load -->
-    <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        brand: {
-                            light: '#667eea',
-                            dark: '#764ba2',
-                        }
-                    },
-                    fontFamily: {
-                        sans: ['"Segoe UI"', 'sans-serif'],
-                        condensed: ['"Roboto Condensed"', 'sans-serif'],
-                    }
-                }
-            }
-        }
-    </script>
+    <!-- Tailwind CSS (pre-built, brand colours + all utilities) -->
+    <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
 
     <!-- Alpine.js -->
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
 
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -142,9 +123,9 @@
     <!-- PWA: Register mobile service worker via Django-served endpoint -->
     <script>
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/app/sw.js', { scope: '/' })
-            .then(function(reg) { console.log('Mobile SW registered, scope:', reg.scope); })
-            .catch(function(err) { console.warn('Mobile SW registration failed:', err); });
+        navigator.serviceWorker.register('/app/sw.js')
+            .then(function() {})
+            .catch(function() {});
     }
 
     // ===== PWA Install Prompt Handler =====
@@ -163,7 +144,6 @@
         if (!deferredPrompt) return;
         deferredPrompt.prompt();
         const result = await deferredPrompt.userChoice;
-        console.log('PWA install result:', result.outcome);
         deferredPrompt = null;
         document.getElementById('pwa-install-banner').classList.add('hidden');
     });
@@ -178,7 +158,6 @@
     window.addEventListener('appinstalled', function() {
         document.getElementById('pwa-install-banner').classList.add('hidden');
         deferredPrompt = null;
-        console.log('PWA installed successfully');
     });
 
     // iOS Safari detection â€” show manual install guide

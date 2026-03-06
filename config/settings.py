@@ -141,6 +141,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'core.context_processors.permissions',  # Permission-based UI visibility
+                'mobile_app.context_processors.mobile_globals',  # PWA notification count + admin stats
             ],
         },
     },
@@ -249,7 +250,7 @@ SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin'
 # ── Cookie hardening (always applied, both dev and prod) ──
 SESSION_COOKIE_HTTPONLY = True          # JS cannot read session cookie
 SESSION_COOKIE_SAMESITE = 'Lax'        # CSRF mitigation
-SESSION_COOKIE_AGE = 60 * 60 * 24 * 30  # 30-day sessions (better for PWA)
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 7   # 7-day sessions — PWA auto-logout
 CSRF_COOKIE_SAMESITE = 'Lax'           # CSRF cookie SameSite
 SESSION_SAVE_EVERY_REQUEST = True       # Extend session on every page load
 # Note: CSRF_COOKIE_HTTPONLY left False (Django default) because JS reads
@@ -273,7 +274,7 @@ if _csrf_cookie_domain:
 # ── Session idle timeout (seconds) ──
 # If a user has no requests for this period, session expires on next request.
 # Set to 0 to disable. Default: 30 days (matches SESSION_COOKIE_AGE).
-SESSION_IDLE_TIMEOUT = int(os.getenv('SESSION_IDLE_TIMEOUT', str(60 * 60 * 24 * 30)))
+SESSION_IDLE_TIMEOUT = int(os.getenv('SESSION_IDLE_TIMEOUT', str(60 * 60 * 24 * 7)))
 
 # ── Session absolute max-age (seconds) ──
 # Hard cap on session lifetime regardless of activity.

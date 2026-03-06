@@ -6,7 +6,7 @@
 
 {% block content %}
 <div class="min-h-screen bg-gray-50 pb-20" x-data="groupsApp()"
-     x-init="activeTab = {% if is_super_admin or is_admin_staff or perm_idcard_group_create or perm_idcard_group_delete %}(new URLSearchParams(location.search).get('tab') || 'groups'){% else %}'groups'{% endif %}">
+     x-init="activeTab = new URLSearchParams(location.search).get('tab') || 'groups'">
     {% csrf_token %}
     <!-- Header -->
     <div class="sticky top-0 z-40 flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-brand-light to-brand-dark">
@@ -146,7 +146,7 @@
     <div x-show="activeTab === 'tables'" class="px-4 pt-3 space-y-2">
         {% for table in tables %}
         <div class="bg-white rounded-md shadow-sm border border-gray-100 overflow-hidden">
-            <div class="p-3" data-fields="{{ table.fields|json_encode }}">
+            <div class="p-3" data-fields="{{ table.fields|json_encode|force_escape }}">
                 <div class="flex items-center justify-between mb-2">
                     <div class="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer"
                          @click="openFieldModal({{ table.id }}, '{{ table.name|escapejs }}', $el.closest('[data-fields]').dataset.fields)">

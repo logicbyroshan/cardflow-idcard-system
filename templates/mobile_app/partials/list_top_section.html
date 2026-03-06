@@ -1,34 +1,73 @@
-{% load static %}
+﻿{% load static %}
 <!-- Fixed Top Section -->
 <div class="flex-shrink-0 z-40 bg-white shadow-sm">
-    <!-- Back Navigation Header -->
-    <div class="flex items-center gap-3 px-4 py-2.5 bg-gradient-to-r from-brand-light to-brand-dark">
-        <a href="{% url 'mobile_app:home' %}" class="w-8 h-8 rounded-md bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all">
+
+    <!-- Gradient Action Bar -->
+    <div class="flex items-center gap-2 px-4 bg-gradient-to-r from-brand-light to-brand-dark"
+         style="padding-top: calc(env(safe-area-inset-top,0px) + 8px); padding-bottom: 8px;">
+
+        <!-- Back button -->
+        <a href="{{ back_url|default:'/app/' }}"
+           class="w-8 h-8 rounded-md bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all flex-shrink-0">
             <i class="fa-solid fa-arrow-left text-sm"></i>
         </a>
-        <div class="flex-1">
-            <h1 class="text-white font-bold text-sm">
+
+        <!-- Title + subtitle -->
+        <div class="flex-1 min-w-0">
+            <h1 class="text-white font-bold text-sm leading-tight">
                 {% if list_type == 'pending' %}Pending List
                 {% elif list_type == 'verified' %}Verified List
                 {% elif list_type == 'approved' %}Approved List
                 {% elif list_type == 'download' %}Download List
                 {% elif list_type == 'pool' %}Pool List
-                {% endif %}
+                {% else %}List{% endif %}
             </h1>
-            <p class="text-white/70 text-[10px]">{% if table %}{{ table.name }} — {% endif %}{{ total_count }} records</p>
+            <p class="text-white/70 text-[10px] truncate leading-tight mt-0.5">
+                {% if table %}{{ table.name }}{% endif %}{% if client %} &mdash; {{ client.name }}{% endif %}
+            </p>
         </div>
-        <span class="bg-white text-brand-light text-xs font-bold px-2.5 py-1 rounded-lg min-w-[32px] text-center">
-            {{ total_count }}
-        </span>
-        {% if perm_idcard_edit or perm_idcard_add %}
-        <a href="{% url 'mobile_app:camera_capture' table_id=table.id %}" class="w-8 h-8 rounded-md bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all">
-            <i class="fa-solid fa-camera text-sm"></i>
+
+        <!-- Pending count badge (tappable nav shortcut) -->
+        {% if perm_idcard_pending_list %}
+        <a href="{% url 'mobile_app:card_list' table_id=table.id status='pending' %}"
+           class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-bold text-[10px] active:scale-95 transition-all flex-shrink-0 border
+                  {% if list_type == 'pending' %}bg-amber-400 text-white border-amber-300{% else %}bg-white/15 text-white border-white/20{% endif %}">
+            <i class="fa-solid fa-clock" style="font-size:9px;"></i>
+            <span>{{ tab_counts.pending }}</span>
         </a>
         {% endif %}
+
+        <!-- Verified count badge (tappable nav shortcut) -->
+        {% if perm_idcard_verified_list %}
+        <a href="{% url 'mobile_app:card_list' table_id=table.id status='verified' %}"
+           class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-bold text-[10px] active:scale-95 transition-all flex-shrink-0 border
+                  {% if list_type == 'verified' %}bg-green-400 text-white border-green-300{% else %}bg-white/15 text-white border-white/20{% endif %}">
+            <i class="fa-solid fa-check-circle" style="font-size:9px;"></i>
+            <span>{{ tab_counts.verified }}</span>
+        </a>
+        {% endif %}
+
+        <!-- Filter toggle -->
+        <button @click="showFilters = !showFilters"
+                :class="showFilters || filtersActive ? 'bg-white text-brand-light' : 'bg-white/20 text-white'"
+                class="w-8 h-8 rounded-md flex items-center justify-center active:scale-95 transition-all relative flex-shrink-0">
+            <i class="fa-solid fa-sliders text-sm"></i>
+            <span x-show="filtersActive"
+                  class="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-400 rounded-full"></span>
+        </button>
+
+        <!-- Camera (edit/add photo) — hidden on view-only lists (H6 fix) -->
+        {% if not view_only_list %}{% if perm_idcard_edit or perm_idcard_add %}
+        <a href="{% url 'mobile_app:camera_capture' table_id=table.id %}"
+           class="w-8 h-8 rounded-md bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all flex-shrink-0">
+            <i class="fa-solid fa-camera text-sm"></i>
+        </a>
+        {% endif %}{% endif %}
+
         <!-- Hamburger -->
         <button type="button"
                 @click="$dispatch('open-hamburger')"
-                class="w-8 h-8 rounded-md bg-white/20 flex flex-col items-center justify-center gap-[4px] text-white hover:bg-white/30 active:scale-95 transition-all">
+                class="w-8 h-8 rounded-md bg-white/20 flex flex-col items-center justify-center gap-[4px] text-white hover:bg-white/30 active:scale-95 transition-all flex-shrink-0">
             <span class="block w-[14px] h-[2px] bg-current rounded-full"></span>
             <span class="block w-[11px] h-[2px] bg-current rounded-full self-start ml-[1.5px]"></span>
             <span class="block w-[14px] h-[2px] bg-current rounded-full"></span>
@@ -37,27 +76,19 @@
 
     <!-- Search Bar + Status Tabs -->
     <div class="px-3 py-2 bg-white border-b border-gray-100">
-        <div class="flex items-center gap-2 mb-2">
-            <div class="relative flex-1">
-                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
-                <input
-                    type="text"
-                    x-model="searchQuery"
-                    @input="filterStudents()"
-                    placeholder="Search by name, roll no..."
-                    class="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-md text-xs text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition"
-                >
-            </div>
-            <button
-                @click="showFilters = !showFilters"
-                :class="showFilters ? 'bg-brand-light text-white border-brand-light' : filtersActive ? 'bg-brand-light/10 text-brand-light border-brand-light' : 'bg-gray-50 text-gray-600 border-gray-200'"
-                class="relative w-9 h-9 rounded-md border flex items-center justify-center flex-shrink-0 transition-all"
+        <!-- Search input -->
+        <div class="relative mb-2">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+            <input
+                type="text"
+                x-model="searchQuery"
+                @input="filterStudents()"
+                placeholder="Search by name, roll no..."
+                class="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-md text-xs text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition"
             >
-                <i class="fa-solid fa-sliders text-sm"></i>
-                <span x-show="filtersActive" class="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full"></span>
-            </button>
         </div>
-        <!-- Status quick-nav tabs with counts -->
+
+        <!-- Status quick-nav tabs with counts — only show tabs the user can access (H2 fix) -->
         <div class="flex gap-1.5">
             {% if perm_idcard_pending_list %}
             <a href="{% url 'mobile_app:card_list' table_id=table.id status='pending' %}"
@@ -66,12 +97,8 @@
                 <i class="fa-solid fa-clock block text-[9px] mb-0.5"></i>Pending
                 <span class="block text-[8px] font-extrabold opacity-80">{{ tab_counts.pending }}</span>
             </a>
-            {% else %}
-            <span class="flex-1 text-center py-1.5 text-[9px] font-bold rounded-lg border bg-gray-50 text-gray-300 border-gray-100 cursor-default leading-tight">
-                <i class="fa-solid fa-clock block text-[9px] mb-0.5"></i>Pending
-                <span class="block text-[8px] font-extrabold opacity-60">{{ tab_counts.pending }}</span>
-            </span>
             {% endif %}
+
             {% if perm_idcard_verified_list %}
             <a href="{% url 'mobile_app:card_list' table_id=table.id status='verified' %}"
                class="flex-1 text-center py-1.5 text-[9px] font-bold rounded-lg transition-all border leading-tight
@@ -79,12 +106,8 @@
                 <i class="fa-solid fa-check-circle block text-[9px] mb-0.5"></i>Verified
                 <span class="block text-[8px] font-extrabold opacity-80">{{ tab_counts.verified }}</span>
             </a>
-            {% else %}
-            <span class="flex-1 text-center py-1.5 text-[9px] font-bold rounded-lg border bg-gray-50 text-gray-300 border-gray-100 cursor-default leading-tight">
-                <i class="fa-solid fa-check-circle block text-[9px] mb-0.5"></i>Verified
-                <span class="block text-[8px] font-extrabold opacity-60">{{ tab_counts.verified }}</span>
-            </span>
             {% endif %}
+
             {% if perm_idcard_approved_list %}
             <a href="{% url 'mobile_app:card_list' table_id=table.id status='approved' %}"
                class="flex-1 text-center py-1.5 text-[9px] font-bold rounded-lg transition-all border leading-tight
@@ -92,12 +115,8 @@
                 <i class="fa-solid fa-check-double block text-[9px] mb-0.5"></i>Approved
                 <span class="block text-[8px] font-extrabold opacity-80">{{ tab_counts.approved }}</span>
             </a>
-            {% else %}
-            <span class="flex-1 text-center py-1.5 text-[9px] font-bold rounded-lg border bg-gray-50 text-gray-300 border-gray-100 cursor-default leading-tight">
-                <i class="fa-solid fa-check-double block text-[9px] mb-0.5"></i>Approved
-                <span class="block text-[8px] font-extrabold opacity-60">{{ tab_counts.approved }}</span>
-            </span>
             {% endif %}
+
             {% if perm_idcard_download_list %}
             <a href="{% url 'mobile_app:card_list' table_id=table.id status='download' %}"
                class="flex-1 text-center py-1.5 text-[9px] font-bold rounded-lg transition-all border leading-tight
@@ -105,12 +124,8 @@
                 <i class="fa-solid fa-download block text-[9px] mb-0.5"></i>Download
                 <span class="block text-[8px] font-extrabold opacity-80">{{ tab_counts.download }}</span>
             </a>
-            {% else %}
-            <span class="flex-1 text-center py-1.5 text-[9px] font-bold rounded-lg border bg-gray-50 text-gray-300 border-gray-100 cursor-default leading-tight">
-                <i class="fa-solid fa-download block text-[9px] mb-0.5"></i>Download
-                <span class="block text-[8px] font-extrabold opacity-60">{{ tab_counts.download }}</span>
-            </span>
             {% endif %}
         </div>
     </div>
+
 </div>

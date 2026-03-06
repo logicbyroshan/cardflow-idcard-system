@@ -10,7 +10,7 @@
     <div class="flex-shrink-0" style="background:linear-gradient(135deg,#667eea,#764ba2);">
 
         <!-- Header row -->
-        <div class="flex items-center gap-3 px-4 pt-10 pb-1">
+        <div class="flex items-center gap-3 px-4 pt-[calc(env(safe-area-inset-top,0px)+10px)] pb-1">
             <a href="{% url 'mobile_app:home' %}" class="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white active:scale-90 transition-transform">
                 <i class="fa-solid fa-arrow-left text-base"></i>
             </a>
@@ -201,6 +201,11 @@
                     </div>
                 </div>
 
+                <!-- Upload progress bar -->
+                <div x-show="uploading" class="w-full h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                    <div class="h-full rounded-full bg-gradient-to-r from-[#667eea] to-[#764ba2] animate-pulse" style="width:100%;"></div>
+                </div>
+
                 <!-- Upload button -->
                 <button x-show="pendingFiles.length > 0"
                         @click="uploadPortfolioFiles()"
@@ -387,7 +392,7 @@
 const CATEGORIES_DATA = JSON.parse(document.getElementById('categories-json-data').textContent);
 const REELS_DATA = JSON.parse(document.getElementById('reels-json-data').textContent);
 const CSRF_TOKEN = (document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith('csrftoken=')) || '').split('=')[1]
-    || '{{ csrf_token }}';
+    || '{{ csrf_token|escapejs }}';
 
 function websiteManageApp() {
     return {
@@ -399,6 +404,7 @@ function websiteManageApp() {
         uploadSheetOpen: false,
         activeCategory: null,
         pendingFiles: [],
+        uploading: false,
 
         // Reel upload
         reelSheetOpen: false,
@@ -406,6 +412,8 @@ function websiteManageApp() {
         reelVideoFile: null,
         reelVideoPreview: null,
         reelVideoSize: '',
+        reelThumbnailFile: null,
+        reelThumbnailName: '',
         toast: { show: false, ok: true, msg: '' },
 
         init() {
@@ -494,6 +502,7 @@ function websiteManageApp() {
             this.reelSheetOpen = true;
         },
         closeReelSheet() {
+            if (this.reelVideoPreview) { URL.revokeObjectURL(this.reelVideoPreview); this.reelVideoPreview = null; }
             this.reelSheetOpen = false;
         },
         handleReelVideo(e) {

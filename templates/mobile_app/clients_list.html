@@ -1,182 +1,195 @@
-{% extends "mobile_app/base.html" %}
+﻿{% extends "mobile_app/base.html" %}
 {% load static %}
 
-{% block title %}Clients - Adarsh ID Cards{% endblock %}
+{% block title %}Active Clients – Adarsh ID Cards{% endblock %}
 
 {% block content %}
 <div class="flex flex-col" style="height: 100vh; height: 100dvh;"
-     x-data="clientsApp()"
-     x-init="loadClients()">
+     x-data="clientsApp()">
 
     <!-- Header -->
-    <div class="flex-shrink-0 z-40 bg-white shadow-sm">
-        <div class="px-4 pt-3 pb-2 bg-gradient-to-r from-brand-light to-brand-dark">
-            <!-- Top row: back + title + count -->
-            <div class="flex items-center gap-3 mb-2.5">
-                <a href="{% url 'mobile_app:home' %}" class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all">
-                    <i class="fa-solid fa-arrow-left text-sm"></i>
-                </a>
-                <div class="flex-1">
-                    <h1 class="text-white font-bold text-sm">{% if is_admin_staff %}Assigned Clients{% else %}Active Clients{% endif %}</h1>
-                    <p class="text-white/70 text-[10px]" x-text="filteredClients.length + ' client(s)'"></p>
-                </div>
-                <!-- Status filter chips -->
-                <div class="flex gap-1">
-                    <button @click="filter = 'all'" class="text-[9px] font-bold px-2 py-1 rounded-full transition"
-                            :class="filter === 'all' ? 'bg-white text-brand-light' : 'bg-white/20 text-white'">All</button>
-                    <button @click="filter = 'active'" class="text-[9px] font-bold px-2 py-1 rounded-full transition"
-                            :class="filter === 'active' ? 'bg-white text-brand-light' : 'bg-white/20 text-white'">Active</button>
-                </div>
+    <div class="flex-shrink-0 z-40 shadow-sm">
+        <!-- Gradient bar -->
+        <div class="flex items-center gap-2 px-4 bg-gradient-to-r from-brand-light to-brand-dark"
+             style="padding-top: calc(env(safe-area-inset-top,0px) + 10px); padding-bottom: 10px;">
+            <a href="{% url 'mobile_app:home' %}"
+               class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all flex-shrink-0">
+                <i class="fa-solid fa-arrow-left text-sm"></i>
+            </a>
+            <div class="flex-1 min-w-0">
+                <h1 class="text-white font-bold text-sm leading-tight">{% if is_admin_staff %}Assigned Clients{% else %}Active Clients{% endif %}</h1>
+                <p class="text-white/70 text-[10px]" x-text="filteredClients.length + ' client(s)'"></p>
             </div>
-            <!-- Two big action tabs -->
-            <div class="grid grid-cols-2 gap-2">
-                <button @click="targetTab = 'groups'"
-                        class="flex items-center justify-center gap-2 py-2 rounded-md font-semibold text-xs transition-all"
-                        :class="targetTab === 'groups' ? 'bg-white text-brand-light shadow' : 'bg-white/15 text-white border border-white/20'">
-                    <i class="fa-solid fa-layer-group text-xs"></i>
-                    <span>ID Card Groups</span>
-                </button>
-                <button @click="targetTab = 'tables'"
-                        class="flex items-center justify-center gap-2 py-2 rounded-md font-semibold text-xs transition-all"
-                        :class="targetTab === 'tables' ? 'bg-white text-brand-light shadow' : 'bg-white/15 text-white border border-white/20'">
-                    <i class="fa-solid fa-gear text-xs"></i>
-                    <span>Group Settings</span>
-                </button>
+            <button @click="filterStatus = filterStatus === 'active' ? 'all' : 'active'"
+                    class="text-[9px] font-bold px-2.5 py-1 rounded-full transition flex-shrink-0"
+                    :class="filterStatus === 'active' ? 'bg-white text-brand-light' : 'bg-white/20 text-white'">
+                <span x-text="filterStatus === 'active' ? 'Active' : 'All'"></span>
+            </button>
+        </div>
+        <!-- Search bar -->
+        <div class="px-3 py-2 bg-white border-b border-gray-100">
+            <div class="relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                <input type="text" x-model="searchQuery"
+                       placeholder="Search clients..."
+                       class="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-md text-xs text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
             </div>
         </div>
     </div>
 
     <!-- Toast -->
-    <div x-show="toast.show" x-transition
-         class="fixed top-14 inset-x-4 z-[100] px-4 py-2.5 rounded-md shadow-lg text-white text-xs font-semibold flex items-center gap-2 max-w-sm mx-auto"
-         :class="toast.type === 'success' ? 'bg-green-500' : toast.type === 'error' ? 'bg-red-500' : 'bg-gray-700'">
-        <i :class="toast.type === 'success' ? 'fa-solid fa-check-circle' : toast.type === 'error' ? 'fa-solid fa-circle-exclamation' : 'fa-solid fa-info-circle'"></i>
+    <div x-show="toast.show" x-cloak x-transition
+         class="fixed top-16 inset-x-4 z-[200] px-4 py-2.5 rounded-md shadow-lg text-white text-xs font-semibold flex items-center gap-2"
+         :class="toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'">
         <span x-text="toast.message"></span>
     </div>
 
     <!-- Client List -->
-    <div class="flex-1 overflow-y-auto px-4 py-3">
-        <div class="space-y-2">
-            <template x-for="c in filteredClients" :key="c.id">
-                <div class="bg-white border border-gray-100 shadow-sm overflow-hidden"
-                     style="border-radius:8px;"
-                     :class="c.status !== 'active' ? 'opacity-70' : ''">
-                    <div class="flex items-center gap-3 p-3">
-                        <!-- Avatar -->
-                        <div class="w-11 h-11 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm"
-                             style="border-radius:7px;"
-                             :class="c.status === 'active' ? 'bg-gradient-to-br from-sky-400 to-blue-500' : 'bg-gray-300'">
-                            <span x-text="(c.name || 'C').substring(0,2).toUpperCase()"></span>
+    <div class="flex-1 overflow-y-auto px-4 py-3 space-y-2"
+         style="padding-bottom: calc(env(safe-area-inset-bottom,0px) + 72px)">
+
+        <template x-for="c in filteredClients" :key="c.id">
+            <div class="bg-white border border-gray-100 shadow-sm overflow-hidden rounded-xl">
+
+                <!-- Client Row (tap to expand) -->
+                <div class="flex items-center gap-3 p-3 cursor-pointer select-none"
+                     @click="c.status === 'active' && toggleExpand(c.id)">
+                    <!-- Avatar -->
+                    <div class="w-11 h-11 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 rounded-lg shadow-sm"
+                         :class="c.status === 'active' ? 'bg-gradient-to-br from-sky-400 to-blue-500' : 'bg-gray-300'">
+                        <span x-text="(c.name || 'C').substring(0,2).toUpperCase()"></span>
+                    </div>
+                    <!-- Name + meta -->
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <p class="text-sm font-bold text-gray-800 truncate" x-text="c.name"></p>
+                            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase shrink-0"
+                                  :class="c.status === 'active' ? 'bg-green-50 text-green-600 border border-green-200' : 'bg-gray-100 text-gray-500'">
+                                <span x-text="c.status"></span>
+                            </span>
                         </div>
-                        <!-- Info â€” tap to open groups (active only) -->
-                        <div class="flex-1 min-w-0 cursor-pointer" @click="c.status === 'active' && openGroups(c.id)">
-                            <div class="flex items-center gap-2">
-                                <p class="text-sm font-bold text-gray-800 truncate" x-text="c.name"></p>
-                                <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase"
-                                      :class="c.status === 'active' ? 'bg-green-50 text-green-600 border border-green-200' : 'bg-gray-100 text-gray-500'">
-                                    <span x-text="c.status"></span>
-                                </span>
-                            </div>
-                            <p class="text-[10px] text-gray-400 mt-0.5">
-                                <span x-text="c.tables_count + ' table(s)'"></span>
-                                <span class="mx-1">&middot;</span>
-                                <span x-text="c.cards_count + ' card(s)'"></span>
-                            </p>
-                        </div>
-                        <!-- Actions -->
-                        <div class="flex items-center gap-1 flex-shrink-0">
-                            <!-- Open groups (active only) -->
-                            <button x-show="c.status === 'active'" @click="openGroups(c.id)"
-                                    class="w-8 h-8 bg-indigo-50 text-indigo-500 flex items-center justify-center active:scale-95 transition-all"
-                                    style="border-radius:6px;"
-                                    title="ID Card Groups">
-                                <i class="fa-solid fa-arrow-right text-xs"></i>
-                            </button>
-                        </div>
+                        <p class="text-[10px] text-gray-400 mt-0.5" x-text="(c.tables_count || 0) + ' table(s) · ' + (c.cards_count || 0) + ' card(s)'"></p>
+                    </div>
+                    <!-- Chevron -->
+                    <div x-show="c.status === 'active'"
+                         class="w-7 h-7 rounded-md bg-gray-50 flex items-center justify-center flex-shrink-0">
+                        <i class="fa-solid fa-chevron-down text-gray-400 text-[10px] transition-transform duration-200"
+                           :class="expandedId === c.id ? 'rotate-180' : ''"></i>
                     </div>
                 </div>
-            </template>
 
-            <!-- Empty state -->
-            <div x-show="filteredClients.length === 0" class="flex items-center justify-center py-16 text-gray-400">
-                <div class="text-center">
-                    <i class="fa-solid fa-building text-3xl mb-2 block"></i>
-                    <p class="text-sm" x-text="filter !== 'all' ? 'No ' + filter + ' clients' : 'No clients found'"></p>
+                <!-- Expanded: Tables with Pending/Verified counts -->
+                <div x-show="expandedId === c.id"
+                     x-transition:enter="transition ease-out duration-150"
+                     x-transition:enter-start="opacity-0 -translate-y-1"
+                     x-transition:enter-end="opacity-100 translate-y-0"
+                     class="border-t border-gray-100">
+
+                    <!-- Loading state -->
+                    <template x-if="loadingTables[c.id]">
+                        <div class="flex items-center justify-center py-5 gap-2 text-gray-400">
+                            <i class="fa-solid fa-spinner fa-spin text-sm"></i>
+                            <span class="text-xs">Loading tables…</span>
+                        </div>
+                    </template>
+
+                    <template x-if="!loadingTables[c.id] && c.tables && c.tables.length > 0">
+                        <div>
+                            <template x-for="t in c.tables" :key="t.id">
+                                <div class="flex items-center gap-2 px-3 py-2.5 border-b border-gray-50 last:border-b-0">
+                                    <!-- Table icon -->
+                                    <div class="w-7 h-7 rounded-md bg-indigo-50 flex items-center justify-center flex-shrink-0">
+                                        <i class="fa-solid fa-table-list text-indigo-400 text-xs"></i>
+                                    </div>
+                                    <!-- Table name + group -->
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-xs font-semibold text-gray-700 truncate" x-text="t.name"></p>
+                                        <p class="text-[9px] text-gray-400 truncate" x-text="t.group_name"></p>
+                                    </div>
+                                    <!-- Pending badge (link to pending list) -->
+                                    <a :href="'/app/table/' + t.id + '/pending/'"
+                                       class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-50 border border-amber-100 active:scale-95 transition-all flex-shrink-0">
+                                        <i class="fa-solid fa-clock text-amber-500" style="font-size:9px;"></i>
+                                        <span class="text-[11px] font-bold text-amber-600 min-w-[14px] text-center" x-text="t.pending_count"></span>
+                                    </a>
+                                    <!-- Verified badge (link to verified list) -->
+                                    <a :href="'/app/table/' + t.id + '/verified/'"
+                                       class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-green-50 border border-green-100 active:scale-95 transition-all flex-shrink-0">
+                                        <i class="fa-solid fa-check-circle text-green-500" style="font-size:9px;"></i>
+                                        <span class="text-[11px] font-bold text-green-600 min-w-[14px] text-center" x-text="t.verified_count"></span>
+                                    </a>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+
+                    <template x-if="!loadingTables[c.id] && (!c.tables || c.tables.length === 0)">
+                        <div class="px-4 py-4 text-center">
+                            <p class="text-xs text-gray-400">No active tables for this client</p>
+                        </div>
+                    </template>
                 </div>
+
             </div>
+        </template>
+
+        <!-- Empty state -->
+        <div x-show="filteredClients.length === 0"
+             class="flex flex-col items-center justify-center py-16 text-gray-400 gap-3">
+            <i class="fa-solid fa-building text-4xl opacity-30"></i>
+            <p class="text-sm">No clients found</p>
         </div>
     </div>
 
-    <!-- Bottom Nav -->
     {% include "mobile_app/partials/bottom_nav.html" %}
+    {% include "mobile_app/partials/hamburger_drawer.html" %}
+    {% include "mobile_app/partials/notification_drawer.html" %}
 </div>
 
-{# S1: json_script escapes </script> sequences; |safe does not. #}
 {{ clients_json|json_script:"clients-json-data" }}
 <script>
 const CLIENTS_DATA = JSON.parse(document.getElementById('clients-json-data').textContent);
-const CSRF_TOKEN = document.cookie.split(';').map(c=>c.trim()).find(c=>c.startsWith('csrftoken='))?.split('=')[1] || '{{ csrf_token }}';
-
 function clientsApp() {
     return {
-        clients: [],
-        filter: 'active',
-        targetTab: 'groups',
-        loading: false,
-        toast: { show: false, message: '', type: 'info' },
-
+        clients: CLIENTS_DATA,
+        filterStatus: 'active',
+        searchQuery: '',
+        expandedId: null,
+        loadingTables: {},
+        toast: { show: false, message: '', type: 'success' },
         get filteredClients() {
-            if (this.filter === 'all') return this.clients;
-            return this.clients.filter(c => c.status === this.filter);
+            let list = this.clients;
+            if (this.filterStatus === 'active') list = list.filter(c => c.status === 'active');
+            const q = this.searchQuery.trim().toLowerCase();
+            if (q) list = list.filter(c => c.name.toLowerCase().includes(q));
+            return list;
         },
-
-        loadClients() {
-            this.clients = CLIENTS_DATA;
+        async toggleExpand(id) {
+            if (this.expandedId === id) { this.expandedId = null; return; }
+            this.expandedId = id;
+            // Lazy-load tables on first expand
+            const client = this.clients.find(c => c.id === id);
+            if (client && client.tables === null && !this.loadingTables[id]) {
+                this.loadingTables = { ...this.loadingTables, [id]: true };
+                try {
+                    const res = await fetch(`/app/api/client/${id}/tables/`);
+                    const data = await res.json();
+                    if (data.success) {
+                        client.tables = data.tables;
+                    } else {
+                        client.tables = [];
+                        this.showToast('Failed to load tables', 'error');
+                    }
+                } catch (e) {
+                    client.tables = [];
+                    this.showToast('Network error', 'error');
+                }
+                this.loadingTables = { ...this.loadingTables, [id]: false };
+            }
         },
-
-        openGroups(clientId) {
-            const suffix = this.targetTab === 'tables' ? '?tab=tables' : '';
-            window.location.href = '/app/clients/' + clientId + '/groups/' + suffix;
-        },
-
-        showToast(msg, type='info') {
+        showToast(msg, type = 'success') {
             this.toast = { show: true, message: msg, type };
             setTimeout(() => { this.toast.show = false; }, 2800);
-        },
-
-        async toggleClient(c) {
-            const action = c.status === 'active' ? 'deactivate' : 'activate';
-            if (!confirm(action.charAt(0).toUpperCase() + action.slice(1) + ' ' + c.name + '?')) return;
-            try {
-                const res = await fetch('/app/api/client/' + c.id + '/toggle/', {
-                    method: 'POST',
-                    headers: { 'X-CSRFToken': CSRF_TOKEN, 'Content-Type': 'application/json' },
-                });
-                const data = await res.json();
-                if (data.success) {
-                    c.status = data.new_status;
-                    this.showToast(data.message, 'success');
-                } else {
-                    this.showToast(data.message || 'Failed', 'error');
-                }
-            } catch (e) { this.showToast('Network error', 'error'); }
-        },
-
-        async deleteClient(c) {
-            if (!confirm('Permanently delete ' + c.name + '? This cannot be undone!')) return;
-            try {
-                const res = await fetch('/app/api/client/' + c.id + '/delete/', {
-                    method: 'POST',
-                    headers: { 'X-CSRFToken': CSRF_TOKEN, 'Content-Type': 'application/json' },
-                });
-                const data = await res.json();
-                if (data.success) {
-                    this.clients = this.clients.filter(cl => cl.id !== c.id);
-                    this.showToast(data.message, 'success');
-                } else {
-                    this.showToast(data.message || 'Failed', 'error');
-                }
-            } catch (e) { this.showToast('Network error', 'error'); }
         },
     };
 }

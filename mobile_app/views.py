@@ -16,7 +16,10 @@ from functools import wraps
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.conf import settings
+from django.core.cache import cache
+from django.contrib.auth import login as auth_login
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 from django.db.models import Count, Q, Max
 
@@ -31,6 +34,7 @@ from core.services.permission_service import PermissionService
 from idcards.models import IDCardTable, IDCard, IDCardGroup
 from mediafiles.utils import get_card_photo_url
 from staff.models import Staff
+from accounts.rate_limit import rate_limit
 
 logger = logging.getLogger(__name__)
 
@@ -54,13 +58,13 @@ def require_mobile_client(view_func):
     After login, redirects back to /app/ (PWA) via ?next= parameter.
     """
     @wraps(view_func)
-    @login_required(login_url='/panel/auth/login/')
+    @login_required(login_url='/app/login/')
     def wrapper(request, *args, **kwargs):
         user = request.user
         # Allow all 4 valid roles; reject unknown/empty roles
         valid_roles = ('super_admin', 'admin_staff', 'client', 'client_staff')
         if not hasattr(user, 'role') or user.role not in valid_roles:
-            return redirect('/panel/auth/login/?next=/panel/app/')
+            return redirect('/app/login/')
         # Enforce perm_mobile_app (super_admin always passes)
         if not PermissionService.has(user, 'perm_mobile_app'):
             return render(request, 'mobile_app/no_access.html', {
@@ -69,6 +73,29 @@ def require_mobile_client(view_func):
         # Desktop users see a block page (rendered client-side in base.html)
         return view_func(request, *args, **kwargs)
     return wrapper
+
+
+def _get_notification_count(user):
+    """Return unread notification count for the mobile bell badge (capped at 99)."""
+    try:
+        from core.models import Notification, NotificationRead
+        from django.db.models import Q as _Q
+        role = getattr(user, 'role', 'all')
+        active_ids = list(
+            Notification.objects
+            .filter(_Q(target='all') | _Q(target=role) | _Q(target='selected', target_users=user), is_active=True)
+            .values_list('id', flat=True)
+        )
+        if not active_ids:
+            return 0
+        read_ids = set(
+            NotificationRead.objects
+            .filter(user=user, notification_id__in=active_ids)
+            .values_list('notification_id', flat=True)
+        )
+        return min(len(set(active_ids) - read_ids), 99)
+    except Exception:
+        return 0
 
 
 def _client_ctx(user):
@@ -105,13 +132,24 @@ def _validate_image(photo):
 # PAGE VIEWS
 # ---------------------------------------------------------------------------
 
+@ensure_csrf_cookie
+def mobile_login(request):
+    """Dedicated mobile PWA login page at /app/login/.
+    Renders the branded mobile login template; AJAX POST is handled by
+    the existing /panel/auth/api/auth/login/ endpoint.
+    """
+    if request.user.is_authenticated:
+        return redirect('/app/')
+    return render(request, 'mobile_app/login.html')
+
+
 @require_mobile_client
 def home(request):
     """Home dashboard with real card counts and recent activity."""
     user = request.user
     client, perms = _client_ctx(user)
     if not client:
-        return redirect('/panel/auth/login/')
+        return redirect('/app/login/')
 
     result = ClientDashboardService.get_dashboard_data(user, client=client)
 
@@ -139,14 +177,20 @@ def home(request):
         **perms,
     }
 
-    # Admin-specific counts for dashboard management section
+    # Admin-specific counts for dashboard management section (cached 5 min)
     if PermissionService.is_any_admin(user):
         from client.models import Client
         from staff.models import Staff
-        ctx['admin_client_count'] = Client.objects.filter(status='active').count()
-        ctx['admin_staff_count'] = Staff.objects.count()
-        ctx['admin_table_count'] = IDCardTable.objects.filter(is_active=True).count()
-        ctx['admin_total_cards'] = IDCard.objects.count()
+        _admin_counts = cache.get('mob_admin_home_counts')
+        if _admin_counts is None:
+            _admin_counts = {
+                'admin_client_count': Client.objects.filter(status='active').count(),
+                'admin_staff_count': Staff.objects.count(),
+                'admin_table_count': IDCardTable.objects.filter(is_active=True).count(),
+                'admin_total_cards': IDCard.objects.count(),
+            }
+            cache.set('mob_admin_home_counts', _admin_counts, 300)
+        ctx.update(_admin_counts)
 
     if result.success:
         data = result.data
@@ -187,6 +231,13 @@ def home(request):
         IDCard.objects.all() if PermissionService.is_any_admin(user)
         else IDCard.objects.filter(table__group__client=client)
     )
+    # For client_staff: restrict activity to their assigned groups only
+    if PermissionService.is_client_staff(user):
+        _staff = getattr(user, 'staff_profile', None)
+        if _staff:
+            _assigned_gids = list(_staff.assigned_groups.values_list('id', flat=True))
+            if _assigned_gids:
+                _cards_scope = _cards_scope.filter(table__group_id__in=_assigned_gids)
     _recent_acts = []
     for _card in _cards_scope.select_related('table').order_by('-updated_at')[:10]:
         _fd = _card.field_data or {}
@@ -213,7 +264,7 @@ def home(request):
                 .filter(status='active')
                 .annotate(last_update=Max('id_card_groups__tables__id_cards__updated_at'))
                 .filter(last_update__isnull=False)
-                .order_by('-last_update')[:8]
+                .order_by('-last_update')[:10]
             )
             client_list = list(clients_qs)
             client_ids = [c.id for c in client_list]
@@ -348,6 +399,10 @@ def clients_list(request):
             'status': c.status,
         })
 
+    # Tables are lazy-loaded per client on first expand — skip server-side preloading
+    for _cd in client_data:
+        _cd['tables'] = None
+
     return render(request, 'mobile_app/clients_list.html', {
         'user_name': user.get_full_name() or user.username,
         'clients': client_data,
@@ -461,7 +516,9 @@ def card_list(request, table_id, status):
 
     cards_qs = IDCard.objects.filter(table=table, status=status).order_by('-updated_at')
     total_count = cards_qs.count()
-    cards_batch = cards_qs[:500]
+    _card_batch_raw = list(cards_qs[:51])
+    _has_more_raw = len(_card_batch_raw) > 50
+    cards_batch = _card_batch_raw[:50]
 
     # For client_staff: apply class/section filter
     allowed_classes = []
@@ -524,6 +581,9 @@ def card_list(request, table_id, status):
 
     total_count = len(cards)
 
+    # has_more: only meaningful when no client-side class/section filtering is applied
+    has_more = _has_more_raw and not (allowed_classes or allowed_sections)
+
     all_classes = sorted(set(c['class_name'] for c in cards if c['class_name']))
     all_sections = sorted(set(c['section'] for c in cards if c['section']))
     table_fields = table.fields if hasattr(table, 'fields') and table.fields else []
@@ -544,6 +604,7 @@ def card_list(request, table_id, status):
         'students': cards,
         'students_json': json.dumps(cards, default=str),
         'total_count': total_count,
+        'has_more': has_more,
         'list_type': status,
         'classes': all_classes,
         'sections': all_sections,
@@ -551,6 +612,7 @@ def card_list(request, table_id, status):
         # View-only mode: clients on approved/download lists can only view, not act
         'view_only_list': status in ('approved', 'download') and not PermissionService.is_any_admin(user),
         'tab_counts': tab_counts,
+        'back_url': '/app/clients/' if PermissionService.is_any_admin(user) else '/app/',
         **perms,
     })
 
@@ -633,7 +695,7 @@ def profile(request):
     user = request.user
     client, perms = _client_ctx(user)
     if not client:
-        return redirect('/panel/auth/login/')
+        return redirect('/app/login/')
 
     return render(request, 'mobile_app/profile.html', {
         'user_name': user.get_full_name() or user.username,
@@ -673,6 +735,7 @@ def api_card_status(request, card_id):
 
 @require_mobile_client
 @require_http_methods(["POST"])
+@rate_limit(max_requests=30, window_seconds=60, key_prefix='mab_bulk')
 def api_bulk_status(request, table_id):
     """Bulk status change."""
     try:
@@ -694,6 +757,7 @@ def api_bulk_status(request, table_id):
 
 @require_mobile_client
 @require_http_methods(["POST"])
+@rate_limit(max_requests=20, window_seconds=60, key_prefix='mab_upload')
 def api_upload_photo(request, table_id):
     """Upload photo for a card."""
     card_id = request.POST.get('card_id')
@@ -755,6 +819,7 @@ def api_cards(request, table_id):
 
 @require_mobile_client
 @require_http_methods(["POST"])
+@rate_limit(max_requests=20, window_seconds=60, key_prefix='mab_add')
 def api_card_add(request, table_id):
     """Add a new card to a table."""
     try:
@@ -990,30 +1055,95 @@ def groups_overview(request):
 
 @require_mobile_client
 def settings_page(request):
-    """Settings / admin overview page."""
+    """Settings — 4 tabbed sections: Notifications / Logs / Email / System Info."""
     user = request.user
     client, perms = _client_ctx(user)
     if not client:
-        return redirect('/panel/auth/login/')
+        return redirect('/app/login/')
 
     ctx = {
         'user_name': user.get_full_name() or user.username,
+        'user_email': user.email or '',
         'client': client,
         **perms,
     }
 
-    # Counts
+    # Counts (client-scoped)
     ctx['table_count'] = IDCardTable.objects.filter(group__client=client, is_active=True).count()
     ctx['group_count'] = IDCardGroup.objects.filter(client=client).count()
     ctx['total_cards'] = IDCard.objects.filter(table__group__client=client).count()
 
-    # Admin-specific
+    # Admin-specific counts
     if PermissionService.is_any_admin(user):
         from client.models import Client
         ctx['admin_client_count'] = Client.objects.filter(status='active').count()
         ctx['admin_staff_count'] = Staff.objects.count()
         ctx['admin_table_count'] = IDCardTable.objects.filter(is_active=True).count()
         ctx['admin_total_cards'] = IDCard.objects.count()
+
+    # ── TAB: Notifications ───────────────────────────────────────────────
+    from core.models import Notification, NotificationRead
+    user_role = getattr(user, 'role', '')
+    _notif_qs = (
+        Notification.objects
+        .filter(is_active=True)
+        .filter(Q(target='all') | Q(target=user_role) | Q(target='selected', target_users=user))
+        .order_by('-created_at')[:20]
+    )
+    _read_ids = set(
+        NotificationRead.objects.filter(user=user).values_list('notification_id', flat=True)
+    )
+    ctx['system_notifications'] = [
+        {
+            'id': n.id,
+            'title': n.title,
+            'message': n.message,
+            'priority': n.priority,
+            'priority_color': n.priority_color,
+            'category': n.get_category_display(),
+            'icon_class': n.icon_class,
+            'created_at': n.created_at.strftime('%d %b %Y'),
+            'is_read': n.id in _read_ids,
+        }
+        for n in _notif_qs
+    ]
+    ctx['unread_system_count'] = sum(1 for n in ctx['system_notifications'] if not n['is_read'])
+
+    # ── TAB: Logs ────────────────────────────────────────────────────────
+    from django.utils.timesince import timesince as _timesince
+    from django.utils import timezone as _tz
+    _now = _tz.now()
+    _cards_scope = (
+        IDCard.objects.all() if PermissionService.is_any_admin(user)
+        else IDCard.objects.filter(table__group__client=client)
+    )
+    _log_acts = []
+    for _card in _cards_scope.select_related('table', 'table__group').order_by('-updated_at')[:30]:
+        _fd = _card.field_data or {}
+        _name = _fd.get('NAME') or _fd.get('name') or _fd.get('Name') or f'Card #{_card.id}'
+        _log_acts.append({
+            'name': _name,
+            'status': _card.status,
+            'status_display': _card.status.replace('_', ' ').title(),
+            'updated_at': _timesince(_card.updated_at, _now) if _card.updated_at else '—',
+            'table_name': _card.table.name if _card.table else '',
+            'group_name': _card.table.group.name if _card.table and _card.table.group else '',
+        })
+    ctx['log_activities'] = _log_acts
+
+    # ── TAB: System Info ─────────────────────────────────────────────────
+    import django as _django
+    import sys as _sys
+    import os as _os
+    try:
+        _vpath = _os.path.join(settings.BASE_DIR, 'VERSION.txt')
+        with open(_vpath) as _vf:
+            ctx['app_version'] = _vf.read().strip()
+    except Exception:
+        ctx['app_version'] = 'v2.19.0'
+    ctx['django_version'] = _django.__version__
+    ctx['python_version'] = f'{_sys.version_info.major}.{_sys.version_info.minor}.{_sys.version_info.micro}'
+    ctx['debug_mode'] = settings.DEBUG
 
     return render(request, 'mobile_app/settings.html', ctx)
 
@@ -1375,6 +1505,37 @@ def api_client_delete(request, client_id):
     except Exception as exc:
         logger.exception('api_client_delete error: %s', exc)
         return JsonResponse({'success': False, 'message': str(exc)}, status=500)
+
+
+@require_mobile_client
+@require_http_methods(["GET"])
+def api_client_tables(request, client_id):
+    """Return active tables with pending/verified counts for a client (admin only, lazy-loaded)."""
+    if not PermissionService.is_any_admin(request.user):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+    from client.models import Client
+    get_object_or_404(Client, id=client_id)
+    tables_qs = (
+        IDCardTable.objects
+        .filter(group__client_id=client_id, is_active=True)
+        .select_related('group')
+        .annotate(
+            pending_count=Count('id_cards', filter=Q(id_cards__status='pending')),
+            verified_count=Count('id_cards', filter=Q(id_cards__status='verified')),
+        )
+        .order_by('group__name', 'name')
+    )
+    tables = [
+        {
+            'id': t.id,
+            'name': t.name,
+            'group_name': t.group.name,
+            'pending_count': t.pending_count,
+            'verified_count': t.verified_count,
+        }
+        for t in tables_qs
+    ]
+    return JsonResponse({'success': True, 'tables': tables})
 
 
 # ---------------------------------------------------------------------------

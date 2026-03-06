@@ -74,5 +74,16 @@
                 {% endfor %}
             </tbody>
         </table>
+        <!-- Load More -->
+        <div x-show="hasMore" class="flex justify-center py-4">
+            <button @click="loadMore()" :disabled="loading"
+                    class="flex items-center gap-2 px-5 py-2.5 rounded-full text-[12px] font-semibold text-white shadow-sm active:scale-95 transition-all"
+                    style="background:linear-gradient(135deg,#667eea,#764ba2);"
+                    :class="loading ? 'opacity-60 cursor-not-allowed' : ''">
+                <i class="fa-solid fa-spinner fa-spin text-[11px]" x-show="loading"></i>
+                <i class="fa-solid fa-rotate-down text-[11px]" x-show="!loading"></i>
+                <span x-text="loading ? 'Loading…' : 'Load More'"></span>
+            </button>
+        </div>
     </div>
 </div>

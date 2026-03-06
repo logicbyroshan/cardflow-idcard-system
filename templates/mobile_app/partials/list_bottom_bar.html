@@ -1,9 +1,9 @@
-{% load static %}
+﻿{% load static %}
 <!-- Fixed Bottom Action Bar -->
 <div class="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-[0_-4px_16px_rgba(0,0,0,0.10)]"
      style="padding-bottom: env(safe-area-inset-bottom, 0px);">
 
-    <!-- Selection count strip (shows when items selected) -->
+    <!-- Selection count strip -->
     <div x-show="selectedIds.length > 0" x-transition
          class="flex items-center justify-between px-4 py-1.5 bg-indigo-50 border-b border-indigo-100">
         <div class="flex items-center gap-1.5">
@@ -29,23 +29,7 @@
             </div>
         {% else %}
 
-            {% if perm_idcard_add %}
-            <button @click="addNew()"
-                    class="mab-btn mab-btn-indigo flex-col">
-                <i class="fa-solid fa-plus mab-icon"></i>
-                <span class="mab-label">Add</span>
-            </button>
-            {% endif %}
-
-            {% if perm_idcard_edit %}
-            <button @click="editSelected()"
-                    :disabled="selectedIds.length === 0"
-                    :class="selectedIds.length > 0 ? 'mab-btn mab-btn-amber flex-col' : 'mab-btn mab-btn-disabled flex-col'">
-                <i class="fa-solid fa-pen mab-icon"></i>
-                <span class="mab-label">Edit</span>
-            </button>
-            {% endif %}
-
+            <!-- 1. View (1 selected) -->
             <button @click="viewSelected()"
                     :disabled="selectedIds.length !== 1"
                     :class="selectedIds.length === 1 ? 'mab-btn mab-btn-teal flex-col' : 'mab-btn mab-btn-disabled flex-col'">
@@ -53,6 +37,29 @@
                 <span class="mab-label">View</span>
             </button>
 
+            <!-- 2. Download PDF (>=1 selected) -->
+            {% if perm_idcard_bulk_download %}
+            <button @click="downloadPDF()"
+                    :disabled="selectedIds.length === 0"
+                    :class="selectedIds.length > 0 ? 'mab-btn mab-btn-purple flex-col' : 'mab-btn mab-btn-disabled flex-col'">
+                <i class="fa-solid fa-file-pdf mab-icon"></i>
+                <span class="mab-label">Download</span>
+            </button>
+            {% endif %}
+
+            <!-- 3. Add / Edit combined (0 selected=Add, 1 selected=Edit, >1=disabled) -->
+            {% if perm_idcard_add or perm_idcard_edit %}
+            <button @click="selectedIds.length === 1 ? editSelected() : (selectedIds.length === 0 ? addNew() : null)"
+                    :disabled="selectedIds.length > 1"
+                    :class="selectedIds.length === 1
+                        ? 'mab-btn mab-btn-amber flex-col'
+                        : (selectedIds.length === 0 ? 'mab-btn mab-btn-indigo flex-col' : 'mab-btn mab-btn-disabled flex-col')">
+                <i :class="selectedIds.length === 1 ? 'fa-solid fa-pen mab-icon' : 'fa-solid fa-plus mab-icon'"></i>
+                <span class="mab-label" x-text="selectedIds.length === 1 ? 'Edit' : 'Add'"></span>
+            </button>
+            {% endif %}
+
+            <!-- 4. Verify (pending list) / Approve (verified list) -->
             {% if list_type == 'pending' and perm_idcard_verify %}
             <button @click="verifySelected()"
                     :disabled="selectedIds.length === 0"
@@ -69,21 +76,13 @@
             </button>
             {% endif %}
 
+            <!-- 5. Delete (>=1 selected) -->
             {% if perm_idcard_delete %}
-            <button @click="permanentlyDelete()"
+            <button @click="{% if list_type == 'pool' or list_type == 'download' %}permanentlyDelete(){% else %}deleteSelected(){% endif %}"
                     :disabled="selectedIds.length === 0"
                     :class="selectedIds.length > 0 ? 'mab-btn mab-btn-red flex-col' : 'mab-btn mab-btn-disabled flex-col'">
                 <i class="fa-solid fa-trash mab-icon"></i>
                 <span class="mab-label">Delete</span>
-            </button>
-            {% endif %}
-
-            {% if perm_idcard_bulk_download %}
-            <button @click="downloadPDF()"
-                    :disabled="selectedIds.length === 0"
-                    :class="selectedIds.length > 0 ? 'mab-btn mab-btn-purple flex-col' : 'mab-btn mab-btn-disabled flex-col'">
-                <i class="fa-solid fa-file-pdf mab-icon"></i>
-                <span class="mab-label">PDF</span>
             </button>
             {% endif %}
 

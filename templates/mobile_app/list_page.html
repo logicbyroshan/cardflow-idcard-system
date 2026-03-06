@@ -45,6 +45,7 @@ const TABLE_ID = {{ table_id }};
 const LIST_TYPE = '{{ list_type }}';
 const ALL_STUDENT_IDS = [{% for s in students %}{{ s.id }}{% if not forloop.last %},{% endif %}{% endfor %}];
 const TOTAL_COUNT = {{ total_count }};
+const HAS_MORE = {{ has_more|yesno:"true,false" }};
 const STUDENTS_DATA = JSON.parse('{{ students_json|escapejs }}');
 const IS_VIEW_ONLY = {{ view_only_list|yesno:"true,false" }};
 </script>

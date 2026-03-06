@@ -4,6 +4,9 @@ from . import views
 app_name = 'mobile_app'
 
 urlpatterns = [
+    # Mobile login (dedicated PWA login screen)
+    path('login/', views.mobile_login, name='mobile_login'),
+
     # Page views
     path('', views.home, name='home'),
     path('clients/', views.clients_list, name='clients_list'),
@@ -45,6 +48,7 @@ urlpatterns = [
     # Client Management APIs
     path('api/client/<int:client_id>/toggle/', views.api_client_toggle, name='api_client_toggle'),
     path('api/client/<int:client_id>/delete/', views.api_client_delete, name='api_client_delete'),
+    path('api/client/<int:client_id>/tables/', views.api_client_tables, name='api_client_tables'),
 
     # Website management (portfolio + reels upload from mobile)
     path('website/', views.website_manage, name='website_manage'),

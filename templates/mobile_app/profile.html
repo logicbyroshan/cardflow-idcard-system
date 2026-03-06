@@ -22,7 +22,7 @@
             <!-- Avatar Section -->
             <div class="bg-gradient-to-br from-brand-light to-brand-dark px-6 py-8 text-center">
                 <div class="w-20 h-20 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white text-2xl font-bold mx-auto mb-3 border-4 border-white/30">
-                    {{ user_name|truncatechars:2|upper }}
+                    {{ user_name|slice:":2"|upper }}
                 </div>
                 <h2 class="text-white font-bold text-lg" x-show="!editing">{{ user_name }}</h2>
                 <p class="text-white/70 text-sm">{{ user_role }}</p>
@@ -86,37 +86,6 @@
         </div>
     </div>
 
-    <!-- Quick Settings -->
-    <div class="px-4 pt-4 pb-2" x-data="{ darkMode: false, pushNotif: true }">
-        <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-            <div class="px-4 py-3 border-b border-gray-100">
-                <h3 class="text-sm font-bold text-gray-800">Quick Settings</h3>
-            </div>
-            <div class="divide-y divide-gray-50">
-                <div class="flex items-center justify-between p-4">
-                    <div class="flex items-center gap-3">
-                        <i class="fa-solid fa-moon text-gray-400"></i>
-                        <span class="text-sm text-gray-700">Dark Mode</span>
-                    </div>
-                    <label class="toggle-switch">
-                        <input type="checkbox" x-model="darkMode">
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-                <div class="flex items-center justify-between p-4">
-                    <div class="flex items-center gap-3">
-                        <i class="fa-solid fa-bell text-gray-400"></i>
-                        <span class="text-sm text-gray-700">Push Notifications</span>
-                    </div>
-                    <label class="toggle-switch">
-                        <input type="checkbox" x-model="pushNotif">
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Quick Links -->
     <div class="px-4 pb-2">
         <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-50">
@@ -148,13 +117,10 @@
 
     <!-- Logout -->
     <div class="px-4 pb-6">
-        <form method="post" action="/auth/logout/">
-            {% csrf_token %}
-            <input type="hidden" name="next" value="/app/">
-            <button type="submit" class="block w-full py-3 text-center text-sm font-semibold text-red-500 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 transition">
-                <i class="fa-solid fa-right-from-bracket mr-2"></i>Logout
-            </button>
-        </form>
+        <a href="/panel/auth/logout/"
+           class="flex items-center justify-center gap-2 w-full py-3 text-sm font-semibold text-red-500 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 transition">
+            <i class="fa-solid fa-right-from-bracket"></i>Logout
+        </a>
     </div>
 
     <!-- Toast -->

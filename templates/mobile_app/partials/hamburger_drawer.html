@@ -45,7 +45,12 @@
                 </div>
                 <div>
                     <p class="text-white font-semibold text-sm leading-tight">{{ user_name|default:"Admin" }}</p>
-                    <p class="text-white/70 text-[10px] leading-none mt-0.5">{{ request.user.role|default:"" }}</p>
+                    <p class="text-white/70 text-[10px] leading-none mt-0.5">
+                        {% if is_super_admin %}Super Admin
+                        {% elif is_admin_staff %}Admin Staff
+                        {% elif is_client %}Client Admin
+                        {% else %}Client Staff{% endif %}
+                    </p>
                 </div>
             </div>
             <button @click="close()" class="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white active:bg-white/30 transition-colors">
@@ -56,142 +61,98 @@
         <!-- ── Scrollable menu body ── -->
         <div class="flex-1 overflow-y-auto pb-[env(safe-area-inset-bottom,16px)]">
 
-            <!-- Section: Workflows -->
-            <div class="px-4 pt-4 pb-1">
-                <p class="pwa-drawer-section-label">Workflows</p>
+            <!-- ── TEAM STATS 2×2 (admins only) ── -->
+            {% if is_super_admin or is_admin_staff %}
+            <div class="px-4 pt-5 pb-3">
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Team Overview</p>
+                <div class="grid grid-cols-2 gap-2.5">
+
+                    <!-- Active Clients -->
+                    <div class="bg-gradient-to-br from-sky-50 to-sky-100/60 rounded-xl px-3.5 py-3 border border-sky-100 flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-lg bg-sky-500/10 flex items-center justify-center flex-shrink-0">
+                            <i class="fa-solid fa-building text-sky-500 text-[13px]"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-[20px] font-extrabold text-gray-800 leading-none">{{ admin_client_count|default:0 }}</p>
+                            <p class="text-[9px] text-gray-500 mt-0.5 font-medium leading-tight">Active Clients</p>
+                        </div>
+                    </div>
+
+                    <!-- Total Tables -->
+                    <div class="bg-gradient-to-br from-violet-50 to-violet-100/60 rounded-xl px-3.5 py-3 border border-violet-100 flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center flex-shrink-0">
+                            <i class="fa-solid fa-table-cells text-violet-500 text-[13px]"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-[20px] font-extrabold text-gray-800 leading-none">{{ admin_table_count|default:0 }}</p>
+                            <p class="text-[9px] text-gray-500 mt-0.5 font-medium leading-tight">Active Tables</p>
+                        </div>
+                    </div>
+
+                    <!-- Total Staff -->
+                    <div class="bg-gradient-to-br from-emerald-50 to-emerald-100/60 rounded-xl px-3.5 py-3 border border-emerald-100 flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+                            <i class="fa-solid fa-users text-emerald-500 text-[13px]"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-[20px] font-extrabold text-gray-800 leading-none">{{ admin_staff_count|default:0 }}</p>
+                            <p class="text-[9px] text-gray-500 mt-0.5 font-medium leading-tight">Team Members</p>
+                        </div>
+                    </div>
+
+                    <!-- Total Cards -->
+                    <div class="bg-gradient-to-br from-amber-50 to-amber-100/60 rounded-xl px-3.5 py-3 border border-amber-100 flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+                            <i class="fa-solid fa-id-card text-amber-500 text-[13px]"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-[20px] font-extrabold text-gray-800 leading-none">{{ admin_total_cards|default:0 }}</p>
+                            <p class="text-[9px] text-gray-500 mt-0.5 font-medium leading-tight">Total ID Cards</p>
+                        </div>
+                    </div>
+
+                </div>
             </div>
-            <div class="px-3 space-y-1">
-                <!-- Print List -->
-                {% if first_table_id %}
-                <a href="/panel/print/table/{{ first_table_id }}/"
-                   @click="close()"
-                   class="pwa-drawer-item">
-                    <span class="pwa-drawer-icon-wrap bg-indigo-50 text-indigo-600">
-                        <i class="fa-solid fa-print"></i>
-                    </span>
-                    <div class="pwa-drawer-item-text">
-                        <span class="pwa-drawer-item-title">Print List</span>
-                        <span class="pwa-drawer-item-sub">Cards ready to print</span>
-                    </div>
-                    <i class="fa-solid fa-chevron-right pwa-drawer-chevron"></i>
-                </a>
-                {% else %}
-                <a href="{% url 'mobile_app:table_picker' 'download' %}"
-                   @click="close()"
-                   class="pwa-drawer-item">
-                    <span class="pwa-drawer-icon-wrap bg-indigo-50 text-indigo-600">
-                        <i class="fa-solid fa-print"></i>
-                    </span>
-                    <div class="pwa-drawer-item-text">
-                        <span class="pwa-drawer-item-title">Print List</span>
-                        <span class="pwa-drawer-item-sub">Cards ready to print</span>
-                    </div>
-                    <i class="fa-solid fa-chevron-right pwa-drawer-chevron"></i>
-                </a>
-                {% endif %}
-
-                <!-- Reprint List -->
-                {% if first_table_id %}
-                <a href="/panel/reprint/table/{{ first_table_id }}/"
-                   @click="close()"
-                   class="pwa-drawer-item">
-                    <span class="pwa-drawer-icon-wrap bg-purple-50 text-purple-600">
-                        <i class="fa-solid fa-rotate-right"></i>
-                    </span>
-                    <div class="pwa-drawer-item-text">
-                        <span class="pwa-drawer-item-title">Reprint List</span>
-                        <span class="pwa-drawer-item-sub">Reprinting requests</span>
-                    </div>
-                    <i class="fa-solid fa-chevron-right pwa-drawer-chevron"></i>
-                </a>
-                {% else %}
-                <a href="{% url 'mobile_app:table_picker' 'pool' %}"
-                   @click="close()"
-                   class="pwa-drawer-item">
-                    <span class="pwa-drawer-icon-wrap bg-purple-50 text-purple-600">
-                        <i class="fa-solid fa-rotate-right"></i>
-                    </span>
-                    <div class="pwa-drawer-item-text">
-                        <span class="pwa-drawer-item-title">Reprint List</span>
-                        <span class="pwa-drawer-item-sub">Reprinting requests</span>
-                    </div>
-                    <i class="fa-solid fa-chevron-right pwa-drawer-chevron"></i>
-                </a>
-                {% endif %}
-
-                <!-- Bulk Actions -->
-                {% if first_table_id %}
-                <a href="{% url 'mobile_app:card_list' first_table_id 'pending' %}"
-                   @click="close()"
-                   class="pwa-drawer-item">
-                    <span class="pwa-drawer-icon-wrap bg-amber-50 text-amber-600">
-                        <i class="fa-solid fa-layer-group"></i>
-                    </span>
-                    <div class="pwa-drawer-item-text">
-                        <span class="pwa-drawer-item-title">Bulk Actions</span>
-                        <span class="pwa-drawer-item-sub">Status, delete &amp; more</span>
-                    </div>
-                    <i class="fa-solid fa-chevron-right pwa-drawer-chevron"></i>
-                </a>
-                {% endif %}
-            </div>
-
-            <!-- Section: Management (admins only) -->
-            {% if is_super_admin or is_admin_staff or is_client %}
-            <div class="px-4 pt-4 pb-1">
-                <p class="pwa-drawer-section-label">Management</p>
-            </div>
-            <div class="px-3 space-y-1">
-
-                {% if is_super_admin or is_admin_staff %}
-                <!-- Add Client -->
-                <a href="/panel/manage-clients/"
-                   @click="close()"
-                   class="pwa-drawer-item">
-                    <span class="pwa-drawer-icon-wrap bg-sky-50 text-sky-600">
-                        <i class="fa-solid fa-building-circle-arrow-right"></i>
-                    </span>
-                    <div class="pwa-drawer-item-text">
-                        <span class="pwa-drawer-item-title">Add Client</span>
-                        <span class="pwa-drawer-item-sub">Create new client</span>
-                    </div>
-                    <i class="fa-solid fa-chevron-right pwa-drawer-chevron"></i>
-                </a>
-                {% endif %}
-
-                <!-- Add Staff -->
-                <a href="{% url 'mobile_app:staff_manage' %}"
-                   @click="close()"
-                   class="pwa-drawer-item">
-                    <span class="pwa-drawer-icon-wrap bg-green-50 text-green-600">
-                        <i class="fa-solid fa-user-plus"></i>
-                    </span>
-                    <div class="pwa-drawer-item-text">
-                        <span class="pwa-drawer-item-title">Add Staff</span>
-                        <span class="pwa-drawer-item-sub">Invite team member</span>
-                    </div>
-                    <i class="fa-solid fa-chevron-right pwa-drawer-chevron"></i>
-                </a>
-
-                <!-- Team Overview -->
-                <a href="{% url 'mobile_app:staff_manage' %}"
-                   @click="close()"
-                   class="pwa-drawer-item">
-                    <span class="pwa-drawer-icon-wrap bg-rose-50 text-rose-600">
-                        <i class="fa-solid fa-people-group"></i>
-                    </span>
-                    <div class="pwa-drawer-item-text">
-                        <span class="pwa-drawer-item-title">Team Overview</span>
-                        <span class="pwa-drawer-item-sub">View all staff members</span>
-                    </div>
-                    <i class="fa-solid fa-chevron-right pwa-drawer-chevron"></i>
-                </a>
-            </div>
+            <div class="mx-4 border-t border-gray-100"></div>
             {% endif %}
 
-            <!-- Section: Quick tools -->
+            <!-- ── ACTION BUTTONS ── -->
+            {% if is_super_admin or is_admin_staff or is_client %}
             <div class="px-4 pt-4 pb-1">
-                <p class="pwa-drawer-section-label">Quick Tools</p>
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Quick Actions</p>
+                <div class="flex flex-col gap-2.5">
+
+                    {% if is_super_admin or is_admin_staff %}
+                    <!-- Add Client — opens desktop panel in new tab to keep PWA shell intact (H4 fix) -->
+                    <a href="/panel/manage-clients/"
+                       target="_blank" rel="noopener noreferrer"
+                       @click="close()"
+                       class="flex items-center gap-3 px-4 py-3.5 rounded-xl font-semibold text-[13px] text-white shadow-md active:opacity-90 transition-opacity"
+                       style="background:linear-gradient(135deg,#3b82f6,#2563eb);">
+                        <i class="fa-solid fa-building-circle-arrow-right text-base flex-shrink-0"></i>
+                        <span>Add Client</span>
+                        <i class="fa-solid fa-chevron-right text-white/60 text-xs ml-auto"></i>
+                    </a>
+                    {% endif %}
+
+                    <!-- Add Staff -->
+                    <a href="{% url 'mobile_app:staff_manage' %}"
+                       @click="close()"
+                       class="flex items-center gap-3 px-4 py-3.5 rounded-xl font-semibold text-[13px] text-white shadow-md active:opacity-90 transition-opacity"
+                       style="background:linear-gradient(135deg,#10b981,#059669);">
+                        <i class="fa-solid fa-user-plus text-base flex-shrink-0"></i>
+                        <span>Add Staff</span>
+                        <i class="fa-solid fa-chevron-right text-white/60 text-xs ml-auto"></i>
+                    </a>
+
+                </div>
+            </div>
+            <div class="mx-4 mt-4 border-t border-gray-100"></div>
+            {% endif %}
+
+            <!-- ── NAVIGATION ── -->
+            <div class="px-4 pt-4 pb-1">
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Navigation</p>
             </div>
             <div class="px-3 space-y-1">
                 <a href="{% url 'mobile_app:search_page' %}"

@@ -18,7 +18,7 @@
                 <a href="{% url 'mobile_app:clients_list' %}"
                    class="pwa-nav-item flex-1 {% if request.resolver_match.url_name == 'clients_list' or request.resolver_match.url_name == 'client_groups' %}pwa-nav-active{% endif %}">
                     <i class="fa-solid fa-users-between-lines pwa-nav-icon"></i>
-                    <span class="pwa-nav-label">Active Clients</span>
+                    <span class="pwa-nav-label">Clients</span>
                 </a>
                 {% else %}
                 <a href="{% url 'mobile_app:groups_overview' %}"
@@ -50,10 +50,10 @@
                     <span class="pwa-nav-label">Staff</span>
                 </a>
                 {% else %}
-                <a href="{% url 'mobile_app:profile' %}"
-                   class="pwa-nav-item flex-1 {% if request.resolver_match.url_name == 'profile' %}pwa-nav-active{% endif %}">
-                    <i class="fa-solid fa-user pwa-nav-icon"></i>
-                    <span class="pwa-nav-label">Profile</span>
+                <a href="{% url 'mobile_app:groups_overview' %}"
+                   class="pwa-nav-item flex-1 {% if request.resolver_match.url_name == 'groups_overview' %}pwa-nav-active{% endif %}">
+                    <i class="fa-solid fa-layer-group pwa-nav-icon"></i>
+                    <span class="pwa-nav-label">Groups</span>
                 </a>
                 {% endif %}
 

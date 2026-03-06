@@ -223,6 +223,7 @@
 </div>
 
 {% csrf_token %}
+{{ staff_json|json_script:"staff-json-data" }}
 <script>
 function getCookie(name) {
     let v = null;
@@ -236,7 +237,7 @@ const CSRF = getCookie('csrftoken') || document.querySelector('[name=csrfmiddlew
 
 function staffApp() {
     return {
-        staffList: JSON.parse('{{ staff_json|escapejs }}'),
+        staffList: JSON.parse(document.getElementById('staff-json-data').textContent),
         filteredStaff: [],
         searchQuery: '',
         showForm: false,
