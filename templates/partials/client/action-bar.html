@@ -29,19 +29,19 @@
             <div class="actions">
                 <div class="btn-group">
                     {% if is_super_admin %}
-                    <button class="btn btn-md btn-primary" id="addClientBtn"> Add</button>
+                    <button class="btn btn-md btn-primary" id="addClientBtn"><i class="fa-solid fa-plus"></i> Add</button>
                     {% endif %}
-                    <button class="btn btn-md btn-neutral" id="editClientBtn" disabled> Edit</button>
-                    <button class="btn btn-md btn-neutral" id="viewClientBtn" disabled> View</button>
-                    <button class="btn btn-md btn-neutral" id="viewStaffBtn" disabled> Staff</button>
+                    <button class="btn btn-md btn-neutral" id="editClientBtn" disabled><i class="fa-solid fa-pen"></i> Edit</button>
+                    <button class="btn btn-md btn-neutral" id="viewClientBtn" disabled><i class="fa-solid fa-eye"></i> View</button>
+                    <button class="btn btn-md btn-neutral" id="viewStaffBtn" disabled><i class="fa-solid fa-users"></i> Staff</button>
                 </div>
                 {% if is_super_admin or perm_idcard_client_list %}
                 <div class="btn-separator"></div>
                 <div class="btn-group">
                     {% if is_super_admin %}
-                    <button class="btn btn-md btn-danger" id="deleteClientBtn" disabled> Delete</button>
+                    <button class="btn btn-md btn-danger" id="deleteClientBtn" disabled><i class="fa-solid fa-trash"></i> Delete</button>
                     {% endif %}
-                    <button class="btn btn-md btn-warning" id="activeClientBtn" disabled> Active</button>
+                    <button class="btn btn-md btn-warning" id="activeClientBtn" disabled><i class="fa-solid fa-toggle-on"></i> Active</button>
                 </div>
                 {% endif %}
             </div>

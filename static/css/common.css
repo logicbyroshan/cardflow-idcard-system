@@ -42,6 +42,17 @@ body[style*="overflow:hidden"] {
 }
 
 /* ===========================================
+   ACTION BAR — Remove top border gap and add spacing
+   The topbar already has border-bottom, so action-bar's border-top
+   creates a visual "double line" gap. Remove it for consistency.
+   Added padding-top so buttons don't stick to the top edge.
+   =========================================== */
+.action-bar {
+  border-top: none;
+  padding-top: 4px;
+}
+
+/* ===========================================
    ACTION BAR BUTTONS - Two Sizes Only
    Small: Action bar CRUD buttons (Add, Edit, Delete, etc.)
    Standard: Navigation buttons (Group Setting, ID Card Group)
