@@ -376,10 +376,39 @@ function listApp() {
                 }
             } catch (e) { this.showToast('PDF download failed', 'error'); }
         },
-        downloadIMG() {
+        async downloadIMG() {
             if (!this.selectedIds.length) { this.showToast('Select items first', 'error'); return; }
-            this.showToast('Downloading images...', 'info');
-            window.open('/api/table/' + TABLE_ID + '/cards/download-images/?ids=' + this.selectedIds.join(','), '_blank');
+            this.showToast('Preparing images ZIP...', 'info');
+            this.loading = true;
+            try {
+                const res = await fetch('/panel/api/table/' + TABLE_ID + '/cards/download-images/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+                    body: JSON.stringify({ card_ids: this.selectedIds, status: LIST_TYPE }),
+                });
+                const data = await res.json();
+                if (data.success && data.zip_files && data.zip_files.length > 0) {
+                    // Download each ZIP file
+                    for (const zipInfo of data.zip_files) {
+                        const bin = atob(zipInfo.data);
+                        const bytes = new Uint8Array(bin.length);
+                        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+                        const blob = new Blob([bytes], { type: 'application/zip' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = zipInfo.filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                    }
+                    this.showToast('Downloaded ' + data.total_images + ' images!', 'success');
+                } else {
+                    this.showToast(data.message || 'No images to download', 'error');
+                }
+            } catch (e) { this.showToast('Download failed', 'error'); }
+            this.loading = false;
         },
         downloadAgain() { this.apiAction('download', 're-downloaded'); },
         async permanentlyDelete() {
