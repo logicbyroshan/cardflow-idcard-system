@@ -252,6 +252,14 @@
     e.cropContainer = document.getElementById('aeCropContainer');
     e.cropImage     = document.getElementById('aeCropImage');
 
+    // Preset UI elements
+    e.presetSelect  = document.getElementById('aePresetSelect');
+    e.presetLoad    = document.getElementById('aePresetLoad');
+    e.presetDelete  = document.getElementById('aePresetDelete');
+    e.presetName    = document.getElementById('aePresetName');
+    e.presetSave    = document.getElementById('aePresetSave');
+    e.applyToAll    = document.getElementById('aeApplyToAll');
+
     this._bindEvents();
     this._bound = true;
   };
@@ -318,6 +326,9 @@
 
     // ── Histogram handle dragging ───────────────────────────────
     this._bindLevelHandles();
+
+    // ── Preset controls ─────────────────────────────────────────
+    this._bindPresetControls();
   };
 
   // ═══════════════════════════════════════════════════════════════════
@@ -356,6 +367,10 @@
     this._resetSliders();
     this._showLoading(true);
     this._hideError();
+
+    // Refresh presets dropdown and clear input
+    this._refreshPresetDropdown();
+    if (e.presetName) e.presetName.value = '';
 
     // Save scroll position before locking body scroll
     this._savedScrollY = window.scrollY || window.pageYOffset || 0;
@@ -641,6 +656,211 @@
   };
 
   // ═══════════════════════════════════════════════════════════════════
+  //  PRESETS SYSTEM
+  // ═══════════════════════════════════════════════════════════════════
+
+  /**
+   * Bind preset control events.
+   */
+  AdarshEngine.prototype._bindPresetControls = function () {
+    var self = this;
+    var e = this._els;
+
+    if (!e.presetSelect) return; // Presets UI not present
+
+    // Populate presets on modal open
+    this._refreshPresetDropdown();
+
+    // Load preset
+    this._on(e.presetLoad, 'click', function () { self._loadSelectedPreset(); });
+
+    // Delete preset
+    this._on(e.presetDelete, 'click', function () { self._deleteSelectedPreset(); });
+
+    // Save preset
+    this._on(e.presetSave, 'click', function () { self._saveCurrentAsPreset(); });
+
+    // Apply to All
+    if (e.applyToAll) {
+      this._on(e.applyToAll, 'click', function () { self._applyToAllImages(); });
+    }
+  };
+
+  /**
+   * Refresh the preset dropdown with current presets.
+   */
+  AdarshEngine.prototype._refreshPresetDropdown = function () {
+    var e = this._els;
+    if (!e.presetSelect || typeof AdarshEnginePresets === 'undefined') return;
+
+    var presets = AdarshEnginePresets.getAll();
+    var select = e.presetSelect;
+
+    // Clear existing options except the first placeholder
+    while (select.options.length > 1) {
+      select.remove(1);
+    }
+
+    // Add presets
+    for (var i = 0; i < presets.length; i++) {
+      var opt = document.createElement('option');
+      opt.value = presets[i].id;
+      opt.textContent = presets[i].name;
+      select.appendChild(opt);
+    }
+
+    // Reset selection
+    select.value = '';
+  };
+
+  /**
+   * Load the currently selected preset and apply it.
+   */
+  AdarshEngine.prototype._loadSelectedPreset = function () {
+    var e = this._els;
+    if (!e.presetSelect || typeof AdarshEnginePresets === 'undefined') return;
+
+    var presetId = e.presetSelect.value;
+    if (!presetId) {
+      alert('Please select a preset first.');
+      return;
+    }
+
+    var preset = AdarshEnginePresets.get(presetId);
+    if (!preset) {
+      alert('Preset not found.');
+      return;
+    }
+
+    // Apply preset values
+    this._applyPresetParams(preset.params);
+    this._log('Loaded preset: ' + preset.name);
+  };
+
+  /**
+   * Apply preset parameters to the current image.
+   */
+  AdarshEngine.prototype._applyPresetParams = function (params) {
+    var e = this._els;
+
+    // Set slider values
+    e.black.value = params.blackPoint || 0;
+    e.gamma.value = Math.round((params.gamma || 1.0) * 100);
+    e.white.value = params.whitePoint || 255;
+    e.vibrance.value = params.vibrance || 0;
+    if (e.temp) e.temp.value = params.temperature || 0;
+
+    // Update params object
+    this.params.blackPoint = params.blackPoint || 0;
+    this.params.gamma = params.gamma || 1.0;
+    this.params.whitePoint = params.whitePoint || 255;
+    this.params.vibrance = params.vibrance || 0;
+    this.params.temperature = params.temperature || 0;
+
+    // Update display values (handle 0 correctly)
+    e.blackVal.textContent = String(params.blackPoint != null ? params.blackPoint : 0);
+    e.gammaVal.textContent = (params.gamma || 1.0).toFixed(2);
+    e.whiteVal.textContent = String(params.whitePoint != null ? params.whitePoint : 255);
+    e.vibranceVal.textContent = String(params.vibrance != null ? params.vibrance : 0);
+    if (e.tempVal) e.tempVal.textContent = String(params.temperature != null ? params.temperature : 0);
+
+    // Sync handle positions and re-render
+    this._syncHandlePositions();
+    this.render();
+  };
+
+  /**
+   * Delete the currently selected preset.
+   */
+  AdarshEngine.prototype._deleteSelectedPreset = function () {
+    var e = this._els;
+    if (!e.presetSelect || typeof AdarshEnginePresets === 'undefined') return;
+
+    var presetId = e.presetSelect.value;
+    if (!presetId) {
+      alert('Please select a preset to delete.');
+      return;
+    }
+
+    var preset = AdarshEnginePresets.get(presetId);
+    if (!preset) return;
+
+    if (!confirm('Delete preset "' + preset.name + '"?')) return;
+
+    AdarshEnginePresets.delete(presetId);
+    this._refreshPresetDropdown();
+    this._log('Deleted preset: ' + preset.name);
+  };
+
+  /**
+   * Save current adjustments as a new preset.
+   */
+  AdarshEngine.prototype._saveCurrentAsPreset = function () {
+    var e = this._els;
+    if (!e.presetName || typeof AdarshEnginePresets === 'undefined') return;
+
+    var name = e.presetName.value.trim();
+    if (!name) {
+      alert('Please enter a preset name.');
+      e.presetName.focus();
+      return;
+    }
+
+    if (AdarshEnginePresets.nameExists(name)) {
+      if (!confirm('A preset named "' + name + '" already exists. Overwrite it?')) {
+        return;
+      }
+      // Delete existing and re-add
+      var presets = AdarshEnginePresets.getAll();
+      for (var i = 0; i < presets.length; i++) {
+        if (presets[i].name.toLowerCase() === name.toLowerCase()) {
+          AdarshEnginePresets.delete(presets[i].id);
+          break;
+        }
+      }
+    }
+
+    // Create preset from current params
+    AdarshEnginePresets.add(name, {
+      blackPoint: this.params.blackPoint,
+      gamma: this.params.gamma,
+      whitePoint: this.params.whitePoint,
+      vibrance: this.params.vibrance,
+      temperature: this.params.temperature,
+    });
+
+    e.presetName.value = '';
+    this._refreshPresetDropdown();
+    this._log('Saved preset: ' + name);
+    alert('Preset "' + name + '" saved successfully!');
+  };
+
+  /**
+   * Get current adjustment parameters.
+   */
+  AdarshEngine.prototype.getParams = function () {
+    return {
+      blackPoint: this.params.blackPoint,
+      gamma: this.params.gamma,
+      whitePoint: this.params.whitePoint,
+      vibrance: this.params.vibrance,
+      temperature: this.params.temperature,
+    };
+  };
+
+  /**
+   * Apply to all callback — can be overridden by the page.
+   */
+  AdarshEngine.prototype._applyToAllImages = function () {
+    // This calls the onApplyToAll callback if set
+    if (typeof this.onApplyToAllCallback === 'function') {
+      this.onApplyToAllCallback(this.getParams());
+    } else {
+      alert('Apply to All is not configured for this page.');
+    }
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
   //  PHASE 14: FULL DESTROY
   // ═══════════════════════════════════════════════════════════════════
 
@@ -789,6 +1009,37 @@
     /** v3: Navigate to next image. */
     navigateNext: function () {
       _getInstance().navigateNext();
+    },
+
+    /**
+     * Set callback for "Apply to All" button.
+     * @param {function} callback - function(params) receives current adjustments
+     */
+    setApplyToAllCallback: function (callback) {
+      _getInstance().onApplyToAllCallback = callback;
+    },
+
+    /**
+     * Get current adjustment parameters.
+     * @returns {Object} {blackPoint, gamma, whitePoint, vibrance, temperature}
+     */
+    getParams: function () {
+      return _getInstance().getParams();
+    },
+
+    /**
+     * Apply preset parameters to the current image.
+     * @param {Object} params - {blackPoint, gamma, whitePoint, vibrance, temperature}
+     */
+    applyParams: function (params) {
+      _getInstance()._applyPresetParams(params);
+    },
+
+    /**
+     * Refresh the preset dropdown (call after adding/deleting presets externally).
+     */
+    refreshPresets: function () {
+      _getInstance()._refreshPresetDropdown();
     },
 
     /** Access the underlying class for advanced usage. */

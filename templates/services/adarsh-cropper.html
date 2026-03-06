@@ -90,7 +90,7 @@
           </div>
         </div>
         <a href="{% url 'engine_download' %}" class="btn btn-sm btn-engine-dl" download="AdarshEngineSetup.exe" title="Download latest installer (re-install to update)">
-          <i class="fa-solid fa-download"></i> Download Latest Installer
+          <i class="fa-solid fa-download"></i> Download <span x-show="update.version">v<span x-text="update.version"></span></span><span x-show="!update.version">Installer</span>
         </a>
       </div>
     </div>
@@ -120,7 +120,7 @@
         {# Show Download Installer ONLY when no update is available (first-time install) #}
         <div class="engine-actions" x-show="!update.available">
           <a href="{% url 'engine_download' %}" class="btn btn-primary" download="AdarshCropperSetup.exe">
-            <i class="fa-solid fa-download"></i> Download Installer
+            <i class="fa-solid fa-download"></i> Download <span x-show="update.version">v<span x-text="update.version"></span></span><span x-show="!update.version">Installer</span>
           </a>
         </div>
 
@@ -153,21 +153,105 @@
       <div class="process-card">
         <div class="card-header">
           <h3><i class="fa-solid fa-folder-open"></i> Process Folder</h3>
-          <p class="card-desc">Enter a local folder path containing passport photos. Cropped and failed images
+          <p class="card-desc">Select a client or enter a local folder path containing passport photos. Cropped and failed images
             will be placed inside <em>cropped/</em> and <em>failed/</em> sub-folders within the same directory.
             No size limit — large folders are processed in batches automatically.</p>
         </div>
 
-        <div class="folder-input-group">
+        {# ── Client Selection ── #}
+        <div class="client-select-group">
+          <div class="input-mode-toggle">
+            <button type="button" class="mode-btn" :class="{ 'active': inputMode === 'client' }" 
+                    :disabled="processing || compressing" @click="inputMode = 'client'; loadClients()">
+              <i class="fa-solid fa-building"></i> Select Client
+            </button>
+            <button type="button" class="mode-btn" :class="{ 'active': inputMode === 'manual' }" 
+                    :disabled="processing || compressing" @click="inputMode = 'manual'">
+              <i class="fa-solid fa-folder"></i> Manual Path
+            </button>
+          </div>
+          
+          {# Client Dropdown #}
+          <template x-if="inputMode === 'client'">
+            <div class="client-dropdown-wrapper">
+              <select x-model="selectedClientId" @change="onClientSelect()" class="client-dropdown" :disabled="clientsLoading || processing || compressing">
+                <option value="">— Select a client —</option>
+                <template x-for="client in clients" :key="client.id">
+                  <option :value="client.id" x-text="client.name"></option>
+                </template>
+              </select>
+              <template x-if="clientsLoading">
+                <span class="client-loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading clients…</span>
+              </template>
+            </div>
+          </template>
+        </div>
+
+        <div class="folder-input-group" :class="{ 'client-selected': inputMode === 'client' && selectedClientId }">
           <div class="input-wrapper">
             <i class="fa-solid fa-folder"></i>
             <input type="text" x-model="folderPath" placeholder="C:\Users\Name\Photos" autocomplete="off"
-                   @keydown.enter="processFolder()">
+                   @keydown.enter="processFolder()" :readonly="inputMode === 'client' && selectedClientId">
           </div>
           <p class="input-hint">
             <i class="fa-solid fa-info-circle"></i>
-            The folder must be accessible on this computer. Output: <em>&lt;folder&gt;/cropped/</em> and <em>&lt;folder&gt;/failed/</em> inside it.
+            <template x-if="inputMode === 'client' && selectedClientId">
+              <span>Client's photo folder selected. Output: <em>&lt;folder&gt;/cropped/</em> and <em>&lt;folder&gt;/failed/</em> inside it.</span>
+            </template>
+            <template x-if="!(inputMode === 'client' && selectedClientId)">
+              <span>The folder must be accessible on this computer. Output: <em>&lt;folder&gt;/cropped/</em> and <em>&lt;folder&gt;/failed/</em> inside it.</span>
+            </template>
           </p>
+        </div>
+
+        {# ── Pipeline Options (Preset) ── #}
+        <div class="pipeline-options">
+          <div class="pipeline-header">
+            <span class="pipeline-title"><i class="fa-solid fa-sliders"></i> Processing Pipeline</span>
+          </div>
+          <div class="pipeline-steps">
+            {# Step 1: Crop (always enabled) #}
+            <div class="pipeline-step enabled">
+              <label class="pipeline-checkbox">
+                <input type="checkbox" checked disabled>
+                <span class="pipeline-step-icon"><i class="fa-solid fa-crop"></i></span>
+                <span class="pipeline-step-label">Face Crop</span>
+              </label>
+            </div>
+
+            {# Step 2: Compress (optional) #}
+            <div class="pipeline-step" :class="{ 'enabled': pipeline.compress }">
+              <label class="pipeline-checkbox">
+                <input type="checkbox" x-model="pipeline.compress">
+                <span class="pipeline-step-icon"><i class="fa-solid fa-compress"></i></span>
+                <span class="pipeline-step-label">Compress to</span>
+              </label>
+              <div class="pipeline-step-options" x-show="pipeline.compress">
+                <input type="number" x-model.number="pipeline.compressKB" min="10" max="1000" class="pipeline-kb-input" placeholder="50">
+                <span class="pipeline-kb-unit">KB</span>
+              </div>
+            </div>
+
+            {# Step 3: Rename (optional) #}
+            <div class="pipeline-step" :class="{ 'enabled': pipeline.rename }">
+              <label class="pipeline-checkbox">
+                <input type="checkbox" x-model="pipeline.rename">
+                <span class="pipeline-step-icon"><i class="fa-solid fa-i-cursor"></i></span>
+                <span class="pipeline-step-label">Rename</span>
+              </label>
+              <div class="pipeline-step-options" x-show="pipeline.rename">
+                <select x-model="pipeline.renameOperation" class="pipeline-select">
+                  <option value="remove_camera_prefix">Remove camera prefix</option>
+                  <option value="sequential">Sequential (001, 002…)</option>
+                  <option value="add_prefix">Add prefix</option>
+                </select>
+                <input type="text" x-model="pipeline.renameParam" 
+                       x-show="pipeline.renameOperation === 'add_prefix' || pipeline.renameOperation === 'sequential'"
+                       :placeholder="pipeline.renameOperation === 'add_prefix' ? 'Prefix text' : 'Base name'"
+                       class="pipeline-text-input">
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="card-actions">
@@ -318,6 +402,26 @@
           </button>
         </div>
 
+        {# ── Selection Toolbar ── #}
+        <div class="selection-toolbar" x-show="currentTabImages().length > 0" x-cloak>
+          <div class="selection-toolbar-left">
+            <label class="select-all-checkbox">
+              <input type="checkbox" 
+                     :checked="selection.all" 
+                     @change="toggleSelectAll()"
+                     :indeterminate="selection.count > 0 && selection.count < currentTabImages().length">
+              <span x-text="selection.all ? 'Deselect All' : (selection.count > 0 ? selection.count + ' selected' : 'Select All')"></span>
+            </label>
+          </div>
+          <div class="selection-toolbar-right" x-show="selection.count > 0 || selection.all">
+            <button class="btn btn-neutral btn-sm" type="button"
+                    @click="openRenameModal()"
+                    :disabled="renameState.running">
+              <i class="fa-solid fa-i-cursor"></i> Rename
+            </button>
+          </div>
+        </div>
+
         {# Loading #}
         <div class="preview-loading" x-show="preview.loading" x-cloak>
           <i class="fa-solid fa-circle-notch fa-spin"></i>
@@ -327,9 +431,12 @@
         {# Grid #}
         <div class="preview-grid" x-show="!preview.loading && currentTabImages().length > 0" x-cloak>
           <template x-for="(img, idx) in currentTabImages()" :key="img.name">
-            <div class="preview-card">
+            <div class="preview-card" :class="{ 'is-selected': isSelected(img) }">
               <div class="preview-img-wrap">
                 <img :src="img.url" :alt="img.name" loading="lazy">
+                <div class="ae-selection-checkbox" @click.stop="toggleSelect(img)">
+                  <input type="checkbox" :checked="isSelected(img)" tabindex="-1">
+                </div>
                 <div class="ae-overlay-btns">
                   <template x-if="activeTab === 'cropped' || activeTab === 'edited' || activeTab === 'failed' || activeTab === 'deleted'">
                     <button class="ae-edit-btn" type="button"
@@ -438,6 +545,123 @@
         </div>
       </div>
 
+      {# ══════════ Rename Images Modal ══════════ #}
+      <div class="rename-modal-backdrop" x-show="renameModal.visible" x-cloak x-transition.opacity>
+        <div class="rename-modal" x-transition.scale>
+          <div class="rename-modal-header">
+            <h4><i class="fa-solid fa-i-cursor"></i> Rename Images</h4>
+            <button class="btn-dismiss-error" @click="renameModal.visible = false" type="button">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+
+          <div class="rename-modal-body">
+            {# File count info #}
+            <div class="rename-source-info">
+              <p><i class="fa-solid fa-images"></i> Renaming <strong x-text="getSelectedFileCount()"></strong> images</p>
+            </div>
+
+            {# Operation selector #}
+            <div class="rename-operation-group">
+              <label class="rename-label">
+                <i class="fa-solid fa-cog"></i> Rename Operation
+              </label>
+              <select x-model="renameModal.operation" class="rename-select" @change="updateRenameParams()">
+                <option value="add_prefix">Add Prefix</option>
+                <option value="add_suffix">Add Suffix</option>
+                <option value="replace_text">Replace Text</option>
+                <option value="remove_text">Remove Text</option>
+                <option value="remove_camera_prefix">Remove Camera Prefix (DSC_, IMG_, etc.)</option>
+                <option value="sequential">Sequential Numbering</option>
+                <option value="lowercase">Convert to Lowercase</option>
+                <option value="uppercase">Convert to Uppercase</option>
+                <option value="title_case">Convert to Title Case</option>
+              </select>
+            </div>
+
+            {# Dynamic parameters based on operation #}
+            <div class="rename-params-group" x-show="renameModal.operation === 'add_prefix'">
+              <label class="rename-label">Prefix text</label>
+              <input type="text" x-model="renameModal.params.prefix" placeholder="e.g., vacation_" class="rename-input">
+            </div>
+
+            <div class="rename-params-group" x-show="renameModal.operation === 'add_suffix'">
+              <label class="rename-label">Suffix text</label>
+              <input type="text" x-model="renameModal.params.suffix" placeholder="e.g., _edited" class="rename-input">
+            </div>
+
+            <div class="rename-params-group" x-show="renameModal.operation === 'replace_text'">
+              <label class="rename-label">Find text</label>
+              <input type="text" x-model="renameModal.params.old_text" placeholder="Text to find" class="rename-input">
+              <label class="rename-label" style="margin-top:8px;">Replace with</label>
+              <input type="text" x-model="renameModal.params.new_text" placeholder="Replacement text" class="rename-input">
+            </div>
+
+            <div class="rename-params-group" x-show="renameModal.operation === 'remove_text'">
+              <label class="rename-label">Text to remove</label>
+              <input type="text" x-model="renameModal.params.text" placeholder="Text to remove" class="rename-input">
+            </div>
+
+            <div class="rename-params-group" x-show="renameModal.operation === 'sequential'">
+              <label class="rename-label">Base name (optional)</label>
+              <input type="text" x-model="renameModal.params.base_name" placeholder="e.g., photo" class="rename-input">
+              <div style="display:flex;gap:12px;margin-top:8px;">
+                <div style="flex:1;">
+                  <label class="rename-label">Start number</label>
+                  <input type="number" x-model.number="renameModal.params.start" min="1" value="1" class="rename-input" style="width:100%;">
+                </div>
+                <div style="flex:1;">
+                  <label class="rename-label">Digits (padding)</label>
+                  <input type="number" x-model.number="renameModal.params.digits" min="1" max="10" value="3" class="rename-input" style="width:100%;">
+                </div>
+              </div>
+            </div>
+
+            {# Preview section #}
+            <div class="rename-preview-section" x-show="renameModal.preview.length > 0">
+              <label class="rename-label"><i class="fa-solid fa-eye"></i> Preview</label>
+              <div class="rename-preview-list">
+                <template x-for="item in renameModal.preview.slice(0, 5)" :key="item.original">
+                  <div class="rename-preview-item" :class="{ 'has-conflict': item.conflict }">
+                    <span class="rename-original" x-text="item.original"></span>
+                    <span class="rename-arrow">→</span>
+                    <span class="rename-new" x-text="item.new"></span>
+                    <span class="rename-conflict-badge" x-show="item.conflict" title="Conflict">⚠️</span>
+                  </div>
+                </template>
+                <div class="rename-preview-more" x-show="renameModal.preview.length > 5">
+                  <span x-text="'...' + (renameModal.preview.length - 5) + ' more files'"></span>
+                </div>
+              </div>
+              <p class="rename-preview-stats">
+                <span x-text="renameModal.previewStats.changed + ' will change'"></span>
+                <span x-show="renameModal.previewStats.conflicts > 0" class="rename-conflict-warning">
+                  • <span x-text="renameModal.previewStats.conflicts + ' conflicts'"></span>
+                </span>
+              </p>
+            </div>
+          </div>
+
+          <div class="rename-modal-footer">
+            <button class="btn btn-neutral" @click="renameModal.visible = false" type="button">
+              <i class="fa-solid fa-xmark"></i> Cancel
+            </button>
+            <button class="btn btn-neutral" @click="previewRename()" type="button" :disabled="renameModal.loading">
+              <template x-if="!renameModal.loading">
+                <span><i class="fa-solid fa-eye"></i> Preview</span>
+              </template>
+              <template x-if="renameModal.loading">
+                <span><i class="fa-solid fa-spinner fa-spin"></i> Loading…</span>
+              </template>
+            </button>
+            <button class="btn btn-primary" @click="executeRename()" type="button" 
+                    :disabled="renameModal.loading || renameModal.preview.length === 0 || renameModal.previewStats.changed === 0">
+              <i class="fa-solid fa-check"></i> Rename Files
+            </button>
+          </div>
+        </div>
+      </div>
+
       {# ══════════ Error Message ══════════ #}
       <div class="error-section" x-show="error.visible" x-transition x-cloak>
         <div class="error-content">
@@ -464,6 +688,7 @@
 <script src="{% static 'js/vendor/cropper.min.js' %}"></script>
 <script src="{% static 'js/adarshengine.js' %}"></script>
 <script src="{% static 'js/adarshengine-histogram.js' %}"></script>
+<script src="{% static 'js/adarshengine-presets.js' %}"></script>
 <script src="{% static 'js/adarshengine-adjust.js' %}"></script>
 <script src="{% static 'js/adarshengine-nav.js' %}"></script>
 <script src="{% static 'js/adarsh-cropper-utils.js' %}"></script>

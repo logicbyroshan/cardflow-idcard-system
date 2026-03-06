@@ -296,6 +296,7 @@
    *
    * Ensures no resolution loss (Phase 6).
    * v2: Also saves to /edited/ subfolder via backend endpoint.
+   * v3: Uses engine-based adjustments for higher quality output.
    * Production-hardened: double-save guard, dimension cap, error recovery.
    */
   AdarshEngine.prototype._save = function () {
@@ -361,10 +362,25 @@
         srcData = null;
         dstData = null;
 
-        // ── v2: Save to /edited/ folder via backend ─────────────
+        // ── v3: Save to /edited/ folder via engine-based adjustments ─────────────
         var originalPath = self.sourcePath || self._extractPathFromUrl(self.sourceUrl);
         if (originalPath) {
-          self._saveToEditedFolder(dataUrl, originalPath, self.currentFilename);
+          // Check if any adjustments were made
+          var hasAdjustments = (
+            self.params.blackPoint !== 0 ||
+            self.params.gamma !== 1.0 ||
+            self.params.whitePoint !== 255 ||
+            self.params.vibrance !== 0 ||
+            self.params.temperature !== 0
+          );
+          
+          if (hasAdjustments) {
+            // Use engine-based adjustments for higher quality
+            self._saveViaEngine(originalPath, self.currentFilename, self.params);
+          } else {
+            // No adjustments — skip saving (file would be identical)
+            self._log('No adjustments made — skipping /edited/ save');
+          }
         } else {
           self._log('No filesystem path detected — skipping /edited/ save');
         }
@@ -398,8 +414,130 @@
   };
 
   /**
+   * v3: Save the edited image using engine-based adjustments.
+   * Sends adjustment parameters to the engine which applies them
+   * at full resolution using Pillow/numpy for higher quality.
+   *
+   * @param {string} originalPath - Filesystem path of the source image.
+   * @param {string} filename     - Original filename.
+   * @param {Object} params       - Adjustment parameters.
+   */
+  AdarshEngine.prototype._saveViaEngine = function (originalPath, filename, params) {
+    var self = this;
+
+    // CSRF token for Django POST
+    var csrfToken = '';
+    var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    if (csrfMeta) {
+      csrfToken = csrfMeta.getAttribute('content');
+    } else {
+      // Fallback: read from cookie
+      var match = document.cookie.match(/csrftoken=([^;]+)/);
+      if (match) csrfToken = match[1];
+    }
+
+    var payload = {
+      image_path: originalPath,
+      original_path: originalPath,
+      filename: filename,
+      black_point: params.blackPoint,
+      gamma: params.gamma,
+      white_point: params.whitePoint,
+      vibrance: params.vibrance,
+      temperature: params.temperature,
+    };
+
+    self._log('Saving via engine:', originalPath, params);
+
+    fetch('/api/engine/adjust-image/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken,
+      },
+      body: JSON.stringify(payload),
+    })
+    .then(function (resp) {
+      if (!resp.ok) {
+        // Handle 503 (engine not running) specifically
+        if (resp.status === 503) {
+          self._warn('Engine not running — falling back to browser save');
+          // Fallback: use the legacy base64 save
+          return self._saveToEditedFolderFallback(originalPath, filename);
+        }
+        self._warn('Backend adjust-image HTTP', resp.status);
+        return null;
+      }
+      return resp.json().catch(function () {
+        self._warn('Backend adjust-image: invalid JSON response');
+        return null;
+      });
+    })
+    .then(function (data) {
+      if (!data) return;
+      if (data.success) {
+        self._log('Saved via engine to:', data.saved_path);
+      } else {
+        self._warn('Engine adjust-image failed:', data.message);
+      }
+    })
+    .catch(function (err) {
+      // Network error — non-blocking, just log
+      self._warn('Engine adjust-image request failed:', err.message || err);
+    });
+  };
+
+  /**
+   * Fallback: POST the edited image as base64 data URL.
+   * Used when the engine is not available (e.g., not running).
+   * This uses browser Canvas processing which is lower quality but functional.
+   *
+   * @param {string} originalPath - Filesystem path of the original image.
+   * @param {string} filename     - Original filename.
+   */
+  AdarshEngine.prototype._saveToEditedFolderFallback = function (originalPath, filename) {
+    var self = this;
+    
+    // Re-render at full resolution for fallback save
+    var fullImg = self.originalFullResolutionImage;
+    if (!fullImg) return;
+    
+    var fw = fullImg.naturalWidth;
+    var fh = fullImg.naturalHeight;
+    
+    if (fw > AdarshEngine.MAX_EXPORT_DIM || fh > AdarshEngine.MAX_EXPORT_DIM) {
+      var scale = AdarshEngine.MAX_EXPORT_DIM / Math.max(fw, fh);
+      fw = Math.round(fw * scale);
+      fh = Math.round(fh * scale);
+    }
+    
+    var offscreen = document.createElement('canvas');
+    offscreen.width = fw;
+    offscreen.height = fh;
+    var offCtx = offscreen.getContext('2d', { willReadFrequently: true });
+    offCtx.drawImage(fullImg, 0, 0, fw, fh);
+    
+    var srcData = offCtx.getImageData(0, 0, fw, fh);
+    var dstData = offCtx.createImageData(fw, fh);
+    self._applyPipeline(srcData.data, dstData.data, srcData.data.length);
+    offCtx.putImageData(dstData, 0, 0);
+    
+    var dataUrl = offscreen.toDataURL('image/jpeg', AdarshEngine.EXPORT_QUALITY);
+    
+    // Clean up
+    offscreen.width = 1;
+    offscreen.height = 1;
+    
+    // Use legacy save endpoint
+    self._saveToEditedFolder(dataUrl, originalPath, filename);
+    
+    return { success: true, fallback: true };
+  };
+
+  /**
    * v2: POST the edited image to the backend for /edited/ folder save.
    * Non-blocking — errors are logged but don't prevent the callback save.
+   * This is the legacy method used as fallback when engine is unavailable.
    *
    * @param {string} dataUrl      - The full-res JPEG data URL.
    * @param {string} originalPath - Filesystem path of the original image.
@@ -425,7 +563,7 @@
       filename: filename,
     };
 
-    self._log('Saving to /edited/ folder:', originalPath);
+    self._log('Saving to /edited/ folder (fallback):', originalPath);
 
     fetch('/api/engine/save-edited/', {
       method: 'POST',

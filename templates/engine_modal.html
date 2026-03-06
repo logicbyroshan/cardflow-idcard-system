@@ -118,6 +118,36 @@
           </div>
         </div>
 
+        {# ── Presets Group ─────────────────────────────────────────────── #}
+        <div class="ae-group ae-presets-group">
+          <div class="ae-group-label">Adjustment Presets</div>
+
+          <div class="ae-preset-controls">
+            <select id="aePresetSelect" class="ae-preset-select">
+              <option value="">— Select Preset —</option>
+            </select>
+            <button id="aePresetLoad" class="ae-preset-btn ae-preset-load" type="button" title="Load selected preset">
+              <i class="fa-solid fa-download" aria-hidden="true"></i>
+            </button>
+            <button id="aePresetDelete" class="ae-preset-btn ae-preset-delete" type="button" title="Delete selected preset">
+              <i class="fa-solid fa-trash" aria-hidden="true"></i>
+            </button>
+          </div>
+
+          <div class="ae-preset-save-row">
+            <input id="aePresetName" type="text" class="ae-preset-name-input" placeholder="New preset name...">
+            <button id="aePresetSave" class="ae-preset-btn ae-preset-save" type="button" title="Save current settings as preset">
+              <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Save
+            </button>
+          </div>
+
+          <button id="aeApplyToAll" class="ae-apply-all-btn" type="button">
+            <i class="fa-solid fa-layer-group" aria-hidden="true"></i>
+            Apply to All Images
+          </button>
+          <p class="ae-autofix-hint">Apply current adjustments to all cropped images</p>
+        </div>
+
         {# ── Image Navigation Group ───────────────────────────────────── #}
         <div class="ae-nav-group">
           <div class="ae-group-label">Navigate</div>

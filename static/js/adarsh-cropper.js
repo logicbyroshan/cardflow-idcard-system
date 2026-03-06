@@ -104,11 +104,60 @@ function cropperApp() {
       targetKB: 100,
     },
 
+    // ── Pipeline (preset) state ──
+    pipeline: {
+      compress: true,       // Auto-compress enabled by default
+      compressKB: 50,       // Default 50KB
+      rename: false,        // Rename disabled by default
+      renameOperation: 'remove_camera_prefix',
+      renameParam: '',      // For prefix text or base name
+    },
+
+    // ── Client selection state ──
+    inputMode: 'manual',           // 'client' or 'manual'
+    clients: [],                   // List of accessible clients
+    clientsLoading: false,
+    clientsLoaded: false,
+    selectedClientId: '',          // Selected client ID
+
     // ── Error ──
     error: {
       visible: false,
       title: '',
       message: '',
+    },
+
+    // ── Selection state ──
+    selection: {
+      all: false,
+      count: 0,
+      selected: {},  // { [imageName]: true }
+    },
+
+    // ── Rename state ──
+    renameState: {
+      running: false,
+    },
+    renameModal: {
+      visible: false,
+      loading: false,
+      operation: 'add_prefix',
+      params: {
+        prefix: '',
+        suffix: '',
+        old_text: '',
+        new_text: '',
+        text: '',
+        base_name: '',
+        start: 1,
+        digits: 3,
+      },
+      preview: [],
+      previewStats: {
+        total: 0,
+        changed: 0,
+        conflicts: 0,
+      },
     },
 
     // ── Internal ──
@@ -131,6 +180,9 @@ function cropperApp() {
     init() {
       // Restore persisted state from sessionStorage (if navigating back)
       this._restoreState();
+
+      // Fetch latest release info immediately (for download button version)
+      this._fetchLatestVersion();
 
       this._stagedRetryConnect();
       // Start keepalive polling — only pings when engine is already connected
@@ -339,6 +391,24 @@ function cropperApp() {
     },
 
     // ══════════════════════════════════════════════════════════════════
+    //  FETCH LATEST VERSION — called on init to populate download button
+    // ══════════════════════════════════════════════════════════════════
+    async _fetchLatestVersion() {
+      try {
+        var data = await ApiClient.get('/api/cropper/latest-version/');
+        if (data && data.available) {
+          // Store the latest release info for download buttons
+          this.update.version = data.version || '';
+          this.update.downloadUrl = data.download_url || '';
+          this.update.changelog = data.changelog || '';
+          console.log('[Cropper] Latest release: v' + this.update.version);
+        }
+      } catch (err) {
+        console.warn('[Cropper] Failed to fetch latest version:', err);
+      }
+    },
+
+    // ══════════════════════════════════════════════════════════════════
     //  AUTO-UPDATE CHECK — compare installed version vs latest release
     // ══════════════════════════════════════════════════════════════════
     async _checkForUpdates() {
@@ -352,11 +422,13 @@ function cropperApp() {
         var installedVersion = this.engine.version || '0.0.0';
         var latestVersion = data.version || '0.0.0';
 
+        // Always store the latest version info
+        this.update.version = latestVersion;
+        this.update.downloadUrl = data.download_url || '';
+        this.update.changelog = data.changelog || '';
+
         if (this._semverCompare(latestVersion, installedVersion) > 0) {
           this.update.available = true;
-          this.update.version = latestVersion;
-          this.update.downloadUrl = data.download_url || '';
-          this.update.changelog = data.changelog || '';
           console.log('[Cropper] Update available: v' + latestVersion + ' (installed: v' + installedVersion + ')');
         } else {
           this.update.available = false;
@@ -414,6 +486,57 @@ function cropperApp() {
     },
 
     // ══════════════════════════════════════════════════════════════════
+    //  CLIENT SELECTION
+    // ══════════════════════════════════════════════════════════════════
+    
+    /**
+     * Load accessible clients from the server.
+     * Called when switching to client mode or on first page load.
+     */
+    async loadClients() {
+      // Only load once
+      if (this.clientsLoaded || this.clientsLoading) return;
+      
+      this.clientsLoading = true;
+      try {
+        var resp = await fetch('/api/engine/clients/');
+        var data = await resp.json();
+        
+        if (data.success && data.clients) {
+          this.clients = data.clients;
+          this.clientsLoaded = true;
+        } else {
+          console.error('Failed to load clients:', data.message);
+          this.clients = [];
+        }
+      } catch (err) {
+        console.error('Error loading clients:', err);
+        this.clients = [];
+      } finally {
+        this.clientsLoading = false;
+      }
+    },
+    
+    /**
+     * Handle client selection from dropdown.
+     * Sets the folderPath to the selected client's image folder.
+     */
+    onClientSelect() {
+      var clientId = this.selectedClientId;
+      if (!clientId) {
+        // No client selected, clear the folder path
+        this.folderPath = '';
+        return;
+      }
+      
+      // Find the selected client
+      var client = this.clients.find(function(c) { return c.id == clientId; });
+      if (client && client.folder_path) {
+        this.folderPath = client.folder_path;
+      }
+    },
+
+    // ══════════════════════════════════════════════════════════════════
     //  PROCESS FOLDER
     // ══════════════════════════════════════════════════════════════════
     async processFolder() {
@@ -458,8 +581,14 @@ function cropperApp() {
         this._hideProgress();
 
         if (data && data.total != null) {
-          this._updateProgress(100, 'Complete!');
+          this._updateProgress(100, 'Cropping complete!');
           this._showResult(data);
+          
+          // Execute pipeline steps (compress + rename) if enabled
+          if (data.success > 0 && data.output_folder) {
+            await this._executePipeline(data.output_folder);
+          }
+          
           if (typeof Toast !== 'undefined') Toast.success('Processing complete!');
         } else {
           throw new Error((data && data.message) || 'Processing failed');
@@ -470,6 +599,80 @@ function cropperApp() {
         this._handleProcessError(err);
       } finally {
         this.processing = false;
+      }
+    },
+
+    /**
+     * Execute pipeline steps after cropping (compress + rename).
+     */
+    async _executePipeline(outputFolder) {
+      // Step 1: Compress (if enabled)
+      if (this.pipeline.compress && this.pipeline.compressKB > 0) {
+        try {
+          this._showProgress('Compressing images…');
+          this._updateProgress(20, 'Compressing to ' + this.pipeline.compressKB + ' KB…');
+
+          var compressData;
+          if (this.engine.direct) {
+            var resp = await fetch(ENGINE_DIRECT_URL + '/compress-folder', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-ENGINE-KEY': ENGINE_API_KEY,
+              },
+              body: JSON.stringify({
+                folder_path: outputFolder,
+                target_kb: this.pipeline.compressKB
+              }),
+            });
+            if (resp.ok) {
+              compressData = await resp.json();
+            }
+          } else {
+            compressData = await ApiClient.post('/api/engine/compress-folder/', {
+              folder_path: outputFolder,
+              target_kb: this.pipeline.compressKB
+            });
+          }
+
+          if (compressData && compressData.success) {
+            console.log('[Pipeline] Compressed ' + compressData.compressed + ' images');
+          }
+        } catch (err) {
+          console.warn('[Pipeline] Compress error:', err);
+        }
+        this._hideProgress();
+      }
+
+      // Step 2: Rename (if enabled)
+      if (this.pipeline.rename) {
+        try {
+          this._showProgress('Renaming images…');
+          this._updateProgress(60, 'Applying rename operation…');
+
+          var renameParams = {};
+          if (this.pipeline.renameOperation === 'add_prefix') {
+            renameParams.prefix = this.pipeline.renameParam || '';
+          } else if (this.pipeline.renameOperation === 'sequential') {
+            renameParams.base_name = this.pipeline.renameParam || '';
+            renameParams.digits = 3;
+            renameParams.start = 1;
+          }
+
+          var renameData = await ApiClient.post('/api/engine/rename-execute/', {
+            folder_path: outputFolder,
+            operation: this.pipeline.renameOperation,
+            params: renameParams,
+            skip_conflicts: true
+          });
+
+          if (renameData && renameData.success) {
+            console.log('[Pipeline] Renamed ' + renameData.renamed + ' files');
+          }
+        } catch (err) {
+          console.warn('[Pipeline] Rename error:', err);
+        }
+        this._hideProgress();
       }
     },
 
@@ -781,6 +984,10 @@ function cropperApp() {
     // ══════════════════════════════════════════════════════════════════
     switchTab(tab) {
       this.activeTab = tab;
+      // Clear selection when switching tabs
+      this.selection.selected = {};
+      this.selection.count = 0;
+      this.selection.all = false;
       // Lazy-load when switching to a tab for the first time
       if (tab === 'edited' && this.preview.editedImages.length === 0 && this.preview.folder) {
         this._loadTabImages('edited');
@@ -878,6 +1085,110 @@ function cropperApp() {
       window.AdarshEngine.setImageList(engineList, idx, function (url, name) {
         // When user navigates, update reference for future save callbacks
       });
+
+      // Set up Apply to All callback
+      window.AdarshEngine.setApplyToAllCallback(function (params) {
+        self.applyParamsToAll(params);
+      });
+    },
+
+    /**
+     * Apply adjustment parameters to all images in the current tab.
+     * Uses the engine's adjust-image API to apply parameters server-side.
+     * @param {Object} params - {blackPoint, gamma, whitePoint, vibrance, temperature}
+     */
+    async applyParamsToAll(params) {
+      var images = this.preview.images; // Apply to cropped images
+      if (!images || images.length === 0) {
+        alert('No images to adjust.');
+        return;
+      }
+
+      var confirmed = confirm('Apply these adjustments to all ' + images.length + ' cropped images?\n\nThe editor will close and adjustments will be applied in batch.');
+      if (!confirmed) return;
+
+      // Close the engine modal so user can see progress
+      window.AdarshEngine.close();
+
+      this.autoAdjustState.running  = true;
+      this.autoAdjustState.progress = '0 / ' + images.length;
+
+      // CSRF token for saving
+      var csrfToken = '';
+      var csrfMeta  = document.querySelector('meta[name="csrf-token"]');
+      if (csrfMeta) {
+        csrfToken = csrfMeta.getAttribute('content');
+      } else {
+        var m = document.cookie.match(/csrftoken=([^;]+)/);
+        if (m) csrfToken = m[1];
+      }
+
+      var done    = 0;
+      var total   = images.length;
+      var success = 0;
+
+      for (var i = 0; i < total; i++) {
+        var img = images[i];
+        this.autoAdjustState.progress = done + ' / ' + total;
+
+        try {
+          var resultUrl = await this._applyParamsToSingle(img, params, csrfToken);
+          if (resultUrl) {
+            img.url = resultUrl + '&t=' + Date.now();
+            success++;
+          }
+        } catch (err) {
+          console.warn('[ApplyParams] Failed for ' + img.name + ':', err);
+        }
+
+        done++;
+        this.autoAdjustState.progress = done + ' / ' + total;
+      }
+
+      this.autoAdjustState.running  = false;
+      this.autoAdjustState.progress = '';
+
+      // Reload the edited tab so the newly saved images appear there
+      this.preview.editedImages = [];
+      this._loadTabImages('edited');
+
+      if (typeof Toast !== 'undefined') {
+        Toast.success('Applied adjustments to ' + success + ' images.');
+      } else {
+        alert('Applied adjustments to ' + success + ' images.');
+      }
+    },
+
+    /**
+     * Apply parameters to a single image via the adjust-image API.
+     */
+    async _applyParamsToSingle(imgObj, params, csrfToken) {
+      var resp = await fetch('/api/engine/adjust-image/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken,
+        },
+        body: JSON.stringify({
+          image_path: imgObj.path,
+          original_path: imgObj.path,
+          filename: imgObj.name,
+          black_point: params.blackPoint || 0,
+          gamma: params.gamma || 1.0,
+          white_point: params.whitePoint || 255,
+          vibrance: params.vibrance || 0,
+          temperature: params.temperature || 0,
+        }),
+      });
+
+      var data = await resp.json();
+      if (!data.success) {
+        throw new Error(data.message || 'Adjust failed');
+      }
+
+      // Return the URL for the saved edited image
+      var base = '/api/engine/serve-image/?path=' + encodeURIComponent(data.saved_path);
+      return base;
     },
 
     // ══════════════════════════════════════════════════════════════════
@@ -1118,6 +1429,231 @@ function cropperApp() {
       this.error.message = message;
       this.error.visible = true;
       if (typeof Toast !== 'undefined') Toast.error(message);
+    },
+
+    // ══════════════════════════════════════════════════════════════════
+    //  SELECTION METHODS — Select All / Individual Selection
+    // ══════════════════════════════════════════════════════════════════
+
+    /**
+     * Check if an image is selected.
+     */
+    isSelected(img) {
+      return this.selection.selected[img.name] === true;
+    },
+
+    /**
+     * Toggle selection of a single image.
+     */
+    toggleSelect(img) {
+      if (this.selection.selected[img.name]) {
+        delete this.selection.selected[img.name];
+        this.selection.count--;
+      } else {
+        this.selection.selected[img.name] = true;
+        this.selection.count++;
+      }
+      this._updateSelectAllState();
+    },
+
+    /**
+     * Toggle select all / deselect all.
+     */
+    toggleSelectAll() {
+      var images = this.currentTabImages();
+      if (this.selection.all || this.selection.count === images.length) {
+        // Deselect all
+        this.selection.selected = {};
+        this.selection.count = 0;
+        this.selection.all = false;
+      } else {
+        // Select all
+        this.selection.selected = {};
+        for (var i = 0; i < images.length; i++) {
+          this.selection.selected[images[i].name] = true;
+        }
+        this.selection.count = images.length;
+        this.selection.all = true;
+      }
+    },
+
+    /**
+     * Update select all checkbox state based on individual selections.
+     */
+    _updateSelectAllState() {
+      var images = this.currentTabImages();
+      this.selection.all = this.selection.count > 0 && this.selection.count === images.length;
+    },
+
+    /**
+     * Get count of selected files for display.
+     */
+    getSelectedFileCount() {
+      if (this.selection.all) {
+        return this.currentTabImages().length;
+      }
+      return this.selection.count || this.currentTabImages().length;
+    },
+
+    /**
+     * Get list of selected file names.
+     */
+    getSelectedFiles() {
+      var images = this.currentTabImages();
+      if (this.selection.all || this.selection.count === 0) {
+        // All selected or none selected = use all images
+        return images.map(function(img) { return img.name; });
+      }
+      // Return only selected
+      var self = this;
+      return images
+        .filter(function(img) { return self.selection.selected[img.name]; })
+        .map(function(img) { return img.name; });
+    },
+
+    /**
+     * Clear selection when switching tabs.
+     * (Note: switchTab is defined above in TABS section)
+     */
+
+    // ══════════════════════════════════════════════════════════════════
+    //  RENAME METHODS — Batch rename with preview
+    // ══════════════════════════════════════════════════════════════════
+
+    /**
+     * Open the rename modal.
+     */
+    openRenameModal() {
+      this.renameModal.visible = true;
+      this.renameModal.loading = false;
+      this.renameModal.preview = [];
+      this.renameModal.previewStats = { total: 0, changed: 0, conflicts: 0 };
+      this.updateRenameParams();
+    },
+
+    /**
+     * Reset params when operation changes.
+     */
+    updateRenameParams() {
+      this.renameModal.params = {
+        prefix: '',
+        suffix: '',
+        old_text: '',
+        new_text: '',
+        text: '',
+        base_name: '',
+        start: 1,
+        digits: 3,
+      };
+      this.renameModal.preview = [];
+      this.renameModal.previewStats = { total: 0, changed: 0, conflicts: 0 };
+    },
+
+    /**
+     * Get the folder path for the current tab.
+     */
+    _getCurrentTabFolder() {
+      var basePath = this.preview.folder;
+      if (!basePath) return '';
+
+      if (this.activeTab === 'cropped') {
+        return basePath;
+      }
+
+      // Go up one level from /cropped to parent, then into the tab subfolder
+      var parts = basePath.replace(/[\\/]+$/, '').split(/[\\/]/);
+      parts.pop();  // remove 'cropped'
+      return parts.join('\\') + '\\' + this.activeTab;
+    },
+
+    /**
+     * Preview the rename operation without executing.
+     */
+    async previewRename() {
+      var folder = this._getCurrentTabFolder();
+      if (!folder) {
+        if (typeof Toast !== 'undefined') Toast.error('No folder available for renaming.');
+        return;
+      }
+
+      this.renameModal.loading = true;
+      this.renameModal.preview = [];
+
+      try {
+        var fileList = this.getSelectedFiles();
+        var data = await ApiClient.post('/api/engine/rename-preview/', {
+          folder_path: folder,
+          operation: this.renameModal.operation,
+          params: this.renameModal.params,
+          file_list: fileList,
+        });
+
+        if (data.success) {
+          this.renameModal.preview = data.files || [];
+          this.renameModal.previewStats = {
+            total: data.total || 0,
+            changed: data.changed || 0,
+            conflicts: data.conflicts || 0,
+          };
+        } else {
+          if (typeof Toast !== 'undefined') Toast.error(data.message || 'Preview failed');
+        }
+      } catch (err) {
+        console.error('[Rename] Preview error:', err);
+        if (typeof Toast !== 'undefined') Toast.error('Failed to generate preview');
+      } finally {
+        this.renameModal.loading = false;
+      }
+    },
+
+    /**
+     * Execute the rename operation.
+     */
+    async executeRename() {
+      var folder = this._getCurrentTabFolder();
+      if (!folder) {
+        if (typeof Toast !== 'undefined') Toast.error('No folder available for renaming.');
+        return;
+      }
+
+      this.renameModal.loading = true;
+      this.renameState.running = true;
+
+      try {
+        var fileList = this.getSelectedFiles();
+        var data = await ApiClient.post('/api/engine/rename-execute/', {
+          folder_path: folder,
+          operation: this.renameModal.operation,
+          params: this.renameModal.params,
+          file_list: fileList,
+          skip_conflicts: true,
+        });
+
+        if (data.success) {
+          var msg = 'Renamed ' + data.renamed + ' files';
+          if (data.skipped > 0) msg += ' (' + data.skipped + ' skipped)';
+          if (typeof Toast !== 'undefined') Toast.success(msg);
+
+          this.renameModal.visible = false;
+
+          // Clear selection and reload preview
+          this.selection.selected = {};
+          this.selection.count = 0;
+          this.selection.all = false;
+
+          // Reload current tab images
+          await this._loadPreview(this.preview.folder);
+          await this._loadTabImages(this.activeTab);
+        } else {
+          if (typeof Toast !== 'undefined') Toast.error(data.message || 'Rename failed');
+        }
+      } catch (err) {
+        console.error('[Rename] Execute error:', err);
+        if (typeof Toast !== 'undefined') Toast.error('Failed to rename files');
+      } finally {
+        this.renameModal.loading = false;
+        this.renameState.running = false;
+      }
     },
   };
 }

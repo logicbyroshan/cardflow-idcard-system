@@ -572,6 +572,176 @@ def api_engine_delete_image(request):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+#  POST  /api/engine/adjust-image/
+#  Proxy image adjustments (levels, vibrance, temperature) to the engine.
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+@login_required
+@require_any_admin
+@require_POST
+def api_engine_adjust_image(request):
+    """
+    Proxy request to the engine's /adjust-image endpoint.
+    
+    The engine applies professional-quality image adjustments using
+    Pillow/numpy and saves the result. This provides higher quality
+    than browser Canvas processing.
+
+    Expects JSON body:
+        {
+            "image_path": "C:\\path\\to\\cropped\\image.jpg",
+            "original_path": "C:\\path\\to\\cropped\\image.jpg" (for edited folder location),
+            "filename": "image.jpg" (optional, for output naming),
+            "black_point": 0,        (0-254)
+            "gamma": 1.0,            (0.01-3.0)
+            "white_point": 255,      (1-255)
+            "vibrance": 0,           (-100 to 100)
+            "temperature": 0         (-100 to 100)
+        }
+
+    Returns:
+        - success: True/False
+        - saved_path: Path where adjusted image was saved
+        - edited_folder: Parent folder of the saved image
+        - filename: Name of the saved file
+        - message: Error message if failed
+    """
+    try:
+        body = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({"success": False, "message": "Invalid JSON body."}, status=400)
+
+    image_path = body.get("image_path", "").strip()
+    original_path = body.get("original_path", "").strip() or image_path
+    filename = body.get("filename", "").strip()
+    
+    # Adjustment parameters
+    black_point = body.get("black_point", 0)
+    gamma = body.get("gamma", 1.0)
+    white_point = body.get("white_point", 255)
+    vibrance = body.get("vibrance", 0)
+    temperature = body.get("temperature", 0)
+
+    if not image_path:
+        return JsonResponse({
+            "success": False,
+            "message": "image_path is required.",
+        }, status=400)
+
+    # ── Path validation ──────────────────────────────────────────────
+    try:
+        src = Path(image_path).resolve()
+        orig = Path(original_path).resolve()
+    except (OSError, ValueError):
+        return JsonResponse({
+            "success": False,
+            "message": "Invalid file path.",
+        }, status=400)
+
+    if not src.is_absolute():
+        return JsonResponse({
+            "success": False,
+            "message": "Absolute path required.",
+        }, status=400)
+
+    if not src.is_file():
+        return JsonResponse({
+            "success": False,
+            "message": "Source image not found.",
+        }, status=404)
+
+    if src.suffix.lower() not in _ALLOWED_EXTS:
+        return JsonResponse({
+            "success": False,
+            "message": "Not an image file.",
+        }, status=400)
+
+    # ── Determine the /edited/ folder ────────────────────────────────
+    parent_folder = orig.parent
+    grandparent = parent_folder.parent
+    edited_folder = grandparent / "edited"
+
+    try:
+        edited_folder.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        logger.exception("Failed to create /edited/ folder: %s", edited_folder)
+        return JsonResponse({
+            "success": False,
+            "message": "Server error while creating output folder.",
+        }, status=500)
+
+    # ── Build collision-safe output filename ──────────────────────────
+    if not filename:
+        filename = orig.stem + ".jpg"
+
+    stem = _sanitize_filename(Path(filename).stem)
+    timestamp = time.strftime("%H%M%S") + f"{int(time.time() * 1000) % 1000:03d}"
+    output_name = f"{stem}_edited_{timestamp}.jpg"
+    output_path = edited_folder / output_name
+
+    counter = 1
+    while output_path.exists() and counter < 100:
+        output_name = f"{stem}_edited_{timestamp}_{counter}.jpg"
+        output_path = edited_folder / output_name
+        counter += 1
+
+    # ── Call engine /adjust-image ────────────────────────────────────
+    try:
+        response = http_client.post(
+            f"{ENGINE_BASE}/adjust-image",
+            headers=_engine_headers(),
+            json={
+                "image_path": str(src),
+                "output_path": str(output_path),
+                "black_point": black_point,
+                "gamma": gamma,
+                "white_point": white_point,
+                "vibrance": vibrance,
+                "temperature": temperature,
+            },
+            timeout=60,  # 60s timeout for large images
+        )
+        response.raise_for_status()
+        result = response.json()
+
+        if result.get("success"):
+            logger.info("Adjusted image via engine: %s", output_path)
+            return JsonResponse({
+                "success": True,
+                "saved_path": str(output_path),
+                "edited_folder": str(edited_folder),
+                "filename": output_name,
+            })
+        else:
+            return JsonResponse({
+                "success": False,
+                "message": result.get("error", "Engine adjustment failed."),
+            }, status=500)
+
+    except http_client.ConnectionError:
+        logger.error("Engine not reachable for adjust-image")
+        return JsonResponse({
+            "success": False,
+            "message": "Image Engine is not running. Please start the Adarsh Engine service.",
+        }, status=503)
+
+    except http_client.Timeout:
+        logger.error("Engine timeout during adjust-image")
+        return JsonResponse({
+            "success": False,
+            "message": "Engine processing timed out.",
+        }, status=504)
+
+    except Exception as exc:
+        logger.exception("Engine adjust-image failed: %s", exc)
+        return JsonResponse({
+            "success": False,
+            "message": "Server error during image adjustment.",
+        }, status=500)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 #  GET  /engine/download/
 #  Serve AdarshEngineSetup.exe (Inno Setup installer) as a proper attachment download.
 #
@@ -630,3 +800,269 @@ def engine_download(request):
     # Tell the browser the exact byte size so it shows a proper progress bar
     response['Content-Length'] = exe_path.stat().st_size
     return response
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  POST  /api/engine/rename-preview/
+#  Generate preview of batch rename operations without executing.
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+@login_required
+@require_any_admin
+@require_POST
+def api_engine_rename_preview(request):
+    """
+    Proxy POST → engine /rename-preview.
+    
+    Generates a preview of rename operations showing original → new filenames.
+    Useful for the UI to display what will change before confirming.
+    
+    Expects JSON body:
+        {
+            "folder_path": "C:\\path\\to\\folder",
+            "operation": "add_prefix",
+            "params": {"prefix": "vacation_"},
+            "file_list": null  (optional, defaults to all images in folder)
+        }
+    
+    Returns:
+        - success: True/False
+        - files: List of {original, new, changed, conflict} mappings
+        - total, changed, conflicts counts
+    """
+    try:
+        body = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({"success": False, "message": "Invalid JSON body."}, status=400)
+
+    folder_path = body.get("folder_path", "").strip()
+    operation = body.get("operation", "")
+    params = body.get("params", {})
+    file_list = body.get("file_list")
+
+    if not folder_path:
+        return JsonResponse({"success": False, "message": "folder_path is required."}, status=400)
+    if not operation:
+        return JsonResponse({"success": False, "message": "operation is required."}, status=400)
+
+    try:
+        resp = http_client.post(
+            f"{ENGINE_BASE}/rename-preview",
+            headers={**_engine_headers(), "Content-Type": "application/json"},
+            json={
+                "folder_path": folder_path,
+                "operation": operation,
+                "params": params,
+                "file_list": file_list,
+            },
+            timeout=60,
+        )
+        resp.raise_for_status()
+        return JsonResponse(resp.json())
+
+    except http_client.ConnectionError:
+        return JsonResponse({
+            "success": False,
+            "message": "Cannot connect to Adarsh Engine. Is the service running?",
+        }, status=502)
+    except http_client.Timeout:
+        return JsonResponse({
+            "success": False,
+            "message": "Engine preview timed out.",
+        }, status=504)
+    except http_client.HTTPError as exc:
+        body_data = {}
+        try:
+            body_data = exc.response.json()
+        except Exception:
+            pass
+        msg = body_data.get("message") or body_data.get("detail") or f"Engine error {exc.response.status_code}"
+        return JsonResponse({"success": False, "message": msg}, status=exc.response.status_code)
+    except Exception as exc:
+        logger.exception("rename-preview proxy error")
+        return JsonResponse({"success": False, "message": str(exc)}, status=500)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  POST  /api/engine/rename-execute/
+#  Execute batch rename operations on files in a folder.
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+@login_required
+@require_any_admin
+@require_POST
+def api_engine_rename_execute(request):
+    """
+    Proxy POST → engine /rename-execute.
+    
+    Executes the batch rename operation on files in the folder.
+    
+    Expects JSON body:
+        {
+            "folder_path": "C:\\path\\to\\folder",
+            "operation": "add_prefix",
+            "params": {"prefix": "vacation_"},
+            "file_list": null,       (optional, defaults to all images)
+            "skip_conflicts": true   (optional, default true)
+        }
+    
+    Returns:
+        - success: True/False
+        - renamed: Number of files successfully renamed
+        - skipped: Files skipped due to conflicts
+        - errors: List of error messages
+        - mappings: List of {original, new} for renamed files
+    """
+    try:
+        body = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({"success": False, "message": "Invalid JSON body."}, status=400)
+
+    folder_path = body.get("folder_path", "").strip()
+    operation = body.get("operation", "")
+    params = body.get("params", {})
+    file_list = body.get("file_list")
+    skip_conflicts = body.get("skip_conflicts", True)
+
+    if not folder_path:
+        return JsonResponse({"success": False, "message": "folder_path is required."}, status=400)
+    if not operation:
+        return JsonResponse({"success": False, "message": "operation is required."}, status=400)
+
+    try:
+        resp = http_client.post(
+            f"{ENGINE_BASE}/rename-execute",
+            headers={**_engine_headers(), "Content-Type": "application/json"},
+            json={
+                "folder_path": folder_path,
+                "operation": operation,
+                "params": params,
+                "file_list": file_list,
+                "skip_conflicts": skip_conflicts,
+            },
+            timeout=ENGINE_TIMEOUT,
+        )
+        resp.raise_for_status()
+        return JsonResponse(resp.json())
+
+    except http_client.ConnectionError:
+        return JsonResponse({
+            "success": False,
+            "message": "Cannot connect to Adarsh Engine. Is the service running?",
+        }, status=502)
+    except http_client.Timeout:
+        return JsonResponse({
+            "success": False,
+            "message": "Engine rename timed out.",
+        }, status=504)
+    except http_client.HTTPError as exc:
+        body_data = {}
+        try:
+            body_data = exc.response.json()
+        except Exception:
+            pass
+        msg = body_data.get("message") or body_data.get("detail") or f"Engine error {exc.response.status_code}"
+        return JsonResponse({"success": False, "message": msg}, status=exc.response.status_code)
+    except Exception as exc:
+        logger.exception("rename-execute proxy error")
+        return JsonResponse({"success": False, "message": str(exc)}, status=500)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  GET  /api/engine/rename-operations/
+#  Get list of supported rename operations for UI dropdown.
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+@login_required
+@require_any_admin
+@require_GET
+def api_engine_rename_operations(request):
+    """
+    Proxy GET → engine /rename-operations.
+    
+    Returns the list of supported rename operations with descriptions
+    and parameter specifications. Useful for populating UI dropdowns.
+    """
+    try:
+        resp = http_client.get(
+            f"{ENGINE_BASE}/rename-operations",
+            headers=_engine_headers(),
+            timeout=10,
+        )
+        resp.raise_for_status()
+        return JsonResponse(resp.json())
+
+    except http_client.ConnectionError:
+        return JsonResponse({
+            "success": False,
+            "message": "Cannot connect to Adarsh Engine.",
+        }, status=502)
+    except http_client.Timeout:
+        return JsonResponse({
+            "success": False,
+            "message": "Engine timed out.",
+        }, status=504)
+    except Exception as exc:
+        logger.exception("rename-operations proxy error")
+        return JsonResponse({"success": False, "message": str(exc)}, status=500)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  GET  /api/engine/clients/
+# ═══════════════════════════════════════════════════════════════════════════
+@login_required
+@require_any_admin
+@require_GET
+def api_engine_clients(request):
+    """
+    Return accessible clients with their image folder paths for the cropper.
+    
+    Used to populate the client dropdown in the Adarsh Cropper UI,
+    allowing users to quickly select a client's photo folder.
+    
+    Response:
+        {
+            "success": true,
+            "clients": [
+                {"id": 1, "name": "Client Name", "folder_code": "XYZ", "folder_path": "C:\\path\\to\\media\\adarshimg\\XYZ"},
+                ...
+            ]
+        }
+    """
+    from django.conf import settings
+    from client.models import Client
+    from staff.services import ClientScopingService
+    
+    try:
+        clients_qs = ClientScopingService.get_accessible_clients(request.user)
+        
+        # Build list with full folder paths
+        media_root = Path(settings.MEDIA_ROOT)
+        clients_data = []
+        
+        for client in clients_qs.filter(status='active').order_by('name'):
+            folder_code = client.image_folder_code
+            if folder_code:
+                # Full path: MEDIA_ROOT/adarshimg/{folder_code}
+                folder_path = media_root / 'adarshimg' / folder_code
+                clients_data.append({
+                    'id': client.id,
+                    'name': client.name,
+                    'folder_code': folder_code,
+                    'folder_path': str(folder_path),
+                })
+        
+        return JsonResponse({
+            'success': True,
+            'clients': clients_data,
+        })
+        
+    except Exception as exc:
+        logger.exception("api_engine_clients error")
+        return JsonResponse({
+            'success': False,
+            'message': str(exc),
+        }, status=500)

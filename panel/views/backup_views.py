@@ -185,29 +185,12 @@ def api_backup_list(request):
             'total': t.total,
             'progress_pct': t.progress_percentage,
             'current_client': t.current_client,
-            'auto_delete_at': t.auto_delete_at.isoformat() if t.auto_delete_at else None,
-            'is_auto_delete_cancelled': t.is_auto_delete_cancelled,
-            'time_remaining': t.time_remaining_seconds,
             'client_names': t.client_names,
             'created_at': t.created_at.isoformat(),
             'combined_zip': combined_zip,
             'error_message': t.error_message,
         })
     return JsonResponse({'success': True, 'backups': result})
-
-
-@login_required
-@require_super_admin
-@require_http_methods(['POST'])
-def api_backup_cancel_auto_delete(request, task_id):
-    """Cancel the 24-hour auto-delete timer."""
-    task = get_object_or_404(BackupTask, pk=task_id)
-    if task.status != 'completed':
-        return _json_error('Can only cancel auto-delete on completed backups.')
-
-    task.is_auto_delete_cancelled = True
-    task.save(update_fields=['is_auto_delete_cancelled'])
-    return JsonResponse({'success': True, 'message': 'Auto-delete cancelled. Files will be kept until manually deleted.'})
 
 
 @login_required

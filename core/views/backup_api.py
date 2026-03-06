@@ -14,7 +14,6 @@ from panel.views.backup_views import (  # noqa: F401
     api_backup_start,
     api_backup_status,
     api_backup_list,
-    api_backup_cancel_auto_delete,
     api_backup_delete_now,
     api_backup_download,
 )

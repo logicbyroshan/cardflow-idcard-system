@@ -138,6 +138,11 @@ from .engine_api import (
     api_engine_serve_image,
     api_engine_save_edited,
     api_engine_delete_image,
+    api_engine_adjust_image,
+    api_engine_rename_preview,
+    api_engine_rename_execute,
+    api_engine_rename_operations,
+    api_engine_clients,
     engine_download,
 )
 
@@ -161,7 +166,6 @@ from .backup_api import (
     api_backup_start,
     api_backup_status,
     api_backup_list,
-    api_backup_cancel_auto_delete,
     api_backup_delete_now,
     api_backup_download,
     api_backup_generate_code,

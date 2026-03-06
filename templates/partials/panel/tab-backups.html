@@ -16,49 +16,6 @@
     </div>
   </div>
 
-  <!-- Cancel auto-delete modal -->
-  <div id="cancelDeleteModal" class="modal-backdrop" style="display:none;">
-    <div class="modal-center modal-purple" @click.stop>
-      <div class="modal-header">
-        <h3><i class="fa-solid fa-shield-halved"></i> Cancel Auto-Delete</h3>
-        <button type="button" class="modal-close" onclick="closeCancelDeleteModal()" aria-label="Close">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
-      </div>
-      <div class="modal-body">
-        <div class="modal-body-center">
-          <div class="modal-icon-circle modal-icon-purple">
-            <i class="fa-solid fa-shield-halved modal-icon-i-purple"></i>
-          </div>
-          <p class="modal-body-title">Cancel Auto-Delete?</p>
-          <p class="modal-body-subtitle">This will cancel the 24-hour auto-delete timer. Backup files will be kept until manually deleted.</p>
-          <div style="width:100%;margin-top:4px;">
-            <p class="confirm-code-hint">Type this code to confirm:</p>
-            <div class="backup-code-display" id="cancelDeleteCodeDisplay">----------</div>
-            <input type="text" id="cancelDeleteCode"
-                maxlength="10"
-                inputmode="numeric"
-                pattern="[0-9]{10}"
-                placeholder="_ _ _ _ _ _ _ _ _ _"
-                autocomplete="off"
-                class="backup-code-input"
-                oninput="this.value=this.value.replace(/[^0-9]/g,'')"
-            >
-            <p class="backup-code-hint" id="cancelDeleteError" style="display:none;"></p>
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-md btn-neutral" onclick="closeCancelDeleteModal()">
-          <i class="fa-solid fa-xmark"></i> Cancel
-        </button>
-        <button type="button" class="btn btn-md btn-primary" id="cancelDeleteBtn" onclick="submitCancelDelete()">
-          <i class="fa-solid fa-ban"></i> Cancel Auto-Delete
-        </button>
-      </div>
-    </div>
-  </div>
-
   <!-- Delete now modal -->
   <div id="deleteNowModal" class="modal-backdrop" style="display:none;">
     <div class="modal-center modal-danger" @click.stop>

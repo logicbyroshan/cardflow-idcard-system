@@ -41,7 +41,6 @@ urlpatterns = [
     path('api/backup/start/', views.api_backup_start, name='api_backup_start_app'),
     path('api/backup/list/', views.api_backup_list, name='api_backup_list_app'),
     path('api/backup/status/<int:task_id>/', views.api_backup_status, name='api_backup_status_app'),
-    path('api/backup/<int:task_id>/cancel-auto-delete/', views.api_backup_cancel_auto_delete, name='api_backup_cancel_auto_delete_app'),
     path('api/backup/<int:task_id>/delete-now/', views.api_backup_delete_now, name='api_backup_delete_now_app'),
     path('api/backup/download/<int:task_id>/', views.api_backup_download, name='api_backup_download_app'),
 

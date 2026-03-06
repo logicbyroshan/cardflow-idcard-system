@@ -242,6 +242,34 @@ class CompressRequest(BaseModel):
     target_kb: float
 
 
+class AdjustImageRequest(BaseModel):
+    """Request model for /adjust-image endpoint."""
+    image_path: str           # Full path to source image
+    output_path: str          # Full path to save adjusted image
+    black_point: int = 0      # Levels black point (0-254)
+    gamma: float = 1.0        # Gamma correction (0.01-3.0)
+
+
+class RenamePreviewRequest(BaseModel):
+    """Request model for /rename-preview endpoint."""
+    folder_path: str                      # Folder containing images
+    operation: str                        # RenameOperation enum value
+    params: dict = {}                     # Operation-specific parameters
+    file_list: list[str] | None = None    # Optional specific files
+
+
+class RenameExecuteRequest(BaseModel):
+    """Request model for /rename-execute endpoint."""
+    folder_path: str                      # Folder containing images
+    operation: str                        # RenameOperation enum value
+    params: dict = {}                     # Operation-specific parameters
+    file_list: list[str] | None = None    # Optional specific files
+    skip_conflicts: bool = True           # Skip conflicting renames
+    white_point: int = 255    # Levels white point (1-255)
+    vibrance: int = 0         # Vibrance adjustment (-100 to 100)
+    temperature: int = 0      # Temperature adjustment (-100 to 100)
+
+
 # ── Routes ───────────────────────────────────────────────────────────────
 
 @app.get("/status")
@@ -396,6 +424,164 @@ async def compress_folder_endpoint(body: CompressRequest):
     except Exception:
         logger.exception("Unexpected error during compression.")
         raise HTTPException(status_code=500, detail="Internal compression error.")
+
+
+@app.post("/adjust-image")
+async def adjust_image_endpoint(body: AdjustImageRequest):
+    """
+    Apply image adjustments (levels, vibrance, temperature) and save result.
+    
+    This endpoint processes the image at full resolution using Pillow/numpy
+    for professional-quality output. Used for final image saves while the
+    browser handles real-time previews via Canvas.
+    
+    Returns:
+        - success: True if adjustment and save completed
+        - output_path: Path where the adjusted image was saved
+        - error: Error message if failed
+    """
+    from passport_engine_core.adjustments import apply_adjustments
+    
+    # Validate input path
+    image_path = Path(body.image_path)
+    if not image_path.exists():
+        raise HTTPException(status_code=400, detail=f"Source image not found: {body.image_path}")
+    if not image_path.is_file():
+        raise HTTPException(status_code=400, detail=f"Path is not a file: {body.image_path}")
+    
+    # Validate output path
+    output_path = Path(body.output_path)
+    if not output_path.suffix.lower() in ('.jpg', '.jpeg', '.png'):
+        raise HTTPException(status_code=400, detail="Output must be .jpg, .jpeg, or .png")
+    
+    try:
+        logger.info(
+            "Adjusting image: %s → %s (levels=%d/%0.2f/%d, vib=%d, temp=%d)",
+            body.image_path, body.output_path,
+            body.black_point, body.gamma, body.white_point,
+            body.vibrance, body.temperature
+        )
+        
+        result_image, error = apply_adjustments(
+            image_path=body.image_path,
+            black_point=body.black_point,
+            gamma=body.gamma,
+            white_point=body.white_point,
+            vibrance=body.vibrance,
+            temperature=body.temperature,
+            output_path=body.output_path,
+        )
+        
+        if error:
+            logger.error("Adjustment failed: %s", error)
+            return JSONResponse(
+                status_code=500,
+                content={"success": False, "error": error}
+            )
+        
+        logger.info("Adjustment complete: %s", body.output_path)
+        return JSONResponse(content={
+            "success": True,
+            "output_path": str(output_path),
+            "message": "Image adjusted and saved successfully"
+        })
+    
+    except ValueError as exc:
+        logger.warning("Adjustment validation error: %s", exc)
+        raise HTTPException(status_code=422, detail=str(exc))
+    
+    except Exception:
+        logger.exception("Unexpected error during image adjustment.")
+        raise HTTPException(status_code=500, detail="Internal adjustment error.")
+
+
+@app.post("/rename-preview")
+async def rename_preview_endpoint(body: RenamePreviewRequest):
+    """
+    Generate a preview of batch rename operations without executing.
+    
+    Returns a list of original → new filename mappings for UI preview.
+    Detects conflicts (files that would overwrite each other).
+    """
+    from passport_engine_core.renamer import generate_preview
+    
+    folder = Path(body.folder_path)
+    
+    if not folder.exists():
+        raise HTTPException(status_code=400, detail=f"Folder not found: {body.folder_path}")
+    if not folder.is_dir():
+        raise HTTPException(status_code=400, detail=f"Path is not a folder: {body.folder_path}")
+    
+    try:
+        logger.info("Generating rename preview: %s (op=%s)", body.folder_path, body.operation)
+        result = generate_preview(
+            folder_path=body.folder_path,
+            operation=body.operation,
+            params=body.params,
+            file_list=body.file_list
+        )
+        return JSONResponse(content=result)
+    
+    except ValueError as exc:
+        logger.warning("Rename preview validation error: %s", exc)
+        raise HTTPException(status_code=422, detail=str(exc))
+    
+    except Exception:
+        logger.exception("Unexpected error generating rename preview.")
+        raise HTTPException(status_code=500, detail="Internal rename preview error.")
+
+
+@app.post("/rename-execute")
+async def rename_execute_endpoint(body: RenameExecuteRequest):
+    """
+    Execute batch rename operations on files in a folder.
+    
+    Returns summary of renamed, skipped, and failed files.
+    """
+    from passport_engine_core.renamer import batch_rename
+    
+    folder = Path(body.folder_path)
+    
+    if not folder.exists():
+        raise HTTPException(status_code=400, detail=f"Folder not found: {body.folder_path}")
+    if not folder.is_dir():
+        raise HTTPException(status_code=400, detail=f"Path is not a folder: {body.folder_path}")
+    
+    try:
+        logger.info(
+            "Executing batch rename: %s (op=%s, skip_conflicts=%s)",
+            body.folder_path, body.operation, body.skip_conflicts
+        )
+        result = batch_rename(
+            folder_path=body.folder_path,
+            operation=body.operation,
+            params=body.params,
+            file_list=body.file_list,
+            skip_conflicts=body.skip_conflicts
+        )
+        return JSONResponse(content=result)
+    
+    except ValueError as exc:
+        logger.warning("Rename execute validation error: %s", exc)
+        raise HTTPException(status_code=422, detail=str(exc))
+    
+    except Exception:
+        logger.exception("Unexpected error during batch rename.")
+        raise HTTPException(status_code=500, detail="Internal rename error.")
+
+
+@app.get("/rename-operations")
+async def rename_operations_endpoint():
+    """
+    Get list of supported rename operations with descriptions.
+    Useful for populating UI dropdowns.
+    """
+    from passport_engine_core.renamer import get_supported_operations
+    
+    return JSONResponse(content={
+        "success": True,
+        "operations": get_supported_operations()
+    })
 
 
 # ── Image preview endpoints ──────────────────────────────────────────────

@@ -69,6 +69,11 @@ urlpatterns = [
     path('api/engine/save-edited/', views.api_engine_save_edited, name='api_engine_save_edited'),
     path('api/engine/delete-image/', views.api_engine_delete_image, name='api_engine_delete_image'),
     path('api/engine/compress-folder/', views.api_engine_compress_folder, name='api_engine_compress_folder'),
+    path('api/engine/adjust-image/', views.api_engine_adjust_image, name='api_engine_adjust_image'),
+    path('api/engine/rename-preview/', views.api_engine_rename_preview, name='api_engine_rename_preview'),
+    path('api/engine/rename-execute/', views.api_engine_rename_execute, name='api_engine_rename_execute'),
+    path('api/engine/rename-operations/', views.api_engine_rename_operations, name='api_engine_rename_operations'),
+    path('api/engine/clients/', views.api_engine_clients, name='api_engine_clients'),
 
     # Crop Selected Images APIs (batch crop workflow)
     path('api/table/<int:table_id>/cards/prepare-crop/', views.api_prepare_crop, name='api_prepare_crop'),
@@ -97,7 +102,6 @@ urlpatterns = [
     path('api/backup/start/', views.api_backup_start, name='api_backup_start'),
     path('api/backup/list/', views.api_backup_list, name='api_backup_list'),
     path('api/backup/status/<int:task_id>/', views.api_backup_status, name='api_backup_status'),
-    path('api/backup/<int:task_id>/cancel-auto-delete/', views.api_backup_cancel_auto_delete, name='api_backup_cancel_auto_delete'),
     path('api/backup/<int:task_id>/delete-now/', views.api_backup_delete_now, name='api_backup_delete_now'),
     path('api/backup/download/<int:task_id>/', views.api_backup_download, name='api_backup_download'),
     

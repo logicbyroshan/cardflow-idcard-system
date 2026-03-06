@@ -3,8 +3,8 @@
  *
  * Handles:
  *  - Loading / polling backup tasks via API
- *  - Rendering backup cards with progress, timer, downloads
- *  - Cancel auto-delete and Delete Now modals
+ *  - Rendering backup cards with progress, downloads
+ *  - Delete Now modal
  *  - Auto-switch to Backups tab via URL ?tab=backups
  */
 
@@ -14,7 +14,6 @@
   let _backups = [];
   let _pollTimer = null;
   let _activeModalTaskId = null;
-  let _cancelDeleteCode = '';
   let _deleteNowCode = '';
 
   /* ──── Init ──── */
@@ -125,17 +124,6 @@
       html += '</div>';
     }
 
-    // Timer
-    if (b.status === 'completed') {
-      html += '<div class="backup-timer">';
-      if (b.is_auto_delete_cancelled) {
-        html += '<i class="fa-solid fa-shield-halved"></i> <span class="backup-timer-cancelled">Auto-delete cancelled — files kept until manually deleted</span>';
-      } else if (b.time_remaining != null) {
-        html += '<i class="fa-solid fa-clock"></i> Auto-delete in: <span class="backup-timer-value">' + _formatTime(b.time_remaining) + '</span>';
-      }
-      html += '</div>';
-    }
-
     // Error
     if (b.status === 'failed' && b.error_message) {
       html += '<div style="font-size:12px;color:#ef4444;margin-bottom:8px;">' + _esc(b.error_message) + '</div>';
@@ -165,9 +153,6 @@
     // Actions
     if (b.status === 'completed') {
       html += '<div class="backup-card-actions">';
-      if (!b.is_auto_delete_cancelled) {
-        html += '<button class="backup-action-btn backup-action-cancel-delete" onclick="openCancelDeleteModal(' + b.id + ')"><i class="fa-solid fa-ban"></i> Cancel Auto-Delete</button>';
-      }
       html += '<button class="backup-action-btn backup-action-delete-now" onclick="openDeleteNowModal(' + b.id + ')"><i class="fa-solid fa-trash"></i> Delete Now</button>';
       html += '</div>';
     }
@@ -175,63 +160,6 @@
     html += '</div>'; // card
     return html;
   }
-
-  /* ──── Cancel auto-delete modal ──── */
-  window.openCancelDeleteModal = function (taskId) {
-    _activeModalTaskId = taskId;
-    const freshCode = (typeof ConfirmationCode !== 'undefined') ? ConfirmationCode.generate() : String(Math.floor(1000000000 + Math.random() * 9000000000));
-    _cancelDeleteCode = freshCode;
-    document.getElementById('cancelDeleteCode').value = '';
-    document.getElementById('cancelDeleteCodeDisplay').textContent = freshCode;
-    document.getElementById('cancelDeleteError').style.display = 'none';
-    document.getElementById('cancelDeleteModal').style.display = 'flex';
-    setTimeout(() => document.getElementById('cancelDeleteCode').focus(), 100);
-  };
-
-  window.closeCancelDeleteModal = function () {
-    document.getElementById('cancelDeleteModal').style.display = 'none';
-    _activeModalTaskId = null;
-  };
-
-  window.submitCancelDelete = function () {
-    const entered = document.getElementById('cancelDeleteCode').value.trim();
-    const errEl = document.getElementById('cancelDeleteError');
-
-    if (entered !== _cancelDeleteCode) {
-      errEl.textContent = 'Incorrect code. Please enter the code shown above.';
-      errEl.style.display = 'block';
-      return;
-    }
-
-    const btn = document.getElementById('cancelDeleteBtn');
-    btn.disabled = true;
-
-    fetch('/api/backup/' + _activeModalTaskId + '/cancel-auto-delete/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || '',
-      },
-      body: JSON.stringify({}),
-    })
-      .then(r => r.json())
-      .then(data => {
-        btn.disabled = false;
-        if (data.success) {
-          closeCancelDeleteModal();
-          if (window.showToast) showToast(data.message, 'success');
-          loadBackups();
-        } else {
-          errEl.textContent = data.message || 'Failed.';
-          errEl.style.display = 'block';
-        }
-      })
-      .catch(() => {
-        btn.disabled = false;
-        errEl.textContent = 'Network error.';
-        errEl.style.display = 'block';
-      });
-  };
 
   /* ──── Delete now modal ──── */
   window.openDeleteNowModal = function (taskId) {
@@ -308,18 +236,6 @@
     const el = document.createElement('span');
     el.textContent = s || '';
     return el.innerHTML;
-  }
-
-  function _formatTime(seconds) {
-    if (seconds == null || seconds <= 0) return 'Expired';
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = seconds % 60;
-    const parts = [];
-    if (h > 0) parts.push(h + 'h');
-    if (m > 0) parts.push(m + 'm');
-    if (h === 0) parts.push(s + 's');
-    return parts.join(' ');
   }
 
   function _formatBytes(bytes) {
