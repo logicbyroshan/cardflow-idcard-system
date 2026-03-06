@@ -95,22 +95,15 @@ function cropperApp() {
       progress: '',
     },
 
-    // ── Compress state ──
-    compressing: false,
-    compressModal: {
-      visible: false,
-      source: 'folder',     // 'results' (from cropped output) or 'folder' (manual path)
-      folderPath: '',
-      targetKB: 100,
-    },
-
     // ── Pipeline (preset) state ──
     pipeline: {
-      compress: true,       // Auto-compress enabled by default
-      compressKB: 50,       // Default 50KB
+      faceCrop: false,      // Face crop disabled by default
+      compress: false,      // Compress disabled by default
+      compressKB: 50,       // Default 50KB target
       rename: false,        // Rename disabled by default
       renameOperation: 'remove_camera_prefix',
       renameParam: '',      // For prefix text or base name
+      edit: false,          // Edit/preview disabled by default
     },
 
     // ── Client selection state ──
@@ -542,6 +535,14 @@ function cropperApp() {
     async processFolder() {
       var path = this.folderPath.trim();
       if (!path || this.processing) return;
+      
+      // Check that at least one operation is selected
+      var hasOperation = this.pipeline.faceCrop || this.pipeline.compress || this.pipeline.rename || this.pipeline.edit;
+      if (!hasOperation) {
+        if (typeof Toast !== 'undefined') Toast.warning('Please select at least one operation');
+        return;
+      }
+      
       this.processing = true;
       this.result.visible = false;
       this.preview.visible = false;
@@ -549,50 +550,60 @@ function cropperApp() {
       this._showProgress('Processing…');
 
       try {
-        this._updateProgress(10, 'Sending folder path to engine…');
-        this._startProgressSimulation();
+        // Determine the output folder - depends on whether face crop is enabled
+        var outputFolder = path;
+        
+        // If face crop is enabled, run face crop first
+        if (this.pipeline.faceCrop) {
+          this._updateProgress(10, 'Sending folder path to engine…');
+          this._startProgressSimulation();
 
-        var data;
+          var data;
 
-        if (this.engine.direct) {
-          // ── Direct to local engine ────────────────────────────────
-          var resp = await fetch(ENGINE_DIRECT_URL + '/process-folder', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-ENGINE-KEY': ENGINE_API_KEY,
-            },
-            body: JSON.stringify({ folder_path: path }),
-          });
-          if (!resp.ok) {
-            var errBody = {};
-            try { errBody = await resp.json(); } catch (_) {}
-            throw new Error(errBody.message || errBody.detail || 'Engine error ' + resp.status);
+          if (this.engine.direct) {
+            // ── Direct to local engine ────────────────────────────────
+            var resp = await fetch(ENGINE_DIRECT_URL + '/process-folder', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-ENGINE-KEY': ENGINE_API_KEY,
+              },
+              body: JSON.stringify({ folder_path: path }),
+            });
+            if (!resp.ok) {
+              var errBody = {};
+              try { errBody = await resp.json(); } catch (_) {}
+              throw new Error(errBody.message || errBody.detail || 'Engine error ' + resp.status);
+            }
+            data = await resp.json();
+          } else {
+            // ── Django proxy fallback ─────────────────────────────────
+            data = await ApiClient.post(
+              '/api/engine/process-folder/',
+              { folder_path: path }
+            );
           }
-          data = await resp.json();
-        } else {
-          // ── Django proxy fallback ─────────────────────────────────
-          data = await ApiClient.post(
-            '/api/engine/process-folder/',
-            { folder_path: path }
-          );
-        }
 
-        this._hideProgress();
+          this._hideProgress();
 
-        if (data && data.total != null) {
-          this._updateProgress(100, 'Cropping complete!');
-          this._showResult(data);
-          
-          // Execute pipeline steps (compress + rename) if enabled
-          if (data.success > 0 && data.output_folder) {
-            await this._executePipeline(data.output_folder);
+          if (data && data.total != null) {
+            this._updateProgress(100, 'Cropping complete!');
+            this._showResult(data);
+            
+            // Use cropped folder for subsequent operations
+            if (data.success > 0 && data.output_folder) {
+              outputFolder = data.output_folder;
+            }
+          } else {
+            throw new Error((data && data.message) || 'Processing failed');
           }
-          
-          if (typeof Toast !== 'undefined') Toast.success('Processing complete!');
-        } else {
-          throw new Error((data && data.message) || 'Processing failed');
         }
+        
+        // Execute pipeline steps (compress + rename) on the output folder
+        // For non-faceCrop operations, outputFolder = original path
+        await this._executePipeline(outputFolder);
+        
+        if (typeof Toast !== 'undefined') Toast.success('Processing complete!');
 
       } catch (err) {
         this._hideProgress();
@@ -1303,113 +1314,6 @@ function cropperApp() {
         this.deleteConfirm.visible = false;
         this.deleteConfirm.deleting = false;
       }
-    },
-
-    // ══════════════════════════════════════════════════════════════════
-    //  COMPRESS IMAGES — reduce file size to target KB
-    // ══════════════════════════════════════════════════════════════════
-
-    /**
-     * Open the compress modal.
-     * If there are cropped results available, offer to compress those.
-     * Otherwise, ask for a folder path (pre-fill from the main input).
-     */
-    openCompressModal() {
-      if (this.result.visible && this.result.success > 0 && this.result.outputFolder) {
-        // There are cropped images — offer to compress them directly
-        this.compressModal.source = 'results';
-        this.compressModal.folderPath = this.result.outputFolder;
-      } else {
-        // No results — ask for a folder path
-        this.compressModal.source = 'folder';
-        this.compressModal.folderPath = this.folderPath.trim();
-      }
-      this.compressModal.visible = true;
-    },
-
-    /**
-     * Start the compression process.
-     * Uses the same direct/proxy pattern as processFolder().
-     */
-    async startCompress() {
-      var targetKB = this.compressModal.targetKB;
-      var folderPath = this.compressModal.folderPath.trim();
-
-      if (!targetKB || targetKB <= 0) {
-        if (typeof Toast !== 'undefined') Toast.error('Please enter a valid target size in KB.');
-        return;
-      }
-      if (!folderPath) {
-        if (typeof Toast !== 'undefined') Toast.error('Please enter a folder path.');
-        return;
-      }
-
-      this.compressModal.visible = false;
-      this.compressing = true;
-      this.result.visible = false;
-      this.preview.visible = false;
-      this.error.visible = false;
-      this._showProgress('Compressing images…');
-
-      try {
-        this._updateProgress(10, 'Sending compression request to engine…');
-        this._startProgressSimulation();
-
-        var data;
-
-        if (this.engine.direct) {
-          // ── Direct to local engine ────────────────────────────────
-          var resp = await fetch(ENGINE_DIRECT_URL + '/compress-folder', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-ENGINE-KEY': ENGINE_API_KEY,
-            },
-            body: JSON.stringify({ folder_path: folderPath, target_kb: targetKB }),
-          });
-          if (!resp.ok) {
-            var errBody = {};
-            try { errBody = await resp.json(); } catch (_) {}
-            throw new Error(errBody.message || errBody.detail || 'Engine error ' + resp.status);
-          }
-          data = await resp.json();
-        } else {
-          // ── Django proxy fallback ─────────────────────────────────
-          data = await ApiClient.post(
-            '/api/engine/compress-folder/',
-            { folder_path: folderPath, target_kb: targetKB }
-          );
-        }
-
-        this._hideProgress();
-
-        if (data && data.total != null) {
-          this._updateProgress(100, 'Compression complete!');
-          this._showResult(data);
-          if (typeof Toast !== 'undefined') {
-            Toast.success('Compression complete! ' + (data.success || 0) + '/' + (data.total || 0) + ' images compressed to ≤ ' + targetKB + ' KB');
-          }
-        } else {
-          throw new Error((data && data.message) || 'Compression failed');
-        }
-
-      } catch (err) {
-        this._hideProgress();
-        this._handleCompressError(err);
-      } finally {
-        this.compressing = false;
-      }
-    },
-
-    /**
-     * Handle compression-specific errors — delegates classification to CropperUtils.
-     */
-    _handleCompressError(err) {
-      var classified = window.CropperUtils.classifyCompressError(err);
-      if (classified.title === 'Engine Not Reachable') {
-        this.checkEngine();
-      }
-      this._showError(classified.title, classified.message);
     },
 
     // ══════════════════════════════════════════════════════════════════
