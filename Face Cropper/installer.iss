@@ -39,7 +39,7 @@
 ; ═══════════════════════════════════════════════════════════════════════
 
 #define MyAppName "Adarsh Engine"
-#define MyAppVersion "2.2.0"
+#define MyAppVersion "2.3.0"
 #define MyAppPublisher "Adarsh ID Card"
 #define MyAppCopyright "© 2026 Adarsh ID Card. Developed by Roshan Damor."
 #define MyAppExeName "AdarshEngine.exe"
@@ -52,7 +52,7 @@ AppVersion={#MyAppVersion}
 AppVerName={#MyAppName} {#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 AppCopyright={#MyAppCopyright}
-VersionInfoVersion=2.2.0.0
+VersionInfoVersion=2.3.0.0
 VersionInfoCompany={#MyAppPublisher}
 VersionInfoDescription=Adarsh Engine — Photo Processing Engine by Adarsh ID Card
 VersionInfoProductName={#MyAppName}

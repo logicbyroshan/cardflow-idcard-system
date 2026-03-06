@@ -89,8 +89,8 @@
             <span x-show="engine.memory"><i class="fa-solid fa-microchip"></i> <span x-text="engine.memory"></span> MB</span>
           </div>
         </div>
-        <a href="{% url 'engine_download' %}" class="btn btn-sm btn-engine-dl" download="AdarshEngineSetup.exe" title="Download latest installer (re-install to update)">
-          <i class="fa-solid fa-download"></i> Download <span x-show="update.version">v<span x-text="update.version"></span></span><span x-show="!update.version">Installer</span>
+        <a href="{% url 'engine_download' %}" class="btn btn-sm btn-engine-dl" download="AdarshEngine.exe" title="Download latest engine">
+          <i class="fa-solid fa-download"></i> Download <span x-show="update.version">v<span x-text="update.version"></span></span><span x-show="!update.version">Engine</span>
         </a>
       </div>
     </div>
@@ -119,8 +119,8 @@
 
         {# Show Download Installer ONLY when no update is available (first-time install) #}
         <div class="engine-actions" x-show="!update.available">
-          <a href="{% url 'engine_download' %}" class="btn btn-primary" download="AdarshCropperSetup.exe">
-            <i class="fa-solid fa-download"></i> Download <span x-show="update.version">v<span x-text="update.version"></span></span><span x-show="!update.version">Installer</span>
+          <a href="{% url 'engine_download' %}" class="btn btn-primary" download="AdarshEngine.exe">
+            <i class="fa-solid fa-download"></i> Download <span x-show="update.version">v<span x-text="update.version"></span></span><span x-show="!update.version">Engine</span>
           </a>
         </div>
 

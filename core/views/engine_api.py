@@ -754,12 +754,12 @@ def api_engine_adjust_image(request):
 @require_GET
 def engine_download(request):
     """
-    Stream AdarshEngineSetup.exe (Inno Setup installer) to the browser as an attachment.
+    Stream AdarshEngine.exe to the browser as an attachment.
 
     Looks for the file in:
-      1. STATICFILES_DIRS[0]/engine/AdarshEngineSetup.exe  (dev)
-      2. STATIC_ROOT/engine/AdarshEngineSetup.exe           (production / collectstatic)
-      3. BASE_DIR/static/engine/AdarshEngineSetup.exe       (fallback)
+      1. STATICFILES_DIRS[0]/engine/AdarshEngine.exe  (dev)
+      2. STATIC_ROOT/engine/AdarshEngine.exe           (production / collectstatic)
+      3. BASE_DIR/static/engine/AdarshEngine.exe       (fallback)
     """
     from django.conf import settings
     from django.http import Http404
@@ -768,14 +768,14 @@ def engine_download(request):
 
     # Dev: look in each staticfiles dir
     for sdir in getattr(settings, 'STATICFILES_DIRS', []):
-        candidates.append(Path(sdir) / 'engine' / 'AdarshEngineSetup.exe')
+        candidates.append(Path(sdir) / 'engine' / 'AdarshEngine.exe')
 
     # Production: collected static root
     if hasattr(settings, 'STATIC_ROOT') and settings.STATIC_ROOT:
-        candidates.append(Path(settings.STATIC_ROOT) / 'engine' / 'AdarshEngineSetup.exe')
+        candidates.append(Path(settings.STATIC_ROOT) / 'engine' / 'AdarshEngine.exe')
 
     # Absolute fallback: project-root /static/
-    candidates.append(Path(settings.BASE_DIR) / 'static' / 'engine' / 'AdarshEngineSetup.exe')
+    candidates.append(Path(settings.BASE_DIR) / 'static' / 'engine' / 'AdarshEngine.exe')
 
     exe_path = None
     for candidate in candidates:
@@ -784,16 +784,16 @@ def engine_download(request):
             break
 
     if exe_path is None:
-        logger.error("AdarshEngineSetup.exe not found in any static path.")
-        raise Http404("AdarshEngine installer not found.")
+        logger.error("AdarshEngine.exe not found in any static path.")
+        raise Http404("AdarshEngine not found.")
 
-    logger.info("Serving AdarshEngineSetup.exe from: %s", exe_path)
+    logger.info("Serving AdarshEngine.exe from: %s", exe_path)
 
     response = FileResponse(
         open(exe_path, 'rb'),
         content_type='application/octet-stream',
         as_attachment=True,
-        filename='AdarshEngineSetup.exe',
+        filename='AdarshEngine.exe',
     )
     # Suppress browsers/proxies from sniffing the content type
     response['X-Content-Type-Options'] = 'nosniff'
