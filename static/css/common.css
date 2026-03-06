@@ -42,14 +42,17 @@ body[style*="overflow:hidden"] {
 }
 
 /* ===========================================
-   ACTION BAR — Remove top border gap and add spacing
+   ACTION BAR — Remove top border gap and fix sticky position
    The topbar already has border-bottom, so action-bar's border-top
    creates a visual "double line" gap. Remove it for consistency.
-   Added padding-top so buttons don't stick to the top edge.
+   Also reset sticky top to 0 since action-bar should sit directly
+   below the topbar (which is sticky at top:0).
    =========================================== */
 .action-bar {
   border-top: none;
   padding-top: 4px;
+  position: relative;
+  top: 0;
 }
 
 /* ===========================================
