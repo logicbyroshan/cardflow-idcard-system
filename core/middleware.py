@@ -351,7 +351,6 @@ class PermissionValidationMiddleware:
                 fresh_user = (
                     User.objects
                     .select_related('staff_profile', 'client_profile')
-                    .only('pk', 'username', 'is_active', 'role', 'first_name', 'last_name')
                     .get(pk=user.pk)
                 )
                 setattr(request, _cache_attr, fresh_user)
