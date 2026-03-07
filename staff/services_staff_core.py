@@ -210,10 +210,10 @@ class StaffService(BaseService):
                             assigned_client_ids = json.loads(assigned_client_ids)
                         except json.JSONDecodeError:
                             assigned_client_ids = []
-                    # Accept list of IDs (ints or strings)
+                    # Accept list of IDs (ints or strings) - allow both active and inactive
                     try:
                         client_ids = [int(cid) for cid in assigned_client_ids if cid]
-                        clients = Client.objects.filter(id__in=client_ids, status='active')
+                        clients = Client.objects.filter(id__in=client_ids)
                         staff.assigned_clients.set(clients)
                     except (ValueError, TypeError):
                         pass  # Skip invalid IDs
@@ -322,7 +322,8 @@ class StaffService(BaseService):
                         if isinstance(assigned_client_ids, str):
                             assigned_client_ids = json.loads(assigned_client_ids) if assigned_client_ids else []
                         client_ids = [int(cid) for cid in assigned_client_ids if cid]
-                        clients = Client.objects.filter(id__in=client_ids, status='active')
+                        # Allow both active and inactive clients to be assigned
+                        clients = Client.objects.filter(id__in=client_ids)
                         staff.assigned_clients.set(clients)
                     except (ValueError, TypeError, json.JSONDecodeError):
                         pass  # Skip invalid IDs
