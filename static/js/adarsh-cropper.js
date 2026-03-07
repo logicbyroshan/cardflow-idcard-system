@@ -43,6 +43,8 @@ function cropperApp() {
 
     // ── UI state ──
     folderPath: '',
+    folderLocked: false,   // lock the path once processing starts
+    workingFolder: '',     // tracks active folder through pipeline steps
     processing: false,
 
     // ── Progress ──
@@ -543,6 +545,8 @@ function cropperApp() {
         return;
       }
       
+      // Lock the folder path so it can't be accidentally changed
+      this.folderLocked = true;
       this.processing = true;
       this.result.visible = false;
       this.preview.visible = false;
@@ -550,10 +554,10 @@ function cropperApp() {
       this._showProgress('Processing…');
 
       try {
-        // Determine the output folder - depends on whether face crop is enabled
-        var outputFolder = path;
+        // Use workingFolder if we already have one (chained ops), otherwise start from path
+        var outputFolder = this.workingFolder || path;
         
-        // If face crop is enabled, run face crop first
+        // If face crop is enabled, run face crop first (always from original path)
         if (this.pipeline.faceCrop) {
           this._updateProgress(10, 'Sending folder path to engine…');
           this._startProgressSimulation();
@@ -600,12 +604,15 @@ function cropperApp() {
         }
         
         // Execute pipeline steps (compress + rename) on the output folder
-        // For non-faceCrop operations, outputFolder = original path
-        await this._executePipeline(outputFolder, this.pipeline.faceCrop);
+        // For non-faceCrop operations, outputFolder = current workingFolder or original path
+        var finalFolder = await this._executePipeline(outputFolder, this.pipeline.faceCrop);
+        
+        // Update workingFolder so the next operation starts here
+        this.workingFolder = finalFolder;
         
         // If Edit-only mode (no crop, no compress, no rename), just load images for editing
         if (!this.pipeline.faceCrop && !this.pipeline.compress && !this.pipeline.rename && this.pipeline.edit) {
-          this._loadPreview(path);
+          this._loadPreview(this.workingFolder || path);
           if (typeof Toast !== 'undefined') Toast.info('Images loaded for editing. Click any image to open the editor.');
         } else {
           if (typeof Toast !== 'undefined') Toast.success('Processing complete!');
@@ -814,6 +821,9 @@ function cropperApp() {
     clearResults() {
       this.result.visible = false;
       this.preview.visible = false;
+      // Unlock folder path and reset working folder so user can start fresh
+      this.folderLocked = false;
+      this.workingFolder = '';
       // Clear persisted state when user explicitly clears
       try { sessionStorage.removeItem('_cropperState'); } catch (_) {}
     },
@@ -1213,16 +1223,18 @@ function cropperApp() {
       var done    = 0;
       var total   = images.length;
       var success = 0;
+      var editedFolder = '';
 
       for (var i = 0; i < total; i++) {
         var img = images[i];
         this.autoAdjustState.progress = done + ' / ' + total;
 
         try {
-          var resultUrl = await this._applyParamsToSingle(img, params, csrfToken);
-          if (resultUrl) {
-            img.url = resultUrl + '&t=' + Date.now();
+          var result = await this._applyParamsToSingle(img, params, csrfToken);
+          if (result && result.url) {
+            img.url = result.url + '&t=' + Date.now();
             success++;
+            if (result.editedFolder) editedFolder = result.editedFolder;
           }
         } catch (err) {
           console.warn('[ApplyParams] Failed for ' + img.name + ':', err);
@@ -1234,6 +1246,11 @@ function cropperApp() {
 
       this.autoAdjustState.running  = false;
       this.autoAdjustState.progress = '';
+
+      // Update working folder to the edited output
+      if (editedFolder) {
+        this.workingFolder = editedFolder;
+      }
 
       // Reload the edited tab so the newly saved images appear there
       this.preview.editedImages = [];
@@ -1273,9 +1290,9 @@ function cropperApp() {
         throw new Error(data.message || 'Adjust failed');
       }
 
-      // Return the URL for the saved edited image
+      // Return the URL and edited folder path
       var base = '/api/engine/serve-image/?path=' + encodeURIComponent(data.saved_path);
-      return base;
+      return { url: base, editedFolder: data.edited_folder || '' };
     },
 
     // ══════════════════════════════════════════════════════════════════

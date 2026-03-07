@@ -162,11 +162,11 @@
         <div class="client-select-group">
           <div class="input-mode-toggle">
             <button type="button" class="mode-btn" :class="{ 'active': inputMode === 'client' }" 
-                    :disabled="processing" @click="inputMode = 'client'; loadClients()">
+                    :disabled="processing || folderLocked" @click="inputMode = 'client'; loadClients()">
               <i class="fa-solid fa-building"></i> Select Client
             </button>
             <button type="button" class="mode-btn" :class="{ 'active': inputMode === 'manual' }" 
-                    :disabled="processing" @click="inputMode = 'manual'">
+                    :disabled="processing || folderLocked" @click="inputMode = 'manual'">
               <i class="fa-solid fa-folder"></i> Manual Path
             </button>
           </div>
@@ -174,7 +174,7 @@
           {# Client Dropdown #}
           <template x-if="inputMode === 'client'">
             <div class="client-dropdown-wrapper">
-              <select x-model="selectedClientId" @change="onClientSelect()" class="client-dropdown" :disabled="clientsLoading || processing">
+              <select x-model="selectedClientId" @change="onClientSelect()" class="client-dropdown" :disabled="clientsLoading || processing || folderLocked">
                 <option value="">— Select a client —</option>
                 <template x-for="client in clients" :key="client.id">
                   <option :value="client.id" x-text="client.name"></option>
@@ -187,12 +187,21 @@
           </template>
         </div>
 
-        <div class="folder-input-group" :class="{ 'client-selected': inputMode === 'client' && selectedClientId }">
+        <div class="folder-input-group" :class="{ 'client-selected': inputMode === 'client' && selectedClientId, 'folder-locked': folderLocked }">
           <div class="input-wrapper">
             <i class="fa-solid fa-folder"></i>
             <input type="text" x-model="folderPath" placeholder="C:\Users\Name\Photos" autocomplete="off"
-                   @keydown.enter="processFolder()" :readonly="inputMode === 'client' && selectedClientId">
+                   @keydown.enter="processFolder()" :readonly="folderLocked || (inputMode === 'client' && selectedClientId)">
+            <button type="button" class="folder-lock-btn" x-show="folderLocked" @click="folderLocked = false; workingFolder = ''" title="Unlock path to change folder">
+              <i class="fa-solid fa-lock"></i>
+            </button>
           </div>
+          <template x-if="workingFolder && workingFolder !== folderPath.trim()">
+            <p class="working-folder-hint">
+              <i class="fa-solid fa-arrow-right"></i>
+              Working on: <strong x-text="workingFolder"></strong>
+            </p>
+          </template>
           <p class="input-hint">
             <i class="fa-solid fa-info-circle"></i>
             <template x-if="inputMode === 'client' && selectedClientId">
