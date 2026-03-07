@@ -10,6 +10,19 @@ function listApp() {
         selectedIds: [],
         loading: false,
         toast: { show: false, message: '', type: 'info' },
+        downloadModal: {
+            show: false,
+            state: 'preparing', // preparing | downloading | complete | error
+            title: 'Preparing Download',
+            subtitle: '',
+            itemCount: 0,
+            progress: -1, // -1 = indeterminate
+            estimatedTime: '',
+            sizeInfo: '',
+            statusText: '',
+            cancelling: false,
+            abortController: null,
+        },
         filters: { photo: 'all', sort: 'name_asc', selectedClass: '', selectedSection: '', dateFrom: '', dateTo: '' },
         filtersActive: false,
 
@@ -149,6 +162,83 @@ function listApp() {
         },
 
         showToast(msg, type='info') { this.toast = { show: true, message: msg, type }; setTimeout(() => { this.toast.show = false; }, 2500); },
+
+        // ========== Download Modal Methods ==========
+        showDownloadModal(type, itemCount) {
+            this.downloadModal = {
+                show: true,
+                state: 'preparing',
+                title: type === 'pdf' ? 'Generating PDF' : 'Preparing Images',
+                subtitle: 'Please wait while we prepare your download...',
+                itemCount: itemCount,
+                progress: -1,
+                estimatedTime: this._estimateDownloadTime(itemCount, type),
+                sizeInfo: '',
+                statusText: type === 'pdf' ? 'Rendering cards...' : 'Compressing images...',
+                cancelling: false,
+                abortController: new AbortController(),
+            };
+        },
+
+        _estimateDownloadTime(count, type) {
+            // Rough estimate: PDF ~0.5s/card, IMG ~1s/card
+            const secondsPerItem = type === 'pdf' ? 0.5 : 1;
+            const totalSecs = Math.ceil(count * secondsPerItem);
+            if (totalSecs < 60) return '~' + totalSecs + 's remaining';
+            const mins = Math.floor(totalSecs / 60);
+            const secs = totalSecs % 60;
+            return '~' + mins + 'm ' + secs + 's remaining';
+        },
+
+        updateDownloadProgress(progress, statusText = null, sizeInfo = null) {
+            if (!this.downloadModal.show) return;
+            this.downloadModal.progress = progress;
+            this.downloadModal.state = 'downloading';
+            if (statusText) this.downloadModal.statusText = statusText;
+            if (sizeInfo) this.downloadModal.sizeInfo = sizeInfo;
+            // Update estimated time based on progress
+            if (progress > 0 && progress < 100) {
+                const remaining = Math.ceil((100 - progress) / 10);
+                this.downloadModal.estimatedTime = '~' + remaining + 's remaining';
+            } else if (progress >= 100) {
+                this.downloadModal.estimatedTime = '';
+            }
+        },
+
+        completeDownload(success, message = '') {
+            if (!this.downloadModal.show) return;
+            this.downloadModal.state = success ? 'complete' : 'error';
+            this.downloadModal.title = success ? 'Download Complete!' : 'Download Failed';
+            this.downloadModal.subtitle = message || (success ? 'Your file is ready.' : 'Something went wrong.');
+            this.downloadModal.progress = success ? 100 : 0;
+            this.downloadModal.statusText = '';
+            this.downloadModal.estimatedTime = '';
+            // Auto-close on success after 2.5s
+            if (success) {
+                setTimeout(() => { if (this.downloadModal.state === 'complete') this.closeDownloadModal(); }, 2500);
+            }
+        },
+
+        cancelDownload() {
+            if (this.downloadModal.abortController) {
+                this.downloadModal.cancelling = true;
+                this.downloadModal.statusText = 'Cancelling...';
+                this.downloadModal.abortController.abort();
+                setTimeout(() => {
+                    this.closeDownloadModal();
+                    this.showToast('Download cancelled', 'info');
+                }, 300);
+            } else {
+                this.closeDownloadModal();
+            }
+        },
+
+        closeDownloadModal() {
+            this.downloadModal.show = false;
+            this.downloadModal.abortController = null;
+            this.downloadModal.cancelling = false;
+        },
+        // ========== End Download Modal Methods ==========
 
         _escHtml(s) {
             return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -525,16 +615,22 @@ function listApp() {
         unapproveSelected() { this.apiAction('verified', 'unapproved'); },
         async downloadPDF() {
             if (!this.selectedIds.length) { this.showToast('Select items first', 'error'); return; }
-            this.showToast('Generating PDF…', 'info');
+            this.showDownloadModal('pdf', this.selectedIds.length);
             try {
+                this.updateDownloadProgress(10, 'Sending request...');
                 const res = await fetch('/panel/exports/pdf/' + TABLE_ID + '/', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
                     body: JSON.stringify({ card_ids: this.selectedIds, status: LIST_TYPE }),
+                    signal: this.downloadModal.abortController?.signal,
                 });
+                this.updateDownloadProgress(50, 'Processing PDF...');
                 const ct = res.headers.get('content-type') || '';
                 if (res.ok && ct.includes('application/pdf')) {
+                    this.updateDownloadProgress(70, 'Downloading file...');
                     const blob = await res.blob();
+                    const sizeKB = Math.round(blob.size / 1024);
+                    this.updateDownloadProgress(90, 'Saving file...', sizeKB > 1024 ? (sizeKB/1024).toFixed(1) + ' MB' : sizeKB + ' KB');
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
@@ -543,27 +639,36 @@ function listApp() {
                     a.click();
                     a.remove();
                     URL.revokeObjectURL(url);
-                    this.showToast('PDF downloaded!', 'success');
+                    this.completeDownload(true, 'PDF saved to your device');
                 } else {
                     const data = await res.json().catch(() => ({}));
-                    this.showToast(data.message || 'PDF generation failed', 'error');
+                    this.completeDownload(false, data.message || 'PDF generation failed');
                 }
-            } catch (e) { this.showToast('PDF download failed', 'error'); }
+            } catch (e) {
+                if (e.name === 'AbortError') return; // Cancelled by user
+                this.completeDownload(false, 'PDF download failed');
+            }
         },
         async downloadIMG() {
             if (!this.selectedIds.length) { this.showToast('Select items first', 'error'); return; }
-            this.showToast('Preparing images ZIP...', 'info');
-            this.loading = true;
+            this.showDownloadModal('img', this.selectedIds.length);
             try {
+                this.updateDownloadProgress(10, 'Preparing images...');
                 const res = await fetch('/panel/api/table/' + TABLE_ID + '/cards/download-images/', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
                     body: JSON.stringify({ card_ids: this.selectedIds, status: LIST_TYPE }),
+                    signal: this.downloadModal.abortController?.signal,
                 });
+                this.updateDownloadProgress(40, 'Processing response...');
                 const data = await res.json();
                 if (data.success && data.zip_files && data.zip_files.length > 0) {
+                    const totalZips = data.zip_files.length;
+                    let downloaded = 0;
                     // Download each ZIP file
                     for (const zipInfo of data.zip_files) {
+                        const progress = 40 + Math.round((downloaded / totalZips) * 50);
+                        this.updateDownloadProgress(progress, 'Downloading ' + (downloaded + 1) + ' of ' + totalZips + '...');
                         const bin = atob(zipInfo.data);
                         const bytes = new Uint8Array(bin.length);
                         for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
@@ -576,13 +681,18 @@ function listApp() {
                         a.click();
                         document.body.removeChild(a);
                         URL.revokeObjectURL(url);
+                        downloaded++;
                     }
-                    this.showToast('Downloaded ' + data.total_images + ' images!', 'success');
+                    const totalSize = data.zip_files.reduce((sum, z) => sum + (z.data?.length || 0) * 0.75, 0);
+                    const sizeKB = Math.round(totalSize / 1024);
+                    this.completeDownload(true, 'Downloaded ' + data.total_images + ' images (' + (sizeKB > 1024 ? (sizeKB/1024).toFixed(1) + ' MB' : sizeKB + ' KB') + ')');
                 } else {
-                    this.showToast(data.message || 'No images to download', 'error');
+                    this.completeDownload(false, data.message || 'No images to download');
                 }
-            } catch (e) { this.showToast('Download failed', 'error'); }
-            this.loading = false;
+            } catch (e) {
+                if (e.name === 'AbortError') return; // Cancelled by user
+                this.completeDownload(false, 'Download failed');
+            }
         },
         downloadAgain() { this.apiAction('download', 're-downloaded'); },
         async permanentlyDelete() {

@@ -1,7 +1,7 @@
 // Service Worker for Mobile PWA (ID Card Manager)
 // Scope: '/' — covers /app/ pages AND /auth/login/ so login stays in-app.
 // Network-first strategy; only caches static shell assets for offline fallback.
-const CACHE_NAME = 'idcard-mobile-v8';
+const CACHE_NAME = 'idcard-mobile-v9';
 const STATIC_ASSETS = [
     '/app/',
 ];
