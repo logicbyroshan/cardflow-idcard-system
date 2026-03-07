@@ -232,10 +232,6 @@ class PermissionValidationMiddleware:
         '/favicon.ico',
         '/api/health/',
         '/robots.txt',
-        '/manifest.json',
-        '/sw.js',
-        '/app/sw.js',
-        '/app/manifest.json',
     ]
     
     def __init__(self, get_response):

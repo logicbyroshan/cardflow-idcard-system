@@ -1,8 +1,8 @@
 """
 Reprint Card Views
 ==================
-Page views + API endpoints for the 4-step Reprint Cards workflow:
-  Reprint List → Confirmed List → Download → Pool
+Page views + API endpoints for the Reprint Cards workflow:
+  Reprint List (all IDCards) → Confirmed List
 
 ARCHITECTURE RULES:
 - Views are ULTRA-THIN: parse request → call service → return JsonResponse.
@@ -67,6 +67,16 @@ def _build_ordered_fields(card, table):
     return ordered_fields
 
 
+def _require_admin_role(user):
+    """Return a 403 JsonResponse if user is not super_admin or admin_staff, else None."""
+    if PermissionService.is_any_admin(user):
+        return None
+    return JsonResponse(
+        {'status': 'error', 'message': 'Admin access required for this action.'},
+        status=403,
+    )
+
+
 # ---------------------------------------------------------------------------
 # PAGE VIEW
 # ---------------------------------------------------------------------------
@@ -74,7 +84,7 @@ def _build_ordered_fields(card, table):
 @login_required
 @require_any_admin
 def reprint_cards(request, table_id):
-    """Reprint Cards page — 4-step workflow: Reprint List → Confirmed → Download → Pool."""
+    """Reprint Cards page — Reprint List (all IDCards) → Confirmed."""
     table = get_object_or_404(
         IDCardTable.objects.select_related('group__client'), id=table_id,
     )
@@ -85,45 +95,34 @@ def reprint_cards(request, table_id):
         return redirect('active_clients')
 
     current_step = request.GET.get('step', 'reprint_list')
-    if current_step not in ('reprint_list', 'confirmed', 'pool'):
+    if current_step not in ('reprint_list', 'confirmed'):
         current_step = 'reprint_list'
 
-    # Step counts (single aggregate query)
-    step_counts_raw = ReprintRequest.objects.filter(table=table).aggregate(
-        rl=Count('id', filter=Q(status='requested')),
-        cl=Count('id', filter=Q(status='confirmed')),
-        pl=Count('id', filter=Q(status='pool')),
-    )
+    # Step counts
+    confirmed_count = ReprintRequest.objects.filter(table=table, status='confirmed').count()
+    all_cards_count = IDCard.objects.filter(table=table).count()
     step_counts = {
-        'reprint_list': step_counts_raw['rl'],
-        'confirmed': step_counts_raw['cl'],
-        'pool': step_counts_raw['pl'],
+        'reprint_list': all_cards_count,
+        'confirmed': confirmed_count,
     }
 
     INITIAL_LOAD_LIMIT = 100
 
-    # Reprint List — shows reprint requests with status='requested'
+    # Reprint List — shows ALL IDCards from the table
     reprint_items = []
     reprint_total = 0
     if current_step == 'reprint_list':
-        rr_qs = ReprintRequest.objects.filter(
-            table=table, status='requested',
-        ).select_related('card', 'requested_by').order_by('-created_at')
-        reprint_total = rr_qs.count()
-        rr_batch = rr_qs[:INITIAL_LOAD_LIMIT]
-        for idx, rr in enumerate(rr_batch):
-            req_by = rr.requested_by
+        card_qs = IDCard.objects.filter(table=table).order_by('-updated_at')
+        reprint_total = card_qs.count()
+        card_batch = card_qs[:INITIAL_LOAD_LIMIT]
+        for idx, card in enumerate(card_batch):
             reprint_items.append({
-                'rr_id': rr.id,
-                'card_id': rr.card_id,
+                'card_id': card.id,
                 'sr_no': idx + 1,
-                'status': rr.card.status,
-                'get_status_display': rr.card.get_status_display(),
-                'reason': rr.reason,
-                'requested_by_name': (req_by.get_full_name() or req_by.username) if req_by else 'System',
-                'requested_at': rr.created_at,
-                'ordered_fields': _build_ordered_fields(rr.card, table),
-                'updated_at': rr.card.updated_at,
+                'status': card.status,
+                'get_status_display': card.get_status_display(),
+                'ordered_fields': _build_ordered_fields(card, table),
+                'updated_at': card.updated_at,
             })
 
     # Confirmed List — status='confirmed'
@@ -150,30 +149,6 @@ def reprint_cards(request, table_id):
                 'updated_at': rr.card.updated_at,
             })
 
-    # Pool — status='pool'
-    pool_items = []
-    pool_total = 0
-    if current_step == 'pool':
-        pl_qs = ReprintRequest.objects.filter(
-            table=table, status='pool',
-        ).select_related('card', 'requested_by').order_by('-updated_at')
-        pool_total = pl_qs.count()
-        pl_batch = pl_qs[:INITIAL_LOAD_LIMIT]
-        for idx, rr in enumerate(pl_batch):
-            req_by = rr.requested_by
-            pool_items.append({
-                'rr_id': rr.id,
-                'card_id': rr.card_id,
-                'sr_no': idx + 1,
-                'status': rr.card.status,
-                'get_status_display': rr.card.get_status_display(),
-                'reason': rr.reason,
-                'requested_by_name': (req_by.get_full_name() or req_by.username) if req_by else 'System',
-                'pool_at': rr.updated_at,
-                'ordered_fields': _build_ordered_fields(rr.card, table),
-                'updated_at': rr.card.updated_at,
-            })
-
     context = {
         'active_page': 'active_clients',
         'user_role': get_user_role(request.user),
@@ -189,9 +164,6 @@ def reprint_cards(request, table_id):
         'confirmed_items': confirmed_items,
         'confirmed_total': confirmed_total,
         'confirmed_has_more': confirmed_total > INITIAL_LOAD_LIMIT,
-        'pool_items': pool_items,
-        'pool_total': pool_total,
-        'pool_has_more': pool_total > INITIAL_LOAD_LIMIT,
         'initial_load_limit': INITIAL_LOAD_LIMIT,
     }
     return render(request, 'reprintcard/reprint-cards.html', context)
@@ -204,28 +176,24 @@ def reprint_cards(request, table_id):
 @require_http_methods(["GET"])
 @api_require_permission('perm_idcard_reprint_list')
 def api_reprint_step_counts(request, table_id):
-    """Return step counts for the 4-step reprint workflow tabs."""
+    """Return step counts for the reprint workflow tabs."""
     table, err = _check_reprint_table_scope(request.user, table_id)
     if err:
         return err
 
-    agg = ReprintRequest.objects.filter(table=table).aggregate(
-        requested=Count('id', filter=Q(status='requested')),
-        confirmed=Count('id', filter=Q(status='confirmed')),
-        pool=Count('id', filter=Q(status='pool')),
-    )
+    confirmed_count = ReprintRequest.objects.filter(table=table, status='confirmed').count()
+    all_cards_count = IDCard.objects.filter(table=table).count()
     return JsonResponse({
         'status': 'ok',
-        'reprint_list': agg['requested'],
-        'confirmed': agg['confirmed'],
-        'pool': agg['pool'],
+        'reprint_list': all_cards_count,
+        'confirmed': confirmed_count,
     })
 
 
 @require_http_methods(["GET"])
 @api_require_permission('perm_idcard_reprint_list')
 def api_reprint_list(request, table_id):
-    """List reprint requests with status='requested' (Reprint List step)."""
+    """List ALL IDCards from the table (Reprint List step)."""
     table, err = _check_reprint_table_scope(request.user, table_id)
     if err:
         return err
@@ -237,35 +205,29 @@ def api_reprint_list(request, table_id):
     except (ValueError, TypeError):
         offset, limit = 0, 100
 
-    rr_qs = ReprintRequest.objects.filter(
-        table=table, status='requested',
-    ).select_related('card', 'requested_by').order_by('-created_at')
+    card_qs = IDCard.objects.filter(table=table).order_by('-updated_at')
 
     if query:
-        search_q = Q(card__field_data__icontains=query) | Q(reason__icontains=query)
+        search_q = Q(field_data__icontains=query)
         if query.isdigit():
-            search_q |= Q(card__id=int(query))
-        rr_qs = rr_qs.filter(search_q)
+            search_q |= Q(id=int(query))
+        card_qs = card_qs.filter(search_q)
 
-    total = rr_qs.count()
-    batch = list(rr_qs[offset:offset + limit + 1])
+    total = card_qs.count()
+    batch = list(card_qs[offset:offset + limit + 1])
     has_more = len(batch) > limit
     if has_more:
         batch = batch[:limit]
 
     items = []
-    for idx, rr in enumerate(batch):
-        req_by = rr.requested_by
+    for idx, card in enumerate(batch):
         items.append({
-            'rr_id': rr.id,
-            'card_id': rr.card_id,
+            'card_id': card.id,
             'sr_no': offset + idx + 1,
-            'status': rr.card.status,
-            'status_display': rr.card.get_status_display(),
-            'reason': rr.reason,
-            'requested_by_name': (req_by.get_full_name() or req_by.username) if req_by else 'System',
-            'requested_at': localtime(rr.created_at).strftime('%d-%b-%Y %H:%M'),
-            'ordered_fields': _build_ordered_fields(rr.card, table),
+            'status': card.status,
+            'status_display': card.get_status_display(),
+            'ordered_fields': _build_ordered_fields(card, table),
+            'updated_at': localtime(card.updated_at).strftime('%d-%b-%Y %H:%M'),
         })
 
     return JsonResponse({
@@ -281,7 +243,7 @@ def api_reprint_list(request, table_id):
 @require_http_methods(["POST"])
 @api_require_permission('perm_idcard_reprint_list')
 def api_reprint_request_create(request, table_id):
-    """Create reprint requests for card IDs.
+    """Create reprint requests for card IDs (goes directly to confirmed).
     Body: { "card_ids": [1, 2, 3], "reason": "optional" }
     """
     table, err = _check_reprint_table_scope(request.user, table_id)
@@ -319,6 +281,9 @@ def api_reprint_confirm(request, table_id):
     """Confirm reprint requests: requested → confirmed.
     Body: { "rr_ids": [1, 2, 3] }
     """
+    admin_err = _require_admin_role(request.user)
+    if admin_err:
+        return admin_err
     table, err = _check_reprint_table_scope(request.user, table_id)
     if err:
         return err
@@ -346,9 +311,12 @@ def api_reprint_confirm(request, table_id):
 @require_http_methods(["POST"])
 @api_require_permission('perm_idcard_reprint_list')
 def api_reprint_reject(request, table_id):
-    """Reject (delete) reprint requests still in 'requested' status.
+    """Reject (delete) reprint requests in 'requested' or 'confirmed' status.
     Body: { "rr_ids": [1, 2, 3] }
     """
+    admin_err = _require_admin_role(request.user)
+    if admin_err:
+        return admin_err
     table, err = _check_reprint_table_scope(request.user, table_id)
     if err:
         return err
@@ -434,6 +402,9 @@ def api_reprint_mark_downloaded(request, table_id):
     """Mark confirmed reprints as downloaded: confirmed → downloaded.
     Body: { "rr_ids": [1, 2, 3] }
     """
+    admin_err = _require_admin_role(request.user)
+    if admin_err:
+        return admin_err
     table, err = _check_reprint_table_scope(request.user, table_id)
     if err:
         return err
@@ -515,93 +486,6 @@ def api_download_list(request, table_id):
     })
 
 
-@require_http_methods(["POST"])
-@api_require_permission('perm_idcard_reprint_list')
-def api_reprint_mark_pool(request, table_id):
-    """Move downloaded reprints to pool: downloaded → pool.
-    Body: { "rr_ids": [1, 2, 3] }
-    """
-    table, err = _check_reprint_table_scope(request.user, table_id)
-    if err:
-        return err
-
-    try:
-        body = json.loads(request.body)
-    except (json.JSONDecodeError, ValueError):
-        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
-
-    rr_ids = body.get('rr_ids', [])
-    if not rr_ids:
-        return JsonResponse({'status': 'error', 'message': 'No reprint IDs provided'}, status=400)
-
-    result = ReprintWorkflowService.bulk_transition(table, rr_ids, 'pool', user=request.user)
-
-    if result.success:
-        return JsonResponse({
-            'status': 'ok',
-            'message': result.message,
-            'pool_count': result.data.get('updated_count', 0),
-        })
-    return JsonResponse({'status': 'error', 'message': result.message}, status=400)
-
-
-@require_http_methods(["GET"])
-@api_require_permission('perm_idcard_reprint_list')
-def api_pool_list(request, table_id):
-    """List pool reprint requests (status='pool')."""
-    table, err = _check_reprint_table_scope(request.user, table_id)
-    if err:
-        return err
-
-    query = request.GET.get('q', '').strip()
-    try:
-        offset = int(request.GET.get('offset', 0))
-        limit = int(request.GET.get('limit', 100))
-    except (ValueError, TypeError):
-        offset, limit = 0, 100
-
-    rr_qs = ReprintRequest.objects.filter(
-        table=table, status='pool',
-    ).select_related('card', 'requested_by').order_by('-updated_at')
-
-    if query:
-        rr_qs = rr_qs.filter(
-            Q(card__field_data__icontains=query) |
-            Q(reason__icontains=query) |
-            Q(card__id__icontains=query)
-        )
-
-    total = rr_qs.count()
-    batch = list(rr_qs[offset:offset + limit + 1])
-    has_more = len(batch) > limit
-    if has_more:
-        batch = batch[:limit]
-
-    items = []
-    for idx, rr in enumerate(batch):
-        req_by = rr.requested_by
-        items.append({
-            'rr_id': rr.id,
-            'card_id': rr.card_id,
-            'sr_no': offset + idx + 1,
-            'status': rr.card.status,
-            'status_display': rr.card.get_status_display(),
-            'reason': rr.reason,
-            'requested_by_name': (req_by.get_full_name() or req_by.username) if req_by else 'System',
-            'pool_at': localtime(rr.updated_at).strftime('%d-%b-%Y %H:%M'),
-            'ordered_fields': _build_ordered_fields(rr.card, table),
-        })
-
-    return JsonResponse({
-        'status': 'ok',
-        'items': items,
-        'total': total,
-        'has_more': has_more,
-        'offset': offset,
-        'limit': limit,
-    })
-
-
 # ---------------------------------------------------------------------------
 # SEND TO PRINT (confirmed → cardprint print list)
 # ---------------------------------------------------------------------------
@@ -616,6 +500,9 @@ def api_reprint_send_to_print(request, table_id):
     Extracts card IDs from the confirmed reprint requests and creates
     PrintRequest entries in the cardprint app.
     """
+    admin_err = _require_admin_role(request.user)
+    if admin_err:
+        return admin_err
     table, err = _check_reprint_table_scope(request.user, table_id)
     if err:
         return err
@@ -648,8 +535,11 @@ def api_reprint_send_to_print(request, table_id):
 
     result = PrintWorkflowService.create_requests(table, card_ids, request.user)
 
+    if not result.success:
+        return JsonResponse({'status': 'error', 'message': result.message}, status=400)
+
     # Move the reprint requests from confirmed → downloaded
-    if result['created'] > 0:
+    if result.data['created'] > 0:
         ReprintRequest.objects.filter(
             id__in=rr_ids,
             table=table,
@@ -658,8 +548,8 @@ def api_reprint_send_to_print(request, table_id):
 
     return JsonResponse({
         'status': 'ok',
-        'message': f"{result['created']} card(s) sent to print list"
-                   + (f" ({result['skipped']} already in list)" if result['skipped'] else ''),
-        'created': result['created'],
-        'skipped': result['skipped'],
+        'message': f"{result.data['created']} card(s) sent to print list"
+                   + (f" ({result.data['skipped']} already in list)" if result.data['skipped'] else ''),
+        'created': result.data['created'],
+        'skipped': result.data['skipped'],
     })

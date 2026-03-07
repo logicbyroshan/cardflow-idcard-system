@@ -421,52 +421,7 @@ def _find_field_name(field_names: List[str], patterns: List[str]) -> Optional[st
     return None
 
 
-def sort_cards_for_export(
-    cards_list: list,
-    table_fields: Optional[List[Dict[str, Any]]] = None
-) -> list:
-    """
-    Sort cards for export output.
-
-    Sorting rules (applied to field_data values, case-insensitive):
-      • Name (A→Z), then Section (A→Z), then Class (logical order)
-      • If none of Name/Section/Class found → original order
-
-    This function is the SINGLE source of export sort logic.
-    Called by Word, Excel, and PDF exporters.
-
-    Args:
-        cards_list:   Python list of IDCard instances (already fetched)
-        table_fields: The table.fields list (list of dicts with 'name' key)
-
-    Returns:
-        New sorted list (original list is not mutated)
-    """
-    if not cards_list or not table_fields:
-        return cards_list
-
-    field_names = [f.get('name', '') for f in table_fields]
-
-    class_field = _find_field_name(field_names, _CLASS_PATTERNS)
-    section_field = _find_field_name(field_names, _SECTION_PATTERNS)
-    name_field = _find_field_name(field_names, _NAME_PATTERNS)
-
-    # Nothing to sort by
-    if not class_field and not section_field and not name_field:
-        return cards_list
-
-    def _sort_key(card):
-        fd = card.field_data or {}
-
-        cls_val = str(fd.get(class_field, '') or '').strip().upper() if class_field else ''
-        sec_val = str(fd.get(section_field, '') or '').strip().upper() if section_field else ''
-        name_val = str(fd.get(name_field, '') or '').strip().upper() if name_field else ''
-
-        # Sort order: Name (A→Z), then Section (A→Z), then Class (logical order)
-        cls_order = _CLASS_ORDER.get(cls_val, _CLASS_ORDER_UNKNOWN) if class_field else 0
-        return (name_val, sec_val, cls_order, cls_val)
-
-    return sorted(cards_list, key=_sort_key)
+# sort_cards_for_export is defined below after SortedCardList (Class → Section → Name)
 
 
 def get_class_field_name(table_fields: Optional[List[Dict[str, Any]]]) -> Optional[str]:

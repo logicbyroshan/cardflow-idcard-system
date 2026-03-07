@@ -17,14 +17,12 @@ SEO: This entire domain is blocked from indexing via:
 
 For local development (single domain), config/urls.py is used instead.
 """
-import json
 import os
-import re
 
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
-from django.http import HttpResponse, JsonResponse, FileResponse, Http404
+from django.http import HttpResponse, FileResponse, Http404
 from django.views.decorators.cache import cache_page
 from django.views.decorators.http import require_GET
 from core.views.health import health_check
@@ -83,121 +81,12 @@ def _protected_media_serve(request, path, document_root=None):
     return serve(request, path, document_root=document_root)
 
 
-def _is_mobile_ua(request):
-    """Quick mobile user-agent check."""
-    ua = request.META.get('HTTP_USER_AGENT', '')
-    return bool(re.search(
-        r'Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini',
-        ua, re.I,
-    ))
-
-
-@require_GET
-def panel_manifest_json(request):
-    """
-    Serve the PWA manifest dynamically for the panel subdomain.
-
-    Mobile devices  → mobile app manifest  (start_url: /app/)
-    Desktop devices → admin panel manifest (start_url: /auth/login/)
-
-    Both use scope '/' so that login redirects stay inside the PWA
-    standalone window.
-    """
-    if _is_mobile_ua(request):
-        # Mobile → Adarsh ID Cards (mobile app)
-        manifest = {
-            'name': 'Adarsh ID Cards',
-            'short_name': 'Adarsh ID',
-            'description': 'Adarsh ID Cards - Mobile Card Management',
-            'start_url': '/app/',
-            'scope': '/app/',
-            'id': '/app/',
-            'display': 'standalone',
-            'display_override': ['standalone', 'minimal-ui'],
-            'background_color': '#667eea',
-            'theme_color': '#667eea',
-            'orientation': 'portrait',
-            'prefer_related_applications': False,
-            'categories': ['business', 'productivity'],
-            'icons': [
-                {
-                    'src': '/static/mobile/images/icon-192.png',
-                    'sizes': '192x192',
-                    'type': 'image/png',
-                    'purpose': 'any',
-                },
-                {
-                    'src': '/static/mobile/images/icon-192.png',
-                    'sizes': '192x192',
-                    'type': 'image/png',
-                    'purpose': 'maskable',
-                },
-                {
-                    'src': '/static/mobile/images/icon-512.png',
-                    'sizes': '512x512',
-                    'type': 'image/png',
-                    'purpose': 'any',
-                },
-                {
-                    'src': '/static/mobile/images/icon-512.png',
-                    'sizes': '512x512',
-                    'type': 'image/png',
-                    'purpose': 'maskable',
-                },
-            ],
-        }
-    else:
-        # Desktop → Admin Panel
-        manifest_path = os.path.join(settings.BASE_DIR, 'static', 'website', 'manifest.json')
-        try:
-            with open(manifest_path, 'r', encoding='utf-8') as f:
-                manifest = json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
-            raise Http404
-
-        # Override for the admin panel PWA on panel subdomain
-        manifest['name'] = 'Adarsh ID Cards - Admin Panel'
-        manifest['short_name'] = 'Adarsh Admin'
-        manifest['description'] = 'Manage ID cards, clients, staff and orders'
-        manifest['start_url'] = '/auth/login/'
-        manifest['scope'] = '/'
-
-    response = JsonResponse(manifest)
-    response['Content-Type'] = 'application/manifest+json'
-    return response
-
-
-def _serve_panel_sw(request):
-    """Serve the PWA service worker for the panel subdomain."""
-    filepath = os.path.join(settings.BASE_DIR, 'static', 'website', 'sw.js')
-    if not os.path.isfile(filepath):
-        raise Http404
-    response = FileResponse(open(filepath, 'rb'), content_type='application/javascript')
-    response['Service-Worker-Allowed'] = '/'
-    response['Cache-Control'] = 'no-cache'
-    return response
-
-
-def _serve_mobile_sw(request):
-    """Serve the mobile PWA service worker with correct scope header."""
-    filepath = os.path.join(settings.BASE_DIR, 'static', 'mobile', 'sw.js')
-    if not os.path.isfile(filepath):
-        raise Http404
-    response = FileResponse(open(filepath, 'rb'), content_type='application/javascript')
-    response['Service-Worker-Allowed'] = '/'
-    response['Cache-Control'] = 'no-cache'
-    return response
-
 
 urlpatterns = [
     # Health check — no auth, used by load balancers / CI/CD
     path('api/health/', health_check, name='health_check'),
 
     path('robots.txt', panel_robots_txt, name='panel_robots_txt'),
-
-    # PWA — manifest and service worker at root scope
-    path('manifest.json', panel_manifest_json, name='panel_pwa_manifest'),
-    path('sw.js', _serve_panel_sw, name='panel_pwa_sw'),
 
     # Django admin
     path('admin/', admin.site.urls),
@@ -215,9 +104,6 @@ urlpatterns = [
     path('reprint/', include('reprintcard.urls')),
 
     # ==================== PWA MOBILE APP (/app/) ====================
-    # Mobile manifest & SW served via Django for correct headers
-    path('app/manifest.json', panel_manifest_json, name='mobile_pwa_manifest'),
-    path('app/sw.js', _serve_mobile_sw, name='mobile_pwa_sw'),
     path('app/', include('mobile_app.urls')),
 ]
 

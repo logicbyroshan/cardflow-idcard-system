@@ -1,20 +1,14 @@
 {% load static %}
 {% load custom_filters %}
-<!-- ===== STEP 1: REPRINT LIST (requested) ===== -->
+<!-- ===== STEP 1: REPRINT LIST (all IDCards) ===== -->
 
 <!-- Action Bar -->
 <div class="action-bar action-buttons-bar" id="reprintListActionBar">
     <div class="action-buttons-group">
-        {% if not is_client and not is_client_staff %}
-        <button class="btn action-btn btn-amber" id="confirmSelectedBtn" disabled title="Confirm selected reprints">
+        <button class="btn action-btn btn-amber" id="sendToConfirmedBtn" disabled title="Send selected cards to Confirmed list">
             <i class="fa-solid fa-check-double"></i>
-            <span class="btn-text">Confirm Selected</span>
+            <span class="btn-text">Send to Confirmed</span>
         </button>
-        <button class="btn action-btn btn-gray" id="rejectSelectedBtn" disabled title="Reject selected reprints">
-            <i class="fa-solid fa-xmark"></i>
-            <span class="btn-text">Reject Selected</span>
-        </button>
-        {% endif %}
         <button class="btn action-btn btn-gray" id="reprintListViewBtn" disabled title="View selected card">
             <i class="fa-solid fa-eye"></i>
             <span class="btn-text">View</span>
@@ -66,16 +60,13 @@
                     <th class="{{ field|get_column_width_class }} px-[1px] py-1 {{ field|get_column_align_class }} align-middle" data-field-name="{{ field.name }}" data-field-type="{{ field.type }}">{{ field.name|humanize_header }}</th>
                     {% endif %}
                     {% endfor %}
-                    <th class="min-w-[80px] px-[1px] py-1 text-center align-middle">Reason</th>
-                    <th class="w-[65px] min-w-[65px] px-[1px] py-1 text-center align-middle">Requested By</th>
-                    <th class="w-[90px] min-w-[90px] px-[1px] py-1 text-center align-middle">Requested At</th>
                     <th class="w-[120px] min-w-[120px] px-[1px] py-1 text-center align-middle">Action</th>
                     <th class="w-[65px] min-w-[65px] px-[1px] py-1 text-center align-middle">Status</th>
                 </tr>
             </thead>
             <tbody id="reprintListTableBody" class="divide-y divide-gray-200">
                 {% for item in reprint_items %}
-                <tr data-rr-id="{{ item.rr_id }}" data-card-id="{{ item.card_id }}" data-sr-no="{{ item.sr_no }}">
+                <tr data-card-id="{{ item.card_id }}" data-sr-no="{{ item.sr_no }}">
                     <td class="w-[24px] px-[1px] py-1 text-center align-middle checkbox-cell">
                         <input type="checkbox" class="reprintListRowCheckbox">
                     </td>
@@ -117,16 +108,10 @@
                     </td>
                     {% endif %}
                     {% endfor %}
-                    <td class="min-w-[80px] px-[1px] py-1 align-middle reason-cell whitespace-normal break-words text-left" title="{{ item.reason }}">{{ item.reason|truncatewords:8 }}</td>
-                    <td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center">{{ item.requested_by_name }}</td>
-                    <td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">{{ item.requested_at|date:"d-M-Y H:i" }}</td>
                     <td class="w-[120px] px-[1px] py-1 text-center align-middle action-cell">
                         <div class="confirm-action-btns">
-                            <button class="btn-confirm-single" data-rr-id="{{ item.rr_id }}" title="Confirm this reprint" aria-label="Confirm this reprint">
+                            <button class="btn-send-to-confirmed-single" data-card-id="{{ item.card_id }}" title="Send to Confirmed list" aria-label="Send to Confirmed list">
                                 <i class="fa-solid fa-check"></i> <span>Confirm</span>
-                            </button>
-                            <button class="btn-reject-single" data-rr-id="{{ item.rr_id }}" title="Reject this reprint" aria-label="Reject this reprint">
-                                <i class="fa-solid fa-xmark"></i> <span>Reject</span>
                             </button>
                         </div>
                     </td>
@@ -138,9 +123,9 @@
                 <tr>
                     <td colspan="50">
                         <div class="empty-state">
-                            <i class="fa-solid fa-rotate"></i>
-                            <h3>No Reprint Requests</h3>
-                            <p>No cards have been added to the reprint list yet.</p>
+                            <i class="fa-solid fa-id-card"></i>
+                            <h3>No ID Cards</h3>
+                            <p>No cards found in this table.</p>
                         </div>
                     </td>
                 </tr>

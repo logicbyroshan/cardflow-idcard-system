@@ -10,6 +10,10 @@
             <i class="fa-solid fa-print"></i>
             <span class="btn-text">Print Selected</span>
         </button>
+        <button class="btn action-btn btn-red" id="rejectConfirmedBtn" disabled title="Reject selected reprints">
+            <i class="fa-solid fa-xmark"></i>
+            <span class="btn-text">Reject</span>
+        </button>
         {% endif %}
         <button class="btn action-btn btn-gray" id="confirmedViewBtn" disabled title="View selected card">
             <i class="fa-solid fa-eye"></i>
@@ -118,9 +122,14 @@
                     <td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">{{ item.confirmed_at|date:"d-M-Y H:i" }}</td>
                     <td class="w-[100px] px-[1px] py-1 text-center align-middle action-cell">
                         <div class="confirm-action-btns">
+                            {% if not is_client and not is_client_staff %}
                             <button class="btn-send-to-print-single" data-rr-id="{{ item.rr_id }}" title="Send to Print List" aria-label="Send to Print List">
                                 <i class="fa-solid fa-print"></i> <span>Print</span>
                             </button>
+                            <button class="btn-reject-confirmed-single" data-rr-id="{{ item.rr_id }}" title="Reject" aria-label="Reject reprint">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                            {% endif %}
                         </div>
                     </td>
                     <td class="w-[65px] px-[1px] py-1 align-middle text-center">

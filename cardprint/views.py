@@ -206,8 +206,11 @@ def api_print_send(request, table_id):
 
     result = PrintWorkflowService.create_requests(table, valid_ids, request.user)
 
+    if not result.success:
+        return JsonResponse({'status': 'error', 'message': result.message}, status=400)
+
     # Move approved cards → download status so they leave the approve list
-    if result['created'] > 0:
+    if result.data['created'] > 0:
         IDCard.objects.filter(
             id__in=valid_ids,
             table=table,
@@ -216,10 +219,10 @@ def api_print_send(request, table_id):
 
     return JsonResponse({
         'status': 'ok',
-        'message': f"{result['created']} card(s) sent to print list"
-                   + (f" ({result['skipped']} already in list)" if result['skipped'] else ''),
-        'created': result['created'],
-        'skipped': result['skipped'],
+        'message': f"{result.data['created']} card(s) sent to print list"
+                   + (f" ({result.data['skipped']} already in list)" if result.data['skipped'] else ''),
+        'created': result.data['created'],
+        'skipped': result.data['skipped'],
     })
 
 
@@ -335,9 +338,9 @@ def api_print_remove(request, table_id):
     result = PrintWorkflowService.delete_requests(valid_ids, request.user)
     return JsonResponse({
         'status': 'ok',
-        'message': f"{result['deleted']} item(s) removed from print list",
-        'deleted': result['deleted'],
-        'skipped': result['skipped'],
+        'message': f"{result.data['deleted']} item(s) removed from print list",
+        'deleted': result.data['deleted'],
+        'skipped': result.data['skipped'],
     })
 
 
@@ -382,11 +385,13 @@ def api_print_generate(request, table_id):
         )
 
     result = PrintWorkflowService.bulk_generate(valid_ids, request.user)
+    if not result.success:
+        return JsonResponse({'status': 'error', 'message': result.message}, status=400)
     return JsonResponse({
         'status': 'ok',
-        'message': f"{result['updated']} item(s) generated successfully",
-        'updated': result['updated'],
-        'skipped': result['skipped'],
+        'message': f"{result.data['updated']} item(s) generated successfully",
+        'updated': result.data['updated'],
+        'skipped': result.data['skipped'],
     })
 
 
@@ -483,11 +488,13 @@ def api_print_mark_pool(request, table_id):
         )
 
     result = PrintWorkflowService.bulk_mark_pool(valid_ids, request.user)
+    if not result.success:
+        return JsonResponse({'status': 'error', 'message': result.message}, status=400)
     return JsonResponse({
         'status': 'ok',
-        'message': f"{result['updated']} item(s) moved to pool",
-        'updated': result['updated'],
-        'skipped': result['skipped'],
+        'message': f"{result.data['updated']} item(s) moved to pool",
+        'updated': result.data['updated'],
+        'skipped': result.data['skipped'],
     })
 
 

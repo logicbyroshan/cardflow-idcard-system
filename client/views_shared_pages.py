@@ -10,7 +10,7 @@ from django.db.models import Count, Q
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
-from idcards.models import IDCardTable
+from idcards.models import IDCard, IDCardTable
 from core.services import IDCardService
 from core.services.permission_service import PermissionService
 from core.utils.htmx import is_htmx
@@ -229,48 +229,35 @@ def client_reprint_cards(request, table_id):
         return redirect(reverse('client:idcard_group'))
     
     current_step = request.GET.get('step', 'reprint_list')
-    if current_step not in ('reprint_list', 'confirmed', 'pool'):
+    if current_step not in ('reprint_list', 'confirmed'):
         current_step = 'reprint_list'
     
-    # Real step counts from ReprintRequest table (single aggregate query)
-    from django.db.models import Count as AggCount
-    step_counts_raw = ReprintRequest.objects.filter(table=table).aggregate(
-        rl=AggCount('id', filter=Q(status='requested')),
-        cl=AggCount('id', filter=Q(status='confirmed')),
-        pl=AggCount('id', filter=Q(status='pool')),
-    )
+    # Real step counts
+    confirmed_count = ReprintRequest.objects.filter(table=table, status='confirmed').count()
+    all_cards_count = IDCard.objects.filter(table=table).count()
     step_counts = {
-        'reprint_list': step_counts_raw['rl'],
-        'confirmed': step_counts_raw['cl'],
-        'pool': step_counts_raw['pl'],
+        'reprint_list': all_cards_count,
+        'confirmed': confirmed_count,
     }
     
     INITIAL_LOAD_LIMIT = 100
     
     from reprintcard.views import _build_ordered_fields
 
-    # Reprint List — shows reprint requests with status='requested'
+    # Reprint List — shows ALL IDCards from the table
     reprint_items = []
-    reprint_total = 0
+    reprint_total = all_cards_count
     if current_step == 'reprint_list':
-        rr_qs = ReprintRequest.objects.filter(
-            table=table, status='requested',
-        ).select_related('card', 'requested_by').order_by('-created_at')
-        reprint_total = rr_qs.count()
-        rr_batch = rr_qs[:INITIAL_LOAD_LIMIT]
-        for idx, rr in enumerate(rr_batch):
-            req_by = rr.requested_by
+        card_qs = IDCard.objects.filter(table=table).order_by('-updated_at')
+        card_batch = card_qs[:INITIAL_LOAD_LIMIT]
+        for idx, card in enumerate(card_batch):
             reprint_items.append({
-                'rr_id': rr.id,
-                'card_id': rr.card_id,
+                'card_id': card.id,
                 'sr_no': idx + 1,
-                'status': rr.card.status,
-                'get_status_display': rr.card.get_status_display(),
-                'reason': rr.reason,
-                'requested_by_name': (req_by.get_full_name() or req_by.username) if req_by else 'System',
-                'requested_at': rr.created_at,
-                'ordered_fields': _build_ordered_fields(rr.card, table),
-                'updated_at': rr.card.updated_at,
+                'status': card.status,
+                'get_status_display': card.get_status_display(),
+                'ordered_fields': _build_ordered_fields(card, table),
+                'updated_at': card.updated_at,
             })
 
     # Confirmed List — status='confirmed'
@@ -297,30 +284,6 @@ def client_reprint_cards(request, table_id):
                 'updated_at': rr.card.updated_at,
             })
 
-    # Pool — status='pool'
-    pool_items = []
-    pool_total = 0
-    if current_step == 'pool':
-        pl_qs = ReprintRequest.objects.filter(
-            table=table, status='pool',
-        ).select_related('card', 'requested_by').order_by('-updated_at')
-        pool_total = pl_qs.count()
-        pl_batch = pl_qs[:INITIAL_LOAD_LIMIT]
-        for idx, rr in enumerate(pl_batch):
-            req_by = rr.requested_by
-            pool_items.append({
-                'rr_id': rr.id,
-                'card_id': rr.card_id,
-                'sr_no': idx + 1,
-                'status': rr.card.status,
-                'get_status_display': rr.card.get_status_display(),
-                'reason': rr.reason,
-                'requested_by_name': (req_by.get_full_name() or req_by.username) if req_by else 'System',
-                'pool_at': rr.updated_at,
-                'ordered_fields': _build_ordered_fields(rr.card, table),
-                'updated_at': rr.card.updated_at,
-            })
-    
     context = {
         'active_page': 'idcard_group',
         'user_role': user.get_role_display(),
@@ -335,9 +298,6 @@ def client_reprint_cards(request, table_id):
         'confirmed_items': confirmed_items,
         'confirmed_total': confirmed_total,
         'confirmed_has_more': confirmed_total > INITIAL_LOAD_LIMIT,
-        'pool_items': pool_items,
-        'pool_total': pool_total,
-        'pool_has_more': pool_total > INITIAL_LOAD_LIMIT,
         'initial_load_limit': INITIAL_LOAD_LIMIT,
     }
     return render(request, 'reprintcard/reprint-cards.html', context)

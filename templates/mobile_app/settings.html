@@ -394,35 +394,6 @@
                     {% endif %}
                 </div>
 
-                <!-- PWA info -->
-                <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-                        <div class="w-7 h-7 rounded-lg bg-purple-50 flex items-center justify-center">
-                            <i class="fa-solid fa-bolt text-purple-500 text-[11px]"></i>
-                        </div>
-                        <p class="text-[12px] font-bold text-gray-700">PWA</p>
-                    </div>
-                    <div class="divide-y divide-gray-50">
-                        <div class="flex items-center justify-between px-4 py-3">
-                            <span class="text-[11px] text-gray-500">Service Worker</span>
-                            <span class="text-[11px] font-semibold text-green-600 flex items-center gap-1.5">
-                                <span class="w-1.5 h-1.5 rounded-full bg-green-400 inline-block"></span>Active
-                            </span>
-                        </div>
-                        <div class="flex items-center justify-between px-4 py-3">
-                            <span class="text-[11px] text-gray-500">Cache Strategy</span>
-                            <span class="text-[12px] font-semibold text-gray-800">Network First</span>
-                        </div>
-                        <div class="px-4 py-3">
-                            <button onclick="clearPWACache()"
-                                    class="w-full py-2.5 rounded-lg text-[12px] font-semibold text-purple-500 border border-purple-200 active:bg-purple-50 transition-colors">
-                                <i class="fa-solid fa-rotate mr-1.5"></i>Clear App Cache
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
         </div>
 
     </div><!-- /scroll area -->
@@ -434,24 +405,6 @@
 <script>
 function settingsApp() {
     return { tab: 'notifications' };
-}
-
-function clearPWACache() {
-    if ('caches' in window) {
-        caches.keys().then(function(names) {
-            Promise.all(names.map(n => caches.delete(n))).then(function() {
-                if ('serviceWorker' in navigator) {
-                    navigator.serviceWorker.getRegistrations().then(function(regs) {
-                        regs.forEach(r => r.update());
-                    });
-                }
-                alert('Cache cleared. Reloading with fresh assets.');
-                window.location.reload(true);
-            });
-        });
-    } else {
-        alert('Cache API not available in this browser.');
-    }
 }
 </script>
 {% endblock %}

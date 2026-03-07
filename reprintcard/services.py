@@ -20,19 +20,19 @@ class ReprintWorkflowService:
     """
     Single authority for ReprintRequest status transitions.
 
-    Workflow: requested → confirmed → downloaded → pool
+    Workflow: confirmed → downloaded (after send-to-print)
+    Reject deletes the ReprintRequest and moves card to IDCard pool.
     """
 
     ALLOWED_TRANSITIONS: Dict[str, List[str]] = {
         'requested':  ['confirmed'],
         'confirmed':  ['downloaded'],
-        'downloaded': ['pool'],
-        'pool':       [],
+        'downloaded': [],
     }
 
-    VALID_STATUSES = ['requested', 'confirmed', 'downloaded', 'pool']
+    VALID_STATUSES = ['requested', 'confirmed', 'downloaded']
 
-    INITIAL_STATUS = 'requested'
+    INITIAL_STATUS = 'confirmed'
 
     # ── Single transition ───────────────────────────────────────────
 
@@ -159,18 +159,26 @@ class ReprintWorkflowService:
         cls,
         table: IDCardTable,
         rr_ids: List[int],
+        move_card_to_pool: bool = True,
     ) -> ServiceResult:
-        """Reject (delete) reprint requests that are still in 'requested' status."""
+        """Reject (delete) reprint requests and optionally move cards to IDCard pool."""
         if not rr_ids:
             return ServiceResult(success=False, message='No reprint IDs provided')
 
-        deleted, _ = ReprintRequest.objects.filter(
-            id__in=rr_ids, table=table, status='requested'
-        ).delete()
+        rr_qs = ReprintRequest.objects.filter(
+            id__in=rr_ids, table=table, status__in=['requested', 'confirmed']
+        )
+
+        if move_card_to_pool:
+            card_ids = list(rr_qs.values_list('card_id', flat=True))
+            if card_ids:
+                IDCard.objects.filter(id__in=card_ids).update(status='pool')
+
+        deleted, _ = rr_qs.delete()
 
         return ServiceResult(
             success=True,
-            message=f'{deleted} reprint(s) rejected',
+            message=f'{deleted} reprint(s) rejected and moved to pool',
             data={'rejected_count': deleted},
         )
 

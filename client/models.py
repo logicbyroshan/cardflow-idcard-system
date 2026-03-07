@@ -20,14 +20,14 @@ def generate_folder_code_from_name(name):
     Always returns exactly 5 uppercase characters (padded with X if needed)
     """
     if not name:
-        return 'XXXXX'
+        return generate_unique_suffix()
     
     # Remove special characters and split into words
     words = re.sub(r'[^a-zA-Z0-9\s]', '', name).split()
     words = [w for w in words if w]  # Remove empty strings
     
     if not words:
-        return 'XXXXX'
+        return generate_unique_suffix()
     
     code = ''
     if len(words) >= 3:

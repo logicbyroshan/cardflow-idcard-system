@@ -10,20 +10,6 @@
     <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
     <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
     <link rel="stylesheet" href="{% static 'css/auth.css' %}">
-    <!-- PWA Manifest — dynamic, mobile-aware -->
-    <link rel="manifest" href="/manifest.json">
-
-    <!-- Register mobile SW so PWA install is available from the login page -->
-    <script>
-    if ('serviceWorker' in navigator) {
-        var isMob = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        if (isMob) {
-            navigator.serviceWorker.register('/app/sw.js', { scope: '/' })
-                .then(function(r) { console.log('Mobile SW registered from login, scope:', r.scope); })
-                .catch(function(e) { console.warn('Mobile SW reg failed:', e); });
-        }
-    }
-    </script>
 </head>
 <body class="auth-page font-[Inter,sans-serif] min-h-screen flex items-center justify-center p-5">
   <main id="main-content" class="w-full max-w-[600px] max-h-[90vh] flex flex-col">

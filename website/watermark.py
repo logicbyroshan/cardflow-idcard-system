@@ -14,8 +14,11 @@ file is returned unchanged (never raises).
 
 import io
 import logging
+import math
 import os
 import random
+import subprocess
+import tempfile
 
 from django.conf import settings
 from django.core.files.base import ContentFile
@@ -98,7 +101,7 @@ def apply_text_watermark(file_obj):
     Returns the watermarked image as a ContentFile with the original filename.
     Falls back to the original file_obj on any error.
     """
-    import math as _math
+    _math = math
 
     if not file_obj:
         return file_obj
@@ -164,11 +167,11 @@ def apply_text_watermark(file_obj):
         result = Image.alpha_composite(img, overlay)
         return _save_image(result, orig_fmt, orig_name)
 
-    except Exception:
+    except (OSError, ValueError, TypeError) as exc:
         logger.warning("apply_text_watermark failed", exc_info=True)
         try:
             file_obj.seek(0)
-        except Exception:
+        except (OSError, AttributeError):
             pass
         return file_obj
 
@@ -231,11 +234,11 @@ def apply_logo_watermark(file_obj):
 
         return _save_image(result, orig_fmt, orig_name)
 
-    except Exception:
+    except (OSError, ValueError, TypeError) as exc:
         logger.warning("apply_logo_watermark failed", exc_info=True)
         try:
             file_obj.seek(0)
-        except Exception:
+        except (OSError, AttributeError):
             pass
         return file_obj
 
@@ -298,11 +301,11 @@ def process_portfolio_image(file_obj, max_kb: int = 200) -> ContentFile:
         buf.seek(0)
         return ContentFile(buf.read(), name=webp_name)
 
-    except Exception:
+    except (OSError, ValueError, TypeError) as exc:
         logger.warning("process_portfolio_image failed", exc_info=True)
         try:
             file_obj.seek(0)
-        except Exception:
+        except (OSError, AttributeError):
             pass
         return file_obj
 
@@ -325,10 +328,6 @@ def compress_video_file(file_obj, max_bytes: int = 10 * 1024 * 1024):
     if not file_obj:
         return file_obj
 
-    import os
-    import subprocess
-    import tempfile
-
     orig_name = getattr(file_obj, 'name', 'video.mp4')
     ext = orig_name.rsplit('.', 1)[-1].lower() if '.' in orig_name else 'mp4'
 
@@ -336,14 +335,14 @@ def compress_video_file(file_obj, max_bytes: int = 10 * 1024 * 1024):
     try:
         file_obj.seek(0)
         original_bytes = file_obj.read()
-    except Exception:
+    except (OSError, AttributeError):
         return file_obj
 
     # Already within limit → skip compression
     if len(original_bytes) <= max_bytes:
         try:
             file_obj.seek(0)
-        except Exception:
+        except (OSError, AttributeError):
             pass
         return file_obj
 
@@ -353,11 +352,11 @@ def compress_video_file(file_obj, max_bytes: int = 10 * 1024 * 1024):
             ['ffmpeg', '-version'],
             capture_output=True, timeout=10, check=True,
         )
-    except Exception:
+    except (FileNotFoundError, OSError, subprocess.SubprocessError):
         logger.info("compress_video_file: ffmpeg not available — skipping compression")
         try:
             file_obj.seek(0)
-        except Exception:
+        except (OSError, AttributeError):
             pass
         return file_obj
 
@@ -423,19 +422,19 @@ def compress_video_file(file_obj, max_bytes: int = 10 * 1024 * 1024):
                 result.stderr[-500:] if result.stderr else '',
             )
 
-    except Exception:
+    except (OSError, subprocess.SubprocessError, ValueError) as exc:
         logger.warning("compress_video_file failed", exc_info=True)
     finally:
         for p in (tmp_in, tmp_out):
             if p:
                 try:
                     os.unlink(p)
-                except Exception:
+                except OSError:
                     pass
 
     # Fallback: return original
     try:
         file_obj.seek(0)
-    except Exception:
+    except (OSError, AttributeError):
         pass
     return file_obj

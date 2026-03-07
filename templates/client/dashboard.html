@@ -151,6 +151,53 @@
 
   </div>
 
+  <!-- Reprint Cards Section -->
+  {% if perm_idcard_reprint_list %}
+  <div class="dashboard-card" id="reprintStatsSection" style="margin-top: 20px;">
+    <div class="dashboard-card-header" style="display:flex;justify-content:space-between;align-items:center;">
+      <h3><i class="fa-solid fa-rotate"></i> Reprint Cards</h3>
+      <button type="button" class="reprint-toggle-btn" id="reprintToggleBtn" title="Toggle details"
+        style="background:none;border:1px solid var(--gray-300,#d1d5db);border-radius:6px;padding:4px 12px;cursor:pointer;font-size:12px;color:var(--gray-600,#4b5563);display:flex;align-items:center;gap:4px;transition:all .2s;">
+        <i class="fa-solid fa-chevron-down" id="reprintToggleIcon"></i>
+        <span id="reprintToggleText">Show Details</span>
+      </button>
+    </div>
+    <div class="dashboard-card-body">
+      <!-- Summary Stats Row -->
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;">
+        <div style="flex:1;min-width:140px;background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);border-radius:10px;padding:16px;text-align:center;">
+          <div style="font-size:24px;font-weight:700;color:#1d4ed8;" id="reprintStatTotal">-</div>
+          <div style="font-size:12px;color:#3b82f6;font-weight:500;margin-top:2px;">Total Cards</div>
+        </div>
+        <div style="flex:1;min-width:140px;background:linear-gradient(135deg,#fffbeb 0%,#fef3c7 100%);border-radius:10px;padding:16px;text-align:center;">
+          <div style="font-size:24px;font-weight:700;color:#d97706;" id="reprintStatReprints">-</div>
+          <div style="font-size:12px;color:#f59e0b;font-weight:500;margin-top:2px;">Extra Reprints</div>
+        </div>
+        <div style="flex:1;min-width:140px;background:linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%);border-radius:10px;padding:16px;text-align:center;">
+          <div style="font-size:24px;font-weight:700;color:#16a34a;" id="reprintStatConfirmed">-</div>
+          <div style="font-size:12px;color:#22c55e;font-weight:500;margin-top:2px;">Confirmed</div>
+        </div>
+        <div style="flex:1;min-width:140px;background:linear-gradient(135deg,#faf5ff 0%,#f3e8ff 100%);border-radius:10px;padding:16px;text-align:center;">
+          <div style="font-size:24px;font-weight:700;color:#7c3aed;" id="reprintStatDownloaded">-</div>
+          <div style="font-size:12px;color:#8b5cf6;font-weight:500;margin-top:2px;">Printed</div>
+        </div>
+      </div>
+
+      <!-- Recent Reprints — collapsible -->
+      <div id="reprintDetailsPanel" style="display:none;">
+        <div style="font-size:13px;font-weight:600;color:var(--gray-700,#374151);margin-bottom:10px;display:flex;align-items:center;gap:6px;">
+          <i class="fa-solid fa-clock-rotate-left" style="color:var(--gray-400,#9ca3af);"></i> Latest Reprints
+        </div>
+        <div id="reprintRecentList" style="display:flex;flex-direction:column;gap:0;">
+          <div style="text-align:center;padding:20px;color:var(--gray-400,#9ca3af);font-size:13px;">
+            <i class="fa-solid fa-spinner fa-spin"></i> Loading...
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
 </div>
 {% endblock %}
 
@@ -171,6 +218,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // ── Load dashboard stats ──
   loadDashboardData();
+  loadReprintStats();
+
+  // ── Reprint details toggle ──
+  var reprintToggle = document.getElementById('reprintToggleBtn');
+  var reprintPanel = document.getElementById('reprintDetailsPanel');
+  var reprintIcon = document.getElementById('reprintToggleIcon');
+  var reprintText = document.getElementById('reprintToggleText');
+  if (reprintToggle && reprintPanel) {
+    reprintToggle.addEventListener('click', function() {
+      var visible = reprintPanel.style.display !== 'none';
+      reprintPanel.style.display = visible ? 'none' : 'block';
+      if (reprintIcon) reprintIcon.className = visible ? 'fa-solid fa-chevron-down' : 'fa-solid fa-chevron-up';
+      if (reprintText) reprintText.textContent = visible ? 'Show Details' : 'Hide Details';
+    });
+  }
 
   // Notification bell is handled by notification-bell.js
 });
@@ -213,6 +275,58 @@ async function loadDashboardData() {
   } catch (err) {
     console.error('Error loading dashboard:', err);
   }
+}
+
+async function loadReprintStats() {
+  var section = document.getElementById('reprintStatsSection');
+  if (!section) return;
+  try {
+    const response = await fetch('{% url "client:api_reprint_stats" %}');
+    const data = await response.json();
+    if (data.success) {
+      var d = data.data;
+      var totalEl = document.getElementById('reprintStatTotal');
+      var reprintEl = document.getElementById('reprintStatReprints');
+      var confirmedEl = document.getElementById('reprintStatConfirmed');
+      var downloadedEl = document.getElementById('reprintStatDownloaded');
+      if (totalEl) totalEl.textContent = d.total_cards || 0;
+      if (reprintEl) reprintEl.textContent = d.reprint_total || 0;
+      if (confirmedEl) confirmedEl.textContent = d.reprint_confirmed || 0;
+      if (downloadedEl) downloadedEl.textContent = d.reprint_downloaded || 0;
+
+      // Render recent reprints
+      var listEl = document.getElementById('reprintRecentList');
+      if (listEl) {
+        var items = d.recent_reprints || [];
+        if (items.length === 0) {
+          listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--gray-400,#9ca3af);font-size:13px;"><i class="fa-solid fa-inbox"></i> No reprint requests yet</div>';
+        } else {
+          listEl.innerHTML = items.map(function(item) {
+            var statusColor = item.status === 'downloaded' ? '#7c3aed' : '#d97706';
+            var statusBg = item.status === 'downloaded' ? '#faf5ff' : '#fffbeb';
+            return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--gray-100,#f3f4f6);">'
+              + '<div style="width:36px;height:36px;border-radius:8px;background:' + statusBg + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
+              + '<i class="fa-solid fa-rotate" style="font-size:14px;color:' + statusColor + ';"></i></div>'
+              + '<div style="flex:1;min-width:0;">'
+              + '<div style="font-size:13px;font-weight:500;color:var(--gray-800,#1f2937);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtmlDash(item.display_name) + '</div>'
+              + '<div style="font-size:11px;color:var(--gray-500,#6b7280);margin-top:1px;">' + escapeHtmlDash(item.table_name) + (item.reason ? ' &mdash; ' + escapeHtmlDash(item.reason) : '') + '</div></div>'
+              + '<div style="text-align:right;flex-shrink:0;">'
+              + '<span style="font-size:11px;padding:2px 8px;border-radius:4px;background:' + statusBg + ';color:' + statusColor + ';font-weight:500;">' + escapeHtmlDash(item.status_display) + '</span>'
+              + '<div style="font-size:10px;color:var(--gray-400,#9ca3af);margin-top:3px;">' + escapeHtmlDash(item.created_at) + '</div></div></div>';
+          }).join('');
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Error loading reprint stats:', err);
+  }
+}
+
+function escapeHtmlDash(s) {
+  if (!s) return '-';
+  var d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
 }
 </script>
 {% endblock %}

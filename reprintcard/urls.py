@@ -1,7 +1,7 @@
 """
 Reprint Card URL Configuration
 ================================
-4-step workflow: Reprint List → Confirmed → Download → Pool
+Reprint List (all IDCards) → Confirmed List → Print
 """
 from django.urls import path
 from . import views
@@ -21,7 +21,5 @@ urlpatterns = [
     path('api/table/<int:table_id>/confirmed-list/', views.api_confirmed_list, name='api_confirmed_list'),
     path('api/table/<int:table_id>/mark-downloaded/', views.api_reprint_mark_downloaded, name='api_reprint_mark_downloaded'),
     path('api/table/<int:table_id>/download-list/', views.api_download_list, name='api_download_list'),
-    path('api/table/<int:table_id>/mark-pool/', views.api_reprint_mark_pool, name='api_reprint_mark_pool'),
-    path('api/table/<int:table_id>/pool-list/', views.api_pool_list, name='api_pool_list'),
     path('api/table/<int:table_id>/send-to-print/', views.api_reprint_send_to_print, name='api_reprint_send_to_print'),
 ]

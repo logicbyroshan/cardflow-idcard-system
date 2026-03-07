@@ -244,48 +244,7 @@ function initQrCode() {
     qrImg.src = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&color=100F57&data=' + encodeURIComponent(appUrl);
 }
 
-// ===== 7. PWA Install Trigger =====
-function triggerPwaInstall() {
-    // Try native install prompt first (works on both mobile + desktop Chrome)
-    if (window.__pwaInstallPrompt) {
-        window.__pwaInstallPrompt.prompt();
-        window.__pwaInstallPrompt.userChoice.then(function(choice) {
-            if (choice.outcome === 'accepted') {
-                console.log('PWA install accepted');
-            }
-            window.__pwaInstallPrompt = null;
-        });
-        return;
-    }
-
-    var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-
-    if (isIOS) {
-        // iOS doesn't support beforeinstallprompt — show manual instructions
-        alert('To install this app on your iPhone/iPad:\n\n1. Tap the Share button (box with arrow)\n2. Scroll down and tap "Add to Home Screen"\n3. Tap "Add" to confirm');
-        return;
-    }
-
-    // Fallback: redirect to mobile app page where PWA can be installed
-    if (isMobile) {
-        if (window.__panelUrl) {
-            window.location.href = window.__panelUrl + '/app/';
-        } else {
-            window.location.href = window.location.origin + '/app/';
-        }
-        return;
-    }
-
-    // Desktop fallback
-    if (window.__panelUrl) {
-        window.location.href = window.__panelUrl + '/app/';
-    } else {
-        window.location.href = window.location.origin + '/app/';
-    }
-}
-
-// ===== 8. Logo Spin Animation (repeat every 10 seconds) =====
+// ===== 7. Logo Spin Animation (repeat every 10 seconds) =====
 function initLogoSpin() {
     const logoImg = document.querySelector('.logo-img');
     if (!logoImg) return;

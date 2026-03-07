@@ -195,3 +195,81 @@ class ClientDashboardService(BaseService):
             
         except Exception as e:
             return ServiceResult(success=False, message=str(e))
+
+    @classmethod
+    def get_reprint_stats(cls, user, client=None) -> ServiceResult:
+        """
+        Get reprint statistics for the client dashboard.
+        
+        Returns:
+        - total_cards: Total ID cards across all tables
+        - reprint_count: Total reprint requests (confirmed + downloaded)
+        - recent_reprints: Last 10 reprint requests with card details
+        """
+        try:
+            from reprintcard.models import ReprintRequest
+
+            if not client:
+                client = ClientAccessService.get_client_for_user(user)
+            if not client:
+                return ServiceResult(success=False, message='Client profile not found')
+
+            groups = IDCardGroup.objects.filter(client=client, is_active=True)
+            tables = IDCardTable.objects.filter(group__in=groups, is_active=True)
+
+            total_cards = IDCard.objects.filter(table__in=tables).count()
+
+            # Reprint counts (confirmed + downloaded = all processed reprints)
+            reprint_qs = ReprintRequest.objects.filter(table__in=tables)
+            reprint_confirmed = reprint_qs.filter(status='confirmed').count()
+            reprint_downloaded = reprint_qs.filter(status='downloaded').count()
+            reprint_total = reprint_confirmed + reprint_downloaded
+
+            # Recent reprints (latest 10)
+            recent_qs = (
+                reprint_qs
+                .filter(status__in=['confirmed', 'downloaded'])
+                .select_related('card', 'table', 'requested_by')
+                .order_by('-created_at')[:10]
+            )
+            recent_reprints = []
+            for rr in recent_qs:
+                fd = rr.card.field_data or {}
+                # Try to get a display name from common field keys
+                display_name = ''
+                for key in ('Name', 'name', 'STUDENT NAME', 'EMPLOYEE NAME', 'Student Name'):
+                    if fd.get(key):
+                        display_name = fd[key]
+                        break
+                if not display_name:
+                    # Fallback: first non-empty text field
+                    for v in fd.values():
+                        if isinstance(v, str) and v and not v.startswith(('PENDING:', '/')):
+                            display_name = v
+                            break
+
+                req_by = rr.requested_by
+                recent_reprints.append({
+                    'rr_id': rr.id,
+                    'card_id': rr.card_id,
+                    'display_name': display_name or f'Card #{rr.card_id}',
+                    'table_name': rr.table.name,
+                    'status': rr.status,
+                    'status_display': rr.get_status_display(),
+                    'reason': rr.reason or '',
+                    'requested_by': (req_by.get_full_name() or req_by.username) if req_by else 'System',
+                    'created_at': localtime(rr.created_at).strftime('%d %b %Y, %H:%M'),
+                })
+
+            return ServiceResult(
+                success=True,
+                data={
+                    'total_cards': total_cards,
+                    'reprint_total': reprint_total,
+                    'reprint_confirmed': reprint_confirmed,
+                    'reprint_downloaded': reprint_downloaded,
+                    'recent_reprints': recent_reprints,
+                },
+            )
+        except Exception as e:
+            return ServiceResult(success=False, message=str(e))

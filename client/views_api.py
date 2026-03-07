@@ -47,6 +47,20 @@ def api_dashboard_data(request):
 
 @require_client_user
 @require_http_methods(["GET"])
+def api_reprint_stats(request):
+    """
+    API: Get reprint statistics for the client dashboard section.
+    """
+    result = ClientDashboardService.get_reprint_stats(request.user)
+
+    if result.success:
+        return JsonResponse({'success': True, 'data': result.data})
+
+    return JsonResponse({'success': False, 'message': result.message}, status=400)
+
+
+@require_client_user
+@require_http_methods(["GET"])
 def api_groups_list(request):
     """
     API: Get list of groups with card counts.

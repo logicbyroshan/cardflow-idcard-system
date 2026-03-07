@@ -1,6 +1,6 @@
 /**
- * Reprint Cards — Single-file JS for the 4-step Reprint Cards workflow.
- * Steps: Reprint List → Confirmed List → Download → Pool
+ * Reprint Cards — Single-file JS for the 2-step Reprint Cards workflow.
+ * Steps: Reprint List → Confirmed List
  *
  * Self-contained for the reprintcard app.
  */
@@ -36,7 +36,6 @@ function refreshStepCounts() {
       if (data.status === 'ok') {
         updateTabCount('.reprint-requests-tab .tab-count', data.reprint_list || 0);
         updateTabCount('.reprint-confirm-tab .tab-count', data.confirmed || 0);
-        updateTabCount('.reprint-pool-tab .tab-count', data.pool || 0);
       }
     }).catch(function() {});
 }
@@ -210,15 +209,14 @@ function createPaginator(opts) {
 
 
 /* ═══════════════════════════════════════════════════════════════════
-   STEP 1: REPRINT LIST (status = requested)
+   STEP 1: REPRINT LIST (all IDCards)
    ═══════════════════════════════════════════════════════════════════ */
 (function reprintListStep() {
   var tableBody     = document.getElementById('reprintListTableBody');
   var selectAllCb   = document.getElementById('reprintListSelectAll');
   var searchInput   = document.getElementById('reprintListSearchInput');
   var searchClearBtn = document.getElementById('reprintListSearchClearBtn');
-  var confirmBtn    = document.getElementById('confirmSelectedBtn');
-  var rejectBtn     = document.getElementById('rejectSelectedBtn');
+  var sendToConfirmedBtn = document.getElementById('sendToConfirmedBtn');
   var viewBtn       = document.getElementById('reprintListViewBtn');
   var showingRange  = document.getElementById('reprintListShowingRange');
   var totalCountEl  = document.getElementById('reprintListTotalCount');
@@ -235,21 +233,16 @@ function createPaginator(opts) {
   function getCheckboxes() {
     return Array.from(tableBody.querySelectorAll('.reprintListRowCheckbox:not(:disabled)'));
   }
-  function getSelectedRrIds() {
-    return getCheckboxes().filter(function(cb) { return cb.checked; })
-      .map(function(cb) { return parseInt(cb.closest('tr').dataset.rrId); });
-  }
   function getSelectedCardIds() {
     return getCheckboxes().filter(function(cb) { return cb.checked; })
       .map(function(cb) { return parseInt(cb.closest('tr').dataset.cardId); });
   }
 
   function updateSelectionUI() {
-    var ids = getSelectedRrIds();
+    var ids = getSelectedCardIds();
     var count = ids.length;
-    if (confirmBtn) confirmBtn.disabled = count === 0;
-    if (rejectBtn)  rejectBtn.disabled  = count === 0;
-    if (viewBtn)    viewBtn.disabled    = count !== 1;
+    if (sendToConfirmedBtn) sendToConfirmedBtn.disabled = count === 0;
+    if (viewBtn) viewBtn.disabled = count !== 1;
     if (paginator) paginator.updateSelectionCount(count);
     if (selectAllCb) {
       var allCbs = getCheckboxes();
@@ -273,40 +266,58 @@ function createPaginator(opts) {
     });
   }
 
-  // Single-row action buttons
+  // ── Reprint Confirmation Modal ──
+  var reprintModal     = document.getElementById('reprintConfirmModal');
+  var reprintCountEl   = document.getElementById('reprintConfirmCount');
+  var reprintReasonEl  = document.getElementById('reprintReasonInput');
+  var reprintSubmitBtn = document.getElementById('reprintConfirmSubmit');
+  var reprintCancelBtn = document.getElementById('reprintConfirmCancel');
+  var reprintCloseBtn  = document.getElementById('reprintConfirmClose');
+  var pendingCardIds   = [];
+
+  function openReprintModal(cardIds) {
+    pendingCardIds = cardIds;
+    if (reprintCountEl) reprintCountEl.textContent = cardIds.length;
+    if (reprintReasonEl) reprintReasonEl.value = '';
+    if (reprintModal) reprintModal.classList.add('show');
+  }
+  function closeReprintModal() {
+    if (reprintModal) reprintModal.classList.remove('show');
+    pendingCardIds = [];
+  }
+  if (reprintCancelBtn) reprintCancelBtn.addEventListener('click', closeReprintModal);
+  if (reprintCloseBtn) reprintCloseBtn.addEventListener('click', closeReprintModal);
+  if (reprintModal) {
+    reprintModal.addEventListener('click', function(e) {
+      if (e.target === reprintModal) closeReprintModal();
+    });
+  }
+  if (reprintSubmitBtn) {
+    reprintSubmitBtn.addEventListener('click', function() {
+      if (pendingCardIds.length === 0) return;
+      var reason = reprintReasonEl ? reprintReasonEl.value.trim() : '';
+      closeReprintModal();
+      performSendToConfirmed(pendingCardIds, reason);
+    });
+  }
+
+  // Single-row action button
   if (tableBody) {
     tableBody.addEventListener('click', function(e) {
-      var confirmSingle = e.target.closest('.btn-confirm-single');
-      if (confirmSingle) {
-        var rrId = parseInt(confirmSingle.dataset.rrId);
-        if (rrId) performConfirm([rrId]);
-        return;
-      }
-      var rejectSingle = e.target.closest('.btn-reject-single');
-      if (rejectSingle) {
-        var rrId2 = parseInt(rejectSingle.dataset.rrId);
-        if (rrId2 && confirm('Reject this reprint request?')) performReject([rrId2]);
+      var sendSingle = e.target.closest('.btn-send-to-confirmed-single');
+      if (sendSingle) {
+        var cardId = parseInt(sendSingle.dataset.cardId);
+        if (cardId) openReprintModal([cardId]);
       }
     });
   }
 
-  // Bulk Confirm
-  if (confirmBtn) {
-    confirmBtn.addEventListener('click', function() {
-      var ids = getSelectedRrIds();
+  // Bulk Send to Confirmed
+  if (sendToConfirmedBtn) {
+    sendToConfirmedBtn.addEventListener('click', function() {
+      var ids = getSelectedCardIds();
       if (ids.length === 0) return;
-      if (!confirm('Confirm ' + ids.length + ' reprint request(s)?')) return;
-      performConfirm(ids);
-    });
-  }
-
-  // Bulk Reject
-  if (rejectBtn) {
-    rejectBtn.addEventListener('click', function() {
-      var ids = getSelectedRrIds();
-      if (ids.length === 0) return;
-      if (!confirm('Reject ' + ids.length + ' reprint request(s)?')) return;
-      performReject(ids);
+      openReprintModal(ids);
     });
   }
 
@@ -319,47 +330,21 @@ function createPaginator(opts) {
     });
   }
 
-  // Confirm API
-  function performConfirm(rrIds) {
-    ApiClient.post('/reprint/api/table/' + TABLE_ID + '/confirm/', { rr_ids: rrIds })
+  // Send to Confirmed API — creates ReprintRequest (goes directly to confirmed)
+  function performSendToConfirmed(cardIds, reason) {
+    var payload = { card_ids: cardIds };
+    if (reason) payload.reason = reason;
+    ApiClient.post('/reprint/api/table/' + TABLE_ID + '/request/', payload)
     .then(function(data) {
       if (data.status === 'ok') {
-        showToast(data.message || 'Confirmed', 'success');
-        rrIds.forEach(function(id) {
-          var row = tableBody.querySelector('tr[data-rr-id="' + id + '"]');
-          if (row) row.remove();
-        });
-        updatePagination();
-        updateSelectionUI();
+        showToast(data.message || 'Sent to confirmed', 'success');
         refreshStepCounts();
       } else {
-        showToast(data.message || 'Failed to confirm', 'error');
+        showToast(data.message || 'Failed', 'error');
       }
     }).catch(function(err) {
       showToast('Network error', 'error');
-      console.error('[ReprintList] Confirm error:', err);
-    });
-  }
-
-  // Reject API
-  function performReject(rrIds) {
-    ApiClient.post('/reprint/api/table/' + TABLE_ID + '/reject/', { rr_ids: rrIds })
-    .then(function(data) {
-      if (data.status === 'ok') {
-        showToast(data.message || 'Rejected', 'success');
-        rrIds.forEach(function(id) {
-          var row = tableBody.querySelector('tr[data-rr-id="' + id + '"]');
-          if (row) row.remove();
-        });
-        updatePagination();
-        updateSelectionUI();
-        refreshStepCounts();
-      } else {
-        showToast(data.message || 'Failed to reject', 'error');
-      }
-    }).catch(function(err) {
-      showToast('Network error', 'error');
-      console.error('[ReprintList] Reject error:', err);
+      console.error('[ReprintList] Send to confirmed error:', err);
     });
   }
 
@@ -393,7 +378,7 @@ function createPaginator(opts) {
 
   function renderReprintListItems(items, total) {
     if (items.length === 0) {
-      tableBody.innerHTML = '<tr class="no-data-row"><td colspan="50" class="no-data-cell"><div class="no-data"><i class="fa-solid fa-rotate"></i><span>No reprint requests</span></div></td></tr>';
+      tableBody.innerHTML = '<tr class="no-data-row"><td colspan="50" class="no-data-cell"><div class="no-data"><i class="fa-solid fa-id-card"></i><span>No ID Cards</span></div></td></tr>';
       if (showingRange) showingRange.textContent = '0';
       if (totalCountEl) totalCountEl.textContent = total;
       updateSelectionUI();
@@ -401,18 +386,14 @@ function createPaginator(opts) {
     }
     var html = '';
     items.forEach(function(item, idx) {
-      html += '<tr data-rr-id="' + item.rr_id + '" data-card-id="' + item.card_id + '" data-sr-no="' + (idx + 1) + '">';
+      html += '<tr data-card-id="' + item.card_id + '" data-sr-no="' + (idx + 1) + '">';
       html += '<td class="w-[24px] px-[1px] py-1 text-center align-middle checkbox-cell"><input type="checkbox" class="reprintListRowCheckbox"></td>';
       html += '<td class="w-[36px] px-[1px] py-1 text-center align-middle sr-no-cell">' + (idx + 1) + '</td>';
       html += renderOrderedFields(item.ordered_fields);
-      html += '<td class="min-w-[80px] px-[1px] py-1 align-middle reason-cell whitespace-normal break-words text-left">' + escapeHtml(item.reason || '-') + '</td>';
-      html += '<td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center">' + escapeHtml(item.requested_by_name || '-') + '</td>';
-      html += '<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">' + escapeHtml(item.requested_at || '-') + '</td>';
-      html += '<td class="w-[60px] px-[1px] py-1 text-center align-middle action-cell"><div class="confirm-action-btns">';
-      html += '<button class="btn-confirm-single" data-rr-id="' + item.rr_id + '" title="Confirm"><i class="fa-solid fa-check"></i></button>';
-      html += '<button class="btn-reject-single" data-rr-id="' + item.rr_id + '" title="Reject"><i class="fa-solid fa-xmark"></i></button>';
+      html += '<td class="w-[120px] px-[1px] py-1 text-center align-middle action-cell"><div class="confirm-action-btns">';
+      html += '<button class="btn-send-to-confirmed-single" data-card-id="' + item.card_id + '" title="Send to Confirmed list"><i class="fa-solid fa-check"></i> <span>Confirm</span></button>';
       html += '</div></td>';
-      html += '<td class="w-[65px] px-[1px] py-1 align-middle text-center"><span class="status-badge status-' + (item.card_status || 'pending') + '">' + escapeHtml(item.status_display || '-') + '</span></td>';
+      html += '<td class="w-[65px] px-[1px] py-1 align-middle text-center"><span class="status-badge status-' + (item.status || 'pending') + '">' + escapeHtml(item.status_display || '-') + '</span></td>';
       html += '</tr>';
     });
     tableBody.innerHTML = html;
@@ -429,7 +410,7 @@ function createPaginator(opts) {
       if (totalCountEl) totalCountEl.textContent = '0';
       var pBar = document.getElementById('reprintListPaginationBar');
       if (pBar) pBar.style.display = 'none';
-      tableBody.innerHTML = '<tr class="no-data-row"><td colspan="50" class="no-data-cell"><div class="no-data"><i class="fa-solid fa-rotate"></i><span>No reprint requests</span></div></td></tr>';
+      tableBody.innerHTML = '<tr class="no-data-row"><td colspan="50" class="no-data-cell"><div class="no-data"><i class="fa-solid fa-id-card"></i><span>No ID Cards</span></div></td></tr>';
     } else {
       if (paginator) paginator.paginate();
     }
@@ -447,6 +428,7 @@ function createPaginator(opts) {
   var searchInput   = document.getElementById('confirmedSearchInput');
   var searchClearBtn = document.getElementById('confirmedSearchClearBtn');
   var sendToPrintBtn = document.getElementById('sendToPrintBtn');
+  var rejectBtn      = document.getElementById('rejectConfirmedBtn');
   var viewBtn       = document.getElementById('confirmedViewBtn');
   var showingRange  = document.getElementById('confirmedShowingRange');
   var totalCountEl  = document.getElementById('confirmedTotalCount');
@@ -476,6 +458,7 @@ function createPaginator(opts) {
     var ids = getSelectedRrIds();
     var count = ids.length;
     if (sendToPrintBtn) sendToPrintBtn.disabled = count === 0;
+    if (rejectBtn) rejectBtn.disabled = count === 0;
     if (viewBtn)   viewBtn.disabled   = count !== 1;
     if (paginator) paginator.updateSelectionCount(count);
     if (selectAllCb) {
@@ -509,6 +492,11 @@ function createPaginator(opts) {
         if (rrId) performSendToPrint([rrId]);
         return;
       }
+      var rejectSingle = e.target.closest('.btn-reject-confirmed-single');
+      if (rejectSingle) {
+        var rrId2 = parseInt(rejectSingle.dataset.rrId);
+        if (rrId2 && confirm('Reject this reprint request? Card will move to pool.')) performReject([rrId2]);
+      }
     });
   }
 
@@ -519,6 +507,16 @@ function createPaginator(opts) {
       if (ids.length === 0) return;
       if (!confirm('Send ' + ids.length + ' item(s) to Print List?')) return;
       performSendToPrint(ids);
+    });
+  }
+
+  // Bulk Reject
+  if (rejectBtn) {
+    rejectBtn.addEventListener('click', function() {
+      var ids = getSelectedRrIds();
+      if (ids.length === 0) return;
+      if (!confirm('Reject ' + ids.length + ' reprint request(s)? Cards will move to pool.')) return;
+      performReject(ids);
     });
   }
 
@@ -551,6 +549,28 @@ function createPaginator(opts) {
     }).catch(function(err) {
       showToast('Network error', 'error');
       console.error('[Confirmed] Send to print error:', err);
+    });
+  }
+
+  // Reject API — deletes ReprintRequests and moves cards to pool
+  function performReject(rrIds) {
+    ApiClient.post('/reprint/api/table/' + TABLE_ID + '/reject/', { rr_ids: rrIds })
+    .then(function(data) {
+      if (data.status === 'ok') {
+        showToast(data.message || 'Rejected', 'success');
+        rrIds.forEach(function(id) {
+          var row = tableBody.querySelector('tr[data-rr-id="' + id + '"]');
+          if (row) row.remove();
+        });
+        updatePagination();
+        updateSelectionUI();
+        refreshStepCounts();
+      } else {
+        showToast(data.message || 'Failed to reject', 'error');
+      }
+    }).catch(function(err) {
+      showToast('Network error', 'error');
+      console.error('[Confirmed] Reject error:', err);
     });
   }
 
@@ -627,131 +647,5 @@ function createPaginator(opts) {
 
 })();
 
-
-/* ═══════════════════════════════════════════════════════════════════
-   STEP 3: POOL (status = pool)
-   ═══════════════════════════════════════════════════════════════════ */
-(function poolStep() {
-  var tableBody     = document.getElementById('poolTableBody');
-  var selectAllCb   = document.getElementById('poolSelectAll');
-  var searchInput   = document.getElementById('poolSearchInput');
-  var searchClearBtn = document.getElementById('poolSearchClearBtn');
-  var viewBtn       = document.getElementById('poolViewBtn');
-  var showingRange  = document.getElementById('poolShowingRange');
-  var totalCountEl  = document.getElementById('poolTotalCount');
-
-  if (!tableBody) return;
-
-  var paginator = createPaginator({
-    barId: 'poolPaginationBar',
-    prefix: 'pool',
-    getTableBody: function() { return tableBody; }
-  });
-  if (paginator) paginator.paginate();
-
-  function getCheckboxes() {
-    return Array.from(tableBody.querySelectorAll('.poolRowCheckbox:not(:disabled)'));
-  }
-  function getSelectedRrIds() {
-    return getCheckboxes().filter(function(cb) { return cb.checked; })
-      .map(function(cb) { return parseInt(cb.closest('tr').dataset.rrId); });
-  }
-  function getSelectedCardIds() {
-    return getCheckboxes().filter(function(cb) { return cb.checked; })
-      .map(function(cb) { return parseInt(cb.closest('tr').dataset.cardId); });
-  }
-
-  function updateSelectionUI() {
-    var ids = getSelectedRrIds();
-    var count = ids.length;
-    if (viewBtn) viewBtn.disabled = count !== 1;
-    if (paginator) paginator.updateSelectionCount(count);
-    if (selectAllCb) {
-      var allCbs = getCheckboxes();
-      var allChecked = allCbs.length > 0 && allCbs.every(function(cb) { return cb.checked; });
-      var someChecked = allCbs.some(function(cb) { return cb.checked; });
-      selectAllCb.checked = allChecked;
-      selectAllCb.indeterminate = someChecked && !allChecked;
-    }
-  }
-
-  if (selectAllCb) {
-    selectAllCb.addEventListener('change', function() {
-      var checked = this.checked;
-      getCheckboxes().forEach(function(cb) { cb.checked = checked; });
-      updateSelectionUI();
-    });
-  }
-  if (tableBody) {
-    tableBody.addEventListener('change', function(e) {
-      if (e.target.classList.contains('poolRowCheckbox')) updateSelectionUI();
-    });
-  }
-
-  // View
-  if (viewBtn) {
-    viewBtn.addEventListener('click', function() {
-      var cardIds = getSelectedCardIds();
-      if (cardIds.length !== 1) return;
-      if (typeof fetchCardAndOpenModal === 'function') fetchCardAndOpenModal('view', cardIds[0]);
-    });
-  }
-
-  // Search
-  var searchTimer = null;
-  if (searchInput) {
-    searchInput.addEventListener('input', function() {
-      clearTimeout(searchTimer);
-      var q = this.value.trim();
-      if (searchClearBtn) searchClearBtn.style.display = q ? '' : 'none';
-      searchTimer = setTimeout(function() { fetchPoolItems(q); }, 350);
-    });
-  }
-  if (searchClearBtn) {
-    searchClearBtn.addEventListener('click', function() {
-      searchInput.value = '';
-      searchClearBtn.style.display = 'none';
-      searchInput.focus();
-      fetchPoolItems('');
-    });
-    searchClearBtn.style.display = searchInput && searchInput.value ? '' : 'none';
-  }
-
-  function fetchPoolItems(query) {
-    var url = '/reprint/api/table/' + TABLE_ID + '/pool-list/?q=' + encodeURIComponent(query || '') + '&limit=200';
-    ApiClient.get(url)
-    .then(function(data) {
-      if (data.status === 'ok') renderPoolItems(data.items || [], data.total || 0);
-    }).catch(function(err) { console.error('[Pool] Search failed:', err); });
-  }
-
-  function renderPoolItems(items, total) {
-    if (items.length === 0) {
-      tableBody.innerHTML = '<tr class="no-data-row"><td colspan="50" class="no-data-cell"><div class="no-data"><i class="fa-solid fa-layer-group"></i><span>No items in pool</span></div></td></tr>';
-      if (showingRange) showingRange.textContent = '0';
-      if (totalCountEl) totalCountEl.textContent = total;
-      updateSelectionUI();
-      return;
-    }
-    var html = '';
-    items.forEach(function(item, idx) {
-      html += '<tr data-rr-id="' + item.rr_id + '" data-card-id="' + item.card_id + '" data-sr-no="' + (idx + 1) + '">';
-      html += '<td class="w-[24px] px-[1px] py-1 text-center align-middle checkbox-cell"><input type="checkbox" class="poolRowCheckbox"></td>';
-      html += '<td class="w-[36px] px-[1px] py-1 text-center align-middle sr-no-cell">' + (idx + 1) + '</td>';
-      html += renderOrderedFields(item.ordered_fields);
-      html += '<td class="min-w-[80px] px-[1px] py-1 align-middle reason-cell whitespace-normal break-words text-left">' + escapeHtml(item.reason || '-') + '</td>';
-      html += '<td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center">' + escapeHtml(item.requested_by_name || '-') + '</td>';
-      html += '<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">' + escapeHtml(item.pool_at || '-') + '</td>';
-      html += '<td class="w-[65px] px-[1px] py-1 align-middle text-center"><span class="status-badge status-' + (item.card_status || 'pending') + '">' + escapeHtml(item.status_display || '-') + '</span></td>';
-      html += '</tr>';
-    });
-    tableBody.innerHTML = html;
-    if (showingRange) showingRange.textContent = '1-' + items.length;
-    if (totalCountEl) totalCountEl.textContent = total;
-    updateSelectionUI();
-    if (paginator) { paginator.reset(); paginator.paginate(); }
-  }
-
-})();
 
 })();

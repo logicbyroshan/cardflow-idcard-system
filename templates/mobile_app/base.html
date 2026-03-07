@@ -5,10 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#667eea">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="mobile-web-app-capable" content="yes">
-    <title>{% block title %}Adarsh ID Cards{% endblock %}</title>
+    <title>{% block title %}Adarsh ID Cards{% endblock %}</title></title>
 
     <!-- DNS preconnect hints â€” reduce CDN latency on first load -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
@@ -31,9 +28,6 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{% static 'mobile/css/mobile.css' %}">
 
-    <!-- PWA Manifest (dynamic â€” served by Django with correct scope) -->
-    <link rel="manifest" href="/app/manifest.json">
-    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'mobile/images/icon-192.png' %}">
 
     {% block extra_head %}{% endblock %}
 
@@ -78,106 +72,16 @@
         {% block content %}{% endblock %}
     </div>
 
-    <!-- PWA Install Banner (hidden by default) -->
-    <div id="pwa-install-banner" class="hidden fixed bottom-0 left-0 right-0 z-[9998] p-4">
-        <div class="max-w-[430px] mx-auto bg-white rounded-lg shadow-2xl border border-gray-200 p-4">
-            <div class="flex items-center gap-3">
-                <div class="w-12 h-12 rounded-md bg-gradient-to-br from-brand-light to-brand-dark flex items-center justify-center text-white text-xl flex-shrink-0">
-                    <i class="fa-solid fa-mobile-screen-button"></i>
-                </div>
-                <div class="flex-1 min-w-0">
-                    <p class="text-sm font-bold text-gray-800">Install Adarsh ID Cards</p>
-                    <p class="text-[10px] text-gray-500">Add to home screen for a better experience</p>
-                </div>
-                <button id="pwa-install-btn" class="px-4 py-2 bg-gradient-to-r from-brand-light to-brand-dark text-white text-xs font-bold rounded-md shadow-md active:scale-95 transition-transform flex-shrink-0">
-                    Install
-                </button>
-                <button id="pwa-install-dismiss" class="p-1.5 text-gray-400 hover:text-gray-600 flex-shrink-0">
-                    <i class="fa-solid fa-xmark text-sm"></i>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- iOS Install Guide (shown on Safari) -->
-    <div id="ios-install-guide" class="hidden fixed bottom-0 left-0 right-0 z-[9998] p-4">
-        <div class="max-w-[430px] mx-auto bg-white rounded-lg shadow-2xl border border-gray-200 p-4">
-            <div class="flex items-start gap-3">
-                <div class="w-10 h-10 rounded-md bg-blue-50 flex items-center justify-center text-blue-500 flex-shrink-0 mt-0.5">
-                    <i class="fa-solid fa-arrow-up-from-bracket text-lg"></i>
-                </div>
-                <div class="flex-1">
-                    <p class="text-sm font-bold text-gray-800 mb-1">Install this App</p>
-                    <p class="text-[11px] text-gray-500 leading-relaxed">Tap the <strong>Share</strong> button <i class="fa-solid fa-arrow-up-from-bracket text-[10px]"></i> then tap <strong>"Add to Home Screen"</strong></p>
-                </div>
-                <button id="ios-install-dismiss" class="p-1.5 text-gray-400 hover:text-gray-600 flex-shrink-0">
-                    <i class="fa-solid fa-xmark text-sm"></i>
-                </button>
-            </div>
-        </div>
-    </div>
-
     <!-- Custom JS -->
     <script src="{% static 'mobile/js/app.js' %}"></script>
 
-    <!-- PWA: Register mobile service worker via Django-served endpoint -->
+    <!-- Unregister any leftover service workers from previous PWA setup -->
     <script>
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/app/sw.js')
-            .then(function() {})
-            .catch(function() {});
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+            regs.forEach(function(r) { r.unregister(); });
+        });
     }
-
-    // ===== PWA Install Prompt Handler =====
-    let deferredPrompt = null;
-
-    window.addEventListener('beforeinstallprompt', function(e) {
-        e.preventDefault();
-        deferredPrompt = e;
-        // Don't show if user previously dismissed
-        if (localStorage.getItem('pwa-install-dismissed')) return;
-        document.getElementById('pwa-install-banner').classList.remove('hidden');
-    });
-
-    // Install button click
-    document.getElementById('pwa-install-btn').addEventListener('click', async function() {
-        if (!deferredPrompt) return;
-        deferredPrompt.prompt();
-        const result = await deferredPrompt.userChoice;
-        deferredPrompt = null;
-        document.getElementById('pwa-install-banner').classList.add('hidden');
-    });
-
-    // Dismiss button
-    document.getElementById('pwa-install-dismiss').addEventListener('click', function() {
-        document.getElementById('pwa-install-banner').classList.add('hidden');
-        localStorage.setItem('pwa-install-dismissed', Date.now());
-    });
-
-    // Hide banner if already installed
-    window.addEventListener('appinstalled', function() {
-        document.getElementById('pwa-install-banner').classList.add('hidden');
-        deferredPrompt = null;
-    });
-
-    // iOS Safari detection â€” show manual install guide
-    (function() {
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-        const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
-
-        if (isIOS && isSafari && !isStandalone && !localStorage.getItem('pwa-install-dismissed')) {
-            document.getElementById('ios-install-guide').classList.remove('hidden');
-        }
-
-        var iosBtn = document.getElementById('ios-install-dismiss');
-        if (iosBtn) {
-            iosBtn.addEventListener('click', function() {
-                document.getElementById('ios-install-guide').classList.add('hidden');
-                localStorage.setItem('pwa-install-dismissed', Date.now());
-            });
-        }
-    })();
     </script>
 
     {% block extra_js %}{% endblock %}

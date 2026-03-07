@@ -9,8 +9,6 @@
   <meta name="theme-color" content="#3498db">
   <title>{% block title %}Adarsh ID Cards{% endblock %}</title>
   <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
-  <!-- PWA Manifest -->
-  <link rel="manifest" href="/manifest.json">
   <link rel="apple-touch-icon" sizes="180x180" href="{% static 'assets/icons/apple-touch-icon.png' %}">
   <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
   <!-- Tailwind CSS (compiled design system) -->
@@ -148,20 +146,12 @@
   <!-- HTMX Configuration -->
   {% include 'partials/htmx-config.html' %}
 
-  <!-- PWA: Register service worker (desktop: admin SW, mobile: mobile app SW) -->
+  <!-- Unregister any leftover service workers from previous PWA setup -->
   <script>
   if ('serviceWorker' in navigator) {
-      var isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      if (isMobileDevice) {
-          // Mobile: register the mobile app SW so PWA install works from any page
-          navigator.serviceWorker.register('/app/sw.js', { scope: '/' })
-              .then(function(reg) { console.log('Mobile SW registered, scope:', reg.scope); })
-              .catch(function(err) { console.warn('Mobile SW registration failed:', err); });
-      } else {
-          navigator.serviceWorker.register('/sw.js', { scope: '/' })
-              .then(function(reg) { console.log('Panel SW registered, scope:', reg.scope); })
-              .catch(function(err) { console.warn('Panel SW registration failed:', err); });
-      }
+      navigator.serviceWorker.getRegistrations().then(function(regs) {
+          regs.forEach(function(r) { r.unregister(); });
+      });
   }
   </script>
 

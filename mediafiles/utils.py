@@ -26,11 +26,11 @@ from .constants import VALID_IMAGE_EXTENSIONS, NEW_FILENAME_LENGTH, LEGACY_FILEN
 def generate_folder_code_from_name(name: str) -> str:
     """Generate a 5-character code from client name."""
     if not name:
-        return 'XXXXX'
+        return generate_unique_suffix()
     words = re.sub(r'[^a-zA-Z0-9\s]', '', name).split()
     words = [w for w in words if w]
     if not words:
-        return 'XXXXX'
+        return generate_unique_suffix()
     code = ''
     if len(words) >= 3:
         for word in words[:5]:

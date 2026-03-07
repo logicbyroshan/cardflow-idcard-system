@@ -1,13 +1,17 @@
+from collections import defaultdict
+
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 from django.core.cache import cache
-from django.db.models import Avg
+from django.conf import settings as _s
+from django.db.models import Avg, Case, When, Value, IntegerField
 import logging
 
 from accounts.rate_limit import rate_limit
+from .services import TestimonialService, ContactSubmissionService
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +115,6 @@ def our_work(request):
     
     # Get all active items with custom ordering:
     # Items with order > 0 first (sorted by order ASC), then order=0 sorted by latest first
-    from django.db.models import Case, When, Value, IntegerField
     items = PortfolioItem.objects.filter(is_active=True).select_related('category').annotate(
         has_order=Case(
             When(order__gt=0, then=Value(0)),
@@ -125,8 +128,6 @@ def our_work(request):
     items_with_images = list(
         items.filter(image__isnull=False).exclude(image='').values_list('category_id', 'image')
     )
-    from collections import defaultdict
-    from django.conf import settings as _s
     _cat_img_map = defaultdict(list)
     for cat_id, img_path in items_with_images:
         if img_path and len(_cat_img_map[cat_id]) < CATEGORY_IMAGES_LIMIT:
@@ -248,7 +249,6 @@ def privacy_policy(request):
 def submit_testimonial(request):
     """Handles AJAX submission of a new review (Public)"""
     try:
-        from .services import TestimonialService
         name = request.POST.get('name', '').strip()
         school = request.POST.get('school', '').strip()
         text = request.POST.get('text', '').strip()
@@ -279,7 +279,6 @@ def submit_testimonial(request):
 def submit_contact(request):
     """Handles AJAX submission of the contact form"""
     try:
-        from .services import ContactSubmissionService
         name = request.POST.get('name', '').strip()
         email = request.POST.get('email', '').strip()
         phone = request.POST.get('phone', '').strip()

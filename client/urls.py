@@ -51,6 +51,7 @@ urlpatterns = [
     # ==========================================================================
     
     path('api/dashboard/', views.api_dashboard_data, name='api_dashboard'),
+    path('api/dashboard/reprint-stats/', views.api_reprint_stats, name='api_reprint_stats'),
     path('api/groups/', views.api_groups_list, name='api_groups'),
     
     # ==========================================================================

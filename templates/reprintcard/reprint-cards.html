@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="{% static 'css/idcard-actions.css' %}">
   <link rel="stylesheet" href="{% static 'css/idcard-actions-enhanced.css' %}">
   <link rel="stylesheet" href="{% static 'css/reprint-cards.css' %}">
+  <link rel="stylesheet" href="{% static 'css/partials-common.css' %}">
   <link rel="stylesheet" href="{% static 'css/global-search.css' %}">
   <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
   <script defer src="{% static 'js/alpine-state.js' %}"></script>
@@ -23,6 +24,8 @@
     var CLIENT_NAME = '{{ client.name|escapejs }}';
     var TABLE_NAME = '{{ table.name|escapejs }}';
     var CURRENT_STEP = '{{ current_step|default:"reprint_list"|escapejs }}';
+    var IS_CLIENT_USER = {{ is_client|yesno:"true,false" }};
+    var IS_CLIENT_STAFF_USER = {{ is_client_staff|yesno:"true,false" }};
   </script>
 </head>
 <body x-data="layoutState()" x-init="init()">
@@ -35,6 +38,7 @@
   </main>
   {% include 'partials/idcard/side-modal.html' %}
   {% include 'partials/components/toast.html' %}
+  {% include 'reprintcard/partials/reprint-confirm-modal.html' %}
   <script defer src="{% static 'js/core/api.js' %}"></script>
   <script defer src="{% static 'js/core/toast.js' %}"></script>
   <script defer src="{% static 'js/core/modal.js' %}"></script>

@@ -1,12 +1,12 @@
 /**
- * Adarsh Cropper — Alpine.js Component  v5.0.0
- * ──────────────────────────────────────────────
+ * Adarsh Cropper â€” Alpine.js Component  v5.0.0
+ * â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
  * Folder-only processing.  No ZIP upload.
  *
  * Features:
  *   - Direct engine connection at http://127.0.0.1:4765 (fallback: Django proxy)
- *   - Staged retry: 3 tries → 5 min sleep → 3 tries → 1 hr sleep → 3 tries → stop
- *   - Keepalive polling every 30 s (only while connected) — restarts staged retry on disconnect
+ *   - Staged retry: 3 tries â†’ 5 min sleep â†’ 3 tries â†’ 1 hr sleep â†’ 3 tries â†’ stop
+ *   - Keepalive polling every 30 s (only while connected) â€” restarts staged retry on disconnect
  *   - Donut chart showing cropped vs failed counts
  *   - Image preview grid always available after processing
  *
@@ -14,13 +14,13 @@
  * @version 5.0.0
  */
 
-// ── Engine connection constants ──────────────────────────────────────────
+// â”€â”€ Engine connection constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 var ENGINE_DIRECT_URL = 'http://127.0.0.1:4765';
 var ENGINE_API_KEY    = 'passport-engine-local-key';
 var KEEPALIVE_MS      = 30000;  // poll engine status every 30 s (only when connected)
 
 // Staged-retry schedule: [{ attempts, retryDelayMs, sleepAfterMs | null }]
-// 2 tries (2 s apart) → sleep 5 min → 2 tries → stop
+// 2 tries (2 s apart) â†’ sleep 5 min â†’ 2 tries â†’ stop
 // Kept minimal to avoid flooding the console with ERR_CONNECTION_REFUSED.
 var ENGINE_RETRY_STAGES = [
   { attempts: 2, retryDelayMs: 2000, sleepAfterMs: 5 * 60 * 1000 },  // 5 min
@@ -29,7 +29,7 @@ var ENGINE_RETRY_STAGES = [
 
 function cropperApp() {
   return {
-    // ── Engine state ──
+    // â”€â”€ Engine state â”€â”€
     engine: {
       loading: true,
       checked: false,
@@ -41,35 +41,35 @@ function cropperApp() {
       url: '',
     },
 
-    // ── UI state ──
+    // â”€â”€ UI state â”€â”€
     folderPath: '',
     folderLocked: false,   // lock the path once processing starts
     workingFolder: '',     // tracks active folder through pipeline steps
     processing: false,
 
-    // ── Progress ──
+    // â”€â”€ Progress â”€â”€
     progress: {
       visible: false,
-      label: 'Processing…',
+      label: 'Processingâ€¦',
       percent: 0,
-      detail: 'Preparing…',
+      detail: 'Preparingâ€¦',
     },
 
-    // ── Result ──
+    // â”€â”€ Result â”€â”€
     result: {
       visible: false,
       total: 0,
       success: 0,
       failed: 0,
-      accuracy: '—',
-      time: '—',
+      accuracy: 'â€”',
+      time: 'â€”',
       outputFolder: '',
       failedFolder: '',
       errors: [],
       errorsExpanded: false,
     },
 
-    // ── Preview ──
+    // â”€â”€ Preview â”€â”€
     preview: {
       visible: false,
       loading: false,
@@ -80,10 +80,10 @@ function cropperApp() {
       folder: '',
     },
 
-    // ── Tabs ──
+    // â”€â”€ Tabs â”€â”€
     activeTab: 'cropped',
 
-    // ── Delete confirmation ──
+    // â”€â”€ Delete confirmation â”€â”€
     deleteConfirm: {
       visible: false,
       imageName: '',
@@ -91,13 +91,13 @@ function cropperApp() {
       deleting: false,
     },
 
-    // ── Auto Adjust All state ──
+    // â”€â”€ Auto Adjust All state â”€â”€
     autoAdjustState: {
       running: false,
       progress: '',
     },
 
-    // ── Pipeline (preset) state ──
+    // â”€â”€ Pipeline (preset) state â”€â”€
     pipeline: {
       faceCrop: false,      // Face crop disabled by default
       compress: false,      // Compress disabled by default
@@ -108,28 +108,28 @@ function cropperApp() {
       edit: false,          // Edit/preview disabled by default
     },
 
-    // ── Client selection state ──
+    // â”€â”€ Client selection state â”€â”€
     inputMode: 'manual',           // 'client' or 'manual'
     clients: [],                   // List of accessible clients
     clientsLoading: false,
     clientsLoaded: false,
     selectedClientId: '',          // Selected client ID
 
-    // ── Error ──
+    // â”€â”€ Error â”€â”€
     error: {
       visible: false,
       title: '',
       message: '',
     },
 
-    // ── Selection state ──
+    // â”€â”€ Selection state â”€â”€
     selection: {
       all: false,
       count: 0,
       selected: {},  // { [imageName]: true }
     },
 
-    // ── Rename state ──
+    // â”€â”€ Rename state â”€â”€
     renameState: {
       running: false,
     },
@@ -155,13 +155,13 @@ function cropperApp() {
       },
     },
 
-    // ── Internal ──
+    // â”€â”€ Internal â”€â”€
     _progressTimer: null,
     _keepaliveId: null,
     _retryGaveUp: false,   // true once all retry stages exhausted
     _pendingPreviewReload: false, // true when restored state needs image URL refresh
 
-    // ── Update state ──
+    // â”€â”€ Update state â”€â”€
     update: {
       available: false,
       version: '',
@@ -169,9 +169,9 @@ function cropperApp() {
       changelog: '',
     },
 
-    // ══════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     //  INIT
-    // ══════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     init() {
       // Restore persisted state from sessionStorage (if navigating back)
       this._restoreState();
@@ -180,7 +180,7 @@ function cropperApp() {
       this._fetchLatestVersion();
 
       this._stagedRetryConnect();
-      // Start keepalive polling — only pings when engine is already connected
+      // Start keepalive polling â€” only pings when engine is already connected
       this._keepaliveId = setInterval(() => { this._keepalivePoll(); }, KEEPALIVE_MS);
 
       // Save state before navigating away so results persist
@@ -201,7 +201,7 @@ function cropperApp() {
      *  Stage 1: try 3 times (1.5 s apart)
      *  Stage 2: sleep 5 min, then try 3 times
      *  Stage 3: sleep 1 hr, then try 3 times
-     *  After that: give up — user must manually refresh or click reconnect.
+     *  After that: give up â€” user must manually refresh or click reconnect.
      */
     async _stagedRetryConnect() {
       this._retryGaveUp = false;
@@ -210,17 +210,16 @@ function cropperApp() {
         for (var a = 1; a <= stage.attempts; a++) {
           await this.checkEngine();
           if (this.engine.connected) {
-            console.log('[Cropper] Engine connected (stage ' + (s + 1) + ', attempt ' + a + ')');
             // If state was restored from sessionStorage, re-fetch preview
             // images so URLs match the current connection mode.
             if (this._pendingPreviewReload && this.preview.folder) {
               this._pendingPreviewReload = false;
               this._loadPreview(this.preview.folder);
             }
-            return;  // success — keepalive will handle ongoing monitoring
+            return;  // success â€” keepalive will handle ongoing monitoring
           }
           // Use debug level so these don't clutter the console by default
-          console.debug('[Cropper] Engine not detected — stage ' + (s + 1) + ' attempt ' + a + '/' + stage.attempts);
+          console.debug('[Cropper] Engine not detected â€” stage ' + (s + 1) + ' attempt ' + a + '/' + stage.attempts);
           if (a < stage.attempts) {
             await new Promise(function (r) { setTimeout(r, stage.retryDelayMs); });
           }
@@ -228,18 +227,18 @@ function cropperApp() {
         // All attempts in this stage failed
         if (stage.sleepAfterMs) {
           var mins = Math.round(stage.sleepAfterMs / 60000);
-          console.debug('[Cropper] Will retry in ' + mins + ' min…');
+          console.debug('[Cropper] Will retry in ' + mins + ' minâ€¦');
           await new Promise(function (r) { setTimeout(r, stage.sleepAfterMs); });
         }
       }
-      // All stages exhausted — give up quietly
+      // All stages exhausted â€” give up quietly
       this._retryGaveUp = true;
-      console.info('[Cropper] Engine not found — retries exhausted. Refresh or click Reconnect to try again.');
+      console.info('[Cropper] Engine not found â€” retries exhausted. Refresh or click Reconnect to try again.');
     },
 
-    // ══════════════════════════════════════════════════════════════════
-    //  KEEPALIVE POLLING — detect disconnect / reconnect silently
-    // ══════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    //  KEEPALIVE POLLING â€” detect disconnect / reconnect silently
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     async _keepalivePoll() {
       // Don't poll while processing (engine is busy)
       if (this.processing) return;
@@ -256,8 +255,7 @@ function cropperApp() {
         if (resp.ok) {
           var data = await resp.json();
           if (!this.engine.connected) {
-            // Reconnected — refresh full engine info
-            console.log('[Cropper] Engine reconnected');
+            // Reconnected â€” refresh full engine info
             this._retryGaveUp = false;
             await this.checkEngine();
           }
@@ -270,7 +268,6 @@ function cropperApp() {
         var data = await ApiClient.get('/api/engine/status/');
         if (data && data.connected) {
           if (!this.engine.connected) {
-            console.log('[Cropper] Engine reconnected via proxy');
             this._retryGaveUp = false;
             await this.checkEngine();
           }
@@ -280,24 +277,24 @@ function cropperApp() {
 
       // Engine went offline
       if (wasConnected) {
-        console.debug('[Cropper] Engine disconnected — restarting detection…');
+        console.debug('[Cropper] Engine disconnected â€” restarting detectionâ€¦');
         this.engine.connected = false;
         this.engine.checked = true;
         this._broadcastEngineState();
-        // Engine was connected but lost — run staged retry
+        // Engine was connected but lost â€” run staged retry
         this._stagedRetryConnect();
       }
     },
 
-    // ══════════════════════════════════════════════════════════════════
-    //  ENGINE DETECTION — try direct first, then Django proxy fallback
-    // ══════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    //  ENGINE DETECTION â€” try direct first, then Django proxy fallback
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     async checkEngine() {
       this.engine.loading = true;
       this.engine.connected = false;
       this.engine.direct = false;
 
-      // ── Attempt 1: Direct connection to local engine ──────────────
+      // â”€â”€ Attempt 1: Direct connection to local engine â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       try {
         var controller = new AbortController();
         var timer = setTimeout(function () { controller.abort(); }, 3000);
@@ -331,15 +328,14 @@ function cropperApp() {
           this.engine.loading = false;
           this.engine.checked = true;
           this._retryGaveUp = false;  // successful connect resets gave-up flag
-          console.log('[Cropper] Connected directly to local engine v' + this.engine.version);
           this._broadcastEngineState();
           return;
         }
       } catch (_directErr) {
-        // Direct failed — try Django proxy
+        // Direct failed â€” try Django proxy
       }
 
-      // ── Attempt 2: Django proxy ───────────────────────────────────
+      // â”€â”€ Attempt 2: Django proxy â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       try {
         var data = await ApiClient.get('/api/engine/status/');
 
@@ -355,7 +351,6 @@ function cropperApp() {
             ? String(health.memory_usage_mb)
             : '';
           this._retryGaveUp = false;  // successful connect resets gave-up flag
-          console.log('[Cropper] Connected via Django proxy v' + this.engine.version);
         }
       } catch (_proxyErr) {
         this.engine.connected = false;
@@ -385,9 +380,9 @@ function cropperApp() {
       }
     },
 
-    // ══════════════════════════════════════════════════════════════════
-    //  FETCH LATEST VERSION — called on init to populate download button
-    // ══════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    //  FETCH LATEST VERSION â€” called on init to populate download button
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     async _fetchLatestVersion() {
       try {
         var data = await ApiClient.get('/api/cropper/latest-version/');
@@ -396,16 +391,15 @@ function cropperApp() {
           this.update.version = data.version || '';
           this.update.downloadUrl = data.download_url || '';
           this.update.changelog = data.changelog || '';
-          console.log('[Cropper] Latest release: v' + this.update.version);
         }
       } catch (err) {
         console.warn('[Cropper] Failed to fetch latest version:', err);
       }
     },
 
-    // ══════════════════════════════════════════════════════════════════
-    //  AUTO-UPDATE CHECK — compare installed version vs latest release
-    // ══════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    //  AUTO-UPDATE CHECK â€” compare installed version vs latest release
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     async _checkForUpdates() {
       try {
         var data = await ApiClient.get('/api/cropper/latest-version/');
@@ -424,31 +418,30 @@ function cropperApp() {
 
         if (this._semverCompare(latestVersion, installedVersion) > 0) {
           this.update.available = true;
-          console.log('[Cropper] Update available: v' + latestVersion + ' (installed: v' + installedVersion + ')');
         } else {
           this.update.available = false;
         }
       } catch (err) {
         console.warn('[Cropper] Update check failed:', err);
-        // Silently ignore — update check is non-critical
+        // Silently ignore â€” update check is non-critical
       }
     },
 
     /**
-     * Compare two semver strings — delegates to CropperUtils.
+     * Compare two semver strings â€” delegates to CropperUtils.
      */
     _semverCompare(a, b) {
       return window.CropperUtils.semverCompare(a, b);
     },
 
-    // ══════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     //  PROGRESS HELPERS
-    // ══════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     _showProgress(label) {
       this.progress.visible = true;
-      this.progress.label = label || 'Processing…';
+      this.progress.label = label || 'Processingâ€¦';
       this.progress.percent = 0;
-      this.progress.detail = 'Preparing…';
+      this.progress.detail = 'Preparingâ€¦';
     },
 
     _updateProgress(pct, detail) {
@@ -475,14 +468,14 @@ function cropperApp() {
         var pct = Math.round(target * (1 - Math.exp(-elapsed / tau)));
         pct = Math.max(pct, self.progress.percent); // never go backwards
         if (pct < target) {
-          self._updateProgress(pct, 'Engine processing photos…');
+          self._updateProgress(pct, 'Engine processing photosâ€¦');
         }
       }, 500);
     },
 
-    // ══════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     //  CLIENT SELECTION
-    // ══════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     
     /**
      * Load accessible clients from the server.
@@ -531,9 +524,9 @@ function cropperApp() {
       }
     },
 
-    // ══════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     //  PROCESS FOLDER
-    // ══════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     async processFolder() {
       var path = this.folderPath.trim();
       if (!path || this.processing) return;
@@ -551,7 +544,7 @@ function cropperApp() {
       this.result.visible = false;
       this.preview.visible = false;
       this.error.visible = false;
-      this._showProgress('Processing…');
+      this._showProgress('Processingâ€¦');
 
       try {
         // Use workingFolder if we already have one (chained ops), otherwise start from path
@@ -559,13 +552,13 @@ function cropperApp() {
         
         // If face crop is enabled, run face crop first (always from original path)
         if (this.pipeline.faceCrop) {
-          this._updateProgress(10, 'Sending folder path to engine…');
+          this._updateProgress(10, 'Sending folder path to engineâ€¦');
           this._startProgressSimulation();
 
           var data;
 
           if (this.engine.direct) {
-            // ── Direct to local engine ────────────────────────────────
+            // â”€â”€ Direct to local engine â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             var resp = await fetch(ENGINE_DIRECT_URL + '/process-folder', {
               method: 'POST',
               headers: {
@@ -581,7 +574,7 @@ function cropperApp() {
             }
             data = await resp.json();
           } else {
-            // ── Django proxy fallback ─────────────────────────────────
+            // â”€â”€ Django proxy fallback â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             data = await ApiClient.post(
               '/api/engine/process-folder/',
               { folder_path: path }
@@ -637,8 +630,8 @@ function cropperApp() {
       // Step 1: Compress (if enabled)
       if (this.pipeline.compress && this.pipeline.compressKB > 0) {
         try {
-          this._showProgress('Compressing images…');
-          this._updateProgress(20, 'Compressing to ' + this.pipeline.compressKB + ' KB…');
+          this._showProgress('Compressing imagesâ€¦');
+          this._updateProgress(20, 'Compressing to ' + this.pipeline.compressKB + ' KBâ€¦');
 
           var compressData;
           if (this.engine.direct) {
@@ -668,7 +661,6 @@ function cropperApp() {
           }
 
           if (compressData && compressData.total >= 0) {
-            console.log('[Pipeline] Compressed: success=' + compressData.success + ', failed=' + compressData.failed);
             // Update currentFolder to compressed output for next steps
             if (compressData.output_folder) {
               currentFolder = compressData.output_folder;
@@ -688,8 +680,8 @@ function cropperApp() {
       // Step 2: Rename (if enabled)
       if (this.pipeline.rename && this.pipeline.renameOperation) {
         try {
-          this._showProgress('Renaming images…');
-          this._updateProgress(60, 'Applying rename operation…');
+          this._showProgress('Renaming imagesâ€¦');
+          this._updateProgress(60, 'Applying rename operationâ€¦');
 
           var renameParams = {};
           if (this.pipeline.renameOperation === 'add_prefix') {
@@ -701,7 +693,7 @@ function cropperApp() {
             renameParams.digits = 3;
             renameParams.start = 1;
           } else if (this.pipeline.renameOperation === 'replace_text') {
-            var parts = (this.pipeline.renameParam || '').split('→');
+            var parts = (this.pipeline.renameParam || '').split('â†’');
             renameParams.find = parts[0] || '';
             renameParams.replace = parts[1] || '';
           } else if (this.pipeline.renameOperation === 'remove_text') {
@@ -742,7 +734,6 @@ function cropperApp() {
           }
 
           if (renameData && renameData.renamed >= 0) {
-            console.log('[Pipeline] Renamed: ' + renameData.renamed + ' files');
             // Build result for display if this is the final step and no prior result
             if (!hadFaceCrop && !pipelineResult) {
               pipelineResult = {
@@ -769,9 +760,9 @@ function cropperApp() {
       return currentFolder;
     },
 
-    // ══════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     //  RESULT DISPLAY + DONUT CHART
-    // ══════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     _showResult(data) {
       var total   = data.total   || 0;
       var success = data.success || 0;
@@ -780,14 +771,14 @@ function cropperApp() {
       this.result.total    = total;
       this.result.success  = success;
       this.result.failed   = failed;
-      this.result.accuracy = total > 0 ? ((success / total) * 100).toFixed(1) + '%' : '—';
+      this.result.accuracy = total > 0 ? ((success / total) * 100).toFixed(1) + '%' : 'â€”';
 
       if (data.processing_time != null) {
         this.result.time = typeof data.processing_time === 'number'
           ? data.processing_time.toFixed(1) + 's'
           : String(data.processing_time);
       } else {
-        this.result.time = '—';
+        this.result.time = 'â€”';
       }
 
       this.result.outputFolder = data.output_folder || '';
@@ -812,7 +803,7 @@ function cropperApp() {
     },
 
     /**
-     * Draw a simple donut chart — delegates to CropperDonut.
+     * Draw a simple donut chart â€” delegates to CropperDonut.
      */
     _drawDonutChart(success, failed) {
       window.CropperDonut.draw(this.$refs.chartCanvas, success, failed);
@@ -828,12 +819,12 @@ function cropperApp() {
       try { sessionStorage.removeItem('_cropperState'); } catch (_) {}
     },
 
-    // ══════════════════════════════════════════════════════════════════
-    //  STATE PERSISTENCE — survive navigation away and back
-    // ══════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    //  STATE PERSISTENCE â€” survive navigation away and back
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     /**
-     * Key to storage — unique for this page.
+     * Key to storage â€” unique for this page.
      */
     _STORAGE_KEY: '_cropperState',
 
@@ -898,8 +889,8 @@ function cropperApp() {
           this.result.total = state.result.total || 0;
           this.result.success = state.result.success || 0;
           this.result.failed = state.result.failed || 0;
-          this.result.accuracy = state.result.accuracy || '—';
-          this.result.time = state.result.time || '—';
+          this.result.accuracy = state.result.accuracy || 'â€”';
+          this.result.time = state.result.time || 'â€”';
           this.result.outputFolder = state.result.outputFolder || '';
           this.result.failedFolder = state.result.failedFolder || '';
           this.result.errors = state.result.errors || [];
@@ -918,30 +909,28 @@ function cropperApp() {
           this.preview.editedImages = state.preview.editedImages || [];
           this.preview.failedImages = state.preview.failedImages || [];
           this.preview.deletedImages = state.preview.deletedImages || [];
-          // When engine is direct, stored Django proxy URLs won't work —
+          // When engine is direct, stored Django proxy URLs won't work â€”
           // re-fetch previews from the engine after it connects.
           this._pendingPreviewReload = true;
         }
-
-        console.log('[Cropper] State restored from session');
       } catch (err) {
         console.warn('[Cropper] State restore failed:', err);
         try { sessionStorage.removeItem(this._STORAGE_KEY); } catch (_) {}
       }
     },
 
-    // ══════════════════════════════════════════════════════════════════
-    //  IMAGE PREVIEW — always available after processing
-    // ══════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    //  IMAGE PREVIEW â€” always available after processing
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     /**
      * Build the image URL for a given filesystem path.
      *
      * When engine.direct is true the images live on the USER'S local
      * machine, not on the Django server.  In that case:
-     *   • On HTTP pages we can point <img src> straight at the engine.
-     *   • On HTTPS pages the browser blocks http://127.0.0.1 as mixed
-     *     content for sub-resources, so we fetch()→blob→objectURL
+     *   â€¢ On HTTP pages we can point <img src> straight at the engine.
+     *   â€¢ On HTTPS pages the browser blocks http://127.0.0.1 as mixed
+     *     content for sub-resources, so we fetch()â†’blobâ†’objectURL
      *     (fetch() has a localhost exemption; <img> does not).
      *
      * When using the Django proxy (engine.direct === false) the server
@@ -949,11 +938,11 @@ function cropperApp() {
      */
     _imageUrl(fullPath) {
       if (this.engine.direct) {
-        // HTTP → direct engine URL is fine for <img>
+        // HTTP â†’ direct engine URL is fine for <img>
         if (window.location.protocol === 'http:') {
           return this.engine.url + '/serve-image?path=' + encodeURIComponent(fullPath);
         }
-        // HTTPS → return empty; caller must use _loadBlobUrls()
+        // HTTPS â†’ return empty; caller must use _loadBlobUrls()
         return '';
       }
       return '/api/engine/serve-image/?path=' + encodeURIComponent(fullPath);
@@ -984,7 +973,7 @@ function cropperApp() {
               img.url = URL.createObjectURL(blob);
             }
           } catch (_) {
-            // Leave url empty — the card will show the grey placeholder
+            // Leave url empty â€” the card will show the grey placeholder
           }
         }
       }
@@ -996,7 +985,7 @@ function cropperApp() {
       await Promise.all(workers);
     },
 
-    /** True when HTTPS + direct engine → need blob URLs */
+    /** True when HTTPS + direct engine â†’ need blob URLs */
     _needsBlobUrls() {
       return this.engine.direct && window.location.protocol === 'https:';
     },
@@ -1061,7 +1050,7 @@ function cropperApp() {
         }
       } catch (err) {
         console.warn('[Cropper] Preview load failed:', err);
-        // Preview is optional — don't block the flow
+        // Preview is optional â€” don't block the flow
       } finally {
         this.preview.loading = false;
       }
@@ -1075,9 +1064,9 @@ function cropperApp() {
       }
     },
 
-    // ══════════════════════════════════════════════════════════════════
-    //  TABS — switch between Cropped / Edited / Failed / Deleted
-    // ══════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    //  TABS â€” switch between Cropped / Edited / Failed / Deleted
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     switchTab(tab) {
       this.activeTab = tab;
       // Clear selection when switching tabs
@@ -1112,7 +1101,7 @@ function cropperApp() {
      */
     async _loadTabImages(tab) {
       // The main preview.folder is the cropped folder (e.g. C:\path\cropped)
-      // Sibling folders are: edited, failed, deleted — at the same level
+      // Sibling folders are: edited, failed, deleted â€” at the same level
       var basePath = this.preview.folder;
       if (!basePath) return;
 
@@ -1162,9 +1151,9 @@ function cropperApp() {
       }
     },
 
-    // ══════════════════════════════════════════════════════════════════
-    //  EDITOR INTEGRATION — open AdarshEngine with image list nav
-    // ══════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    //  EDITOR INTEGRATION â€” open AdarshEngine with image list nav
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     openEditor(img, idx) {
       var self = this;
       var images = this.currentTabImages();
@@ -1295,9 +1284,9 @@ function cropperApp() {
       return { url: base, editedFolder: data.edited_folder || '' };
     },
 
-    // ══════════════════════════════════════════════════════════════════
-    //  AUTO-ADJUST ALL — batch auto-levels on every image in current tab
-    // ══════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    //  AUTO-ADJUST ALL â€” batch auto-levels on every image in current tab
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     async autoAdjustAll() {
       var images = this.currentTabImages();
       if (!images || images.length === 0) return;
@@ -1348,15 +1337,15 @@ function cropperApp() {
     },
 
     /**
-     * Auto-adjust a single image — delegates to CropperAutoAdjust.
+     * Auto-adjust a single image â€” delegates to CropperAutoAdjust.
      */
     _autoAdjustSingle(imgObj, csrfToken) {
       return window.CropperAutoAdjust.adjustSingle(imgObj, csrfToken);
     },
 
-    // ══════════════════════════════════════════════════════════════════
-    //  DELETE — confirm + soft-delete (move to /deleted/ folder)
-    // ══════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    //  DELETE â€” confirm + soft-delete (move to /deleted/ folder)
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     confirmDelete(img) {
       this.deleteConfirm.imageName = img.name;
       this.deleteConfirm.imagePath = img.path || '';
@@ -1409,13 +1398,13 @@ function cropperApp() {
       }
     },
 
-    // ══════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     //  ERROR HANDLING
-    // ══════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     _handleProcessError(err) {
       var classified = window.CropperUtils.classifyProcessError(err);
       if (classified.title === 'Engine Not Reachable') {
-        // Trigger a check — engine may have gone offline mid-process
+        // Trigger a check â€” engine may have gone offline mid-process
         this.checkEngine();
       }
       this._showError(classified.title, classified.message);
@@ -1428,9 +1417,9 @@ function cropperApp() {
       if (typeof Toast !== 'undefined') Toast.error(message);
     },
 
-    // ══════════════════════════════════════════════════════════════════
-    //  SELECTION METHODS — Select All / Individual Selection
-    // ══════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    //  SELECTION METHODS â€” Select All / Individual Selection
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     /**
      * Check if an image is selected.
@@ -1513,9 +1502,9 @@ function cropperApp() {
      * (Note: switchTab is defined above in TABS section)
      */
 
-    // ══════════════════════════════════════════════════════════════════
-    //  RENAME METHODS — Batch rename with preview
-    // ══════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    //  RENAME METHODS â€” Batch rename with preview
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     /**
      * Open the rename modal.

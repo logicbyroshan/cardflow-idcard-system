@@ -249,29 +249,16 @@
     });
     </script>
 
-    <!-- PWA disabled for landing website - only panel supports PWA install -->
     <script>
     // Panel URL for cross-subdomain redirects
     window.__panelUrl = '{{ PANEL_URL }}' || '';
 
-    // Unregister any existing service workers for the landing website
+    // Unregister any leftover service workers from previous PWA setup
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function(registrations) {
-            registrations.forEach(function(reg) {
-                // Only unregister website SW, not panel SW
-                if (reg.scope === window.location.origin + '/') {
-                    reg.unregister();
-                }
-            });
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+            regs.forEach(function(r) { r.unregister(); });
         });
     }
-
-    // Block PWA install prompt on the landing website
-    window.addEventListener('beforeinstallprompt', function(e) {
-        e.preventDefault();
-        // Do not store the prompt - landing site should not be installable
-        return false;
-    });
     </script>
     
     {% block extra_js %}{% endblock %}
