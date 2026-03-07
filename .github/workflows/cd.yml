@@ -1,14 +1,17 @@
 # =============================================================================
-# CD Pipeline — Production Deploy (Stable Version)
-# Runs ONLY after CI succeeds on main branch
+# CD Pipeline — Production Deploy (Manual Trigger)
+# Run manually after CI passes - full deploy with all checks
 # =============================================================================
 
 name: CD — Deploy Production
 
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types: [completed]
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type DEPLOY to confirm deployment'
+        required: true
+        type: string
 
 concurrency:
   group: production
@@ -19,9 +22,7 @@ jobs:
     name: Deploy to Production Server
     runs-on: ubuntu-latest
 
-    if: >
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.head_branch == 'main'
+    if: github.event.inputs.confirm == 'DEPLOY'
 
     steps:
       - name: Deploy via SSH
