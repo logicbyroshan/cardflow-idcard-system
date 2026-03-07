@@ -4,12 +4,11 @@
 {% block title %}Search - Adarsh ID Cards{% endblock %}
 
 {% block content %}
-{# Seed JS with server-side results (present when page loaded via ?q=â€¦) #}
+<!-- Seed JS with server-side results (present when page loaded via ?q=...) -->
 {{ results|json_script:"_search_init_results" }}
 {{ query|json_script:"_search_init_query" }}
 
-{# Hidden anchor used to build client-side card-detail URLs.
-   123456789 is a placeholder ID that gets stripped to extract the base path. #}
+<!-- Hidden anchor used to build client-side card-detail URLs. 123456789 is a placeholder ID that gets stripped to extract the base path. -->
 <a id="_card_url_tmpl" href="{% url 'mobile_app:card_detail' card_id=123456789 %}" style="display:none"></a>
 
 <div class="min-h-screen bg-gray-50 pb-20" x-data="searchApp()">
