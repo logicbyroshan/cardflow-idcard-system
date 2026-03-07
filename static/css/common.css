@@ -1238,6 +1238,159 @@ td.email-col {
   font-weight: 500;
 }
 
+/* ===========================================
+   DOWNLOAD MODAL — Enhanced Blocking Overlay
+   =========================================== */
+
+/* Icon container with state-based colors */
+.blocking-overlay-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  font-size: 32px;
+  transition: background 0.3s, color 0.3s;
+}
+
+/* State: Preparing (gear spinning) */
+.blocking-overlay-content.preparing .blocking-overlay-icon {
+  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+  color: #6366f1;
+}
+
+/* State: Downloading */
+.blocking-overlay-content.downloading .blocking-overlay-icon {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #3b82f6;
+}
+
+/* State: Complete */
+.blocking-overlay-content.complete .blocking-overlay-icon {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+  color: #22c55e;
+}
+
+/* State: Error */
+.blocking-overlay-content.error .blocking-overlay-icon {
+  background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%);
+  color: #ef4444;
+}
+
+/* Title */
+.blocking-overlay-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin: 0 0 8px;
+  text-align: center;
+}
+
+/* Message/subtitle override */
+.blocking-overlay-message {
+  color: #94a3b8 !important;
+  font-size: 14px !important;
+  margin-bottom: 16px !important;
+}
+
+/* Item count badge */
+.blocking-overlay-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(99, 102, 241, 0.2);
+  color: #a5b4fc;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 20px;
+}
+.blocking-overlay-badge i {
+  font-size: 12px;
+}
+
+/* Stats row */
+.blocking-overlay-stats {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 12px;
+  font-size: 13px;
+  color: #94a3b8;
+}
+.blocking-overlay-percent {
+  font-weight: 700;
+  color: #f1f5f9;
+}
+.blocking-overlay-time,
+.blocking-overlay-size {
+  opacity: 0.8;
+}
+
+/* Actions container */
+.blocking-overlay-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+/* Done button (green) */
+.blocking-overlay-done {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 32px;
+  background: #22c55e;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+.blocking-overlay-done:hover {
+  background: #16a34a;
+}
+.blocking-overlay-done:active {
+  transform: scale(0.98);
+}
+
+/* Cancel button adjustments for error state */
+.blocking-overlay-content.error .blocking-overlay-cancel span::after {
+  content: 'Close';
+}
+.blocking-overlay-content.error .blocking-overlay-cancel span {
+  display: none;
+}
+
+/* Progress bar indeterminate animation */
+.blocking-overlay-bar.indeterminate {
+  width: 30% !important;
+  animation: blockingBarIndeterminate 1.5s infinite ease-in-out;
+}
+
+@keyframes blockingBarIndeterminate {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(200%); }
+  100% { transform: translateX(-100%); }
+}
+
+/* Pulse animation for icon during download */
+.blocking-overlay-content.downloading .blocking-overlay-icon i {
+  animation: downloadPulse 1.5s infinite;
+}
+
+@keyframes downloadPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.8; }
+}
+
+
 /* --- Auth Page Helpers --- */
 .auth-info-box {
   display: flex;

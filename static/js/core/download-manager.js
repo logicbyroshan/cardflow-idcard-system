@@ -38,33 +38,147 @@
     var _active = {};    // id → { id, name, xhr, startTime, loaded, total, toastEl, status }
     var _queue = [];     // [{ id, options }]  waiting to start
     var _currentOverlayId = null;   // ID of the download currently shown in blocking overlay
+    var _overlayStartTime = null;   // Track start time for ETA calculation
 
     // =========================================
-    // BLOCKING OVERLAY HELPERS
+    // BLOCKING OVERLAY HELPERS (Enhanced)
     // =========================================
-    function _showBlockingOverlay(id, name) {
+    function _showBlockingOverlay(id, name, itemCount) {
         var overlay = document.getElementById('blockingOverlay');
         if (!overlay) return;
         _currentOverlayId = id;
+        _overlayStartTime = Date.now();
+
+        var content = overlay.querySelector('#blockingOverlayContent');
+        var iconEl = overlay.querySelector('#blockingOverlayIconInner');
+        var titleEl = overlay.querySelector('#blockingOverlayTitle');
         var msgEl = overlay.querySelector('#blockingOverlayMessage');
         var barEl = overlay.querySelector('#blockingOverlayBar');
+        var pctEl = overlay.querySelector('#blockingOverlayPercent');
+        var timeEl = overlay.querySelector('#blockingOverlayTime');
+        var sizeEl = overlay.querySelector('#blockingOverlaySize');
+        var badgeEl = overlay.querySelector('#blockingOverlayBadge');
+        var badgeCount = overlay.querySelector('#blockingOverlayBadgeCount');
         var cancelBtn = overlay.querySelector('#blockingOverlayCancelBtn');
-        if (msgEl) msgEl.textContent = 'Downloading ' + name + '...';
-        if (barEl) barEl.style.width = '0%';
+        var doneBtn = overlay.querySelector('#blockingOverlayDoneBtn');
+
+        // Set preparing state
+        if (content) content.className = 'blocking-overlay-content preparing';
+        if (iconEl) iconEl.className = 'fa-solid fa-gear fa-spin';
+        if (titleEl) titleEl.textContent = 'Preparing Download';
+        if (msgEl) msgEl.textContent = 'Generating ' + name + '...';
+        if (barEl) { barEl.style.width = '0%'; barEl.classList.add('indeterminate'); }
+        if (pctEl) pctEl.textContent = '';
+        if (timeEl) timeEl.textContent = itemCount ? '~' + Math.ceil(itemCount * 0.5) + 's' : '';
+        if (sizeEl) sizeEl.textContent = '';
+
+        // Show badge if item count provided
+        if (badgeEl && itemCount && itemCount > 0) {
+            badgeEl.style.display = 'inline-flex';
+            if (badgeCount) badgeCount.textContent = itemCount + ' item' + (itemCount > 1 ? 's' : '');
+        } else if (badgeEl) {
+            badgeEl.style.display = 'none';
+        }
+
+        // Wire cancel button
         if (cancelBtn) {
+            cancelBtn.style.display = 'inline-flex';
+            cancelBtn.querySelector('span').textContent = 'Cancel';
             cancelBtn.onclick = function() { _cancel(id); };
         }
+        if (doneBtn) doneBtn.style.display = 'none';
+
         overlay.style.display = 'flex';
     }
 
-    function _updateBlockingOverlay(id, pct, message) {
+    function _updateBlockingOverlay(id, pct, message, sizeInfo) {
         if (_currentOverlayId !== id) return;
         var overlay = document.getElementById('blockingOverlay');
         if (!overlay) return;
+
+        var content = overlay.querySelector('#blockingOverlayContent');
+        var iconEl = overlay.querySelector('#blockingOverlayIconInner');
+        var titleEl = overlay.querySelector('#blockingOverlayTitle');
         var msgEl = overlay.querySelector('#blockingOverlayMessage');
         var barEl = overlay.querySelector('#blockingOverlayBar');
+        var pctEl = overlay.querySelector('#blockingOverlayPercent');
+        var timeEl = overlay.querySelector('#blockingOverlayTime');
+        var sizeElm = overlay.querySelector('#blockingOverlaySize');
+
+        // Switch to downloading state
+        if (content && !content.classList.contains('downloading')) {
+            content.className = 'blocking-overlay-content downloading';
+            if (iconEl) iconEl.className = 'fa-solid fa-download';
+            if (titleEl) titleEl.textContent = 'Downloading...';
+        }
+
         if (msgEl && message) msgEl.textContent = message;
-        if (barEl) barEl.style.width = pct + '%';
+        if (barEl) {
+            barEl.classList.remove('indeterminate');
+            barEl.style.width = Math.min(pct, 100) + '%';
+        }
+        if (pctEl) pctEl.textContent = Math.round(pct) + '%';
+
+        // Calculate ETA based on progress
+        if (timeEl && _overlayStartTime && pct > 5) {
+            var elapsed = (Date.now() - _overlayStartTime) / 1000;
+            var totalEst = elapsed / (pct / 100);
+            var remaining = Math.ceil(totalEst - elapsed);
+            if (remaining > 0 && remaining < 3600) {
+                timeEl.textContent = remaining < 60 ? '~' + remaining + 's' : '~' + Math.ceil(remaining / 60) + 'm';
+            } else {
+                timeEl.textContent = '';
+            }
+        }
+
+        if (sizeElm && sizeInfo) sizeElm.textContent = sizeInfo;
+    }
+
+    function _completeBlockingOverlay(id, success, message) {
+        if (_currentOverlayId !== id) return;
+        var overlay = document.getElementById('blockingOverlay');
+        if (!overlay) return;
+
+        var content = overlay.querySelector('#blockingOverlayContent');
+        var iconEl = overlay.querySelector('#blockingOverlayIconInner');
+        var titleEl = overlay.querySelector('#blockingOverlayTitle');
+        var msgEl = overlay.querySelector('#blockingOverlayMessage');
+        var barEl = overlay.querySelector('#blockingOverlayBar');
+        var pctEl = overlay.querySelector('#blockingOverlayPercent');
+        var timeEl = overlay.querySelector('#blockingOverlayTime');
+        var cancelBtn = overlay.querySelector('#blockingOverlayCancelBtn');
+        var doneBtn = overlay.querySelector('#blockingOverlayDoneBtn');
+
+        if (success) {
+            if (content) content.className = 'blocking-overlay-content complete';
+            if (iconEl) iconEl.className = 'fa-solid fa-check';
+            if (titleEl) titleEl.textContent = 'Download Complete!';
+            if (msgEl) msgEl.textContent = message || 'File saved to your device';
+            if (barEl) barEl.style.width = '100%';
+            if (pctEl) pctEl.textContent = '100%';
+            if (timeEl) timeEl.textContent = '';
+            if (cancelBtn) cancelBtn.style.display = 'none';
+            if (doneBtn) {
+                doneBtn.style.display = 'inline-flex';
+                doneBtn.onclick = function() { _hideBlockingOverlay(id); };
+            }
+            // Auto-close after 3s
+            setTimeout(function() { _hideBlockingOverlay(id); }, 3000);
+        } else {
+            if (content) content.className = 'blocking-overlay-content error';
+            if (iconEl) iconEl.className = 'fa-solid fa-xmark';
+            if (titleEl) titleEl.textContent = 'Download Failed';
+            if (msgEl) msgEl.textContent = message || 'Something went wrong';
+            if (barEl) barEl.style.width = '0%';
+            if (pctEl) pctEl.textContent = '';
+            if (timeEl) timeEl.textContent = '';
+            if (cancelBtn) {
+                cancelBtn.style.display = 'inline-flex';
+                cancelBtn.querySelector('span').textContent = 'Close';
+                cancelBtn.onclick = function() { _hideBlockingOverlay(id); };
+            }
+            if (doneBtn) doneBtn.style.display = 'none';
+        }
     }
 
     function _hideBlockingOverlay(id) {
@@ -72,6 +186,7 @@
         var overlay = document.getElementById('blockingOverlay');
         if (overlay) overlay.style.display = 'none';
         _currentOverlayId = null;
+        _overlayStartTime = null;
     }
 
     // =========================================
@@ -209,8 +324,10 @@
     // MARK TOAST AS COMPLETE / ERROR / CANCELLED
     // =========================================
     function _finishToast(dl, status, message) {
-        // Hide blocking overlay
-        _hideBlockingOverlay(dl.id);
+        // Complete blocking overlay with success/error state
+        var overlaySuccess = status === 'complete';
+        var overlayMsg = message || (overlaySuccess ? 'Downloaded successfully!' : 'Download failed');
+        _completeBlockingOverlay(dl.id, overlaySuccess, overlayMsg);
         
         var el = dl.toastEl;
         if (!el) return;
@@ -361,8 +478,17 @@
         dl.status = 'downloading';
         dl.startTime = Date.now();
 
-        // Show blocking overlay
-        _showBlockingOverlay(id, dl.name);
+        // Extract item count from body if available (card_ids array)
+        var itemCount = 0;
+        if (opts.body) {
+            var bodyObj = typeof opts.body === 'string' ? JSON.parse(opts.body) : opts.body;
+            if (bodyObj.card_ids && Array.isArray(bodyObj.card_ids)) {
+                itemCount = bodyObj.card_ids.length;
+            }
+        }
+
+        // Show blocking overlay with item count
+        _showBlockingOverlay(id, dl.name, itemCount);
 
         var xhr = new XMLHttpRequest();
         dl.xhr = xhr;
@@ -392,7 +518,8 @@
             if (e.lengthComputable) {
                 _updateToast(dl, e.loaded, e.total);
                 var pct = Math.min(Math.round((e.loaded / e.total) * 100), 100);
-                _updateBlockingOverlay(dl.id, pct, 'Downloading ' + dl.name + '... ' + pct + '%');
+                var sizeInfo = _formatBytes(e.loaded) + ' / ' + _formatBytes(e.total);
+                _updateBlockingOverlay(dl.id, pct, 'Downloading ' + dl.name + '...', sizeInfo);
                 // Clear indeterminate timer if we now have real progress
                 if (dl._indeterminateTimer) {
                     clearInterval(dl._indeterminateTimer);
@@ -413,7 +540,7 @@
                     var estPct = Math.round(85 * (1 - Math.exp(-elapsed / 15)));
                     bar.style.width = estPct + '%';
                     if (pctEl) pctEl.textContent = estPct + '%';
-                    _updateBlockingOverlay(dl.id, estPct, 'Generating ' + dl.name + '...');
+                    _updateBlockingOverlay(dl.id, estPct, 'Generating ' + dl.name + '...', null);
                 }, 500);
             }
         };
@@ -590,8 +717,17 @@
 
         var dl = _active[id];
 
-        // Show blocking overlay for image download
-        _showBlockingOverlay(id, name);
+        // Extract item count from body if available
+        var itemCount = 0;
+        if (options.body) {
+            var bodyObj = typeof options.body === 'string' ? JSON.parse(options.body) : options.body;
+            if (bodyObj.card_ids && Array.isArray(bodyObj.card_ids)) {
+                itemCount = bodyObj.card_ids.length;
+            }
+        }
+
+        // Show blocking overlay for image download with item count
+        _showBlockingOverlay(id, name, itemCount);
 
         var xhr = new XMLHttpRequest();
         dl.xhr = xhr;
@@ -718,6 +854,15 @@
         if (seconds < 60) return Math.ceil(seconds) + 's';
         if (seconds < 3600) return Math.ceil(seconds / 60) + 'm';
         return Math.floor(seconds / 3600) + 'h ' + Math.ceil((seconds % 3600) / 60) + 'm';
+    }
+
+    function _formatBytes(bytes) {
+        if (!bytes || bytes === 0) return '0 B';
+        var units = ['B', 'KB', 'MB', 'GB'];
+        var i = Math.floor(Math.log(bytes) / Math.log(1024));
+        i = Math.min(i, units.length - 1);
+        var val = bytes / Math.pow(1024, i);
+        return val.toFixed(i === 0 ? 0 : 1) + ' ' + units[i];
     }
 
     function _escHtml(str) {

@@ -75,19 +75,47 @@
     </template>
   </div>
 
-  <!-- Blocking Overlay for Downloads/Uploads -->
+  <!-- Download Progress Modal — Enhanced Blocking Overlay -->
   <div id="blockingOverlay" class="blocking-overlay" style="display:none;">
-    <div class="blocking-overlay-content">
-      <div class="blocking-overlay-spinner">
-        <i class="fa-solid fa-spinner fa-spin"></i>
+    <div class="blocking-overlay-content" id="blockingOverlayContent">
+      <!-- Icon with state classes -->
+      <div class="blocking-overlay-icon" id="blockingOverlayIcon">
+        <i class="fa-solid fa-gear fa-spin" id="blockingOverlayIconInner"></i>
       </div>
-      <div class="blocking-overlay-message" id="blockingOverlayMessage">Processing...</div>
+
+      <!-- Title -->
+      <h3 class="blocking-overlay-title" id="blockingOverlayTitle">Preparing Download</h3>
+
+      <!-- Message/Subtitle -->
+      <div class="blocking-overlay-message" id="blockingOverlayMessage">Please wait...</div>
+
+      <!-- Item count badge -->
+      <div class="blocking-overlay-badge" id="blockingOverlayBadge" style="display:none;">
+        <i class="fa-solid fa-id-card"></i>
+        <span id="blockingOverlayBadgeCount">0 items</span>
+      </div>
+
+      <!-- Progress bar -->
       <div class="blocking-overlay-progress">
         <div class="blocking-overlay-bar" id="blockingOverlayBar"></div>
       </div>
-      <button type="button" class="blocking-overlay-cancel" id="blockingOverlayCancelBtn">
-        <i class="fa-solid fa-xmark"></i> Cancel
-      </button>
+
+      <!-- Stats row -->
+      <div class="blocking-overlay-stats" id="blockingOverlayStats">
+        <span class="blocking-overlay-percent" id="blockingOverlayPercent">0%</span>
+        <span class="blocking-overlay-time" id="blockingOverlayTime"></span>
+        <span class="blocking-overlay-size" id="blockingOverlaySize"></span>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="blocking-overlay-actions">
+        <button type="button" class="blocking-overlay-cancel" id="blockingOverlayCancelBtn">
+          <i class="fa-solid fa-xmark"></i> <span>Cancel</span>
+        </button>
+        <button type="button" class="blocking-overlay-done" id="blockingOverlayDoneBtn" style="display:none;">
+          <i class="fa-solid fa-check"></i> <span>Done</span>
+        </button>
+      </div>
     </div>
   </div>
   <!-- Vendor static URLs for LazyLoad (WhiteNoise-hashed paths) -->
