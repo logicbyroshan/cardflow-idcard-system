@@ -115,16 +115,30 @@ def _client_ctx(user):
 # ── Image upload validation ──────────────────────────────────────────────────
 _ALLOWED_IMAGE_TYPES = frozenset({'image/jpeg', 'image/png', 'image/webp', 'image/gif'})
 _ALLOWED_IMAGE_EXTS  = frozenset({'.jpg', '.jpeg', '.png', '.webp', '.gif'})
+_MAX_IMAGE_SIZE = 15 * 1024 * 1024  # 15 MB
 
 def _validate_image(photo):
     """Return (True, '') or (False, error_message) for an uploaded file."""
     import os as _os
+    # File size check
+    if hasattr(photo, 'size') and photo.size and photo.size > _MAX_IMAGE_SIZE:
+        return False, 'Image too large. Maximum size is 15 MB.'
     ct = (photo.content_type or '').lower().split(';')[0].strip()
     if ct not in _ALLOWED_IMAGE_TYPES:
         return False, f'File type "{ct}" not allowed. Use JPEG, PNG or WebP.'
     ext = _os.path.splitext(photo.name.lower())[1]
     if ext not in _ALLOWED_IMAGE_EXTS:
         return False, f'File extension "{ext}" not allowed.'
+    # Verify actual image content with Pillow
+    try:
+        from PIL import Image
+        from io import BytesIO
+        photo.seek(0)
+        img = Image.open(BytesIO(photo.read()))
+        img.verify()
+        photo.seek(0)
+    except Exception:
+        return False, 'Uploaded file is not a valid image.'
     return True, ''
 
 
@@ -359,7 +373,9 @@ def home(request):
 
     ctx['recent_client_updates'] = recent_client_updates
 
-    return render(request, 'mobile_app/home.html', ctx)
+    response = render(request, 'mobile_app/home.html', ctx)
+    response['Cache-Control'] = 'no-store'
+    return response
 
 
 @require_mobile_client
@@ -461,19 +477,38 @@ def table_picker(request, status):
     """
     user = request.user
     client, perms = _client_ctx(user)
-    if not client:
-        return redirect('/panel/auth/login/')
+    if not client and not PermissionService.is_any_admin(user):
+        return redirect('/app/login/')
 
     # Check status-specific list permission before showing tables
     status_perm = PermissionService.STATUS_LIST_PERM_MAP.get(status)
     if status_perm and not PermissionService.has(user, status_perm):
         return redirect('mobile_app:home')
 
-    tables = IDCardTable.objects.filter(
-        group__client=client, is_active=True,
-    ).select_related('group').annotate(
-        status_count=Count('id_cards', filter=Q(id_cards__status=status)),
-    ).order_by('group__name', 'name')
+    # Admin roles: show tables across ALL accessible clients so counts
+    # match the global aggregates displayed on the home dashboard.
+    if PermissionService.is_any_admin(user):
+        tables = IDCardTable.objects.filter(
+            is_active=True,
+        ).select_related('group__client').annotate(
+            status_count=Count('id_cards', filter=Q(id_cards__status=status)),
+        ).order_by('group__client__name', 'group__name', 'name')
+
+        # admin_staff: restrict to their assigned clients
+        if PermissionService.is_admin_staff(user):
+            staff = getattr(user, 'staff_profile', None)
+            if staff:
+                assigned_client_ids = list(
+                    staff.assigned_clients.values_list('id', flat=True)
+                )
+                if assigned_client_ids:
+                    tables = tables.filter(group__client_id__in=assigned_client_ids)
+    else:
+        tables = IDCardTable.objects.filter(
+            group__client=client, is_active=True,
+        ).select_related('group').annotate(
+            status_count=Count('id_cards', filter=Q(id_cards__status=status)),
+        ).order_by('group__name', 'name')
 
     # Restrict client_staff to their assigned groups
     if PermissionService.is_client_staff(user):
@@ -502,8 +537,8 @@ def card_list(request, table_id, status):
     """Card list for a specific table + status — server-rendered."""
     user = request.user
     client, perms = _client_ctx(user)
-    if not client:
-        return redirect('/panel/auth/login/')
+    if not client and not PermissionService.is_any_admin(user):
+        return redirect('/app/login/')
 
     table = get_object_or_404(IDCardTable.objects.select_related('group__client'), id=table_id)
     # Admin roles can access any table; client roles only their own
@@ -594,7 +629,7 @@ def card_list(request, table_id, status):
         if _row['status'] in tab_counts:
             tab_counts[_row['status']] = _row['n']
 
-    return render(request, 'mobile_app/list_page.html', {
+    response = render(request, 'mobile_app/list_page.html', {
         'user_name': user.get_full_name() or user.username,
         'client': client,
         'table': table,
@@ -615,6 +650,9 @@ def card_list(request, table_id, status):
         'back_url': '/app/clients/' if PermissionService.is_any_admin(user) else '/app/',
         **perms,
     })
+    # Prevent browser from serving stale HTML after status changes
+    response['Cache-Control'] = 'no-store'
+    return response
 
 
 @require_mobile_client
@@ -623,7 +661,7 @@ def camera_capture(request, table_id, card_id=None):
     user = request.user
     client, perms = _client_ctx(user)
     if not client:
-        return redirect('/panel/auth/login/')
+        return redirect('/app/login/')
 
     table = get_object_or_404(IDCardTable.objects.select_related('group__client'), id=table_id)
     if not PermissionService.is_any_admin(user) and not ClientAccessService.can_access_table(user, table):
@@ -655,7 +693,7 @@ def notifications(request):
     user = request.user
     client, perms = _client_ctx(user)
     if not client:
-        return redirect('/panel/auth/login/')
+        return redirect('/app/login/')
 
     result = ClientDashboardService.get_dashboard_data(user, client=client)
     activities = []
@@ -906,6 +944,9 @@ def api_table_update_fields(request, table_id):
         table = get_object_or_404(IDCardTable, id=table_id)
         if not PermissionService.is_any_admin(request.user) and not ClientAccessService.can_access_table(request.user, table):
             return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+        # Require edit permission to modify table fields
+        if not PermissionService.has(request.user, 'perm_idcard_edit'):
+            return JsonResponse({'success': False, 'message': 'Edit permission required'}, status=403)
 
         body = json.loads(request.body or '{}')
         raw_fields = body.get('fields', [])
@@ -954,7 +995,7 @@ def card_detail(request, card_id):
     user = request.user
     client, perms = _client_ctx(user)
     if not client:
-        return redirect('/panel/auth/login/')
+        return redirect('/app/login/')
 
     result = ClientCardService.get_card_detail(user, card_id)
     if not result.success:
@@ -977,7 +1018,7 @@ def staff_manage(request):
     user = request.user
     client, perms = _client_ctx(user)
     if not client:
-        return redirect('/panel/auth/login/')
+        return redirect('/app/login/')
 
     # Only client role can manage staff
     if not PermissionService.is_client(user) and not PermissionService.is_any_admin(user):
@@ -1025,7 +1066,7 @@ def groups_overview(request):
     user = request.user
     client, perms = _client_ctx(user)
     if not client:
-        return redirect('/panel/auth/login/')
+        return redirect('/app/login/')
 
     groups = IDCardGroup.objects.filter(client=client).annotate(
         table_count=Count('tables'),
@@ -1154,7 +1195,7 @@ def search_page(request):
     user = request.user
     client, perms = _client_ctx(user)
     if not client:
-        return redirect('/panel/auth/login/')
+        return redirect('/app/login/')
 
     query = request.GET.get('q', '').strip()
     results = []
@@ -1349,7 +1390,7 @@ def api_staff_toggle(request, staff_id):
             return JsonResponse({'success': False, 'message': 'Staff not found'}, status=404)
         except Exception as exc:
             logger.exception('Admin staff toggle error')
-            return JsonResponse({'success': False, 'message': str(exc)}, status=500)
+            return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 
 
 @require_mobile_client
@@ -1375,7 +1416,7 @@ def api_staff_delete(request, staff_id):
             return JsonResponse({'success': False, 'message': 'Staff not found'}, status=404)
         except Exception as exc:
             logger.exception('Admin staff delete error')
-            return JsonResponse({'success': False, 'message': str(exc)}, status=500)
+            return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 
 
 @require_mobile_client
@@ -1487,7 +1528,7 @@ def api_client_toggle(request, client_id):
         return JsonResponse({'success': True, 'message': f'{client.name} {label}', 'new_status': client.status})
     except Exception as exc:
         logger.exception('api_client_toggle error: %s', exc)
-        return JsonResponse({'success': False, 'message': str(exc)}, status=500)
+        return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 
 
 @require_mobile_client
@@ -1504,7 +1545,7 @@ def api_client_delete(request, client_id):
         return JsonResponse({'success': True, 'message': f'{client_name} deleted permanently'})
     except Exception as exc:
         logger.exception('api_client_delete error: %s', exc)
-        return JsonResponse({'success': False, 'message': str(exc)}, status=500)
+        return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 
 
 @require_mobile_client
@@ -1630,7 +1671,7 @@ def api_portfolio_upload(request):
         return JsonResponse({'success': True, 'count': len(created), 'items': created})
     except Exception as exc:
         logger.exception('api_portfolio_upload error: %s', exc)
-        return JsonResponse({'success': False, 'message': str(exc)}, status=500)
+        return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 
 
 @require_mobile_client
@@ -1678,5 +1719,5 @@ def api_reel_upload(request):
         })
     except Exception as exc:
         logger.exception('api_reel_upload error: %s', exc)
-        return JsonResponse({'success': False, 'message': str(exc)}, status=500)
+        return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 

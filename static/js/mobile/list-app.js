@@ -428,7 +428,7 @@ function listApp() {
                 const data = await res.json();
                 if (data.success) {
                     this.showToast(data.message || (this.selectedIds.length + ' ' + label), 'success');
-                    setTimeout(() => location.reload(), 800);
+                    setTimeout(() => { window.location.href = window.location.pathname + '?t=' + Date.now(); }, 800);
                 } else {
                     this.showToast(data.message || 'Action failed', 'error');
                 }
@@ -597,7 +597,7 @@ function listApp() {
                 if (data.success) {
                     this.showToast(data.message || (this.editMode ? 'Updated!' : 'Added!'), 'success');
                     this.closeAddForm();
-                    setTimeout(() => location.reload(), 800);
+                    setTimeout(() => { window.location.href = window.location.pathname + '?t=' + Date.now(); }, 800);
                 } else { this.showToast(data.message || 'Failed', 'error'); }
             } catch (e) { this.showToast('Network error', 'error'); }
             this.loading = false;
@@ -714,7 +714,7 @@ function listApp() {
             this.loading = false;
             if (success > 0) {
                 this.showToast(success + ' card(s) deleted', 'success');
-                setTimeout(() => location.reload(), 800);
+                setTimeout(() => { window.location.href = window.location.pathname + '?t=' + Date.now(); }, 800);
             } else { this.showToast('Failed to delete cards', 'error'); }
             this.selectedIds = [];
         },

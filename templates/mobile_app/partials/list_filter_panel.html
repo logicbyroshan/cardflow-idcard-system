@@ -44,7 +44,7 @@
                 <div class="flex flex-wrap gap-2">
                     <button @click="filters.selectedClass = ''" :class="filters.selectedClass === '' ? 'filter-chip-active' : 'filter-chip'">All</button>
                     {% for cls in classes %}
-                    <button @click="filters.selectedClass = '{{ cls }}'" :class="filters.selectedClass === '{{ cls }}' ? 'filter-chip-active' : 'filter-chip'">{{ cls }}</button>
+                    <button @click="filters.selectedClass = '{{ cls|escapejs }}'" :class="filters.selectedClass === '{{ cls|escapejs }}' ? 'filter-chip-active' : 'filter-chip'">{{ cls }}</button>
                     {% endfor %}
                 </div>
             </div>
@@ -53,7 +53,7 @@
                 <div class="flex flex-wrap gap-2">
                     <button @click="filters.selectedSection = ''" :class="filters.selectedSection === '' ? 'filter-chip-active' : 'filter-chip'">All</button>
                     {% for sec in sections %}
-                    <button @click="filters.selectedSection = '{{ sec }}'" :class="filters.selectedSection === '{{ sec }}' ? 'filter-chip-active' : 'filter-chip'">{{ sec }}</button>
+                    <button @click="filters.selectedSection = '{{ sec|escapejs }}'" :class="filters.selectedSection === '{{ sec|escapejs }}' ? 'filter-chip-active' : 'filter-chip'">{{ sec }}</button>
                     {% endfor %}
                 </div>
             </div>

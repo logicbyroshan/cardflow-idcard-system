@@ -28,7 +28,7 @@
                     </div>
                     <div>
                         <p class="text-sm font-bold text-gray-800">{{ table.name }}</p>
-                        <p class="text-[10px] text-gray-400">{{ table.group.name }}</p>
+                        <p class="text-[10px] text-gray-400">{% if is_super_admin or is_admin_staff %}{{ table.group.client.name }} &mdash; {% endif %}{{ table.group.name }}</p>
                     </div>
                 </div>
                 <div class="flex items-center gap-2">

@@ -43,11 +43,11 @@
         <!-- â”€â”€ PORTFOLIO TAB â”€â”€ -->
         <div x-show="tab==='portfolio'" x-cloak>
             <div class="px-3 pt-3 pb-24">
-                <p class="text-[11px] text-gray-400 mb-3 font-medium">Tap a category to upload photos</p>
+                <p class="text-[11px] text-gray-400 mb-3 font-medium">{% if perm_website_edit %}Tap a category to upload photos{% else %}Your portfolio categories{% endif %}</p>
                 <div class="grid grid-cols-2 gap-2.5">
                     <template x-for="cat in categories" :key="cat.id">
-                        <button @click="openUploadSheet(cat)"
-                                class="bg-white rounded-lg p-4 text-left shadow-sm border border-gray-100 active:scale-95 transition-transform relative">
+                        <button {% if perm_website_edit %}@click="openUploadSheet(cat)"{% endif %}
+                                class="bg-white rounded-lg p-4 text-left shadow-sm border border-gray-100 {% if perm_website_edit %}active:scale-95{% endif %} transition-transform relative">
                             <!-- icon -->
                             <div class="w-10 h-10 rounded-md flex items-center justify-center text-white mb-2.5"
                                  style="background:linear-gradient(135deg,#667eea,#764ba2);">
@@ -58,9 +58,11 @@
                             <!-- count badge -->
                             <p class="text-[10px] text-gray-400 mt-0.5" x-text="cat.count + ' photo' + (cat.count !== 1 ? 's' : '')"></p>
                             <!-- upload arrow -->
+                            {% if perm_website_edit %}
                             <div class="absolute top-3 right-3 w-6 h-6 rounded-full bg-indigo-50 flex items-center justify-center">
                                 <i class="fa-solid fa-plus text-indigo-400 text-[9px]"></i>
                             </div>
+                            {% endif %}
                         </button>
                     </template>
                 </div>
