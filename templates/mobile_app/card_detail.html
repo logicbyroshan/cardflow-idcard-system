@@ -7,7 +7,7 @@
 <div class="min-h-screen bg-gray-50 pb-20" x-data="cardDetailApp()">
     <!-- Header -->
     <div class="sticky top-0 z-40 flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-brand-light to-brand-dark">
-        <button onclick="history.back()" class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all">
+        <button onclick="history.back()" class="w-8 h-8 rounded-md bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all">
             <i class="fa-solid fa-arrow-left text-sm"></i>
         </button>
         <div class="flex-1">
@@ -15,7 +15,7 @@
             <p class="text-white/70 text-[10px]">{{ card.table_name }} — {{ card.group_name }}</p>
         </div>
         <!-- Status Badge -->
-        <span class="text-xs font-bold px-2.5 py-1 rounded-lg
+        <span class="text-xs font-bold px-2.5 py-1 rounded
             {% if card.status == 'pending' %}bg-amber-100 text-amber-700
             {% elif card.status == 'verified' %}bg-green-100 text-green-700
             {% elif card.status == 'approved' %}bg-blue-100 text-blue-700
@@ -28,12 +28,12 @@
 
     <!-- Photo & Name Section -->
     <div class="px-4 pt-4">
-        <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+        <div class="bg-white rounded-md shadow-sm border border-gray-100 overflow-hidden">
             <div class="flex items-center gap-4 p-4">
                 {% if card.photo_url %}
-                <img src="{{ card.photo_url }}" alt="{{ card.name }}" class="w-20 h-20 rounded-md object-cover border-2 border-gray-100 shadow-sm">
+                <img src="{{ card.photo_url }}" alt="{{ card.name }}" class="w-20 h-20 rounded object-cover border-2 border-gray-100 shadow-sm">
                 {% else %}
-                <div class="w-20 h-20 rounded-md bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-gray-400 border-2 border-gray-100">
+                <div class="w-20 h-20 rounded bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-gray-400 border-2 border-gray-100">
                     <i class="fa-solid fa-user text-2xl"></i>
                 </div>
                 {% endif %}
@@ -99,7 +99,7 @@
 
     <!-- All Field Data -->
     <div class="px-4 pt-3">
-        <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+        <div class="bg-white rounded-md shadow-sm border border-gray-100 overflow-hidden">
             <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
                 <h3 class="text-sm font-bold text-gray-800">
                     <i class="fa-solid fa-list text-brand-light mr-1.5"></i>All Fields
@@ -136,12 +136,12 @@
     <!-- Action Buttons -->
     <div class="px-4 pt-4 pb-4 space-y-2">
         {% if perm_idcard_edit %}
-        <button @click="changeStatus()" class="w-full py-3 text-center text-sm font-semibold text-white bg-gradient-to-r from-brand-light to-brand-dark rounded-md shadow-md active:scale-[0.98] transition-all">
+        <button @click="changeStatus()" class="w-full py-3 text-center text-sm font-semibold text-white bg-gradient-to-r from-brand-light to-brand-dark rounded shadow-md active:scale-[0.98] transition-all">
             <i class="fa-solid fa-arrows-rotate mr-1.5"></i>Change Status
         </button>
         {% endif %}
         {% if perm_idcard_delete %}
-        <button @click="deleteCard()" class="w-full py-3 text-center text-sm font-semibold text-red-500 bg-red-50 border border-red-100 rounded-md hover:bg-red-100 transition">
+        <button @click="deleteCard()" class="w-full py-3 text-center text-sm font-semibold text-red-500 bg-red-50 border border-red-100 rounded hover:bg-red-100 transition">
             <i class="fa-solid fa-trash-can mr-1.5"></i>Delete Card
         </button>
         {% endif %}
@@ -150,30 +150,30 @@
     <!-- Status Change Modal -->
     <div x-show="showStatusModal" x-cloak class="fixed inset-0 z-[70]">
         <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="showStatusModal = false"></div>
-        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl p-4 max-w-[430px] mx-auto" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0">
+        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-lg shadow-2xl p-4 max-w-[430px] mx-auto" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0">
             <div class="flex justify-center pt-1 pb-3"><div class="w-10 h-1 rounded-full bg-gray-300"></div></div>
             <h3 class="text-sm font-bold text-gray-800 mb-3">Change Status</h3>
             <div class="grid grid-cols-2 gap-2">
-                <button @click="setStatus('pending')" class="py-3 text-xs font-semibold rounded-md border transition-all active:scale-95 bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100">
+                <button @click="setStatus('pending')" class="py-3 text-xs font-semibold rounded border transition-all active:scale-95 bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100">
                     <i class="fa-solid fa-clock mr-1"></i>Pending
                 </button>
-                <button @click="setStatus('verified')" class="py-3 text-xs font-semibold rounded-md border transition-all active:scale-95 bg-green-50 text-green-700 border-green-200 hover:bg-green-100">
+                <button @click="setStatus('verified')" class="py-3 text-xs font-semibold rounded border transition-all active:scale-95 bg-green-50 text-green-700 border-green-200 hover:bg-green-100">
                     <i class="fa-solid fa-check-circle mr-1"></i>Verified
                 </button>
-                <button @click="setStatus('approved')" class="py-3 text-xs font-semibold rounded-md border transition-all active:scale-95 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
+                <button @click="setStatus('approved')" class="py-3 text-xs font-semibold rounded border transition-all active:scale-95 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
                     <i class="fa-solid fa-check-double mr-1"></i>Approved
                 </button>
-                <button @click="setStatus('download')" class="py-3 text-xs font-semibold rounded-md border transition-all active:scale-95 bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100">
+                <button @click="setStatus('download')" class="py-3 text-xs font-semibold rounded border transition-all active:scale-95 bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100">
                     <i class="fa-solid fa-download mr-1"></i>Download
                 </button>
             </div>
-            <button @click="showStatusModal = false" class="w-full mt-3 py-2.5 text-xs font-semibold text-gray-500 bg-gray-100 border border-gray-200 rounded-md">Cancel</button>
+            <button @click="showStatusModal = false" class="w-full mt-3 py-2.5 text-xs font-semibold text-gray-500 bg-gray-100 border border-gray-200 rounded">Cancel</button>
         </div>
     </div>
 
     <!-- Toast -->
     <div x-show="toast.show" x-transition class="fixed top-4 left-1/2 -translate-x-1/2 z-[80] max-w-[380px] w-full px-4">
-        <div class="rounded-md px-4 py-3 shadow-lg text-xs font-medium text-white"
+        <div class="rounded px-4 py-3 shadow-lg text-xs font-medium text-white"
              :class="toast.type === 'success' ? 'bg-green-500' : toast.type === 'error' ? 'bg-red-500' : 'bg-brand-light'"
              x-text="toast.message"></div>
     </div>

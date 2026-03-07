@@ -32,7 +32,7 @@
         <!-- Header -->
         <div class="relative flex items-center justify-between px-5 pt-[calc(env(safe-area-inset-top,0px)+14px)] pb-4 bg-gradient-to-br from-orange-400 to-rose-500 flex-shrink-0">
             <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center text-white border border-white/30">
+                <div class="w-9 h-9 rounded-md bg-white/20 flex items-center justify-center text-white border border-white/30">
                     <i class="fa-solid fa-bell text-sm"></i>
                 </div>
                 <div>
@@ -94,7 +94,7 @@
                 <div class="px-4 py-4">
                     <a href="{% url 'mobile_app:notifications' %}"
                        @click="close()"
-                       class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-[12px] font-semibold border border-orange-200 text-orange-500 active:bg-orange-50 transition-colors">
+                       class="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-[12px] font-semibold border border-orange-200 text-orange-500 active:bg-orange-50 transition-colors">
                         <i class="fa-solid fa-bell text-sm"></i>
                         View All Notifications
                     </a>

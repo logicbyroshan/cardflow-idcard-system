@@ -70,7 +70,7 @@
             <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-xs"></i>
             <input type="text" x-model="cardSearch" @input="filterCards()"
                    placeholder="Type name to search..."
-                   class="w-full pl-8 pr-3 py-2.5 rounded-xl bg-white/10 text-white text-sm border border-white/20 focus:border-brand-light outline-none placeholder-white/30">
+                   class="w-full pl-8 pr-3 py-2.5 rounded-lg bg-white/10 text-white text-sm border border-white/20 focus:border-brand-light outline-none placeholder-white/30">
             <button x-show="cardSearch" @click="cardSearch=''; filterCards()"
                     class="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 text-sm">
                 <i class="fa-solid fa-times"></i>
@@ -80,7 +80,7 @@
         <div class="max-h-44 overflow-y-auto space-y-1.5 custom-scroll">
             <template x-for="card in filteredCards" :key="card.id">
                 <button @click="selectedCardId = card.id; cardSearch = card.name"
-                        class="w-full text-left px-3 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 active:bg-white/30 transition text-white text-sm flex items-center gap-2">
+                        class="w-full text-left px-3 py-2.5 rounded-lg bg-white/10 hover:bg-white/20 active:bg-white/30 transition text-white text-sm flex items-center gap-2">
                     <i class="fa-solid fa-user text-brand-light text-xs flex-shrink-0"></i>
                     <span x-text="card.name" class="truncate flex-1 font-medium"></span>
                 </button>
@@ -111,7 +111,7 @@
                 <i class="fa-solid fa-camera-slash text-4xl text-gray-500 mb-4"></i>
                 <p class="text-white text-sm font-medium mb-2">Camera Access Required</p>
                 <p class="text-gray-400 text-xs mb-4">Please allow camera access to capture photos</p>
-                <button @click="startCamera()" class="px-6 py-2 bg-gradient-to-r from-brand-light to-brand-dark text-white text-xs font-semibold rounded-xl">Try Again</button>
+                <button @click="startCamera()" class="px-6 py-2 bg-gradient-to-r from-brand-light to-brand-dark text-white text-xs font-semibold rounded-lg">Try Again</button>
             </div>
         </div>
     </div>
@@ -125,7 +125,7 @@
             <input type="file" x-ref="galleryFile" accept="image/*" class="hidden" @change="onGalleryPick($event)">
             <template x-if="!photoTaken">
                 <button @click="capturePhoto()" class="w-16 h-16 rounded-lg bg-white flex items-center justify-center shadow-lg shadow-white/20 active:scale-95 transition-transform">
-                    <div class="w-12 h-12 rounded-xl border-4 border-gray-300"></div>
+                    <div class="w-12 h-12 rounded-lg border-4 border-gray-300"></div>
                 </button>
             </template>
             <template x-if="photoTaken">
@@ -168,7 +168,7 @@
     <!-- Toast -->
     <div x-show="toast.show" x-transition class="fixed top-4 left-1/2 -translate-x-1/2 z-[90] max-w-[90%]">
         <div :class="{'bg-green-500': toast.type==='success', 'bg-red-500': toast.type==='error'}"
-             class="text-white text-xs font-medium px-4 py-2.5 rounded-xl shadow-lg">
+             class="text-white text-xs font-medium px-4 py-2.5 rounded-lg shadow-lg">
             <span x-text="toast.message"></span>
         </div>
     </div>

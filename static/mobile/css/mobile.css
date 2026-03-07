@@ -51,7 +51,7 @@ html, body {
     gap: 6px;
     padding: 12px 4px;
     background: #fff;
-    border-radius: 7px;
+    border-radius: 4px;
     border: 1px solid rgba(0,0,0,0.04);
     box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     transition: all 0.2s ease;
@@ -70,7 +70,7 @@ html, body {
     display: flex;
     flex-direction: column;
     padding: 14px;
-    border-radius: 8px;
+    border-radius: 4px;
     border: 1px solid;
     box-shadow: 0 2px 12px rgba(0,0,0,0.05);
     transition: all 0.2s ease;
@@ -86,7 +86,7 @@ html, body {
 .grid-icon {
     width: 40px;
     height: 40px;
-    border-radius: 8px;
+    border-radius: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -130,7 +130,7 @@ html, body {
     font-size: 9px;
     font-weight: 600;
     padding: 2px 8px;
-    border-radius: 20px;
+    border-radius: 4px;
     border: 1px solid;
     white-space: nowrap;
     text-transform: uppercase;
@@ -145,7 +145,7 @@ html, body {
     justify-content: center;
     gap: 1px;
     padding: 6px 2px;
-    border-radius: 8px;
+    border-radius: 4px;
     border: none;
     cursor: pointer;
     transition: all 0.15s ease;
@@ -222,7 +222,7 @@ html, body {
 }
 .filter-chip {
     padding: 6px 12px;
-    border-radius: 5px;
+    border-radius: 3px;
     font-size: 11px;
     font-weight: 500;
     background: #f3f4f6;
@@ -236,7 +236,7 @@ html, body {
 }
 .filter-chip-active {
     padding: 6px 12px;
-    border-radius: 5px;
+    border-radius: 3px;
     font-size: 11px;
     font-weight: 600;
     background: linear-gradient(135deg, #667eea, #764ba2);
@@ -248,7 +248,7 @@ html, body {
 .filter-select {
     width: 100%;
     padding: 8px 12px;
-    border-radius: 6px;
+    border-radius: 4px;
     border: 1px solid #d1d5db;
     font-size: 12px;
     color: #374151;
@@ -267,7 +267,7 @@ html, body {
 .filter-input {
     width: 100%;
     padding: 8px 12px;
-    border-radius: 6px;
+    border-radius: 4px;
     border: 1px solid #d1d5db;
     font-size: 12px;
     color: #374151;
@@ -499,7 +499,7 @@ html, body {
     transform: translateX(-50%);
     width: 52px;
     height: 52px;
-    border-radius: 12px;
+    border-radius: 6px;
     background: linear-gradient(135deg, #667eea, #764ba2);
     color: #fff;
     display: flex;
@@ -523,7 +523,7 @@ html, body {
 .pwa-drawer-root {}
 
 .pwa-drawer-panel {
-    border-radius: 12px 0 0 12px;
+    border-radius: 6px 0 0 6px;
 }
 
 .pwa-drawer-header {
@@ -544,7 +544,7 @@ html, body {
     align-items: center;
     gap: 12px;
     padding: 10px 12px;
-    border-radius: 7px;
+    border-radius: 4px;
     text-decoration: none;
     color: #1f2937;
     transition: background 0.12s ease;
@@ -563,7 +563,7 @@ html, body {
 .pwa-drawer-icon-wrap {
     width: 36px;
     height: 36px;
-    border-radius: 7px;
+    border-radius: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -634,7 +634,7 @@ html, body {
     min-width: 80px;
     max-width: 90px;
     background: #ffffff;
-    border-radius: 8px;
+    border-radius: 4px;
     border: 1px solid #f0f0f4;
     box-shadow: 0 2px 10px rgba(0,0,0,0.04);
     padding: 12px 10px;
@@ -647,7 +647,7 @@ html, body {
 .pwa-stat-icon-wrap {
     width: 34px;
     height: 34px;
-    border-radius: 7px;
+    border-radius: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -673,7 +673,7 @@ html, body {
 .pwa-client-card {
     width: 160px;
     background: #ffffff;
-    border-radius: 8px;
+    border-radius: 4px;
     border: 1px solid #f0f0f4;
     box-shadow: 0 2px 10px rgba(0,0,0,0.04);
     padding: 14px;
@@ -686,7 +686,7 @@ html, body {
 }
 
 .pwa-client-pill {
-    border-radius: 8px;
+    border-radius: 4px;
     padding: 5px 6px;
     display: flex;
     flex-direction: column;
@@ -733,7 +733,7 @@ html, body {
     justify-content: center;
     gap: 7px;
     padding: 14px 12px;
-    border-radius: 8px;
+    border-radius: 4px;
     font-size: 13px;
     font-weight: 700;
     text-decoration: none;
@@ -792,7 +792,7 @@ html, body {
     text-transform: uppercase;
     letter-spacing: 0.04em;
     padding: 2px 6px;
-    border-radius: 3px;
+    border-radius: 2px;
     white-space: nowrap;
 }
 .pwa-badge-amber  { background: #fef3c7; color: #d97706; }
@@ -809,7 +809,7 @@ html, body {
     align-items: center;
     gap: 4px;
     padding: 5px 12px;
-    border-radius: 5px;
+    border-radius: 3px;
     font-size: 11px;
     font-weight: 700;
     white-space: nowrap;
@@ -825,7 +825,7 @@ html, body {
     align-items: center;
     gap: 4px;
     padding: 5px 12px;
-    border-radius: 5px;
+    border-radius: 3px;
     font-size: 11px;
     font-weight: 600;
     white-space: nowrap;
@@ -880,7 +880,7 @@ html, body {
     font-size: 9px;
     font-weight: 700;
     padding: 2px 5px;
-    border-radius: 4px;
+    border-radius: 3px;
     border: 1px solid;
     white-space: nowrap;
 }
@@ -926,7 +926,7 @@ html, body {
 
 .pwa-stat-card-sm {
     background: #ffffff;
-    border-radius: 5px;
+    border-radius: 3px;
     padding: 6px 4px;
     display: flex;
     flex-direction: column;
@@ -953,7 +953,7 @@ html, body {
 /* ── RECENT CLIENTS TABLE (home page) ──────────────────────────── */
 .pwa-clients-table-wrap {
     background: #ffffff;
-    border-radius: 8px;
+    border-radius: 4px;
     border: 1px solid #f0f0f4;
     box-shadow: 0 2px 10px rgba(0,0,0,0.04);
     overflow: hidden;
@@ -1050,7 +1050,7 @@ button, .btn, [type="button"], [type="submit"] {
     justify-content: center;
     gap: 6px;
     padding: 8px 16px;
-    border-radius: 8px;
+    border-radius: 4px;
     font-size: 13px;
     font-weight: 600;
     border: none;
@@ -1121,9 +1121,9 @@ button, .btn, [type="button"], [type="submit"] {
 .mb-2 { margin-bottom: 0.5rem; }
 
 /* ── BORDER RADIUS UTILITIES ────────────────────────────────────── */
-.rounded-md { border-radius: 0.375rem; }
-.rounded-lg { border-radius: 0.5rem; }
-.rounded-xl { border-radius: 0.75rem; }
+.rounded-md { border-radius: 0.25rem; }
+.rounded-lg { border-radius: 0.375rem; }
+.rounded-xl { border-radius: 0.5rem; }
 .rounded-full { border-radius: 9999px; }
 
 /* ── SIZING UTILITIES ───────────────────────────────────────────── */
@@ -1195,7 +1195,7 @@ button, .btn, [type="button"], [type="submit"] {
     width: 100%;
     max-width: 430px;
     background: #ffffff;
-    border-radius: 20px 20px 0 0;
+    border-radius: 10px 10px 0 0;
     box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.2);
     padding: 0;
     animation: slideUpModal 0.3s ease-out;
@@ -1231,7 +1231,7 @@ button, .btn, [type="button"], [type="submit"] {
 .download-modal-icon {
     width: 56px;
     height: 56px;
-    border-radius: 16px;
+    border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;

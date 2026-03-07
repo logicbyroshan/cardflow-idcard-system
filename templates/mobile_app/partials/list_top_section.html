@@ -30,7 +30,7 @@
         <!-- Pending count badge (tappable nav shortcut) -->
         {% if perm_idcard_pending_list %}
         <a href="{% url 'mobile_app:card_list' table_id=table.id status='pending' %}"
-           class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-bold text-[10px] active:scale-95 transition-all flex-shrink-0 border
+           class="flex items-center gap-1 px-2.5 py-1.5 rounded-md font-bold text-[10px] active:scale-95 transition-all flex-shrink-0 border
                   {% if list_type == 'pending' %}bg-amber-400 text-white border-amber-300{% else %}bg-white/15 text-white border-white/20{% endif %}">
             <i class="fa-solid fa-clock" style="font-size:9px;"></i>
             <span>{{ tab_counts.pending }}</span>
@@ -40,7 +40,7 @@
         <!-- Verified count badge (tappable nav shortcut) -->
         {% if perm_idcard_verified_list %}
         <a href="{% url 'mobile_app:card_list' table_id=table.id status='verified' %}"
-           class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-bold text-[10px] active:scale-95 transition-all flex-shrink-0 border
+           class="flex items-center gap-1 px-2.5 py-1.5 rounded-md font-bold text-[10px] active:scale-95 transition-all flex-shrink-0 border
                   {% if list_type == 'verified' %}bg-green-400 text-white border-green-300{% else %}bg-white/15 text-white border-white/20{% endif %}">
             <i class="fa-solid fa-check-circle" style="font-size:9px;"></i>
             <span>{{ tab_counts.verified }}</span>
@@ -84,7 +84,7 @@
                 x-model="searchQuery"
                 @input="filterStudents()"
                 placeholder="Search by name, roll no..."
-                class="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-md text-xs text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition"
+                class="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded text-xs text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition"
             >
         </div>
 
@@ -92,7 +92,7 @@
         <div class="flex gap-1.5">
             {% if perm_idcard_pending_list %}
             <a href="{% url 'mobile_app:card_list' table_id=table.id status='pending' %}"
-               class="flex-1 text-center py-1.5 text-[9px] font-bold rounded-lg transition-all border leading-tight
+               class="flex-1 text-center py-1.5 text-[9px] font-bold rounded transition-all border leading-tight
                {% if list_type == 'pending' %}bg-amber-500 text-white border-amber-500{% else %}bg-amber-50 text-amber-600 border-amber-100{% endif %}">
                 <i class="fa-solid fa-clock block text-[9px] mb-0.5"></i>Pending
                 <span class="block text-[8px] font-extrabold opacity-80">{{ tab_counts.pending }}</span>
@@ -101,7 +101,7 @@
 
             {% if perm_idcard_verified_list %}
             <a href="{% url 'mobile_app:card_list' table_id=table.id status='verified' %}"
-               class="flex-1 text-center py-1.5 text-[9px] font-bold rounded-lg transition-all border leading-tight
+               class="flex-1 text-center py-1.5 text-[9px] font-bold rounded transition-all border leading-tight
                {% if list_type == 'verified' %}bg-green-500 text-white border-green-500{% else %}bg-green-50 text-green-600 border-green-100{% endif %}">
                 <i class="fa-solid fa-check-circle block text-[9px] mb-0.5"></i>Verified
                 <span class="block text-[8px] font-extrabold opacity-80">{{ tab_counts.verified }}</span>
@@ -110,7 +110,7 @@
 
             {% if perm_idcard_approved_list %}
             <a href="{% url 'mobile_app:card_list' table_id=table.id status='approved' %}"
-               class="flex-1 text-center py-1.5 text-[9px] font-bold rounded-lg transition-all border leading-tight
+               class="flex-1 text-center py-1.5 text-[9px] font-bold rounded transition-all border leading-tight
                {% if list_type == 'approved' %}bg-blue-500 text-white border-blue-500{% else %}bg-blue-50 text-blue-600 border-blue-100{% endif %}">
                 <i class="fa-solid fa-check-double block text-[9px] mb-0.5"></i>Approved
                 <span class="block text-[8px] font-extrabold opacity-80">{{ tab_counts.approved }}</span>
@@ -119,7 +119,7 @@
 
             {% if perm_idcard_download_list %}
             <a href="{% url 'mobile_app:card_list' table_id=table.id status='download' %}"
-               class="flex-1 text-center py-1.5 text-[9px] font-bold rounded-lg transition-all border leading-tight
+               class="flex-1 text-center py-1.5 text-[9px] font-bold rounded transition-all border leading-tight
                {% if list_type == 'download' %}bg-purple-500 text-white border-purple-500{% else %}bg-purple-50 text-purple-600 border-purple-100{% endif %}">
                 <i class="fa-solid fa-download block text-[9px] mb-0.5"></i>Download
                 <span class="block text-[8px] font-extrabold opacity-80">{{ tab_counts.download }}</span>

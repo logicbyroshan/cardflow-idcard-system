@@ -32,7 +32,7 @@
         <!-- ── Header ── -->
         <div class="pwa-drawer-header relative flex items-center justify-between px-5 pt-[calc(env(safe-area-inset-top,0px)+14px)] pb-4 bg-gradient-to-br from-[#667eea] to-[#764ba2]">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center text-white select-none border border-white/30">
+                <div class="w-10 h-10 rounded-md bg-white/20 flex items-center justify-center text-white select-none border border-white/30">
                     {% if is_super_admin %}
                         <i class="fa-solid fa-crown text-sm"></i>
                     {% elif is_admin_staff %}
@@ -68,8 +68,8 @@
                 <div class="grid grid-cols-2 gap-2.5">
 
                     <!-- Active Clients -->
-                    <div class="bg-gradient-to-br from-sky-50 to-sky-100/60 rounded-xl px-3.5 py-3 border border-sky-100 flex items-center gap-2.5">
-                        <div class="w-8 h-8 rounded-lg bg-sky-500/10 flex items-center justify-center flex-shrink-0">
+                    <div class="bg-gradient-to-br from-sky-50 to-sky-100/60 rounded-lg px-3.5 py-3 border border-sky-100 flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-md bg-sky-500/10 flex items-center justify-center flex-shrink-0">
                             <i class="fa-solid fa-building text-sky-500 text-[13px]"></i>
                         </div>
                         <div class="min-w-0">
@@ -79,8 +79,8 @@
                     </div>
 
                     <!-- Total Tables -->
-                    <div class="bg-gradient-to-br from-violet-50 to-violet-100/60 rounded-xl px-3.5 py-3 border border-violet-100 flex items-center gap-2.5">
-                        <div class="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center flex-shrink-0">
+                    <div class="bg-gradient-to-br from-violet-50 to-violet-100/60 rounded-lg px-3.5 py-3 border border-violet-100 flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-md bg-violet-500/10 flex items-center justify-center flex-shrink-0">
                             <i class="fa-solid fa-table-cells text-violet-500 text-[13px]"></i>
                         </div>
                         <div class="min-w-0">
@@ -90,8 +90,8 @@
                     </div>
 
                     <!-- Total Staff -->
-                    <div class="bg-gradient-to-br from-emerald-50 to-emerald-100/60 rounded-xl px-3.5 py-3 border border-emerald-100 flex items-center gap-2.5">
-                        <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+                    <div class="bg-gradient-to-br from-emerald-50 to-emerald-100/60 rounded-lg px-3.5 py-3 border border-emerald-100 flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-md bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
                             <i class="fa-solid fa-users text-emerald-500 text-[13px]"></i>
                         </div>
                         <div class="min-w-0">
@@ -101,8 +101,8 @@
                     </div>
 
                     <!-- Total Cards -->
-                    <div class="bg-gradient-to-br from-amber-50 to-amber-100/60 rounded-xl px-3.5 py-3 border border-amber-100 flex items-center gap-2.5">
-                        <div class="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+                    <div class="bg-gradient-to-br from-amber-50 to-amber-100/60 rounded-lg px-3.5 py-3 border border-amber-100 flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-md bg-amber-500/10 flex items-center justify-center flex-shrink-0">
                             <i class="fa-solid fa-id-card text-amber-500 text-[13px]"></i>
                         </div>
                         <div class="min-w-0">
@@ -127,7 +127,7 @@
                     <a href="/panel/manage-clients/"
                        target="_blank" rel="noopener noreferrer"
                        @click="close()"
-                       class="flex items-center gap-3 px-4 py-3.5 rounded-xl font-semibold text-[13px] text-white shadow-md active:opacity-90 transition-opacity"
+                       class="flex items-center gap-3 px-4 py-3.5 rounded-lg font-semibold text-[13px] text-white shadow-md active:opacity-90 transition-opacity"
                        style="background:linear-gradient(135deg,#3b82f6,#2563eb);">
                         <i class="fa-solid fa-building-circle-arrow-right text-base flex-shrink-0"></i>
                         <span>Add Client</span>
@@ -138,7 +138,7 @@
                     <!-- Add Staff -->
                     <a href="{% url 'mobile_app:staff_manage' %}"
                        @click="close()"
-                       class="flex items-center gap-3 px-4 py-3.5 rounded-xl font-semibold text-[13px] text-white shadow-md active:opacity-90 transition-opacity"
+                       class="flex items-center gap-3 px-4 py-3.5 rounded-lg font-semibold text-[13px] text-white shadow-md active:opacity-90 transition-opacity"
                        style="background:linear-gradient(135deg,#10b981,#059669);">
                         <i class="fa-solid fa-user-plus text-base flex-shrink-0"></i>
                         <span>Add Staff</span>

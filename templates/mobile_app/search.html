@@ -15,7 +15,7 @@
     <!-- Header -->
     <div class="sticky top-0 z-40 bg-gradient-to-r from-brand-light to-brand-dark px-4 py-3">
         <div class="flex items-center gap-3">
-            <a href="{% url 'mobile_app:home' %}" class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all">
+            <a href="{% url 'mobile_app:home' %}" class="w-8 h-8 rounded-md bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all">
                 <i class="fa-solid fa-arrow-left text-sm"></i>
             </a>
             <div class="flex-1 relative">
@@ -25,7 +25,7 @@
                     @input="debouncedSearch()"
                     @keydown.enter.prevent="doSearch()"
                     placeholder="Search cards by name, roll no, ID..."
-                    class="w-full pl-9 pr-4 py-2 bg-white/20 border border-white/20 rounded-lg text-sm text-white placeholder:text-white/50 focus:outline-none focus:bg-white/30 transition"
+                    class="w-full pl-9 pr-4 py-2 bg-white/20 border border-white/20 rounded text-sm text-white placeholder:text-white/50 focus:outline-none focus:bg-white/30 transition"
                     autofocus>
             </div>
         </div>
@@ -50,9 +50,9 @@
         <div class="space-y-2" x-show="!loading">
             <template x-for="card in results" :key="card.id">
                 <a :href="cardUrl(card.id)"
-                   class="flex items-center gap-3 bg-white rounded-md p-3 shadow-sm border border-gray-100 hover:shadow-md active:scale-[0.98] transition-all">
+                   class="flex items-center gap-3 bg-white rounded p-3 shadow-sm border border-gray-100 hover:shadow-md active:scale-[0.98] transition-all">
                     <!-- Photo -->
-                    <div class="w-11 h-11 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
+                    <div class="w-11 h-11 rounded-md overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
                         <img x-show="card.photo_url" :src="card.photo_url" class="w-full h-full object-cover" :alt="card.name + ' photo'">
                         <i x-show="!card.photo_url" class="fa-solid fa-user text-gray-400 text-sm"></i>
                     </div>
@@ -66,7 +66,7 @@
                         </div>
                     </div>
                     <!-- Status badge -->
-                    <span class="text-[10px] font-semibold px-2 py-1 rounded-full flex-shrink-0"
+                    <span class="text-[10px] font-semibold px-2 py-1 rounded flex-shrink-0"
                           :class="statusClass(card.status)"
                           x-text="card.status.charAt(0).toUpperCase() + card.status.slice(1)"></span>
                 </a>

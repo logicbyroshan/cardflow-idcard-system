@@ -44,7 +44,7 @@
                     <div class="flex-1 min-w-0" @click="showStaffDetail(staff)">
                         <div class="flex items-center gap-2">
                             <p class="text-sm font-bold text-gray-800 truncate" x-text="staff.name"></p>
-                            <span class="text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
+                            <span class="text-[9px] font-semibold px-1.5 py-0.5 rounded"
                                   :class="staff.is_active ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'"
                                   x-text="staff.is_active ? 'Active' : 'Inactive'"></span>
                         </div>

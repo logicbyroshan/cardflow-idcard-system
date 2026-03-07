@@ -13,7 +13,7 @@
         <div class="flex items-center gap-2 px-4 bg-gradient-to-r from-brand-light to-brand-dark"
              style="padding-top: calc(env(safe-area-inset-top,0px) + 10px); padding-bottom: 10px;">
             <a href="{% url 'mobile_app:home' %}"
-               class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all flex-shrink-0">
+               class="w-8 h-8 rounded-md bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all flex-shrink-0">
                 <i class="fa-solid fa-arrow-left text-sm"></i>
             </a>
             <div class="flex-1 min-w-0">
@@ -21,7 +21,7 @@
                 <p class="text-white/70 text-[10px]" x-text="filteredClients.length + ' client(s)'"></p>
             </div>
             <button @click="filterStatus = filterStatus === 'active' ? 'all' : 'active'"
-                    class="text-[9px] font-bold px-2.5 py-1 rounded-full transition flex-shrink-0"
+                    class="text-[9px] font-bold px-2.5 py-1 rounded transition flex-shrink-0"
                     :class="filterStatus === 'active' ? 'bg-white text-brand-light' : 'bg-white/20 text-white'">
                 <span x-text="filterStatus === 'active' ? 'Active' : 'All'"></span>
             </button>
@@ -32,14 +32,14 @@
                 <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
                 <input type="text" x-model="searchQuery"
                        placeholder="Search clients..."
-                       class="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-md text-xs text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
+                       class="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded text-xs text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
             </div>
         </div>
     </div>
 
     <!-- Toast -->
     <div x-show="toast.show" x-cloak x-transition
-         class="fixed top-16 inset-x-4 z-[200] px-4 py-2.5 rounded-md shadow-lg text-white text-xs font-semibold flex items-center gap-2"
+         class="fixed top-16 inset-x-4 z-[200] px-4 py-2.5 rounded shadow-lg text-white text-xs font-semibold flex items-center gap-2"
          :class="toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'">
         <span x-text="toast.message"></span>
     </div>
@@ -49,13 +49,13 @@
          style="padding-bottom: calc(env(safe-area-inset-bottom,0px) + 72px)">
 
         <template x-for="c in filteredClients" :key="c.id">
-            <div class="bg-white border border-gray-100 shadow-sm overflow-hidden rounded-xl">
+            <div class="bg-white border border-gray-100 shadow-sm overflow-hidden rounded-lg">
 
                 <!-- Client Row (tap to expand) -->
                 <div class="flex items-center gap-3 p-3 cursor-pointer select-none"
                      @click="c.status === 'active' && toggleExpand(c.id)">
                     <!-- Avatar -->
-                    <div class="w-11 h-11 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 rounded-lg shadow-sm"
+                    <div class="w-11 h-11 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 rounded-md shadow-sm"
                          :class="c.status === 'active' ? 'bg-gradient-to-br from-sky-400 to-blue-500' : 'bg-gray-300'">
                         <span x-text="(c.name || 'C').substring(0,2).toUpperCase()"></span>
                     </div>
@@ -63,7 +63,7 @@
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-1.5 flex-wrap">
                             <p class="text-sm font-bold text-gray-800 truncate" x-text="c.name"></p>
-                            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase shrink-0"
+                            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase shrink-0"
                                   :class="c.status === 'active' ? 'bg-green-50 text-green-600 border border-green-200' : 'bg-gray-100 text-gray-500'">
                                 <span x-text="c.status"></span>
                             </span>
@@ -72,7 +72,7 @@
                     </div>
                     <!-- Chevron -->
                     <div x-show="c.status === 'active'"
-                         class="w-7 h-7 rounded-md bg-gray-50 flex items-center justify-center flex-shrink-0">
+                         class="w-7 h-7 rounded bg-gray-50 flex items-center justify-center flex-shrink-0">
                         <i class="fa-solid fa-chevron-down text-gray-400 text-[10px] transition-transform duration-200"
                            :class="expandedId === c.id ? 'rotate-180' : ''"></i>
                     </div>
@@ -98,7 +98,7 @@
                             <template x-for="t in c.tables" :key="t.id">
                                 <div class="flex items-center gap-2 px-3 py-2.5 border-b border-gray-50 last:border-b-0">
                                     <!-- Table icon -->
-                                    <div class="w-7 h-7 rounded-md bg-indigo-50 flex items-center justify-center flex-shrink-0">
+                                    <div class="w-7 h-7 rounded bg-indigo-50 flex items-center justify-center flex-shrink-0">
                                         <i class="fa-solid fa-table-list text-indigo-400 text-xs"></i>
                                     </div>
                                     <!-- Table name + group -->
@@ -108,13 +108,13 @@
                                     </div>
                                     <!-- Pending badge (link to pending list) -->
                                     <a :href="'/app/table/' + t.id + '/pending/'"
-                                       class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-50 border border-amber-100 active:scale-95 transition-all flex-shrink-0">
+                                       class="flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-amber-50 border border-amber-100 active:scale-95 transition-all flex-shrink-0">
                                         <i class="fa-solid fa-clock text-amber-500" style="font-size:9px;"></i>
                                         <span class="text-[11px] font-bold text-amber-600 min-w-[14px] text-center" x-text="t.pending_count"></span>
                                     </a>
                                     <!-- Verified badge (link to verified list) -->
                                     <a :href="'/app/table/' + t.id + '/verified/'"
-                                       class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-green-50 border border-green-100 active:scale-95 transition-all flex-shrink-0">
+                                       class="flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-green-50 border border-green-100 active:scale-95 transition-all flex-shrink-0">
                                         <i class="fa-solid fa-check-circle text-green-500" style="font-size:9px;"></i>
                                         <span class="text-[11px] font-bold text-green-600 min-w-[14px] text-center" x-text="t.verified_count"></span>
                                     </a>
