@@ -115,6 +115,9 @@
     <a href="{% url 'adarsh_cropper' %}" class="{% if active_page == 'adarsh_cropper' %}active{% endif %}">
       <i class="fa-solid fa-wand-magic-sparkles"></i><span>Adarsh Engine</span>
     </a>
+    <a href="{% url 'adarshmail:inbox' %}" class="{% if active_page == 'adarsh_mail' %}active{% endif %}">
+      <i class="fa-solid fa-envelope"></i><span>Adarsh Mail</span>
+    </a>
     {% endif %}
   </nav>
   <div class="sidebar-footer">

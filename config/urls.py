@@ -76,6 +76,7 @@ urlpatterns = [
     path('panel/work/', include('idcards.urls')),
     path('panel/print/', include('cardprint.urls')),
     path('panel/reprint/', include('reprintcard.urls')),
+    path('panel/mail/', include('adarshmail.urls')),
     path('panel/website/', include('website.admin_urls')),
 
     # ==================== PWA MOBILE APP (/app/) ====================

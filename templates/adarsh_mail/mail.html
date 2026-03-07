@@ -1,0 +1,275 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Adarsh Mail{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/adarsh-mail.css' %}">
+{% endblock %}
+
+{% block breadcrumb %}
+<span class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</span>
+<span class="breadcrumb-separator"><i class="fa-solid fa-chevron-right"></i></span>
+<span class="breadcrumb-item active"><i class="fa-solid fa-envelope"></i> Adarsh Mail</span>
+{% endblock %}
+
+{% block topbar_right %}
+<div class="nav-right"></div>
+{% endblock %}
+
+{% block content %}
+<div x-data="adarshMail()" x-init="init()" class="mail-container">
+
+  <!-- ═══════════════ LEFT SIDEBAR (Folders) ═══════════════ -->
+  <aside class="mail-sidebar">
+    <div class="mail-sidebar-header">
+      <button class="mail-compose-btn" @click="openCompose()">
+        <i class="fa-solid fa-plus"></i> Compose Mail
+      </button>
+    </div>
+
+    <ul class="mail-folder-list">
+      <li class="mail-folder-item" :class="{ active: currentFolder === 'inbox' }"
+          @click="switchFolder('inbox')">
+        <i class="fa-solid fa-inbox"></i>
+        <span class="folder-name">Inbox</span>
+        <span class="mail-folder-badge" x-show="counts.inbox_unread > 0" x-text="counts.inbox_unread"></span>
+      </li>
+      <li class="mail-folder-item" :class="{ active: currentFolder === 'sent' }"
+          @click="switchFolder('sent')">
+        <i class="fa-solid fa-paper-plane"></i>
+        <span class="folder-name">Sent</span>
+      </li>
+      <li class="mail-folder-item" :class="{ active: currentFolder === 'trash' }"
+          @click="switchFolder('trash')">
+        <i class="fa-solid fa-trash-can"></i>
+        <span class="folder-name">Trash</span>
+        <span class="mail-folder-badge" x-show="counts.trash_total > 0"
+              x-text="counts.trash_total"
+              style="background: var(--red, #ef4444);"></span>
+      </li>
+    </ul>
+
+    <div class="mail-sidebar-divider"></div>
+
+    <!-- Quick Stats -->
+    <div style="padding: 0 20px;">
+      <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">
+        Quick Stats
+      </div>
+      <div style="font-size: 0.8rem; color: var(--text-secondary, #6b7280); line-height: 1.8;">
+        <div><span style="font-weight: 600;" x-text="counts.inbox_total"></span> in Inbox</div>
+        <div><span style="font-weight: 600;" x-text="counts.sent_total"></span> Sent</div>
+      </div>
+    </div>
+
+    <div class="mail-sidebar-divider"></div>
+
+    <!-- Dev Tools (simulate inbound) -->
+    <div style="padding: 0 20px;">
+      <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">
+        Dev Tools
+      </div>
+      <button class="mail-compose-btn" style="font-size: 0.8rem; padding: 8px 14px; background: var(--green, #22c55e);"
+              @click="simulateIncoming()" :disabled="simulating">
+        <i class="fa-solid" :class="simulating ? 'fa-spinner fa-spin' : 'fa-download'"></i>
+        <span x-text="simulating ? 'Simulating...' : 'Simulate Inbound'"></span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ═══════════════ CENTER PANEL (Email List) ═══════════════ -->
+  <section class="mail-list-panel">
+    <div class="mail-list-header">
+      <h2 class="mail-list-title" x-text="folderTitle()"></h2>
+      <div class="mail-search-box">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" class="mail-search-input" placeholder="Search mail..."
+               x-model="searchQuery" @input.debounce.300ms="filterMessages()">
+      </div>
+    </div>
+
+    <!-- Loading -->
+    <div class="mail-loading" x-show="loadingList">
+      <i class="fa-solid fa-spinner"></i> Loading...
+    </div>
+
+    <!-- Email List -->
+    <div class="mail-list-scroll" x-show="!loadingList">
+      <template x-if="filteredMessages.length === 0 && !loadingList">
+        <div class="mail-empty-state" style="padding: 30px;">
+          <i class="fa-solid fa-envelope-open"></i>
+          <div class="empty-title">No messages</div>
+          <div class="empty-desc" x-text="currentFolder === 'inbox' ? 'Your inbox is empty' : currentFolder === 'sent' ? 'No sent messages' : 'Trash is empty'"></div>
+        </div>
+      </template>
+      <template x-for="msg in filteredMessages" :key="msg.id">
+        <div class="mail-item"
+             :class="{
+               active: selectedMessage && selectedMessage.id === msg.id,
+               unread: !msg.is_read && currentFolder === 'inbox'
+             }"
+             @click="selectMessage(msg)">
+          <div class="mail-item-avatar" :class="'avatar-' + (msg.id % 6 + 1)" x-text="msg.other_initial"></div>
+          <div class="mail-item-content">
+            <div class="mail-item-top">
+              <span class="mail-item-sender" x-text="currentFolder === 'sent' ? ('To: ' + msg.recipient_name) : msg.sender_name"></span>
+              <span class="mail-item-date" x-text="msg.created_at_short"></span>
+            </div>
+            <div class="mail-item-subject" x-text="msg.subject"></div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <div class="mail-item-preview" style="flex:1;" x-text="msg.preview"></div>
+              <span x-show="msg.direction" class="mail-direction-badge"
+                    :class="msg.direction === 'incoming' ? 'badge-incoming' : 'badge-outgoing'"
+                    x-text="msg.direction === 'incoming' ? 'IN' : 'OUT'"
+                    style="font-size:0.6rem; font-weight:700; padding:1px 5px; border-radius:4px; flex-shrink:0;"></span>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+  </section>
+
+  <!-- ═══════════════ RIGHT PANEL (Email Detail) ═══════════════ -->
+  <section class="mail-detail-panel">
+    <!-- Empty state when no message selected -->
+    <template x-if="!selectedDetail && !loadingDetail">
+      <div class="mail-empty-state">
+        <i class="fa-solid fa-envelope-open-text"></i>
+        <div class="empty-title">Select a message</div>
+        <div class="empty-desc">Choose an email from the list to read it here</div>
+      </div>
+    </template>
+
+    <!-- Loading detail -->
+    <div class="mail-loading" x-show="loadingDetail">
+      <i class="fa-solid fa-spinner"></i> Loading message...
+    </div>
+
+    <!-- Message detail -->
+    <template x-if="selectedDetail && !loadingDetail">
+      <div style="display: flex; flex-direction: column; height: 100%;">
+        <div class="mail-detail-header">
+          <div class="mail-detail-meta">
+            <div class="mail-detail-avatar" :class="'avatar-' + (selectedDetail.id % 6 + 1)"
+                 x-text="selectedDetail.sender_initial"></div>
+            <div class="mail-detail-from-to">
+              <div class="mail-detail-from" x-text="selectedDetail.sender_name"></div>
+              <div class="mail-detail-to">To: <span x-text="selectedDetail.recipient_name"></span></div>
+              <div x-show="selectedDetail.from_email" style="font-size:0.75rem; color:var(--text-muted);">
+                <span x-text="selectedDetail.from_email"></span> → <span x-text="selectedDetail.to_email"></span>
+              </div>
+            </div>
+          </div>
+          <div class="mail-detail-actions">
+            <span class="mail-direction-badge"
+                  :class="selectedDetail.direction === 'incoming' ? 'badge-incoming' : 'badge-outgoing'"
+                  x-text="selectedDetail.direction"
+                  style="font-size:0.7rem; font-weight:600; padding:3px 8px; border-radius:6px; text-transform:capitalize;"></span>
+            <span class="mail-status-badge"
+                  x-text="selectedDetail.status"
+                  style="font-size:0.7rem; font-weight:600; padding:3px 8px; border-radius:6px; background:#f3f4f6; color:#374151; text-transform:capitalize;"></span>
+            <button class="mail-detail-action-btn" title="Print" @click="printMessage()">
+              <i class="fa-solid fa-print"></i>
+            </button>
+            <template x-if="currentFolder !== 'trash'">
+              <button class="mail-detail-action-btn danger" title="Move to Trash" @click="trashMessage(selectedDetail.id)">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </template>
+            <template x-if="currentFolder === 'trash'">
+              <button class="mail-detail-action-btn" title="Restore" @click="restoreMessage(selectedDetail.id)"
+                      style="color: var(--green, #22c55e);">
+                <i class="fa-solid fa-arrow-rotate-left"></i>
+              </button>
+            </template>
+          </div>
+        </div>
+        <div class="mail-detail-body">
+          <h2 class="mail-detail-subject" x-text="selectedDetail.subject"></h2>
+          <div class="mail-detail-date" x-text="selectedDetail.created_at"></div>
+          <div class="mail-detail-text" x-text="selectedDetail.body"></div>
+        </div>
+        <div class="mail-detail-footer">
+          <button class="mail-reply-btn" @click="replyTo(selectedDetail)">
+            <i class="fa-solid fa-reply"></i> Reply
+          </button>
+          <button class="mail-forward-btn" @click="forwardMessage(selectedDetail)">
+            <i class="fa-solid fa-share"></i> Forward
+          </button>
+        </div>
+      </div>
+    </template>
+  </section>
+
+  <!-- ═══════════════ COMPOSE MODAL ═══════════════ -->
+  <div class="mail-compose-overlay" x-show="showCompose" x-cloak
+       x-transition:enter="transition ease-out duration-200"
+       x-transition:enter-start="opacity-0"
+       x-transition:enter-end="opacity-100"
+       x-transition:leave="transition ease-in duration-150"
+       x-transition:leave-start="opacity-100"
+       x-transition:leave-end="opacity-0"
+       @click.self="showCompose = false">
+    <div class="mail-compose-modal" @click.stop>
+      <div class="mail-compose-header">
+        <h3 x-text="composeMode === 'reply' ? 'Reply' : composeMode === 'forward' ? 'Forward' : 'New Message'"></h3>
+        <button class="mail-compose-close" @click="showCompose = false">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="mail-compose-body">
+        <!-- Toggle: internal user vs external email address -->
+        <div style="display:flex; gap:8px; margin-bottom:4px;">
+          <button type="button" @click="composeTarget = 'user'"
+                  :style="composeTarget === 'user' ? 'background:var(--primary);color:#fff' : 'background:#f3f4f6;color:#374151'"
+                  style="padding:5px 12px; border:none; border-radius:6px; font-size:0.8rem; font-weight:600; cursor:pointer;">
+            Panel User
+          </button>
+          <button type="button" @click="composeTarget = 'email'"
+                  :style="composeTarget === 'email' ? 'background:var(--primary);color:#fff' : 'background:#f3f4f6;color:#374151'"
+                  style="padding:5px 12px; border:none; border-radius:6px; font-size:0.8rem; font-weight:600; cursor:pointer;">
+            Email Address
+          </button>
+        </div>
+
+        <!-- Recipient: Panel user -->
+        <div class="mail-compose-field" x-show="composeTarget === 'user'">
+          <label for="compose-to">To (User)</label>
+          <select id="compose-to" x-model="composeTo">
+            <option value="">Select recipient...</option>
+            <template x-for="r in recipients" :key="r.id">
+              <option :value="r.id" x-text="r.name + ' (' + r.username + ')'"></option>
+            </template>
+          </select>
+        </div>
+
+        <!-- Recipient: External email -->
+        <div class="mail-compose-field" x-show="composeTarget === 'email'">
+          <label for="compose-to-email">To (Email)</label>
+          <input type="email" id="compose-to-email" x-model="composeToEmail" placeholder="demo@gmail.com">
+        </div>
+
+        <div class="mail-compose-field">
+          <label for="compose-subject">Subject</label>
+          <input type="text" id="compose-subject" x-model="composeSubject" placeholder="Enter subject...">
+        </div>
+        <div class="mail-compose-field">
+          <label for="compose-body">Message</label>
+          <textarea id="compose-body" x-model="composeBody" placeholder="Write your message..."></textarea>
+        </div>
+      </div>
+      <div class="mail-compose-footer">
+        <button class="mail-compose-cancel" @click="showCompose = false">Cancel</button>
+        <button class="mail-compose-send" @click="sendMessage()" :disabled="sending">
+          <i class="fa-solid" :class="sending ? 'fa-spinner fa-spin' : 'fa-paper-plane'"></i>
+          <span x-text="sending ? 'Sending...' : 'Send'"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="{% static 'js/adarsh-mail.js' %}"></script>
+{% endblock %}
