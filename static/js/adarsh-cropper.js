@@ -601,9 +601,15 @@ function cropperApp() {
         
         // Execute pipeline steps (compress + rename) on the output folder
         // For non-faceCrop operations, outputFolder = original path
-        await this._executePipeline(outputFolder);
+        await this._executePipeline(outputFolder, this.pipeline.faceCrop);
         
-        if (typeof Toast !== 'undefined') Toast.success('Processing complete!');
+        // If Edit-only mode (no crop, no compress, no rename), just load images for editing
+        if (!this.pipeline.faceCrop && !this.pipeline.compress && !this.pipeline.rename && this.pipeline.edit) {
+          this._loadPreview(path);
+          if (typeof Toast !== 'undefined') Toast.info('Images loaded for editing. Click any image to open the editor.');
+        } else {
+          if (typeof Toast !== 'undefined') Toast.success('Processing complete!');
+        }
 
       } catch (err) {
         this._hideProgress();
@@ -615,8 +621,12 @@ function cropperApp() {
 
     /**
      * Execute pipeline steps after cropping (compress + rename).
+     * Returns the final output folder (may change after compress creates subfolder).
      */
-    async _executePipeline(outputFolder) {
+    async _executePipeline(outputFolder, hadFaceCrop) {
+      var currentFolder = outputFolder;
+      var pipelineResult = null;
+      
       // Step 1: Compress (if enabled)
       if (this.pipeline.compress && this.pipeline.compressKB > 0) {
         try {
@@ -632,31 +642,44 @@ function cropperApp() {
                 'X-ENGINE-KEY': ENGINE_API_KEY,
               },
               body: JSON.stringify({
-                folder_path: outputFolder,
+                folder_path: currentFolder,
                 target_kb: this.pipeline.compressKB
               }),
             });
             if (resp.ok) {
               compressData = await resp.json();
+            } else {
+              var errBody = {};
+              try { errBody = await resp.json(); } catch (_) {}
+              throw new Error(errBody.message || errBody.detail || 'Compress error ' + resp.status);
             }
           } else {
             compressData = await ApiClient.post('/api/engine/compress-folder/', {
-              folder_path: outputFolder,
+              folder_path: currentFolder,
               target_kb: this.pipeline.compressKB
             });
           }
 
-          if (compressData && compressData.success) {
-            console.log('[Pipeline] Compressed ' + compressData.compressed + ' images');
+          if (compressData && compressData.total >= 0) {
+            console.log('[Pipeline] Compressed: success=' + compressData.success + ', failed=' + compressData.failed);
+            // Update currentFolder to compressed output for next steps
+            if (compressData.output_folder) {
+              currentFolder = compressData.output_folder;
+            }
+            // Store result for display if no faceCrop ran
+            if (!hadFaceCrop) {
+              pipelineResult = compressData;
+            }
           }
         } catch (err) {
           console.warn('[Pipeline] Compress error:', err);
+          if (typeof Toast !== 'undefined') Toast.error('Compress failed: ' + err.message);
         }
         this._hideProgress();
       }
 
       // Step 2: Rename (if enabled)
-      if (this.pipeline.rename) {
+      if (this.pipeline.rename && this.pipeline.renameOperation) {
         try {
           this._showProgress('Renaming images…');
           this._updateProgress(60, 'Applying rename operation…');
@@ -664,27 +687,79 @@ function cropperApp() {
           var renameParams = {};
           if (this.pipeline.renameOperation === 'add_prefix') {
             renameParams.prefix = this.pipeline.renameParam || '';
+          } else if (this.pipeline.renameOperation === 'add_suffix') {
+            renameParams.suffix = this.pipeline.renameParam || '';
           } else if (this.pipeline.renameOperation === 'sequential') {
             renameParams.base_name = this.pipeline.renameParam || '';
             renameParams.digits = 3;
             renameParams.start = 1;
+          } else if (this.pipeline.renameOperation === 'replace_text') {
+            var parts = (this.pipeline.renameParam || '').split('→');
+            renameParams.find = parts[0] || '';
+            renameParams.replace = parts[1] || '';
+          } else if (this.pipeline.renameOperation === 'remove_text') {
+            renameParams.text = this.pipeline.renameParam || '';
+          } else if (this.pipeline.renameOperation === 'change_extension') {
+            renameParams.extension = this.pipeline.renameParam || '';
           }
 
-          var renameData = await ApiClient.post('/api/engine/rename-execute/', {
-            folder_path: outputFolder,
-            operation: this.pipeline.renameOperation,
-            params: renameParams,
-            skip_conflicts: true
-          });
+          var renameData;
+          if (this.engine.direct) {
+            var resp = await fetch(ENGINE_DIRECT_URL + '/rename-execute', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-ENGINE-KEY': ENGINE_API_KEY,
+              },
+              body: JSON.stringify({
+                folder_path: currentFolder,
+                operation: this.pipeline.renameOperation,
+                params: renameParams,
+                skip_conflicts: true
+              }),
+            });
+            if (resp.ok) {
+              renameData = await resp.json();
+            } else {
+              var errBody = {};
+              try { errBody = await resp.json(); } catch (_) {}
+              throw new Error(errBody.message || errBody.detail || 'Rename error ' + resp.status);
+            }
+          } else {
+            renameData = await ApiClient.post('/api/engine/rename-execute/', {
+              folder_path: currentFolder,
+              operation: this.pipeline.renameOperation,
+              params: renameParams,
+              skip_conflicts: true
+            });
+          }
 
-          if (renameData && renameData.success) {
-            console.log('[Pipeline] Renamed ' + renameData.renamed + ' files');
+          if (renameData && renameData.renamed >= 0) {
+            console.log('[Pipeline] Renamed: ' + renameData.renamed + ' files');
+            // Build result for display if this is the final step and no prior result
+            if (!hadFaceCrop && !pipelineResult) {
+              pipelineResult = {
+                total: renameData.renamed + (renameData.skipped || 0) + (renameData.failed || 0),
+                success: renameData.renamed,
+                failed: renameData.failed || 0,
+                output_folder: currentFolder,
+                errors: renameData.errors || []
+              };
+            }
           }
         } catch (err) {
           console.warn('[Pipeline] Rename error:', err);
+          if (typeof Toast !== 'undefined') Toast.error('Rename failed: ' + err.message);
         }
         this._hideProgress();
       }
+      
+      // If pipeline ran without faceCrop, show results
+      if (!hadFaceCrop && pipelineResult) {
+        this._showResult(pipelineResult);
+      }
+      
+      return currentFolder;
     },
 
     // ══════════════════════════════════════════════════════════════════
@@ -1109,13 +1184,14 @@ function cropperApp() {
      * @param {Object} params - {blackPoint, gamma, whitePoint, vibrance, temperature}
      */
     async applyParamsToAll(params) {
-      var images = this.preview.images; // Apply to cropped images
+      var images = this.currentTabImages(); // Apply to current tab's images
       if (!images || images.length === 0) {
-        alert('No images to adjust.');
+        alert('No images to adjust. Process a folder first.');
         return;
       }
 
-      var confirmed = confirm('Apply these adjustments to all ' + images.length + ' cropped images?\n\nThe editor will close and adjustments will be applied in batch.');
+      var tabName = this.activeTab === 'cropped' ? 'cropped' : this.activeTab;
+      var confirmed = confirm('Apply these adjustments to all ' + images.length + ' ' + tabName + ' images?\n\nThe editor will close and adjustments will be applied in batch.');
       if (!confirmed) return;
 
       // Close the engine modal so user can see progress

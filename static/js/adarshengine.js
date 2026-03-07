@@ -671,7 +671,14 @@
     // Populate presets on modal open
     this._refreshPresetDropdown();
 
-    // Load preset
+    // Auto-apply preset when dropdown selection changes
+    this._on(e.presetSelect, 'change', function () { 
+      if (e.presetSelect.value) {
+        self._loadSelectedPreset(); 
+      }
+    });
+
+    // Load preset (manual button click)
     this._on(e.presetLoad, 'click', function () { self._loadSelectedPreset(); });
 
     // Delete preset
