@@ -227,8 +227,8 @@ def api_available_permissions(request):
 @require_shop_owner
 @require_http_methods(['GET'])
 def api_available_clients(request):
-    """Get list of all clients for assignment to admin staff."""
-    clients = Client.objects.filter(status='active').values('id', 'name')
+    """Get list of all clients for assignment to admin staff (includes inactive)."""
+    clients = Client.objects.all().values('id', 'name', 'status')
     return JsonResponse({
         'success': True,
         'clients': list(clients),
