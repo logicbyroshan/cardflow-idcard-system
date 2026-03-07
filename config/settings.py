@@ -94,7 +94,6 @@ INSTALLED_APPS = [
     'reprintcard',
     'mobile_app',
     'panel',
-    'adarshmail',
 ]
 
 # Custom User Model - Keep pointing to core.User for database compatibility
@@ -528,14 +527,6 @@ SLOW_QUERY_THRESHOLD = float(os.getenv('SLOW_QUERY_THRESHOLD', '0.1'))
 
 
 # =============================================================================
-# ADARSH MAIL — Email Infrastructure
-# =============================================================================
-# Provider: 'mock' (logs only) | future: 'brevo', 'mailgun', 'smtp'
-EMAIL_PROVIDER = os.getenv('EMAIL_PROVIDER', 'mock')
-EMAIL_FROM = os.getenv('EMAIL_FROM', 'noreply@mydomain.com')
-
-
-# =============================================================================
 # LOGGING
 # =============================================================================
 
@@ -665,12 +656,6 @@ LOGGING = {
         'django.db.backends': {
             'handlers': ['console'],
             'level': 'DEBUG' if DEBUG else 'WARNING',
-            'propagate': False,
-        },
-        # Adarsh Mail — email send/receive logging
-        'adarshmail': {
-            'handlers': _APP_HANDLERS,
-            'level': 'DEBUG' if DEBUG else 'INFO',
             'propagate': False,
         },
     },
