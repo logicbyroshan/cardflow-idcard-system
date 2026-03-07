@@ -22,10 +22,10 @@ document.addEventListener('DOMContentLoaded', function() {
     var clientSearchInput = document.getElementById('client-search-input');
     var clientMultiselectEmpty = document.getElementById('client-multiselect-empty');
 
-    // Fetch active clients from API
+    // Fetch all clients (active + inactive) for staff assignment
     async function fetchActiveClients() {
         try {
-            var data = await ApiClient.get('/api/clients/active/');
+            var data = await ApiClient.get('/api/clients/for-staff-assignment/');
             if (data.success) {
                 NS.allClients = data.clients || [];
             }
@@ -45,11 +45,13 @@ document.addEventListener('DOMContentLoaded', function() {
             return !term || c.name.toLowerCase().includes(term);
         });
 
-        // Sort: selected first, then alphabetical
+        // Sort: selected first, then active before inactive, then alphabetical
         filtered.sort(function(a, b) {
             var aSelected = NS.selectedClientIds.has(a.id) ? 0 : 1;
             var bSelected = NS.selectedClientIds.has(b.id) ? 0 : 1;
             if (aSelected !== bSelected) return aSelected - bSelected;
+            // Active clients before inactive
+            if (a.status !== b.status) return a.status === 'active' ? -1 : 1;
             return a.name.localeCompare(b.name);
         });
 
@@ -62,9 +64,11 @@ document.addEventListener('DOMContentLoaded', function() {
         filtered.forEach(function(client) {
             var _esc = window.escapeHtml || function(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); };
             var item = document.createElement('div');
-            item.className = 'client-multiselect-item' + (NS.selectedClientIds.has(client.id) ? ' selected' : '');
+            var isInactive = client.status === 'inactive';
+            item.className = 'client-multiselect-item' + (NS.selectedClientIds.has(client.id) ? ' selected' : '') + (isInactive ? ' client-inactive' : '');
+            var statusBadge = isInactive ? '<span class="client-status-badge inactive">Inactive</span>' : '';
             item.innerHTML = '<input type="checkbox" ' + (NS.selectedClientIds.has(client.id) ? 'checked' : '') + ' data-client-id="' + client.id + '">' +
-                '<span class="client-name">' + _esc(client.name) + '</span>';
+                '<span class="client-name">' + _esc(client.name) + statusBadge + '</span>';
             item.addEventListener('click', function(e) {
                 e.stopPropagation();
                 var cb = item.querySelector('input[type="checkbox"]');

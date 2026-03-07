@@ -274,6 +274,26 @@ body[style*="overflow:hidden"] {
   font-size: var(--font-size-md);
 }
 
+/* --- Inactive client styling in multiselect --- */
+.client-multiselect-item.client-inactive {
+  opacity: 0.7;
+}
+
+.client-status-badge {
+  display: inline-block;
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-left: 6px;
+  font-weight: 500;
+  vertical-align: middle;
+}
+
+.client-status-badge.inactive {
+  background-color: var(--gray-200);
+  color: var(--gray-600);
+}
+
 .no-fields-message i {
   margin-right: 6px;
   color: var(--gray-400);

@@ -293,9 +293,9 @@ class AdminStaffCreationService:
                     department=department,
                 )
                 
-                # Assign clients (only active ones)
+                # Assign clients (allow both active and inactive)
                 if assigned_client_ids:
-                    clients = Client.objects.filter(id__in=assigned_client_ids, status='active')
+                    clients = Client.objects.filter(id__in=assigned_client_ids)
                     staff.assigned_clients.set(clients)
                 
                 # Add to admin staff group
@@ -385,9 +385,9 @@ class AdminStaffCreationService:
                     staff.department = department
                 staff.save()
                 
-                # Update assigned clients (only active ones)
+                # Update assigned clients (allow both active and inactive)
                 if assigned_client_ids is not None:
-                    clients = Client.objects.filter(id__in=assigned_client_ids, status='active')
+                    clients = Client.objects.filter(id__in=assigned_client_ids)
                     staff.assigned_clients.set(clients)
                 
                 # Update permissions

@@ -71,6 +71,7 @@ from .staff_api import (
     api_staff_delete,
     api_staff_toggle_status,
     api_active_clients_list,
+    api_all_clients_for_assignment,
     api_staff_set_temp_password,
 )
 

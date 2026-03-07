@@ -91,10 +91,15 @@ jobs:
             fi
 
             echo "Collecting static files..." | tee -a "$DEPLOY_LOG"
-            if ! $PYTHON manage.py collectstatic --no-input; then
-              echo "❌ collectstatic failed. Rolling back..." | tee -a "$DEPLOY_LOG"
-              git reset --hard "$PREV_COMMIT"
-              exit 1
+            STATIC_CHANGED=$(git diff --name-only "$PREV_COMMIT" HEAD -- static/ templates/ | wc -l)
+            if [ "$STATIC_CHANGED" -gt "0" ] || [ "$PREV_COMMIT" = "$NEW_COMMIT" ]; then
+              if ! $PYTHON manage.py collectstatic --no-input; then
+                echo "❌ collectstatic failed. Rolling back..." | tee -a "$DEPLOY_LOG"
+                git reset --hard "$PREV_COMMIT"
+                exit 1
+              fi
+            else
+              echo "No static/template changes, skipping collectstatic." | tee -a "$DEPLOY_LOG"
             fi
 
             echo "Restarting application..." | tee -a "$DEPLOY_LOG"

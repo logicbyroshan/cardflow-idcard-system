@@ -406,7 +406,7 @@ def clients_list(request):
     return render(request, 'mobile_app/clients_list.html', {
         'user_name': user.get_full_name() or user.username,
         'clients': client_data,
-        'clients_json': json.dumps(client_data),
+        'clients_json': client_data,
         'client_count': len(client_data),
         **perms,
     })
@@ -644,7 +644,7 @@ def camera_capture(request, table_id, card_id=None):
         'table': table,
         'table_id': table.id,
         'card_id': card_id or 0,
-        'all_cards_json': json.dumps(all_cards),
+        'all_cards_json': all_cards,
         **perms,
     })
 
@@ -1012,9 +1012,9 @@ def staff_manage(request):
         'user_name': user.get_full_name() or user.username,
         'client': client,
         'staff_list': staff_list,
-        'staff_json': json.dumps(staff_list, default=str),
+        'staff_json': staff_list,
         'groups': list(groups),
-        'groups_json': json.dumps(list(groups), default=str),
+        'groups_json': list(groups),
         **perms,
     })
 
@@ -1572,23 +1572,23 @@ def website_manage(request):
     # Skip the client lookup — website_manage doesn’t need a client object
     perms = PermissionService.get_permission_context(user)
 
-    categories_json = json.dumps([
+    categories_data = [
         {'id': c.id, 'name': c.name, 'icon': c.icon, 'count': c.photo_count}
         for c in categories
-    ])
-    reels_json = json.dumps([
+    ]
+    reels_data = [
         {
             'id': r.id,
             'title': r.title,
             'thumbnail_url': r.thumbnail.url if r.thumbnail else '',
         }
         for r in reels
-    ])
+    ]
 
     return render(request, 'mobile_app/website_manage.html', {
         'user_name': user.get_full_name() or user.username,
-        'categories_json': categories_json,
-        'reels_json': reels_json,
+        'categories_json': categories_data,
+        'reels_json': reels_data,
         **perms,
     })
 

@@ -54,10 +54,21 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
+
+      - name: Cache apt packages
+        uses: actions/cache@v4
+        id: cache-apt
+        with:
+          path: |
+            /var/cache/apt/archives
+          key: apt-deps-${{ runner.os }}-v1
+          restore-keys: |
+            apt-deps-${{ runner.os }}-
+
       - name: Install system dependencies (for pycairo, WeasyPrint, etc)
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
+          sudo apt-get install -y --no-install-recommends \
             libcairo2-dev \
             pkg-config \
             python3-dev \
@@ -68,6 +79,7 @@ jobs:
             libpangocairo-1.0-0 \
             libpangoft2-1.0-0 \
             libfontconfig1
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip

@@ -110,6 +110,18 @@ def api_active_clients_list(request):
     })
 
 
+@require_http_methods(["GET"])
+@api_require_super_admin
+def api_all_clients_for_assignment(request):
+    """API endpoint to get ALL clients (active + inactive) for staff assignment dropdown.
+    Super admin can assign any client to admin staff, regardless of status."""
+    clients = Client.objects.order_by('status', 'name').values('id', 'name', 'status')
+    return JsonResponse({
+        'success': True,
+        'clients': list(clients)
+    })
+
+
 @require_http_methods(["POST"])
 @api_require_super_admin
 @rate_limit(max_requests=5, window_seconds=60, key_prefix='staff_temp_pw')
