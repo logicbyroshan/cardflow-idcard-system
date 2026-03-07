@@ -1000,7 +1000,8 @@ body {
     margin-bottom: 1.2rem;
 }
 
-.bento-illustration svg {
+.bento-illustration svg,
+.bento-illustration img {
     width: 100%;
     height: auto;
     display: block;
