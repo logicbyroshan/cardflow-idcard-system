@@ -408,6 +408,37 @@ function capitalize(s) {
    DOWNLOAD TEMPLATES TAB
    ================================================================ */
 let panelTemplates = [];
+let _templateBoldState = false;
+
+/* Live-preview: update textarea font based on language + bold selection */
+function _syncTemplatePreviewFont() {
+  const ta = document.getElementById('templateInstructions');
+  const sel = document.getElementById('templateFontName');
+  if (!ta || !sel) return;
+  const isHindi = sel.value === 'hindi';
+  ta.style.fontFamily = isHindi ? "'AbbasiNatraj', 'AbbasiNagari', sans-serif" : "Arial, sans-serif";
+  ta.style.fontWeight = _templateBoldState ? 'bold' : 'normal';
+  ta.style.fontSize = isHindi ? '15px' : '13px';
+}
+
+function _syncTemplateBoldBtn() {
+  const btn = document.getElementById('templateBoldBtn');
+  if (!btn) return;
+  btn.style.background = _templateBoldState ? '#4f46e5' : '';
+  btn.style.color = _templateBoldState ? '#fff' : '';
+}
+
+function toggleTemplateBold() {
+  _templateBoldState = !_templateBoldState;
+  _syncTemplateBoldBtn();
+  _syncTemplatePreviewFont();
+}
+
+/* Attach font selector change listener once DOM is ready */
+document.addEventListener('DOMContentLoaded', function () {
+  var sel = document.getElementById('templateFontName');
+  if (sel) sel.addEventListener('change', _syncTemplatePreviewFont);
+});
 
 async function loadTemplates() {
   try {
@@ -432,9 +463,11 @@ function renderTemplateTable() {
   }
   tbody.innerHTML = panelTemplates.map((t, i) => {
     const preview = t.instructions.length > 80 ? t.instructions.substring(0, 80) + '...' : t.instructions;
+    const fontLabel = t.font_name === 'hindi' ? 'Hindi' : 'Arial';
+    const boldLabel = t.is_bold ? ' · <b>Bold</b>' : '';
     return `<tr>
       <td class="text-center text-xs text-gray-400">${i + 1}</td>
-      <td><strong class="text-sm">${escHtml(t.name)}</strong></td>
+      <td><strong class="text-sm">${escHtml(t.name)}</strong><br><span class="text-xs text-gray-400">${fontLabel}${boldLabel}</span></td>
       <td><span class="text-xs text-gray-600">${escHtml(preview)}</span></td>
       <td class="text-center">${t.is_default ? '<span class="notif-badge-priority normal">Default</span>' : '—'}</td>
       <td class="text-center text-xs text-gray-400">${t.created_at ? new Date(t.created_at).toLocaleDateString() : '—'}</td>
@@ -453,6 +486,10 @@ function openCreateTemplateModal() {
   document.getElementById('templateName').value = '';
   document.getElementById('templateInstructions').value = '';
   document.getElementById('templateIsDefault').checked = false;
+  document.getElementById('templateFontName').value = 'arial';
+  _templateBoldState = false;
+  _syncTemplateBoldBtn();
+  _syncTemplatePreviewFont();
   document.getElementById('templateModalTitle').innerHTML = '<i class="fa-solid fa-file-lines"></i> New Template';
   document.getElementById('templateModal').classList.add('show');
   document.body.style.overflow = 'hidden';
@@ -465,6 +502,10 @@ function editTemplate(id) {
   document.getElementById('templateName').value = t.name;
   document.getElementById('templateInstructions').value = t.instructions;
   document.getElementById('templateIsDefault').checked = t.is_default;
+  document.getElementById('templateFontName').value = t.font_name || 'arial';
+  _templateBoldState = !!t.is_bold;
+  _syncTemplateBoldBtn();
+  _syncTemplatePreviewFont();
   document.getElementById('templateModalTitle').innerHTML = '<i class="fa-solid fa-file-lines"></i> Edit Template';
   document.getElementById('templateModal').classList.add('show');
   document.body.style.overflow = 'hidden';
@@ -480,6 +521,8 @@ async function saveTemplate() {
   const name = document.getElementById('templateName').value.trim();
   const instructions = document.getElementById('templateInstructions').value.trim();
   const is_default = document.getElementById('templateIsDefault').checked;
+  const font_name = document.getElementById('templateFontName').value;
+  const is_bold = _templateBoldState;
 
   if (!name) { if (window.showToast) showToast('Template name is required', 'error'); return; }
   if (!instructions) { if (window.showToast) showToast('Instructions text is required', 'error'); return; }
@@ -492,7 +535,7 @@ async function saveTemplate() {
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
-      body: JSON.stringify({ name, instructions, is_default }),
+      body: JSON.stringify({ name, instructions, is_default, font_name, is_bold }),
     });
     const data = await res.json();
     if (data.success) {

@@ -282,6 +282,11 @@ class WordStylesMixin:
         if not instructions:
             return
         
+        # Determine font from template settings
+        use_hindi = tpl.font_name == 'hindi'
+        font_name = 'AbbasiNatraj' if use_hindi else 'Arial'
+        use_bold = tpl.is_bold
+        
         # Add blank line
         doc.add_paragraph('')
         
@@ -290,7 +295,7 @@ class WordStylesMixin:
         heading_run = heading_para.add_run('INSTRUCTIONS:')
         heading_run.bold = True
         heading_run.underline = True
-        heading_run.font.name = 'Arial'
+        heading_run.font.name = font_name
         heading_run.font.size = Pt(9)
         heading_run.font.color.rgb = RGBColor(0, 0, 0)
         heading_para.alignment = WD_ALIGN_PARAGRAPH.LEFT
@@ -303,7 +308,8 @@ class WordStylesMixin:
                 continue
             body_para = doc.add_paragraph()
             body_run = body_para.add_run(line.upper())
-            body_run.font.name = 'Arial'
+            body_run.bold = use_bold
+            body_run.font.name = font_name
             body_run.font.size = Pt(8)
             body_run.font.color.rgb = RGBColor(0, 0, 0)
             body_para.alignment = WD_ALIGN_PARAGRAPH.LEFT

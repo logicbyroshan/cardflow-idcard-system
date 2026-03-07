@@ -191,10 +191,19 @@ class ExportTemplate(models.Model):
     Admins create templates in Settings → Export Templates, then choose
     one when downloading PDF or Word files.
     """
+    FONT_CHOICES = [
+        ('arial', 'English (Arial)'),
+        ('hindi', 'Hindi (Abbasi)'),
+    ]
     name = models.CharField(max_length=100, unique=True, help_text='Template name shown in the download dropdown')
     instructions = models.TextField(
         help_text='Footer instructions printed at the bottom of PDF/Word exports'
     )
+    font_name = models.CharField(
+        max_length=10, choices=FONT_CHOICES, default='arial',
+        help_text='Font used for instructions: arial (English) or hindi (Abbasi)',
+    )
+    is_bold = models.BooleanField(default=False, help_text='Render instructions in bold')
     is_default = models.BooleanField(default=False, help_text='Mark as default selection in download modals')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -221,7 +230,7 @@ class ExportTemplate(models.Model):
     @classmethod
     def get_all_as_choices(cls):
         """Return list of dicts for JSON serialisation."""
-        templates = list(cls.objects.values('id', 'name', 'instructions', 'is_default'))
+        templates = list(cls.objects.values('id', 'name', 'instructions', 'font_name', 'is_bold', 'is_default'))
         return templates
 
 

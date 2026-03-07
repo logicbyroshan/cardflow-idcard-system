@@ -81,6 +81,11 @@ def api_export_template_create(request):
     name = (body.get('name') or '').strip()
     instructions = (body.get('instructions') or '').strip()
     is_default = bool(body.get('is_default', False))
+    font_name = (body.get('font_name') or 'arial').strip().lower()
+    is_bold = bool(body.get('is_bold', False))
+
+    if font_name not in ('arial', 'hindi'):
+        font_name = 'arial'
 
     if not name:
         return JsonResponse({'success': False, 'message': 'Template name is required'}, status=400)
@@ -94,9 +99,10 @@ def api_export_template_create(request):
     if ExportTemplate.objects.filter(name__iexact=name).exists():
         return JsonResponse({'success': False, 'message': 'A template with this name already exists'}, status=400)
 
-    tpl = ExportTemplate.objects.create(name=name, instructions=instructions, is_default=is_default)
+    tpl = ExportTemplate.objects.create(name=name, instructions=instructions, is_default=is_default, font_name=font_name, is_bold=is_bold)
     return JsonResponse({'success': True, 'message': 'Template created', 'template': {
-        'id': tpl.id, 'name': tpl.name, 'instructions': tpl.instructions, 'is_default': tpl.is_default
+        'id': tpl.id, 'name': tpl.name, 'instructions': tpl.instructions,
+        'font_name': tpl.font_name, 'is_bold': tpl.is_bold, 'is_default': tpl.is_default
     }})
 
 
@@ -119,6 +125,8 @@ def api_export_template_update(request, template_id):
     name = (body.get('name') or '').strip()
     instructions = (body.get('instructions') or '').strip()
     is_default = body.get('is_default')
+    font_name = body.get('font_name')
+    is_bold = body.get('is_bold')
 
     if name:
         if len(name) > 100:
@@ -132,10 +140,17 @@ def api_export_template_update(request, template_id):
         tpl.instructions = instructions
     if is_default is not None:
         tpl.is_default = bool(is_default)
+    if font_name is not None:
+        fn = str(font_name).strip().lower()
+        if fn in ('arial', 'hindi'):
+            tpl.font_name = fn
+    if is_bold is not None:
+        tpl.is_bold = bool(is_bold)
     tpl.save()
 
     return JsonResponse({'success': True, 'message': 'Template updated', 'template': {
-        'id': tpl.id, 'name': tpl.name, 'instructions': tpl.instructions, 'is_default': tpl.is_default
+        'id': tpl.id, 'name': tpl.name, 'instructions': tpl.instructions,
+        'font_name': tpl.font_name, 'is_bold': tpl.is_bold, 'is_default': tpl.is_default
     }})
 
 

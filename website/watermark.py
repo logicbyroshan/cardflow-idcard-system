@@ -91,18 +91,14 @@ def apply_text_watermark(file_obj):
     Tile the entire image with diagonal 'adarsh id card' watermarks.
 
     Pattern design:
-    - Font size ≈ 3 % of image width (min 16 px, max 60 px)
-    - Text variants alternate across the tile grid
-    - White text (alpha ≈ 80) + dark shadow (alpha ≈ 55) for visibility on
-      both light and dark backgrounds
-    - The tile layer is rotated 28° before compositing so rows run diagonally
-    - Every other tile row is offset by half a step for a staggered look
+    - 2 diagonal text watermarks placed across the image
+    - Font size ≈ 4 % of image width (min 18 px, max 72 px)
+    - White text (alpha ≈ 70) + dark shadow for visibility
+    - One line at ~1/3 height, another at ~2/3 height, angled −25°
 
     Returns the watermarked image as a ContentFile with the original filename.
     Falls back to the original file_obj on any error.
     """
-    _math = math
-
     if not file_obj:
         return file_obj
 
@@ -116,53 +112,39 @@ def apply_text_watermark(file_obj):
         w, h = img.size
 
         # Font proportional to image width
-        font_size = max(16, min(60, int(w * 0.030)))
+        font_size = max(18, min(72, int(w * 0.040)))
         font = _load_font(font_size)
 
-        # Measure one text cell for spacing
-        _probe = ImageDraw.Draw(Image.new('RGBA', (1, 1)))
-        _ref_bbox = _probe.textbbox((0, 0), 'adarsh id cards', font=font)
-        cell_w = (_ref_bbox[2] - _ref_bbox[0]) + int(font_size * 2.0)   # horizontal gap
-        cell_h = font_size + int(font_size * 1.4)                        # vertical gap
+        overlay = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(overlay)
 
-        # Large canvas — must cover the full image after a 28° rotation
-        # diagonal of the image + generous padding
-        diag = int(_math.sqrt(w * w + h * h))
-        pad  = diag // 2
-        canvas_sz = diag + pad * 2          # square canvas
+        # Two watermark lines across the image
+        lines = [
+            (_WATERMARK_TEXTS[0], w // 2, int(h * 0.33)),
+            (_WATERMARK_TEXTS[3], w // 2, int(h * 0.66)),
+        ]
 
-        tile = Image.new('RGBA', (canvas_sz, canvas_sz), (0, 0, 0, 0))
-        td   = ImageDraw.Draw(tile)
+        for text, cx, cy in lines:
+            bbox = draw.textbbox((0, 0), text, font=font)
+            tw = bbox[2] - bbox[0]
+            th = bbox[3] - bbox[1]
 
-        row_i = 0
-        y = 0
-        while y < canvas_sz + cell_h:
-            x_offset = (row_i % 2) * (cell_w // 2)   # stagger alternate rows
-            col_i = 0
-            x = -cell_w + x_offset
-            while x < canvas_sz + cell_w:
-                text = _WATERMARK_TEXTS[(row_i + col_i) % len(_WATERMARK_TEXTS)]
-                # Shadow
-                for ox, oy in ((-1, -1), (-1, 1), (1, -1), (1, 1), (0, 2), (2, 0)):
-                    td.text((x + ox, y + oy), text, font=font, fill=(0, 0, 0, 55))
-                # Main text
-                td.text((x, y), text, font=font, fill=(255, 255, 255, 80))
-                x += cell_w
-                col_i += 1
-            y += cell_h
-            row_i += 1
+            # Draw text on a small canvas, rotate, paste onto overlay
+            pad = max(tw, th)
+            txt_img = Image.new('RGBA', (tw + pad, th + pad), (0, 0, 0, 0))
+            td = ImageDraw.Draw(txt_img)
+            tx, ty = pad // 2, pad // 2
+            # Shadow
+            for ox, oy in ((-1, -1), (-1, 1), (1, -1), (1, 1), (0, 2), (2, 0)):
+                td.text((tx + ox, ty + oy), text, font=font, fill=(0, 0, 0, 50))
+            # Main text
+            td.text((tx, ty), text, font=font, fill=(255, 255, 255, 70))
 
-        # Rotate the tile layer 28° (PIL rotates counter-clockwise; negative = clockwise)
-        tile_rot = tile.rotate(-28, resample=Image.BICUBIC, expand=False)
-
-        # Crop the centre (w × h) from the rotated tile
-        cx = (tile_rot.width  - w) // 2
-        cy = (tile_rot.height - h) // 2
-        overlay = tile_rot.crop((cx, cy, cx + w, cy + h))
-
-        # Safety: ensure overlay matches image size exactly
-        if overlay.size != (w, h):
-            overlay = overlay.resize((w, h), Image.LANCZOS)
+            txt_rot = txt_img.rotate(25, resample=Image.BICUBIC, expand=True)
+            # Paste centered at (cx, cy)
+            px = cx - txt_rot.width // 2
+            py = cy - txt_rot.height // 2
+            overlay.paste(txt_rot, (px, py), txt_rot)
 
         result = Image.alpha_composite(img, overlay)
         return _save_image(result, orig_fmt, orig_name)

@@ -29,6 +29,18 @@
     font-weight: bold;
     font-style: normal;
 }
+@font-face {
+    font-family: 'AbbasiNatraj';
+    src: url('{{ font_dir }}/ABBANM__.TTF');
+    font-weight: normal;
+    font-style: normal;
+}
+@font-face {
+    font-family: 'AbbasiNagari';
+    src: url('{{ font_dir }}/ABBANN__.TTF');
+    font-weight: normal;
+    font-style: normal;
+}
 
 /* ─── Page setup ─────────────────────────────────────────────────── */
 /*
@@ -293,7 +305,7 @@ table.data-table td.img-cell.placeholder-cell img {
     </table>
 
     {% if forloop.last and template_instructions %}
-    <div class="instructions-block">
+    <div class="instructions-block" style="{% if template_font == 'hindi' %}font-family: AbbasiNatraj, AbbasiNagari, Arial, sans-serif;{% endif %}{% if template_bold %}font-weight: bold;{% endif %}">
         <strong>Instructions:</strong> {{ template_instructions }}
     </div>
     {% endif %}

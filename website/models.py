@@ -194,18 +194,39 @@ class Feature(models.Model):
 # ==========================================
 
 class PortfolioCategory(models.Model):
-    """Categories for organizing portfolio items. 9 defaults + user-created."""
+    """Categories for organizing portfolio items."""
     DEFAULT_CATEGORIES = [
         ('id-cards', 'ID Cards', 'fas fa-id-card'),
         ('lanyards', 'Lanyards', 'fas fa-ribbon'),
+        ('badges', 'Badges', 'fas fa-id-badge'),
+        ('school-stationery', 'School Stationery', 'fas fa-pencil-ruler'),
+        ('student-diaries', 'Student Diaries', 'fas fa-book'),
+        ('prospectus', 'Prospectus', 'fas fa-scroll'),
+        ('t-shirts', 'T-Shirts', 'fas fa-tshirt'),
+        ('mugs', 'Mugs', 'fas fa-mug-hot'),
+        ('pamphlets', 'Pamphlets', 'fas fa-file-alt'),
+        ('brochures', 'Brochures', 'fas fa-book-open'),
         ('certificates', 'Certificates', 'fas fa-certificate'),
         ('marksheets', 'Marksheets', 'fas fa-file-alt'),
         ('fee-cards', 'Fee Cards', 'fas fa-credit-card'),
         ('invitations', 'Invitations', 'fas fa-envelope-open-text'),
         ('visiting-cards', 'Visiting Cards', 'fas fa-address-card'),
-        ('brochures', 'Brochures', 'fas fa-book-open'),
         ('others', 'Others', 'fas fa-print'),
     ]
+
+    # Categories shown in the bento grid (slug → bento_size)
+    BENTO_LAYOUT = {
+        'id-cards': 'large',          # Row 1: span 2 cols + 2 rows
+        'lanyards': 'normal',         # Row 1
+        'badges': 'normal',           # Row 1
+        'school-stationery': 'normal',# Row 2 (below lanyards)
+        'student-diaries': 'wide',    # Row 3: span 2 cols
+        'prospectus': 'wide',         # Row 3: span 2 cols
+        't-shirts': 'normal',         # Row 4
+        'mugs': 'normal',             # Row 4
+        'pamphlets': 'normal',        # Row 4
+        'brochures': 'normal',        # Row 4
+    }
 
     name = models.CharField(max_length=255)
     slug = models.SlugField(unique=True, blank=True)
@@ -215,7 +236,7 @@ class PortfolioCategory(models.Model):
     is_bento = models.BooleanField(default=False, help_text='Show in the bento grid section')
     bento_size = models.CharField(
         max_length=10, default='normal',
-        choices=[('large', 'Large'), ('normal', 'Normal')],
+        choices=[('large', 'Large'), ('wide', 'Wide'), ('normal', 'Normal')],
         help_text='Card size in bento grid',
     )
     order = models.IntegerField(default=0)
@@ -256,8 +277,10 @@ class PortfolioCategory(models.Model):
 
     @classmethod
     def ensure_defaults(cls):
-        """Create the 9 default categories if they don't exist."""
+        """Create default categories and set bento grid layout."""
         for i, (slug, name, icon) in enumerate(cls.DEFAULT_CATEGORIES):
+            bento_size = cls.BENTO_LAYOUT.get(slug, 'normal')
+            is_bento = slug in cls.BENTO_LAYOUT
             obj, created = cls.objects.get_or_create(
                 slug=slug,
                 defaults={
@@ -265,15 +288,23 @@ class PortfolioCategory(models.Model):
                     'icon': icon,
                     'order': i,
                     'is_default': True,
-                    'is_bento': True,
-                    'bento_size': 'large' if i == 0 else 'normal',
+                    'is_bento': is_bento,
+                    'bento_size': bento_size,
                 }
             )
-            # For existing records, enable bento flag if not already set
-            if not created and not obj.is_bento:
-                obj.is_bento = True
-                obj.bento_size = 'large' if i == 0 else 'normal'
-                obj.save(update_fields=['is_bento', 'bento_size'])
+            if not created:
+                changed = False
+                if obj.is_bento != is_bento:
+                    obj.is_bento = is_bento
+                    changed = True
+                if is_bento and obj.bento_size != bento_size:
+                    obj.bento_size = bento_size
+                    changed = True
+                if obj.order != i:
+                    obj.order = i
+                    changed = True
+                if changed:
+                    obj.save(update_fields=['is_bento', 'bento_size', 'order'])
 
 
 class PortfolioItem(models.Model):

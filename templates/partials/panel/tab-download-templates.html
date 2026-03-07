@@ -1,4 +1,11 @@
 {% load static %}
+
+<!-- Hindi font-face for template editor preview -->
+<style>
+@font-face { font-family:'AbbasiNatraj'; src:url('{% static "fonts/ABBANM__.TTF" %}'); font-weight:normal; }
+@font-face { font-family:'AbbasiNagari'; src:url('{% static "fonts/ABBANN__.TTF" %}'); font-weight:normal; }
+</style>
+
 <!-- === DOWNLOAD TEMPLATES TAB === -->
 <div class="panel-tab-content" id="tab-download-templates">
 
@@ -60,9 +67,21 @@
       <input type="text" id="templateName" class="panel-form-input" placeholder="e.g. School ID Card Footer" maxlength="100">
 
       <label class="panel-form-label">Instructions / Footer Text *</label>
+
+      <!-- Mini toolbar -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+        <select id="templateFontName" class="panel-form-input" style="width:auto;min-width:160px;padding:5px 8px;font-size:12px;">
+          <option value="arial">English (Arial)</option>
+          <option value="hindi">Hindi (Abbasi)</option>
+        </select>
+        <button type="button" id="templateBoldBtn" class="btn btn-sm btn-neutral" style="min-width:36px;font-weight:700;font-size:13px;padding:4px 10px;" onclick="toggleTemplateBold()" title="Bold">
+          B
+        </button>
+      </div>
+
       <textarea id="templateInstructions" class="panel-form-input" rows="5"
         placeholder="Footer text printed at the bottom of PDF/Word exports..."
-        maxlength="5000"></textarea>
+        maxlength="5000" style="transition:font-family .2s,font-weight .2s;"></textarea>
 
       <label class="panel-form-label checkbox-label">
         <input type="checkbox" id="templateIsDefault" class="checkbox-input">

@@ -398,10 +398,14 @@ class PdfExporter:
 
             # Fetch template instructions if template_id provided
             template_instructions = ''
+            template_font = 'arial'
+            template_bold = False
             if template_id:
                 try:
                     tpl = ExportTemplate.objects.get(id=template_id)
                     template_instructions = tpl.instructions
+                    template_font = tpl.font_name or 'arial'
+                    template_bold = tpl.is_bold
                 except ExportTemplate.DoesNotExist:
                     pass
 
@@ -430,6 +434,8 @@ class PdfExporter:
                 'export_note_line': export_settings.get('export_note_line', 'Note: This document is computer generated. Please verify all details before printing ID cards.'),
                 'export_copyright_line': export_settings.get('export_copyright_line', '© Adarsh ID Cards Management System'),
                 'template_instructions': template_instructions,
+                'template_font': template_font,
+                'template_bold': template_bold,
                 'row_height_cm': row_height_cm,
                 # Font-mode context for template
                 'font_family': font_preset['font_family'],
