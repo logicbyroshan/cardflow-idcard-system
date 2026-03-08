@@ -46,8 +46,9 @@ function renderImageCell(f) {
   var html = '<td class="w-[28px] px-[1px] py-1 text-center align-middle image-field image-cell" data-field="' + escapeHtml(f.name) + '" data-field-name="' + escapeHtml(f.name) + '" data-field-type="image" data-original-value="' + escapeHtml(f.value || '') + '">';
   html += '<div class="image-with-edit">';
   if (f.value && f.value !== '' && f.value !== 'NOT_FOUND' && !f.value.startsWith('PENDING:')) {
-    var thumbPath = f.value.replace(/\/([^\/]+)$/, '/thumbnails/$1');
-    html += '<img src="/media/' + thumbPath + '" alt="' + escapeHtml(f.name) + '" class="table-image" loading="lazy" onerror="this.onerror=null; this.src=\'/media/' + f.value + '\'">';
+    var thumbPath = (typeof window.getThumbPath === 'function') ? window.getThumbPath(f.value) : null;
+    var thumbSrc = thumbPath ? ('/media/' + thumbPath) : ('/media/' + f.value);
+    html += '<img src="' + thumbSrc + '" alt="' + escapeHtml(f.name) + '" class="table-image" loading="lazy" onerror="this.onerror=null; this.src=\'/media/' + f.value + '\'">';
   } else if (f.value && f.value.startsWith('PENDING:')) {
     html += '<div class="no-image pending-placeholder" title="Waiting for upload"><i class="fa-solid fa-clock"></i></div>';
   } else {

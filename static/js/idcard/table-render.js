@@ -447,6 +447,12 @@
                     f.empty.style.display   = 'none';
                     var thumbSrc = data.thumb ? ('/media/' + data.thumb) : ('/media/' + val);
                     f.img.dataset.vtOrig = val;
+                    // Re-attach onerror each rebind: recycled rows lose it after first error
+                    f.img.onerror = function () {
+                        this.onerror = null;
+                        var orig = this.dataset.vtOrig;
+                        if (orig) this.src = '/media/' + orig;
+                    };
                     f.img.src = thumbSrc;
                 } else if (isPending) {
                     f.img.style.display    = 'none';

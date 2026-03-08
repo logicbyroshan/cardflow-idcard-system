@@ -245,7 +245,7 @@ def api_idcard_cards_json(request, table_id):
     reordered_fields = BaseService.reorder_fields_for_display(table.fields or [])
 
     def _thumb(path):
-        """Replicate get_thumbnail_path template filter."""
+        """Replicate get_thumbnail_path template filter (returns .webp path)."""
         if not path or path == 'NOT_FOUND' or path.startswith('PENDING:'):
             return path
         # Reject values that don't look like real file paths (no extension)
@@ -254,8 +254,14 @@ def api_idcard_cards_json(request, table_id):
         try:
             parts = path.replace('\\', '/').split('/')
             if len(parts) >= 2:
-                return parts[0] + '/thumbs/' + '/'.join(parts[1:])
-            return 'thumbs/' + path
+                base_folder = parts[0]
+                rest = '/'.join(parts[1:])
+                name, _ext = rest.rsplit('.', 1) if '.' in rest else (rest, '')
+                rest = f"{name}.webp"
+                return f"{base_folder}/thumbs/{rest}"
+            # Just a filename
+            name, _ext = path.rsplit('.', 1) if '.' in path else (path, '')
+            return f"thumbs/{name}.webp"
         except Exception:
             return path
 
