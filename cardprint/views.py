@@ -568,6 +568,34 @@ def api_print_pool_list(request, table_id):
 
 @login_required
 @require_any_admin
+def print_cards_overview(request):
+    """Overview: lists all accessible tables with their print-workflow counts."""
+    user = request.user
+    qs = IDCardTable.objects.filter(
+        is_active=True,
+        deleted_by_client=False,
+    ).select_related('group__client').annotate(
+        print_list_count=Count('print_requests', filter=Q(print_requests__status='print_list')),
+        finalized_count=Count('print_requests', filter=Q(print_requests__status='finalized')),
+        pool_count=Count('print_requests', filter=Q(print_requests__status='pool')),
+    ).order_by('group__client__name', 'name')
+
+    if not PermissionService.is_super_admin(user):
+        staff_profile = getattr(user, 'staff_profile', None)
+        if staff_profile and staff_profile.staff_type == 'admin_staff':
+            assigned = staff_profile.assigned_clients.values_list('id', flat=True)
+            qs = qs.filter(group__client_id__in=assigned)
+
+    context = {
+        'active_page': 'print_cards',
+        'user_role': get_user_role(user),
+        'tables': qs,
+    }
+    return render(request, 'cardprint/print-cards-overview.html', context)
+
+
+@login_required
+@require_any_admin
 def generate_card_overview(request):
     """Overview: lists all accessible tables with their generate_list counts."""
     user = request.user

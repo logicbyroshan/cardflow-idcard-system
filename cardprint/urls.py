@@ -10,7 +10,8 @@ from . import views
 app_name = 'cardprint'
 
 urlpatterns = [
-    # ── Print Cards page ──
+    # ── Print Cards pages ──
+    path('', views.print_cards_overview, name='print_cards_overview'),
     path('table/<int:table_id>/', views.print_cards, name='print_cards'),
 
     # ── Generate Card pages ──

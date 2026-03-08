@@ -118,6 +118,11 @@
     <a href="{% url 'cardprint:generate_card_overview' %}" class="{% if active_page == 'generate_card' %}active{% endif %}">
       <i class="fa-solid fa-id-card-clip"></i><span>Generate Card</span>
     </a>
+    {% if is_super_admin or is_admin_staff %}
+    <a href="{% url 'cardprint:print_cards_overview' %}" class="{% if active_page == 'print_cards' %}active{% endif %}">
+      <i class="fa-solid fa-print"></i><span>Print Cards</span>
+    </a>
+    {% endif %}
     {% endif %}
   </nav>
   <div class="sidebar-footer">
