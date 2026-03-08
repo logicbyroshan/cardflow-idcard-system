@@ -1,7 +1,7 @@
 """
 Card Print URL Configuration
 =============================
-Page view + API endpoints for the 3-step card print workflow.
+Page view + API endpoints for the card print workflow.
 Mounted at /panel/print/ in config/urls.py.
 """
 from django.urls import path
@@ -10,10 +10,14 @@ from . import views
 app_name = 'cardprint'
 
 urlpatterns = [
-    # Page view
+    # ── Print Cards page ──
     path('table/<int:table_id>/', views.print_cards, name='print_cards'),
 
-    # API endpoints
+    # ── Generate Card pages ──
+    path('generate-card/', views.generate_card_overview, name='generate_card_overview'),
+    path('generate-card/table/<int:table_id>/', views.generate_card, name='generate_card'),
+
+    # ── Print Cards API endpoints ──
     path('api/table/<int:table_id>/send/', views.api_print_send, name='api_print_send'),
     path('api/table/<int:table_id>/list/', views.api_print_list, name='api_print_list'),
     path('api/table/<int:table_id>/step-counts/', views.api_print_step_counts, name='api_print_step_counts'),
@@ -22,4 +26,11 @@ urlpatterns = [
     path('api/table/<int:table_id>/remove/', views.api_print_remove, name='api_print_remove'),
     path('api/table/<int:table_id>/mark-pool/', views.api_print_mark_pool, name='api_print_mark_pool'),
     path('api/table/<int:table_id>/pool-list/', views.api_print_pool_list, name='api_print_pool_list'),
+
+    # ── Generate Card API endpoints ──
+    path('api/generate-card/table/<int:table_id>/template/', views.api_template_get, name='api_template_get'),
+    path('api/generate-card/table/<int:table_id>/template/save/', views.api_template_save, name='api_template_save'),
+    path('api/generate-card/table/<int:table_id>/template/upload-pdf/<str:side>/', views.api_template_upload_pdf, name='api_template_upload_pdf'),
+    path('api/generate-card/table/<int:table_id>/cards/', views.api_generate_card_list, name='api_generate_card_list'),
+    path('api/generate-card/table/<int:table_id>/generate/', views.api_generate_pdf, name='api_generate_pdf'),
 ]

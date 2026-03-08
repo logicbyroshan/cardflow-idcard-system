@@ -91,10 +91,14 @@ class ThumbnailService:
             # Just a filename - add thumbs folder
             return f"{cls.THUMB_FOLDER}/{original_path}"
         
-        # Insert 'thumbs' after the base folder
-        # e.g., "adrsh_img/ABCDE/123.jpg" -> "adrsh_img/thumbs/ABCDE/123.jpg"
+        # Insert 'thumbs' after the base folder and change extension to .webp
+        # e.g., "adarshimg/ABCDE/123.jpg" -> "adarshimg/thumbs/ABCDE/123.webp"
         base_folder = parts[0]
         rest = '/'.join(parts[1:])
+        
+        # Replace extension with .webp
+        name, _ext = rest.rsplit('.', 1) if '.' in rest else (rest, '')
+        rest = f"{name}.webp"
         
         return f"{base_folder}/{cls.THUMB_FOLDER}/{rest}"
     
@@ -161,13 +165,13 @@ class ThumbnailService:
                 # Create thumbnail (maintains aspect ratio)
                 img.thumbnail(size, Image.Resampling.LANCZOS)
                 
-                # --- Phase 2: size-aware quality loop ---
+                # --- Phase 2: size-aware quality loop (WebP output) ---
                 orig_len = original_size_bytes or len(image_bytes)
                 quality = cls.QUALITY  # start at configured default (85)
                 
                 for _ in range(20):  # safety cap
                     output = BytesIO()
-                    img.save(output, format='JPEG', quality=quality, optimize=True)
+                    img.save(output, format='WEBP', quality=quality, method=4)
                     thumb_bytes = output.getvalue()
                     
                     ratio = orig_len / max(len(thumb_bytes), 1)

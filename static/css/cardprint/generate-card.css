@@ -1,0 +1,534 @@
+/* ═══════════════════════════════════════════════════════
+   generate-card.css  —  Generate Card editor styles
+   Card size: 87 mm × 57 mm  @  7 px/mm  =  609 × 399 px
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Page scaffold ── */
+.generate-card-page .main-content.gen-editor-wrap {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--topbar-height, 60px));
+  overflow: hidden;
+}
+
+/* ── Master split layout ── */
+.gen-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  height: 100%;
+}
+
+/* ═══════════════════════ LEFT PANEL ═══════════════════════ */
+.gen-left-panel {
+  width: 360px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border-color, #e5e7eb);
+  background: var(--bg-surface, #fff);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Generic section block */
+.gen-section {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+
+.gen-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.gen-section-header h3 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+  flex: 1;
+  margin: 0;
+}
+
+.gen-count-badge {
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 1px 8px;
+  min-width: 22px;
+  text-align: center;
+}
+
+/* ── Generate List toolbar ── */
+.gen-list-toolbar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+  align-items: center;
+}
+
+.gen-search-input {
+  flex: 1;
+  height: 30px;
+  font-size: 12px;
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 6px;
+  padding: 0 8px;
+  background: var(--bg-input, #f9fafb);
+  color: var(--text-primary, #111827);
+  outline: none;
+}
+
+.gen-search-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59,130,246,0.15);
+}
+
+/* Card rows in the generate list */
+.gen-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.gen-card-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  background: var(--bg-body, #f9fafb);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.gen-card-item:hover {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.gen-card-item.selected {
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+
+.gen-card-item input[type="checkbox"] {
+  accent-color: #3b82f6;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.gen-card-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary, #1f2937);
+  font-weight: 500;
+}
+
+.gen-card-id {
+  font-size: 10px;
+  color: var(--text-muted, #9ca3af);
+  flex-shrink: 0;
+}
+
+/* ── Row layout for settings ── */
+.gen-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+.gen-row label {
+  width: 72px;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--text-secondary, #4b5563);
+  font-weight: 500;
+}
+
+.gen-row select {
+  flex: 1;
+  height: 30px;
+  font-size: 12px;
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 6px;
+  padding: 0 6px;
+  background: var(--bg-input, #f9fafb);
+  color: var(--text-primary, #111827);
+}
+
+.gen-mini-input {
+  width: 54px;
+  height: 30px;
+  font-size: 12px;
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 6px;
+  padding: 0 6px;
+  text-align: center;
+  background: var(--bg-input, #f9fafb);
+  color: var(--text-primary, #111827);
+}
+
+.gen-unit {
+  font-size: 11px;
+  color: var(--text-muted, #9ca3af);
+}
+
+/* ── 1-sided / 2-sided toggle ── */
+.gen-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.gen-toggle-btn {
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--bg-input, #f9fafb);
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary, #4b5563);
+  transition: background 0.15s, color 0.15s;
+}
+
+.gen-toggle-btn:first-child {
+  border-right: 1px solid var(--border-color, #d1d5db);
+}
+
+.gen-toggle-btn.active {
+  background: #3b82f6;
+  color: #fff;
+}
+
+/* ── Active side info ── */
+.gen-active-side-info {
+  font-size: 11px;
+  color: var(--text-muted, #9ca3af);
+  margin-bottom: 8px;
+}
+
+.gen-active-side-info strong {
+  color: #3b82f6;
+}
+
+/* ── Draw hint ── */
+.gen-hint {
+  font-size: 11px;
+  color: var(--text-muted, #9ca3af);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+/* ── Placed field chips ── */
+#genPlacedFields {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gen-placed-field-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  font-size: 12px;
+  color: #1d4ed8;
+}
+
+.gen-placed-field-item .field-side-tag {
+  font-size: 10px;
+  background: #bfdbfe;
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-weight: 600;
+  color: #1d4ed8;
+  flex-shrink: 0;
+}
+
+.gen-placed-field-item .field-name {
+  flex: 1;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gen-placed-field-type {
+  font-size: 10px;
+  color: #6b7280;
+  flex-shrink: 0;
+}
+
+.gen-remove-field-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #93c5fd;
+  font-size: 13px;
+  line-height: 1;
+  padding: 0 2px;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+
+.gen-remove-field-btn:hover {
+  color: #ef4444;
+}
+
+/* ── Bottom action bar ── */
+.gen-actions {
+  padding: 12px 16px;
+  display: flex;
+  gap: 8px;
+  border-top: 1px solid var(--border-color, #e5e7eb);
+  background: var(--bg-surface, #fff);
+  margin-top: auto;
+  flex-shrink: 0;
+}
+
+.gen-actions .btn {
+  flex: 1;
+  justify-content: center;
+}
+
+/* ── Empty / loading messages ── */
+.gen-empty-msg {
+  font-size: 12px;
+  color: var(--text-muted, #9ca3af);
+  text-align: center;
+  padding: 10px 0;
+}
+
+/* ═══════════════════════ RIGHT PANEL ═══════════════════════ */
+.gen-right-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  background: var(--bg-body, #f1f5f9);
+  padding: 16px;
+  gap: 14px;
+}
+
+/* ── Canvas toolbar ── */
+.gen-canvas-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Front / Back segmented control in toolbar */
+.gen-side-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.gen-side-btn {
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary, #4b5563);
+  transition: background 0.15s, color 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.gen-side-btn:first-child {
+  border-right: 1px solid var(--border-color, #d1d5db);
+}
+
+.gen-side-btn.active {
+  background: #3b82f6;
+  color: #fff;
+}
+
+/* Draw mode banner */
+.gen-draw-mode-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  color: #92400e;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  animation: genPulse 1.8s ease-in-out infinite;
+}
+
+@keyframes genPulse {
+  0%,100% { opacity: 1; }
+  50%      { opacity: 0.75; }
+}
+
+.gen-cancel-draw {
+  background: none;
+  border: 1px solid #fca5a5;
+  color: #dc2626;
+  border-radius: 5px;
+  font-size: 11px;
+  padding: 2px 7px;
+  cursor: pointer;
+  margin-left: 4px;
+}
+
+.gen-cancel-draw:hover { background: #fee2e2; }
+
+/* ── Canvas container (centres the card) ── */
+.gen-canvas-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The card-sized dropshadow wrapper */
+.gen-card-wrapper {
+  position: relative;
+  width: 609px;
+  height: 399px;
+  border: 2px dashed #93c5fd;
+  border-radius: 4px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+  background: #fff;
+  overflow: hidden;
+  cursor: crosshair;
+  flex-shrink: 0;
+}
+
+/* When NOT in draw mode, restore default cursor */
+.gen-card-wrapper.no-draw-mode {
+  cursor: default;
+}
+
+.gen-card-wrapper canvas {
+  position: absolute;
+  inset: 0;
+  width: 609px !important;
+  height: 399px !important;
+}
+
+/* Overlay messages inside the card wrapper */
+.gen-pdf-loading,
+.gen-no-template {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.9);
+  font-size: 13px;
+  color: var(--text-muted, #9ca3af);
+  text-align: center;
+  padding: 20px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.gen-no-template i {
+  font-size: 36px;
+  color: #d1d5db;
+}
+
+.gen-canvas-info {
+  font-size: 11px;
+  color: var(--text-muted, #9ca3af);
+}
+
+/* ── Help box ── */
+.gen-help-box {
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 12px;
+  color: #0c4a6e;
+  max-width: 650px;
+  align-self: flex-start;
+}
+
+.gen-help-box h4 {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gen-help-box ol {
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.7;
+}
+
+/* ── Upload area buttons ── */
+.gen-upload-area {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* ── Responsive guard: if viewport too narrow to show the canvas ── */
+@media (max-width: 1100px) {
+  .gen-left-panel {
+    width: 300px;
+  }
+  .gen-card-wrapper {
+    transform: scale(0.9);
+    transform-origin: top center;
+  }
+}
+
+@media (max-width: 860px) {
+  .gen-layout {
+    flex-direction: column;
+    overflow-y: auto;
+    height: auto;
+  }
+  .gen-left-panel {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color, #e5e7eb);
+    max-height: 480px;
+  }
+  .gen-right-panel {
+    padding: 12px;
+  }
+  .gen-card-wrapper {
+    transform: scale(0.75);
+    transform-origin: top center;
+  }
+}

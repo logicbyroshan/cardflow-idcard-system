@@ -5,9 +5,9 @@
 <!-- Action Bar -->
 <div class="action-bar action-buttons-bar" id="printListActionBar">
     <div class="action-buttons-group">
-        <button class="btn action-btn btn-green" id="generateBtn" disabled title="Generate selected items">
-            <i class="fa-solid fa-gears"></i>
-            <span class="btn-text">Generate Selected</span>
+        <button class="btn action-btn btn-amber" id="sendToGenerateBtn" disabled title="Send selected cards to Generate list">
+            <i class="fa-solid fa-share-from-square"></i>
+            <span class="btn-text">Send to Generate</span>
         </button>
         <button class="btn action-btn btn-gray" id="removeFromPrintBtn" disabled title="Remove selected from print list">
             <i class="fa-solid fa-trash"></i>
@@ -120,8 +120,8 @@
                     <td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">{{ item.requested_at|date:"d-M-Y H:i" }}</td>
                     <td class="w-[120px] px-[1px] py-1 text-center align-middle action-cell">
                         <div class="confirm-action-btns">
-                            <button class="btn-generate-single" data-pr-id="{{ item.pr_id }}" title="Generate" aria-label="Generate">
-                                <i class="fa-solid fa-gears"></i> <span>Generate</span>
+                            <button class="btn-send-to-generate" data-pr-id="{{ item.pr_id }}" title="Send to Generate list" aria-label="Send to Generate">
+                                <i class="fa-solid fa-share-from-square"></i> <span>Generate</span>
                             </button>
                             <button class="btn-remove-single" data-pr-id="{{ item.pr_id }}" title="Remove from print list" aria-label="Remove from print list">
                                 <i class="fa-solid fa-trash"></i> <span>Remove</span>

@@ -241,17 +241,20 @@ def get_thumbnail_path(image_path):
     if isinstance(image_path, str) and image_path.startswith('PENDING:'):
         return image_path
     
-    # Split path and insert 'thumbs' after the base folder
+    # Split path and insert 'thumbs' after the base folder, use .webp extension
     try:
         parts = image_path.replace('\\', '/').split('/')
         if len(parts) >= 2:
-            # e.g. adarshimg/CLIENT/file.jpg -> adarshimg/thumbs/CLIENT/file.jpg
+            # e.g. adarshimg/CLIENT/file.jpg -> adarshimg/thumbs/CLIENT/file.webp
             base_folder = parts[0]
             rest = '/'.join(parts[1:])
+            name, _ext = rest.rsplit('.', 1) if '.' in rest else (rest, '')
+            rest = f"{name}.webp"
             return f"{base_folder}/thumbs/{rest}"
         else:
             # Just a filename
-            return f"thumbs/{image_path}"
+            name, _ext = image_path.rsplit('.', 1) if '.' in image_path else (image_path, '')
+            return f"thumbs/{name}.webp"
     except Exception:
         pass
     

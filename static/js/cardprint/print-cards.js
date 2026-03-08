@@ -210,14 +210,14 @@ function createPaginator(opts) {
 
 /* ═══════════════════════════════════════════════════════════════════
    STEP 1: PRINT LIST (status = print_list)
-   Actions: Generate (bulk + single), Remove (bulk + single)
+   Actions: Send to Generate (bulk + single), Remove (bulk + single)
    ═══════════════════════════════════════════════════════════════════ */
 (function printListStep() {
   var tableBody     = document.getElementById('printListTableBody');
   var selectAllCb   = document.getElementById('printListSelectAll');
   var searchInput   = document.getElementById('printListSearchInput');
   var searchClearBtn = document.getElementById('printListSearchClearBtn');
-  var generateBtn   = document.getElementById('generateBtn');
+  var sendToGenBtn  = document.getElementById('sendToGenerateBtn');
   var removeBtn     = document.getElementById('removeFromPrintBtn');
   var viewBtn       = document.getElementById('printListViewBtn');
   var showingRange  = document.getElementById('printListShowingRange');
@@ -247,7 +247,7 @@ function createPaginator(opts) {
   function updateSelectionUI() {
     var ids = getSelectedPrIds();
     var count = ids.length;
-    if (generateBtn) generateBtn.disabled = count === 0;
+    if (sendToGenBtn) sendToGenBtn.disabled = count === 0;
     if (removeBtn)   removeBtn.disabled   = count === 0;
     if (viewBtn)     viewBtn.disabled     = count !== 1;
     if (paginator) paginator.updateSelectionCount(count);
@@ -276,10 +276,10 @@ function createPaginator(opts) {
   // Single-row actions
   if (tableBody) {
     tableBody.addEventListener('click', function(e) {
-      var genSingle = e.target.closest('.btn-generate-single');
-      if (genSingle) {
-        var prId = parseInt(genSingle.dataset.prId);
-        if (prId) performGenerate([prId]);
+      var sendSingle = e.target.closest('.btn-send-to-generate');
+      if (sendSingle) {
+        var prId = parseInt(sendSingle.dataset.prId);
+        if (prId) performSendToGenerate([prId]);
         return;
       }
       var rmBtn = e.target.closest('.btn-remove-single');
@@ -290,13 +290,13 @@ function createPaginator(opts) {
     });
   }
 
-  // Bulk Generate
-  if (generateBtn) {
-    generateBtn.addEventListener('click', function() {
+  // Bulk Send to Generate
+  if (sendToGenBtn) {
+    sendToGenBtn.addEventListener('click', function() {
       var ids = getSelectedPrIds();
       if (ids.length === 0) return;
-      if (!confirm('Generate ' + ids.length + ' item(s)?')) return;
-      performGenerate(ids);
+      if (!confirm('Send ' + ids.length + ' card(s) to Generate list?')) return;
+      performSendToGenerate(ids);
     });
   }
 
@@ -319,12 +319,12 @@ function createPaginator(opts) {
     });
   }
 
-  // Generate API (print_list → finalized)
-  function performGenerate(prIds) {
+  // Send to Generate API (print_list → generate_list)
+  function performSendToGenerate(prIds) {
     ApiClient.post('/print/api/table/' + TABLE_ID + '/generate/', { request_ids: prIds })
     .then(function(data) {
       if (data.status === 'ok') {
-        showToast(data.message || 'Generated successfully', 'success');
+        showToast(data.message || 'Sent to generate list', 'success');
         prIds.forEach(function(id) {
           var row = tableBody.querySelector('tr[data-pr-id="' + id + '"]');
           if (row) row.remove();
@@ -333,11 +333,11 @@ function createPaginator(opts) {
         updateSelectionUI();
         refreshStepCounts();
       } else {
-        showToast(data.message || 'Failed to generate', 'error');
+        showToast(data.message || 'Failed to send to generate', 'error');
       }
     }).catch(function(err) {
       showToast('Network error', 'error');
-      console.error('[PrintList] Generate error:', err);
+      console.error('[PrintList] Send-to-generate error:', err);
     });
   }
 
@@ -408,7 +408,7 @@ function createPaginator(opts) {
       html += '<td class="w-[65px] px-[1px] py-1 align-middle user-cell text-center">' + escapeHtml(item.requested_by_name || '-') + '</td>';
       html += '<td class="w-[90px] px-[1px] py-1 align-middle date-cell text-center">' + escapeHtml(item.requested_at || '-') + '</td>';
       html += '<td class="w-[60px] px-[1px] py-1 text-center align-middle action-cell"><div class="confirm-action-btns">';
-      html += '<button class="btn-generate-single" data-pr-id="' + item.pr_id + '" title="Generate"><i class="fa-solid fa-gears"></i></button>';
+      html += '<button class="btn-send-to-generate" data-pr-id="' + item.pr_id + '" title="Send to Generate"><i class="fa-solid fa-share-from-square"></i></button>';
       html += '<button class="btn-remove-single" data-pr-id="' + item.pr_id + '" title="Remove"><i class="fa-solid fa-trash"></i></button>';
       html += '</div></td>';
       html += '<td class="w-[65px] px-[1px] py-1 align-middle text-center"><span class="status-badge status-' + item.status + '">' + escapeHtml(item.status_display || item.status || '-') + '</span></td>';

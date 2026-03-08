@@ -30,7 +30,13 @@
         if (imagePath.indexOf('.') === -1) return null;
 
         var parts = imagePath.replace(/\\/g, '/').split('/');
-        if (parts.length < 2) return 'thumbs/' + imagePath;
+        // Change extension to .webp for thumbnail
+        var last = parts[parts.length - 1];
+        var dotIdx = last.lastIndexOf('.');
+        if (dotIdx !== -1) last = last.substring(0, dotIdx) + '.webp';
+        parts[parts.length - 1] = last;
+
+        if (parts.length < 2) return 'thumbs/' + parts.join('/');
 
         return parts[0] + '/thumbs/' + parts.slice(1).join('/');
     }
