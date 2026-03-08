@@ -216,16 +216,13 @@ class PortfolioCategory(models.Model):
 
     # Categories shown in the bento grid (slug → bento_size)
     BENTO_LAYOUT = {
-        'id-cards': 'large',          # Row 1: span 2 cols + 2 rows
-        'lanyards': 'normal',         # Row 1
-        'badges': 'normal',           # Row 1
-        'school-stationery': 'normal',# Row 2 (below lanyards)
-        'student-diaries': 'wide',    # Row 3: span 2 cols
-        'prospectus': 'wide',         # Row 3: span 2 cols
-        't-shirts': 'normal',         # Row 4
-        'mugs': 'normal',             # Row 4
-        'pamphlets': 'normal',        # Row 4
-        'brochures': 'normal',        # Row 4
+        'id-cards': 'large',           # Row 1: span 2 cols + 2 rows
+        'lanyards': 'normal',          # Row 1
+        'badges': 'normal',            # Row 1
+        'school-stationery': 'normal', # Row 2 (beside id-cards)
+        'pamphlets': 'wide',           # Row 3: span 2 cols
+        'student-diaries': 'wide',     # Row 3: span 2 cols (equal width to pamphlets)
+        'office-stationery': 'large',  # Row 4: span 2 cols + 2 rows
     }
 
     name = models.CharField(max_length=255)

@@ -249,8 +249,6 @@ function initRowActionHandlers() {
                 IDCardApp.unverifyCard(cardId);
             } else if (btn.classList.contains('retrieve-row-btn')) {
                 IDCardApp.retrieveCard(cardId);
-            } else if (btn.classList.contains('print-row-btn')) {
-                bulkPrintSend([parseInt(cardId)]);
             }
         });
     }

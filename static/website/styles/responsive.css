@@ -362,6 +362,23 @@ h2 {
 }
 
 /* ============================================
+   HERO SLIDER GAP FIX (1000px - 1300px)
+   Pushes the slider card far enough below the
+   hero buttons so there is always clear space.
+   Overrides the -180px set in the block above.
+============================================ */
+@media (max-width: 1300px) and (min-width: 1000px) {
+    .hero-card-wrapper {
+        bottom: -300px;
+    }
+    /* Compensate: card bottom now sits 300px below hero,
+       so the spacer must be at least that tall. */
+    .hero-spacer {
+        height: 320px !important;
+    }
+}
+
+/* ============================================
    DESKTOP MEDIUM (1100px - 1199px)
    Intermediate size for even smoother transition
 ============================================ */
@@ -1288,6 +1305,13 @@ h2 {
         max-width: 70px;
         min-width: 70px;
         margin-bottom: 0;
+    }
+
+    .bento-card-1 .bento-illustration,
+    .bento-card-4 .bento-illustration {
+        max-width: 70px;
+        width: 70px;
+        min-width: 70px;
     }
 
     .bento-card h3 {

@@ -54,21 +54,6 @@
       </div>
     </header>
 
-    {% include 'partials/client/client-drawer.html' %}
-
-    {% include 'partials/client/view-modal.html' %}
-
-    {% include 'partials/client/delete-modal.html' %}
-
-    {% include 'partials/client/status-modal.html' %}
-
-    <!-- Toast Container -->
-    {% include 'partials/components/toast.html' %}
-
-    {% include 'partials/staff/temp-password-modal.html' %}
-
-    {% include 'partials/client/staff-drawer.html' %}
-
     <div class="main-content">
 
     {% include 'partials/client/action-bar.html' %}
@@ -154,6 +139,15 @@
     </div>
 
   </main>
+
+  <!-- Drawers / Modals / Toast (outside <main> — avoids flex-column gap) -->
+  {% include 'partials/client/client-drawer.html' %}
+  {% include 'partials/client/view-modal.html' %}
+  {% include 'partials/client/delete-modal.html' %}
+  {% include 'partials/client/status-modal.html' %}
+  {% include 'partials/components/toast.html' %}
+  {% include 'partials/staff/temp-password-modal.html' %}
+  {% include 'partials/client/staff-drawer.html' %}
 
   <!-- Core Modules (Load Order: api → toast → modal → utils → init) -->
   <script defer src="{% static 'js/core/api.js' %}"></script>

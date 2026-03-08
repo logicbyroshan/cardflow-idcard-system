@@ -151,10 +151,10 @@ def manage_clients(request):
 @require_any_admin
 def active_clients(request):
     """View clients for ID card management — supports HTMX partial responses.
-    
-    Super-admins and admin-staff see ALL clients (active + inactive) so they
-    can manage groups/tables/cards even for deactivated clients.  An optional
-    ?status= query-param lets them filter by status.
+
+    Defaults to showing only ACTIVE clients so inactive clients do not appear
+    in the print/reprint navigation.  Admins can pass ?status=inactive (or any
+    other status value) to access and work with clients of that status.
     """
     user = request.user
     search_query = request.GET.get('search', '').strip()
@@ -169,10 +169,18 @@ def active_clients(request):
     except (ValueError, TypeError):
         per_page = DEFAULT_PER_PAGE
 
-    # Admins see all clients; apply optional status filter
-    base_qs = Client.objects.all().select_related('user')
-    if status_filter and status_filter in ('active', 'inactive', 'suspended'):
-        base_qs = base_qs.filter(status=status_filter)
+    # Default to active clients so inactive ones don't appear in print/reprint
+    # navigation by default.  Admins can filter by any status:
+    #   ?status=inactive  → inactive clients
+    #   ?status=all       → all clients regardless of status
+    #   ?status=active or no param → active clients only
+    if status_filter == 'all':
+        base_qs = Client.objects.all().select_related('user')
+    elif status_filter in ('inactive', 'suspended'):
+        base_qs = Client.objects.filter(status=status_filter).select_related('user')
+    else:
+        status_filter = 'active'  # normalise for template awareness
+        base_qs = Client.objects.filter(status='active').select_related('user')
 
     clients_qs = PermissionService.get_accessible_clients(
         user, base_qs

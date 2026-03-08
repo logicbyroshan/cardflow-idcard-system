@@ -93,7 +93,9 @@
 }
 
 .action-buttons-group .btn.action-btn:disabled {
-    opacity: 0.5;
+    opacity: 1;
+    background: #d1d5db !important;
+    color: #6b7280 !important;
     cursor: not-allowed;
 }
 
@@ -225,10 +227,12 @@
 .action-bar .btn.btn-back:hover {
     background: #0f172a;
 }
-.action-bar .btn:disabled {
-    opacity: 0.5;
+.action-bar .btn:not(.btn-danger-zone):disabled {
+    opacity: 1;
+    background: #d1d5db !important;
+    color: #6b7280 !important;
     cursor: not-allowed;
-    color: #fff !important;
+    box-shadow: none !important;
 }
 
 /* ==========================================

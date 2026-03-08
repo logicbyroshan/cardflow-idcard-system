@@ -15,8 +15,8 @@ Contains: Status filter tabs, search filter dropdown, search input, and navigati
     <div class="action-bar-left">
         <!-- Status Filter Tabs -->
         <div class="status-tabs" id="status-tabs">
-            <button class="status-tab {% if not status_filter %}active{% endif %}" data-status="">All</button>
-            <button class="status-tab {% if status_filter == 'active' %}active{% endif %}" data-status="active">Active</button>
+            <button class="status-tab {% if status_filter == 'all' %}active{% endif %}" data-status="all">All</button>
+            <button class="status-tab {% if status_filter == 'active' or not status_filter %}active{% endif %}" data-status="active">Active</button>
             <button class="status-tab {% if status_filter == 'inactive' %}active{% endif %}" data-status="inactive">Inactive</button>
         </div>
 

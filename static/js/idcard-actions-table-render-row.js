@@ -183,14 +183,7 @@ function createRowFromCard(card, index) {
     // Status-dependent last column(s)
     const status = _ts.lazyLoadState.currentStatus;
     var isClientUser = (typeof IS_CLIENT_USER !== 'undefined' && IS_CLIENT_USER);
-    if (status === 'approved') {
-        // Approved list: Print action column
-        html += `<td class="w-[60px] px-[1px] py-1 text-center align-middle action-cell">
-            <div class="action-buttons inline-flex flex-col gap-[2px]">
-                <button class="row-action-btn print-row-btn" data-card-id="${card.id}" title="Send to print list"><span>Print</span></button>
-            </div>
-        </td>`;
-    } else if (status === 'download') {
+    if (status === 'download') {
         // Downloaded list: show downloaded_at for admins only (client/client_staff don't see admin download info)
         if (!isClientUser) {
             html += `<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">${card.downloaded_at || '-'}</td>`;
@@ -200,7 +193,7 @@ function createRowFromCard(card, index) {
         if (!isClientUser) {
             html += `<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">${card.deleted_at || '-'}</td>`;
         }
-    } else {
+    } else if (status !== 'approved') {
         // Pending/Verified: show action buttons
         html += `<td class="w-[60px] px-[1px] py-1 text-center align-middle action-cell">
             <div class="action-buttons inline-flex flex-col gap-[2px]">
@@ -208,6 +201,7 @@ function createRowFromCard(card, index) {
             </div>
         </td>`;
     }
+    // Approved: no extra column — Print Selected button is in the action bar above
     
     // Last Updated / Updated By
     // Admin users: shown on all statuses

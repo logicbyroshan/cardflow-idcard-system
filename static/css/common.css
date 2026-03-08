@@ -48,11 +48,18 @@ body[style*="overflow:hidden"] {
    Also reset sticky top to 0 since action-bar should sit directly
    below the topbar (which is sticky at top:0).
    =========================================== */
+/* Ensure no gap between topbar and action bar (universal guard for all pages) */
+.main .main-content {
+  padding-top: 0 !important;
+  margin-top: 0 !important;
+}
+
 .action-bar {
   border-top: none;
   padding-top: 4px;
-  position: relative;
-  top: 0;
+  position: relative !important;
+  top: 0 !important;
+  margin-top: 0 !important;
 }
 
 /* ===========================================
@@ -248,11 +255,22 @@ body[style*="overflow:hidden"] {
 
 /* Disabled states */
 :is(.action-right, .action-bar-right) .btn:disabled {
-  opacity: 0.5;
+  opacity: 1;
+  background: #d1d5db !important;
+  color: #6b7280 !important;
   cursor: not-allowed;
-  color: var(--text-white) !important;
   transform: none !important;
   box-shadow: none !important;
+}
+
+/* Page-switch toggle buttons (Group Setting / ID Card Group) — make non-active btn-neutral visible */
+.page-switch-btns .btn.btn-neutral {
+  background: #6b7280;
+  color: #fff;
+  border: none;
+}
+.page-switch-btns .btn.btn-neutral:hover:not(:disabled) {
+  background: #4b5563;
 }
 
 /* ===========================================

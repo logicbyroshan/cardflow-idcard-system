@@ -971,6 +971,29 @@ body {
     background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
 }
 
+/* Big cards: horizontal layout — text on left, image on right */
+.bento-card-1,
+.bento-card-4 {
+    flex-direction: row;
+    align-items: center;
+    gap: 2rem;
+    justify-content: space-between;
+}
+
+.bento-card-1 .bento-text-content,
+.bento-card-4 .bento-text-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.bento-card-1 .bento-illustration,
+.bento-card-4 .bento-illustration {
+    flex-shrink: 0;
+    max-width: 180px;
+    width: 180px;
+    margin-bottom: 0;
+}
+
 .bento-card::before {
     content: '';
     position: absolute;
