@@ -100,6 +100,11 @@ jobs:
       - name: Verify no pending migrations
         run: python manage.py makemigrations --check --dry-run
 
+      - name: Build JS/CSS bundles
+        run: |
+          pip install rjsmin rcssmin
+          python build_bundles.py
+
       - name: Test collectstatic
         run: python manage.py collectstatic --no-input
 
