@@ -14,7 +14,7 @@ __pycache__/
 .Python
 build/
 develop-eggs/
-dist/
+/dist/
 downloads/
 eggs/
 .eggs/
@@ -22,6 +22,9 @@ lib/
 lib64/
 parts/
 sdist/
+
+# Keep static/dist/ (JS/CSS bundles) tracked
+!static/dist/
 var/
 copycode/
 share/python-wheels/
