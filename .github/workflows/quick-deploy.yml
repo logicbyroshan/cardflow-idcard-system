@@ -31,7 +31,7 @@ concurrency:
 jobs:
   quick-deploy:
     name: ⚡ Quick Deploy to Production
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     
     if: github.event.inputs.confirm == 'DEPLOY'
 
