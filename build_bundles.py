@@ -173,11 +173,16 @@ CSS_BUNDLES = [
             "css/global-search.css",
         ],
     ),
-    # ── IDCard Actions CSS ──
+    # ── IDCard Actions CSS (all sub-files expanded, no @import) ──
     (
         "idcard-actions.min.css",
         [
-            "css/idcard-actions.css",
+            "css/idcard-side-modal.css",
+            "css/idcard-action-bar.css",
+            "css/idcard-table.css",
+            "css/idcard-upload-wizard.css",
+            "css/idcard-modals.css",
+            "css/client-cards.css",
             "css/idcard-actions-enhanced.css",
             "css/flatpickr-theme.css",
         ],

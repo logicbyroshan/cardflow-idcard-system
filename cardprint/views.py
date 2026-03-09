@@ -26,7 +26,7 @@ from idcards.models import IDCard, IDCardTable
 from core.services.permission_service import PermissionService, api_require_permission
 from core.views.base import get_user_role, require_any_admin
 
-from .models import PrintRequest, CardTemplate
+from .models import PrintRequest, CardTemplate, validate_field_mappings
 from .services import PrintWorkflowService, GenerateCardService
 
 logger = logging.getLogger(__name__)
@@ -776,7 +776,11 @@ def api_template_save(request, table_id):
 
     tmpl, _ = CardTemplate.objects.get_or_create(table=table)
     tmpl.is_two_sided = bool(data.get('is_two_sided', False))
-    tmpl.field_mappings = data.get('field_mappings') or {'front': {}, 'back': {}}
+    raw_mappings = data.get('field_mappings') or {'front': {}, 'back': {}}
+    mapping_err = validate_field_mappings(raw_mappings)
+    if mapping_err:
+        return JsonResponse({'status': 'error', 'message': mapping_err}, status=400)
+    tmpl.field_mappings = raw_mappings
     tmpl.font_size = max(7, min(10, int(data.get('font_size', 8) or 8)))
     font_family = data.get('font_family', 'Helvetica-Bold')
     if font_family not in ('Helvetica-Bold', 'Helvetica'):

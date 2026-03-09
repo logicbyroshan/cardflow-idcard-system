@@ -66,6 +66,42 @@ class PrintRequest(models.Model):
         ]
 
 
+def validate_field_mappings(mappings):
+    """Validate field_mappings structure. Returns error string or None if valid.
+
+    Expected shape:
+    {
+      "front": {"FieldName": {"x_mm": N, "y_mm": N, "w_mm": N, "h_mm": N}},
+      "back":  {"FieldName": {"x_mm": N, "y_mm": N, "w_mm": N, "h_mm": N}}
+    }
+    """
+    if not isinstance(mappings, dict):
+        return 'field_mappings must be a JSON object'
+
+    allowed_sides = {'front', 'back'}
+    if set(mappings.keys()) - allowed_sides:
+        return f'field_mappings may only contain keys: {sorted(allowed_sides)}'
+
+    required_keys = {'x_mm', 'y_mm', 'w_mm', 'h_mm'}
+    for side in ('front', 'back'):
+        side_data = mappings.get(side)
+        if side_data is None:
+            continue
+        if not isinstance(side_data, dict):
+            return f'field_mappings["{side}"] must be a JSON object'
+        for field_name, coords in side_data.items():
+            if not isinstance(coords, dict):
+                return f'{side} > "{field_name}": expected coordinate object'
+            missing = required_keys - set(coords.keys())
+            if missing:
+                return f'{side} > "{field_name}": missing {sorted(missing)}'
+            for key in required_keys:
+                val = coords[key]
+                if not isinstance(val, (int, float)):
+                    return f'{side} > "{field_name}" > {key}: must be a number'
+    return None
+
+
 class CardTemplate(models.Model):
     """
     Stores the PDF template and field coordinate mappings for Generate Card feature.
