@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}">
   <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
   <link rel="stylesheet" href="{% static 'css/cardprint/generate-card.css' %}">
+  <link rel="stylesheet" href="{% static 'css/idcard-group.css' %}">
   <script defer src="{% static 'js/alpine-state.js' %}"></script>
   <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
 </head>
@@ -45,67 +46,70 @@
         </div>
 
         {% if tables %}
-        <div class="table-wrapper mt-4">
-          <div class="table-container">
-            <table class="gen-overview-table">
-              <thead>
-                <tr>
-                  <th class="w-10 text-center">#</th>
-                  <th>Client</th>
-                  <th>List Name</th>
-                  <th class="w-[100px] text-center">Print List</th>
-                  <th class="w-[100px] text-center">Generating</th>
-                  <th class="w-[100px] text-center">Finalized</th>
-                  <th class="w-[120px] text-center">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for table in tables %}
-                <tr>
-                  <td class="text-center text-gray-400">{{ forloop.counter }}</td>
-                  <td>
-                    <span class="flex items-center gap-1.5">
-                      <i class="fa-solid fa-building text-gray-400 text-[11px]"></i>
-                      {{ table.group.client.name }}
-                    </span>
-                  </td>
-                  <td><strong>{{ table.name }}</strong></td>
-                  <td class="text-center">
-                    {% if table.print_list_count > 0 %}
-                    <span class="gen-badge gen-badge-blue">{{ table.print_list_count }}</span>
-                    {% else %}
-                    <span class="text-gray-300">0</span>
-                    {% endif %}
-                  </td>
-                  <td class="text-center">
-                    {% if table.generate_count > 0 %}
-                    <span class="gen-badge gen-badge-amber">{{ table.generate_count }}</span>
-                    {% else %}
-                    <span class="text-gray-300">0</span>
-                    {% endif %}
-                  </td>
-                  <td class="text-center">
-                    {% if table.finalized_count > 0 %}
-                    <span class="gen-badge gen-badge-green">{{ table.finalized_count }}</span>
-                    {% else %}
-                    <span class="text-gray-300">0</span>
-                    {% endif %}
-                  </td>
-                  <td class="text-center">
-                    <a href="{% url 'cardprint:print_cards' table.id %}?step=print_list" class="btn btn-blue btn-xs no-underline">
+        <div class="table-container idcard-table mt-4">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Client</th>
+                <th scope="col">List Name</th>
+                <th scope="col">Status</th>
+                <th scope="col" class="text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for table in tables %}
+              {% with has_print_data=table.print_list_count|add:table.generate_count|add:table.finalized_count %}
+              <tr>
+                <td>
+                  <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-building text-gray-400 text-xs"></i>
+                    <span class="font-medium text-gray-700">{{ table.group.client.name }}</span>
+                  </div>
+                </td>
+                <td>
+                  <strong class="text-gray-900">{{ table.name }}</strong>
+                </td>
+                <td class="action-cell">
+                  <div class="action-buttons">
+                    <a href="{% url 'cardprint:print_cards' table.id %}?step=print_list" class="list-btn pending-btn">
+                      <i class="fa-solid fa-list"></i> Print List
+                      <span class="count-badge">{{ table.print_list_count }}</span>
+                    </a>
+                    <a href="{% url 'cardprint:print_cards' table.id %}?step=generate" class="list-btn verified-btn">
+                      <i class="fa-solid fa-gears"></i> Generating
+                      <span class="count-badge">{{ table.generate_count }}</span>
+                    </a>
+                    <a href="{% url 'cardprint:print_cards' table.id %}?step=finalized" class="list-btn approved-btn">
+                      <i class="fa-solid fa-check-double"></i> Finalized
+                      <span class="count-badge">{{ table.finalized_count }}</span>
+                    </a>
+                    <a href="{% url 'cardprint:print_cards' table.id %}?step=pool" class="list-btn pool-btn">
+                      <i class="fa-solid fa-layer-group"></i> Pool
+                      <span class="count-badge">{{ table.pool_count }}</span>
+                    </a>
+                  </div>
+                </td>
+                <td class="text-center">
+                  {% if has_print_data > 0 %}
+                  <div class="flex items-center justify-center gap-2 flex-wrap">
+                    <a href="{% url 'cardprint:print_cards' table.id %}?step=print_list" class="bulk-btn reupload-btn" style="text-decoration:none;">
                       <i class="fa-solid fa-arrow-right"></i> Open
                     </a>
                     {% if table.generate_count > 0 %}
-                    <a href="{% url 'cardprint:generate_card' table.id %}" class="btn btn-amber btn-xs no-underline ml-1" title="Continue generating {{ table.generate_count }} cards">
+                    <a href="{% url 'cardprint:generate_card' table.id %}" class="bulk-btn download-all-btn" style="text-decoration:none;" title="Continue generating {{ table.generate_count }} cards">
                       <i class="fa-solid fa-pen-to-square"></i> Editor
                     </a>
                     {% endif %}
-                  </td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
+                  </div>
+                  {% else %}
+                  <span class="text-gray-300 text-xs">—</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endwith %}
+              {% endfor %}
+            </tbody>
+          </table>
         </div>
         {% else %}
         <div class="gen-overview-empty">

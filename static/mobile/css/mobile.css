@@ -1,32 +1,47 @@
 /* ====================================================
-   ID Card Manager - Mobile PWA Custom CSS
+   Adarsh ID Cards — Mobile PWA Custom CSS
    Theme: Purple-Indigo Gradient (#667eea → #764ba2)
-   Based on existing admin dashboard style
+
+   IMPORTANT: Tailwind CSS is loaded BEFORE this file.
+   This file only contains styles that Tailwind can't
+   provide: custom components, animations, and PWA-specific
+   UI elements. Do NOT duplicate Tailwind utilities here.
    ==================================================== */
 
-/* ---- Base Reset & Typography ---- */
+
+/* ================================================================
+   1. BASE & MOBILE OPTIMIZATIONS
+   Tailwind preflight handles *, box-sizing, margin/padding reset.
+   We only add mobile-specific behaviour here.
+   ================================================================ */
+
 * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
     -webkit-tap-highlight-color: transparent;
 }
 
-body {
-    font-family: "Segoe UI", sans-serif;
-    background: #f4f4f4;
-    color: #2c3e50;
-    overflow-x: hidden;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-}
-
-/* Prevent pull-to-refresh on mobile */
 html, body {
     overscroll-behavior-y: contain;
 }
 
-/* ---- Custom Scrollbar ---- */
+body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+
+/* ================================================================
+   2. ALPINE.JS SUPPORT
+   ================================================================ */
+
+[x-cloak] {
+    display: none !important;
+}
+
+
+/* ================================================================
+   3. CUSTOM SCROLLBAR
+   ================================================================ */
+
 .custom-scrollbar::-webkit-scrollbar {
     width: 4px;
     height: 4px;
@@ -39,531 +54,234 @@ html, body {
     background: linear-gradient(180deg, #667eea, #764ba2);
     border-radius: 10px;
 }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #764ba2;
-}
 
-/* ---- Grid Cards (Home) ---- */
-.grid-card {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    padding: 12px 4px;
-    background: #fff;
-    border-radius: 4px;
-    border: 1px solid rgba(0,0,0,0.04);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    transition: all 0.2s ease;
-    text-decoration: none;
-}
-.grid-card:hover,
-.grid-card:active {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.15);
-    border-color: rgba(102, 126, 234, 0.2);
-}
 
-/* Styled grid cards with colored backgrounds */
-.grid-card-styled {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    padding: 14px;
-    border-radius: 4px;
-    border: 1px solid;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.05);
-    transition: all 0.2s ease;
-    text-decoration: none;
-    overflow: hidden;
-}
-.grid-card-styled:hover,
-.grid-card-styled:active {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 24px rgba(0,0,0,0.1);
-}
+/* ================================================================
+   4. SCROLLBAR HIDE UTILITY
+   Used on horizontal scroll areas and action bar overflow
+   ================================================================ */
 
-.grid-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    transition: all 0.2s ease;
-}
-.grid-label {
-    font-size: 10px;
-    font-weight: 600;
-    color: #374151;
-    text-align: center;
-    line-height: 1.2;
-}
-.grid-count {
-    font-size: 14px;
-    font-weight: 800;
-    line-height: 1;
-}
-
-/* ---- Snap Scroll ---- */
-.snap-container {
-    scroll-snap-type: y mandatory;
-    -webkit-overflow-scrolling: touch;
-    scroll-behavior: smooth;
-}
-.snap-container::-webkit-scrollbar {
-    display: none;
-}
-.snap-container {
+.scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
 }
-.snap-section {
-    scroll-snap-align: start;
-    scroll-snap-stop: always;
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
 }
 
-/* ---- Status Badges ---- */
-.status-badge {
-    display: inline-block;
-    font-size: 9px;
-    font-weight: 600;
-    padding: 2px 8px;
-    border-radius: 4px;
-    border: 1px solid;
-    white-space: nowrap;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-}
-
-/* ---- Action Buttons (Bottom Bar) ---- */
-.action-btn {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 1px;
-    padding: 6px 2px;
-    border-radius: 4px;
-    border: none;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    font-size: 14px;
-    min-width: 0;
-}
-.action-btn:active {
-    transform: scale(0.92);
-}
-.action-btn-text {
-    font-size: 9px;
-    font-weight: 600;
-    white-space: nowrap;
-}
-
-.action-btn-red {
-    background: #fef2f2;
-    color: #ef4444;
-}
-.action-btn-red:hover { background: #fee2e2; }
-
-.action-btn-green {
-    background: #f0fdf4;
-    color: #22c55e;
-}
-.action-btn-green:hover { background: #dcfce7; }
-
-.action-btn-blue {
-    background: #eff6ff;
-    color: #3b82f6;
-}
-.action-btn-blue:hover { background: #dbeafe; }
-
-.action-btn-purple {
-    background: #faf5ff;
-    color: #8b5cf6;
-}
-.action-btn-purple:hover { background: #ede9fe; }
-
-.action-btn-amber {
-    background: #fffbeb;
-    color: #f59e0b;
-}
-.action-btn-amber:hover { background: #fef3c7; }
-
-.action-btn-teal {
-    background: #f0fdfa;
-    color: #14b8a6;
-}
-.action-btn-teal:hover { background: #ccfbf1; }
-
-.action-btn-center {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 0;
-}
-
-/* ---- Filter UI ---- */
-.filter-group {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-.filter-label {
-    font-size: 11px;
-    font-weight: 700;
-    color: #374151;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-.filter-chip {
-    padding: 6px 12px;
-    border-radius: 3px;
-    font-size: 11px;
-    font-weight: 500;
-    background: #f3f4f6;
-    color: #6b7280;
-    border: 1px solid #e5e7eb;
-    cursor: pointer;
-    transition: all 0.15s ease;
-}
-.filter-chip:hover {
-    background: #e5e7eb;
-}
-.filter-chip-active {
-    padding: 6px 12px;
-    border-radius: 3px;
-    font-size: 11px;
-    font-weight: 600;
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    color: #fff;
-    border: 1px solid transparent;
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-}
-.filter-select {
-    width: 100%;
-    padding: 8px 12px;
-    border-radius: 4px;
-    border: 1px solid #d1d5db;
-    font-size: 12px;
-    color: #374151;
-    background: #fff;
-    appearance: none;
-    -webkit-appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M6 8L1 3h10z' fill='%236b7280'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 12px center;
-}
-.filter-select:focus {
-    outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-.filter-input {
-    width: 100%;
-    padding: 8px 12px;
-    border-radius: 4px;
-    border: 1px solid #d1d5db;
-    font-size: 12px;
-    color: #374151;
-    background: #fff;
-}
-.filter-input:focus {
-    outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-/* ---- Custom Checkbox ---- */
-.custom-checkbox {
-    display: inline-flex;
-    align-items: center;
-    cursor: pointer;
-    position: relative;
-}
-.custom-checkbox input {
-    position: absolute;
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-.checkmark {
-    width: 16px;
-    height: 16px;
-    border: 2px solid #d1d5db;
-    border-radius: 3px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.15s ease;
-    flex-shrink: 0;
-}
-.custom-checkbox input:checked ~ .checkmark {
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    border-color: #667eea;
-}
-.custom-checkbox input:checked ~ .checkmark::after {
-    content: '✓';
-    color: #fff;
-    font-size: 10px;
-    font-weight: bold;
-}
-.checkmark-white {
-    border-color: rgba(255,255,255,0.5);
-}
-.custom-checkbox input:checked ~ .checkmark-white {
-    background: #fff;
-    border-color: #fff;
-}
-.custom-checkbox input:checked ~ .checkmark-white::after {
-    color: #667eea;
-}
-
-/* ---- Toggle Switch ---- */
-.toggle-switch {
-    position: relative;
-    display: inline-block;
-    width: 44px;
-    height: 24px;
-}
-.toggle-switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-.toggle-slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #cbd5e1;
-    transition: 0.3s;
-    border-radius: 24px;
-}
-.toggle-slider:before {
-    position: absolute;
-    content: "";
-    height: 18px;
-    width: 18px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    transition: 0.3s;
-    border-radius: 50%;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-}
-.toggle-switch input:checked + .toggle-slider {
-    background: linear-gradient(135deg, #667eea, #764ba2);
-}
-.toggle-switch input:checked + .toggle-slider:before {
-    transform: translateX(20px);
-}
-
-/* ---- Table Styling ---- */
-.font-condensed {
-    font-family: 'Roboto Condensed', sans-serif;
-}
-
-/* ---- Animations ---- */
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-.animate-fade-in-up {
-    animation: fadeInUp 0.3s ease forwards;
-}
-
-@keyframes pulse-dot {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
-}
-.animate-pulse-dot {
-    animation: pulse-dot 2s infinite;
-}
-
-/* ---- Safe Area (for notched phones) ---- */
-@supports (padding-top: env(safe-area-inset-top)) {
-    .safe-top {
-        padding-top: env(safe-area-inset-top);
-    }
-    .safe-bottom {
-        padding-bottom: env(safe-area-inset-bottom);
-    }
-}
-
-/* ---- Ripple Effect on Tap ---- */
-.ripple {
-    position: relative;
-    overflow: hidden;
-}
-.ripple::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0;
-    height: 0;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.3);
-    transform: translate(-50%, -50%);
-    transition: width 0.4s, height 0.4s;
-}
-.ripple:active::after {
-    width: 200px;
-    height: 200px;
-}
-
-/* ---- Print hide ---- */
-@media print {
-    #desktop-block { display: none !important; }
-}
 
 /* ================================================================
-   NEW PWA COMPONENT CLASSES — v2 redesign
-   (topbar, bottom-nav with floating search, hamburger drawer,
-    home dashboard blocks, stats, client cards, action buttons)
+   5. FONT UTILITY
+   Condensed font for data-dense tables (list_table.html)
    ================================================================ */
 
-/* ── TOPBAR ─────────────────────────────────────────────────────── */
-.pwa-topbar {
-    position: sticky;
-    position: -webkit-sticky;
-    top: 0;
-    z-index: 50;
-    height: 56px;
-    background: #ffffff;
-    border-bottom: 1px solid #f0f0f0;
-    box-shadow: 0 1px 8px rgba(0,0,0,0.06);
-    flex-shrink: 0;
+.font-condensed {
+    font-family: "Roboto Condensed", "Segoe UI", system-ui, sans-serif;
+    letter-spacing: -0.01em;
 }
 
-/* ── BOTTOM NAV ─────────────────────────────────────────────────── */
-.pwa-bottom-nav {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: 50;
-}
+
+/* ================================================================
+   6. PWA BOTTOM NAVIGATION BAR
+   Fixed bottom nav with 5 items and a floating center search button.
+   Used in: bottom_nav.html
+   ================================================================ */
+
 .pwa-nav-item {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: flex-end;
-    padding: 6px 4px 10px;
-    color: #b0b8c8;
+    justify-content: center;
+    gap: 2px;
+    padding: 6px 0 8px;
+    color: #9ca3af;
     text-decoration: none;
     transition: color 0.15s ease;
     -webkit-tap-highlight-color: transparent;
-    position: relative;
+    user-select: none;
 }
-.pwa-nav-item.pwa-nav-active {
-    color: #667eea;
+
+.pwa-nav-item:active {
+    opacity: 0.7;
 }
-.pwa-nav-item.pwa-nav-active .pwa-nav-icon {
-    transform: translateY(-1px);
-}
+
 .pwa-nav-icon {
     font-size: 19px;
     line-height: 1;
-    transition: transform 0.15s ease;
-    display: block;
 }
+
 .pwa-nav-label {
     font-size: 9px;
     font-weight: 600;
-    letter-spacing: 0.02em;
-    margin-top: 3px;
     line-height: 1;
-    display: block;
+    letter-spacing: 0.01em;
 }
 
-/* Floating Search Button (center) */
+.pwa-nav-active {
+    color: #667eea;
+}
+
+.pwa-nav-active .pwa-nav-icon {
+    transform: scale(1.08);
+}
+
+/* Floating search button — sits above center of nav bar */
 .pwa-nav-search-btn {
     position: absolute;
-    bottom: 12px;
     left: 50%;
     transform: translateX(-50%);
+    bottom: calc(28px + env(safe-area-inset-bottom, 0px));
     width: 52px;
     height: 52px;
-    border-radius: 6px;
+    border-radius: 16px;
     background: linear-gradient(135deg, #667eea, #764ba2);
     color: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 18px rgba(102,126,234,0.45);
+    box-shadow:
+        0 4px 15px rgba(102, 126, 234, 0.4),
+        0 2px 6px rgba(0, 0, 0, 0.1);
     text-decoration: none;
-    -webkit-tap-highlight-color: transparent;
-    transition: box-shadow 0.15s ease, transform 0.15s ease;
-    z-index: 1;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    z-index: 10;
 }
+
 .pwa-nav-search-btn:active {
-    transform: translateX(-50%) scale(0.94);
-    box-shadow: 0 2px 10px rgba(102,126,234,0.3);
-}
-.pwa-nav-search-btn.pwa-nav-search-active {
-    box-shadow: 0 0 0 4px rgba(102,126,234,0.25), 0 4px 18px rgba(102,126,234,0.4);
+    transform: translateX(-50%) scale(0.93);
 }
 
-/* ── HAMBURGER DRAWER ───────────────────────────────────────────── */
-.pwa-drawer-root {}
-
-.pwa-drawer-panel {
-    border-radius: 6px 0 0 6px;
+.pwa-nav-search-active {
+    background: linear-gradient(135deg, #5a6fd6, #6a40a0);
+    box-shadow:
+        0 4px 20px rgba(102, 126, 234, 0.55),
+        0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-.pwa-drawer-header {
-    min-height: 80px;
+
+/* ================================================================
+   7. PWA HOME PAGE
+   Snap-scroll sections, section titles, table headers.
+   Used in: home.html
+   ================================================================ */
+
+.pwa-home-snap {
+    scroll-snap-type: y mandatory;
+    -webkit-overflow-scrolling: touch;
 }
 
-.pwa-drawer-section-label {
+.pwa-snap-section {
+    scroll-snap-align: start;
+    min-height: calc(100dvh - 56px - 58px - env(safe-area-inset-bottom, 0px));
+    flex-shrink: 0;
+}
+
+/* Section title */
+.pwa-section-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #374151;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+/* Table header cells (Recent Updates table) */
+.pwa-th {
+    font-size: 10px;
+    font-weight: 700;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+
+/* ================================================================
+   8. PWA STATUS BADGES
+   Compact pill-style badges for status display.
+   Used in: home.html, settings.html (logs tab)
+   ================================================================ */
+
+.pwa-status-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 6px;
     font-size: 9px;
     font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #9ca3af;
-    padding: 0 4px;
+    text-transform: capitalize;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    line-height: 1.6;
 }
 
+.pwa-badge-green {
+    background-color: #ecfdf5;
+    color: #059669;
+    border: 1px solid #a7f3d0;
+}
+
+.pwa-badge-blue {
+    background-color: #eff6ff;
+    color: #2563eb;
+    border: 1px solid #bfdbfe;
+}
+
+.pwa-badge-purple {
+    background-color: #faf5ff;
+    color: #7c3aed;
+    border: 1px solid #ddd6fe;
+}
+
+.pwa-badge-amber {
+    background-color: #fffbeb;
+    color: #d97706;
+    border: 1px solid #fde68a;
+}
+
+.pwa-badge-red {
+    background-color: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+}
+
+.pwa-badge-gray {
+    background-color: #f9fafb;
+    color: #6b7280;
+    border: 1px solid #e5e7eb;
+}
+
+
+/* ================================================================
+   9. PWA HAMBURGER DRAWER
+   Side drawer that slides in from the right.
+   Used in: hamburger_drawer.html
+   ================================================================ */
+
+/* Drawer menu item */
 .pwa-drawer-item {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 10px 12px;
-    border-radius: 4px;
+    padding: 12px 16px;
+    border-radius: 10px;
     text-decoration: none;
-    color: #1f2937;
-    transition: background 0.12s ease;
+    color: inherit;
+    transition: background-color 0.15s ease;
     -webkit-tap-highlight-color: transparent;
     cursor: pointer;
-    background: none;
-    border: none;
-    width: 100%;
-    text-align: left;
 }
+
 .pwa-drawer-item:active {
-    background: #f3f4f6;
-    transform: scale(0.99);
+    background-color: #f3f4f6;
+}
+
+.pwa-drawer-item--danger:active {
+    background-color: #fef2f2;
 }
 
 .pwa-drawer-icon-wrap {
     width: 36px;
     height: 36px;
-    border-radius: 4px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -574,610 +292,249 @@ html, body {
 .pwa-drawer-item-text {
     flex: 1;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
 }
+
 .pwa-drawer-item-title {
-    display: block;
     font-size: 13px;
     font-weight: 600;
-    color: #111827;
-    line-height: 1.2;
+    color: #374151;
+    line-height: 1.3;
 }
+
 .pwa-drawer-item-sub {
-    display: block;
     font-size: 10px;
     color: #9ca3af;
-    margin-top: 1px;
-    line-height: 1;
+    line-height: 1.2;
 }
 
 .pwa-drawer-chevron {
-    color: #d1d5db;
     font-size: 10px;
-    flex-shrink: 0;
-}
-
-.pwa-drawer-item--danger .pwa-drawer-item-title {
-    color: #ef4444;
-}
-
-/* ── HOME: SCROLL AREA ──────────────────────────────────────────── */
-.pwa-scroll-area {
-    overscroll-behavior-y: contain;
-}
-
-/* ── HOME: SECTION TITLE ────────────────────────────────────────── */
-.pwa-section-title {
-    font-size: 14px;
-    font-weight: 700;
-    color: #111827;
-    letter-spacing: -0.01em;
-}
-
-/* ── HOME: HORIZONTAL SCROLL ROW ───────────────────────────────── */
-.pwa-hscroll {
-    display: flex;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scroll-snap-type: x proximity;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-}
-.pwa-hscroll::-webkit-scrollbar {
-    display: none;
-}
-.pwa-hscroll > * {
-    scroll-snap-align: start;
-}
-
-/* ── QUICK STATS CARD ───────────────────────────────────────────── */
-.pwa-stat-card {
-    min-width: 80px;
-    max-width: 90px;
-    background: #ffffff;
-    border-radius: 4px;
-    border: 1px solid #f0f0f4;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.04);
-    padding: 12px 10px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
-}
-
-.pwa-stat-icon-wrap {
-    width: 34px;
-    height: 34px;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
-
-.pwa-stat-value {
-    font-size: 22px;
-    font-weight: 800;
-    line-height: 1;
-    letter-spacing: -0.02em;
-}
-
-.pwa-stat-label {
-    font-size: 9px;
-    font-weight: 600;
-    color: #9ca3af;
-    letter-spacing: 0.03em;
-    text-transform: uppercase;
-}
-
-/* ── RECENT CLIENT CARDS ────────────────────────────────────────── */
-.pwa-client-card {
-    width: 160px;
-    background: #ffffff;
-    border-radius: 4px;
-    border: 1px solid #f0f0f4;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.04);
-    padding: 14px;
-    transition: box-shadow 0.15s ease, transform 0.1s ease;
-    -webkit-tap-highlight-color: transparent;
-}
-.pwa-client-card:active {
-    transform: scale(0.98);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-}
-
-.pwa-client-pill {
-    border-radius: 4px;
-    padding: 5px 6px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1px;
-}
-.pwa-pill-num {
-    font-size: 14px;
-    font-weight: 800;
-    line-height: 1;
-}
-.pwa-pill-lbl {
-    font-size: 8px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    line-height: 1;
-}
-
-.pwa-pill-pending  { background: #fff7ed; }
-.pwa-pill-pending .pwa-pill-num  { color: #d97706; }
-.pwa-pill-pending .pwa-pill-lbl  { color: #f59e0b; }
-
-.pwa-pill-verified { background: #f0fdf4; }
-.pwa-pill-verified .pwa-pill-num { color: #16a34a; }
-.pwa-pill-verified .pwa-pill-lbl { color: #22c55e; }
-
-.pwa-pill-approved { background: #eff6ff; }
-.pwa-pill-approved .pwa-pill-num { color: #2563eb; }
-.pwa-pill-approved .pwa-pill-lbl { color: #3b82f6; }
-
-.pwa-pill-download { background: #faf5ff; }
-.pwa-pill-download .pwa-pill-num { color: #7c3aed; }
-.pwa-pill-download .pwa-pill-lbl { color: #8b5cf6; }
-
-/* ── QUICK ACTION BUTTONS ───────────────────────────────────────── */
-.pwa-quick-actions-wrap {
-    background: transparent;
-}
-
-.pwa-qa-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-    padding: 14px 12px;
-    border-radius: 4px;
-    font-size: 13px;
-    font-weight: 700;
-    text-decoration: none;
-    -webkit-tap-highlight-color: transparent;
-    transition: transform 0.1s ease, box-shadow 0.1s ease;
-    white-space: nowrap;
-    letter-spacing: -0.01em;
-}
-.pwa-qa-btn:active {
-    transform: scale(0.97);
-}
-
-.pwa-qa-primary {
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    color: #fff;
-    box-shadow: 0 4px 18px rgba(102,126,234,0.4);
-}
-.pwa-qa-primary:active {
-    box-shadow: 0 2px 8px rgba(102,126,234,0.25);
-}
-
-.pwa-qa-secondary {
-    background: #f3f4f6;
-    color: #374151;
-    border: 1px solid #e5e7eb;
-}
-
-/* ── RECENT UPDATES TABLE ───────────────────────────────────────── */
-.pwa-th {
-    font-size: 9px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: #9ca3af;
-}
-
-/* Snap-scroll vertical */
-.pwa-snap-y {
-    scroll-snap-type: y mandatory;
-    scrollbar-width: thin;
-    scrollbar-color: #e5e7eb transparent;
-}
-.pwa-snap-y::-webkit-scrollbar {
-    width: 3px;
-}
-.pwa-snap-y::-webkit-scrollbar-thumb {
-    background: #e5e7eb;
-    border-radius: 3px;
-}
-
-/* ── STATUS BADGES ──────────────────────────────────────────────── */
-.pwa-status-badge {
-    display: inline-block;
-    font-size: 8px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    padding: 2px 6px;
-    border-radius: 2px;
-    white-space: nowrap;
-}
-.pwa-badge-amber  { background: #fef3c7; color: #d97706; }
-.pwa-badge-green  { background: #dcfce7; color: #16a34a; }
-.pwa-badge-blue   { background: #dbeafe; color: #2563eb; }
-.pwa-badge-purple { background: #ede9fe; color: #7c3aed; }
-.pwa-badge-red    { background: #fee2e2; color: #dc2626; }
-.pwa-badge-gray   { background: #f3f4f6; color: #6b7280; }
-
-
-/* -- ACTION BAR PILLS (legacy, kept for compatibility) -------------------- */
-.action-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 5px 12px;
-    border-radius: 3px;
-    font-size: 11px;
-    font-weight: 700;
-    white-space: nowrap;
-    transition: all 0.15s ease;
-    cursor: pointer;
-    border: none;
-    outline: none;
-}
-.action-pill:active { transform: scale(0.95); }
-
-.action-pill-disabled {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 5px 12px;
-    border-radius: 3px;
-    font-size: 11px;
-    font-weight: 600;
-    white-space: nowrap;
-    cursor: not-allowed;
-    border: none;
-    background: #f3f4f6;
     color: #d1d5db;
+    flex-shrink: 0;
 }
 
-/* -- MOBILE ACTION BAR BUTTONS (new design) ------------------------------- */
+
+/* ================================================================
+   10. CUSTOM CHECKBOX
+   Styled checkbox used in list_table.html for row selection.
+   ================================================================ */
+
+.custom-checkbox {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.custom-checkbox input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.checkmark {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    border: 2px solid #d1d5db;
+    background: #fff;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.checkmark::after {
+    content: "";
+    display: none;
+    width: 4px;
+    height: 8px;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+    margin-top: -1px;
+}
+
+.custom-checkbox input:checked ~ .checkmark {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border-color: #667eea;
+}
+
+.custom-checkbox input:checked ~ .checkmark::after {
+    display: block;
+}
+
+/* White variant for table header on gradient background */
+.checkmark-white {
+    border-color: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.custom-checkbox input:checked ~ .checkmark-white {
+    background: #fff;
+    border-color: #fff;
+}
+
+.custom-checkbox input:checked ~ .checkmark-white::after {
+    border-color: #667eea;
+}
+
+
+/* ================================================================
+   11. TOGGLE SWITCH
+   Small toggle used in staff permissions.
+   ================================================================ */
+
+.toggle-switch-sm {
+    position: relative;
+    display: inline-block;
+    width: 36px;
+    height: 20px;
+}
+
+.toggle-switch-sm input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider-sm {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background-color: #d1d5db;
+    border-radius: 20px;
+    transition: background-color 0.2s ease;
+}
+
+.toggle-slider-sm::before {
+    content: "";
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    left: 2px;
+    bottom: 2px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.toggle-switch-sm input:checked + .toggle-slider-sm {
+    background-color: #667eea;
+}
+
+.toggle-switch-sm input:checked + .toggle-slider-sm::before {
+    transform: translateX(16px);
+}
+
+
+/* ================================================================
+   12. MOBILE ACTION BAR (MAB)
+   Bottom action buttons on the list page.
+   Used in: list_bottom_bar.html
+   ================================================================ */
+
 .mab-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 58px;
-    padding: 8px 6px 7px;
-    border: none;
-    cursor: pointer;
-    transition: opacity 0.12s ease, transform 0.1s ease;
-    -webkit-tap-highlight-color: transparent;
-    border-right: 1px solid rgba(0,0,0,0.05);
-    border-radius: 0;
-    outline: none;
     gap: 3px;
     flex: 1;
-}
-.mab-btn:last-child { border-right: none; }
-.mab-btn:active { opacity: 0.8; transform: scale(0.96); }
-.mab-btn:disabled,
-.mab-btn-disabled {
-    background: #f8f9fa !important;
-    cursor: not-allowed;
-    opacity: 1;
-}
-
-.mab-icon { font-size: 14px; line-height: 1; display: block; }
-.mab-label { font-size: 9px; font-weight: 700; letter-spacing: 0.01em; line-height: 1; white-space: nowrap; display: block; }
-
-/* mab colour themes */
-.mab-btn-indigo  { background: #eef2ff; color: #4f46e5; }
-.mab-btn-amber   { background: #fffbeb; color: #d97706; }
-.mab-btn-teal    { background: #f0fdfa; color: #0d9488; }
-.mab-btn-green   { background: #f0fdf4; color: #16a34a; }
-.mab-btn-blue    { background: #eff6ff; color: #2563eb; }
-.mab-btn-red     { background: #fef2f2; color: #dc2626; }
-.mab-btn-purple  { background: #faf5ff; color: #7c3aed; }
-.mab-btn-disabled { background: #f3f4f6; color: #c9cdd4; }
-
-/* -- status-badge (used in list table) ------------------------------------ */
-.status-badge {
-    display: inline-block;
-    font-size: 9px;
-    font-weight: 700;
-    padding: 2px 5px;
-    border-radius: 3px;
-    border: 1px solid;
-    white-space: nowrap;
-}
-
-/* -- Hide scrollbar utility ----------------------------------------------- */
-.scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-}
-.scrollbar-hide::-webkit-scrollbar {
-    display: none;
-}
-
-/* -- Alpine x-cloak support ----------------------------------------------- */
-[x-cloak] { display: none !important; }
-
-/* ── SNAP SCROLL SECTIONS (home page) ──────────────────────────── */
-.pwa-home-snap {
-    scroll-snap-type: y mandatory;
-    -webkit-overflow-scrolling: touch;
-}
-
-.pwa-snap-section {
-    height: calc(100dvh - 56px);
-    scroll-snap-align: start;
-    scroll-snap-stop: always;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-
-/* Last snap section gets bottom nav padding so content isn't clipped */
-.pwa-snap-section:last-child {
-    padding-bottom: calc(58px + env(safe-area-inset-bottom, 0px) + 4px);
-}
-
-/* ── COMPACT STATS GRID (home page) ────────────────────────────── */
-.pwa-stats-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 4px;
-}
-
-.pwa-stat-card-sm {
-    background: #ffffff;
-    border-radius: 3px;
-    padding: 6px 4px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-}
-
-.pwa-stat-val-sm {
-    font-size: 15px;
-    font-weight: 800;
-    line-height: 1;
-    letter-spacing: -0.02em;
-}
-
-.pwa-stat-lbl-sm {
-    font-size: 7.5px;
-    font-weight: 600;
-    color: #9ca3af;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    line-height: 1;
-}
-
-/* ── RECENT CLIENTS TABLE (home page) ──────────────────────────── */
-.pwa-clients-table-wrap {
-    background: #ffffff;
-    border-radius: 4px;
-    border: 1px solid #f0f0f4;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.04);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
-.pwa-clients-table-scroll {
-    overflow-x: auto;
-    overflow-y: auto;
-    flex: 1;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
-    scrollbar-color: #e5e7eb transparent;
-}
-
-.pwa-clients-table-scroll::-webkit-scrollbar {
-    height: 3px;
-    width: 3px;
-}
-
-.pwa-clients-table-scroll::-webkit-scrollbar-thumb {
-    background: #e5e7eb;
-    border-radius: 3px;
-}
-
-.pwa-ct {
-    width: 100%;
-    border-collapse: collapse;
-    table-layout: fixed;
-}
-
-.pwa-ct th {
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: #9ca3af;
-    padding: 7px 8px;
-    text-align: left;
-    background: #f9fafb;
-    border-bottom: 1px solid #f0f0f4;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.pwa-ct td {
-    padding: 9px 10px;
-    font-size: 13px;
-    border-bottom: 1px solid #f9fafb;
-    vertical-align: middle;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.pwa-ct tbody tr:last-child td {
-    border-bottom: none;
-}
-
-.pwa-ct-sub td {
-    background: #f9fafb;
-    border-bottom: 1px solid #f3f4f6;
-    padding: 5px 8px 5px 18px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-/* ================================================================
-   MOBILE CSS FALLBACKS — Ensure styles work without Tailwind
-   Added for PWA robustness
-   ================================================================ */
-
-/* ── LIST PAGE TOP SECTION (fixed header) ───────────────────────── */
-.pwa-list-header {
-    position: sticky;
-    position: -webkit-sticky;
-    top: 0;
-    z-index: 40;
-    flex-shrink: 0;
-}
-
-/* ── BUTTONS — Ensure proper padding/rounding ───────────────────── */
-button, .btn, [type="button"], [type="submit"] {
-    -webkit-tap-highlight-color: transparent;
-}
-
-/* Basic rounded button fallback when Tailwind fails */
-.pwa-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 8px 16px;
-    border-radius: 4px;
-    font-size: 13px;
-    font-weight: 600;
+    min-width: 60px;
+    padding: 10px 6px;
     border: none;
     cursor: pointer;
-    transition: all 0.15s ease;
-}
-.pwa-btn:active {
-    transform: scale(0.96);
-}
-
-.pwa-btn-primary {
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    color: #fff;
-    box-shadow: 0 4px 14px rgba(102,126,234,0.3);
+    transition: opacity 0.15s ease, transform 0.1s ease;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    background: transparent;
 }
 
-.pwa-btn-secondary {
-    background: #f3f4f6;
-    color: #374151;
-    border: 1px solid #e5e7eb;
+.mab-btn:active:not(:disabled) {
+    opacity: 0.8;
+    transform: scale(0.95);
 }
 
-/* ── ACTIVE/INACTIVE BADGE FALLBACKS ────────────────────────────── */
-.badge-active-pwa {
-    display: inline-block;
-    padding: 2px 8px;
+.mab-icon {
+    font-size: 16px;
+    line-height: 1;
+}
+
+.mab-label {
     font-size: 9px;
     font-weight: 700;
+    letter-spacing: 0.02em;
     text-transform: uppercase;
-    border-radius: 9999px;
-    background: #dcfce7;
-    color: #16a34a;
-    border: 1px solid #bbf7d0;
+    line-height: 1;
 }
 
-.badge-inactive-pwa {
-    display: inline-block;
-    padding: 2px 8px;
-    font-size: 9px;
-    font-weight: 700;
-    text-transform: uppercase;
-    border-radius: 9999px;
-    background: #f3f4f6;
-    color: #6b7280;
-    border: 1px solid #e5e7eb;
+/* Color themes */
+.mab-btn-teal {
+    color: #0d9488;
+    background: linear-gradient(to bottom, #f0fdfa, #ccfbf1);
+    border-bottom: 2px solid #14b8a6;
 }
 
-/* ── ENSURE FLEX CONTAINERS WORK ────────────────────────────────── */
-.flex { display: flex; }
-.flex-col { flex-direction: column; }
-.flex-1 { flex: 1 1 0%; }
-.flex-shrink-0 { flex-shrink: 0; }
-.items-center { align-items: center; }
-.justify-center { justify-content: center; }
-.justify-between { justify-content: space-between; }
-.gap-1 { gap: 0.25rem; }
-.gap-2 { gap: 0.5rem; }
-.gap-3 { gap: 0.75rem; }
-.gap-4 { gap: 1rem; }
+.mab-btn-purple {
+    color: #7c3aed;
+    background: linear-gradient(to bottom, #faf5ff, #ede9fe);
+    border-bottom: 2px solid #8b5cf6;
+}
 
-/* ── SPACING UTILITIES ──────────────────────────────────────────── */
-.px-3 { padding-left: 0.75rem; padding-right: 0.75rem; }
-.px-4 { padding-left: 1rem; padding-right: 1rem; }
-.py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
-.py-3 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
-.pt-3 { padding-top: 0.75rem; }
-.pb-2 { padding-bottom: 0.5rem; }
-.mb-2 { margin-bottom: 0.5rem; }
+.mab-btn-amber {
+    color: #d97706;
+    background: linear-gradient(to bottom, #fffbeb, #fef3c7);
+    border-bottom: 2px solid #f59e0b;
+}
 
-/* ── BORDER RADIUS UTILITIES ────────────────────────────────────── */
-.rounded-md { border-radius: 0.25rem; }
-.rounded-lg { border-radius: 0.375rem; }
-.rounded-xl { border-radius: 0.5rem; }
-.rounded-full { border-radius: 9999px; }
+.mab-btn-indigo {
+    color: #4f46e5;
+    background: linear-gradient(to bottom, #eef2ff, #e0e7ff);
+    border-bottom: 2px solid #6366f1;
+}
 
-/* ── SIZING UTILITIES ───────────────────────────────────────────── */
-.w-full { width: 100%; }
-.h-full { height: 100%; }
-.min-w-0 { min-width: 0; }
-.min-h-0 { min-height: 0; }
+.mab-btn-green {
+    color: #059669;
+    background: linear-gradient(to bottom, #ecfdf5, #d1fae5);
+    border-bottom: 2px solid #10b981;
+}
 
-/* ── TEXT UTILITIES ─────────────────────────────────────────────── */
-.text-white { color: #fff; }
-.text-gray-400 { color: #9ca3af; }
-.text-gray-500 { color: #6b7280; }
-.text-gray-600 { color: #4b5563; }
-.text-gray-700 { color: #374151; }
-.text-gray-800 { color: #1f2937; }
-.font-bold { font-weight: 700; }
-.font-semibold { font-weight: 600; }
-.font-medium { font-weight: 500; }
-.text-xs { font-size: 0.75rem; line-height: 1rem; }
-.text-sm { font-size: 0.875rem; line-height: 1.25rem; }
-.leading-tight { line-height: 1.25; }
-.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mab-btn-blue {
+    color: #2563eb;
+    background: linear-gradient(to bottom, #eff6ff, #dbeafe);
+    border-bottom: 2px solid #3b82f6;
+}
 
-/* ── BACKGROUND UTILITIES ───────────────────────────────────────── */
-.bg-white { background-color: #fff; }
-.bg-gray-50 { background-color: #f9fafb; }
-.bg-gray-100 { background-color: #f3f4f6; }
+.mab-btn-red {
+    color: #dc2626;
+    background: linear-gradient(to bottom, #fef2f2, #fee2e2);
+    border-bottom: 2px solid #ef4444;
+}
 
-/* ── BORDER UTILITIES ───────────────────────────────────────────── */
-.border { border-width: 1px; border-style: solid; }
-.border-gray-100 { border-color: #f3f4f6; }
-.border-gray-200 { border-color: #e5e7eb; }
-.border-b { border-bottom-width: 1px; border-bottom-style: solid; }
-.border-t { border-top-width: 1px; border-top-style: solid; }
+.mab-btn-disabled {
+    color: #d1d5db;
+    background: #f9fafb;
+    cursor: not-allowed;
+    opacity: 0.6;
+    border-bottom: 2px solid transparent;
+}
 
-/* ── SHADOW UTILITIES ───────────────────────────────────────────── */
-.shadow-sm { box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05); }
-.shadow { box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px -1px rgba(0,0,0,0.1); }
-
-/* ── OVERFLOW UTILITIES ─────────────────────────────────────────── */
-.overflow-hidden { overflow: hidden; }
-.overflow-y-auto { overflow-y: auto; }
-.overflow-x-auto { overflow-x: auto; }
-
-/* ── POSITION UTILITIES ─────────────────────────────────────────── */
-.relative { position: relative; }
-.absolute { position: absolute; }
 
 /* ================================================================
-   DOWNLOAD MODAL — Bottom sheet with progress bar
-   Blocks interaction during download
+   13. DOWNLOAD MODAL
+   Bottom-sheet with progress bar for bulk downloads.
+   Used in: download_modal.html
    ================================================================ */
 
-/* Backdrop — blocks all interaction */
 .download-modal-backdrop {
     position: fixed;
     inset: 0;
@@ -1190,30 +547,21 @@ button, .btn, [type="button"], [type="submit"] {
     justify-content: center;
 }
 
-/* Bottom sheet container */
 .download-modal-sheet {
     width: 100%;
     max-width: 430px;
-    background: #ffffff;
+    background: #fff;
     border-radius: 10px 10px 0 0;
     box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.2);
-    padding: 0;
     animation: slideUpModal 0.3s ease-out;
     padding-bottom: env(safe-area-inset-bottom, 16px);
 }
 
 @keyframes slideUpModal {
-    from {
-        transform: translateY(100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
+    from { transform: translateY(100%); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
 }
 
-/* Handle bar at top */
 .download-modal-handle {
     width: 40px;
     height: 4px;
@@ -1222,7 +570,6 @@ button, .btn, [type="button"], [type="submit"] {
     margin: 12px auto 0;
 }
 
-/* Header section */
 .download-modal-header {
     padding: 16px 20px 12px;
     text-align: center;
@@ -1271,7 +618,6 @@ button, .btn, [type="button"], [type="submit"] {
     color: #6b7280;
 }
 
-/* Progress section */
 .download-modal-progress {
     padding: 0 20px 16px;
 }
@@ -1298,8 +644,8 @@ button, .btn, [type="button"], [type="submit"] {
 }
 
 @keyframes indeterminateProgress {
-    0% { transform: translateX(-100%); }
-    50% { transform: translateX(150%); }
+    0%   { transform: translateX(-100%); }
+    50%  { transform: translateX(150%); }
     100% { transform: translateX(350%); }
 }
 
@@ -1324,7 +670,6 @@ button, .btn, [type="button"], [type="submit"] {
     font-weight: 500;
 }
 
-/* Status message */
 .download-modal-status {
     padding: 0 20px 16px;
     text-align: center;
@@ -1345,10 +690,9 @@ button, .btn, [type="button"], [type="submit"] {
 
 @keyframes spin {
     from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    to   { transform: rotate(360deg); }
 }
 
-/* Actions */
 .download-modal-actions {
     padding: 0 20px 20px;
     display: flex;
@@ -1406,7 +750,6 @@ button, .btn, [type="button"], [type="submit"] {
     transform: scale(0.98);
 }
 
-/* Items count badge */
 .download-items-badge {
     display: inline-flex;
     align-items: center;
@@ -1423,4 +766,40 @@ button, .btn, [type="button"], [type="submit"] {
 .download-items-badge i {
     color: #667eea;
     font-size: 10px;
+}
+
+
+/* ================================================================
+   14. ANIMATIONS
+   ================================================================ */
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulseDot {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.4; }
+}
+
+
+/* ================================================================
+   15. SAFE AREA SUPPORT
+   Ensures content doesn't overlap notches / home indicators
+   ================================================================ */
+
+@supports (padding: env(safe-area-inset-top)) {
+    .safe-area-top {
+        padding-top: env(safe-area-inset-top, 0px);
+    }
+    .safe-area-bottom {
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
 }

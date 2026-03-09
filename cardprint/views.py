@@ -669,6 +669,7 @@ def generate_card_overview(request):
         print_list_count=Count('print_requests', filter=Q(print_requests__status='print_list')),
         generate_count=Count('print_requests', filter=Q(print_requests__status='generate_list')),
         finalized_count=Count('print_requests', filter=Q(print_requests__status='finalized')),
+        pool_count=Count('print_requests', filter=Q(print_requests__status='pool')),
     ).order_by('group__client__name', 'name')
 
     if not PermissionService.is_super_admin(user):

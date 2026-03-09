@@ -12,12 +12,12 @@ on:
       skip_migrations:
         description: 'Skip database migrations'
         required: false
-        default: 'false'
+        default: false
         type: boolean
       skip_collectstatic:
         description: 'Skip collectstatic (no CSS/JS/template changes)'
         required: false
-        default: 'false'
+        default: false
         type: boolean
       confirm:
         description: 'Type DEPLOY to confirm (skips CI tests!)'
