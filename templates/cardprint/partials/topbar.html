@@ -9,19 +9,13 @@
       <a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
       {% elif is_admin_staff %}
       <a href="{% url 'admin_staff_dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
-      {% elif is_client or is_client_staff %}
-      <a href="{% url 'client:dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
       {% endif %}
       <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
-      {% if is_client or is_client_staff %}
-      <a href="{% url 'client:idcard_group' %}" class="breadcrumb-item">ID Card Group</a>
-      {% else %}
-      <a href="{% url 'active_clients' %}" class="breadcrumb-item">Clients</a>
+      <a href="{% url 'cardprint:generate_card_overview' %}" class="breadcrumb-item">Generate Card</a>
       <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
-      <span class="breadcrumb-item">{{ client.name }}{% if client.status != 'active' %} <span class="status-badge inactive status-badge--sm">{{ client.get_status_display }}</span>{% endif %}</span>
-      {% endif %}
+      <span class="breadcrumb-item">{{ client.name }}</span>
       <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
-      <span class="breadcrumb-item active">Print — {{ table.name }}</span>
+      <span class="breadcrumb-item active">{{ table.name }}</span>
     </div>
   </div>
   <div class="nav-right" style="margin-left:auto;margin-right:8px;flex-grow:0;">
@@ -34,7 +28,7 @@
         <span class="tab-count">{{ step_counts.print_list }}</span>
       </a>
       <a href="{% url 'cardprint:print_cards' table.id %}?step=finalized" class="action-tab print-finalized-tab {% if current_step == 'finalized' %}active{% endif %}">
-        <span class="tab-label">Finalized List</span>
+        <span class="tab-label">Finalized</span>
         <span class="tab-count">{{ step_counts.finalized }}</span>
       </a>
     </div>

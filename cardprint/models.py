@@ -99,6 +99,11 @@ class CardTemplate(models.Model):
         help_text='Back-side PDF template (87mm × 57mm)',
     )
     is_two_sided = models.BooleanField(default=False)
+    field_config = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='Pre-selected fields per side: {"is_two_sided": bool, "front_fields": [...], "back_fields": [...]}',
+    )
     field_mappings = models.JSONField(
         default=dict,
         help_text='Coordinate mappings per side: {"front": {field: {x_mm, y_mm, w_mm, h_mm}}}',

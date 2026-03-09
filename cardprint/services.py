@@ -48,7 +48,7 @@ class PrintWorkflowService:
                 PrintRequest.objects.select_for_update().filter(
                     table=table,
                     card_id__in=card_ids,
-                    status__in=['print_list', 'finalized'],
+                    status__in=['print_list', 'generate_list', 'finalized'],
                 ).values_list('card_id', flat=True)
             )
 

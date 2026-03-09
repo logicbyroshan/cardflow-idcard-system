@@ -32,9 +32,12 @@
   // field_mappings: { front: { FieldName: {x_mm,y_mm,w_mm,h_mm} }, back: {...} }
   let fieldMappings = { front: {}, back: {} };
 
-  // cards currently in generate list
+  // cards currently in generate list (each: {pr_id, card_id, sr_no, ordered_fields})
   let genCards = [];
-  let selectedCardIds = new Set();
+  let selectedPrIds = new Set();
+
+  // Keep a reference to the last-loaded PDF page for auto-detect
+  let lastPdfPage = null;
 
   /* ── PDF.js worker ─────────────────────────────────────── */
   if (typeof pdfjsLib !== 'undefined') {
@@ -49,7 +52,7 @@
     loadState();
     bindEvents();
     loadCardList();
-    if (FRONT_PDF_URL) renderPdf(FRONT_PDF_URL);
+    if (FRONT_PDF_URL) renderPdf(FRONT_PDF_URL, true);
   });
 
   /* ── Fabric.js canvas init ──────────────────────────────── */
@@ -67,14 +70,27 @@
     fabric_canvas.on('mouse:up',   onMouseUp);
   }
 
-  /* ── Populate field dropdown from TABLE_FIELDS ─────────── */
+  /* ── Populate field dropdown from TABLE_FIELDS (filtered by FIELD_CONFIG) ── */
   function populateFieldDropdown() {
     const sel = document.getElementById('fieldToPlaceSelect');
-    TABLE_FIELDS.forEach(function (f) {
+    // Remove existing options except the first placeholder
+    while (sel.options.length > 1) sel.remove(1);
+
+    const cfg = (typeof FIELD_CONFIG !== 'undefined') ? FIELD_CONFIG : {};
+    const allowedNames = (currentSide === 'front')
+      ? (cfg.front_fields || [])
+      : (cfg.back_fields || []);
+
+    // If field_config has selections, only show those; otherwise show all
+    const fields = allowedNames.length > 0
+      ? TABLE_FIELDS.filter(f => allowedNames.indexOf(f.name) >= 0)
+      : TABLE_FIELDS;
+
+    fields.forEach(function (f) {
       const opt  = document.createElement('option');
       opt.value  = f.name;
       const isPhoto = f.type && (f.type === 'photo' || f.type.includes('photo'));
-      opt.textContent = f.name + (isPhoto ? ' 🖼' : '');
+      opt.textContent = f.name + (isPhoto ? ' \uD83D\uDDBC' : '');
       sel.appendChild(opt);
     });
   }
@@ -137,14 +153,22 @@
     // Generate PDF
     document.getElementById('generatePdfBtn').addEventListener('click', generatePdf);
 
+    // Auto-detect button
+    const autoDetectBtn = document.getElementById('autoDetectBtn');
+    if (autoDetectBtn) {
+      autoDetectBtn.addEventListener('click', function () {
+        autoDetectFields();
+      });
+    }
+
     // Card list: select all / none
     document.getElementById('genSelectAllBtn').addEventListener('click', () => {
-      genCards.forEach(c => selectedCardIds.add(c.id));
+      genCards.forEach(c => selectedPrIds.add(c.pr_id));
       renderCardList(genCards);
       updateGenerateBtn();
     });
     document.getElementById('genClearSelBtn').addEventListener('click', () => {
-      selectedCardIds.clear();
+      selectedPrIds.clear();
       renderCardList(genCards);
       updateGenerateBtn();
     });
@@ -153,7 +177,7 @@
     document.getElementById('genCardSearch').addEventListener('input', function () {
       const q = this.value.toLowerCase();
       const filtered = genCards.filter(c =>
-        (c.display_name || c.name || '').toLowerCase().includes(q)
+        buildDisplayName(c).toLowerCase().includes(q)
       );
       renderCardList(filtered);
     });
@@ -174,8 +198,8 @@
 
     document.getElementById('singleSidedBtn').classList.toggle('active',  !val);
     document.getElementById('twoSidedBtn').classList.toggle('active',   val);
-    document.getElementById('sideToggle').style.display       = val ? 'inline-flex' : 'none';
-    document.getElementById('uploadBackWrapper').style.display = val ? 'inline-flex' : 'none';
+    document.getElementById('sideToggle').classList.toggle('hidden', !val);
+    document.getElementById('uploadBackWrapper').classList.toggle('hidden', !val);
 
     if (!val && currentSide === 'back') {
       switchSide('front');
@@ -193,9 +217,12 @@
     document.getElementById('activeSideLabel').textContent = side === 'front' ? 'Front' : 'Back';
     document.getElementById('uploadFrontLabel').textContent = side === 'front' ? 'Re-upload Front PDF' : 'Upload Front PDF';
 
+    // Refresh dropdown to show only fields allowed for this side
+    populateFieldDropdown();
+
     const pdfUrl = side === 'front' ? FRONT_PDF_URL : BACK_PDF_URL;
     if (pdfUrl) {
-      renderPdf(pdfUrl);
+      renderPdf(pdfUrl, false);
     } else {
       clearCanvasBackground();
     }
@@ -209,7 +236,7 @@
   function enterDrawMode(fieldObj) {
     drawMode  = true;
     drawField = fieldObj;
-    document.getElementById('drawModeIndicator').style.display = 'flex';
+    document.getElementById('drawModeIndicator').classList.remove('hidden');
     document.getElementById('drawFieldName').textContent = fieldObj.name;
     document.getElementById('startDrawBtn').disabled = true;
     document.getElementById('genCardWrapper').classList.remove('no-draw-mode');
@@ -222,7 +249,7 @@
     drawField = null;
     drawStart = null;
     if (drawRect) { fabric_canvas.remove(drawRect); drawRect = null; }
-    document.getElementById('drawModeIndicator').style.display = 'none';
+    document.getElementById('drawModeIndicator').classList.add('hidden');
     document.getElementById('fieldToPlaceSelect').value = '';
     document.getElementById('startDrawBtn').disabled = true;
     document.getElementById('genCardWrapper').classList.add('no-draw-mode');
@@ -297,7 +324,7 @@
   function clearCanvasBackground() {
     fabric_canvas.backgroundImage = null;
     fabric_canvas.renderAll();
-    document.getElementById('noTemplateMsg').style.display = '';
+    document.getElementById('noTemplateMsg').classList.remove('hidden');
   }
 
   function renderMappingsOnCanvas() {
@@ -341,15 +368,17 @@
   }
 
   /* ── PDF.js rendering ─────────────────────────────────── */
-  function renderPdf(url) {
+  function renderPdf(url, autoDetectOnLoad) {
     const overlay = document.getElementById('pdfLoadingOverlay');
     const noTpl   = document.getElementById('noTemplateMsg');
-    overlay.style.display = 'flex';
-    noTpl.style.display   = 'none';
+    overlay.classList.remove('hidden');
+    noTpl.classList.add('hidden');
 
     pdfjsLib.getDocument(url).promise.then(function (pdfDoc) {
       return pdfDoc.getPage(1);
     }).then(function (page) {
+      lastPdfPage = page;
+
       // Scale the PDF page to fit exactly CARD_W × CARD_H
       const viewport = page.getViewport({ scale: 1 });
       const scaleX   = CARD_W  / viewport.width;
@@ -373,17 +402,225 @@
           img.scaleToWidth(CARD_W);
           fabric_canvas.setBackgroundImage(img, function () {
             fabric_canvas.renderAll();
-            overlay.style.display = 'none';
+            overlay.classList.add('hidden');
             renderMappingsOnCanvas();
+            // Auto-detect on first load if no mappings exist yet
+            if (autoDetectOnLoad && Object.keys(fieldMappings[currentSide] || {}).length === 0) {
+              autoDetectFields();
+            }
           });
         });
       });
     }).catch(function (err) {
       console.error('PDF.js error:', err);
-      overlay.style.display = 'none';
-      noTpl.style.display   = '';
+      overlay.classList.add('hidden');
+      noTpl.classList.remove('hidden');
       showToast('Failed to load PDF template.', 'error');
     });
+  }
+
+  /* ═══════════════════════ AUTO-DETECT FIELDS ═══════════ */
+
+  /**
+   * Extract text items from the loaded PDF page, match them to table field
+   * names, and auto-populate fieldMappings for the current side.
+   */
+  function autoDetectFields() {
+    if (!lastPdfPage) {
+      showToast('Upload a PDF template first.', 'warning');
+      return;
+    }
+
+    const btn = document.getElementById('autoDetectBtn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Detecting…'; }
+
+    // Get which fields are allowed for the current side
+    const cfg = (typeof FIELD_CONFIG !== 'undefined') ? FIELD_CONFIG : {};
+    const allowedNames = (currentSide === 'front')
+      ? (cfg.front_fields || [])
+      : (cfg.back_fields || []);
+    const fieldsToMatch = allowedNames.length > 0
+      ? TABLE_FIELDS.filter(f => allowedNames.indexOf(f.name) >= 0)
+      : TABLE_FIELDS;
+
+    const viewport = lastPdfPage.getViewport({ scale: 1 });
+    const scaleX = CARD_W / viewport.width;
+    const scaleY = CARD_H / viewport.height;
+    const pdfScale = Math.min(scaleX, scaleY);
+
+    lastPdfPage.getTextContent().then(function (textContent) {
+      const matched = new Set();
+      const newMappings = {};
+      const detectedFontSizes = [];
+      const detectedFontNames = [];
+
+      // Build a lookup: lowercase field name → field object
+      const fieldLookup = {};
+      fieldsToMatch.forEach(f => {
+        fieldLookup[f.name.toLowerCase().trim()] = f;
+      });
+
+      textContent.items.forEach(function (item) {
+        if (!item.str || !item.str.trim()) return;
+
+        const rawText = item.str.trim();
+        // PDF transform: [scaleX, skewX, skewY, scaleY, translateX, translateY]
+        const tx = item.transform;
+        // Position in PDF coordinates (origin = bottom-left)
+        const pdfX = tx[4];
+        const pdfY = tx[5];
+        const pdfFontSize = Math.abs(tx[3]) || Math.abs(tx[0]) || 10;
+
+        // Collect font info for auto font detection
+        detectedFontSizes.push(pdfFontSize);
+        if (item.fontName) detectedFontNames.push(item.fontName);
+
+        // Convert to our canvas coordinates (origin = top-left)
+        const canvasX = pdfX * pdfScale;
+        const canvasY = CARD_H - (pdfY * pdfScale);
+
+        // Try to match this text to a field name
+        const matchedField = matchTextToField(rawText, fieldLookup, matched);
+        if (!matchedField) return;
+
+        matched.add(matchedField.name.toLowerCase().trim());
+
+        // Estimate bounding box
+        const isImage = isImageFieldType(matchedField.type, matchedField.name);
+        let box_w_mm, box_h_mm;
+        if (isImage) {
+          // Default image box: ~20mm × 25mm
+          box_w_mm = 20;
+          box_h_mm = 25;
+        } else {
+          // Text: estimate width from text length and font size, height from font size
+          const charWidthPx = pdfFontSize * pdfScale * 0.55;
+          const estWidth = Math.max(rawText.length * charWidthPx, 30);
+          box_w_mm = Math.min(estWidth / SCALE, 80);
+          box_h_mm = Math.max((pdfFontSize * pdfScale * 1.4) / SCALE, 4);
+        }
+
+        // Position: use detected position, nudge up by half box height
+        let x_mm = canvasX / SCALE;
+        let y_mm = (canvasY / SCALE) - (box_h_mm * 0.7);
+
+        // Clamp to card bounds
+        x_mm = Math.max(0, Math.min(x_mm, 87 - box_w_mm));
+        y_mm = Math.max(0, Math.min(y_mm, 57 - box_h_mm));
+
+        newMappings[matchedField.name] = {
+          x_mm: Math.round(x_mm * 100) / 100,
+          y_mm: Math.round(y_mm * 100) / 100,
+          w_mm: Math.round(box_w_mm * 100) / 100,
+          h_mm: Math.round(box_h_mm * 100) / 100,
+        };
+      });
+
+      // ── Auto-detect font size and family from PDF text ──
+      if (detectedFontSizes.length > 0) {
+        // Find the most common font size (rounded to nearest int), clamp to 7–10
+        const sizeCounts = {};
+        detectedFontSizes.forEach(s => {
+          const rounded = Math.round(s);
+          sizeCounts[rounded] = (sizeCounts[rounded] || 0) + 1;
+        });
+        let bestSize = 8, bestSizeCount = 0;
+        Object.entries(sizeCounts).forEach(([sz, cnt]) => {
+          if (cnt > bestSizeCount) { bestSize = parseInt(sz); bestSizeCount = cnt; }
+        });
+        bestSize = Math.min(10, Math.max(7, bestSize));
+        document.getElementById('fontSizeInput').value = bestSize;
+      }
+      if (detectedFontNames.length > 0) {
+        // Determine if the dominant font is bold or regular
+        const nameCounts = {};
+        detectedFontNames.forEach(fn => {
+          nameCounts[fn] = (nameCounts[fn] || 0) + 1;
+        });
+        let bestFont = '', bestFontCount = 0;
+        Object.entries(nameCounts).forEach(([fn, cnt]) => {
+          if (cnt > bestFontCount) { bestFont = fn; bestFontCount = cnt; }
+        });
+        const isBold = /bold/i.test(bestFont);
+        document.getElementById('fontFamilySelect').value = isBold ? 'Helvetica-Bold' : 'Helvetica';
+      }
+
+      // Merge into current side mappings (don't overwrite manually-placed fields)
+      const existing = fieldMappings[currentSide] || {};
+      let addedCount = 0;
+      Object.keys(newMappings).forEach(name => {
+        if (!existing[name]) {
+          existing[name] = newMappings[name];
+          addedCount++;
+        }
+      });
+      fieldMappings[currentSide] = existing;
+
+      renderMappingsOnCanvas();
+      renderPlacedFields();
+      updateGenerateBtn();
+
+      if (addedCount > 0) {
+        showToast('Auto-detected ' + addedCount + ' field(s). You can adjust them manually.', 'success');
+      } else if (Object.keys(newMappings).length > 0) {
+        showToast('All detected fields were already placed.', 'info');
+      } else {
+        showToast('No matching field labels found in PDF. Place fields manually.', 'warning');
+      }
+
+    }).catch(function (err) {
+      console.error('Auto-detect error:', err);
+      showToast('Auto-detection failed. Place fields manually.', 'error');
+    }).finally(function () {
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Auto-Detect'; }
+    });
+  }
+
+  /**
+   * Try to match extracted PDF text to a table field name.
+   * Uses multiple strategies: exact match, contains, fuzzy.
+   */
+  function matchTextToField(text, fieldLookup, alreadyMatched) {
+    const clean = text.toLowerCase().trim()
+      .replace(/[:\-_]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    // 1. Exact match
+    if (fieldLookup[clean] && !alreadyMatched.has(clean)) {
+      return fieldLookup[clean];
+    }
+
+    // 2. Check each field name — if the PDF text contains the field name or vice versa
+    for (const [lowerName, field] of Object.entries(fieldLookup)) {
+      if (alreadyMatched.has(lowerName)) continue;
+
+      const cleanName = lowerName.replace(/[_\-]/g, ' ').trim();
+
+      // PDF text contains the field name
+      if (clean.includes(cleanName) && cleanName.length >= 3) {
+        return field;
+      }
+      // Field name contains the PDF text
+      if (cleanName.includes(clean) && clean.length >= 3) {
+        return field;
+      }
+      // Handle common label patterns: "Field Name :" or "Field Name-"
+      const labelPattern = clean.replace(/\s*[:;\-]\s*$/, '').trim();
+      if (labelPattern === cleanName) {
+        return field;
+      }
+    }
+
+    return null;
+  }
+
+  function isImageFieldType(type, name) {
+    const t = (type || '').toLowerCase();
+    const n = (name || '').toLowerCase();
+    return t === 'image' || t === 'photo' || t === 'file' ||
+           n === 'photo' || n === 'image' || n === 'picture' || n === 'pic' || n === 'img' ||
+           n.includes('photo') || n.includes('image') || n.includes('signature');
   }
 
   /* ══════════════════════════════════ PLACED FIELDS UI ══ */
@@ -402,13 +639,12 @@
     });
 
     if (allPlaced.length === 0) {
-      noMsg.style.display = '';
-      // Remove any existing chips
+      noMsg.classList.remove('hidden');
       container.querySelectorAll('.gen-placed-field-item').forEach(el => el.remove());
       return;
     }
 
-    noMsg.style.display = 'none';
+    noMsg.classList.add('hidden');
     container.querySelectorAll('.gen-placed-field-item').forEach(el => el.remove());
 
     allPlaced.forEach(({ side, name }) => {
@@ -436,6 +672,20 @@
 
   /* ═══════════════════════ CARD LIST ════════════════════ */
 
+  /** Build a display name from ordered_fields (first 2 text fields) */
+  function buildDisplayName(item) {
+    if (!item.ordered_fields) return 'Card #' + (item.card_id || item.pr_id);
+    const textParts = [];
+    for (let i = 0; i < item.ordered_fields.length && textParts.length < 2; i++) {
+      const f = item.ordered_fields[i];
+      const t = (f.type || '').toLowerCase();
+      const n = (f.name || '').toLowerCase();
+      if (t === 'image' || t === 'photo' || t === 'file' || n === 'photo' || n.includes('photo')) continue;
+      if (f.value && f.value !== '-') textParts.push(f.value);
+    }
+    return textParts.length > 0 ? textParts.join(' — ') : ('Card #' + (item.card_id || item.pr_id));
+  }
+
   function loadCardList() {
     const loadingEl = document.getElementById('genCardListLoading');
     const emptyEl   = document.getElementById('genCardListEmpty');
@@ -446,18 +696,18 @@
     })
     .then(r => r.json())
     .then(data => {
-      loadingEl.style.display = 'none';
+      loadingEl.classList.add('hidden');
       if (data.error)  { showToast(data.error, 'error'); return; }
-      genCards = data.cards || [];
-      document.getElementById('genCardCountBadge').textContent = genCards.length;
+      genCards = data.items || data.cards || [];
+      document.getElementById('genCardCountBadge').textContent = data.total || genCards.length;
       if (genCards.length === 0) {
-        emptyEl.style.display = '';
+        emptyEl.classList.remove('hidden');
       } else {
         renderCardList(genCards);
       }
       updateGenerateBtn();
     }).catch(err => {
-      loadingEl.style.display = 'none';
+      loadingEl.classList.add('hidden');
       console.error(err);
       showToast('Failed to load generate list.', 'error');
     });
@@ -469,26 +719,28 @@
     listEl.querySelectorAll('.gen-card-item').forEach(el => el.remove());
 
     if (cards.length === 0) {
-      emptyEl.style.display = '';
+      emptyEl.classList.remove('hidden');
       return;
     }
-    emptyEl.style.display = 'none';
+    emptyEl.classList.add('hidden');
 
     cards.forEach(card => {
+      const prId = card.pr_id || card.id;
+      const displayName = buildDisplayName(card);
       const div = document.createElement('div');
-      div.className = 'gen-card-item' + (selectedCardIds.has(card.id) ? ' selected' : '');
+      div.className = 'gen-card-item' + (selectedPrIds.has(prId) ? ' selected' : '');
       div.innerHTML = `
-        <input type="checkbox" ${selectedCardIds.has(card.id) ? 'checked' : ''} data-id="${card.id}">
-        <span class="gen-card-name">${escHtml(card.display_name || card.name || 'Card #' + card.id)}</span>
-        <span class="gen-card-id">#${card.id}</span>
+        <input type="checkbox" ${selectedPrIds.has(prId) ? 'checked' : ''} data-id="${prId}">
+        <span class="gen-card-name">${escHtml(displayName)}</span>
+        <span class="gen-card-id">#${card.sr_no || prId}</span>
       `;
       const cb = div.querySelector('input[type=checkbox]');
       cb.addEventListener('change', function () {
         if (this.checked) {
-          selectedCardIds.add(card.id);
+          selectedPrIds.add(prId);
           div.classList.add('selected');
         } else {
-          selectedCardIds.delete(card.id);
+          selectedPrIds.delete(prId);
           div.classList.remove('selected');
         }
         updateGenerateBtn();
@@ -503,7 +755,7 @@
   }
 
   function updateGenerateBtn() {
-    const hasCards    = selectedCardIds.size > 0;
+    const hasCards    = selectedPrIds.size > 0;
     const hasMappings = Object.keys(fieldMappings.front).length > 0 ||
                         Object.keys(fieldMappings.back).length > 0;
     document.getElementById('generatePdfBtn').disabled = !(hasCards && hasMappings);
@@ -552,7 +804,7 @@
   }
 
   function generatePdf() {
-    if (selectedCardIds.size === 0) {
+    if (selectedPrIds.size === 0) {
       showToast('Select at least one card.', 'warning');
       return;
     }
@@ -568,11 +820,11 @@
         'X-CSRFToken':       getCookie('csrftoken'),
         'X-Requested-With': 'XMLHttpRequest',
       },
-      body: JSON.stringify({ card_ids: Array.from(selectedCardIds) }),
+      body: JSON.stringify({ request_ids: Array.from(selectedPrIds) }),
     })
     .then(response => {
       if (!response.ok) {
-        return response.json().then(d => { throw new Error(d.error || 'Server error'); });
+        return response.json().then(d => { throw new Error(d.error || d.message || 'Server error'); });
       }
       return response.blob();
     })
@@ -588,7 +840,7 @@
       URL.revokeObjectURL(url);
 
       showToast('PDF downloaded! Cards moved to Finalized.', 'success');
-      selectedCardIds.clear();
+      selectedPrIds.clear();
       loadCardList();
     })
     .catch(err => {
@@ -623,11 +875,11 @@
       }
       showToast(`${side.charAt(0).toUpperCase() + side.slice(1)} template uploaded!`, 'success');
       if (side === 'front') {
-        FRONT_PDF_URL = data.url;
-        if (currentSide === 'front') renderPdf(data.url);
+        FRONT_PDF_URL = data.pdf_url;
+        if (currentSide === 'front') renderPdf(data.pdf_url, true);
       } else {
-        BACK_PDF_URL = data.url;
-        if (currentSide === 'back') renderPdf(data.url);
+        BACK_PDF_URL = data.pdf_url;
+        if (currentSide === 'back') renderPdf(data.pdf_url, true);
       }
     })
     .catch(err => {

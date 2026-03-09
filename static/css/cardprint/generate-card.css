@@ -647,3 +647,97 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Overview Table ── */
+.gen-overview-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.gen-overview-table thead th {
+  background: var(--bg-surface-raised, #f9fafb);
+  border-bottom: 2px solid var(--border-color, #e5e7eb);
+  padding: 10px 12px;
+  font-weight: 600;
+  color: var(--text-muted, #6b7280);
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: .03em;
+  white-space: nowrap;
+}
+.gen-overview-table tbody td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-color, #f3f4f6);
+  color: var(--text-primary, #111827);
+  vertical-align: middle;
+}
+.gen-overview-table tbody tr:hover {
+  background: var(--bg-hover, #f9fafb);
+}
+
+/* ── Count badges ── */
+.gen-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+.gen-badge-blue {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+.gen-badge-amber {
+  background: #fef3c7;
+  color: #b45309;
+}
+.gen-badge-green {
+  background: #d1fae5;
+  color: #047857;
+}
+
+/* ── Configure Modal ── */
+.cfg-field-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.cfg-field-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+  transition: background .15s, border-color .15s;
+}
+.cfg-field-item:hover {
+  background: #e5e7eb;
+}
+.cfg-field-item input[type=checkbox] {
+  accent-color: #3b82f6;
+}
+.cfg-side-btn {
+  padding: 5px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all .15s;
+}
+.cfg-side-btn.active {
+  background: #3b82f6;
+  color: #fff;
+  border-color: #3b82f6;
+}

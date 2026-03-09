@@ -22,6 +22,7 @@
     var FRONT_PDF_URL   = '{{ front_pdf_url|escapejs }}';
     var BACK_PDF_URL    = '{{ back_pdf_url|escapejs }}';
     var TABLE_FIELDS    = {{ table_fields_json|safe }};
+    var FIELD_CONFIG     = {{ field_config_json|safe }};
   </script>
 </head>
 <body x-data="layoutState()" x-init="init()">
@@ -48,14 +49,10 @@
           <span class="breadcrumb-item active">{{ table.name }}</span>
         </div>
       </div>
-      <div class="nav-right" style="margin-left:auto;margin-right:8px;flex-grow:0;">
+      <div class="nav-right ml-auto mr-2 grow-0">
         {% include 'partials/notification-bell.html' %}
       </div>
-      <div class="nav-right">
-        <a href="{% url 'cardprint:print_cards' table.id %}" class="btn btn-sm btn-gray">
-          <i class="fa-solid fa-print"></i> Print List
-        </a>
-      </div>
+
     </header>
 
     <!-- Editor Layout: Left + Right split -->
@@ -70,7 +67,7 @@
           <!-- ── Section: Generate List ── -->
           <div class="gen-section">
             <div class="gen-section-header">
-              <i class="fa-solid fa-layer-group" style="color:#3b82f6;"></i>
+              <i class="fa-solid fa-layer-group text-blue-500"></i>
               <h3>Generate List</h3>
               <span class="gen-count-badge" id="genCardCountBadge">{{ generate_count }}</span>
             </div>
@@ -80,7 +77,7 @@
               <button class="btn btn-xs btn-gray" id="genClearSelBtn" title="Clear selection">None</button>
             </div>
             <div class="gen-card-list" id="genCardList">
-              <p class="gen-empty-msg" id="genCardListEmpty" style="display:none;">No cards in generate list for this table.</p>
+              <p class="gen-empty-msg hidden" id="genCardListEmpty">No cards in generate list for this table.</p>
               <p class="gen-empty-msg" id="genCardListLoading"><i class="fa-solid fa-spinner fa-spin"></i> Loading…</p>
             </div>
           </div>
@@ -88,7 +85,7 @@
           <!-- ── Section: Card Settings ── -->
           <div class="gen-section">
             <div class="gen-section-header">
-              <i class="fa-solid fa-sliders" style="color:#6366f1;"></i>
+              <i class="fa-solid fa-sliders text-indigo-500"></i>
               <h3>Card Settings</h3>
             </div>
             <!-- 1-sided / 2-sided -->
@@ -117,7 +114,7 @@
           <!-- ── Section: Place Fields ── -->
           <div class="gen-section">
             <div class="gen-section-header">
-              <i class="fa-solid fa-crosshairs" style="color:#f59e0b;"></i>
+              <i class="fa-solid fa-crosshairs text-amber-500"></i>
               <h3>Place Fields on Card</h3>
             </div>
             <p class="gen-active-side-info">Placing on: <strong id="activeSideLabel">Front</strong></p>
@@ -128,6 +125,9 @@
               </select>
               <button class="btn btn-xs btn-blue" id="startDrawBtn" disabled title="Click then drag on the card canvas to draw the field area">
                 <i class="fa-solid fa-vector-square"></i> Draw
+              </button>
+              <button class="btn btn-xs btn-green" id="autoDetectBtn" title="Auto-detect field positions from PDF text">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> Auto-Detect
               </button>
             </div>
             <p class="gen-hint" id="drawHintText">Select a field, then click Draw and drag a rectangle on the card canvas →</p>
@@ -158,27 +158,27 @@
           <!-- Canvas toolbar -->
           <div class="gen-canvas-toolbar">
             <!-- Front / Back toggle -->
-            <div class="gen-side-toggle" id="sideToggle" style="display:none;">
+            <div class="gen-side-toggle hidden" id="sideToggle">
               <button class="gen-side-btn active" id="frontSideBtn"><i class="fa-solid fa-square"></i> Front</button>
               <button class="gen-side-btn" id="backSideBtn"><i class="fa-regular fa-square"></i> Back</button>
             </div>
 
             <!-- Draw mode indicator -->
-            <div class="gen-draw-mode-indicator" id="drawModeIndicator" style="display:none;">
+            <div class="gen-draw-mode-indicator hidden" id="drawModeIndicator">
               <i class="fa-solid fa-crosshairs"></i>
               Drawing: <strong id="drawFieldName">—</strong>
               <button class="gen-cancel-draw" id="cancelDrawBtn">✕ Cancel</button>
             </div>
 
             <!-- Upload PDF buttons -->
-            <div class="gen-upload-area" style="margin-left:auto;">
-              <label class="btn btn-sm btn-outline" style="cursor:pointer;" title="Upload front-side PDF template">
+            <div class="gen-upload-area ml-auto">
+              <label class="btn btn-sm btn-outline cursor-pointer" title="Upload front-side PDF template">
                 <i class="fa-solid fa-upload"></i> <span id="uploadFrontLabel">Upload Front PDF</span>
-                <input type="file" id="uploadFrontInput" accept=".pdf" style="display:none;">
+                <input type="file" id="uploadFrontInput" accept=".pdf" class="hidden">
               </label>
-              <label class="btn btn-sm btn-outline" id="uploadBackWrapper" style="display:none;cursor:pointer;" title="Upload back-side PDF template">
+              <label class="btn btn-sm btn-outline hidden cursor-pointer" id="uploadBackWrapper" title="Upload back-side PDF template">
                 <i class="fa-solid fa-upload"></i> Upload Back PDF
-                <input type="file" id="uploadBackInput" accept=".pdf" style="display:none;">
+                <input type="file" id="uploadBackInput" accept=".pdf" class="hidden">
               </label>
             </div>
           </div>
@@ -187,10 +187,10 @@
           <div class="gen-canvas-container">
             <div class="gen-card-wrapper" id="genCardWrapper">
               <canvas id="genCardCanvas"></canvas>
-              <div class="gen-pdf-loading" id="pdfLoadingOverlay" style="display:none;">
+              <div class="gen-pdf-loading hidden" id="pdfLoadingOverlay">
                 <i class="fa-solid fa-spinner fa-spin"></i> Loading template…
               </div>
-              <div class="gen-no-template" id="noTemplateMsg" {% if template.front_pdf %}style="display:none;"{% endif %}>
+              <div class="gen-no-template" id="noTemplateMsg" {% if template.front_pdf %}hidden{% endif %}>
                 <i class="fa-solid fa-file-pdf"></i>
                 <p>Upload a PDF template to see it here.<br>Then draw rectangles to position each field.</p>
               </div>

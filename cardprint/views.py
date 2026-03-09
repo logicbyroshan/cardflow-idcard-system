@@ -80,94 +80,101 @@ def _build_ordered_fields(table, fd=None, fd_upper=None):
 @login_required
 @require_any_admin
 def print_cards(request, table_id):
-    """Print Cards page — 3-step workflow: Print List → Finalized → Pool."""
+    """Print Cards workflow page with tabs: Print List | Finalized."""
     table = get_object_or_404(
         IDCardTable.objects.select_related('group__client'), id=table_id,
     )
     user = request.user
     if not PermissionService.can_access_client(user, table.group.client_id):
         return redirect('active_clients')
-    if not PermissionService.has_permission(user, 'perm_print_list'):
-        return redirect('active_clients')
 
     current_step = request.GET.get('step', 'print_list')
-    if current_step not in ('print_list', 'finalized', 'pool'):
+    if current_step not in ('print_list', 'finalized'):
         current_step = 'print_list'
 
-    # Step counts (single aggregate query)
-    step_counts_raw = PrintRequest.objects.filter(table=table).aggregate(
+    # Step counts for tabs
+    counts = PrintRequest.objects.filter(table=table).aggregate(
         pl=Count('id', filter=Q(status='print_list')),
-        gl=Count('id', filter=Q(status='generate_list')),
         fn=Count('id', filter=Q(status='finalized')),
-        po=Count('id', filter=Q(status='pool')),
+        gl=Count('id', filter=Q(status='generate_list')),
     )
     step_counts = {
-        'print_list': step_counts_raw['pl'],
-        'generate_list': step_counts_raw['gl'],
-        'finalized': step_counts_raw['fn'],
-        'pool': step_counts_raw['po'],
+        'print_list': counts['pl'],
+        'finalized': counts['fn'],
+        'generate_list': counts['gl'],
     }
 
-    INITIAL_LOAD_LIMIT = 100
+    # Items for the current step
+    print_items = []
+    finalized_items = []
+    print_total = 0
+    finalized_total = 0
 
-    def _build_items(status_filter, date_field_name, order_field):
-        """Helper to build item dicts for a given status."""
-        qs = PrintRequest.objects.filter(
-            table=table, status=status_filter,
-        ).select_related('card', 'requested_by').order_by(order_field)
-        total = qs.count()
-        batch = qs[:INITIAL_LOAD_LIMIT]
-        items = []
-        for idx, pr in enumerate(batch):
+    if current_step == 'print_list':
+        base_qs = PrintRequest.objects.filter(table=table, status='print_list')
+        print_total = base_qs.count()
+        pr_qs = base_qs.select_related('card', 'requested_by').order_by('-created_at')[:200]
+        for idx, pr in enumerate(pr_qs):
             card = pr.card
             fd = card.field_data or {}
             fd_upper = {k.upper(): v for k, v in fd.items()}
             ordered_fields = _build_ordered_fields(table, fd, fd_upper)
             req_by = pr.requested_by
-            item = {
+            print_items.append({
                 'pr_id': pr.id,
                 'card_id': card.id,
                 'sr_no': idx + 1,
                 'status': card.status,
                 'status_display': card.get_status_display(),
                 'requested_by_name': req_by.get_full_name() or req_by.username if req_by else 'System',
+                'requested_at': localtime(pr.created_at).strftime('%d %b %Y %H:%M'),
                 'ordered_fields': ordered_fields,
-                'updated_at': card.updated_at,
-            }
-            item[date_field_name] = pr.updated_at if date_field_name != 'requested_at' else pr.created_at
-            items.append(item)
-        return items, total
+            })
 
-    # Build items for the current step only
-    print_items, print_total = ([], 0)
-    finalized_items, finalized_total = ([], 0)
-    pool_items, pool_total = ([], 0)
-
-    if current_step == 'print_list':
-        print_items, print_total = _build_items('print_list', 'requested_at', '-created_at')
     elif current_step == 'finalized':
-        finalized_items, finalized_total = _build_items('finalized', 'finalized_at', '-updated_at')
-    elif current_step == 'pool':
-        pool_items, pool_total = _build_items('pool', 'pool_at', '-updated_at')
+        base_qs = PrintRequest.objects.filter(table=table, status='finalized')
+        finalized_total = base_qs.count()
+        pr_qs = base_qs.select_related('card', 'requested_by').order_by('-updated_at')[:200]
+        for idx, pr in enumerate(pr_qs):
+            card = pr.card
+            fd = card.field_data or {}
+            fd_upper = {k.upper(): v for k, v in fd.items()}
+            ordered_fields = _build_ordered_fields(table, fd, fd_upper)
+            req_by = pr.requested_by
+            finalized_items.append({
+                'pr_id': pr.id,
+                'card_id': card.id,
+                'sr_no': idx + 1,
+                'status': card.status,
+                'status_display': card.get_status_display(),
+                'requested_by_name': req_by.get_full_name() or req_by.username if req_by else 'System',
+                'finalized_at': localtime(pr.updated_at).strftime('%d %b %Y %H:%M'),
+                'ordered_fields': ordered_fields,
+            })
 
+    # Load existing field_config for the configure modal
+    template_obj = CardTemplate.objects.filter(table=table).first()
+    field_config = template_obj.field_config if template_obj else {}
+
+    import json as _json
     context = {
-        'active_page': 'active_clients',
-        'user_role': get_user_role(request.user),
+        'active_page': 'generate_card',
+        'user_role': get_user_role(user),
         'table': table,
         'group': table.group,
         'client': table.group.client,
         'current_step': current_step,
         'step_counts': step_counts,
         'print_items': print_items,
-        'print_total': print_total,
-        'print_has_more': print_total > INITIAL_LOAD_LIMIT,
         'finalized_items': finalized_items,
+        'print_total': print_total,
+        'print_has_more': print_total > len(print_items),
         'finalized_total': finalized_total,
-        'finalized_has_more': finalized_total > INITIAL_LOAD_LIMIT,
-        'pool_items': pool_items,
-        'pool_total': pool_total,
-        'pool_has_more': pool_total > INITIAL_LOAD_LIMIT,
-        'initial_load_limit': INITIAL_LOAD_LIMIT,
+        'finalized_has_more': finalized_total > len(finalized_items),
+        'table_fields_json': _json.dumps(table.fields if table.fields else []),
+        'field_config_json': _json.dumps(field_config),
+        'has_template_front_pdf': bool(template_obj and template_obj.front_pdf),
+        'has_template_back_pdf': bool(template_obj and template_obj.back_pdf),
     }
     return render(request, 'cardprint/print-cards.html', context)
 
@@ -400,6 +407,87 @@ def api_print_generate(request, table_id):
     })
 
 
+@require_http_methods(["POST"])
+@login_required
+@api_require_permission('perm_print_list')
+def api_print_generate_all(request, table_id):
+    """Move ALL print_list items to generate_list for this table.
+
+    Called from the Configure & Print modal.
+    Returns the count moved and the editor redirect URL.
+    """
+    table, err = _check_print_table_scope(request.user, table_id)
+    if err:
+        return err
+
+    all_ids = list(
+        PrintRequest.objects.filter(
+            table=table, status='print_list',
+        ).values_list('id', flat=True)
+    )
+    if not all_ids:
+        return JsonResponse(
+            {'status': 'error', 'message': 'No cards in print list to generate'},
+            status=400,
+        )
+
+    result = PrintWorkflowService.bulk_send_to_generate(all_ids, request.user)
+    if not result.success:
+        return JsonResponse({'status': 'error', 'message': result.message}, status=400)
+    return JsonResponse({
+        'status': 'ok',
+        'message': f"{result.data['updated']} card(s) sent to generate list",
+        'updated': result.data['updated'],
+        'redirect_url': f'/print/generate-card/table/{table.id}/',
+    })
+
+
+@require_http_methods(["POST"])
+@login_required
+@api_require_permission('perm_print_list')
+def api_field_config_save(request, table_id):
+    """Save field_config (selected fields per side) for a table's CardTemplate.
+
+    Body: {
+        "is_two_sided": true/false,
+        "front_fields": ["Name", "Photo", ...],
+        "back_fields": ["Father Name", ...]
+    }
+    """
+    table, err = _check_print_table_scope(request.user, table_id)
+    if err:
+        return err
+
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+
+    is_two_sided = bool(data.get('is_two_sided', False))
+    front_fields = data.get('front_fields', [])
+    back_fields = data.get('back_fields', []) if is_two_sided else []
+
+    if not front_fields:
+        return JsonResponse({'status': 'error', 'message': 'Select at least one front field'}, status=400)
+
+    # Validate field names against table fields
+    valid_names = {f['name'] for f in (table.fields or [])}
+    for fname in front_fields + back_fields:
+        if fname not in valid_names:
+            return JsonResponse({'status': 'error', 'message': f'Invalid field: {fname}'}, status=400)
+
+    tmpl, _ = CardTemplate.objects.get_or_create(table=table)
+    tmpl.field_config = {
+        'is_two_sided': is_two_sided,
+        'front_fields': front_fields,
+        'back_fields': back_fields,
+    }
+    tmpl.is_two_sided = is_two_sided
+    tmpl.save()
+
+    return JsonResponse({'status': 'ok', 'message': 'Field configuration saved'})
+
+
 @require_http_methods(["GET"])
 @login_required
 @api_require_permission('perm_finalized_list')
@@ -566,45 +654,21 @@ def api_print_pool_list(request, table_id):
 # GENERATE CARD � PAGE VIEWS
 # ===========================================================================
 
-@login_required
-@require_any_admin
-def print_cards_overview(request):
-    """Overview: lists all accessible tables with their print-workflow counts."""
-    user = request.user
-    qs = IDCardTable.objects.filter(
-        is_active=True,
-        deleted_by_client=False,
-    ).select_related('group__client').annotate(
-        print_list_count=Count('print_requests', filter=Q(print_requests__status='print_list')),
-        finalized_count=Count('print_requests', filter=Q(print_requests__status='finalized')),
-        pool_count=Count('print_requests', filter=Q(print_requests__status='pool')),
-    ).order_by('group__client__name', 'name')
 
-    if not PermissionService.is_super_admin(user):
-        staff_profile = getattr(user, 'staff_profile', None)
-        if staff_profile and staff_profile.staff_type == 'admin_staff':
-            assigned = staff_profile.assigned_clients.values_list('id', flat=True)
-            qs = qs.filter(group__client_id__in=assigned)
-
-    context = {
-        'active_page': 'print_cards',
-        'user_role': get_user_role(user),
-        'tables': qs,
-    }
-    return render(request, 'cardprint/print-cards-overview.html', context)
 
 
 @login_required
 @require_any_admin
 def generate_card_overview(request):
-    """Overview: lists all accessible tables with their generate_list counts."""
+    """Overview: lists all accessible tables with print workflow counts."""
     user = request.user
     qs = IDCardTable.objects.filter(
         is_active=True,
         deleted_by_client=False,
     ).select_related('group__client').annotate(
-        generate_count=Count('print_requests', filter=Q(print_requests__status='generate_list')),
         print_list_count=Count('print_requests', filter=Q(print_requests__status='print_list')),
+        generate_count=Count('print_requests', filter=Q(print_requests__status='generate_list')),
+        finalized_count=Count('print_requests', filter=Q(print_requests__status='finalized')),
     ).order_by('group__client__name', 'name')
 
     if not PermissionService.is_super_admin(user):
@@ -648,6 +712,7 @@ def generate_card(request, table_id):
     }
 
     table_fields = table.fields if hasattr(table, 'fields') and table.fields else []
+    field_config = template_obj.field_config or {}
 
     context = {
         'active_page': 'generate_card',
@@ -658,6 +723,7 @@ def generate_card(request, table_id):
         'template': template_obj,
         'template_data_json': _json.dumps(template_data),
         'table_fields_json': _json.dumps(table_fields),
+        'field_config_json': _json.dumps(field_config),
         'front_pdf_url': template_obj.front_pdf.url if template_obj.front_pdf else '',
         'back_pdf_url': template_obj.back_pdf.url if template_obj.back_pdf else '',
         'generate_count': generate_count,

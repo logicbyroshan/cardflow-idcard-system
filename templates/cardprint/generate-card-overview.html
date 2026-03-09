@@ -33,7 +33,7 @@
           <span class="breadcrumb-item active">Generate Card</span>
         </div>
       </div>
-      <div class="nav-right" style="margin-left:auto;margin-right:8px;flex-grow:0;">
+      <div class="nav-right ml-auto mr-2 grow-0">
         {% include 'partials/notification-bell.html' %}
       </div>
     </header>
@@ -42,29 +42,71 @@
       <div class="gen-overview-page">
         <div class="gen-overview-header">
           <h2><i class="fa-solid fa-id-card-clip"></i> Generate Card</h2>
-          <p>Select a table to open the Generate Card editor. Upload your ID card template PDF, place fields, and generate data PDFs for printing.</p>
+          <p>Manage the card printing workflow. Select a table to view its print list, configure fields, and generate data PDFs.</p>
         </div>
 
         {% if tables %}
-        <div class="gen-overview-grid">
-          {% for table in tables %}
-          <div class="gen-overview-card">
-            <div>
-              <div class="gen-overview-card-client"><i class="fa-solid fa-building"></i> {{ table.group.client.name }}</div>
-              <div class="gen-overview-card-title">{{ table.name }}</div>
-            </div>
-            <div class="gen-overview-card-meta">
-              <span title="Cards in Print List"><i class="fa-solid fa-print"></i> {{ table.print_list_count }} in Print list</span>
-              <span title="Cards in Generate List (ready to generate)">
-                <i class="fa-solid fa-layer-group"></i>
-                <span class="gen-overview-count">{{ table.generate_count }}</span> to generate
-              </span>
-            </div>
-            <a href="{% url 'cardprint:generate_card' table.id %}" class="btn btn-blue btn-sm" style="text-align:center;">
-              <i class="fa-solid fa-pen-to-square"></i> Open Editor
-            </a>
+        <div class="table-wrapper mt-4">
+          <div class="table-container">
+            <table class="gen-overview-table">
+              <thead>
+                <tr>
+                  <th class="w-10 text-center">#</th>
+                  <th>Client</th>
+                  <th>List Name</th>
+                  <th class="w-[100px] text-center">Print List</th>
+                  <th class="w-[100px] text-center">Generating</th>
+                  <th class="w-[100px] text-center">Finalized</th>
+                  <th class="w-[120px] text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for table in tables %}
+                <tr>
+                  <td class="text-center text-gray-400">{{ forloop.counter }}</td>
+                  <td>
+                    <span class="flex items-center gap-1.5">
+                      <i class="fa-solid fa-building text-gray-400 text-[11px]"></i>
+                      {{ table.group.client.name }}
+                    </span>
+                  </td>
+                  <td><strong>{{ table.name }}</strong></td>
+                  <td class="text-center">
+                    {% if table.print_list_count > 0 %}
+                    <span class="gen-badge gen-badge-blue">{{ table.print_list_count }}</span>
+                    {% else %}
+                    <span class="text-gray-300">0</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-center">
+                    {% if table.generate_count > 0 %}
+                    <span class="gen-badge gen-badge-amber">{{ table.generate_count }}</span>
+                    {% else %}
+                    <span class="text-gray-300">0</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-center">
+                    {% if table.finalized_count > 0 %}
+                    <span class="gen-badge gen-badge-green">{{ table.finalized_count }}</span>
+                    {% else %}
+                    <span class="text-gray-300">0</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-center">
+                    <a href="{% url 'cardprint:print_cards' table.id %}?step=print_list" class="btn btn-blue btn-xs no-underline">
+                      <i class="fa-solid fa-arrow-right"></i> Open
+                    </a>
+                    {% if table.generate_count > 0 %}
+                    <a href="{% url 'cardprint:generate_card' table.id %}" class="btn btn-amber btn-xs no-underline ml-1" title="Continue generating {{ table.generate_count }} cards">
+                      <i class="fa-solid fa-pen-to-square"></i> Editor
+                    </a>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
           </div>
-          {% endfor %}
         </div>
         {% else %}
         <div class="gen-overview-empty">

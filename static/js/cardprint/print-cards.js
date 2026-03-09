@@ -1,6 +1,6 @@
 /**
- * Print Cards — Single-file JS for the 3-step Print Cards workflow.
- * Steps: Print List → Finalized List → Pool
+ * Print Cards — Single-file JS for the Print Cards workflow.
+ * Steps: Print List → (Configure & Generate) → Finalized
  *
  * Self-contained for the cardprint app.
  */
@@ -36,7 +36,6 @@ function refreshStepCounts() {
       if (data.status === 'ok') {
         updateTabCount('.print-list-tab .tab-count', data.print_list || 0);
         updateTabCount('.print-finalized-tab .tab-count', data.finalized || 0);
-        updateTabCount('.print-pool-tab .tab-count', data.pool || 0);
       }
     }).catch(function() {});
 }
@@ -210,15 +209,188 @@ function createPaginator(opts) {
 
 
 /* ═══════════════════════════════════════════════════════════════════
+   CONFIGURE & PRINT MODAL
+   ═══════════════════════════════════════════════════════════════════ */
+(function configureModal() {
+  var modal      = document.getElementById('configureModal');
+  var closeBtn   = document.getElementById('configureModalClose');
+  var cancelBtn  = document.getElementById('configureModalCancel');
+  var generateBtn = document.getElementById('configureModalGenerate');
+  var printAllBtn = document.getElementById('printAllBtn');
+
+  if (!modal || !printAllBtn) return;
+
+  var TABLE_FIELDS = window.TABLE_FIELDS || [];
+  var FIELD_CONFIG = window.FIELD_CONFIG || {};
+  var isTwoSided  = !!(FIELD_CONFIG.is_two_sided);
+
+  var singleBtn = document.getElementById('cfgSingleBtn');
+  var doubleBtn = document.getElementById('cfgDoubleBtn');
+  var backSection = document.getElementById('cfgBackSection');
+  var backPdfRow  = document.getElementById('cfgBackPdfRow');
+  var frontFieldsDiv = document.getElementById('cfgFrontFields');
+  var backFieldsDiv  = document.getElementById('cfgBackFields');
+
+  var frontPdfInput  = document.getElementById('cfgFrontPdfInput');
+  var backPdfInput   = document.getElementById('cfgBackPdfInput');
+  var frontPdfStatus = document.getElementById('cfgFrontPdfStatus');
+  var backPdfStatus  = document.getElementById('cfgBackPdfStatus');
+
+  // Build field checkboxes
+  function buildFieldCheckboxes(container, side) {
+    var selectedFields = (side === 'front') ? (FIELD_CONFIG.front_fields || []) : (FIELD_CONFIG.back_fields || []);
+    container.innerHTML = '';
+    TABLE_FIELDS.forEach(function(f) {
+      var checked = selectedFields.indexOf(f.name) >= 0;
+      var isImg = isImageField(f.type, f.name);
+      var label = document.createElement('label');
+      label.className = 'cfg-field-item';
+      label.innerHTML =
+        '<input type="checkbox" value="' + escapeHtml(f.name) + '"' + (checked ? ' checked' : '') + '>' +
+        '<span>' + escapeHtml(f.name) + (isImg ? ' <i class="fa-solid fa-image text-gray-400 text-[10px]"></i>' : '') + '</span>';
+      container.appendChild(label);
+    });
+  }
+
+  function getCheckedFields(container) {
+    return Array.from(container.querySelectorAll('input[type=checkbox]:checked')).map(function(cb) { return cb.value; });
+  }
+
+  // Side toggle
+  function setSides(two) {
+    isTwoSided = two;
+    singleBtn.classList.toggle('active', !two);
+    doubleBtn.classList.toggle('active', two);
+    backSection.classList.toggle('hidden', !two);
+    backPdfRow.classList.toggle('hidden', !two);
+  }
+
+  singleBtn.addEventListener('click', function() { setSides(false); });
+  doubleBtn.addEventListener('click', function() { setSides(true); });
+
+  // Open modal
+  function openModal() {
+    buildFieldCheckboxes(frontFieldsDiv, 'front');
+    buildFieldCheckboxes(backFieldsDiv, 'back');
+    setSides(isTwoSided);
+    // Reset file inputs
+    frontPdfInput.value = '';
+    backPdfInput.value = '';
+    modal.classList.remove('hidden');
+  }
+
+  function closeModal() {
+    modal.classList.add('hidden');
+  }
+
+  printAllBtn.addEventListener('click', openModal);
+  closeBtn.addEventListener('click', closeModal);
+  cancelBtn.addEventListener('click', closeModal);
+  modal.addEventListener('click', function(e) {
+    if (e.target === modal) closeModal();
+  });
+
+  // Update label when PDF file selected
+  if (frontPdfInput) {
+    frontPdfInput.addEventListener('change', function() {
+      var label = document.getElementById('cfgFrontPdfLabel');
+      if (label) label.textContent = this.files[0] ? this.files[0].name : 'Upload Front PDF';
+    });
+  }
+  if (backPdfInput) {
+    backPdfInput.addEventListener('change', function() {
+      var label = document.getElementById('cfgBackPdfLabel');
+      if (label) label.textContent = this.files[0] ? this.files[0].name : 'Upload Back PDF';
+    });
+  }
+
+  // Upload PDF helper (sequential, returns Promise)
+  function uploadPdf(file, side) {
+    return new Promise(function(resolve, reject) {
+      var formData = new FormData();
+      formData.append('pdf', file);
+      fetch('/print/api/generate-card/table/' + TABLE_ID + '/template/upload-pdf/' + side + '/', {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': getCSRFToken(),
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: formData,
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.status === 'ok') resolve(data);
+        else reject(new Error(data.message || 'Upload failed'));
+      })
+      .catch(reject);
+    });
+  }
+
+  // Generate button handler
+  generateBtn.addEventListener('click', function() {
+    var frontFields = getCheckedFields(frontFieldsDiv);
+    var backFields  = isTwoSided ? getCheckedFields(backFieldsDiv) : [];
+
+    if (frontFields.length === 0) {
+      showToast('Select at least one front side field.', 'warning');
+      return;
+    }
+
+    generateBtn.disabled = true;
+    generateBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing…';
+
+    // Step 1: Save field_config
+    ApiClient.post('/print/api/table/' + TABLE_ID + '/field-config/', {
+      is_two_sided: isTwoSided,
+      front_fields: frontFields,
+      back_fields: backFields,
+    })
+    .then(function(data) {
+      if (data.status !== 'ok') throw new Error(data.message || 'Failed to save config');
+
+      // Step 2: Upload PDFs if file selected
+      var uploads = [];
+      if (frontPdfInput.files[0]) {
+        uploads.push(uploadPdf(frontPdfInput.files[0], 'front').then(function() {
+          frontPdfStatus.innerHTML = '<i class="fa-solid fa-check" style="color:#10b981;"></i> Uploaded';
+        }));
+      }
+      if (isTwoSided && backPdfInput.files[0]) {
+        uploads.push(uploadPdf(backPdfInput.files[0], 'back').then(function() {
+          backPdfStatus.innerHTML = '<i class="fa-solid fa-check" style="color:#10b981;"></i> Uploaded';
+        }));
+      }
+      return Promise.all(uploads);
+    })
+    .then(function() {
+      // Step 3: Move all print_list → generate_list
+      return ApiClient.post('/print/api/table/' + TABLE_ID + '/generate-all/', {});
+    })
+    .then(function(data) {
+      if (data.status !== 'ok') throw new Error(data.message || 'Failed to send to generate');
+      showToast(data.message || 'Cards sent to generate list!', 'success');
+      // Step 4: Redirect to editor
+      window.location.href = data.redirect_url || ('/print/generate-card/table/' + TABLE_ID + '/');
+    })
+    .catch(function(err) {
+      showToast(err.message || 'Something went wrong', 'error');
+      console.error('[ConfigureModal] Error:', err);
+      generateBtn.disabled = false;
+      generateBtn.innerHTML = '<i class="fa-solid fa-print"></i> Generate';
+    });
+  });
+})();
+
+
+/* ═══════════════════════════════════════════════════════════════════
    STEP 1: PRINT LIST (status = print_list)
-   Actions: Send to Generate (bulk + single), Remove (bulk + single)
+   Actions: Print All (opens modal), Remove (bulk + single)
    ═══════════════════════════════════════════════════════════════════ */
 (function printListStep() {
   var tableBody     = document.getElementById('printListTableBody');
   var selectAllCb   = document.getElementById('printListSelectAll');
   var searchInput   = document.getElementById('printListSearchInput');
   var searchClearBtn = document.getElementById('printListSearchClearBtn');
-  var sendToGenBtn  = document.getElementById('sendToGenerateBtn');
   var removeBtn     = document.getElementById('removeFromPrintBtn');
   var viewBtn       = document.getElementById('printListViewBtn');
   var showingRange  = document.getElementById('printListShowingRange');
@@ -248,7 +420,6 @@ function createPaginator(opts) {
   function updateSelectionUI() {
     var ids = getSelectedPrIds();
     var count = ids.length;
-    if (sendToGenBtn) sendToGenBtn.disabled = count === 0;
     if (removeBtn)   removeBtn.disabled   = count === 0;
     if (viewBtn)     viewBtn.disabled     = count !== 1;
     if (paginator) paginator.updateSelectionCount(count);
@@ -274,30 +445,14 @@ function createPaginator(opts) {
     });
   }
 
-  // Single-row actions
+  // Single-row remove
   if (tableBody) {
     tableBody.addEventListener('click', function(e) {
-      var sendSingle = e.target.closest('.btn-send-to-generate');
-      if (sendSingle) {
-        var prId = parseInt(sendSingle.dataset.prId);
-        if (prId) performSendToGenerate([prId]);
-        return;
-      }
       var rmBtn = e.target.closest('.btn-remove-single');
       if (rmBtn) {
-        var prId2 = parseInt(rmBtn.dataset.prId);
-        if (prId2 && confirm('Remove this card from the print list?')) performRemove([prId2]);
+        var prId = parseInt(rmBtn.dataset.prId);
+        if (prId && confirm('Remove this card from the print list?')) performRemove([prId]);
       }
-    });
-  }
-
-  // Bulk Send to Generate
-  if (sendToGenBtn) {
-    sendToGenBtn.addEventListener('click', function() {
-      var ids = getSelectedPrIds();
-      if (ids.length === 0) return;
-      if (!confirm('Send ' + ids.length + ' card(s) to Generate list?')) return;
-      performSendToGenerate(ids);
     });
   }
 
@@ -317,28 +472,6 @@ function createPaginator(opts) {
       var cardIds = getSelectedCardIds();
       if (cardIds.length !== 1) return;
       if (typeof fetchCardAndOpenModal === 'function') fetchCardAndOpenModal('view', cardIds[0]);
-    });
-  }
-
-  // Send to Generate API (print_list → generate_list)
-  function performSendToGenerate(prIds) {
-    ApiClient.post('/print/api/table/' + TABLE_ID + '/generate/', { request_ids: prIds })
-    .then(function(data) {
-      if (data.status === 'ok') {
-        showToast(data.message || 'Sent to generate list', 'success');
-        prIds.forEach(function(id) {
-          var row = tableBody.querySelector('tr[data-pr-id="' + id + '"]');
-          if (row) row.remove();
-        });
-        updatePagination();
-        updateSelectionUI();
-        refreshStepCounts();
-      } else {
-        showToast(data.message || 'Failed to send to generate', 'error');
-      }
-    }).catch(function(err) {
-      showToast('Network error', 'error');
-      console.error('[PrintList] Send-to-generate error:', err);
     });
   }
 
@@ -409,7 +542,6 @@ function createPaginator(opts) {
       html += '<td class="w-[65px] px-[1px] py-1 align-middle user-cell text-center">' + escapeHtml(item.requested_by_name || '-') + '</td>';
       html += '<td class="w-[90px] px-[1px] py-1 align-middle date-cell text-center">' + escapeHtml(item.requested_at || '-') + '</td>';
       html += '<td class="w-[60px] px-[1px] py-1 text-center align-middle action-cell"><div class="confirm-action-btns">';
-      html += '<button class="btn-send-to-generate" data-pr-id="' + item.pr_id + '" title="Send to Generate"><i class="fa-solid fa-share-from-square"></i></button>';
       html += '<button class="btn-remove-single" data-pr-id="' + item.pr_id + '" title="Remove"><i class="fa-solid fa-trash"></i></button>';
       html += '</div></td>';
       html += '<td class="w-[65px] px-[1px] py-1 align-middle text-center"><span class="status-badge status-' + item.status + '">' + escapeHtml(item.status_display || item.status || '-') + '</span></td>';
@@ -623,130 +755,5 @@ function createPaginator(opts) {
   }
 })();
 
-
-/* ═══════════════════════════════════════════════════════════════════
-   STEP 3: POOL (status = pool)
-   View only, no action buttons
-   ═══════════════════════════════════════════════════════════════════ */
-(function poolStep() {
-  var tableBody     = document.getElementById('printPoolTableBody');
-  var selectAllCb   = document.getElementById('printPoolSelectAll');
-  var searchInput   = document.getElementById('printPoolSearchInput');
-  var searchClearBtn = document.getElementById('printPoolSearchClearBtn');
-  var viewBtn       = document.getElementById('printPoolViewBtn');
-  var showingRange  = document.getElementById('printPoolShowingRange');
-  var totalCountEl  = document.getElementById('printPoolTotalCount');
-
-  if (!tableBody) return;
-
-  var paginator = createPaginator({
-    barId: 'printPoolPaginationBar',
-    prefix: 'printPool',
-    getTableBody: function() { return tableBody; }
-  });
-  if (paginator) paginator.paginate();
-
-  function getCheckboxes() {
-    return Array.from(tableBody.querySelectorAll('.printPoolRowCheckbox:not(:disabled)'));
-  }
-  function getSelectedPrIds() {
-    return getCheckboxes().filter(function(cb) { return cb.checked; })
-      .map(function(cb) { return parseInt(cb.closest('tr').dataset.prId); });
-  }
-  function getSelectedCardIds() {
-    return getCheckboxes().filter(function(cb) { return cb.checked; })
-      .map(function(cb) { return parseInt(cb.closest('tr').dataset.cardId); });
-  }
-
-  function updateSelectionUI() {
-    var ids = getSelectedPrIds();
-    var count = ids.length;
-    if (viewBtn) viewBtn.disabled = count !== 1;
-    if (paginator) paginator.updateSelectionCount(count);
-    if (selectAllCb) {
-      var allCbs = getCheckboxes();
-      var allChecked = allCbs.length > 0 && allCbs.every(function(cb) { return cb.checked; });
-      var someChecked = allCbs.some(function(cb) { return cb.checked; });
-      selectAllCb.checked = allChecked;
-      selectAllCb.indeterminate = someChecked && !allChecked;
-    }
-  }
-
-  if (selectAllCb) {
-    selectAllCb.addEventListener('change', function() {
-      var checked = this.checked;
-      getCheckboxes().forEach(function(cb) { cb.checked = checked; });
-      updateSelectionUI();
-    });
-  }
-  if (tableBody) {
-    tableBody.addEventListener('change', function(e) {
-      if (e.target.classList.contains('printPoolRowCheckbox')) updateSelectionUI();
-    });
-  }
-
-  // View
-  if (viewBtn) {
-    viewBtn.addEventListener('click', function() {
-      var cardIds = getSelectedCardIds();
-      if (cardIds.length !== 1) return;
-      if (typeof fetchCardAndOpenModal === 'function') fetchCardAndOpenModal('view', cardIds[0]);
-    });
-  }
-
-  // Search
-  var searchTimer = null;
-  if (searchInput) {
-    searchInput.addEventListener('input', function() {
-      clearTimeout(searchTimer);
-      var q = this.value.trim();
-      if (searchClearBtn) searchClearBtn.style.display = q ? '' : 'none';
-      searchTimer = setTimeout(function() { fetchPoolItems(q); }, 350);
-    });
-  }
-  if (searchClearBtn) {
-    searchClearBtn.addEventListener('click', function() {
-      searchInput.value = '';
-      searchClearBtn.style.display = 'none';
-      searchInput.focus();
-      fetchPoolItems('');
-    });
-    searchClearBtn.style.display = searchInput && searchInput.value ? '' : 'none';
-  }
-
-  function fetchPoolItems(query) {
-    var url = '/print/api/table/' + TABLE_ID + '/pool-list/?q=' + encodeURIComponent(query || '') + '&limit=200';
-    ApiClient.get(url)
-    .then(function(data) {
-      if (data.status === 'ok') renderPoolItems(data.items || [], data.total || 0);
-    }).catch(function(err) { console.error('[Pool] Search failed:', err); });
-  }
-
-  function renderPoolItems(items, total) {
-    if (items.length === 0) {
-      tableBody.innerHTML = '<tr class="no-data-row"><td colspan="50" class="no-data-cell"><div class="no-data"><i class="fa-solid fa-layer-group"></i><span>No items in pool</span></div></td></tr>';
-      if (showingRange) showingRange.textContent = '0';
-      if (totalCountEl) totalCountEl.textContent = total;
-      updateSelectionUI();
-      return;
-    }
-    var html = '';
-    items.forEach(function(item, idx) {
-      html += '<tr data-pr-id="' + item.pr_id + '" data-card-id="' + item.card_id + '" data-sr-no="' + (idx + 1) + '">';
-      html += '<td class="w-[24px] px-[1px] py-1 text-center align-middle checkbox-cell"><input type="checkbox" class="printPoolRowCheckbox"></td>';
-      html += '<td class="w-[36px] px-[1px] py-1 text-center align-middle sr-no-cell">' + (idx + 1) + '</td>';
-      html += renderOrderedFields(item.ordered_fields);
-      html += '<td class="w-[65px] px-[1px] py-1 align-middle user-cell text-center">' + escapeHtml(item.requested_by_name || '-') + '</td>';
-      html += '<td class="w-[90px] px-[1px] py-1 align-middle date-cell text-center">' + escapeHtml(item.pool_at || '-') + '</td>';
-      html += '<td class="w-[65px] px-[1px] py-1 align-middle text-center"><span class="status-badge status-' + item.status + '">' + escapeHtml(item.status_display || item.status || '-') + '</span></td>';
-      html += '</tr>';
-    });
-    tableBody.innerHTML = html;
-    if (showingRange) showingRange.textContent = '1-' + items.length;
-    if (totalCountEl) totalCountEl.textContent = total;
-    updateSelectionUI();
-    if (paginator) { paginator.reset(); paginator.paginate(); }
-  }
-})();
 
 })();
