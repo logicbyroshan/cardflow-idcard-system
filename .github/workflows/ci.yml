@@ -1,7 +1,7 @@
 # =============================================================================
-# CI Pipeline — Production Grade
+# CI Pipeline — Self-Hosted Runner
 # Runs on push & PR to main
-# Ensures code is safe before deployment
+# Uses SQLite for tests (no Docker needed)
 # =============================================================================
 
 name: CI
@@ -17,99 +17,53 @@ jobs:
     name: Validate Django Project
     runs-on: self-hosted
 
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_DB: test_db
-          POSTGRES_USER: test_user
-          POSTGRES_PASSWORD: test_pass
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd="pg_isready -U test_user"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-
-      redis:
-        image: redis:7
-        ports:
-          - 6379:6379
-
     env:
       DJANGO_SETTINGS_MODULE: config.settings
       SECRET_KEY: ci-secret-key-not-for-production
       DEBUG: "True"
-      DATABASE_URL: postgres://test_user:test_pass@localhost:5432/test_db
-      REDIS_URL: redis://localhost:6379/1
       ALLOWED_HOSTS: localhost,127.0.0.1
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-
-      - name: Cache apt packages
-        uses: actions/cache@v4
-        id: cache-apt
-        with:
-          path: |
-            /var/cache/apt/archives
-          key: apt-deps-${{ runner.os }}-v1
-          restore-keys: |
-            apt-deps-${{ runner.os }}-
-
-      - name: Install system dependencies (for pycairo, WeasyPrint, etc)
+      - name: Set up Python venv
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            libcairo2-dev \
-            pkg-config \
-            python3-dev \
-            libjpeg-dev \
-            libfreetype6-dev \
-            libffi-dev \
-            libpango-1.0-0 \
-            libpangocairo-1.0-0 \
-            libpangoft2-1.0-0 \
-            libfontconfig1
-
-      - name: Install dependencies
-        run: |
+          python3 -m venv .ci-venv
+          . .ci-venv/bin/activate
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Wait for PostgreSQL
-        run: |
-          until pg_isready -h localhost -p 5432; do
-            sleep 1
-          done
-
       - name: Run Django system checks
-        run: python manage.py check --fail-level WARNING
+        run: |
+          . .ci-venv/bin/activate
+          python manage.py check --fail-level WARNING
 
-      - name: Apply migrations
-        run: python manage.py migrate --no-input
+      - name: Apply migrations (SQLite)
+        run: |
+          . .ci-venv/bin/activate
+          python manage.py migrate --no-input
 
       - name: Verify no pending migrations
-        run: python manage.py makemigrations --check --dry-run
+        run: |
+          . .ci-venv/bin/activate
+          python manage.py makemigrations --check --dry-run
 
       - name: Build JS/CSS bundles
         run: |
+          . .ci-venv/bin/activate
           pip install rjsmin rcssmin
           python build_bundles.py
 
       - name: Test collectstatic
-        run: python manage.py collectstatic --no-input
+        run: |
+          . .ci-venv/bin/activate
+          python manage.py collectstatic --no-input
 
       - name: Run tests
-        run: python manage.py test --verbosity=2 --no-input
+        run: |
+          . .ci-venv/bin/activate
+          python manage.py test --verbosity=2 --no-input
 
       - name: Check for hardcoded SECRET_KEY
         run: |
@@ -119,6 +73,10 @@ jobs:
             exit 1
           fi
           echo "No hardcoded secrets found."
+
+      - name: Cleanup
+        if: always()
+        run: rm -rf .ci-venv db.sqlite3 staticfiles/
 
       - name: CI Completed
         run: echo "CI passed successfully!"
