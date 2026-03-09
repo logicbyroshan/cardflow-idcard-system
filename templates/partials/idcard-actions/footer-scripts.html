@@ -1,37 +1,5 @@
 {% load static %}
-<!-- Core Modules (Load Order: api → toast → modal → utils → init) -->
-<script defer src="{% static 'js/core/api.js' %}"></script>
-<script defer src="{% static 'js/core/toast.js' %}"></script>
-<script defer src="{% static 'js/core/modal.js' %}"></script>
-<script defer src="{% static 'js/core/utils.js' %}"></script>
-<script defer src="{% static 'js/core/confirmation-code.js' %}"></script>
-<script defer src="{% static 'js/init.js' %}"></script>
-
-<!-- IDCard Actions Modules - Loaded in order -->
-<script defer src="{% static 'js/idcard-actions-core-state.js' %}"></script>
-<script defer src="{% static 'js/idcard-actions-core-init.js' %}"></script>
-<script defer src="{% static 'js/idcard-actions-table-state.js' %}"></script>
-<script defer src="{% static 'js/idcard-actions-table-render-row.js' %}"></script>
-<script defer src="{% static 'js/idcard-actions-table-render-main.js' %}"></script>
-<script defer src="{% static 'js/idcard-actions-table-load.js' %}"></script>
-<script defer src="{% static 'js/idcard-actions-search-filters.js' %}"></script>
-<script defer src="{% static 'js/idcard-actions-search-input.js' %}"></script>
-<script defer src="{% static 'js/idcard-actions-upload-ui.js' %}"></script>
-<script defer src="{% static 'js/idcard-actions-upload-logic.js' %}"></script>
-<script defer src="{% static 'js/idcard-actions-download-logic.js' %}"></script>
-<script defer src="{% static 'js/idcard-actions-download-modals.js' %}"></script>
-<script defer src="{% static 'js/idcard-actions-download-init.js' %}"></script>
-<script defer src="{% static 'js/idcard-actions-modal-view-helpers.js' %}"></script>
-<script defer src="{% static 'js/idcard-actions-modal-view-render.js' %}"></script>
-<script defer src="{% static 'js/idcard-actions-modal-delete.js' %}"></script>
-<script defer src="{% static 'js/idcard-actions-modal-form-data.js' %}"></script>
-<script defer src="{% static 'js/idcard-actions-modal-form-ops.js' %}"></script>
-<script defer src="{% static 'js/image-cropper.js' %}"></script>
-<script defer src="{% static 'js/idcard-actions-api-status.js' %}"></script>
-<script defer src="{% static 'js/idcard-actions-api-bulk.js' %}"></script>
-<script defer src="{% static 'js/idcard-actions-crop.js' %}"></script>
-<script defer src="{% static 'js/idcard-actions-edit-ui.js' %}"></script>
-<script defer src="{% static 'js/idcard-actions-edit-logic.js' %}"></script>
-<script defer src="{% static 'js/idcard-actions.js' %}"></script>
-<script defer src="{% static 'js/global-search.js' %}"></script>
-<script defer src="{% static 'js/notification-bell.js' %}"></script>
+<!-- Core JS bundle (api + toast + modal + utils + sanitizer + confirmation-code + download-manager + init + global-search + notification-bell) -->
+<script defer src="{% static 'dist/js/core.min.js' %}"></script>
+<!-- IDCard Actions JS bundle (25 modules → 1 file) -->
+<script defer src="{% static 'dist/js/idcard-actions.min.js' %}"></script>

@@ -4,11 +4,9 @@
 {% block title %}Adarsh Engine - Services{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/adarsh-cropper.css' %}">
-<link rel="stylesheet" href="{% static 'css/adarsh-cropper-preview.css' %}">
-<link rel="stylesheet" href="{% static 'css/adarsh-cropper-modals.css' %}">
+<!-- Cropper CSS bundle (adarsh-cropper + adarshengine + preview + modals) -->
+<link rel="stylesheet" href="{% static 'dist/css/cropper.min.css' %}">
 <link rel="stylesheet" href="{% static 'css/vendor/cropper.min.css' %}">
-<link rel="stylesheet" href="{% static 'css/adarshengine.css' %}">
 {% endblock %}
 
 {% block breadcrumb %}
@@ -639,13 +637,6 @@
 
 {% block extra_js %}
 <script src="{% static 'js/vendor/cropper.min.js' %}"></script>
-<script src="{% static 'js/adarshengine.js' %}"></script>
-<script src="{% static 'js/adarshengine-histogram.js' %}"></script>
-<script src="{% static 'js/adarshengine-presets.js' %}"></script>
-<script src="{% static 'js/adarshengine-adjust.js' %}"></script>
-<script src="{% static 'js/adarshengine-nav.js' %}"></script>
-<script src="{% static 'js/adarsh-cropper-utils.js' %}"></script>
-<script src="{% static 'js/adarsh-cropper-donut.js' %}"></script>
-<script src="{% static 'js/adarsh-cropper-autoadjust.js' %}"></script>
-<script src="{% static 'js/adarsh-cropper.js' %}"></script>
+<!-- Cropper JS bundle (adarshengine + adarsh-cropper — 9 files → 1) -->
+<script src="{% static 'dist/js/cropper.min.js' %}"></script>
 {% endblock %}

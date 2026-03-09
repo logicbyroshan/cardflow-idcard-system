@@ -91,6 +91,9 @@ jobs:
               exit 1
             fi
 
+            echo "Building JS/CSS bundles..." | tee -a "$DEPLOY_LOG"
+            $PYTHON build_bundles.py
+
             echo "Collecting static files..." | tee -a "$DEPLOY_LOG"
             STATIC_CHANGED=$(git diff --name-only "$PREV_COMMIT" HEAD -- static/ templates/ | wc -l)
             if [ "$STATIC_CHANGED" -gt "0" ] || [ "$PREV_COMMIT" = "$NEW_COMMIT" ]; then

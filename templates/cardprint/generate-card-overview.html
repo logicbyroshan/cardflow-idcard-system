@@ -7,9 +7,8 @@
   <meta name="robots" content="noindex, nofollow">
   <title>Generate Card — Adarsh ID Cards</title>
   <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
-  <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
   <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
-  <link rel="stylesheet" href="{% static 'css/common.css' %}">
+  <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}">
   <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
   <link rel="stylesheet" href="{% static 'css/cardprint/generate-card.css' %}">
   <script defer src="{% static 'js/alpine-state.js' %}"></script>
@@ -118,9 +117,7 @@
     </div>
   </main>
   {% include 'partials/components/toast.html' %}
-  <script defer src="{% static 'js/core/toast.js' %}"></script>
-  <script defer src="{% static 'js/init.js' %}"></script>
-  <script defer src="{% static 'js/notification-bell.js' %}"></script>
+  <script defer src="{% static 'dist/js/core.min.js' %}"></script>
   {% include 'partials/htmx-config.html' %}
 </body>
 </html>

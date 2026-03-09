@@ -757,25 +757,26 @@ def engine_download(request):
     Stream AdarshEngineSetup.exe (Inno Setup installer) to the browser as an attachment.
 
     Looks for the file in:
-      1. STATICFILES_DIRS[0]/engine/AdarshEngineSetup.exe  (dev)
-      2. STATIC_ROOT/engine/AdarshEngineSetup.exe           (production / collectstatic)
-      3. BASE_DIR/static/engine/AdarshEngineSetup.exe       (fallback)
+      1. MEDIA_ROOT/engine/AdarshEngineSetup.exe  (primary)
+      2. STATICFILES_DIRS[0]/engine/AdarshEngineSetup.exe  (legacy fallback)
+      3. STATIC_ROOT/engine/AdarshEngineSetup.exe           (legacy fallback)
     """
     from django.conf import settings
     from django.http import Http404
 
     candidates = []
 
-    # Dev: look in each staticfiles dir
+    # Primary: media directory (not processed by collectstatic)
+    if hasattr(settings, 'MEDIA_ROOT') and settings.MEDIA_ROOT:
+        candidates.append(Path(settings.MEDIA_ROOT) / 'engine' / 'AdarshEngineSetup.exe')
+
+    # Legacy fallback: staticfiles dirs (dev)
     for sdir in getattr(settings, 'STATICFILES_DIRS', []):
         candidates.append(Path(sdir) / 'engine' / 'AdarshEngineSetup.exe')
 
-    # Production: collected static root
+    # Legacy fallback: collected static root (production)
     if hasattr(settings, 'STATIC_ROOT') and settings.STATIC_ROOT:
         candidates.append(Path(settings.STATIC_ROOT) / 'engine' / 'AdarshEngineSetup.exe')
-
-    # Absolute fallback: project-root /static/
-    candidates.append(Path(settings.BASE_DIR) / 'static' / 'engine' / 'AdarshEngineSetup.exe')
 
     exe_path = None
     for candidate in candidates:
@@ -784,7 +785,7 @@ def engine_download(request):
             break
 
     if exe_path is None:
-        logger.error("AdarshEngineSetup.exe not found in any static path.")
+        logger.error("AdarshEngineSetup.exe not found in any candidate path.")
         raise Http404("AdarshEngine installer not found.")
 
     logger.info("Serving AdarshEngineSetup.exe from: %s", exe_path)

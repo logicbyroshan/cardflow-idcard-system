@@ -8,11 +8,8 @@
     <meta name="csrf-token" content="{{ csrf_token }}">
     <title>Manage Staff - Adarsh Admin</title>
     <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
-    <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
-    <!-- Tailwind CSS (single stylesheet) -->
     <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
-    <link rel="stylesheet" href="{% static 'css/common.css' %}">
-    <link rel="stylesheet" href="{% static 'css/global-search.css' %}">
+    <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}">
     <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
     <!-- Alpine.js State Module (MUST load before Alpine) -->
     <script defer src="{% static 'js/alpine-state.js' %}"></script>
@@ -81,20 +78,8 @@
     <!-- Temp Password Verification Modal (Center Modal) -->
     {% include 'partials/staff/temp-password-modal.html' %}
 
-    <!-- Core Modules (Load Order: api → toast → modal → utils → init) -->
-    <script defer src="{% static 'js/core/api.js' %}"></script>
-    <script defer src="{% static 'js/core/toast.js' %}"></script>
-    <script defer src="{% static 'js/core/modal.js' %}"></script>
-    <script defer src="{% static 'js/core/utils.js' %}"></script>
-    <script defer src="{% static 'js/core/confirmation-code.js' %}"></script>
-    <script defer src="{% static 'js/init.js' %}"></script>
-    <script defer src="{% static 'js/manage-staff-state.js' %}"></script>
-    <script defer src="{% static 'js/manage-staff-drawer.js' %}"></script>
-    <script defer src="{% static 'js/manage-staff-api.js' %}"></script>
-    <script defer src="{% static 'js/manage-staff-handlers.js' %}"></script>
-    <script defer src="{% static 'js/manage-staff-search.js' %}"></script>
-    <script defer src="{% static 'js/global-search.js' %}"></script>
-    <script defer src="{% static 'js/notification-bell.js' %}"></script>
+    <script defer src="{% static 'dist/js/core.min.js' %}"></script>
+    <script defer src="{% static 'dist/js/manage-staff.min.js' %}"></script>
     {% include 'partials/htmx-config.html' %}
     <script>
       document.addEventListener('DOMContentLoaded', function() {

@@ -1,6 +1,6 @@
 @echo off
 REM ============================================
-REM Tailwind CSS Build Script
+REM Frontend Build Script
 REM ============================================
 REM Production build (minified):  build-css.bat
 REM Watch mode (development):     build-css.bat --watch
@@ -20,4 +20,9 @@ IF "%1"=="--watch" (
     echo Building Tailwind CSS [production]...
     %TW_CMD% -i tailwind-input.css -o static/css/tailwind.css --minify
     echo Done! Output: static/css/tailwind.css
+
+    echo.
+    echo Building JS/CSS bundles...
+    python build_bundles.py
+    echo Done! Bundles in static/dist/
 )

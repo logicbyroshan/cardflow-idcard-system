@@ -10,12 +10,10 @@
   <title>{% block title %}Adarsh ID Cards{% endblock %}</title>
   <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
   <link rel="apple-touch-icon" sizes="180x180" href="{% static 'assets/icons/apple-touch-icon.png' %}">
-  <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
   <!-- Tailwind CSS (compiled design system) -->
   <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
-  <link rel="stylesheet" href="{% static 'css/common.css' %}">
-
-  <link rel="stylesheet" href="{% static 'css/global-search.css' %}">
+  <!-- Core CSS bundle (fonts + common + global-search) -->
+  <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}">
   {% block extra_css %}{% endblock %}
   <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
   
@@ -128,20 +126,8 @@
     };
   </script>
 
-  <!-- Core Modules (Load Order: api → toast → modal → utils → sanitizer → confirmation-code → download-manager → init) -->
-  <script defer src="{% static 'js/core/api.js' %}"></script>
-  <script defer src="{% static 'js/core/toast.js' %}"></script>
-  <script defer src="{% static 'js/core/modal.js' %}"></script>
-  <script defer src="{% static 'js/core/utils.js' %}"></script>
-  <script defer src="{% static 'js/core/sanitizer.js' %}"></script>
-  <script defer src="{% static 'js/core/confirmation-code.js' %}"></script>
-  <script defer src="{% static 'js/core/download-manager.js' %}"></script>
-  <script defer src="{% static 'js/init.js' %}"></script>
-  
-  <!-- Global Search (available on all pages via Ctrl+K) -->
-  <script defer src="{% static 'js/global-search.js' %}"></script>
-  <!-- Notification Bell -->
-  <script defer src="{% static 'js/notification-bell.js' %}"></script>
+  <!-- Core JS bundle (api + toast + modal + utils + sanitizer + confirmation-code + download-manager + init + global-search + notification-bell) -->
+  <script defer src="{% static 'dist/js/core.min.js' %}"></script>
 
   <!-- HTMX Configuration -->
   {% include 'partials/htmx-config.html' %}

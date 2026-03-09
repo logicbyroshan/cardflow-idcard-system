@@ -8,11 +8,9 @@
   <meta name="csrf-token" content="{{ csrf_token }}">
   <title>Backup — Select Clients</title>
   <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
-  <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
   <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
-  <link rel="stylesheet" href="{% static 'css/common.css' %}">
+  <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}">
   <link rel="stylesheet" href="{% static 'css/backup.css' %}">
-  <link rel="stylesheet" href="{% static 'css/global-search.css' %}">
   <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
   <script defer src="{% static 'js/alpine-state.js' %}"></script>
   <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
@@ -137,12 +135,7 @@
   </main>
 
   {% include 'components/toast.html' %}
-  <script defer src="{% static 'js/core/api.js' %}"></script>
-  <script defer src="{% static 'js/core/toast.js' %}"></script>
-  <script defer src="{% static 'js/core/modal.js' %}"></script>
-  <script defer src="{% static 'js/core/utils.js' %}"></script>
-  <script defer src="{% static 'js/init.js' %}"></script>
-  <script defer src="{% static 'js/global-search.js' %}"></script>
+  <script defer src="{% static 'dist/js/core.min.js' %}"></script>
   <script>
   (function(){
     const TASK_ID = {{ task.pk|default:"0" }};

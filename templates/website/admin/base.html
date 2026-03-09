@@ -7,17 +7,17 @@
     <meta name="robots" content="noindex, nofollow">
     <title>{% block title %}Website Management{% endblock %} - Adarsh Admin</title>
     <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
-    <!-- Self-hosted fonts (consistent with main app — no CDN dependency) -->
-    <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
+    <!-- Self-hosted fonts + common styles (bundled) -->
     <!-- Tailwind CSS (primary) -->
-    <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v=134">
+    <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
+    <!-- Core CSS bundle (fonts + common + global-search) -->
+    <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}">
     <!-- Page-specific: website admin -->
-    <link rel="stylesheet" href="{% static 'css/global-search.css' %}?v=134">
-    <link rel="stylesheet" href="{% static 'css/website-admin.css' %}?v=134">
+    <link rel="stylesheet" href="{% static 'css/website-admin.css' %}">
     {% block extra_css %}{% endblock %}
     <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
     <!-- Alpine.js State Module (MUST load before Alpine) -->
-    <script src="{% static 'js/alpine-state.js' %}?v=134"></script>
+    <script src="{% static 'js/alpine-state.js' %}"></script>
     <!-- Alpine.js (self-hosted — consistent with main app) -->
     <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
 </head>
@@ -109,13 +109,8 @@
         </div>
     </div>
 
-    <!-- Core Modules -->
-    <script src="{% static 'js/core/api.js' %}?v=134"></script>
-    <script src="{% static 'js/core/toast.js' %}?v=134"></script>
-    <script src="{% static 'js/core/modal.js' %}?v=134"></script>
-    <script src="{% static 'js/core/utils.js' %}?v=134"></script>
-    <script src="{% static 'js/init.js' %}?v=134"></script>
-    <script src="{% static 'js/global-search.js' %}?v=134"></script>
+    <!-- Core JS bundle (api + toast + modal + utils + init + global-search + notification-bell) -->
+    <script src="{% static 'dist/js/core.min.js' %}"></script>
 
     <script>
     /* Reusable confirm modal — returns a Promise<boolean> */

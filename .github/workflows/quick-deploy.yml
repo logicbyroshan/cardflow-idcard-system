@@ -97,6 +97,12 @@ jobs:
               echo "⏭️ Skipping migrations" | tee -a "$DEPLOY_LOG"
             fi
 
+            # Build JS/CSS bundles
+            if [ "$SKIP_STATIC" != "true" ]; then
+              echo "📦 Building JS/CSS bundles..." | tee -a "$DEPLOY_LOG"
+              $PYTHON build_bundles.py
+            fi
+
             # Collectstatic (optional skip)
             if [ "$SKIP_STATIC" != "true" ]; then
               STATIC_CHANGED=$(git diff --name-only "$PREV_COMMIT" HEAD -- static/ templates/ | wc -l)
