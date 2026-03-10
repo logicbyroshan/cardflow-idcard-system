@@ -848,10 +848,17 @@ body[style*="overflow:hidden"] {
   margin-top: 4px;
 }
 
+.user-avatar-label--pro_user { color: #d97706; }
 .user-avatar-label--super_admin { color: #764ba2; }
 .user-avatar-label--admin_staff { color: #3182ce; }
 .user-avatar-label--client { color: #38a169; }
 .user-avatar-label--client_staff { color: #319795; }
+
+/* Pro User avatar gradient (other roles in tailwind.css) */
+.user-avatar-placeholder--pro_user {
+  color: #fef3c7;
+  background: linear-gradient(145deg, #d97706, #b45309);
+}
 
 /* Sidebar-specific avatar styling */
 .sidebar .user-avatar {

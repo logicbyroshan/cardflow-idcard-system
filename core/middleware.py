@@ -372,7 +372,7 @@ class PermissionValidationMiddleware:
         elif fresh_user.role == 'client_staff':
             return self._validate_client_staff_access(request, fresh_user)
         
-        # super_admin and admin_staff pass through
+        # super_admin, pro_user and admin_staff pass through
         return None
     
     def _validate_client_access(self, request, user):

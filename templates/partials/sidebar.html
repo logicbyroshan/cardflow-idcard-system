@@ -119,6 +119,19 @@
       <i class="fa-solid fa-id-card-clip"></i><span>Generate Card Group</span>
     </a>
     {% endif %}
+
+    {% if is_pro_user and not is_impersonating %}
+    <!-- Pro User — Impersonation -->
+    <div class="nav-section">
+      <div class="nav-section-line"></div>
+      <span class="nav-section-title">Pro User</span>
+      <div class="nav-section-line"></div>
+    </div>
+    <a href="#" onclick="event.preventDefault(); document.getElementById('impersonateModal').style.display='flex';"
+       class="{% if active_page == 'impersonate' %}active{% endif %}">
+      <i class="fa-solid fa-user-secret"></i><span>Login As User</span>
+    </a>
+    {% endif %}
   </nav>
   <div class="sidebar-footer">
     <div class="sidebar-actions">

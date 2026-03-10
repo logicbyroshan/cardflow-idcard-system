@@ -27,6 +27,7 @@ class User(AbstractUser):
     are now synchronized. Setting one will automatically set the other.
     """
     ROLE_CHOICES = [
+        ('pro_user', 'Pro User'),
         ('super_admin', 'Super Admin'),
         ('admin_staff', 'Admin Staff'),
         ('client', 'Client'),
@@ -50,22 +51,46 @@ class User(AbstractUser):
     
     def save(self, *args, **kwargs):
         """
-        Override save to synchronize is_superuser and role='super_admin'.
+        Override save to synchronize is_superuser and role.
         Both directions are enforced:
-        - is_superuser=True  ↔  role='super_admin'
-        - role='super_admin'  →  is_superuser=True, is_staff=True
-        - role != 'super_admin' AND was previously super_admin  →  clear is_superuser
+        - is_superuser=True  ↔  role='super_admin' (or 'pro_user')
+        - role='super_admin'/'pro_user'  →  is_superuser=True, is_staff=True
+        - role != 'super_admin'/'pro_user'  →  clear is_superuser
         """
-        if self.is_superuser:
+        if self.role == 'pro_user':
+            # Pro user always gets superuser + staff
+            self.is_superuser = True
+            self.is_staff = True
+        elif self.is_superuser and self.role != 'pro_user':
             self.role = 'super_admin'
             self.is_staff = True
         elif self.role == 'super_admin':
             self.is_superuser = True
             self.is_staff = True
         else:
-            # Role is not super_admin — make sure is_superuser is cleared
+            # Role is not super_admin/pro_user — make sure is_superuser is cleared
             self.is_superuser = False
+
+        # Enforce max limits
+        self._enforce_role_limits()
+
         super().save(*args, **kwargs)
+
+    def _enforce_role_limits(self):
+        """Enforce max 1 pro_user and max 3 super_admin accounts."""
+        from django.core.exceptions import ValidationError
+        if self.role == 'pro_user':
+            qs = User.objects.filter(role='pro_user')
+            if self.pk:
+                qs = qs.exclude(pk=self.pk)
+            if qs.exists():
+                raise ValidationError('Only one Pro User account is allowed.')
+        elif self.role == 'super_admin':
+            qs = User.objects.filter(role='super_admin')
+            if self.pk:
+                qs = qs.exclude(pk=self.pk)
+            if qs.count() >= 3:
+                raise ValidationError('Maximum 3 Super Admin accounts are allowed.')
     
     class Meta:
         indexes = [
@@ -79,13 +104,15 @@ class User(AbstractUser):
         ]
 
     @property
+    def is_pro_user(self):
+        return self.role == 'pro_user'
+
+    @property
     def is_super_admin(self):
         """
-        Check if user is super admin.
-        Since superuser and super_admin are now synchronized, this will
-        always return the same as is_superuser or role=='super_admin'.
+        Check if user is super admin (or pro_user, which has all super_admin powers).
         """
-        return self.is_superuser or self.role == 'super_admin'
+        return self.is_superuser or self.role in ('super_admin', 'pro_user')
     
     @property
     def is_admin_staff(self):

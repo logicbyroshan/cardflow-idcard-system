@@ -8,11 +8,12 @@ Usage:
   {% include 'partials/components/user-avatar.html' with role='super_admin' size='medium' %}
 
 Parameters:
-  - role: 'super_admin' | 'admin_staff' | 'client' | 'client_staff'
+  - role: 'pro_user' | 'super_admin' | 'admin_staff' | 'client' | 'client_staff'
   - size: 'small' | 'medium' | 'large' (default: 'medium')
   - show_label: true | false (default: false) - show role label below
 
 Styles:
+  Pro User     - Gold/amber with rocket icon
   Super Admin  - Purple/indigo with crown icon
   Admin Staff  - Blue with shield icon
   Client       - Green with building icon
@@ -21,7 +22,9 @@ Styles:
 
 {% with avatar_role=role|default:"client" avatar_size=size|default:"medium" %}
 <div class="user-avatar-placeholder user-avatar-placeholder--{{ avatar_role }} user-avatar-placeholder--{{ avatar_size }}">
-    {% if avatar_role == 'super_admin' %}
+    {% if avatar_role == 'pro_user' %}
+    <i class="fa-solid fa-rocket"></i>
+    {% elif avatar_role == 'super_admin' %}
     <i class="fa-solid fa-crown"></i>
     {% elif avatar_role == 'admin_staff' %}
     <i class="fa-solid fa-shield"></i>
@@ -35,7 +38,8 @@ Styles:
 </div>
 {% if show_label %}
 <span class="user-avatar-label user-avatar-label--{{ avatar_role }}">
-    {% if avatar_role == 'super_admin' %}Super Admin
+    {% if avatar_role == 'pro_user' %}Pro User
+    {% elif avatar_role == 'super_admin' %}Super Admin
     {% elif avatar_role == 'admin_staff' %}Admin Staff
     {% elif avatar_role == 'client' %}Client
     {% elif avatar_role == 'client_staff' %}Client Staff

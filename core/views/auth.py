@@ -15,6 +15,9 @@ from accounts.views import (
     StaffDashboardView,
     ClientAdminDashboardView,
     ClientStaffDashboardView,
+    ImpersonateStartAPIView,
+    ImpersonateStopAPIView,
+    ImpersonateListAPIView,
 )
 
 # Backward compatible function names (map old names to new implementations)
@@ -28,6 +31,9 @@ api_reset_password = ResetPasswordAPIView.as_view()
 admin_staff_dashboard = StaffDashboardView.as_view()
 client_dashboard = ClientAdminDashboardView.as_view()
 client_staff_dashboard = ClientStaffDashboardView.as_view()
+api_impersonate_start = ImpersonateStartAPIView.as_view()
+api_impersonate_stop = ImpersonateStopAPIView.as_view()
+api_impersonate_users = ImpersonateListAPIView.as_view()
 
 
 def inactive_view(request):
@@ -89,5 +95,8 @@ __all__ = [
     'inactive_view',
     'maintenance_view',
     'api_check_maintenance',
+    'api_impersonate_start',
+    'api_impersonate_stop',
+    'api_impersonate_users',
 ]
 

@@ -137,9 +137,14 @@ class PermissionService:
     # ==================== Role Checks ====================
 
     @staticmethod
+    def is_pro_user(user) -> bool:
+        """Check if user is the pro user."""
+        return user.is_authenticated and user.role == 'pro_user'
+
+    @staticmethod
     def is_super_admin(user) -> bool:
-        """Check if user is super admin (is_superuser OR role='super_admin')."""
-        return user.is_authenticated and (user.is_superuser or user.role == 'super_admin')
+        """Check if user is super admin (or pro_user which has all super_admin powers)."""
+        return user.is_authenticated and (user.is_superuser or user.role in ('super_admin', 'pro_user'))
 
     @staticmethod
     def is_admin_staff(user) -> bool:
@@ -386,6 +391,7 @@ class PermissionService:
         is_cs = cls.is_client_staff(user)
 
         context: Dict[str, bool] = {
+            'is_pro_user': cls.is_pro_user(user),
             'is_super_admin': is_sa,
             'is_admin_staff': is_as,
             'is_client': is_cl,

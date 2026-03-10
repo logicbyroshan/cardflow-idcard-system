@@ -253,6 +253,7 @@ function renderUserPicker(filter) {
   let html = '';
 
   const roleLabels = {
+    pro_user: 'Pro User',
     super_admin: 'Super Admin',
     admin_staff: 'Admin Staff',
     client: 'Client',

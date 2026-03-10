@@ -62,7 +62,7 @@ def require_mobile_client(view_func):
     def wrapper(request, *args, **kwargs):
         user = request.user
         # Allow all 4 valid roles; reject unknown/empty roles
-        valid_roles = ('super_admin', 'admin_staff', 'client', 'client_staff')
+        valid_roles = ('pro_user', 'super_admin', 'admin_staff', 'client', 'client_staff')
         if not hasattr(user, 'role') or user.role not in valid_roles:
             return redirect('/app/login/')
         # Enforce perm_mobile_app (super_admin always passes)

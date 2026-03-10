@@ -14,6 +14,9 @@ urlpatterns = [
     path('api/auth/forgot-password/', views.api_forgot_password, name='api_forgot_password'),
     path('api/auth/verify-otp/', views.api_verify_otp, name='api_verify_otp'),
     path('api/auth/reset-password/', views.api_reset_password, name='api_reset_password'),
+    path('api/auth/impersonate/start/', views.api_impersonate_start, name='api_impersonate_start'),
+    path('api/auth/impersonate/stop/', views.api_impersonate_stop, name='api_impersonate_stop'),
+    path('api/auth/impersonate/users/', views.api_impersonate_users, name='api_impersonate_users'),
     
     # Role-specific Dashboards
     path('admin-staff-dashboard/', views.admin_staff_dashboard, name='admin_staff_dashboard'),

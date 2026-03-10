@@ -113,7 +113,7 @@ class BaseDashboardView(LoginRequiredMixin, View):
 
 class OwnerDashboardView(BaseDashboardView):
     """DEPRECATED — redirects to /panel/."""
-    allowed_roles = ['super_admin']
+    allowed_roles = ['super_admin', 'pro_user']
     def get(self, request):
         return redirect('/panel/')
 
@@ -418,3 +418,67 @@ def setup_groups_view(request):
     
     result = RoleService.setup_groups()
     return JsonResponse(result)
+
+
+# =============================================================================
+# IMPERSONATION VIEWS (Pro User only)
+# =============================================================================
+
+class ImpersonateStartAPIView(LoginRequiredMixin, View):
+    """
+    POST /api/auth/impersonate/start/
+    Body: { "user_id": <int> }
+    Pro User only — starts impersonating the target user.
+    """
+    login_url = '/panel/auth/login/'
+
+    def post(self, request):
+        from .services_impersonate import ImpersonateService
+        try:
+            data = json.loads(request.body)
+            target_user_id = data.get('user_id')
+            if not target_user_id:
+                return JsonResponse({'success': False, 'message': 'user_id is required'}, status=400)
+
+            result = ImpersonateService.start(request, int(target_user_id))
+            status = 200 if result['success'] else 403
+            return JsonResponse(result, status=status)
+        except (json.JSONDecodeError, ValueError, TypeError):
+            return JsonResponse({'success': False, 'message': 'Invalid request data'}, status=400)
+        except Exception as e:
+            logger.exception("Impersonate start error: %s", e)
+            return JsonResponse({'success': False, 'message': 'An error occurred.'}, status=500)
+
+
+class ImpersonateStopAPIView(LoginRequiredMixin, View):
+    """
+    POST /api/auth/impersonate/stop/
+    Stops impersonation and returns to the Pro User session.
+    """
+    login_url = '/panel/auth/login/'
+
+    def post(self, request):
+        from .services_impersonate import ImpersonateService
+        try:
+            result = ImpersonateService.stop(request)
+            status = 200 if result['success'] else 400
+            return JsonResponse(result, status=status)
+        except Exception as e:
+            logger.exception("Impersonate stop error: %s", e)
+            return JsonResponse({'success': False, 'message': 'An error occurred.'}, status=500)
+
+
+class ImpersonateListAPIView(LoginRequiredMixin, View):
+    """
+    GET /api/auth/impersonate/users/
+    Returns list of users the Pro User can impersonate.
+    """
+    login_url = '/panel/auth/login/'
+
+    def get(self, request):
+        from .services_impersonate import ImpersonateService
+        if not ImpersonateService.can_impersonate(request.user):
+            return JsonResponse({'success': False, 'message': 'Permission denied.'}, status=403)
+
+        users = ImpersonateService.get_impersonation_targets(request)
+        return JsonResponse({'success': True, 'users': users})

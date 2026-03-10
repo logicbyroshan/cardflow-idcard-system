@@ -22,6 +22,7 @@ User = get_user_model()
 
 # Role mapping - Maps frontend role names to User model role values
 ROLE_MAPPING = {
+    'pro_user': 'pro_user',
     'super_admin': 'super_admin',
     'admin_staff': 'admin_staff',
     'client': 'client',
@@ -30,6 +31,7 @@ ROLE_MAPPING = {
 
 # Group names for Django Groups
 GROUP_NAMES = {
+    'pro_user': 'PRO_USER',
     'super_admin': 'SUPER_ADMIN',
     'admin_staff': 'ADMIN_STAFF',
     'client': 'CLIENT',
@@ -37,9 +39,10 @@ GROUP_NAMES = {
 }
 
 # Dashboard redirect URLs based on role
-# super_admin & admin_staff → main dashboard at /panel/
+# pro_user, super_admin & admin_staff → main dashboard at /panel/
 # client & client_staff → client dashboard at /panel/client/dashboard/
 DASHBOARD_URLS = {
+    'pro_user': '/panel/',
     'super_admin': '/panel/',
     'admin_staff': '/panel/',
     'client': '/panel/client/dashboard/',
@@ -73,7 +76,11 @@ class AuthService:
         try:
             user_filter = {'email__iexact': email}
             if role and role in ROLE_MAPPING:
-                user_filter['role'] = role
+                # Pro user logs in via super_admin role selection
+                if role == 'super_admin':
+                    user_filter['role__in'] = ['super_admin', 'pro_user']
+                else:
+                    user_filter['role'] = role
             
             user = User.objects.filter(**user_filter).first()
             
@@ -126,7 +133,9 @@ class AuthService:
             
             # Check role if specified
             if role and user.role != role:
-                return {'success': False, 'message': _AUTH_FAIL_MSG}
+                # Allow pro_user to login via super_admin role selection
+                if not (role == 'super_admin' and user.role == 'pro_user'):
+                    return {'success': False, 'message': _AUTH_FAIL_MSG}
             
             # Check if user is active (same generic message to prevent enumeration)
             if not user.is_active:
@@ -537,6 +546,7 @@ class RoleService:
     def get_role_display_name(role):
         """Get human-readable role name."""
         role_display = {
+            'pro_user': 'Pro User',
             'super_admin': 'Super Admin',
             'admin_staff': 'Admin Staff',
             'client': 'Client',

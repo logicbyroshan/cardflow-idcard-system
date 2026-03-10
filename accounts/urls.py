@@ -37,4 +37,9 @@ urlpatterns = [
     path('api/auth/forgot-password/', views.ForgotPasswordAPIView.as_view(), name='api_forgot_password'),
     path('api/auth/verify-otp/', views.VerifyOTPAPIView.as_view(), name='api_verify_otp'),
     path('api/auth/reset-password/', views.ResetPasswordAPIView.as_view(), name='api_reset_password'),
+
+    # Impersonation endpoints (Pro User only)
+    path('api/auth/impersonate/start/', views.ImpersonateStartAPIView.as_view(), name='api_impersonate_start'),
+    path('api/auth/impersonate/stop/', views.ImpersonateStopAPIView.as_view(), name='api_impersonate_stop'),
+    path('api/auth/impersonate/users/', views.ImpersonateListAPIView.as_view(), name='api_impersonate_users'),
 ]
