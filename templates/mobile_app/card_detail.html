@@ -4,115 +4,176 @@
 {% block title %}{{ card.name }} - Card Detail{% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-gray-50 pb-20" x-data="cardDetailApp()">
+<div class="min-h-screen bg-gray-50" style="padding-bottom: calc(env(safe-area-inset-bottom,0px) + 80px);"
+     x-data="cardDetailApp()">
+
     <!-- Header -->
-    <div class="sticky top-0 z-40 flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-brand-light to-brand-dark">
-        <button onclick="history.back()" class="w-8 h-8 rounded-md bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all">
+    <div class="sticky top-0 z-40 flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-brand-light to-brand-dark"
+         style="padding-top: calc(env(safe-area-inset-top,0px) + 12px);">
+        <button onclick="history.back()"
+                class="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all flex-shrink-0">
             <i class="fa-solid fa-arrow-left text-sm"></i>
         </button>
-        <div class="flex-1">
-            <h1 class="text-white font-bold text-sm">Card Detail</h1>
-            <p class="text-white/70 text-[10px]">{{ card.table_name }} — {{ card.group_name }}</p>
+        <div class="flex-1 min-w-0">
+            <h1 class="text-white font-bold text-sm leading-tight truncate">{{ card.name }}</h1>
+            <p class="text-white/60 text-[10px] truncate">{{ card.table_name }} — {{ card.group_name }}</p>
         </div>
         <!-- Status Badge -->
-        <span class="text-xs font-bold px-2.5 py-1 rounded
-            {% if card.status == 'pending' %}bg-amber-100 text-amber-700
-            {% elif card.status == 'verified' %}bg-green-100 text-green-700
-            {% elif card.status == 'approved' %}bg-blue-100 text-blue-700
-            {% elif card.status == 'download' %}bg-purple-100 text-purple-700
-            {% elif card.status == 'pool' %}bg-red-100 text-red-700
-            {% else %}bg-gray-100 text-gray-700{% endif %}">
+        <span class="text-[10px] font-bold px-3 py-1.5 rounded-full flex-shrink-0
+            {% if card.status == 'pending' %}bg-amber-400/30 text-white border border-amber-300/50
+            {% elif card.status == 'verified' %}bg-green-400/30 text-white border border-green-300/50
+            {% elif card.status == 'approved' %}bg-blue-400/30 text-white border border-blue-300/50
+            {% elif card.status == 'download' %}bg-purple-400/30 text-white border border-purple-300/50
+            {% elif card.status == 'pool' %}bg-red-400/30 text-white border border-red-300/50
+            {% else %}bg-white/20 text-white border border-white/30{% endif %}">
             {{ card.status_display }}
         </span>
     </div>
 
-    <!-- Photo & Name Section -->
-    <div class="px-4 pt-4">
-        <div class="bg-white rounded-md shadow-sm border border-gray-100 overflow-hidden">
-            <div class="flex items-center gap-4 p-4">
-                {% if card.photo_url %}
-                <img src="{{ card.photo_url }}" alt="{{ card.name }}" class="w-20 h-20 rounded object-cover border-2 border-gray-100 shadow-sm">
-                {% else %}
-                <div class="w-20 h-20 rounded bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-gray-400 border-2 border-gray-100">
-                    <i class="fa-solid fa-user text-2xl"></i>
-                </div>
-                {% endif %}
-                <div class="flex-1 min-w-0">
-                    <h2 class="text-lg font-bold text-gray-800 truncate">{{ card.name }}</h2>
-                    {% if card.id_number %}<p class="text-sm text-gray-500">ID: {{ card.id_number }}</p>{% endif %}
-                    {% if card.class_designation %}<p class="text-xs text-gray-400">{{ card.class_designation }}</p>{% endif %}
+    <!-- Hero Photo & Name Card -->
+    <div class="px-4 pt-4 pb-1">
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="relative">
+                <!-- Subtle gradient shimmer top -->
+                <div class="h-1.5 w-full bg-gradient-to-r from-brand-light to-brand-dark"></div>
+                <div class="flex items-start gap-4 p-4">
+                    <!-- Photo -->
+                    <div class="flex-shrink-0">
+                        {% if card.photo_url %}
+                        <img src="{{ card.photo_url }}" alt="{{ card.name }}"
+                             class="w-[80px] h-[100px] rounded-xl object-cover object-top border-2 border-indigo-100 shadow-sm">
+                        {% else %}
+                        <div class="w-[80px] h-[100px] rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100 flex items-center justify-center border-2 border-indigo-100 shadow-sm">
+                            <i class="fa-solid fa-user text-indigo-300 text-3xl"></i>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <!-- Info -->
+                    <div class="flex-1 min-w-0 pt-1">
+                        <h2 class="text-[17px] font-bold text-gray-800 leading-tight mb-1">{{ card.name }}</h2>
+                        {% if card.class_designation %}
+                        <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-lg px-2 py-0.5">
+                            <i class="fa-solid fa-graduation-cap text-[8px]"></i>{{ card.class_designation }}
+                        </span>
+                        {% endif %}
+                        <div class="mt-2.5 space-y-1.5">
+                            {% if card.id_number %}
+                            <div class="flex items-center gap-1.5 text-[11px]">
+                                <i class="fa-solid fa-id-badge text-indigo-400" style="width:12px; font-size:9px;"></i>
+                                <span class="text-gray-500 font-medium">{{ card.id_number }}</span>
+                            </div>
+                            {% endif %}
+                            {% if card.contact %}
+                            <div class="flex items-center gap-1.5 text-[11px]">
+                                <i class="fa-solid fa-phone text-green-400" style="width:12px; font-size:9px;"></i>
+                                <span class="text-gray-500 font-medium">{{ card.contact }}</span>
+                            </div>
+                            {% endif %}
+                            {% if card.dob %}
+                            <div class="flex items-center gap-1.5 text-[11px]">
+                                <i class="fa-solid fa-calendar text-amber-400" style="width:12px; font-size:9px;"></i>
+                                <span class="text-gray-500 font-medium">{{ card.dob }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Key Info Cards -->
+    <!-- Family Info -->
+    {% if card.father_name or card.mother_name %}
     <div class="px-4 pt-3">
-        <div class="grid grid-cols-2 gap-2">
+        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1">Family</p>
+        <div class="grid grid-cols-2 gap-2.5">
             {% if card.father_name %}
-            <div class="bg-white rounded-md p-3 shadow-sm border border-gray-100">
-                <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Father's Name</p>
-                <p class="text-sm font-medium text-gray-800 truncate">{{ card.father_name }}</p>
+            <div class="bg-white rounded-2xl p-3.5 shadow-sm border border-gray-100">
+                <div class="flex items-center gap-2 mb-1.5">
+                    <div class="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center">
+                        <i class="fa-solid fa-user-tie text-blue-400 text-[10px]"></i>
+                    </div>
+                    <p class="text-[9px] text-gray-400 uppercase tracking-wider font-bold">Father</p>
+                </div>
+                <p class="text-[12px] font-semibold text-gray-800 leading-tight">{{ card.father_name }}</p>
             </div>
             {% endif %}
             {% if card.mother_name %}
-            <div class="bg-white rounded-md p-3 shadow-sm border border-gray-100">
-                <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Mother's Name</p>
-                <p class="text-sm font-medium text-gray-800 truncate">{{ card.mother_name }}</p>
+            <div class="bg-white rounded-2xl p-3.5 shadow-sm border border-gray-100">
+                <div class="flex items-center gap-2 mb-1.5">
+                    <div class="w-7 h-7 rounded-lg bg-pink-50 flex items-center justify-center">
+                        <i class="fa-solid fa-user text-pink-400 text-[10px]"></i>
+                    </div>
+                    <p class="text-[9px] text-gray-400 uppercase tracking-wider font-bold">Mother</p>
+                </div>
+                <p class="text-[12px] font-semibold text-gray-800 leading-tight">{{ card.mother_name }}</p>
             </div>
             {% endif %}
-            {% if card.dob %}
-            <div class="bg-white rounded-md p-3 shadow-sm border border-gray-100">
-                <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Date of Birth</p>
-                <p class="text-sm font-medium text-gray-800">{{ card.dob }}</p>
-            </div>
-            {% endif %}
-            {% if card.blood_group %}
-            <div class="bg-white rounded-md p-3 shadow-sm border border-gray-100">
-                <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Blood Group</p>
-                <p class="text-sm font-medium text-gray-800">{{ card.blood_group }}</p>
-            </div>
-            {% endif %}
-            {% if card.contact %}
-            <div class="bg-white rounded-md p-3 shadow-sm border border-gray-100">
-                <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Contact</p>
-                <p class="text-sm font-medium text-gray-800">{{ card.contact }}</p>
-            </div>
-            {% endif %}
-            {% if card.session %}
-            <div class="bg-white rounded-md p-3 shadow-sm border border-gray-100">
-                <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Session</p>
-                <p class="text-sm font-medium text-gray-800">{{ card.session }}</p>
-            </div>
-            {% endif %}
-        </div>
-    </div>
-
-    {% if card.address %}
-    <div class="px-4 pt-3">
-        <div class="bg-white rounded-md p-3 shadow-sm border border-gray-100">
-            <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Address</p>
-            <p class="text-sm font-medium text-gray-800">{{ card.address }}</p>
         </div>
     </div>
     {% endif %}
 
-    <!-- All Field Data -->
+    <!-- Other Info Grid -->
+    {% if card.blood_group or card.session or card.address %}
     <div class="px-4 pt-3">
-        <div class="bg-white rounded-md shadow-sm border border-gray-100 overflow-hidden">
-            <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-                <h3 class="text-sm font-bold text-gray-800">
-                    <i class="fa-solid fa-list text-brand-light mr-1.5"></i>All Fields
-                </h3>
-                <button @click="showAllFields = !showAllFields" class="text-xs text-brand-light font-medium">
-                    <span x-text="showAllFields ? 'Collapse' : 'Expand'"></span>
-                </button>
+        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1">Details</p>
+        <div class="grid grid-cols-2 gap-2.5">
+            {% if card.blood_group %}
+            <div class="bg-white rounded-2xl p-3.5 shadow-sm border border-gray-100">
+                <div class="flex items-center gap-2 mb-1.5">
+                    <div class="w-7 h-7 rounded-lg bg-red-50 flex items-center justify-center">
+                        <i class="fa-solid fa-droplet text-red-400 text-[10px]"></i>
+                    </div>
+                    <p class="text-[9px] text-gray-400 uppercase tracking-wider font-bold">Blood Group</p>
+                </div>
+                <p class="text-[14px] font-bold text-red-500">{{ card.blood_group }}</p>
             </div>
-            <div x-show="showAllFields" x-transition class="divide-y divide-gray-50">
+            {% endif %}
+            {% if card.session %}
+            <div class="bg-white rounded-2xl p-3.5 shadow-sm border border-gray-100">
+                <div class="flex items-center gap-2 mb-1.5">
+                    <div class="w-7 h-7 rounded-lg bg-purple-50 flex items-center justify-center">
+                        <i class="fa-solid fa-calendar-days text-purple-400 text-[10px]"></i>
+                    </div>
+                    <p class="text-[9px] text-gray-400 uppercase tracking-wider font-bold">Session</p>
+                </div>
+                <p class="text-[12px] font-semibold text-gray-800">{{ card.session }}</p>
+            </div>
+            {% endif %}
+        </div>
+        {% if card.address %}
+        <div class="mt-2.5 bg-white rounded-2xl p-3.5 shadow-sm border border-gray-100">
+            <div class="flex items-center gap-2 mb-1.5">
+                <div class="w-7 h-7 rounded-lg bg-orange-50 flex items-center justify-center">
+                    <i class="fa-solid fa-location-dot text-orange-400 text-[10px]"></i>
+                </div>
+                <p class="text-[9px] text-gray-400 uppercase tracking-wider font-bold">Address</p>
+            </div>
+            <p class="text-[12px] font-medium text-gray-700 leading-relaxed">{{ card.address }}</p>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- All Field Data (collapsible) -->
+    <div class="px-4 pt-3">
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <button @click="showAllFields = !showAllFields"
+                    class="w-full flex items-center justify-between px-4 py-3.5 active:bg-gray-50 transition-colors">
+                <div class="flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center">
+                        <i class="fa-solid fa-list-ul text-brand-light text-[10px]"></i>
+                    </div>
+                    <span class="text-[13px] font-bold text-gray-700">All Fields</span>
+                </div>
+                <i class="fa-solid fa-chevron-down text-gray-400 text-[10px] transition-transform duration-200"
+                   :class="showAllFields ? 'rotate-180' : ''"></i>
+            </button>
+            <div x-show="showAllFields" x-transition class="border-t border-gray-100">
                 {% for key, value in card.field_data.items %}
-                <div class="flex items-center justify-between px-4 py-2.5">
-                    <span class="text-xs text-gray-500 uppercase tracking-wide">{{ key }}</span>
-                    <span class="text-xs font-medium text-gray-800 text-right max-w-[55%] truncate">{{ value }}</span>
+                <div class="flex items-center justify-between px-4 py-2.5 border-b border-gray-50 last:border-b-0">
+                    <span class="text-[11px] text-gray-400 uppercase tracking-wide font-semibold">{{ key }}</span>
+                    <span class="text-[11px] font-semibold text-gray-700 text-right max-w-[55%] truncate">{{ value }}</span>
                 </div>
                 {% endfor %}
             </div>
@@ -121,28 +182,34 @@
 
     <!-- Timestamps -->
     <div class="px-4 pt-3">
-        <div class="bg-white rounded-md p-3 shadow-sm border border-gray-100">
-            <div class="flex items-center justify-between text-xs mb-1">
-                <span class="text-gray-400"><i class="fa-solid fa-calendar-plus mr-1"></i>Created</span>
-                <span class="text-gray-600 font-medium">{{ card.created_at }}</span>
+        <div class="bg-white rounded-2xl p-3.5 shadow-sm border border-gray-100">
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-1.5 text-[11px] text-gray-400">
+                    <i class="fa-solid fa-calendar-plus text-[10px]"></i><span>Created</span>
+                </div>
+                <span class="text-[11px] font-semibold text-gray-600">{{ card.created_at }}</span>
             </div>
-            <div class="flex items-center justify-between text-xs">
-                <span class="text-gray-400"><i class="fa-solid fa-calendar-check mr-1"></i>Updated</span>
-                <span class="text-gray-600 font-medium">{{ card.updated_at }}</span>
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-1.5 text-[11px] text-gray-400">
+                    <i class="fa-solid fa-calendar-check text-[10px]"></i><span>Updated</span>
+                </div>
+                <span class="text-[11px] font-semibold text-gray-600">{{ card.updated_at }}</span>
             </div>
         </div>
     </div>
 
     <!-- Action Buttons -->
-    <div class="px-4 pt-4 pb-4 space-y-2">
+    <div class="px-4 pt-4 space-y-2.5">
         {% if perm_idcard_edit %}
-        <button @click="changeStatus()" class="w-full py-3 text-center text-sm font-semibold text-white bg-gradient-to-r from-brand-light to-brand-dark rounded shadow-md active:scale-[0.98] transition-all">
-            <i class="fa-solid fa-arrows-rotate mr-1.5"></i>Change Status
+        <button @click="changeStatus()"
+                class="w-full py-3.5 text-center text-sm font-bold text-white bg-gradient-to-r from-brand-light to-brand-dark rounded-2xl shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+            <i class="fa-solid fa-arrows-rotate text-[13px]"></i>Change Status
         </button>
         {% endif %}
         {% if perm_idcard_delete %}
-        <button @click="deleteCard()" class="w-full py-3 text-center text-sm font-semibold text-red-500 bg-red-50 border border-red-100 rounded hover:bg-red-100 transition">
-            <i class="fa-solid fa-trash-can mr-1.5"></i>Delete Card
+        <button @click="deleteCard()"
+                class="w-full py-3.5 text-center text-sm font-bold text-red-500 bg-red-50 border border-red-100 rounded-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+            <i class="fa-solid fa-trash-can text-[13px]"></i>Delete Card
         </button>
         {% endif %}
     </div>
@@ -150,22 +217,133 @@
     <!-- Status Change Modal -->
     <div x-show="showStatusModal" x-cloak class="fixed inset-0 z-[70]">
         <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="showStatusModal = false"></div>
-        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-lg shadow-2xl p-4 max-w-[430px] mx-auto" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0">
-            <div class="flex justify-center pt-1 pb-3"><div class="w-10 h-1 rounded-full bg-gray-300"></div></div>
-            <h3 class="text-sm font-bold text-gray-800 mb-3">Change Status</h3>
-            <div class="grid grid-cols-2 gap-2">
-                <button @click="setStatus('pending')" class="py-3 text-xs font-semibold rounded border transition-all active:scale-95 bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100">
-                    <i class="fa-solid fa-clock mr-1"></i>Pending
+        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl max-w-[430px] mx-auto overflow-hidden"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="translate-y-full"
+             x-transition:enter-end="translate-y-0"
+             style="padding-bottom: env(safe-area-inset-bottom, 20px);">
+            <div class="flex justify-center pt-3 pb-1">
+                <div class="w-10 h-1 rounded-full bg-gray-200"></div>
+            </div>
+            <div class="px-4 pb-2 pt-1">
+                <h3 class="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center">
+                        <i class="fa-solid fa-arrows-rotate text-brand-light text-[10px]"></i>
+                    </div>
+                    Change Status
+                </h3>
+                <div class="grid grid-cols-2 gap-2.5">
+                    <button @click="setStatus('pending')"
+                            class="py-3.5 text-xs font-bold rounded-2xl border-2 transition-all active:scale-95 bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-clock"></i>Pending
+                    </button>
+                    <button @click="setStatus('verified')"
+                            class="py-3.5 text-xs font-bold rounded-2xl border-2 transition-all active:scale-95 bg-green-50 text-green-700 border-green-200 hover:bg-green-100 flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-check-circle"></i>Verified
+                    </button>
+                    <button @click="setStatus('approved')"
+                            class="py-3.5 text-xs font-bold rounded-2xl border-2 transition-all active:scale-95 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-check-double"></i>Approved
+                    </button>
+                    <button @click="setStatus('download')"
+                            class="py-3.5 text-xs font-bold rounded-2xl border-2 transition-all active:scale-95 bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-download"></i>Download
+                    </button>
+                </div>
+                <button @click="showStatusModal = false"
+                        class="w-full mt-3 py-3 text-xs font-bold text-gray-500 bg-gray-100 rounded-2xl active:scale-[0.98] transition-all">
+                    Cancel
                 </button>
-                <button @click="setStatus('verified')" class="py-3 text-xs font-semibold rounded border transition-all active:scale-95 bg-green-50 text-green-700 border-green-200 hover:bg-green-100">
-                    <i class="fa-solid fa-check-circle mr-1"></i>Verified
-                </button>
-                <button @click="setStatus('approved')" class="py-3 text-xs font-semibold rounded border transition-all active:scale-95 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
-                    <i class="fa-solid fa-check-double mr-1"></i>Approved
-                </button>
-                <button @click="setStatus('download')" class="py-3 text-xs font-semibold rounded border transition-all active:scale-95 bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100">
-                    <i class="fa-solid fa-download mr-1"></i>Download
-                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div x-show="toast.show" x-transition
+         class="fixed top-4 left-1/2 -translate-x-1/2 z-[80] max-w-[380px] w-full px-4">
+        <div class="rounded-2xl px-4 py-3 shadow-lg text-xs font-bold text-white flex items-center gap-2"
+             :class="toast.type === 'success' ? 'bg-green-500' : toast.type === 'error' ? 'bg-red-500' : 'bg-brand-light'">
+            <i :class="toast.type === 'success' ? 'fa-solid fa-check-circle' : toast.type === 'error' ? 'fa-solid fa-xmark-circle' : 'fa-solid fa-info-circle'"></i>
+            <span x-text="toast.message"></span>
+        </div>
+    </div>
+
+    <!-- Bottom Nav -->
+    {% include "mobile_app/partials/bottom_nav.html" %}
+</div>
+
+{% csrf_token %}
+<script>
+function getCookie(name) {
+    let v = null;
+    document.cookie.split(';').forEach(c => {
+        c = c.trim();
+        if (c.startsWith(name+'=')) v = decodeURIComponent(c.substring(name.length+1));
+    });
+    return v;
+}
+const CSRF = getCookie('csrftoken') || document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+const CARD_ID = {{ card.id }};
+
+function cardDetailApp() {
+    return {
+        showAllFields: false,
+        showStatusModal: false,
+        toast: { show: false, message: '', type: 'info' },
+
+        showToast(msg, type='info') {
+            this.toast = { show: true, message: msg, type };
+            setTimeout(() => { this.toast.show = false; }, 2500);
+        },
+
+        changeStatus() {
+            this.showStatusModal = true;
+        },
+
+        async setStatus(status) {
+            this.showStatusModal = false;
+            try {
+                const res = await fetch('/app/api/card/' + CARD_ID + '/status/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+                    body: JSON.stringify({ status: status }),
+                });
+                const data = await res.json();
+                if (data.success) {
+                    this.showToast(data.message || 'Status updated!', 'success');
+                    setTimeout(() => location.reload(), 800);
+                } else {
+                    this.showToast(data.message || 'Failed to change status', 'error');
+                }
+            } catch (e) {
+                this.showToast('Network error', 'error');
+            }
+        },
+
+        async deleteCard() {
+            var ok = await showConfirm({ title: 'Delete Card?', text: 'Are you sure you want to delete this card?', icon: 'fa-solid fa-trash', confirmLabel: 'Delete', hideWarning: true });
+            if (!ok) return;
+            try {
+                const res = await fetch('/app/api/card/' + CARD_ID + '/delete/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+                    body: JSON.stringify({}),
+                });
+                const data = await res.json();
+                if (data.success) {
+                    this.showToast(data.message || 'Card deleted', 'success');
+                    setTimeout(() => history.back(), 800);
+                } else {
+                    this.showToast(data.message || 'Delete failed', 'error');
+                }
+            } catch (e) {
+                this.showToast('Network error', 'error');
+            }
+        }
+    }
+}
+</script>
+{% endblock %}
             </div>
             <button @click="showStatusModal = false" class="w-full mt-3 py-2.5 text-xs font-semibold text-gray-500 bg-gray-100 border border-gray-200 rounded">Cancel</button>
         </div>

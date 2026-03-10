@@ -16,7 +16,7 @@
         <!-- SNAP SECTION 1 - Stats + Recent Client Updates -->
         <div class="flex flex-col pwa-snap-section">
 
-            <!-- STATS: 2x2 grid + full-width Total — consistent gradient cards -->
+            <!-- STATS: 2x2 grid + full-width Total -->
             <div class="px-3 pt-3 pb-2 flex-shrink-0">
 
                 <!-- 2-column grid: Pending / Verified / Approved / Download -->
@@ -24,93 +24,122 @@
 
                     <!-- Pending -->
                     <a {% if perm_idcard_pending_list %}href="{% url 'mobile_app:table_picker' status='pending' %}"{% endif %}
-                       class="rounded-2xl px-3.5 py-3 shadow-sm flex items-center gap-3 active:scale-[0.98] transition-transform"
-                       style="background:linear-gradient(135deg,#fffbeb,#fef3c7); border:1px solid #fde68a;">
-                        <div class="w-10 h-10 rounded-xl bg-amber-400/20 flex items-center justify-center flex-shrink-0">
-                            <i class="fa-solid fa-clock text-amber-500 text-[16px]"></i>
-                        </div>
-                        <div class="min-w-0">
-                            <p class="text-[22px] font-extrabold text-gray-800 leading-none tracking-tight">{{ pending_count|default:0 }}</p>
-                            <p class="text-[10px] text-amber-600 mt-0.5 font-semibold">Pending</p>
+                       class="relative rounded-2xl overflow-hidden active:scale-[0.97] transition-transform shadow-sm"
+                       style="background: linear-gradient(135deg, #f59e0b, #d97706); min-height: 80px;">
+                        <div class="absolute inset-0 opacity-10" style="background: radial-gradient(circle at top right, #fff 0%, transparent 70%);"></div>
+                        <div class="relative flex flex-col justify-between p-3 h-full">
+                            <div class="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
+                                <i class="fa-solid fa-clock text-white text-[14px]"></i>
+                            </div>
+                            <div class="mt-2">
+                                <p class="text-[26px] font-black text-white leading-none">{{ pending_count|default:0 }}</p>
+                                <p class="text-[10px] text-white/80 font-semibold uppercase tracking-wide mt-0.5">Pending</p>
+                            </div>
                         </div>
                     </a>
 
                     <!-- Verified -->
                     <a {% if perm_idcard_verified_list %}href="{% url 'mobile_app:table_picker' status='verified' %}"{% endif %}
-                       class="rounded-2xl px-3.5 py-3 shadow-sm flex items-center gap-3 active:scale-[0.98] transition-transform"
-                       style="background:linear-gradient(135deg,#ecfdf5,#d1fae5); border:1px solid #a7f3d0;">
-                        <div class="w-10 h-10 rounded-xl bg-green-400/20 flex items-center justify-center flex-shrink-0">
-                            <i class="fa-solid fa-circle-check text-green-500 text-[16px]"></i>
-                        </div>
-                        <div class="min-w-0">
-                            <p class="text-[22px] font-extrabold text-gray-800 leading-none tracking-tight">{{ verified_count|default:0 }}</p>
-                            <p class="text-[10px] text-green-600 mt-0.5 font-semibold">Verified</p>
+                       class="relative rounded-2xl overflow-hidden active:scale-[0.97] transition-transform shadow-sm"
+                       style="background: linear-gradient(135deg, #10b981, #059669); min-height: 80px;">
+                        <div class="absolute inset-0 opacity-10" style="background: radial-gradient(circle at top right, #fff 0%, transparent 70%);"></div>
+                        <div class="relative flex flex-col justify-between p-3 h-full">
+                            <div class="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
+                                <i class="fa-solid fa-circle-check text-white text-[14px]"></i>
+                            </div>
+                            <div class="mt-2">
+                                <p class="text-[26px] font-black text-white leading-none">{{ verified_count|default:0 }}</p>
+                                <p class="text-[10px] text-white/80 font-semibold uppercase tracking-wide mt-0.5">Verified</p>
+                            </div>
                         </div>
                     </a>
 
                     <!-- Approved -->
                     <a {% if perm_idcard_approved_list %}href="{% url 'mobile_app:table_picker' status='approved' %}"{% endif %}
-                       class="rounded-2xl px-3.5 py-3 shadow-sm flex items-center gap-3 active:scale-[0.98] transition-transform"
-                       style="background:linear-gradient(135deg,#eff6ff,#dbeafe); border:1px solid #bfdbfe;">
-                        <div class="w-10 h-10 rounded-xl bg-blue-400/20 flex items-center justify-center flex-shrink-0">
-                            <i class="fa-solid fa-check-double text-blue-500 text-[16px]"></i>
-                        </div>
-                        <div class="min-w-0">
-                            <p class="text-[22px] font-extrabold text-gray-800 leading-none tracking-tight">{{ approved_count|default:0 }}</p>
-                            <p class="text-[10px] text-blue-600 mt-0.5 font-semibold">Approved</p>
+                       class="relative rounded-2xl overflow-hidden active:scale-[0.97] transition-transform shadow-sm"
+                       style="background: linear-gradient(135deg, #3b82f6, #2563eb); min-height: 80px;">
+                        <div class="absolute inset-0 opacity-10" style="background: radial-gradient(circle at top right, #fff 0%, transparent 70%);"></div>
+                        <div class="relative flex flex-col justify-between p-3 h-full">
+                            <div class="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
+                                <i class="fa-solid fa-check-double text-white text-[14px]"></i>
+                            </div>
+                            <div class="mt-2">
+                                <p class="text-[26px] font-black text-white leading-none">{{ approved_count|default:0 }}</p>
+                                <p class="text-[10px] text-white/80 font-semibold uppercase tracking-wide mt-0.5">Approved</p>
+                            </div>
                         </div>
                     </a>
 
                     <!-- Download -->
                     <a {% if perm_idcard_download_list %}href="{% url 'mobile_app:table_picker' status='download' %}"{% endif %}
-                       class="rounded-2xl px-3.5 py-3 shadow-sm flex items-center gap-3 active:scale-[0.98] transition-transform"
-                       style="background:linear-gradient(135deg,#faf5ff,#ede9fe); border:1px solid #ddd6fe;">
-                        <div class="w-10 h-10 rounded-xl bg-purple-400/20 flex items-center justify-center flex-shrink-0">
-                            <i class="fa-solid fa-download text-purple-500 text-[16px]"></i>
-                        </div>
-                        <div class="min-w-0">
-                            <p class="text-[22px] font-extrabold text-gray-800 leading-none tracking-tight">{{ download_count|default:0 }}</p>
-                            <p class="text-[10px] text-purple-600 mt-0.5 font-semibold">Download</p>
+                       class="relative rounded-2xl overflow-hidden active:scale-[0.97] transition-transform shadow-sm"
+                       style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); min-height: 80px;">
+                        <div class="absolute inset-0 opacity-10" style="background: radial-gradient(circle at top right, #fff 0%, transparent 70%);"></div>
+                        <div class="relative flex flex-col justify-between p-3 h-full">
+                            <div class="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
+                                <i class="fa-solid fa-download text-white text-[14px]"></i>
+                            </div>
+                            <div class="mt-2">
+                                <p class="text-[26px] font-black text-white leading-none">{{ download_count|default:0 }}</p>
+                                <p class="text-[10px] text-white/80 font-semibold uppercase tracking-wide mt-0.5">Download</p>
+                            </div>
                         </div>
                     </a>
 
                 </div>
 
                 <!-- Full-width Total card -->
-                <div class="rounded-2xl px-4 py-3 flex items-center justify-between shadow-md"
-                     style="background:linear-gradient(135deg,#667eea,#764ba2);">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
-                            <i class="fa-solid fa-id-card text-white text-[16px]"></i>
+                <div class="relative rounded-2xl overflow-hidden shadow-md"
+                     style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                    <div class="absolute inset-0 opacity-10" style="background: radial-gradient(circle at top right, #fff 0%, transparent 60%);"></div>
+                    <div class="relative flex items-center justify-between px-4 py-3.5">
+                        <div class="flex items-center gap-3">
+                            <div class="w-11 h-11 rounded-2xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                                <i class="fa-solid fa-id-card text-white text-[18px]"></i>
+                            </div>
+                            <div>
+                                <p class="text-white/70 text-[9px] font-bold uppercase tracking-widest">Total ID Cards</p>
+                                <p class="text-[32px] font-black text-white leading-none tracking-tight">{{ total_cards|default:0 }}</p>
+                            </div>
                         </div>
-                        <div>
-                            <p class="text-white/70 text-[10px] font-medium uppercase tracking-wide">Total ID Cards</p>
-                            <p class="text-[28px] font-extrabold text-white leading-none tracking-tight">{{ total_cards|default:0 }}</p>
+                        <div class="flex flex-col items-end gap-1">
+                            <span class="text-[9px] font-bold text-white/50 uppercase tracking-wider">All statuses</span>
+                            <span class="text-[9px] font-semibold text-white/40">{{ pending_count|default:0 }} + {{ verified_count|default:0 }} + {{ approved_count|default:0 }} + {{ download_count|default:0 }}</span>
                         </div>
-                    </div>
-                    <div class="text-right">
-                        <p class="text-white/50 text-[9px]">All statuses</p>
-                        <i class="fa-solid fa-chevron-right text-white/30 text-sm mt-1 block"></i>
                     </div>
                 </div>
 
             </div>
 
-            <!-- RECENT CLIENT UPDATES - 2 columns: Pending + Verified -->
+            <!-- RECENT CLIENT UPDATES -->
             {% if is_super_admin or is_admin_staff or is_client or is_client_staff %}
             <div class="px-3 pb-3 mt-1 flex-1 flex flex-col min-h-0">
 
                 <div class="flex items-center justify-between mb-2.5 flex-shrink-0">
                     {% if is_super_admin or is_admin_staff %}
-                    <h2 class="text-[13px] font-bold text-gray-700 tracking-tight uppercase">Recent Client Updates</h2>
+                    <div class="flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center">
+                            <i class="fa-solid fa-building text-brand-light text-[10px]"></i>
+                        </div>
+                        <h2 class="text-[12px] font-bold text-gray-700 uppercase tracking-wide">Recent Clients</h2>
+                    </div>
                     <a href="{% url 'mobile_app:clients_list' %}"
-                       class="text-[12px] font-bold text-white px-4 py-1.5 rounded-xl shadow-sm active:scale-95 transition-all"
-                       style="background:linear-gradient(135deg,#667eea,#764ba2);">View All</a>
+                       class="text-[11px] font-bold text-white px-3 py-1.5 rounded-xl shadow-sm active:scale-95 transition-all flex items-center gap-1"
+                       style="background:linear-gradient(135deg,#667eea,#764ba2);">
+                        <i class="fa-solid fa-arrow-right text-[8px]"></i>View All
+                    </a>
                     {% else %}
-                    <h2 class="text-[13px] font-bold text-gray-700 tracking-tight uppercase">My Groups</h2>
+                    <div class="flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center">
+                            <i class="fa-solid fa-layer-group text-brand-light text-[10px]"></i>
+                        </div>
+                        <h2 class="text-[12px] font-bold text-gray-700 uppercase tracking-wide">My Groups</h2>
+                    </div>
                     <a href="{% url 'mobile_app:groups_overview' %}"
-                       class="text-[12px] font-bold text-white px-4 py-1.5 rounded-xl shadow-sm active:scale-95 transition-all"
-                       style="background:linear-gradient(135deg,#667eea,#764ba2);">View All</a>
+                       class="text-[11px] font-bold text-white px-3 py-1.5 rounded-xl shadow-sm active:scale-95 transition-all flex items-center gap-1"
+                       style="background:linear-gradient(135deg,#667eea,#764ba2);">
+                        <i class="fa-solid fa-arrow-right text-[8px]"></i>View All
+                    </a>
                     {% endif %}
                 </div>
 
@@ -119,32 +148,47 @@
                      x-data="recentClientsTable()">
 
                     <!-- Table header -->
-                    <div class="flex items-center border-b border-gray-100 bg-gray-50 flex-shrink-0" style="min-height:38px;">
-                        <div class="flex-1 px-3 py-2 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Client / Table</div>
-                        <div class="w-[70px] text-center py-2 text-[10px] font-bold text-amber-600 uppercase tracking-wider">Pending</div>
-                        <div class="w-[70px] text-center py-2 text-[10px] font-bold text-green-600 uppercase tracking-wider">Verified</div>
+                    <div class="flex items-center border-b border-gray-100 bg-gray-50 flex-shrink-0" style="min-height:36px;">
+                        <div class="flex-1 px-3 py-2 text-[9px] font-bold text-gray-400 uppercase tracking-widest">Client / Table</div>
+                        <div class="w-[70px] text-center py-2 text-[9px] font-bold text-amber-500 uppercase tracking-widest">Pending</div>
+                        <div class="w-[70px] text-center py-2 text-[9px] font-bold text-green-500 uppercase tracking-widest">Verified</div>
                     </div>
 
                     <!-- Scrollable rows -->
                     <div class="flex-1 overflow-y-auto" style="-webkit-overflow-scrolling:touch;">
                         {% for rc in recent_client_updates %}
 
-                        <!-- Client parent row — expand (admins) or navigate to groups (clients) — C3 fix -->
+                        <!-- Client parent row -->
                         <div class="flex items-center border-b border-gray-50 cursor-pointer select-none"
-                             style="min-height:46px;"
+                             style="min-height:48px;"
                              :class="expanded === '{{ rc.client_id }}_{{ forloop.counter }}' ? 'bg-indigo-50/60' : 'active:bg-gray-50'"
                              @click="{% if rc.tables %}toggle('{{ rc.client_id }}_{{ forloop.counter }}'){% else %}window.location.href='{% url 'mobile_app:groups_overview' %}'{% endif %}">
-                            <div class="flex-1 px-3 py-2 flex items-center gap-2 min-w-0">
-                                <i class="fa-solid text-[9px] text-gray-300 flex-shrink-0 transition-transform duration-200"
-                                   :class="expanded === '{{ rc.client_id }}_{{ forloop.counter }}' ? 'fa-chevron-down text-indigo-400' : 'fa-chevron-right'"
-                                   {% if not rc.tables %}style="visibility:hidden;"{% endif %}></i>
-                                <span class="text-[13px] font-semibold text-gray-800 truncate leading-tight">{{ rc.client_name }}</span>
+                            <div class="flex-1 px-3 py-2.5 flex items-center gap-2 min-w-0">
+                                <!-- Mini avatar -->
+                                <div class="w-6 h-6 rounded-lg flex items-center justify-center text-white text-[8px] font-bold flex-shrink-0"
+                                     :class="expanded === '{{ rc.client_id }}_{{ forloop.counter }}' ? '' : ''"
+                                     style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                                    {{ rc.client_name|slice:":1"|upper }}
+                                </div>
+                                <span class="text-[12px] font-semibold text-gray-800 truncate leading-tight">{{ rc.client_name }}</span>
+                                {% if rc.tables %}
+                                <i class="fa-solid text-[9px] flex-shrink-0 transition-transform duration-200 ml-auto mr-1"
+                                   :class="expanded === '{{ rc.client_id }}_{{ forloop.counter }}' ? 'fa-chevron-down text-indigo-400 rotate-0' : 'fa-chevron-right text-gray-300'"></i>
+                                {% endif %}
                             </div>
                             <div class="w-[70px] text-center py-2">
-                                <span class="text-[15px] font-extrabold {% if rc.pending > 0 %}text-amber-500{% else %}text-gray-300{% endif %}">{{ rc.pending }}</span>
+                                {% if rc.pending > 0 %}
+                                <span class="inline-flex items-center justify-center min-w-[28px] h-[22px] px-2 rounded-lg text-[11px] font-black text-amber-600 bg-amber-50 border border-amber-100">{{ rc.pending }}</span>
+                                {% else %}
+                                <span class="text-[12px] font-bold text-gray-200">{{ rc.pending }}</span>
+                                {% endif %}
                             </div>
                             <div class="w-[70px] text-center py-2">
-                                <span class="text-[15px] font-extrabold {% if rc.verified > 0 %}text-green-500{% else %}text-gray-300{% endif %}">{{ rc.verified }}</span>
+                                {% if rc.verified > 0 %}
+                                <span class="inline-flex items-center justify-center min-w-[28px] h-[22px] px-2 rounded-lg text-[11px] font-black text-green-600 bg-green-50 border border-green-100">{{ rc.verified }}</span>
+                                {% else %}
+                                <span class="text-[12px] font-bold text-gray-200">{{ rc.verified }}</span>
+                                {% endif %}
                             </div>
                         </div>
 
@@ -155,18 +199,18 @@
                              x-transition:enter="transition-all duration-150"
                              x-transition:enter-start="opacity-0 -translate-y-1"
                              x-transition:enter-end="opacity-100 translate-y-0"
-                             class="flex items-center border-b border-indigo-50 bg-indigo-50/30"
+                             class="flex items-center border-b border-indigo-50 bg-indigo-50/40"
                              style="min-height:40px; display:none;">
-                            <div class="flex-1 px-3 py-2 flex items-center gap-2 min-w-0 pl-8">
+                            <div class="flex-1 px-3 py-2 flex items-center gap-2 min-w-0 pl-9">
                                 <i class="fa-solid fa-table-cells text-indigo-300 text-[9px] flex-shrink-0"></i>
                                 <a href="{% url 'mobile_app:card_list' table_id=tbl.id status='pending' %}"
-                                   class="text-[11px] font-medium text-indigo-600 truncate leading-tight">{{ tbl.name }}</a>
+                                   class="text-[11px] font-semibold text-indigo-600 truncate leading-tight hover:underline">{{ tbl.name }}</a>
                             </div>
                             <div class="w-[70px] text-center py-2">
-                                <span class="text-[13px] font-bold {% if tbl.pending > 0 %}text-amber-500{% else %}text-gray-300{% endif %}">{{ tbl.pending }}</span>
+                                <span class="text-[12px] font-bold {% if tbl.pending > 0 %}text-amber-500{% else %}text-gray-300{% endif %}">{{ tbl.pending }}</span>
                             </div>
                             <div class="w-[70px] text-center py-2">
-                                <span class="text-[13px] font-bold {% if tbl.verified > 0 %}text-green-500{% else %}text-gray-300{% endif %}">{{ tbl.verified }}</span>
+                                <span class="text-[12px] font-bold {% if tbl.verified > 0 %}text-green-500{% else %}text-gray-300{% endif %}">{{ tbl.verified }}</span>
                             </div>
                         </div>
                         {% empty %}

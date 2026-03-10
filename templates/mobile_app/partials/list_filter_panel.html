@@ -1,6 +1,18 @@
-<!-- Filter Side Panel -->
-<div x-show="showFilters" x-cloak x-transition class="fixed inset-0 z-50" @click.self="showFilters = false" style="display:none;">
-    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="showFilters = false"></div>
+<!-- Filter Side Drawer -->
+<div x-show="showFilters" x-cloak class="fixed inset-0 z-50" style="display:none;">
+    <!-- Backdrop -->
+    <div
+        x-show="showFilters"
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
+        @click="showFilters = false"></div>
+
+    <!-- Drawer panel -->
     <div
         x-show="showFilters"
         x-transition:enter="transition ease-out duration-300"
@@ -9,65 +21,127 @@
         x-transition:leave="transition ease-in duration-200"
         x-transition:leave-start="translate-x-0"
         x-transition:leave-end="translate-x-full"
-        class="absolute right-0 top-0 bottom-0 w-[85%] max-w-[340px] bg-white shadow-2xl flex flex-col"
+        class="absolute right-0 top-0 bottom-0 w-[88%] max-w-[340px] bg-white shadow-2xl flex flex-col"
+        style="padding-bottom: env(safe-area-inset-bottom, 0px);"
     >
-        <div class="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-brand-light to-brand-dark flex-shrink-0">
-            <h3 class="text-white font-bold text-sm">
-                <i class="fa-solid fa-filter mr-2"></i>Filters
-            </h3>
-            <button @click="showFilters = false" class="text-white/80 hover:text-white">
-                <i class="fa-solid fa-xmark text-lg"></i>
+        <!-- Header -->
+        <div class="flex items-center gap-3 px-4 py-4 bg-gradient-to-r from-brand-light to-brand-dark flex-shrink-0">
+            <div class="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
+                <i class="fa-solid fa-sliders text-white text-sm"></i>
+            </div>
+            <div class="flex-1">
+                <h3 class="text-white font-bold text-[13px] leading-tight">Filters</h3>
+                <p class="text-white/60 text-[10px]">Narrow down your results</p>
+            </div>
+            <button @click="showFilters = false"
+                    class="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center text-white active:scale-95 transition-all">
+                <i class="fa-solid fa-xmark text-sm"></i>
             </button>
         </div>
-        <div class="flex-1 overflow-y-auto p-4 space-y-4">
-            <div class="filter-group">
-                <label class="filter-label">Photo Status</label>
+
+        <!-- Filter body (scrollable) -->
+        <div class="flex-1 overflow-y-auto px-4 py-4 space-y-5">
+
+            <!-- Photo Status -->
+            <div>
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Photo Status</p>
                 <div class="flex gap-2">
-                    <button @click="filters.photo = 'all'" :class="filters.photo === 'all' ? 'filter-chip-active' : 'filter-chip'" class="flex-1 text-center">All</button>
-                    <button @click="filters.photo = 'with'" :class="filters.photo === 'with' ? 'filter-chip-active' : 'filter-chip'" class="flex-1 text-center">With</button>
-                    <button @click="filters.photo = 'without'" :class="filters.photo === 'without' ? 'filter-chip-active' : 'filter-chip'" class="flex-1 text-center">Without</button>
+                    <button @click="filters.photo = 'all'"
+                            :class="filters.photo === 'all' ? 'bg-brand-light text-white border-brand-light shadow-sm' : 'bg-gray-50 text-gray-600 border-gray-200'"
+                            class="flex-1 text-center py-2 px-3 rounded-xl text-xs font-semibold border transition-all active:scale-95">All</button>
+                    <button @click="filters.photo = 'with'"
+                            :class="filters.photo === 'with' ? 'bg-green-500 text-white border-green-500 shadow-sm' : 'bg-green-50 text-green-600 border-green-200'"
+                            class="flex-1 text-center py-2 px-3 rounded-xl text-xs font-semibold border transition-all active:scale-95">
+                        <i class="fa-solid fa-image mr-1 text-[10px]"></i>With
+                    </button>
+                    <button @click="filters.photo = 'without'"
+                            :class="filters.photo === 'without' ? 'bg-red-500 text-white border-red-500 shadow-sm' : 'bg-red-50 text-red-500 border-red-200'"
+                            class="flex-1 text-center py-2 px-3 rounded-xl text-xs font-semibold border transition-all active:scale-95">
+                        <i class="fa-solid fa-image-slash mr-1 text-[10px]"></i>Without
+                    </button>
                 </div>
             </div>
-            <div class="filter-group">
-                <label class="filter-label">Sort By</label>
-                <select x-model="filters.sort" class="filter-select">
-                    <option value="name_asc">Name (A-Z)</option>
-                    <option value="name_desc">Name (Z-A)</option>
-                    <option value="date_new">Newest First</option>
-                    <option value="date_old">Oldest First</option>
-                    <option value="roll_asc">Roll No (Asc)</option>
-                    <option value="roll_desc">Roll No (Desc)</option>
-                </select>
+
+            <!-- Sort By -->
+            <div>
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Sort By</p>
+                <div class="relative">
+                    <select x-model="filters.sort"
+                            class="w-full appearance-none pl-4 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
+                        <option value="name_asc">Name (A → Z)</option>
+                        <option value="name_desc">Name (Z → A)</option>
+                        <option value="date_new">Newest First</option>
+                        <option value="date_old">Oldest First</option>
+                        <option value="roll_asc">Roll No (Ascending)</option>
+                        <option value="roll_desc">Roll No (Descending)</option>
+                    </select>
+                    <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-[10px] pointer-events-none"></i>
+                </div>
             </div>
-            <div class="filter-group">
-                <label class="filter-label">Class</label>
+
+            <!-- Class -->
+            {% if classes %}
+            <div>
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Class</p>
                 <div class="flex flex-wrap gap-2">
-                    <button @click="filters.selectedClass = ''" :class="filters.selectedClass === '' ? 'filter-chip-active' : 'filter-chip'">All</button>
+                    <button @click="filters.selectedClass = ''"
+                            :class="filters.selectedClass === '' ? 'bg-brand-light text-white border-brand-light' : 'bg-gray-50 text-gray-600 border-gray-200'"
+                            class="py-1.5 px-3 rounded-xl text-xs font-semibold border transition-all active:scale-95">All</button>
                     {% for cls in classes %}
-                    <button @click="filters.selectedClass = '{{ cls|escapejs }}'" :class="filters.selectedClass === '{{ cls|escapejs }}' ? 'filter-chip-active' : 'filter-chip'">{{ cls }}</button>
+                    <button @click="filters.selectedClass = '{{ cls|escapejs }}'"
+                            :class="filters.selectedClass === '{{ cls|escapejs }}' ? 'bg-indigo-500 text-white border-indigo-500' : 'bg-gray-50 text-gray-600 border-gray-200'"
+                            class="py-1.5 px-3 rounded-xl text-xs font-semibold border transition-all active:scale-95">{{ cls }}</button>
                     {% endfor %}
                 </div>
             </div>
-            <div class="filter-group">
-                <label class="filter-label">Section</label>
+            {% endif %}
+
+            <!-- Section -->
+            {% if sections %}
+            <div>
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Section</p>
                 <div class="flex flex-wrap gap-2">
-                    <button @click="filters.selectedSection = ''" :class="filters.selectedSection === '' ? 'filter-chip-active' : 'filter-chip'">All</button>
+                    <button @click="filters.selectedSection = ''"
+                            :class="filters.selectedSection === '' ? 'bg-brand-light text-white border-brand-light' : 'bg-gray-50 text-gray-600 border-gray-200'"
+                            class="py-1.5 px-3 rounded-xl text-xs font-semibold border transition-all active:scale-95">All</button>
                     {% for sec in sections %}
-                    <button @click="filters.selectedSection = '{{ sec|escapejs }}'" :class="filters.selectedSection === '{{ sec|escapejs }}' ? 'filter-chip-active' : 'filter-chip'">{{ sec }}</button>
+                    <button @click="filters.selectedSection = '{{ sec|escapejs }}'"
+                            :class="filters.selectedSection === '{{ sec|escapejs }}' ? 'bg-indigo-500 text-white border-indigo-500' : 'bg-gray-50 text-gray-600 border-gray-200'"
+                            class="py-1.5 px-3 rounded-xl text-xs font-semibold border transition-all active:scale-95">{{ sec }}</button>
                     {% endfor %}
                 </div>
             </div>
-            <div class="filter-group">
-                <label class="filter-label">Date Range</label>
+            {% endif %}
+
+            <!-- Date Range -->
+            <div>
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Date Range</p>
                 <div class="grid grid-cols-2 gap-2">
-                    <input type="date" x-model="filters.dateFrom" class="filter-input">
-                    <input type="date" x-model="filters.dateTo" class="filter-input">
+                    <div class="relative">
+                        <label class="text-[9px] font-semibold text-gray-400 uppercase tracking-wide block mb-1 pl-0.5">From</label>
+                        <input type="date" x-model="filters.dateFrom"
+                               class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-700 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
+                    </div>
+                    <div class="relative">
+                        <label class="text-[9px] font-semibold text-gray-400 uppercase tracking-wide block mb-1 pl-0.5">To</label>
+                        <input type="date" x-model="filters.dateTo"
+                               class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-700 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
+                    </div>
                 </div>
             </div>
+
         </div>
-        <div class="flex-shrink-0 px-4 py-3 bg-gray-50 border-t border-gray-100 flex gap-2">
-            <button @click="resetFilters()" class="flex-1 py-2.5 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-md hover:bg-gray-50 transition">Clear All</button>
-            <button @click="applyFilters(); showFilters = false" class="flex-1 py-2.5 text-xs font-semibold text-white bg-gradient-to-r from-brand-light to-brand-dark rounded-md shadow-md hover:shadow-lg transition">Apply</button>
+
+        <!-- Footer actions -->
+        <div class="flex-shrink-0 px-4 py-4 border-t border-gray-100 flex gap-3">
+            <button @click="resetFilters()"
+                    class="flex-1 py-3 text-xs font-bold text-gray-500 bg-gray-100 border border-gray-200 rounded-xl hover:bg-gray-200 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-rotate-left text-[10px]"></i>Clear All
+            </button>
+            <button @click="applyFilters(); showFilters = false"
+                    class="flex-[2] py-3 text-xs font-bold text-white bg-gradient-to-r from-brand-light to-brand-dark rounded-xl shadow-md hover:shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-check text-[10px]"></i>Apply Filters
+            </button>
         </div>
     </div>
 </div>
