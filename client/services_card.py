@@ -115,8 +115,15 @@ class ClientCardService(BaseService):
                         message=f'No permission to view {status_filter} cards'
                     )
             
-            # Build base query
-            cards_query = IDCard.objects.filter(table=table).order_by('-id')
+            # Build base query — newest batch/action first, Excel order within batch
+            if status_filter == 'download':
+                cards_query = IDCard.objects.filter(table=table).order_by('-downloaded_at', '-id')
+            elif status_filter == 'pool':
+                cards_query = IDCard.objects.filter(table=table).order_by('-deleted_at', '-id')
+            elif status_filter in ('verified', 'approved'):
+                cards_query = IDCard.objects.filter(table=table).order_by('-status_changed_at', 'id')
+            else:
+                cards_query = IDCard.objects.filter(table=table).order_by('-created_at', 'id')
             
             if status_filter and status_filter in cls.VALID_STATUSES:
                 cards_query = cards_query.filter(status=status_filter)

@@ -312,10 +312,10 @@ class IDCardCardService(BaseService):
                         pass
 
             # --- Sorting ---
-            # sr-asc / sr-desc must use stable `id` ordering so offset-based
-            # pagination never duplicates or skips rows between requests.
+            # sr-asc / sr-desc: newest upload batch first, Excel row order within batch.
+            # Verified/approved: most recently changed first.
             if sort_order == 'sr-desc':
-                cards_query = cards_query.order_by('-id')
+                cards_query = cards_query.order_by('created_at', '-id')
             elif sort_order == 'name-asc':
                 # Sort by first text field in field_data (Name/name)
                 name_field = cls._get_name_field(table)
@@ -338,14 +338,17 @@ class IDCardCardService(BaseService):
             elif sort_order == 'date-old':
                 cards_query = cards_query.order_by('updated_at', 'id')
             else:
-                # Default: sr-asc — preserve Excel import order (ascending by id)
-                # Download/pool tabs: show most-recently-moved first
+                # Default: sr-asc — newest batch first, Excel row order within batch
+                # Verified/approved: most recently status-changed first
+                # Download/pool: most-recently-moved first
                 if status_filter == 'download':
                     cards_query = cards_query.order_by('-downloaded_at', '-id')
                 elif status_filter == 'pool':
                     cards_query = cards_query.order_by('-deleted_at', '-id')
+                elif status_filter in ('verified', 'approved'):
+                    cards_query = cards_query.order_by('-status_changed_at', 'id')
                 else:
-                    cards_query = cards_query.order_by('id')
+                    cards_query = cards_query.order_by('-created_at', 'id')
 
             total_count = cards_query.count()
             cards = cards_query[offset:offset + limit]

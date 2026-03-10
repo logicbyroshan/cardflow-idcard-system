@@ -160,14 +160,19 @@ def api_idcard_cards_json(request, table_id):
     except (ValueError, TypeError):
         offset, limit = 0, 100
 
-    # Base queryset — maintain original insertion order (by id), same as HTML page view
-    # Download/pool tabs show recently moved cards first; other tabs preserve Excel order
+    # Base queryset — newest batch/action first, Excel order within same batch
+    # Pending: latest upload first (-created_at), then Excel row order (id)
+    # Verified/Approved: most recently changed first (-status_changed_at), then id
+    # Download: most recently downloaded first
+    # Pool: most recently pooled first
     if status_filter == 'download':
         qs = IDCard.objects.filter(table=table).order_by('-downloaded_at', '-id')
     elif status_filter == 'pool':
         qs = IDCard.objects.filter(table=table).order_by('-deleted_at', '-id')
+    elif status_filter in ('verified', 'approved'):
+        qs = IDCard.objects.filter(table=table).order_by('-status_changed_at', 'id')
     else:
-        qs = IDCard.objects.filter(table=table).order_by('id')
+        qs = IDCard.objects.filter(table=table).order_by('-created_at', 'id')
 
     if status_filter and status_filter in IDCardService.VALID_STATUSES:
         qs = qs.filter(status=status_filter)
