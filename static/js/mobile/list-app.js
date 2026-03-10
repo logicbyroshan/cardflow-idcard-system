@@ -247,9 +247,10 @@ function listApp() {
             const statusBg = card.status === 'pending' ? 'bg-amber-100 text-amber-600' : card.status === 'verified' ? 'bg-green-100 text-green-600' : card.status === 'approved' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500';
             const statusLabel = card.status.charAt(0).toUpperCase() + card.status.slice(1);
 
-            const photoHtml = card.photo_url
-                ? `<div class="rounded-xl overflow-hidden border-2 ${borderColor} w-full" style="height:68px;"><img src="${this._escHtml(card.photo_url)}" class="w-full h-full object-cover object-top" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="w-full h-full bg-red-50 flex items-center justify-center text-red-300" style="font-size:14px;display:none;"><i class="fa-solid fa-image-slash"></i></div></div>`
-                : `<div class="rounded-xl overflow-hidden border-2 border-gray-200 w-full" style="height:68px;"><div class="w-full h-full bg-gray-50 flex items-center justify-center text-gray-300" style="font-size:14px;"><i class="fa-solid fa-image"></i></div></div>`;
+            const photoUrls = (card.photo_urls && card.photo_urls.length) ? card.photo_urls : (card.photo_url ? [card.photo_url] : []);
+            const photoHtml = photoUrls.length
+                ? photoUrls.map(url => `<div class="rounded-xl overflow-hidden border-2 ${borderColor} w-full" style="height:68px;"><img src="${this._escHtml(url)}" class="w-full h-full object-cover object-top" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="w-full h-full bg-amber-50 flex items-center justify-center text-amber-400" style="font-size:16px;display:none;"><i class="fa-solid fa-user-astronaut"></i></div></div>`).join('')
+                : `<div class="rounded-xl overflow-hidden border-2 border-gray-200 w-full" style="height:68px;"><div class="w-full h-full bg-gray-100 flex items-center justify-center text-gray-300" style="font-size:16px;"><i class="fa-solid fa-user-slash"></i></div></div>`;
 
             let fieldRows = '';
             for (const [key, val] of Object.entries(fd)) {

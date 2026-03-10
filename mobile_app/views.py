@@ -342,7 +342,8 @@ def home(request):
     _recent_acts = []
     for _card in _cards_scope.select_related('table').order_by('-updated_at')[:10]:
         _fd = _card.field_data or {}
-        _name = _fd.get('NAME') or _fd.get('name') or _fd.get('Name') or f'Card #{_card.id}'
+        _name = (_fd.get('NAME') or _fd.get('name') or _fd.get('Name')
+                 or next((str(v) for k, v in _fd.items() if v and not any(w in k.lower() for w in ('photo', 'image', 'pic'))), ''))
         _recent_acts.append({
             'name': _name,
             'status': _card.status,

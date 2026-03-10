@@ -39,17 +39,17 @@
                             <img src="{{ purl }}"
                                  class="w-full h-full object-cover object-top" alt="" loading="lazy"
                                  onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-                            <div class="w-full h-full bg-red-50 flex items-center justify-center text-red-300"
-                                 style="font-size:14px;display:none;">
-                                <i class="fa-solid fa-image-slash"></i>
+                            <div class="w-full h-full bg-amber-50 flex items-center justify-center text-amber-400"
+                                 style="font-size:16px;display:none;">
+                                <i class="fa-solid fa-user-astronaut"></i>
                             </div>
                         </div>
                         {% endfor %}
                     {% else %}
                     <div class="rounded-xl overflow-hidden border-2 border-gray-200 w-full" style="height:68px;">
-                        <div class="w-full h-full bg-gray-50 flex items-center justify-center text-gray-300"
-                             style="font-size:14px;">
-                            <i class="fa-solid fa-image"></i>
+                        <div class="w-full h-full bg-gray-100 flex items-center justify-center text-gray-300"
+                             style="font-size:16px;">
+                            <i class="fa-solid fa-user-slash"></i>
                         </div>
                     </div>
                     {% endif %}
