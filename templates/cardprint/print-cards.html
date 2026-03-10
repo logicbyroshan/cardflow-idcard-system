@@ -85,6 +85,17 @@
     .gc-editor-body .gen-layout { flex:1;overflow:hidden; }
     .gc-editor-footer { display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:10px 20px;border-top:1px solid var(--border-color,#e5e7eb);background:var(--bg-surface,#fff);flex-shrink:0; }
     #gcDownloadPdfBtn:disabled { opacity:0.45;cursor:not-allowed; }
+
+    /* ── Global btn colour / size variants (not scoped to action-bar) ── */
+    .btn-green  { background:#22c55e;color:#fff!important;border-color:#22c55e; }
+    .btn-green:hover:not(:disabled)  { background:#16a34a;border-color:#16a34a; }
+    .btn-blue   { background:#3b82f6;color:#fff!important;border-color:#3b82f6; }
+    .btn-blue:hover:not(:disabled)   { background:#2563eb;border-color:#2563eb; }
+    .btn-gray   { background:#6b7280;color:#fff!important;border-color:#6b7280; }
+    .btn-gray:hover:not(:disabled)   { background:#4b5563;border-color:#4b5563; }
+    .btn-outline { background:#fff;color:#374151;border:1px solid #d1d5db; }
+    .btn-outline:hover:not(:disabled){ background:#f9fafb;border-color:#9ca3af; }
+    .btn-xs { height:24px;padding:2px 7px;font-size:11px; }
   </style>
 </head>
 <body x-data="layoutState()" x-init="init()">
