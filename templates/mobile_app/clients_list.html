@@ -20,13 +20,16 @@
                 <h1 class="text-white font-bold text-sm leading-tight">{% if is_admin_staff %}Assigned Clients{% else %}Clients{% endif %}</h1>
                 <p class="text-white/60 text-[10px]" x-text="filteredClients.length + ' client(s) found'"></p>
             </div>
-            <!-- Filter toggle pill -->
-            <button @click="filterStatus = filterStatus === 'all' ? 'active' : 'all'"
-                    class="text-[10px] font-bold px-3 py-1.5 rounded-full transition-all flex-shrink-0 flex items-center gap-1"
-                    :class="filterStatus === 'active' ? 'bg-white text-brand-light shadow-sm' : 'bg-white/20 text-white'">
-                <i class="fa-solid fa-filter text-[8px]"></i>
-                <span x-text="filterStatus === 'active' ? 'Active Only' : 'All'"></span>
-            </button>
+            <!-- Filter dropdown -->
+            <div class="relative flex-shrink-0">
+                <select x-model="filterStatus"
+                        class="appearance-none text-[10px] font-bold pl-3 pr-7 py-2 rounded-xl transition-all bg-white/20 text-white border border-white/30 focus:outline-none focus:bg-white/30 cursor-pointer">
+                    <option value="all" style="color:#374151;">All Clients</option>
+                    <option value="active" style="color:#374151;">Active Only</option>
+                    <option value="inactive" style="color:#374151;">Inactive Only</option>
+                </select>
+                <i class="fa-solid fa-chevron-down absolute right-2 top-1/2 -translate-y-1/2 text-white text-[8px] pointer-events-none"></i>
+            </div>
         </div>
         <!-- Search bar -->
         <div class="px-3 py-2.5 bg-white border-b border-gray-100">
@@ -56,8 +59,8 @@
                  :class="expandedId === c.id ? 'shadow-md ring-2 ring-indigo-100 border border-indigo-200' : 'border border-gray-100'">
 
                 <!-- Client Row (tap to expand) -->
-                <div class="flex items-center gap-3 px-4 py-3.5 cursor-pointer select-none active:bg-gray-50 transition-colors"
-                     @click="c.status === 'active' && toggleExpand(c.id)">
+                <div class="flex items-center gap-3 px-4 py-4 cursor-pointer select-none active:bg-gray-50 transition-colors"
+                     @click="toggleExpand(c.id)">
                     <!-- Avatar with gradient -->
                     <div class="w-11 h-11 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 rounded-2xl shadow-sm"
                          :style="c.status === 'active' ? 'background: linear-gradient(135deg, #667eea, #764ba2)' : 'background: #d1d5db'">
@@ -77,8 +80,7 @@
                         </div>
                     </div>
                     <!-- Chevron -->
-                    <div x-show="c.status === 'active'"
-                         class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors"
+                    <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors"
                          :class="expandedId === c.id ? 'bg-indigo-100' : 'bg-gray-100'">
                         <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200"
                            :class="expandedId === c.id ? 'rotate-180 text-indigo-500' : 'text-gray-400'"></i>
@@ -178,6 +180,7 @@ function clientsApp() {
         get filteredClients() {
             let list = this.clients;
             if (this.filterStatus === 'active') list = list.filter(c => c.status === 'active');
+            if (this.filterStatus === 'inactive') list = list.filter(c => c.status !== 'active');
             const q = this.searchQuery.trim().toLowerCase();
             if (q) list = list.filter(c => c.name.toLowerCase().includes(q));
             return list;

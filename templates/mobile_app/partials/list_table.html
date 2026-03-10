@@ -1,16 +1,17 @@
 <!-- Card List Area - Takes ALL remaining space -->
 <div class="flex-1 overflow-hidden">
-    <div class="h-full overflow-y-auto px-3 py-3 space-y-2.5" style="padding-bottom:90px;">
+    <div id="students-scroll" class="h-full overflow-y-auto px-3 py-3 space-y-2.5" style="padding-bottom:90px;">
 
         {% if not view_only_list %}
         <!-- Select All bar -->
         <div class="flex items-center justify-between px-1 mb-1">
-            <label class="custom-checkbox flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" x-model="selectAll" @change="toggleSelectAll()">
-                <span class="checkmark"></span>
-                <span class="text-[11px] font-semibold text-gray-500">Select All</span>
-            </label>
-            <span class="text-[11px] text-gray-400" x-text="'Showing ' + {{ students|length }} + ' records'"></span>
+            <button @click="selectAll = !selectAll; toggleSelectAll()"
+                    :class="selectAll ? 'bg-indigo-500 text-white border-indigo-400' : 'bg-gray-100 text-gray-600 border-gray-200'"
+                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all active:scale-95">
+                <i :class="selectAll ? 'fa-solid fa-check-square' : 'fa-regular fa-square'" class="text-[12px]"></i>
+                Select All
+            </button>
+            <span class="text-[13px] font-semibold text-gray-600" x-text="'Showing ' + visibleCount + ' records'"></span>
         </div>
         {% endif %}
 
@@ -25,29 +26,33 @@
                 <div class="flex flex-col items-center gap-1.5 flex-shrink-0" style="width:56px;">
                     {% if not view_only_list %}
                     <!-- Checkbox above image -->
-                    <label class="custom-checkbox" @click.stop>
+                    <label class="custom-checkbox custom-checkbox-lg" @click.stop>
                         <input type="checkbox" :checked="selectedIds.includes({{ student.id }})" @change="toggleSelect({{ student.id }})">
                         <span class="checkmark"></span>
                     </label>
                     {% endif %}
-                    <!-- Photo -->
-                    <div class="rounded-xl overflow-hidden border-2 w-full {% if student.status == 'pending' %}border-amber-300{% elif student.status == 'verified' %}border-green-300{% else %}border-gray-200{% endif %}"
-                         style="height:68px;">
-                        {% if student.has_photo %}
-                        <img src="{{ student.photo_url }}"
-                             class="w-full h-full object-cover object-top" alt="" loading="lazy"
-                             onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-                        <div class="w-full h-full bg-red-50 flex items-center justify-center text-red-300"
-                             style="font-size:14px;display:none;">
-                            <i class="fa-solid fa-image-slash"></i>
+                    <!-- Photos (all photo fields in a column) -->
+                    {% if student.photo_urls %}
+                        {% for purl in student.photo_urls %}
+                        <div class="rounded-xl overflow-hidden border-2 w-full {% if student.status == 'pending' %}border-amber-300{% elif student.status == 'verified' %}border-green-300{% else %}border-gray-200{% endif %}"
+                             style="height:68px;">
+                            <img src="{{ purl }}"
+                                 class="w-full h-full object-cover object-top" alt="" loading="lazy"
+                                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                            <div class="w-full h-full bg-red-50 flex items-center justify-center text-red-300"
+                                 style="font-size:14px;display:none;">
+                                <i class="fa-solid fa-image-slash"></i>
+                            </div>
                         </div>
-                        {% else %}
+                        {% endfor %}
+                    {% else %}
+                    <div class="rounded-xl overflow-hidden border-2 border-gray-200 w-full" style="height:68px;">
                         <div class="w-full h-full bg-gray-50 flex items-center justify-center text-gray-300"
                              style="font-size:14px;">
                             <i class="fa-solid fa-image"></i>
                         </div>
-                        {% endif %}
                     </div>
+                    {% endif %}
                     <!-- Status dot -->
                     <span class="text-[8px] font-bold px-1.5 py-0.5 rounded-full leading-none
                         {% if student.status == 'pending' %}bg-amber-100 text-amber-600
@@ -61,7 +66,11 @@
                 <!-- Details Column -->
                 <div class="flex-1 min-w-0 flex flex-col">
                     <!-- Name -->
+                    {% if student.name %}
                     <p class="font-bold text-gray-800 text-[14px] leading-tight">{{ student.name }}</p>
+                    {% else %}
+                    <p class="font-semibold text-gray-300 text-[13px] leading-tight italic">—</p>
+                    {% endif %}
 
                     <!-- Class & Section pill -->
                     {% if student.class_name or student.section %}
@@ -71,32 +80,16 @@
                     </span>
                     {% endif %}
 
-                    <!-- Field data rows — excluding roll/id # prefix, photo, name, class, section -->
-                    <div class="mt-2 space-y-1">
-                        {% for key, val in student.field_data.items %}
-                        {% if val %}{% with kl=key|lower %}{% if 'photo' not in kl and 'image' not in kl and kl != 'name' and kl != 'class' and kl != 'section' and kl != 'designation' %}
-                        <div class="flex items-center gap-1.5 text-[11px] leading-snug">
-                            {% if 'father' in kl %}
-                            <i class="fa-solid fa-user-tie text-indigo-300 flex-shrink-0" style="width:12px;font-size:9px;"></i>
-                            {% elif 'mother' in kl %}
-                            <i class="fa-solid fa-user text-pink-300 flex-shrink-0" style="width:12px;font-size:9px;"></i>
-                            {% elif 'phone' in kl or 'mobile' in kl or 'contact' in kl %}
-                            <i class="fa-solid fa-phone text-green-400 flex-shrink-0" style="width:12px;font-size:9px;"></i>
-                            {% elif 'dob' in kl or 'birth' in kl or 'date' in kl %}
-                            <i class="fa-solid fa-calendar text-amber-400 flex-shrink-0" style="width:12px;font-size:9px;"></i>
-                            {% elif 'roll' in kl %}
-                            <i class="fa-solid fa-id-badge text-gray-400 flex-shrink-0" style="width:12px;font-size:9px;"></i>
-                            {% elif 'address' in kl %}
-                            <i class="fa-solid fa-location-dot text-red-400 flex-shrink-0" style="width:12px;font-size:9px;"></i>
-                            {% elif 'blood' in kl %}
-                            <i class="fa-solid fa-droplet text-red-400 flex-shrink-0" style="width:12px;font-size:9px;"></i>
-                            {% else %}
-                            <span class="w-1.5 h-1.5 rounded-full bg-gray-300 flex-shrink-0 ml-0.5"></span>
-                            {% endif %}
-                            <span class="text-gray-400 truncate"><span class="font-semibold text-gray-600">{{ key }}:</span> {{ val }}</span>
+                    <!-- Field data — two-column grid layout (label left, value right, no icons) -->
+                    <div class="mt-2">
+                        <div class="grid text-[11px] leading-snug" style="grid-template-columns: 40% 1fr;">
+                            {% for key, val in student.field_data.items %}
+                            {% if val %}{% with kl=key|lower %}{% if 'photo' not in kl and 'image' not in kl and kl != 'name' and kl != 'class' and kl != 'section' and kl != 'designation' %}
+                            <span class="text-gray-400 font-semibold pr-1.5 whitespace-nowrap py-0.5">{{ key }}</span>
+                            <span class="text-gray-700 py-0.5">{{ val }}</span>
+                            {% endif %}{% endwith %}{% endif %}
+                            {% endfor %}
                         </div>
-                        {% endif %}{% endwith %}{% endif %}
-                        {% endfor %}
                     </div>
 
                     <!-- View Details Link -->
@@ -118,6 +111,9 @@
             <p class="text-xs text-gray-300">Try adjusting your search or filters</p>
         </div>
         {% endfor %}
+
+        <!-- Mount point for dynamically loaded cards (via loadMore) -->
+        <div id="dynamic-cards-mount"></div>
 
         <!-- Load More -->
         <div x-show="hasMore" class="flex justify-center py-4">

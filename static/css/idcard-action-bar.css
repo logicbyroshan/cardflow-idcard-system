@@ -474,3 +474,59 @@
     background: #fff;
     color: #6b7280;
 }
+
+/* Print List Tab - Blue */
+.print-list-tab {
+    background: #dbeafe;
+    color: #1e40af;
+    border: 1px solid #93c5fd;
+}
+
+.print-list-tab:hover {
+    background: #bfdbfe;
+}
+
+.print-list-tab .tab-count {
+    background: #3b82f6;
+    color: #fff;
+}
+
+.print-list-tab.active {
+    background: #3b82f6;
+    color: #fff;
+    border-color: #2563eb;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+}
+
+.print-list-tab.active .tab-count {
+    background: #fff;
+    color: #3b82f6;
+}
+
+/* Print Finalized Tab - Green */
+.print-finalized-tab {
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #6ee7b7;
+}
+
+.print-finalized-tab:hover {
+    background: #a7f3d0;
+}
+
+.print-finalized-tab .tab-count {
+    background: #10b981;
+    color: #fff;
+}
+
+.print-finalized-tab.active {
+    background: #10b981;
+    color: #fff;
+    border-color: #059669;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+}
+
+.print-finalized-tab.active .tab-count {
+    background: #fff;
+    color: #10b981;
+}

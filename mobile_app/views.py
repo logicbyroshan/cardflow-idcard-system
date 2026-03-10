@@ -654,7 +654,7 @@ def card_list(request, table_id, status):
     cards = []
     for idx, card in enumerate(cards_batch):
         fd = card.field_data or {}
-        name = fd.get('NAME') or fd.get('name') or fd.get('Name') or f'Card #{card.id}'
+        name = fd.get('NAME') or fd.get('name') or fd.get('Name') or ''
         roll_no = fd.get('ROLL NO') or fd.get('ROLL_NO') or fd.get('roll_no') or fd.get('ID') or ''
         father_name = fd.get('FATHER NAME') or fd.get("FATHER'S NAME") or fd.get('FATHER_NAME') or fd.get('father_name') or ''
         mother_name = fd.get('MOTHER NAME') or fd.get("MOTHER'S NAME") or fd.get('MOTHER_NAME') or fd.get('mother_name') or ''
@@ -662,18 +662,34 @@ def card_list(request, table_id, status):
         section = fd.get('SECTION') or fd.get('section') or ''
         dob = fd.get('DOB') or fd.get('dob') or fd.get('DATE OF BIRTH') or fd.get('DATE_OF_BIRTH') or ''
 
+        # Collect all photo URLs (primary + any additional photo fields in field_data)
         photo_url = card.photo.url if card.photo else None
-        if not photo_url:
-            for val in fd.values():
-                if isinstance(val, str) and ('adarshimg/' in val or val.endswith(('.jpg', '.jpeg', '.png', '.webp'))):
-                    # Ensure the path has proper /media/ prefix
-                    if val.startswith('/'):
-                        photo_url = val
-                    elif val.startswith('http'):
-                        photo_url = val
+        photo_urls = [photo_url] if photo_url else []
+        for _key, _val in fd.items():
+            _kl = _key.lower()
+            if isinstance(_val, str) and _val.strip() and ('photo' in _kl or 'image' in _kl):
+                if _val.startswith('/') or _val.startswith('http'):
+                    _url = _val
+                elif 'adarshimg/' in _val or _val.endswith(('.jpg', '.jpeg', '.png', '.webp')):
+                    _url = settings.MEDIA_URL + _val
+                else:
+                    continue
+                if _url not in photo_urls:
+                    photo_urls.append(_url)
+                    if not photo_url:
+                        photo_url = _url
+        # Fallback: if no photo from model or photo-keyed fields, scan ALL field values
+        if not photo_urls:
+            for _val in fd.values():
+                if isinstance(_val, str) and ('adarshimg/' in _val or _val.endswith(('.jpg', '.jpeg', '.png', '.webp'))):
+                    if _val.startswith('/') or _val.startswith('http'):
+                        _url = _val
                     else:
-                        photo_url = settings.MEDIA_URL + val
-                    break
+                        _url = settings.MEDIA_URL + _val
+                    if _url not in photo_urls:
+                        photo_urls.append(_url)
+                    if not photo_url:
+                        photo_url = _url
 
         cards.append({
             'id': card.id,
@@ -686,7 +702,8 @@ def card_list(request, table_id, status):
             'section': section,
             'dob': dob,
             'photo_url': photo_url,
-            'has_photo': bool(photo_url),
+            'photo_urls': photo_urls,
+            'has_photo': bool(photo_urls),
             'status': card.status,
             'field_data': fd,
         })

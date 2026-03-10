@@ -363,6 +363,18 @@ body {
     margin-top: -1px;
 }
 
+/* Large variant for per-row checkboxes in the list */
+.custom-checkbox-lg .checkmark {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+}
+
+.custom-checkbox-lg .checkmark::after {
+    width: 5px;
+    height: 10px;
+}
+
 .custom-checkbox input:checked ~ .checkmark {
     background: linear-gradient(135deg, #667eea, #764ba2);
     border-color: #667eea;

@@ -62,24 +62,7 @@
                 </div>
             </div>
 
-            <!-- Sort By -->
-            <div>
-                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Sort By</p>
-                <div class="relative">
-                    <select x-model="filters.sort"
-                            class="w-full appearance-none pl-4 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
-                        <option value="name_asc">Name (A → Z)</option>
-                        <option value="name_desc">Name (Z → A)</option>
-                        <option value="date_new">Newest First</option>
-                        <option value="date_old">Oldest First</option>
-                        <option value="roll_asc">Roll No (Ascending)</option>
-                        <option value="roll_desc">Roll No (Descending)</option>
-                    </select>
-                    <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-[10px] pointer-events-none"></i>
-                </div>
-            </div>
 
-            <!-- Class -->
             {% if classes %}
             <div>
                 <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Class</p>
@@ -113,7 +96,8 @@
             </div>
             {% endif %}
 
-            <!-- Date Range -->
+            <!-- Date Range (download list only) -->
+            {% if list_type == 'download' %}
             <div>
                 <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Date Range</p>
                 <div class="grid grid-cols-2 gap-2">
@@ -129,6 +113,7 @@
                     </div>
                 </div>
             </div>
+            {% endif %}
 
         </div>
 

@@ -79,62 +79,6 @@
             </div>
             {% endif %}
 
-            <!-- Navigation items -->
-            <div class="px-4 pt-4 pb-1">
-                <p class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Account</p>
-            </div>
-            <div class="px-3 space-y-1">
-
-                <!-- Profile page -->
-                <a href="{% url 'mobile_app:profile' %}"
-                   @click="close()"
-                   class="pwa-drawer-item">
-                    <span class="pwa-drawer-icon-wrap bg-indigo-50 text-indigo-500">
-                        <i class="fa-solid fa-user-circle"></i>
-                    </span>
-                    <div class="pwa-drawer-item-text">
-                        <span class="pwa-drawer-item-title">My Profile</span>
-                        <span class="pwa-drawer-item-sub">View &amp; edit your details</span>
-                    </div>
-                    <i class="fa-solid fa-chevron-right pwa-drawer-chevron"></i>
-                </a>
-
-                <!-- Notifications page -->
-                <a href="{% url 'mobile_app:notifications' %}"
-                   @click="close()"
-                   class="pwa-drawer-item">
-                    <span class="pwa-drawer-icon-wrap bg-orange-50 text-orange-500 relative">
-                        <i class="fa-solid fa-bell"></i>
-                        {% if notification_count > 0 %}
-                        <span class="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 rounded-full text-[7px] text-white flex items-center justify-center font-bold leading-none">
-                            {{ notification_count|default:"" }}
-                        </span>
-                        {% endif %}
-                    </span>
-                    <div class="pwa-drawer-item-text">
-                        <span class="pwa-drawer-item-title">Notifications</span>
-                        <span class="pwa-drawer-item-sub">
-                            {% if notification_count > 0 %}{{ notification_count }} unread{% else %}All caught up{% endif %}
-                        </span>
-                    </div>
-                    <i class="fa-solid fa-chevron-right pwa-drawer-chevron"></i>
-                </a>
-
-                <!-- Settings -->
-                <a href="{% url 'mobile_app:settings_page' %}"
-                   @click="close()"
-                   class="pwa-drawer-item">
-                    <span class="pwa-drawer-icon-wrap bg-gray-100 text-gray-600">
-                        <i class="fa-solid fa-gear"></i>
-                    </span>
-                    <div class="pwa-drawer-item-text">
-                        <span class="pwa-drawer-item-title">Settings</span>
-                        <span class="pwa-drawer-item-sub">App preferences</span>
-                    </div>
-                    <i class="fa-solid fa-chevron-right pwa-drawer-chevron"></i>
-                </a>
-            </div>
-
             <!-- Divider -->
             <div class="mx-4 mt-4 border-t border-gray-100"></div>
 

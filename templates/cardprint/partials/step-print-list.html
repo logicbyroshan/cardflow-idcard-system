@@ -81,8 +81,6 @@
                     {% endfor %}
                     <th class="w-[65px] min-w-[65px] px-[1px] py-1 text-center align-middle">Requested By</th>
                     <th class="w-[90px] min-w-[90px] px-[1px] py-1 text-center align-middle">Requested At</th>
-                    <th class="w-[60px] min-w-[60px] px-[1px] py-1 text-center align-middle">Action</th>
-                    <th class="w-[65px] min-w-[65px] px-[1px] py-1 text-center align-middle">Status</th>
                 </tr>
             </thead>
             <tbody id="printListTableBody" class="divide-y divide-gray-200">
@@ -131,16 +129,6 @@
                     {% endfor %}
                     <td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center">{{ item.requested_by_name }}</td>
                     <td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">{{ item.requested_at|date:"d-M-Y H:i" }}</td>
-                    <td class="w-[60px] px-[1px] py-1 text-center align-middle action-cell">
-                        <div class="confirm-action-btns">
-                            <button class="btn-remove-single" data-pr-id="{{ item.pr_id }}" title="Remove from print list" aria-label="Remove from print list">
-                                <i class="fa-solid fa-trash"></i>
-                            </button>
-                        </div>
-                    </td>
-                    <td class="w-[65px] px-[1px] py-1 align-middle text-center">
-                        <span class="status-badge status-{{ item.status }}">{{ item.status_display }}</span>
-                    </td>
                 </tr>
                 {% empty %}
                 <tr>

@@ -23,7 +23,7 @@ function listApp() {
             cancelling: false,
             abortController: null,
         },
-        filters: { photo: 'all', sort: 'name_asc', selectedClass: '', selectedSection: '', dateFrom: '', dateTo: '' },
+        filters: { photo: 'all', selectedClass: '', selectedSection: '', dateFrom: '', dateTo: '' },
         filtersActive: false,
 
         // Add/Edit Form state
@@ -38,6 +38,7 @@ function listApp() {
         studentsData: typeof STUDENTS_DATA !== 'undefined' ? STUDENTS_DATA : [],
         hasMore: typeof HAS_MORE !== 'undefined' ? HAS_MORE : false,
         loadMoreOffset: typeof STUDENTS_DATA !== 'undefined' ? STUDENTS_DATA.length : 0,
+        visibleCount: typeof STUDENTS_DATA !== 'undefined' ? STUDENTS_DATA.length : 0,
         form: {
             name: '', fatherName: '', motherName: '', rollNo: '', dob: '',
             className: '', section: '', phone: '', address: '',
@@ -64,21 +65,21 @@ function listApp() {
             if (this.selectAll) {
                 // Only select visible (non-hidden) rows
                 const visible = [];
-                document.querySelectorAll('tbody tr[data-sid]').forEach(tr => {
-                    if (tr.style.display !== 'none') visible.push(parseInt(tr.getAttribute('data-sid')));
+                document.querySelectorAll('[data-sid]').forEach(el => {
+                    if (el.style.display !== 'none') visible.push(parseInt(el.getAttribute('data-sid')));
                 });
                 this.selectedIds = visible;
             } else { this.selectedIds = []; }
             // Sync classes for dynamically loaded rows
-            document.querySelectorAll('tbody tr[data-sid]').forEach(tr => {
-                this._updateRowClass(parseInt(tr.dataset.sid));
+            document.querySelectorAll('[data-sid]').forEach(el => {
+                this._updateRowClass(parseInt(el.dataset.sid));
             });
         },
         toggleSelect(id) {
             const idx = this.selectedIds.indexOf(id);
             if (idx > -1) { this.selectedIds.splice(idx, 1); }
             else { this.selectedIds.push(id); }
-            const visibleCount = document.querySelectorAll('tbody tr[data-sid]:not([style*="display: none"])').length;
+            const visibleCount = Array.from(document.querySelectorAll('[data-sid]')).filter(el => el.style.display !== 'none').length;
             this.selectAll = this.selectedIds.length === visibleCount && visibleCount > 0;
             this._updateRowClass(id);
         },
@@ -89,7 +90,7 @@ function listApp() {
             this._applyAllFilters();
         },
         resetFilters() {
-            this.filters = { photo: 'all', sort: 'name_asc', selectedClass: '', selectedSection: '', dateFrom: '', dateTo: '' };
+            this.filters = { photo: 'all', selectedClass: '', selectedSection: '', dateFrom: '', dateTo: '' };
             this.filtersActive = false;
             this.searchQuery = '';
             this._applyAllFilters();
@@ -100,8 +101,7 @@ function listApp() {
                 this.filters.selectedClass !== '' ||
                 this.filters.selectedSection !== '' ||
                 this.filters.dateFrom !== '' ||
-                this.filters.dateTo !== '' ||
-                this.filters.sort !== 'name_asc'
+                this.filters.dateTo !== ''
             );
             this._applyAllFilters();
             this.showFilters = false;
@@ -121,40 +121,23 @@ function listApp() {
                 if (this.filters.selectedClass && s.class_name !== this.filters.selectedClass) return false;
                 // Section filter
                 if (this.filters.selectedSection && s.section !== this.filters.selectedSection) return false;
-                // Date range (DOB)
+                // Date range (DOB) — only active for download list
                 if (this.filters.dateFrom && s.dob && s.dob < this.filters.dateFrom) return false;
                 if (this.filters.dateTo && s.dob && s.dob > this.filters.dateTo) return false;
                 return true;
             });
-            // Sorting
-            filtered.sort((a, b) => {
-                switch (this.filters.sort) {
-                    case 'name_asc': return (a.name||'').localeCompare(b.name||'');
-                    case 'name_desc': return (b.name||'').localeCompare(a.name||'');
-                    case 'roll_asc': return (a.roll_no||'').localeCompare(b.roll_no||'', undefined, {numeric:true});
-                    case 'roll_desc': return (b.roll_no||'').localeCompare(a.roll_no||'', undefined, {numeric:true});
-                    case 'date_new': return ((b.dob||'') > (a.dob||'')) ? 1 : -1;
-                    case 'date_old': return ((a.dob||'') > (b.dob||'')) ? 1 : -1;
-                    default: return 0;
-                }
-            });
             const visibleIds = new Set(filtered.map(s => s.id));
-            const tbody = document.querySelector('tbody');
-            if (!tbody) return;
-            const rows = tbody.querySelectorAll('tr[data-sid]');
-            // Show/hide
-            rows.forEach(tr => {
-                const id = parseInt(tr.getAttribute('data-sid'));
-                tr.style.display = visibleIds.has(id) ? '' : 'none';
+            // Handle both static div[data-sid] cards and dynamic tr[data-sid] rows
+            const allCards = document.querySelectorAll('[data-sid]');
+            if (!allCards.length) return;
+            allCards.forEach(el => {
+                const id = parseInt(el.getAttribute('data-sid'));
+                el.style.display = visibleIds.has(id) ? '' : 'none';
             });
-            // Reorder DOM to match sort
-            const rowMap = {};
-            rows.forEach(r => { rowMap[r.getAttribute('data-sid')] = r; });
-            filtered.forEach(s => { if (rowMap[s.id]) tbody.appendChild(rowMap[s.id]); });
-            // Append hidden rows at end
-            rows.forEach(r => { if (!visibleIds.has(parseInt(r.getAttribute('data-sid')))) tbody.appendChild(r); });
             // Deselect items that are no longer visible
             this.selectedIds = this.selectedIds.filter(id => visibleIds.has(id));
+            // Update visible count
+            this.visibleCount = filtered.length;
             // Show count
             if (q || this.filtersActive) {
                 this.showToast(filtered.length + ' of ' + this.studentsData.length + ' shown', 'info');
@@ -246,18 +229,68 @@ function listApp() {
 
         // Update class on a dynamically-added row (no Alpine :class binding)
         _updateRowClass(id) {
-            const tr = document.querySelector(`tbody tr[data-sid="${id}"]`);
-            if (!tr || tr.hasAttribute(':class') || tr.hasAttribute('x-bind:class')) return;
+            const el = document.querySelector(`[data-sid="${id}"]`);
+            if (!el || el.hasAttribute(':class') || el.hasAttribute('x-bind:class')) return;
             const sel = this.selectedIds.includes(id);
-            tr.classList.toggle('bg-indigo-50', sel);
-            tr.classList.toggle('border-l-2', sel);
-            tr.classList.toggle('border-l-brand-light', sel);
-            tr.classList.toggle('hover:bg-gray-50', !sel);
-            const cb = tr.querySelector('input[type=checkbox]');
+            el.classList.toggle('bg-indigo-50', sel);
+            el.classList.toggle('border-l-2', sel);
+            el.classList.toggle('border-l-brand-light', sel);
+            el.classList.toggle('hover:bg-gray-50', !sel);
+            const cb = el.querySelector('input[type=checkbox]');
             if (cb) cb.checked = sel;
         },
 
-        // Build a <tr> DOM element for a dynamically loaded card
+        // Build a <div> card element for a dynamically loaded card (loadMore)
+        _buildCardDiv(card) {
+            const fd = card.field_data || {};
+            const borderColor = card.status === 'pending' ? 'border-amber-300' : card.status === 'verified' ? 'border-green-300' : 'border-gray-200';
+            const statusBg = card.status === 'pending' ? 'bg-amber-100 text-amber-600' : card.status === 'verified' ? 'bg-green-100 text-green-600' : card.status === 'approved' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500';
+            const statusLabel = card.status.charAt(0).toUpperCase() + card.status.slice(1);
+
+            const photoHtml = card.photo_url
+                ? `<div class="rounded-xl overflow-hidden border-2 ${borderColor} w-full" style="height:68px;"><img src="${this._escHtml(card.photo_url)}" class="w-full h-full object-cover object-top" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="w-full h-full bg-red-50 flex items-center justify-center text-red-300" style="font-size:14px;display:none;"><i class="fa-solid fa-image-slash"></i></div></div>`
+                : `<div class="rounded-xl overflow-hidden border-2 border-gray-200 w-full" style="height:68px;"><div class="w-full h-full bg-gray-50 flex items-center justify-center text-gray-300" style="font-size:14px;"><i class="fa-solid fa-image"></i></div></div>`;
+
+            let fieldRows = '';
+            for (const [key, val] of Object.entries(fd)) {
+                if (!val) continue;
+                const kl = key.toLowerCase();
+                if (kl.includes('photo') || kl.includes('image') || kl === 'name' || kl === 'class' || kl === 'section' || kl === 'designation') continue;
+                fieldRows += `<span class="text-gray-400 font-semibold pr-1.5 whitespace-nowrap py-0.5" style="font-size:11px;">${this._escHtml(String(key))}</span><span class="text-gray-700 py-0.5" style="font-size:11px;">${this._escHtml(String(val))}</span>`;
+            }
+
+            const classPill = (card.class_name || card.section)
+                ? `<span class="inline-flex items-center gap-1 mt-1 text-[11px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-lg px-2 py-0.5 w-fit"><i class="fa-solid fa-graduation-cap text-[8px]"></i>${this._escHtml(card.class_name || '')}${card.class_name && card.section ? ' &bull; ' : ''}${this._escHtml(card.section || '')}</span>`
+                : '';
+
+            const nameHtml = card.name
+                ? `<p class="font-bold text-gray-800 leading-tight" style="font-size:14px;">${this._escHtml(card.name)}</p>`
+                : `<p class="font-semibold text-gray-300 leading-tight italic" style="font-size:13px;">—</p>`;
+
+            const cbHtml = !IS_VIEW_ONLY
+                ? `<label class="custom-checkbox custom-checkbox-lg dyn-cb" style="cursor:pointer;"><input type="checkbox"><span class="checkmark"></span></label>`
+                : '';
+
+            const div = document.createElement('div');
+            div.setAttribute('data-sid', String(card.id));
+            div.className = 'bg-white rounded-2xl border border-gray-100 overflow-hidden transition-all shadow-sm hover:shadow-md' + (!IS_VIEW_ONLY ? ' cursor-pointer' : '');
+            div.innerHTML = `<div class="flex gap-3 p-3"><div class="flex flex-col items-center gap-1.5 flex-shrink-0" style="width:56px;">${cbHtml}${photoHtml}<span class="text-[8px] font-bold px-1.5 py-0.5 rounded-full leading-none ${statusBg}">${statusLabel}</span></div><div class="flex-1 min-w-0 flex flex-col">${nameHtml}${classPill}<div class="mt-2"><div class="grid text-[11px] leading-snug" style="grid-template-columns:40% 1fr;">${fieldRows}</div></div><div class="mt-2.5"><a href="/app/card/${card.id}/" class="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-500 bg-indigo-50 border border-indigo-100 rounded-lg px-2.5 py-1 active:opacity-70 transition-all">View Details <i class="fa-solid fa-arrow-right text-[9px]"></i></a></div></div></div>`;
+
+            if (!IS_VIEW_ONLY) {
+                div.addEventListener('click', (e) => {
+                    if (e.target.closest('label, input, a')) return;
+                    this.toggleSelect(card.id);
+                });
+                const cb = div.querySelector('input[type=checkbox]');
+                if (cb) {
+                    cb.addEventListener('change', (e) => { e.stopPropagation(); this.toggleSelect(card.id); });
+                    cb.closest('label').addEventListener('click', e => e.stopPropagation());
+                }
+            }
+            return div;
+        },
+
+        // Legacy <tr>-based row builder (kept for reference, no longer used by loadMore)
         _buildCardRow(card) {
             const isViewOnly = IS_VIEW_ONLY;
             const fd = card.field_data || {};
@@ -380,6 +413,7 @@ function listApp() {
                             section: f['SECTION'] || f['section'] || '',
                             dob: f['DOB'] || f['dob'] || f['DATE OF BIRTH'] || f['DATE_OF_BIRTH'] || '',
                             photo_url: c.photo_url || null,
+                            photo_urls: c.photo_url ? [c.photo_url] : [],
                             has_photo: !!c.photo_url,
                             status: c.status,
                             field_data: f,
@@ -393,11 +427,9 @@ function listApp() {
                 }
                 this.studentsData.push(...newCards);
                 this.loadMoreOffset += newCards.length;
-                const tbody = document.querySelector('tbody');
-                if (tbody) {
-                    const emptyRow = tbody.querySelector('tr:not([data-sid])');
-                    if (emptyRow) emptyRow.remove();
-                    newCards.forEach(card => tbody.appendChild(this._buildCardRow(card)));
+                const mountEl = document.getElementById('dynamic-cards-mount');
+                if (mountEl) {
+                    newCards.forEach(card => mountEl.appendChild(this._buildCardDiv(card)));
                 }
                 this.hasMore = apiData.has_more;
                 if (!this.hasMore) this.showToast('All ' + this.studentsData.length + ' records loaded', 'info');

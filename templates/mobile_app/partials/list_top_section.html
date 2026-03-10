@@ -27,20 +27,30 @@
             </p>
         </div>
 
-        <!-- Hamburger -->
-        <button type="button"
-                @click="$dispatch('open-hamburger')"
-                class="w-9 h-9 rounded-xl bg-white/20 flex flex-col items-center justify-center gap-[4px] text-white hover:bg-white/30 active:scale-95 transition-all flex-shrink-0">
-            <span class="block w-[14px] h-[2px] bg-current rounded-full"></span>
-            <span class="block w-[11px] h-[2px] bg-current rounded-full self-start ml-[1.5px]"></span>
-            <span class="block w-[14px] h-[2px] bg-current rounded-full"></span>
-        </button>
+        <!-- Status pills — Pending & Verified in top bar where hamburger was -->
+        <div class="flex items-center gap-1.5 flex-shrink-0">
+            {% if perm_idcard_pending_list %}
+            <a href="{% url 'mobile_app:card_list' table_id=table.id status='pending' %}"
+               class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl transition-all active:scale-95 flex-shrink-0
+               {% if list_type == 'pending' %}bg-amber-400/90 shadow-sm{% else %}bg-white/20 hover:bg-white/30{% endif %} text-white">
+                <i class="fa-solid fa-clock text-[9px]"></i>
+                <span class="font-extrabold text-[10px]">{{ tab_counts.pending }}</span>
+            </a>
+            {% endif %}
+            {% if perm_idcard_verified_list %}
+            <a href="{% url 'mobile_app:card_list' table_id=table.id status='verified' %}"
+               class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl transition-all active:scale-95 flex-shrink-0
+               {% if list_type == 'verified' %}bg-green-500/80 shadow-sm{% else %}bg-white/20 hover:bg-white/30{% endif %} text-white">
+                <i class="fa-solid fa-check-circle text-[9px]"></i>
+                <span class="font-extrabold text-[10px]">{{ tab_counts.verified }}</span>
+            </a>
+            {% endif %}
+        </div>
     </div>
 
-    <!-- Search Bar + Filter btn + Status Tabs -->
-    <div class="px-3 pt-2.5 pb-2 bg-white border-b border-gray-100">
-        <!-- Search input + Filter button inline -->
-        <div class="flex items-center gap-2 mb-2.5">
+    <!-- Search Bar + Filter btn -->
+    <div class="px-3 py-2.5 bg-white border-b border-gray-100">
+        <div class="flex items-center gap-2">
             <div class="relative flex-1">
                 <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
                 <input
@@ -59,29 +69,6 @@
                 <span x-show="filtersActive"
                       class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-red-400 rounded-full border-2 border-white"></span>
             </button>
-        </div>
-
-        <!-- Status quick-nav tabs — Pending & Verified only -->
-        <div class="flex gap-2">
-            {% if perm_idcard_pending_list %}
-            <a href="{% url 'mobile_app:card_list' table_id=table.id status='pending' %}"
-               class="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 text-[11px] font-bold rounded-xl transition-all border
-               {% if list_type == 'pending' %}bg-amber-500 text-white border-amber-500 shadow-sm{% else %}bg-amber-50 text-amber-600 border-amber-200{% endif %}">
-                <i class="fa-solid fa-clock text-[10px]"></i>
-                <span>Pending</span>
-                <span class="font-extrabold opacity-90">{{ tab_counts.pending }}</span>
-            </a>
-            {% endif %}
-
-            {% if perm_idcard_verified_list %}
-            <a href="{% url 'mobile_app:card_list' table_id=table.id status='verified' %}"
-               class="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 text-[11px] font-bold rounded-xl transition-all border
-               {% if list_type == 'verified' %}bg-green-500 text-white border-green-500 shadow-sm{% else %}bg-green-50 text-green-600 border-green-200{% endif %}">
-                <i class="fa-solid fa-check-circle text-[10px]"></i>
-                <span>Verified</span>
-                <span class="font-extrabold opacity-90">{{ tab_counts.verified }}</span>
-            </a>
-            {% endif %}
         </div>
     </div>
 

@@ -277,11 +277,11 @@ function createPaginator(opts) {
     // Reset file inputs
     frontPdfInput.value = '';
     backPdfInput.value = '';
-    modal.classList.remove('hidden');
+    modal.classList.add('show');
   }
 
   function closeModal() {
-    modal.classList.add('hidden');
+    modal.classList.remove('show');
   }
 
   printAllBtn.addEventListener('click', openModal);
