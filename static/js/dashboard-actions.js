@@ -404,7 +404,17 @@ document.addEventListener('DOMContentLoaded', function() {
     if (dashReuploadFileInput) {
         dashReuploadFileInput.addEventListener('change', function() {
             if (this.files.length) {
-                if (dashReuploadFileName) dashReuploadFileName.textContent = this.files[0].name;
+                var _file = this.files[0];
+                var _maxZip = 950 * 1024 * 1024;
+                if (_file.size > _maxZip) {
+                    var _sizeMB = (_file.size / (1024 * 1024)).toFixed(0);
+                    if (typeof showToast === 'function') showToast('ZIP is ' + _sizeMB + ' MB — maximum allowed is 950 MB. Please split into smaller ZIPs.', 'error');
+                    this.value = '';
+                    if (dashReuploadFileName) dashReuploadFileName.textContent = 'Click or drag & drop a ZIP file';
+                    if (dashReuploadConfirmBtn) { dashReuploadConfirmBtn.disabled = true; dashReuploadConfirmBtn.style.opacity = '0.5'; }
+                    return;
+                }
+                if (dashReuploadFileName) dashReuploadFileName.textContent = _file.name;
                 if (dashReuploadConfirmBtn) { dashReuploadConfirmBtn.disabled = false; dashReuploadConfirmBtn.style.opacity = '1'; }
             }
         });

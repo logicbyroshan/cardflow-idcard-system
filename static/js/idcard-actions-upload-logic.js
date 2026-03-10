@@ -457,6 +457,8 @@ function initUnifiedZipUpload() {
 
     selectBtn.addEventListener('click', function() { fileInput.click(); });
 
+    var MAX_ZIP_SIZE_BYTES = 950 * 1024 * 1024; // 950 MB limit (server max is 1 GB)
+
     fileInput.addEventListener('change', async function() {
         var files = Array.from(this.files);
 
@@ -464,6 +466,11 @@ function initUnifiedZipUpload() {
             var file = files[i];
             if (!file.name.toLowerCase().endsWith('.zip')) {
                 if (typeof showToast === 'function') showToast(file.name + ' is not a ZIP file', 'warning');
+                continue;
+            }
+            if (file.size > MAX_ZIP_SIZE_BYTES) {
+                var sizeMB = (file.size / (1024 * 1024)).toFixed(0);
+                if (typeof showToast === 'function') showToast(file.name + ' is ' + sizeMB + ' MB — maximum allowed is 950 MB. Please split into smaller ZIPs.', 'error');
                 continue;
             }
             if (_us.unifiedZipFiles.some(function(f) { return f.name === file.name; })) {
@@ -558,6 +565,14 @@ function initZipUpload() {
 
         if (!file.name.toLowerCase().endsWith('.zip')) {
             if (typeof showToast === 'function') showToast('Please select a ZIP file', 'error');
+            fileInput.value = '';
+            return;
+        }
+
+        var _maxZip = 950 * 1024 * 1024;
+        if (file.size > _maxZip) {
+            var _sizeMB = (file.size / (1024 * 1024)).toFixed(0);
+            if (typeof showToast === 'function') showToast('ZIP is ' + _sizeMB + ' MB — maximum allowed is 950 MB. Please split into smaller ZIPs.', 'error');
             fileInput.value = '';
             return;
         }

@@ -416,6 +416,15 @@ function initIdcardGroup(config) {
           reuploadConfirmBtn.disabled = true;
           return;
         }
+        var _maxZip = 950 * 1024 * 1024;
+        if (file.size > _maxZip) {
+          var _sizeMB = (file.size / (1024 * 1024)).toFixed(0);
+          window.showToast('ZIP is ' + _sizeMB + ' MB — maximum allowed is 950 MB. Please split into smaller ZIPs.', 'error');
+          this.value = '';
+          reuploadFileName.textContent = 'Click or drag & drop a ZIP file';
+          reuploadConfirmBtn.disabled = true;
+          return;
+        }
         reuploadFileName.textContent = file.name;
         reuploadConfirmBtn.disabled = false;
       }

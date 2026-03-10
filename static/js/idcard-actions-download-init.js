@@ -183,6 +183,17 @@ function initReuploadHandlers() {
                     }
                     return;
                 }
+                var _maxZip = 950 * 1024 * 1024;
+                if (file.size > _maxZip) {
+                    var _sizeMB = (file.size / (1024 * 1024)).toFixed(0);
+                    if (typeof showToast === 'function') showToast('ZIP is ' + _sizeMB + ' MB — maximum allowed is 950 MB. Please split into smaller ZIPs.', 'error');
+                    this.value = '';
+                    if (reuploadActionsFileName) reuploadActionsFileName.textContent = 'Click or drag & drop a ZIP file';
+                    if (reuploadActionsConfirmBtn) {
+                        reuploadActionsConfirmBtn.disabled = true;
+                    }
+                    return;
+                }
                 if (reuploadActionsFileName) reuploadActionsFileName.textContent = file.name;
                 if (reuploadActionsConfirmBtn) {
                     reuploadActionsConfirmBtn.disabled = false;

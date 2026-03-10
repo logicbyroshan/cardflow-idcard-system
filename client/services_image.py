@@ -53,21 +53,31 @@ class ClientImageService(BaseService):
             for image in images:
                 original_name = getattr(image, 'name', '')
                 name_without_ext = os.path.splitext(original_name)[0] if original_name else ''
+                if not name_without_ext:
+                    continue
                 
-                # Find cards in the table that reference this image name
+                # Normalize the uploaded filename the same way bulk upload does
+                normalized_upload = cls.normalize_image_identifier(name_without_ext)
+                if not normalized_upload:
+                    continue
+                
+                # Only match cards with PENDING:<identifier> values
                 cards = IDCard.objects.filter(table_id=table_id)
                 for card in cards:
                     fd = card.field_data or {}
                     updated = False
                     for key, val in fd.items():
-                        if isinstance(val, str) and name_without_ext and name_without_ext.lower() in val.lower():
+                        if not isinstance(val, str) or not val.startswith('PENDING:'):
+                            continue
+                        pending_id = val[len('PENDING:'):]
+                        normalized_pending = cls.normalize_image_identifier(pending_id)
+                        if normalized_pending and normalized_pending == normalized_upload:
                             try:
                                 image.seek(0)
-                                existing_path = fd.get(key, '')
                                 result = ImageService.save_image(
                                     file_content=image,
                                     client=client,
-                                    existing_path=existing_path,
+                                    existing_path='',
                                 )
                                 if result.success and result.data.get('path'):
                                     fd[key] = result.data['path']

@@ -47,8 +47,8 @@ logger = logging.getLogger(__name__)
 
 # Maximum allowed file sizes (bytes)
 MAX_XLSX_SIZE = 50 * 1024 * 1024         # 50 MB for spreadsheets
-MAX_ZIP_SIZE = 1 * 1024 * 1024 * 1024    # 1 GB for ZIP archives
-MAX_SINGLE_ZIP_SIZE = 1 * 1024 * 1024 * 1024  # 1 GB per individual ZIP
+MAX_ZIP_SIZE = 950 * 1024 * 1024          # 950 MB for ZIP archives (buffer below 1 GB nginx limit)
+MAX_SINGLE_ZIP_SIZE = 950 * 1024 * 1024   # 950 MB per individual ZIP
 
 # Allowed file extensions
 ALLOWED_SPREADSHEET_EXTENSIONS = ('.xlsx', '.xls', '.csv')
