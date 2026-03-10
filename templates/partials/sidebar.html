@@ -127,8 +127,7 @@
       <span class="nav-section-title">Pro User</span>
       <div class="nav-section-line"></div>
     </div>
-    <a href="#" onclick="event.preventDefault(); document.getElementById('impersonateModal').style.display='flex';"
-       class="{% if active_page == 'impersonate' %}active{% endif %}">
+    <a href="{% url 'login_as_user' %}" class="{% if active_page == 'impersonate' %}active{% endif %}">
       <i class="fa-solid fa-user-secret"></i><span>Login As User</span>
     </a>
     {% endif %}

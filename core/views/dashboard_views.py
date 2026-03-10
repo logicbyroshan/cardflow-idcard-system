@@ -47,6 +47,19 @@ def adarsh_cropper(request):
     return render(request, 'services/adarsh-cropper.html', context)
 
 
+# ── Login As User (Pro User only) ──────────────────────────────────────
+@login_required
+def login_as_user_page(request):
+    """Dedicated page for Pro User impersonation — pick a user to login as."""
+    if request.user.role != 'pro_user':
+        return redirect('dashboard')
+    context = {
+        'active_page': 'impersonate',
+        'user_role': get_user_role(request.user),
+    }
+    return render(request, 'impersonate/login-as-user.html', context)
+
+
 # Dashboard
 @login_required
 @require_any_admin
