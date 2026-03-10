@@ -163,10 +163,13 @@ def api_recent_client_updates(request):
         if cached is not None:
             return JsonResponse({'success': True, 'clients': cached})
 
-        # Get recent active clients - scoped by PermissionService
+        # Get recent clients - scoped by PermissionService
+        # Admin staff see ALL assigned clients (including inactive) since they're
+        # specifically assigned; super admin sees only active clients by default.
         # Order by most-recently-approved card data (latest approved card update first)
+        base_qs = Client.objects.all() if is_scoped else Client.objects.filter(status='active')
         clients = PermissionService.get_accessible_clients(
-            user, Client.objects.filter(status='active')
+            user, base_qs
         ).annotate(
             latest_approved=Max(
                 'id_card_groups__tables__id_cards__updated_at',
@@ -222,6 +225,7 @@ def api_recent_client_updates(request):
                 'id': client.id,
                 'client_id': client.id,
                 'name': client.name,
+                'status': client.status,
                 'initial': client.name[0].upper() if client.name else 'C',
                 'first_table_id': first_table_map.get(client.id),
                 'tables': tables_map.get(client.id, []),
@@ -265,8 +269,11 @@ def api_print_reprint_overview(request):
         if cached is not None:
             return JsonResponse({'success': True, **cached})
 
+        # Admin staff: show all assigned clients (including inactive).
+        # Super admin: show only active clients.
+        base_qs = Client.objects.all() if is_scoped else Client.objects.filter(status='active')
         clients = PermissionService.get_accessible_clients(
-            user, Client.objects.filter(status='active')
+            user, base_qs
         ).order_by('name')[:limit]
 
         client_ids = list(clients.values_list('id', flat=True))
@@ -342,6 +349,7 @@ def api_print_reprint_overview(request):
             print_clients.append({
                 'id': c.id,
                 'name': c.name,
+                'status': c.status,
                 'print_list': pc.get('print_list', 0),
                 'finalized': pc.get('finalized', 0),
                 'pool': pc.get('pool', 0),
@@ -352,6 +360,7 @@ def api_print_reprint_overview(request):
             reprint_clients.append({
                 'id': c.id,
                 'name': c.name,
+                'status': c.status,
                 'requested': rc.get('requested', 0),
                 'confirmed': rc.get('confirmed', 0),
                 'pool': rc.get('pool', 0),

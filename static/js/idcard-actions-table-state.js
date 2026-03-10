@@ -36,7 +36,8 @@ var _ts = {
     _scrollTarget: null,
     _sentinelObserver: null,
     _loadRequestSeq: 0,
-    _loadCooldown: false
+    _loadCooldown: false,
+    _loadedCardIds: new Set()
 };
 
 window.IDCardApp._ts = _ts;

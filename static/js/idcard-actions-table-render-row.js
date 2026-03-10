@@ -12,19 +12,12 @@ var _ts = window.IDCardApp._ts;
 // ROW CREATION HELPERS
 // ==========================================
 
-// Mirror Python get_td_width_class filter for dynamic text fields
+// Mirror Python classify_column() via shared FieldClassifier for dynamic text fields
 function getTdWidthClass(fieldName, fieldType) {
+    if (window.FieldClassifier) return window.FieldClassifier.tdClass(fieldName, fieldType);
+    // Fallback if FieldClassifier not loaded yet
     if (!fieldName) return 'min-w-[80px] whitespace-normal break-words';
-    const name = fieldName.toLowerCase().trim();
-    const type = (fieldType || '').toLowerCase();
-    if (/\bphone\b|\bmobile\b|\bcontact\b|\bwhatsapp\b/.test(name)) return 'w-[100px] whitespace-normal text-center';
-    if (type === 'date' || /\bdob\b|\bdate\b/.test(name)) return 'w-[80px] whitespace-nowrap text-center';
-    if (/^class$|^section$|^div$/.test(name)) return 'w-[40px] text-center';
-    if (/\bblood\b|\bgroup\b/.test(name)) return 'w-[45px] text-center';
-    if (/\bname\b/.test(name)) return 'min-w-[90px] max-w-[160px] text-left whitespace-normal break-words';
-    if (/^gender$|^sex$/.test(name)) return 'w-[40px] text-center';
-    if (type === 'textarea' || /\baddress\b/.test(name)) return 'min-w-[90px] max-w-[150px] text-left whitespace-normal break-words';
-    return 'min-w-[65px] max-w-[130px] text-left whitespace-normal break-words';
+    return 'min-w-[80px] text-left whitespace-normal break-words';
 }
 
 /**
@@ -210,12 +203,15 @@ function createRowFromCard(card, index) {
         if (!isClientUser) {
             // Admin view — show all updated_at/modified_by as-is
             html += `<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">${card.updated_at || ''}</td>`;
-            const updatedByLabel = (card.modified_by && card.modified_by.trim()) ? card.modified_by : 'Admin';
-            html += `<td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center">${updatedByLabel}</td>`;
+            const rawUser = (card.modified_by && card.modified_by.trim()) ? card.modified_by : 'Admin';
+            const updatedByLabel = window.FieldClassifier ? window.FieldClassifier.truncateUser(rawUser, 7) : rawUser;
+            html += `<td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center" title="${rawUser}">${updatedByLabel}</td>`;
         } else if (status === 'pending' || status === 'verified') {
             // Client view — only pending/verified; API already filters admin edits out
             html += `<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">${card.updated_at || ''}</td>`;
-            html += `<td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center">${card.modified_by || ''}</td>`;
+            const rawUserC = card.modified_by || '';
+            const clientByLabel = window.FieldClassifier ? window.FieldClassifier.truncateUser(rawUserC, 7) : rawUserC;
+            html += `<td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center" title="${rawUserC}">${clientByLabel}</td>`;
         }
     }
     

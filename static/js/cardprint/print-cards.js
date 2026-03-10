@@ -59,7 +59,8 @@ function renderImageCell(f) {
 
 /** Render a single text cell as HTML */
 function renderTextCell(f) {
-  return '<td class="dynamic-field px-[1px] py-1 align-middle" data-field="' + escapeHtml(f.name) + '" data-field-name="' + escapeHtml(f.name) + '" data-field-type="' + escapeHtml(f.type || 'text') + '" data-original-value="' + escapeHtml(f.value || '') + '"><span class="cell-value">' + escapeHtml(f.value || '-') + '</span></td>';
+  var widthClass = (window.FieldClassifier) ? window.FieldClassifier.tdClass(f.name, f.type) : '';
+  return '<td class="dynamic-field ' + widthClass + ' px-[1px] py-1 align-middle" data-field="' + escapeHtml(f.name) + '" data-field-name="' + escapeHtml(f.name) + '" data-field-type="' + escapeHtml(f.type || 'text') + '" data-original-value="' + escapeHtml(f.value || '') + '"><span class="cell-value">' + escapeHtml(f.value || '-') + '</span></td>';
 }
 
 /** Render ordered fields (text first, then images) */
@@ -447,21 +448,25 @@ function createPaginator(opts) {
 
   // Single-row remove
   if (tableBody) {
-    tableBody.addEventListener('click', function(e) {
+    tableBody.addEventListener('click', async function(e) {
       var rmBtn = e.target.closest('.btn-remove-single');
       if (rmBtn) {
         var prId = parseInt(rmBtn.dataset.prId);
-        if (prId && confirm('Remove this card from the print list?')) performRemove([prId]);
+        if (prId) {
+          var ok = await showConfirm({ title: 'Remove Card?', text: 'Remove this card from the print list?', icon: 'fa-solid fa-xmark', confirmLabel: 'Remove', hideWarning: true });
+          if (ok) performRemove([prId]);
+        }
       }
     });
   }
 
   // Bulk Remove
   if (removeBtn) {
-    removeBtn.addEventListener('click', function() {
+    removeBtn.addEventListener('click', async function() {
       var ids = getSelectedPrIds();
       if (ids.length === 0) return;
-      if (!confirm('Remove ' + ids.length + ' item(s) from the print list?')) return;
+      var ok = await showConfirm({ title: 'Remove Items?', text: 'Remove ' + ids.length + ' item(s) from the print list?', icon: 'fa-solid fa-xmark', confirmLabel: 'Remove', hideWarning: true });
+      if (!ok) return;
       performRemove(ids);
     });
   }
@@ -645,10 +650,11 @@ function createPaginator(opts) {
 
   // Bulk Move to Pool
   if (poolBtn) {
-    poolBtn.addEventListener('click', function() {
+    poolBtn.addEventListener('click', async function() {
       var ids = getSelectedPrIds();
       if (ids.length === 0) return;
-      if (!confirm('Move ' + ids.length + ' item(s) to pool?')) return;
+      var ok = await showConfirm({ title: 'Move to Pool?', text: 'Move ' + ids.length + ' item(s) to pool?', icon: 'fa-solid fa-arrow-right', confirmLabel: 'Move', btnClass: 'btn-primary', hideWarning: true });
+      if (!ok) return;
       performMoveToPool(ids);
     });
   }

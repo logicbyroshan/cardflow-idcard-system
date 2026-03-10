@@ -174,6 +174,11 @@ def active_clients(request):
     #   ?status=inactive  → inactive clients
     #   ?status=all       → all clients regardless of status
     #   ?status=active or no param → active clients only
+    # Admin staff default to 'all' since they see only assigned clients and
+    # need visibility into inactive assigned clients as well.
+    if not status_filter and PermissionService.is_admin_staff(user):
+        status_filter = 'all'
+
     if status_filter == 'all':
         base_qs = Client.objects.all().select_related('user')
     elif status_filter in ('inactive', 'suspended'):

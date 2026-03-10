@@ -224,6 +224,29 @@ function initModalModule() {
             const { fieldData, imageFiles } = IDCardApp.getFormData();
             const mainPhoto = IDCardApp.getMainPhotoFile();
             
+            // ── Validate text fields via FieldClassifier ──
+            if (window.FieldClassifier) {
+                var errors = [];
+                var cardForm = document.getElementById('cardForm');
+                if (cardForm) {
+                    var inputs = cardForm.querySelectorAll('.form-control:not([type="file"])');
+                    inputs.forEach(function(input) {
+                        var fn = input.getAttribute('data-field-name');
+                        var ft = input.getAttribute('data-field-type') || '';
+                        var val = input.value || '';
+                        if (fn && val.trim()) {
+                            var vr = FieldClassifier.validate(fn, ft, val);
+                            if (!vr.valid) errors.push(fn + ': ' + vr.message);
+                        }
+                    });
+                }
+                if (errors.length > 0) {
+                    if (typeof showToast === 'function') showToast(errors[0], 'error');
+                    if (IDCardApp._restoreSaveBtn) IDCardApp._restoreSaveBtn();
+                    return;
+                }
+            }
+            
             if (IDCardApp.currentModalMode === 'add') {
                 createNewCard(fieldData, imageFiles, mainPhoto);
             } else if (IDCardApp.currentModalMode === 'edit' && IDCardApp.currentEditCardId) {

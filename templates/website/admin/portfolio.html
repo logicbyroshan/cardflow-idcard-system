@@ -369,18 +369,14 @@ function clearPortfolioSelection() {
     document.getElementById('selectAllPortfolio').checked = false;
     document.getElementById('portfolioBulkBar').style.display = 'none';
 }
-function bulkDeletePortfolio() {
+async function bulkDeletePortfolio() {
     var checked = document.querySelectorAll('.portfolio-row-check:checked');
     if (!checked.length) return;
     var ids = Array.from(checked).map(function(cb) { return cb.value; });
-    if (!confirm('Delete ' + ids.length + ' selected item(s)? This cannot be undone.')) return;
-    var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
-    var token = csrfToken ? csrfToken.value : '';
+    var ok = await waConfirm({ title: 'Delete Items?', text: 'Delete ' + ids.length + ' selected item(s)? This cannot be undone.', icon: 'fa-solid fa-trash' });
+    if (!ok) return;
     Promise.all(ids.map(function(id) {
-        return fetch('/website-admin/portfolio/' + id + '/delete/', {
-            method: 'POST',
-            headers: { 'X-CSRFToken': token, 'X-Requested-With': 'XMLHttpRequest' }
-        });
+        return ApiClient.post('/website/api/portfolio/' + id + '/delete/');
     })).then(function() {
         ids.forEach(function(id) {
             var row = document.querySelector('tr[data-id="' + id + '"]');

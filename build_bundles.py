@@ -45,8 +45,10 @@ JS_BUNDLES = [
     (
         "core.min.js",
         [
+            "js/core/field-classifier.js",
             "js/core/api.js",
             "js/core/toast.js",
+            "js/core/confirm.js",
             "js/core/modal.js",
             "js/core/utils.js",
             "js/core/sanitizer.js",

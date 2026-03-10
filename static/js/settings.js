@@ -175,8 +175,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const logoutBtn = document.getElementById('logoutBtn');
     
     if (logoutBtn) {
-        logoutBtn.addEventListener('click', function() {
-            if (confirm('Are you sure you want to logout?')) {
+        logoutBtn.addEventListener('click', async function() {
+            var ok = await showConfirm({ title: 'Logout?', text: 'Are you sure you want to logout?', icon: 'fa-solid fa-right-from-bracket', confirmLabel: 'Logout', btnClass: 'btn-danger', hideWarning: true });
+            if (ok) {
                 // Must use POST for logout (GET is ignored for CSRF safety)
                 var form = document.createElement('form');
                 form.method = 'POST';
@@ -466,7 +467,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Delete template
     window.deleteExportTemplate = async function(id, name) {
-        if (!confirm('Delete template "' + name + '"?')) return;
+        var ok = await showConfirm({ title: 'Delete Template?', text: 'Delete template "' + name + '"?', icon: 'fa-solid fa-trash', confirmLabel: 'Delete', hideWarning: true });
+        if (!ok) return;
         try {
             const data = await ApiClient.post('/api/export-templates/' + id + '/delete/');
             if (data.success) {

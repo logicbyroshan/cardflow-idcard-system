@@ -312,39 +312,40 @@ class IDCardCardService(BaseService):
                         pass
 
             # --- Sorting ---
+            # sr-asc / sr-desc must use stable `id` ordering so offset-based
+            # pagination never duplicates or skips rows between requests.
             if sort_order == 'sr-desc':
-                cards_query = cards_query.order_by('id')
+                cards_query = cards_query.order_by('-id')
             elif sort_order == 'name-asc':
                 # Sort by first text field in field_data (Name/name)
                 name_field = cls._get_name_field(table)
                 if name_field:
                     cards_query = cards_query.annotate(
                         _name=KeyTextTransform(name_field, 'field_data')
-                    ).order_by('_name')
+                    ).order_by('_name', 'id')
                 else:
-                    cards_query = cards_query.order_by('-id')
+                    cards_query = cards_query.order_by('id')
             elif sort_order == 'name-desc':
                 name_field = cls._get_name_field(table)
                 if name_field:
                     cards_query = cards_query.annotate(
                         _name=KeyTextTransform(name_field, 'field_data')
-                    ).order_by('-_name')
+                    ).order_by('-_name', '-id')
                 else:
                     cards_query = cards_query.order_by('-id')
             elif sort_order == 'date-new':
-                cards_query = cards_query.order_by('-updated_at')
+                cards_query = cards_query.order_by('-updated_at', '-id')
             elif sort_order == 'date-old':
-                cards_query = cards_query.order_by('updated_at')
+                cards_query = cards_query.order_by('updated_at', 'id')
             else:
-                # Default: sr-asc — show recently moved cards first
-                # Download list: order by downloaded_at (most recent download first)
-                # Other lists: order by updated_at (most recently moved first)
+                # Default: sr-asc — preserve Excel import order (ascending by id)
+                # Download/pool tabs: show most-recently-moved first
                 if status_filter == 'download':
                     cards_query = cards_query.order_by('-downloaded_at', '-id')
                 elif status_filter == 'pool':
                     cards_query = cards_query.order_by('-deleted_at', '-id')
                 else:
-                    cards_query = cards_query.order_by('-status_changed_at', '-id')
+                    cards_query = cards_query.order_by('id')
 
             total_count = cards_query.count()
             cards = cards_query[offset:offset + limit]

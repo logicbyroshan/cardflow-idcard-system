@@ -5,7 +5,7 @@
             <tr>
                 <th scope="col">Name</th>
                 <th scope="col">Action</th>
-                {% if not is_client and not is_client_staff %}
+                {% if not is_client and not is_client_staff or perm_idcard_bulk_reupload or perm_idcard_bulk_download or perm_delete_all_idcard or perm_idcard_upgrade_all %}
                 <th scope="col">Bulk Actions</th>
                 {% endif %}
             </tr>
@@ -51,7 +51,7 @@
                         {% endif %}
                     </div>
                 </td>
-                {% if not is_client and not is_client_staff %}
+                {% if not is_client and not is_client_staff or perm_idcard_bulk_reupload or perm_idcard_bulk_download or perm_delete_all_idcard or perm_idcard_upgrade_all %}
                 <td class="bulk-action-cell">
                     <div class="bulk-action-buttons">
                         {% if is_super_admin or perm_idcard_bulk_reupload %}
@@ -81,7 +81,7 @@
             {% endwith %}
             {% empty %}
             <tr>
-                <td colspan="{% if is_client or is_client_staff %}2{% else %}3{% endif %}">
+                <td colspan="{% if is_client or is_client_staff and not perm_idcard_bulk_reupload and not perm_idcard_bulk_download %}2{% else %}3{% endif %}">
                     <div class="empty-state">
                         <i class="fa-solid fa-table-list"></i>
                         <h3>No Tables Found</h3>

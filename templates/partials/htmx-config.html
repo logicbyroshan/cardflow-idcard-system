@@ -48,7 +48,7 @@ Usage:
     else if (status === 404) msg = 'Resource not found.';
     else if (status >= 500) msg = 'Server error. Please try again later.';
     if (window.showToast) window.showToast(msg, 'error');
-    else alert(msg);
+    else console.error(msg);
   });
 
   // ── Network failure handler — fires when HTMX cannot reach server ──

@@ -697,7 +697,8 @@ function listApp() {
         downloadAgain() { this.apiAction('download', 're-downloaded'); },
         async permanentlyDelete() {
             if (!this.selectedIds.length) { this.showToast('Select items first', 'error'); return; }
-            if (!confirm('Permanently delete ' + this.selectedIds.length + ' card(s)? This cannot be undone!')) return;
+            var ok = await showConfirm({ title: 'Permanently Delete?', text: 'Permanently delete ' + this.selectedIds.length + ' card(s)? This cannot be undone!', icon: 'fa-solid fa-trash', confirmLabel: 'Delete', hideWarning: true });
+            if (!ok) return;
             this.loading = true;
             let success = 0, failed = 0;
             for (const id of this.selectedIds) {

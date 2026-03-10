@@ -38,8 +38,9 @@ async function loadMoreData() {
             
             var dbSelectActive = window.IDCardApp.allDbCardIds && window.IDCardApp.allDbCardIds.length > 0;
             data.cards.forEach((card, index) => {
-                // Prevent duplicates — skip if card already in DOM
-                if (document.querySelector(`tr[data-card-id="${card.id}"]`)) return;
+                // Prevent duplicates — skip if card already loaded (Set lookup is O(1))
+                if (_ts._loadedCardIds.has(card.id)) return;
+                _ts._loadedCardIds.add(card.id);
                 const row = window.IDCardApp._createRowFromCard(card, index);
                 tableBody.appendChild(row);
                 _ts.allRows.push(row);
@@ -269,6 +270,7 @@ async function resetAndReload() {
     }
     _ts.allRows = [];
     _ts.filteredRows = [];
+    _ts._loadedCardIds.clear();
 
     // Reset lazy load state
     _ts.lazyLoadState.loadedCount = 0;
@@ -322,6 +324,7 @@ function initTableModule() {
     // Reset state
     _ts.allRows = [];
     _ts.filteredRows = [];
+    _ts._loadedCardIds.clear();
     _ts.currentPage = 1;
     _ts.searchQuery = '';
     _ts.currentFilter = 'all';

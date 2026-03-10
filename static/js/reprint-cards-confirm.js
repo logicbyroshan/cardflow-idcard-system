@@ -139,10 +139,11 @@ var _refreshStepCounts = NS._refreshStepCounts;
 
   // ── Bulk Reject Button ──
   if (rejectBtn) {
-    rejectBtn.addEventListener('click', function() {
+    rejectBtn.addEventListener('click', async function() {
       const ids = getSelectedRrIds();
       if (ids.length === 0) return;
-      if (!confirm(`Reject ${ids.length} reprint request${ids.length > 1 ? 's' : ''}? This will remove them.`)) return;
+      const ok = await showConfirm({ title: 'Reject Requests?', text: 'Reject ' + ids.length + ' reprint request' + (ids.length > 1 ? 's' : '') + '? This will remove them.', icon: 'fa-solid fa-ban', confirmLabel: 'Reject', hideWarning: true });
+      if (!ok) return;
       performReject(ids);
     });
   }

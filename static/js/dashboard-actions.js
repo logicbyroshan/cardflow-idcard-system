@@ -18,6 +18,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.success && data.clients.length > 0) {
                     tbody.innerHTML = data.clients.map((client, i) => {
                         const tables = client.tables || [];
+                        const inactiveBadge = client.status && client.status !== 'active'
+                            ? ` <span class="count-badge" style="background:#fee2e2;color:#dc2626;font-size:10px;padding:1px 6px;border-radius:4px;margin-left:4px;">${esc(client.status)}</span>`
+                            : '';
                         // Build sub-rows for each table (same column structure)
                         const tableSubRows = tables.map(t => `
                             <tr class="client-sub-row expand-group-${i}" style="display:none">
@@ -42,7 +45,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         return `
                         <tr class="client-row" data-idx="${i}" onclick="toggleClientExpandRow(this)">
                             <td>
-                                <a href="/client/${client.client_id}/groups/" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}</a>
+                                <a href="/client/${client.client_id}/groups/" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}${inactiveBadge}</a>
                             </td>
                             <td class="text-center">
                                 <span class="count-badge pending">${client.pending}</span>
@@ -527,6 +530,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (clients.length > 0) {
                         printBody.innerHTML = clients.map((client, i) => {
                             const tables = client.tables || [];
+                            const iBadge = client.status && client.status !== 'active'
+                                ? ` <span class="count-badge" style="background:#fee2e2;color:#dc2626;font-size:10px;padding:1px 6px;border-radius:4px;margin-left:4px;">${esc(client.status)}</span>`
+                                : '';
                             const subRows = tables.map(t => `
                                 <tr class="client-sub-row print-expand-group-${i}" style="display:none">
                                     <td>
@@ -539,7 +545,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             return `
                                 <tr class="client-row" data-idx="${i}" data-scope="print" onclick="toggleScopedExpandRow(this)">
                                     <td>
-                                        <a href="/client/${client.id}/groups/" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}</a>
+                                        <a href="/client/${client.id}/groups/" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}${iBadge}</a>
                                     </td>
                                     <td class="text-center"><span class="count-badge pending">${client.print_list}</span></td>
                                     <td class="text-center"><span class="count-badge verified">${client.finalized}</span></td>
@@ -558,6 +564,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (clients.length > 0) {
                         reprintBody.innerHTML = clients.map((client, i) => {
                             const tables = client.tables || [];
+                            const iBadge = client.status && client.status !== 'active'
+                                ? ` <span class="count-badge" style="background:#fee2e2;color:#dc2626;font-size:10px;padding:1px 6px;border-radius:4px;margin-left:4px;">${esc(client.status)}</span>`
+                                : '';
                             const subRows = tables.map(t => `
                                 <tr class="client-sub-row reprint-expand-group-${i}" style="display:none">
                                     <td>
@@ -570,7 +579,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             return `
                                 <tr class="client-row" data-idx="${i}" data-scope="reprint" onclick="toggleScopedExpandRow(this)">
                                     <td>
-                                        <a href="/client/${client.id}/groups/" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}</a>
+                                        <a href="/client/${client.id}/groups/" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}${iBadge}</a>
                                     </td>
                                     <td class="text-center"><span class="count-badge pending">${client.requested}</span></td>
                                     <td class="text-center"><span class="count-badge verified">${client.confirmed}</span></td>

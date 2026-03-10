@@ -740,8 +740,9 @@ window.emailLogPage = function (delta) {
   loadEmailLogs();
 };
 
-window.resendEmail = function (logId) {
-  if (!confirm('Resend welcome email for this log entry? A new temporary password will be generated for the user.')) return;
+window.resendEmail = async function (logId) {
+  var ok = await showConfirm({ title: 'Resend Welcome Email?', text: 'Resend welcome email for this log entry? A new temporary password will be generated for the user.', icon: 'fa-solid fa-paper-plane', confirmLabel: 'Resend', btnClass: 'btn-primary', hideWarning: true });
+  if (!ok) return;
   const actionCell = document.getElementById('email-log-action-' + logId);
   if (actionCell) actionCell.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="color:#667eea;"></i>';
   fetch((window.EMAIL_RESEND_BASE_URL || '/api/email-resend/') + logId + '/', {
@@ -764,7 +765,7 @@ window.resendEmail = function (logId) {
           'onclick="resendEmail(' + logId + ')" title="Retry resend">' +
           '<i class="fa-solid fa-paper-plane" style="font-size:11px;"></i></button>';
         if (typeof showToast === 'function') showToast(data.message || 'Resend failed.', 'error');
-        else alert(data.message || 'Resend failed.');
+        else showToast(data.message || 'Resend failed.', 'error');
       }
     })
     .catch(function (err) {

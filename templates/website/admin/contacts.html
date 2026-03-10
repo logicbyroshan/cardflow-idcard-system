@@ -251,8 +251,9 @@ function updateContactStatus(id, status) {
     });
 }
 
-function deleteContact(id) {
-    if (!confirm('Are you sure you want to delete this message? This cannot be undone.')) return;
+async function deleteContact(id) {
+    var ok = await waConfirm({ title: 'Delete Message?', text: 'Are you sure you want to delete this message? This cannot be undone.', icon: 'fa-solid fa-trash' });
+    if (!ok) return;
     
     fetch('/panel/website/api/contacts/' + id + '/delete/', {
         method: 'POST',

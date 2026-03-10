@@ -231,7 +231,8 @@ function cardDetailApp() {
         },
 
         async deleteCard() {
-            if (!confirm('Are you sure you want to delete this card?')) return;
+            var ok = await showConfirm({ title: 'Delete Card?', text: 'Are you sure you want to delete this card?', icon: 'fa-solid fa-trash', confirmLabel: 'Delete', hideWarning: true });
+            if (!ok) return;
             try {
                 const res = await fetch('/app/api/card/' + CARD_ID + '/delete/', {
                     method: 'POST',

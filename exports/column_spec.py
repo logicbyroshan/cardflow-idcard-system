@@ -229,14 +229,12 @@ _s('email', 10, 22, 40, True, 'left',
    'min-w-[110px] text-left whitespace-normal break-all')
 
 # ── Address ──────────────────────────────────────────────────────────
-# Address columns are capped at the same max as a name column so they do NOT
-# consume excessive horizontal space; vertical wrapping handles long values.
-# max reduced (pdf 8 %, word 4 cm) so address does not squeeze out narrow
-# categorical columns (class, section, rel, etc.).
+# Address columns get a wider min-width so they don't become too narrow on
+# small screens.  Vertical wrapping handles long values.
 _s('address', 8, 16, 22, True, 'left',
    4.0, 8.0, 1.8, 4.0,
-   'min-w-[90px] max-w-[130px]',
-   'min-w-[90px] max-w-[130px] text-left whitespace-normal break-words')
+   'min-w-[130px] max-w-[220px]',
+   'min-w-[130px] max-w-[220px] text-left whitespace-normal break-words address-col')
 
 _s('city', 4, 10, 20, True, 'center',
    3.0, 7.0, 1.0, 3.0,

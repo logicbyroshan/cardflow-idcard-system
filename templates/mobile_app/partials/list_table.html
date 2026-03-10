@@ -1,87 +1,117 @@
-<!-- Table Area - Takes ALL remaining space -->
+<!-- Card List Area - Takes ALL remaining space -->
 <div class="flex-1 overflow-hidden">
-    <div class="h-full overflow-y-auto" style="padding-bottom:72px;">
-        <table class="w-full text-xs font-condensed">
-            <thead class="sticky top-0 z-10">
-                <tr class="bg-gradient-to-r from-brand-light to-brand-dark text-white">
-                    <th class="px-2 py-2.5 text-left" style="width:32px;">
-                        {% if not view_only_list %}
-                        <label class="custom-checkbox">
-                            <input type="checkbox" x-model="selectAll" @change="toggleSelectAll()">
-                            <span class="checkmark checkmark-white"></span>
-                        </label>
-                        {% endif %}
-                    </th>
-                    <th class="px-1 py-2.5 text-center font-semibold text-white/80" style="width:28px;font-size:10px;">#</th>
-                    <th class="px-1 py-2.5 font-semibold text-white/80" style="width:44px;font-size:10px;">Photo</th>
-                    <th class="px-2 py-2.5 text-left font-semibold text-white/80" style="font-size:10px;">Name &amp; Details</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-50 bg-white">
-                {% for student in students %}
-                <tr
-                    data-sid="{{ student.id }}"
-                    class="transition-colors {% if not view_only_list %}cursor-pointer{% endif %}"
-                    :class="{% if not view_only_list %}selectedIds.includes({{ student.id }}) ? 'bg-indigo-50 border-l-2 border-l-brand-light' : 'hover:bg-gray-50'{% else %}''{% endif %}"
-                    {% if not view_only_list %}@click="toggleSelect({{ student.id }})"{% endif %}
-                >
-                    <td class="px-2 py-2">
-                        {% if not view_only_list %}
-                        <label class="custom-checkbox" @click.stop>
-                            <input type="checkbox" :checked="selectedIds.includes({{ student.id }})" @change="toggleSelect({{ student.id }})">
-                            <span class="checkmark"></span>
-                        </label>
-                        {% endif %}
-                    </td>
-                    <td class="px-1 py-2 text-gray-400 font-medium text-center" style="font-size:11px;">{{ forloop.counter }}</td>
-                    <td class="px-1 py-1.5">
+    <div class="h-full overflow-y-auto px-3 py-3 space-y-3" style="padding-bottom:80px;">
+
+        {% if not view_only_list %}
+        <!-- Select All bar -->
+        <div class="flex items-center justify-between px-1 mb-1">
+            <label class="custom-checkbox flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" x-model="selectAll" @change="toggleSelectAll()">
+                <span class="checkmark"></span>
+                <span class="text-[11px] font-semibold text-gray-500">Select All</span>
+            </label>
+            <span class="text-[11px] text-gray-400" x-text="'Showing ' + {{ students|length }} + ' records'"></span>
+        </div>
+        {% endif %}
+
+        {% for student in students %}
+        <div data-sid="{{ student.id }}"
+             class="bg-white rounded-2xl border shadow-sm overflow-hidden transition-all {% if not view_only_list %}cursor-pointer{% endif %}"
+             :class="{% if not view_only_list %}selectedIds.includes({{ student.id }}) ? 'border-indigo-300 ring-2 ring-indigo-100' : 'border-gray-100'{% else %}'border-gray-100'{% endif %}"
+             {% if not view_only_list %}@click="toggleSelect({{ student.id }})"{% endif %}>
+
+            <div class="flex gap-3 p-3">
+                <!-- Checkbox + Photo Column -->
+                <div class="flex flex-col items-center gap-2 flex-shrink-0">
+                    {% if not view_only_list %}
+                    <label class="custom-checkbox" @click.stop>
+                        <input type="checkbox" :checked="selectedIds.includes({{ student.id }})" @change="toggleSelect({{ student.id }})">
+                        <span class="checkmark"></span>
+                    </label>
+                    {% endif %}
+                    <!-- Photo -->
+                    <div class="rounded-xl overflow-hidden border-2 {% if student.status == 'pending' %}border-amber-300{% elif student.status == 'verified' %}border-green-300{% else %}border-gray-200{% endif %}"
+                         style="width:56px; height:70px;">
                         {% if student.has_photo %}
                         <img src="{{ student.photo_url }}"
-                             class="w-9 h-12 object-cover object-top border border-gray-100"
-                             style="border-radius:3px;" alt="" loading="lazy"
+                             class="w-full h-full object-cover object-top" alt="" loading="lazy"
                              onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-                        <div class="w-9 h-12 bg-red-50 flex items-center justify-center text-red-300"
-                             style="border-radius:3px;font-size:9px;display:none;">
+                        <div class="w-full h-full bg-red-50 flex items-center justify-center text-red-300"
+                             style="font-size:14px;display:none;">
                             <i class="fa-solid fa-image-slash"></i>
                         </div>
                         {% else %}
-                        <div class="w-9 h-12 bg-gray-100 flex items-center justify-center text-gray-300"
-                             style="border-radius:3px;font-size:9px;">
+                        <div class="w-full h-full bg-gray-50 flex items-center justify-center text-gray-300"
+                             style="font-size:14px;">
                             <i class="fa-solid fa-image"></i>
                         </div>
                         {% endif %}
-                    </td>
-                    <td class="px-2 py-2">
-                        <p class="font-semibold text-gray-800 leading-tight" style="font-size:12px;">{{ student.name }}</p>
-                        <div class="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
-                            {% for key, val in student.field_data.items %}
-                            {% if val %}{% with kl=key|lower %}{% if 'photo' not in kl and 'image' not in kl and kl != 'name' %}
-                            <span class="text-gray-500" style="font-size:10px;line-height:1.4;">
-                                <span class="font-semibold text-gray-600">{{ key|truncatechars:12 }}:</span>&nbsp;{{ val|stringformat:"s"|truncatechars:16 }}
-                            </span>
-                            {% endif %}{% endwith %}{% endif %}
-                            {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Details Column -->
+                <div class="flex-1 min-w-0 flex flex-col">
+                    <!-- Name -->
+                    <p class="font-bold text-gray-800 text-[14px] leading-tight">{{ student.name }}</p>
+
+                    <!-- Class & Section -->
+                    {% if student.class_name or student.section %}
+                    <p class="text-[12px] text-gray-500 mt-0.5">
+                        {% if student.class_name %}{{ student.class_name }}{% endif %}{% if student.class_name and student.section %} · {% endif %}{% if student.section %}{{ student.section }}{% endif %}
+                    </p>
+                    {% endif %}
+
+                    <!-- All other fields -->
+                    <div class="mt-1.5 space-y-0.5">
+                        {% for key, val in student.field_data.items %}
+                        {% if val %}{% with kl=key|lower %}{% if 'photo' not in kl and 'image' not in kl and kl != 'name' and kl != 'class' and kl != 'section' and kl != 'designation' %}
+                        <div class="flex items-start gap-1.5 text-[11px] leading-snug">
+                            {% if 'father' in kl %}
+                            <i class="fa-solid fa-user text-gray-400 mt-0.5" style="font-size:9px;"></i>
+                            {% elif 'mother' in kl %}
+                            <i class="fa-solid fa-user text-gray-400 mt-0.5" style="font-size:9px;"></i>
+                            {% elif 'phone' in kl or 'mobile' in kl or 'contact' in kl %}
+                            <i class="fa-solid fa-phone text-gray-400 mt-0.5" style="font-size:9px;"></i>
+                            {% elif 'dob' in kl or 'birth' in kl or 'date' in kl %}
+                            <i class="fa-solid fa-calendar text-gray-400 mt-0.5" style="font-size:9px;"></i>
+                            {% elif 'roll' in kl or 'id' == kl %}
+                            <i class="fa-solid fa-hashtag text-gray-400 mt-0.5" style="font-size:9px;"></i>
+                            {% elif 'address' in kl %}
+                            <i class="fa-solid fa-location-dot text-gray-400 mt-0.5" style="font-size:9px;"></i>
+                            {% else %}
+                            <i class="fa-solid fa-circle text-gray-300 mt-1" style="font-size:4px;"></i>
+                            {% endif %}
+                            <span class="text-gray-500"><span class="font-semibold text-gray-600">{{ key }}:</span> {{ val }}</span>
                         </div>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="4" class="text-center py-12 text-gray-400">
-                        <i class="fa-solid fa-inbox text-4xl mb-3 block opacity-50"></i>
-                        <p class="text-sm font-medium">No records found</p>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                        {% endif %}{% endwith %}{% endif %}
+                        {% endfor %}
+                    </div>
+
+                    <!-- View Details Link -->
+                    <div class="mt-2 flex items-center justify-between">
+                        <a href="{% url 'mobile_app:card_detail' card_id=student.id %}" @click.stop
+                           class="text-[12px] font-semibold text-indigo-500 flex items-center gap-1 active:opacity-70">
+                            View Details <i class="fa-solid fa-chevron-right text-[9px]"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="flex flex-col items-center justify-center py-16 text-gray-400 gap-3">
+            <i class="fa-solid fa-inbox text-4xl opacity-50"></i>
+            <p class="text-sm font-medium">No records found</p>
+        </div>
+        {% endfor %}
+
         <!-- Load More -->
         <div x-show="hasMore" class="flex justify-center py-4">
             <button @click="loadMore()" :disabled="loading"
-                    class="flex items-center gap-2 px-5 py-2.5 rounded-md text-[12px] font-semibold text-white shadow-sm active:scale-95 transition-all"
+                    class="flex items-center gap-2 px-6 py-3 rounded-xl text-[13px] font-semibold text-white shadow-md active:scale-95 transition-all"
                     style="background:linear-gradient(135deg,#667eea,#764ba2);"
                     :class="loading ? 'opacity-60 cursor-not-allowed' : ''">
-                <i class="fa-solid fa-spinner fa-spin text-[11px]" x-show="loading"></i>
-                <i class="fa-solid fa-rotate-down text-[11px]" x-show="!loading"></i>
+                <i class="fa-solid fa-spinner fa-spin text-[12px]" x-show="loading"></i>
+                <i class="fa-solid fa-rotate-down text-[12px]" x-show="!loading"></i>
                 <span x-text="loading ? 'Loading…' : 'Load More'"></span>
             </button>
         </div>

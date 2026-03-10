@@ -58,7 +58,8 @@ function renderImageCell(f) {
 
 /** Render a single text cell as HTML */
 function renderTextCell(f) {
-  return '<td class="dynamic-field px-[1px] py-1 align-middle" data-field="' + escapeHtml(f.name) + '" data-field-name="' + escapeHtml(f.name) + '" data-field-type="' + escapeHtml(f.type || 'text') + '" data-original-value="' + escapeHtml(f.value || '') + '"><span class="cell-value">' + escapeHtml(f.value || '-') + '</span></td>';
+  var widthClass = (window.FieldClassifier) ? window.FieldClassifier.tdClass(f.name, f.type) : '';
+  return '<td class="dynamic-field ' + widthClass + ' px-[1px] py-1 align-middle" data-field="' + escapeHtml(f.name) + '" data-field-name="' + escapeHtml(f.name) + '" data-field-type="' + escapeHtml(f.type || 'text') + '" data-original-value="' + escapeHtml(f.value || '') + '"><span class="cell-value">' + escapeHtml(f.value || '-') + '</span></td>';
 }
 
 /** Render ordered fields (text first, then images) */
@@ -485,7 +486,7 @@ function createPaginator(opts) {
 
   // Single-row actions
   if (tableBody) {
-    tableBody.addEventListener('click', function(e) {
+    tableBody.addEventListener('click', async function(e) {
       var printBtn = e.target.closest('.btn-send-to-print-single');
       if (printBtn) {
         var rrId = parseInt(printBtn.dataset.rrId);
@@ -495,27 +496,32 @@ function createPaginator(opts) {
       var rejectSingle = e.target.closest('.btn-reject-confirmed-single');
       if (rejectSingle) {
         var rrId2 = parseInt(rejectSingle.dataset.rrId);
-        if (rrId2 && confirm('Reject this reprint request? Card will move to pool.')) performReject([rrId2]);
+        if (rrId2) {
+          var ok = await showConfirm({ title: 'Reject Request?', text: 'Reject this reprint request? Card will move to pool.', icon: 'fa-solid fa-ban', confirmLabel: 'Reject', hideWarning: true });
+          if (ok) performReject([rrId2]);
+        }
       }
     });
   }
 
   // Bulk Send to Print
   if (sendToPrintBtn) {
-    sendToPrintBtn.addEventListener('click', function() {
+    sendToPrintBtn.addEventListener('click', async function() {
       var ids = getSelectedRrIds();
       if (ids.length === 0) return;
-      if (!confirm('Send ' + ids.length + ' item(s) to Print List?')) return;
+      var ok = await showConfirm({ title: 'Send to Print?', text: 'Send ' + ids.length + ' item(s) to Print List?', icon: 'fa-solid fa-print', confirmLabel: 'Send', btnClass: 'btn-primary', hideWarning: true });
+      if (!ok) return;
       performSendToPrint(ids);
     });
   }
 
   // Bulk Reject
   if (rejectBtn) {
-    rejectBtn.addEventListener('click', function() {
+    rejectBtn.addEventListener('click', async function() {
       var ids = getSelectedRrIds();
       if (ids.length === 0) return;
-      if (!confirm('Reject ' + ids.length + ' reprint request(s)? Cards will move to pool.')) return;
+      var ok = await showConfirm({ title: 'Reject Requests?', text: 'Reject ' + ids.length + ' reprint request(s)? Cards will move to pool.', icon: 'fa-solid fa-ban', confirmLabel: 'Reject', hideWarning: true });
+      if (!ok) return;
       performReject(ids);
     });
   }

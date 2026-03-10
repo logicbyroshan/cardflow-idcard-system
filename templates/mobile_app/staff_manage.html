@@ -366,7 +366,8 @@ function staffApp() {
         },
 
         async deleteStaff(staff) {
-            if (!confirm('Delete ' + staff.name + '? This cannot be undone.')) return;
+            var ok = await showConfirm({ title: 'Delete Staff?', text: 'Delete ' + staff.name + '? This cannot be undone.', icon: 'fa-solid fa-trash', confirmLabel: 'Delete', hideWarning: true });
+            if (!ok) return;
             try {
                 const res = await fetch('/app/api/staff/' + staff.id + '/delete/', {
                     method: 'POST',

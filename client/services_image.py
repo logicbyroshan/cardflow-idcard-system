@@ -63,13 +63,11 @@ class ClientImageService(BaseService):
                         if isinstance(val, str) and name_without_ext and name_without_ext.lower() in val.lower():
                             try:
                                 image.seek(0)
-                                img_bytes = image.read()
+                                existing_path = fd.get(key, '')
                                 result = ImageService.save_image(
-                                    image_bytes=img_bytes,
-                                    field_name=key,
-                                    card=card,
+                                    file_content=image,
                                     client=client,
-                                    original_filename=original_name,
+                                    existing_path=existing_path,
                                 )
                                 if result.success and result.data.get('path'):
                                     fd[key] = result.data['path']

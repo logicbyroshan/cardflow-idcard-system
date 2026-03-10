@@ -729,13 +729,13 @@
 
     var presetId = e.presetSelect.value;
     if (!presetId) {
-      alert('Please select a preset first.');
+      showToast('Please select a preset first.', 'error');
       return;
     }
 
     var preset = AdarshEnginePresets.get(presetId);
     if (!preset) {
-      alert('Preset not found.');
+      showToast('Preset not found.', 'error');
       return;
     }
 
@@ -779,20 +779,21 @@
   /**
    * Delete the currently selected preset.
    */
-  AdarshEngine.prototype._deleteSelectedPreset = function () {
+  AdarshEngine.prototype._deleteSelectedPreset = async function () {
     var e = this._els;
     if (!e.presetSelect || typeof AdarshEnginePresets === 'undefined') return;
 
     var presetId = e.presetSelect.value;
     if (!presetId) {
-      alert('Please select a preset to delete.');
+      showToast('Please select a preset to delete.', 'error');
       return;
     }
 
     var preset = AdarshEnginePresets.get(presetId);
     if (!preset) return;
 
-    if (!confirm('Delete preset "' + preset.name + '"?')) return;
+    var ok = await showConfirm({ title: 'Delete Preset?', text: 'Delete preset "' + preset.name + '"?', icon: 'fa-solid fa-trash', hideWarning: true });
+    if (!ok) return;
 
     AdarshEnginePresets.delete(presetId);
     this._refreshPresetDropdown();
@@ -802,19 +803,20 @@
   /**
    * Save current adjustments as a new preset.
    */
-  AdarshEngine.prototype._saveCurrentAsPreset = function () {
+  AdarshEngine.prototype._saveCurrentAsPreset = async function () {
     var e = this._els;
     if (!e.presetName || typeof AdarshEnginePresets === 'undefined') return;
 
     var name = e.presetName.value.trim();
     if (!name) {
-      alert('Please enter a preset name.');
+      showToast('Please enter a preset name.', 'error');
       e.presetName.focus();
       return;
     }
 
     if (AdarshEnginePresets.nameExists(name)) {
-      if (!confirm('A preset named "' + name + '" already exists. Overwrite it?')) {
+      var ok = await showConfirm({ title: 'Overwrite Preset?', text: 'A preset named "' + name + '" already exists. Overwrite it?', icon: 'fa-solid fa-copy', confirmLabel: 'Overwrite', btnClass: 'btn-warning', hideWarning: true });
+      if (!ok) {
         return;
       }
       // Delete existing and re-add
@@ -839,7 +841,7 @@
     e.presetName.value = '';
     this._refreshPresetDropdown();
     this._log('Saved preset: ' + name);
-    alert('Preset "' + name + '" saved successfully!');
+    showToast('Preset "' + name + '" saved successfully!', 'success');
   };
 
   /**
@@ -863,7 +865,7 @@
     if (typeof this.onApplyToAllCallback === 'function') {
       this.onApplyToAllCallback(this.getParams());
     } else {
-      alert('Apply to All is not configured for this page.');
+      showToast('Apply to All is not configured for this page.', 'warning');
     }
   };
 

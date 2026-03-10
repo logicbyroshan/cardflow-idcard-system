@@ -209,6 +209,17 @@ body:has(.idcard-actions-page) {
     line-height: 1.3;
 }
 
+/* Address columns — give comparatively more room, especially on small screens */
+.idcard-table td.address-col {
+    min-width: 130px;
+    flex-shrink: 0;
+}
+@media (max-width: 768px) {
+    .idcard-table td.address-col {
+        min-width: 110px;
+    }
+}
+
 /* Image field cells - percentage with min-width */
 .idcard-table td.dynamic-field.image-field {
     text-align: center;

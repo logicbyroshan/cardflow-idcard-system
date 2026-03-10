@@ -22,6 +22,29 @@ function saveCellEdit(cell, newValue, cardId, field) {
     // Convert to uppercase only for non-image text fields
     const finalValue = (typeof newValue === 'string' && !isImageField) ? newValue.toUpperCase() : newValue;
     
+    // ── Basic field validation via FieldClassifier ──
+    if (window.FieldClassifier && typeof newValue === 'string' && !isImageField) {
+        var vResult = window.FieldClassifier.validate(field, fieldType, finalValue);
+        if (!vResult.valid) {
+            // Show error, restore cell
+            if (typeof showToast === 'function') showToast(vResult.message, 'error');
+            cell.style.backgroundColor = '#f8d7da';
+            setTimeout(function() { cell.style.backgroundColor = ''; }, 2000);
+            const esc = window.escapeHtml || ((s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; });
+            cell.innerHTML = `<span class="cell-value">${esc(originalValue)}</span>`;
+            cell.style.position = '';
+            cell.style.overflow = '';
+            cell.style.padding = '';
+            cell.style.minWidth = '';
+            cell.style.minHeight = '';
+            cell.style.width = '';
+            cell.style.height = '';
+            cell.removeAttribute('data-original-value');
+            cell.classList.remove('editing');
+            return;
+        }
+    }
+    
     // If no change, just restore
     if (finalValue === originalValue) {
         const esc = window.escapeHtml || ((s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; });

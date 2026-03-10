@@ -98,10 +98,8 @@ class PermissionService:
     # so warnings are not emitted for perm keys that are simply not on the
     # Client model by design (admin/staff-only features).
     CLIENT_BLOCKED_PERMS: set = {
-        # Bulk operations — admin/staff only
-        'perm_idcard_bulk_upload',
-        # perm_idcard_bulk_download — allowed for client (PDF-only, gated in export views)
-        'perm_idcard_bulk_reupload',
+        # perm_idcard_bulk_upload  — now allowed for clients (gated by toggle)
+        # perm_idcard_bulk_reupload — now allowed for clients (gated by toggle)
         'perm_delete_all_idcard',    # super_admin-only
         'perm_reupload_idcard_image',
         # Print-queue lists — admin_staff only (not on Client model by design)

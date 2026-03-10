@@ -1185,12 +1185,12 @@ function cropperApp() {
     async applyParamsToAll(params) {
       var images = this.currentTabImages(); // Apply to current tab's images
       if (!images || images.length === 0) {
-        alert('No images to adjust. Process a folder first.');
+        showToast('No images to adjust. Process a folder first.', 'error');
         return;
       }
 
       var tabName = this.activeTab === 'cropped' ? 'cropped' : this.activeTab;
-      var confirmed = confirm('Apply these adjustments to all ' + images.length + ' ' + tabName + ' images?\n\nThe editor will close and adjustments will be applied in batch.');
+      var confirmed = await showConfirm({ title: 'Apply to All Images?', text: 'Apply these adjustments to all ' + images.length + ' ' + tabName + ' images? The editor will close and adjustments will be applied in batch.', icon: 'fa-solid fa-wand-magic-sparkles', confirmLabel: 'Apply', btnClass: 'btn-primary', hideWarning: true });
       if (!confirmed) return;
 
       // Close the engine modal so user can see progress
@@ -1248,7 +1248,7 @@ function cropperApp() {
       if (typeof Toast !== 'undefined') {
         Toast.success('Applied adjustments to ' + success + ' images.');
       } else {
-        alert('Applied adjustments to ' + success + ' images.');
+        showToast('Applied adjustments to ' + success + ' images.', 'success');
       }
     },
 
