@@ -13,77 +13,86 @@
 
 <div class="min-h-screen bg-gray-50 pb-20" x-data="searchApp()">
     <!-- Header -->
-    <div class="sticky top-0 z-40 bg-gradient-to-r from-brand-light to-brand-dark px-4 py-3">
+    <div class="sticky top-0 z-40 bg-gradient-to-r from-brand-light to-brand-dark px-4 pt-[calc(env(safe-area-inset-top,0px)+10px)] pb-3">
         <div class="flex items-center gap-3">
-            <a href="{% url 'mobile_app:home' %}" class="w-8 h-8 rounded-md bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all">
+            <a href="{% url 'mobile_app:home' %}" class="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all">
                 <i class="fa-solid fa-arrow-left text-sm"></i>
             </a>
             <div class="flex-1 relative">
-                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-white/50 text-xs pointer-events-none"></i>
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-white/60 text-[12px] pointer-events-none"></i>
                 <input type="text"
                     x-model="query"
                     @input="debouncedSearch()"
                     @keydown.enter.prevent="doSearch()"
-                    placeholder="Search cards by name, roll no, ID..."
-                    class="w-full pl-9 pr-4 py-2 bg-white/20 border border-white/20 rounded text-sm text-white placeholder:text-white/50 focus:outline-none focus:bg-white/30 transition"
+                    placeholder="Search by name, roll no, ID..."
+                    class="w-full pl-9 pr-4 py-2.5 bg-white/20 border border-white/20 rounded-xl text-[13px] text-white placeholder:text-white/50 focus:outline-none focus:bg-white/30 transition"
                     autofocus>
             </div>
         </div>
     </div>
 
     <!-- Body -->
-    <div class="px-4 pt-3">
+    <div class="px-4 pt-4">
 
-        <!-- Count -->
-        <p class="text-xs text-gray-500 mb-3" x-show="query.trim() && !loading" x-cloak>
-            <span class="font-semibold" x-text="results.length"></span>
-            result(s) for &ldquo;<span class="font-semibold" x-text="query.trim()"></span>&rdquo;
-        </p>
+        <!-- Count pill -->
+        <div class="mb-3" x-show="query.trim() && !loading" x-cloak>
+            <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-full">
+                <i class="fa-solid fa-list-ul text-[9px]"></i>
+                <span x-text="results.length"></span>
+                result<span x-show="results.length !== 1">s</span> for &ldquo;<span x-text="query.trim()"></span>&rdquo;
+            </span>
+        </div>
 
         <!-- Spinner -->
-        <div class="text-center py-8" x-show="loading" x-cloak>
-            <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 block text-brand-light"></i>
-            <p class="text-xs text-gray-400">Searching&hellip;</p>
+        <div class="text-center py-10" x-show="loading" x-cloak>
+            <div class="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center mx-auto mb-3">
+                <i class="fa-solid fa-spinner fa-spin text-xl text-brand-light"></i>
+            </div>
+            <p class="text-[12px] text-gray-400 font-medium">Searching&hellip;</p>
         </div>
 
         <!-- Results list -->
-        <div class="space-y-2" x-show="!loading">
+        <div class="space-y-2.5" x-show="!loading">
             <template x-for="card in results" :key="card.id">
                 <a :href="cardUrl(card.id)"
-                   class="flex items-center gap-3 bg-white rounded p-3 shadow-sm border border-gray-100 hover:shadow-md active:scale-[0.98] transition-all">
+                   class="flex items-center gap-3 bg-white rounded-2xl p-3.5 shadow-sm border border-gray-100 hover:shadow-md active:scale-[0.98] transition-all">
                     <!-- Photo -->
-                    <div class="w-11 h-11 rounded-md overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
+                    <div class="w-12 h-12 rounded-xl overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
                         <img x-show="card.photo_url" :src="card.photo_url" class="w-full h-full object-cover" :alt="card.name + ' photo'">
                         <i x-show="!card.photo_url" class="fa-solid fa-user text-gray-400 text-sm"></i>
                     </div>
                     <!-- Info -->
                     <div class="flex-1 min-w-0">
-                        <p class="text-sm font-bold text-gray-800 truncate" x-text="card.name"></p>
+                        <p class="text-[13px] font-bold text-gray-800 truncate" x-text="card.name"></p>
                         <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                            <span class="text-[10px] text-gray-500" x-show="card.roll_no" x-text="card.roll_no"></span>
+                            <span class="text-[10px] font-medium text-gray-500" x-show="card.roll_no" x-text="card.roll_no"></span>
                             <span class="text-[10px] text-gray-400" x-text="card.table_name"></span>
                             <span class="text-[10px] text-gray-400" x-show="card.client_name" x-text="'\u00B7 ' + card.client_name"></span>
                         </div>
                     </div>
                     <!-- Status badge -->
-                    <span class="text-[10px] font-semibold px-2 py-1 rounded flex-shrink-0"
+                    <span class="text-[10px] font-bold px-2.5 py-1.5 rounded-xl flex-shrink-0"
                           :class="statusClass(card.status)"
                           x-text="card.status.charAt(0).toUpperCase() + card.status.slice(1)"></span>
                 </a>
             </template>
 
             <!-- Empty: no query typed yet -->
-            <div class="text-center py-12 text-gray-400" x-show="!query.trim() && !loading">
-                <i class="fa-solid fa-magnifying-glass text-3xl mb-3 block"></i>
-                <p class="text-sm">Search for cards</p>
-                <p class="text-xs mt-1">Type a name, roll number, or ID to search</p>
+            <div class="flex flex-col items-center justify-center py-16 text-gray-300" x-show="!query.trim() && !loading">
+                <div class="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+                    <i class="fa-solid fa-magnifying-glass text-2xl text-gray-300"></i>
+                </div>
+                <p class="text-[13px] font-semibold text-gray-400">Search for cards</p>
+                <p class="text-[11px] text-gray-300 mt-1">Type a name, roll number, or ID</p>
             </div>
 
             <!-- Empty: query set but no matches -->
-            <div class="text-center py-12 text-gray-400" x-show="query.trim() && !loading && !results.length" x-cloak>
-                <i class="fa-solid fa-magnifying-glass text-3xl mb-3 block"></i>
-                <p class="text-sm">No results for &ldquo;<span x-text="query.trim()"></span>&rdquo;</p>
-                <p class="text-xs mt-1">Try a different search term</p>
+            <div class="flex flex-col items-center justify-center py-16 text-gray-300" x-show="query.trim() && !loading && !results.length" x-cloak>
+                <div class="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+                    <i class="fa-solid fa-magnifying-glass text-2xl text-gray-300"></i>
+                </div>
+                <p class="text-[13px] font-semibold text-gray-400">No results found</p>
+                <p class="text-[11px] text-gray-300 mt-1">Try a different search term</p>
             </div>
         </div>
     </div>

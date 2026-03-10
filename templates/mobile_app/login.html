@@ -61,7 +61,7 @@
     <!-- Top branding -->
     <div class="flex-1 flex flex-col items-center justify-end pb-6 pt-[env(safe-area-inset-top,32px)] px-8 relative z-10">
         <!-- App Icon -->
-        <div class="w-20 h-20 rounded-lg bg-white/20 backdrop-blur flex items-center justify-center mb-4 shadow-xl border border-white/30">
+        <div class="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center mb-4 shadow-xl border border-white/30">
             <i class="fa-solid fa-id-card text-white text-3xl"></i>
         </div>
         <h1 class="text-white text-2xl font-bold tracking-tight">Adarsh ID Cards</h1>
@@ -69,13 +69,13 @@
     </div>
 
     <!-- Login Card -->
-    <div class="glass-card rounded-t-[16px] px-6 pt-7 pb-[calc(env(safe-area-inset-bottom,0px)+28px)] relative z-10 shadow-2xl">
+    <div class="glass-card rounded-t-3xl px-6 pt-7 pb-[calc(env(safe-area-inset-bottom,0px)+28px)] relative z-10 shadow-2xl">
 
         <h2 class="text-gray-800 text-xl font-bold mb-1">Welcome back</h2>
         <p class="text-gray-400 text-sm mb-6">Sign in to continue</p>
 
         <!-- Error bar -->
-        <div id="error-bar" class="hidden error-bar bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg mb-4 flex items-center gap-2">
+        <div id="error-bar" class="hidden error-bar bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl mb-4 flex items-center gap-2">
             <i class="fa-solid fa-circle-exclamation flex-shrink-0"></i>
             <span id="error-msg">Invalid credentials</span>
         </div>
@@ -90,7 +90,7 @@
                     </div>
                     <input id="email" type="email" autocomplete="email"
                            placeholder="you@example.com"
-                           class="input-field w-full pl-10 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-300">
+                           class="input-field w-full pl-10 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-300">
                 </div>
             </div>
 
@@ -103,7 +103,7 @@
                     </div>
                     <input id="password" type="password" autocomplete="current-password"
                            placeholder="••••••••"
-                           class="input-field w-full pl-10 pr-12 py-3.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-300">
+                           class="input-field w-full pl-10 pr-12 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-300">
                     <button type="button" id="toggle-pwd"
                             class="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1">
                         <i class="fa-solid fa-eye text-sm" id="pwd-eye"></i>
@@ -113,7 +113,7 @@
 
             <!-- Submit -->
             <button type="submit" id="login-btn"
-                    class="login-btn w-full py-4 rounded-lg text-white font-bold text-base shadow-lg flex items-center justify-center gap-2">
+                    class="login-btn w-full py-4 rounded-xl text-white font-bold text-base shadow-lg flex items-center justify-center gap-2">
                 <i class="fa-solid fa-spinner fa-spin hidden" id="btn-spinner"></i>
                 <span id="btn-text">Sign In</span>
             </button>

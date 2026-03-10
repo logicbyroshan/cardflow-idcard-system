@@ -6,78 +6,79 @@
 {% block content %}
 <div class="min-h-screen bg-gray-50 pb-20" x-data="profileApp()">
     <!-- Header -->
-    <div class="sticky top-0 z-40 flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-brand-light to-brand-dark">
-        <a href="{% url 'mobile_app:home' %}" class="text-white">
-            <i class="fa-solid fa-arrow-left text-lg"></i>
+    <div class="sticky top-0 z-40 flex items-center gap-3 px-4 pt-[calc(env(safe-area-inset-top,0px)+10px)] pb-3 bg-gradient-to-r from-brand-light to-brand-dark">
+        <a href="{% url 'mobile_app:home' %}" class="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center text-white active:bg-white/30 transition-colors">
+            <i class="fa-solid fa-arrow-left text-sm"></i>
         </a>
-        <h1 class="text-white font-bold text-base flex-1">Profile</h1>
-        <button @click="toggleEdit()" class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all">
+        <h1 class="text-white font-bold text-[14px] flex-1">My Profile</h1>
+        <button @click="toggleEdit()" class="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all">
             <i class="text-sm" :class="editing ? 'fa-solid fa-xmark' : 'fa-solid fa-pen'"></i>
         </button>
     </div>
 
     <!-- Profile Card -->
-    <div class="px-4 pt-6">
-        <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+    <div class="px-4 pt-4 pb-3">
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <!-- Avatar Section -->
-            <div class="bg-gradient-to-br from-brand-light to-brand-dark px-6 py-8 text-center">
-                <div class="w-20 h-20 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white text-2xl font-bold mx-auto mb-3 border-4 border-white/30">
+            <div class="bg-gradient-to-br from-brand-light to-brand-dark px-6 py-8 text-center relative overflow-hidden">
+                <div class="absolute inset-0 opacity-10" style="background:radial-gradient(circle at top right,#fff 0%,transparent 70%);"></div>
+                <div class="w-20 h-20 rounded-3xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white text-2xl font-bold mx-auto mb-3 border-2 border-white/30 shadow-lg relative">
                     {{ user_name|slice:":2"|upper }}
                 </div>
-                <h2 class="text-white font-bold text-lg" x-show="!editing">{{ user_name }}</h2>
-                <p class="text-white/70 text-sm">{{ user_role }}</p>
-                {% if client_name %}<p class="text-white/50 text-xs mt-1">{{ client_name }}</p>{% endif %}
+                <h2 class="text-white font-bold text-lg relative" x-show="!editing">{{ user_name }}</h2>
+                <p class="text-white/70 text-sm relative">{{ user_role }}</p>
+                {% if client_name %}<p class="text-white/50 text-xs mt-1 relative">{{ client_name }}</p>{% endif %}
             </div>
 
             <!-- View Mode Details -->
-            <div x-show="!editing" class="p-5 space-y-4">
-                <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-md">
-                    <div class="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500">
+            <div x-show="!editing" class="p-4 space-y-2.5">
+                <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                    <div class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-500 flex-shrink-0">
                         <i class="fa-solid fa-envelope text-sm"></i>
                     </div>
                     <div>
-                        <p class="text-[10px] text-gray-400 uppercase tracking-wider">Email</p>
-                        <p class="text-sm text-gray-800 font-medium">{{ user_email|default:"Not set" }}</p>
+                        <p class="text-[9px] text-gray-400 uppercase tracking-widest font-bold">Email</p>
+                        <p class="text-[13px] text-gray-800 font-semibold">{{ user_email|default:"Not set" }}</p>
                     </div>
                 </div>
 
-                <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-md">
-                    <div class="w-9 h-9 rounded-lg bg-green-50 flex items-center justify-center text-green-500">
+                <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                    <div class="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center text-green-500 flex-shrink-0">
                         <i class="fa-solid fa-phone text-sm"></i>
                     </div>
                     <div>
-                        <p class="text-[10px] text-gray-400 uppercase tracking-wider">Phone</p>
-                        <p class="text-sm text-gray-800 font-medium">{{ user_phone|default:"Not set" }}</p>
+                        <p class="text-[9px] text-gray-400 uppercase tracking-widest font-bold">Phone</p>
+                        <p class="text-[13px] text-gray-800 font-semibold">{{ user_phone|default:"Not set" }}</p>
                     </div>
                 </div>
 
-                <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-md">
-                    <div class="w-9 h-9 rounded-lg bg-purple-50 flex items-center justify-center text-purple-500">
+                <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                    <div class="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center text-purple-500 flex-shrink-0">
                         <i class="fa-solid fa-shield-halved text-sm"></i>
                     </div>
                     <div>
-                        <p class="text-[10px] text-gray-400 uppercase tracking-wider">Role</p>
-                        <p class="text-sm text-gray-800 font-medium">{{ user_role }}</p>
+                        <p class="text-[9px] text-gray-400 uppercase tracking-widest font-bold">Role</p>
+                        <p class="text-[13px] text-gray-800 font-semibold">{{ user_role }}</p>
                     </div>
                 </div>
             </div>
 
             <!-- Edit Mode -->
-            <div x-show="editing" x-transition class="p-5 space-y-3">
-                <div class="space-y-1">
-                    <label class="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Full Name</label>
+            <div x-show="editing" x-transition class="p-4 space-y-3">
+                <div class="space-y-1.5">
+                    <label class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Full Name</label>
                     <input type="text" x-model="editForm.name" placeholder="Your name"
-                        class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
+                        class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
                 </div>
-                <div class="space-y-1">
-                    <label class="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Phone</label>
+                <div class="space-y-1.5">
+                    <label class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Phone</label>
                     <input type="tel" x-model="editForm.phone" placeholder="Phone number"
-                        class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
+                        class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
                 </div>
                 <div class="flex gap-2 pt-2">
-                    <button @click="editing = false" class="flex-1 py-2.5 text-xs font-semibold text-gray-600 bg-gray-100 border border-gray-200 rounded-lg">Cancel</button>
+                    <button @click="editing = false" class="flex-1 py-3 text-[12px] font-semibold text-gray-600 bg-gray-100 border border-gray-200 rounded-xl">Cancel</button>
                     <button @click="saveProfile()" :disabled="saving"
-                        class="flex-[2] py-2.5 text-xs font-semibold text-white bg-gradient-to-r from-brand-light to-brand-dark rounded-lg shadow active:scale-[0.98] transition-all flex items-center justify-center gap-1">
+                        class="flex-[2] py-3 text-[12px] font-bold text-white bg-gradient-to-r from-brand-light to-brand-dark rounded-xl shadow active:scale-[0.98] transition-all flex items-center justify-center gap-1.5">
                         <i class="fa-solid fa-spinner fa-spin text-[10px]" x-show="saving"></i>
                         <span>Save Changes</span>
                     </button>
@@ -87,28 +88,35 @@
     </div>
 
     <!-- Quick Links -->
-    <div class="px-4 pb-2">
-        <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-50">
+    <div class="px-4 pb-3">
+        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Quick Links</p>
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-50">
             {% if is_client %}
-            <a href="{% url 'mobile_app:staff_manage' %}" class="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition">
+            <a href="{% url 'mobile_app:staff_manage' %}" class="flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 active:bg-gray-50 transition">
                 <div class="flex items-center gap-3">
-                    <i class="fa-solid fa-users text-gray-400"></i>
-                    <span class="text-sm text-gray-700">Manage Staff</span>
+                    <div class="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0">
+                        <i class="fa-solid fa-users text-indigo-400 text-sm"></i>
+                    </div>
+                    <span class="text-[13px] font-semibold text-gray-700">Manage Staff</span>
                 </div>
                 <i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
             </a>
             {% endif %}
-            <a href="{% url 'mobile_app:groups_overview' %}" class="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition">
+            <a href="{% url 'mobile_app:groups_overview' %}" class="flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 active:bg-gray-50 transition">
                 <div class="flex items-center gap-3">
-                    <i class="fa-solid fa-layer-group text-gray-400"></i>
-                    <span class="text-sm text-gray-700">Groups & Tables</span>
+                    <div class="w-8 h-8 rounded-xl bg-violet-50 flex items-center justify-center flex-shrink-0">
+                        <i class="fa-solid fa-layer-group text-violet-400 text-sm"></i>
+                    </div>
+                    <span class="text-[13px] font-semibold text-gray-700">Groups &amp; Tables</span>
                 </div>
                 <i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
             </a>
-            <a href="{% url 'mobile_app:settings_page' %}" class="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition">
+            <a href="{% url 'mobile_app:settings_page' %}" class="flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 active:bg-gray-50 transition">
                 <div class="flex items-center gap-3">
-                    <i class="fa-solid fa-gear text-gray-400"></i>
-                    <span class="text-sm text-gray-700">Settings</span>
+                    <div class="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0">
+                        <i class="fa-solid fa-gear text-gray-400 text-sm"></i>
+                    </div>
+                    <span class="text-[13px] font-semibold text-gray-700">Settings</span>
                 </div>
                 <i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
             </a>
@@ -116,18 +124,20 @@
     </div>
 
     <!-- Logout -->
-    <div class="px-4 pb-6">
+    <div class="px-4 pb-8">
         <a href="/panel/auth/logout/"
-           class="flex items-center justify-center gap-2 w-full py-3 text-sm font-semibold text-red-500 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 transition">
-            <i class="fa-solid fa-right-from-bracket"></i>Logout
+           class="flex items-center justify-center gap-2 w-full py-3.5 text-[13px] font-bold text-red-500 bg-red-50 border border-red-100 rounded-2xl hover:bg-red-100 active:scale-[0.98] transition-all">
+            <i class="fa-solid fa-right-from-bracket"></i>Sign Out
         </a>
     </div>
 
     <!-- Toast -->
     <div x-show="toast.show" x-transition class="fixed top-4 left-1/2 -translate-x-1/2 z-[80] max-w-[380px] w-full px-4">
-        <div class="rounded-md px-4 py-3 shadow-lg text-xs font-medium text-white"
-             :class="toast.type === 'success' ? 'bg-green-500' : toast.type === 'error' ? 'bg-red-500' : 'bg-brand-light'"
-             x-text="toast.message"></div>
+        <div class="rounded-2xl px-4 py-3 shadow-lg text-xs font-semibold text-white flex items-center gap-2"
+             :class="toast.type === 'success' ? 'bg-green-500' : toast.type === 'error' ? 'bg-red-500' : 'bg-brand-light'">
+            <i :class="toast.type === 'success' ? 'fa-solid fa-circle-check' : toast.type === 'error' ? 'fa-solid fa-circle-exclamation' : 'fa-solid fa-circle-info'"></i>
+            <span x-text="toast.message"></span>
+        </div>
     </div>
 
     <!-- Bottom Nav -->

@@ -13,7 +13,7 @@
         <div class="flex items-center gap-3 px-4 pt-[calc(env(safe-area-inset-top,0px)+10px)] pb-3.5
                     bg-gradient-to-r from-[#667eea] to-[#764ba2]">
             <a href="{% url 'mobile_app:home' %}"
-               class="w-8 h-8 rounded-md bg-white/20 flex items-center justify-center text-white active:bg-white/30 transition-colors flex-shrink-0">
+               class="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center text-white active:bg-white/30 transition-colors flex-shrink-0">
                 <i class="fa-solid fa-arrow-left text-sm"></i>
             </a>
             <div class="flex-1 min-w-0">
@@ -71,10 +71,10 @@
             {% if system_notifications %}
             <div class="px-4 flex flex-col gap-2 pb-4">
                 {% for notif in system_notifications %}
-                <div class="bg-white rounded-lg border shadow-sm overflow-hidden
+                <div class="bg-white rounded-2xl border shadow-sm overflow-hidden
                             {% if not notif.is_read %}border-l-4 border-l-[#667eea]{% else %}border-gray-100{% endif %}">
-                    <div class="flex items-start gap-3 p-3.5">
-                        <div class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                    <div class="flex items-start gap-3 p-4">
+                        <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
                              style="background-color:{{ notif.priority_color }}20;">
                             <i class="fa-solid {{ notif.icon_class }} text-[13px]"
                                style="color:{{ notif.priority_color }};"></i>
@@ -88,7 +88,7 @@
                             </div>
                             <p class="text-[11px] text-gray-500 mt-0.5 leading-snug">{{ notif.message }}</p>
                             <div class="flex items-center gap-2 mt-1.5">
-                                <span class="text-[9px] font-semibold px-1.5 py-0.5 rounded"
+                                <span class="text-[9px] font-semibold px-1.5 py-0.5 rounded-lg"
                                       style="background-color:{{ notif.priority_color }}18;color:{{ notif.priority_color }};">
                                     {{ notif.priority|title }}
                                 </span>
@@ -102,17 +102,17 @@
             </div>
             {% else %}
             <div class="flex flex-col items-center justify-center py-16 px-6 text-center">
-                <div class="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mb-3">
-                    <i class="fa-solid fa-bell-slash text-2xl text-gray-300"></i>
+                <div class="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+                    <i class="fa-solid fa-bell-slash text-2xl text-gray-400"></i>
                 </div>
-                <p class="text-[13px] font-semibold text-gray-400">No notifications</p>
-                <p class="text-[11px] text-gray-300 mt-1">System announcements will appear here</p>
+                <p class="text-[13px] font-semibold text-gray-500">No notifications</p>
+                <p class="text-[11px] text-gray-400 mt-1">System announcements will appear here</p>
             </div>
             {% endif %}
 
             <div class="px-4 pb-4">
                 <a href="{% url 'mobile_app:notifications' %}"
-                   class="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-[12px] font-semibold border border-[#667eea]/30 text-[#667eea] active:bg-indigo-50 transition-colors">
+                   class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-[12px] font-semibold border border-[#667eea]/30 text-[#667eea] active:bg-indigo-50 transition-colors">
                     <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
                     View Activity Notifications
                 </a>
@@ -128,7 +128,7 @@
             </div>
 
             {% if log_activities %}
-            <div class="bg-white mx-4 rounded-lg border border-gray-100 shadow-sm overflow-hidden mb-4">
+            <div class="bg-white mx-4 rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-4">
                 <div class="flex items-center px-3 py-2 bg-gray-50 border-b border-gray-100">
                     <span class="w-7 flex-shrink-0 mr-2"></span>
                     <span class="flex-[3] text-[9px] font-bold text-gray-400 uppercase tracking-wider pr-2">Name</span>
@@ -137,7 +137,7 @@
                 </div>
                 {% for act in log_activities %}
                 <div class="flex items-center px-3 py-2.5 border-b border-gray-50 last:border-b-0">
-                    <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mr-2
+                    <div class="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0 mr-2
                         {% if act.status == 'verified' %}bg-green-50 text-green-500
                         {% elif act.status == 'approved' %}bg-blue-50 text-blue-500
                         {% elif act.status == 'download' %}bg-purple-50 text-purple-500
@@ -175,10 +175,11 @@
             </div>
             {% else %}
             <div class="flex flex-col items-center justify-center py-16 px-6 text-center">
-                <div class="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mb-3">
-                    <i class="fa-solid fa-clock-rotate-left text-2xl text-gray-300"></i>
+                <div class="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+                    <i class="fa-solid fa-clock-rotate-left text-2xl text-gray-400"></i>
                 </div>
-                <p class="text-[13px] font-semibold text-gray-400">No activity yet</p>
+                <p class="text-[13px] font-semibold text-gray-500">No activity yet</p>
+                <p class="text-[11px] text-gray-400 mt-1">Card status changes will appear here</p>
             </div>
             {% endif %}
         </div>
@@ -188,9 +189,9 @@
         <div x-show="tab==='email'" style="display:none;">
             <div class="px-4 pt-4 flex flex-col gap-3">
 
-                <div class="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">
+                <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                     <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-                        <div class="w-7 h-7 rounded-md bg-indigo-50 flex items-center justify-center">
+                        <div class="w-7 h-7 rounded-xl bg-indigo-50 flex items-center justify-center">
                             <i class="fa-solid fa-user text-indigo-500 text-[11px]"></i>
                         </div>
                         <p class="text-[12px] font-bold text-gray-700">Account Info</p>
@@ -206,7 +207,7 @@
                         </div>
                         <div class="flex items-center justify-between px-4 py-3">
                             <span class="text-[11px] text-gray-500">Role</span>
-                            <span class="text-[11px] font-semibold px-2 py-0.5 rounded
+                            <span class="text-[11px] font-semibold px-2 py-0.5 rounded-lg
                                 {% if is_super_admin %}bg-violet-100 text-violet-600
                                 {% elif is_admin_staff %}bg-indigo-100 text-indigo-600
                                 {% elif is_client %}bg-sky-100 text-sky-600
@@ -227,9 +228,9 @@
                 </div>
 
                 {% if client and client.email %}
-                <div class="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">
+                <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                     <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-                        <div class="w-7 h-7 rounded-md bg-orange-50 flex items-center justify-center">
+                        <div class="w-7 h-7 rounded-xl bg-orange-50 flex items-center justify-center">
                             <i class="fa-solid fa-envelope text-orange-500 text-[11px]"></i>
                         </div>
                         <p class="text-[12px] font-bold text-gray-700">Client Contact</p>
@@ -245,9 +246,9 @@
                 </div>
                 {% endif %}
 
-                <div class="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">
+                <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                     <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-                        <div class="w-7 h-7 rounded-md bg-gray-100 flex items-center justify-center">
+                        <div class="w-7 h-7 rounded-xl bg-gray-100 flex items-center justify-center">
                             <i class="fa-solid fa-gear text-gray-500 text-[11px]"></i>
                         </div>
                         <p class="text-[12px] font-bold text-gray-700">Account Actions</p>
@@ -256,7 +257,7 @@
                         <a href="/panel/auth/change-password/"
                            class="flex items-center justify-between px-4 py-3.5 active:bg-gray-50 transition-colors">
                             <div class="flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-md bg-amber-50 flex items-center justify-center">
+                                <div class="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center">
                                     <i class="fa-solid fa-lock text-amber-500 text-[11px]"></i>
                                 </div>
                                 <div>
@@ -270,7 +271,7 @@
                         <a href="/"
                            class="flex items-center justify-between px-4 py-3.5 active:bg-gray-50 transition-colors">
                             <div class="flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-md bg-gray-100 flex items-center justify-center">
+                                <div class="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center">
                                     <i class="fa-solid fa-desktop text-gray-500 text-[11px]"></i>
                                 </div>
                                 <div>
@@ -284,7 +285,7 @@
                         <a href="/panel/auth/logout/"
                            class="flex items-center justify-between px-4 py-3.5 active:bg-red-50 transition-colors">
                             <div class="flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-md bg-red-50 flex items-center justify-center">
+                                <div class="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center">
                                     <i class="fa-solid fa-right-from-bracket text-red-500 text-[11px]"></i>
                                 </div>
                                 <div>
@@ -306,10 +307,10 @@
             <div class="px-4 pt-4 flex flex-col gap-3 pb-4">
 
                 <!-- App version card -->
-                <div class="rounded-lg overflow-hidden shadow-md"
+                <div class="rounded-2xl overflow-hidden shadow-md"
                      style="background:linear-gradient(135deg,#667eea,#764ba2);">
                     <div class="px-5 py-4 flex items-center gap-4">
-                        <div class="w-12 h-12 rounded-lg bg-white/20 flex items-center justify-center border border-white/30 flex-shrink-0">
+                        <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center border border-white/30 flex-shrink-0">
                             <i class="fa-solid fa-id-card text-white text-xl"></i>
                         </div>
                         <div>
@@ -321,9 +322,9 @@
                 </div>
 
                 <!-- Platform info -->
-                <div class="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">
+                <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                     <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-                        <div class="w-7 h-7 rounded-md bg-indigo-50 flex items-center justify-center">
+                        <div class="w-7 h-7 rounded-xl bg-indigo-50 flex items-center justify-center">
                             <i class="fa-solid fa-server text-indigo-500 text-[11px]"></i>
                         </div>
                         <p class="text-[12px] font-bold text-gray-700">Platform</p>
@@ -339,7 +340,7 @@
                         </div>
                         <div class="flex items-center justify-between px-4 py-3">
                             <span class="text-[11px] text-gray-500">Environment</span>
-                            <span class="text-[11px] font-semibold px-2 py-0.5 rounded
+                            <span class="text-[11px] font-semibold px-2 py-0.5 rounded-lg
                                 {% if debug_mode %}bg-amber-100 text-amber-600{% else %}bg-green-100 text-green-600{% endif %}">
                                 {% if debug_mode %}Development{% else %}Production{% endif %}
                             </span>
@@ -348,9 +349,9 @@
                 </div>
 
                 <!-- Platform stats -->
-                <div class="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">
+                <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                     <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-                        <div class="w-7 h-7 rounded-md bg-green-50 flex items-center justify-center">
+                        <div class="w-7 h-7 rounded-xl bg-green-50 flex items-center justify-center">
                             <i class="fa-solid fa-chart-pie text-green-500 text-[11px]"></i>
                         </div>
                         <p class="text-[12px] font-bold text-gray-700">

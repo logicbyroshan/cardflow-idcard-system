@@ -6,44 +6,50 @@
 {% block content %}
 <div class="min-h-screen bg-gray-50 pb-20">
     <!-- Header -->
-    <div class="sticky top-0 z-40 flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-brand-light to-brand-dark">
-        <a href="{% url 'mobile_app:home' %}" class="text-white">
-            <i class="fa-solid fa-arrow-left text-lg"></i>
+    <div class="sticky top-0 z-40 flex items-center gap-3 px-4 pt-[calc(env(safe-area-inset-top,0px)+10px)] pb-3 bg-gradient-to-r from-brand-light to-brand-dark">
+        <a href="{% url 'mobile_app:home' %}" class="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center text-white active:bg-white/30 transition-colors">
+            <i class="fa-solid fa-arrow-left text-sm"></i>
         </a>
-        <h1 class="text-white font-bold text-base flex-1">Notifications</h1>
+        <div class="flex-1">
+            <h1 class="text-white font-bold text-[14px] leading-tight">Notifications</h1>
+            <p class="text-white/60 text-[10px]">Activity &amp; updates</p>
+        </div>
     </div>
 
     <!-- Notification List -->
-    <div class="p-4 space-y-3">
+    <div class="p-4 space-y-2.5">
         {% for notif in notifications %}
-        <div class="bg-white rounded-md p-4 shadow-sm border border-gray-100 {% if not notif.read %}border-l-4 border-l-brand-light{% endif %} transition hover:shadow-md">
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 {% if not notif.read %}ring-1 ring-brand-light/30 border-l-4 border-l-brand-light{% endif %} transition hover:shadow-md">
             <div class="flex items-start gap-3">
-                <div class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0
-                    {% if notif.color == 'green' %}bg-green-50 text-green-500
-                    {% elif notif.color == 'blue' %}bg-blue-50 text-blue-500
-                    {% elif notif.color == 'purple' %}bg-purple-50 text-purple-500
-                    {% elif notif.color == 'yellow' %}bg-amber-50 text-amber-500
-                    {% elif notif.color == 'red' %}bg-red-50 text-red-500
-                    {% elif notif.color == 'orange' %}bg-orange-50 text-orange-500
+                <div class="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0
+                    {% if notif.color == 'green' %}bg-green-100 text-green-500
+                    {% elif notif.color == 'blue' %}bg-blue-100 text-blue-500
+                    {% elif notif.color == 'purple' %}bg-purple-100 text-purple-500
+                    {% elif notif.color == 'yellow' %}bg-amber-100 text-amber-500
+                    {% elif notif.color == 'red' %}bg-red-100 text-red-500
+                    {% elif notif.color == 'orange' %}bg-orange-100 text-orange-500
                     {% else %}bg-gray-100 text-gray-400{% endif %}">
                     <i class="fa-solid {{ notif.icon|default:'fa-bell' }} text-sm"></i>
                 </div>
                 <div class="flex-1">
                     <div class="flex items-start justify-between">
-                        <h4 class="text-sm font-semibold text-gray-800">{{ notif.title }}</h4>
+                        <h4 class="text-[13px] font-bold text-gray-800 leading-snug">{{ notif.title }}</h4>
                         {% if not notif.read %}
                         <span class="w-2 h-2 bg-brand-light rounded-full flex-shrink-0 mt-1.5"></span>
                         {% endif %}
                     </div>
-                    <p class="text-xs text-gray-500 mt-1">{{ notif.message }}</p>
+                    <p class="text-[11px] text-gray-500 mt-1 leading-snug">{{ notif.message }}</p>
                     <p class="text-[10px] text-gray-400 mt-1.5">{{ notif.time }}</p>
                 </div>
             </div>
         </div>
         {% empty %}
-        <div class="text-center py-12 text-gray-400">
-            <i class="fa-solid fa-bell-slash text-3xl mb-3 block"></i>
-            <p class="text-sm">No notifications yet</p>
+        <div class="flex flex-col items-center justify-center py-16 text-gray-300">
+            <div class="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+                <i class="fa-solid fa-bell-slash text-2xl text-gray-300"></i>
+            </div>
+            <p class="text-[13px] font-semibold text-gray-400">No notifications yet</p>
+            <p class="text-[11px] text-gray-300 mt-1">You're all caught up!</p>
         </div>
         {% endfor %}
     </div>
