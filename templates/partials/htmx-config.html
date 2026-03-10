@@ -73,15 +73,21 @@ Usage:
     // ── Full-page redirect guard ──
     // If HTMX receives a full HTML page (redirect followed to a full page),
     // don't swap it into a partial container — do a full page navigation instead.
+    // IMPORTANT: Only redirect if the page hasn't already navigated away.
+    // Stale in-flight requests from a previous page must not hijack the current page.
     var responseText = evt.detail.xhr?.responseText || '';
     if (responseText.indexOf('<!DOCTYPE') !== -1 || responseText.indexOf('<!doctype') !== -1) {
       evt.detail.shouldSwap = false;
-      // Navigate to the final URL the redirect landed on
-      var finalUrl = evt.detail.xhr?.responseURL;
-      if (finalUrl) {
-        window.location.href = finalUrl;
-      } else {
-        window.location.reload();
+      // Guard: only redirect if the target element still exists in the current DOM.
+      // If the target is gone, the user navigated away — ignore this stale response.
+      var targetEl = evt.detail.target;
+      if (targetEl && document.contains(targetEl)) {
+        var finalUrl = evt.detail.xhr?.responseURL;
+        if (finalUrl) {
+          window.location.href = finalUrl;
+        } else {
+          window.location.reload();
+        }
       }
     }
   });

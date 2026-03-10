@@ -4,6 +4,12 @@ from . import views
 app_name = 'mobile_app'
 
 urlpatterns = [
+    # PWA Manifest — required for 'Add to Home Screen' / install prompt
+    path('manifest.json', views.pwa_manifest, name='pwa_manifest'),
+
+    # PWA Service Worker — required by Chrome/Android for install prompt
+    path('sw.js', views.pwa_service_worker, name='pwa_service_worker'),
+
     # Mobile login (dedicated PWA login screen)
     path('login/', views.mobile_login, name='mobile_login'),
 

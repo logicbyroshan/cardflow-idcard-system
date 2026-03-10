@@ -63,24 +63,6 @@
         <!-- ════════════════════════════════════════════ -->
         <div class="gen-left-panel">
 
-          <!-- ── Section: Generate List ── -->
-          <div class="gen-section">
-            <div class="gen-section-header">
-              <i class="fa-solid fa-layer-group text-blue-500"></i>
-              <h3>Generate List</h3>
-              <span class="gen-count-badge" id="genCardCountBadge">{{ generate_count }}</span>
-            </div>
-            <div class="gen-list-toolbar">
-              <input type="text" id="genCardSearch" class="gen-search-input" placeholder="Search cards…" autocomplete="off">
-              <button class="btn btn-xs btn-gray" id="genSelectAllBtn" title="Select all cards">All</button>
-              <button class="btn btn-xs btn-gray" id="genClearSelBtn" title="Clear selection">None</button>
-            </div>
-            <div class="gen-card-list" id="genCardList">
-              <p class="gen-empty-msg hidden" id="genCardListEmpty">No cards in generate list for this table.</p>
-              <p class="gen-empty-msg" id="genCardListLoading"><i class="fa-solid fa-spinner fa-spin"></i> Loading…</p>
-            </div>
-          </div>
-
           <!-- ── Section: Card Settings ── -->
           <div class="gen-section">
             <div class="gen-section-header">
@@ -143,7 +125,7 @@
               <i class="fa-solid fa-floppy-disk"></i> Save Template
             </button>
             <button class="btn btn-green" id="generatePdfBtn" disabled>
-              <i class="fa-solid fa-file-pdf"></i> Generate PDF
+              <i class="fa-solid fa-gears"></i> Generate PDF
             </button>
           </div>
 
@@ -195,19 +177,6 @@
               </div>
             </div>
             <p class="gen-canvas-info">Card size: 87 mm × 57 mm &nbsp;|&nbsp; 1 pixel = 0.143 mm</p>
-          </div>
-
-          <!-- Help text -->
-          <div class="gen-help-box">
-            <h4><i class="fa-solid fa-circle-info"></i> How to use</h4>
-            <ol>
-              <li>Upload your designed ID card as a PDF (front + optional back)</li>
-              <li>Select a field from the dropdown on the left, click <strong>Draw</strong></li>
-              <li>Drag a rectangle on the card to mark where that field's data goes</li>
-              <li>Repeat for all fields, then <strong>Save Template</strong></li>
-              <li>Select cards from the Generate List (left), click <strong>Generate PDF</strong></li>
-              <li>Download the data-layer PDF — merge with your template design for final cards</li>
-            </ol>
           </div>
 
         </div><!-- /gen-right-panel -->

@@ -370,8 +370,20 @@ function createPaginator(opts) {
     .then(function(data) {
       if (data.status !== 'ok') throw new Error(data.message || 'Failed to send to generate');
       showToast(data.message || 'Cards sent to generate list!', 'success');
-      // Step 4: Redirect to editor
-      window.location.href = data.redirect_url || ('/print/generate-card/table/' + TABLE_ID + '/');
+      // Step 4: Open the generate-card editor modal (instead of navigating away)
+      closeModal();
+      if (typeof window.openGcEditorModal === 'function') {
+        // Update PDF URLs in case new PDFs were just uploaded
+        var newFrontUrl = (frontPdfInput && frontPdfInput.files[0] && window.FRONT_PDF_URL) ? window.FRONT_PDF_URL : undefined;
+        var newBackUrl  = (backPdfInput  && backPdfInput.files[0]  && window.BACK_PDF_URL)  ? window.BACK_PDF_URL  : undefined;
+        window.openGcEditorModal();
+        if ((newFrontUrl || newBackUrl) && typeof window.gcEditorRefresh === 'function') {
+          window.gcEditorRefresh(newFrontUrl, newBackUrl);
+        }
+      } else {
+        // Fallback: navigate to editor page
+        window.location.href = data.redirect_url || ('/print/generate-card/table/' + TABLE_ID + '/');
+      }
     })
     .catch(function(err) {
       showToast(err.message || 'Something went wrong', 'error');

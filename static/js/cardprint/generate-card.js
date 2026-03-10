@@ -39,6 +39,9 @@
   // Keep a reference to the last-loaded PDF page for auto-detect
   let lastPdfPage = null;
 
+  // Last generated PDF blob (for the Download PDF footer button)
+  let lastPdfBlob = null;
+
   /* ── PDF.js worker ─────────────────────────────────────── */
   if (typeof pdfjsLib !== 'undefined') {
     pdfjsLib.GlobalWorkerOptions.workerSrc =
@@ -54,6 +57,28 @@
     loadCardList();
     if (FRONT_PDF_URL) renderPdf(FRONT_PDF_URL, true);
   });
+
+  /* ── Expose public API for the modal in print-cards.html ── */
+  // Called when the modal opens: refreshes the card list and re-renders the PDF
+  window.gcEditorRefresh = function (frontUrl, backUrl) {
+    if (frontUrl) FRONT_PDF_URL = frontUrl;
+    if (backUrl)  BACK_PDF_URL  = backUrl;
+    loadCardList();
+    if (FRONT_PDF_URL && currentSide === 'front') renderPdf(FRONT_PDF_URL, false);
+  };
+
+  // Download the last generated PDF blob (triggered by footer Download PDF button)
+  window.gcDownloadLastPdf = function () {
+    if (!lastPdfBlob) return;
+    const url = URL.createObjectURL(lastPdfBlob);
+    const a   = document.createElement('a');
+    a.href     = url;
+    a.download = 'cards-' + (TABLE_NAME || 'output').replace(/[^a-z0-9_-]/gi, '_') + '.pdf';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
 
   /* ── Fabric.js canvas init ──────────────────────────────── */
   function initFabric() {
@@ -161,26 +186,35 @@
       });
     }
 
-    // Card list: select all / none
-    document.getElementById('genSelectAllBtn').addEventListener('click', () => {
-      genCards.forEach(c => selectedPrIds.add(c.pr_id));
-      renderCardList(genCards);
-      updateGenerateBtn();
-    });
-    document.getElementById('genClearSelBtn').addEventListener('click', () => {
-      selectedPrIds.clear();
-      renderCardList(genCards);
-      updateGenerateBtn();
-    });
+    // Card list: select all / none (only if the UI exists)
+    const genSelectAllEl = document.getElementById('genSelectAllBtn');
+    const genClearSelEl  = document.getElementById('genClearSelBtn');
+    if (genSelectAllEl) {
+      genSelectAllEl.addEventListener('click', () => {
+        genCards.forEach(c => selectedPrIds.add(c.pr_id));
+        renderCardList(genCards);
+        updateGenerateBtn();
+      });
+    }
+    if (genClearSelEl) {
+      genClearSelEl.addEventListener('click', () => {
+        selectedPrIds.clear();
+        renderCardList(genCards);
+        updateGenerateBtn();
+      });
+    }
 
-    // Card search
-    document.getElementById('genCardSearch').addEventListener('input', function () {
-      const q = this.value.toLowerCase();
-      const filtered = genCards.filter(c =>
-        buildDisplayName(c).toLowerCase().includes(q)
-      );
-      renderCardList(filtered);
-    });
+    // Card search (only if the UI exists)
+    const genCardSearchEl = document.getElementById('genCardSearch');
+    if (genCardSearchEl) {
+      genCardSearchEl.addEventListener('input', function () {
+        const q = this.value.toLowerCase();
+        const filtered = genCards.filter(c =>
+          buildDisplayName(c).toLowerCase().includes(q)
+        );
+        renderCardList(filtered);
+      });
+    }
 
     // Upload PDFs
     document.getElementById('uploadFrontInput').addEventListener('change', function () {
@@ -690,24 +724,31 @@
     const loadingEl = document.getElementById('genCardListLoading');
     const emptyEl   = document.getElementById('genCardListEmpty');
     const listEl    = document.getElementById('genCardList');
+    const hasListUI = !!listEl;
 
     fetch(`/print/api/generate-card/table/${TABLE_ID}/cards/`, {
       headers: { 'X-Requested-With': 'XMLHttpRequest' },
     })
     .then(r => r.json())
     .then(data => {
-      loadingEl.classList.add('hidden');
+      if (loadingEl) loadingEl.classList.add('hidden');
       if (data.error)  { showToast(data.error, 'error'); return; }
       genCards = data.items || data.cards || [];
-      document.getElementById('genCardCountBadge').textContent = data.total || genCards.length;
-      if (genCards.length === 0) {
-        emptyEl.classList.remove('hidden');
+      const countBadge = document.getElementById('genCardCountBadge');
+      if (countBadge) countBadge.textContent = data.total || genCards.length;
+      if (hasListUI) {
+        if (genCards.length === 0) {
+          if (emptyEl) emptyEl.classList.remove('hidden');
+        } else {
+          renderCardList(genCards);
+        }
       } else {
-        renderCardList(genCards);
+        // No selection UI — auto-select all loaded cards
+        genCards.forEach(c => selectedPrIds.add(c.pr_id));
       }
       updateGenerateBtn();
     }).catch(err => {
-      loadingEl.classList.add('hidden');
+      if (loadingEl) loadingEl.classList.add('hidden');
       console.error(err);
       showToast('Failed to load generate list.', 'error');
     });
@@ -716,6 +757,7 @@
   function renderCardList(cards) {
     const listEl  = document.getElementById('genCardList');
     const emptyEl = document.getElementById('genCardListEmpty');
+    if (!listEl) return; // no list UI in this view
     listEl.querySelectorAll('.gen-card-item').forEach(el => el.remove());
 
     if (cards.length === 0) {
@@ -829,17 +871,17 @@
       return response.blob();
     })
     .then(blob => {
-      // Trigger download
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href     = url;
-      a.download = `cards-${TABLE_NAME.replace(/[^a-z0-9_-]/gi, '_')}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      // Store the blob — allow download via button
+      lastPdfBlob = blob;
 
-      showToast('PDF downloaded! Cards moved to Finalized.', 'success');
+      // Enable footer Download PDF button if it exists (modal mode)
+      const dlBtn = document.getElementById('gcDownloadPdfBtn');
+      if (dlBtn) {
+        dlBtn.disabled = false;
+        dlBtn.classList.remove('opacity-50');
+      }
+
+      showToast('PDF ready! Click Download PDF to save. Cards moved to Finalized.', 'success');
       selectedPrIds.clear();
       loadCardList();
     })
@@ -849,7 +891,7 @@
     })
     .finally(() => {
       btn.disabled = false;
-      btn.innerHTML = '<i class="fa-solid fa-file-pdf"></i> Generate PDF';
+      btn.innerHTML = '<i class="fa-solid fa-gears"></i> Generate PDF';
     });
   }
 

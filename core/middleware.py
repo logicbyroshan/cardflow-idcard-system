@@ -357,6 +357,15 @@ class PermissionValidationMiddleware:
                     user.username, user.pk
                 )
                 return self._force_logout(request, 'Your account has been removed.')
+            except Exception as exc:
+                # Transient DB error (e.g. SQLite locked) — treat as valid and
+                # let the request through so the page still loads.  The next
+                # request will retry the DB check.
+                logger.warning(
+                    "PermissionValidationMiddleware: DB error re-fetching user %s — skipping check: %s",
+                    getattr(user, 'username', '?'), exc,
+                )
+                return None
         
         # Check if user is still active
         if not fresh_user.is_active:
@@ -387,6 +396,12 @@ class PermissionValidationMiddleware:
                 user.username
             )
             return self._force_logout(request, 'Your client profile is not configured.')
+        except Exception as exc:
+            logger.warning(
+                "PermissionValidationMiddleware: DB error fetching client for user %s — skipping check: %s",
+                getattr(user, 'username', '?'), exc,
+            )
+            return None
         
         # Check if client is still active
         if client.status != 'active':
@@ -423,6 +438,12 @@ class PermissionValidationMiddleware:
                 user.username
             )
             return self._force_logout(request, 'Your staff profile is not configured.')
+        except Exception as exc:
+            logger.warning(
+                "PermissionValidationMiddleware: DB error fetching staff for user %s — skipping check: %s",
+                getattr(user, 'username', '?'), exc,
+            )
+            return None
         
         # Check if staff has no client assigned
         if not staff.client:
@@ -463,25 +484,40 @@ class PermissionValidationMiddleware:
         """Add role-based scope attributes to request for use by views."""
         from core.services.permission_service import PermissionService
         user = request.user
-        
-        request.user_scope = {
-            'is_super_admin': PermissionService.is_super_admin(user),
-            'is_admin_staff': PermissionService.is_admin_staff(user),
-            'is_client': PermissionService.is_client(user),
-            'is_client_staff': PermissionService.is_client_staff(user),
-            'client_id': None,
-            'accessible_client_ids': PermissionService.get_accessible_client_ids(user),
-        }
-        
-        if PermissionService.is_client(user):
-            client = getattr(user, 'client_profile', None)
-            if client:
-                request.user_scope['client_id'] = client.id
-        
-        elif PermissionService.is_client_staff(user):
-            staff = getattr(user, 'staff_profile', None)
-            if staff and staff.client:
-                request.user_scope['client_id'] = staff.client.id
+        try:
+            request.user_scope = {
+                'is_super_admin': PermissionService.is_super_admin(user),
+                'is_admin_staff': PermissionService.is_admin_staff(user),
+                'is_client': PermissionService.is_client(user),
+                'is_client_staff': PermissionService.is_client_staff(user),
+                'client_id': None,
+                'accessible_client_ids': PermissionService.get_accessible_client_ids(user),
+            }
+
+            if PermissionService.is_client(user):
+                client = getattr(user, 'client_profile', None)
+                if client:
+                    request.user_scope['client_id'] = client.id
+
+            elif PermissionService.is_client_staff(user):
+                staff = getattr(user, 'staff_profile', None)
+                if staff and staff.client:
+                    request.user_scope['client_id'] = staff.client.id
+        except Exception as exc:
+            logger.warning(
+                "PermissionValidationMiddleware: _annotate_request_scope failed for user %s — using defaults: %s",
+                getattr(user, 'username', '?'), exc,
+            )
+            # Provide safe fallback scope so views don't crash on missing attribute
+            if not hasattr(request, 'user_scope'):
+                request.user_scope = {
+                    'is_super_admin': False,
+                    'is_admin_staff': False,
+                    'is_client': False,
+                    'is_client_staff': False,
+                    'client_id': None,
+                    'accessible_client_ids': [],
+                }
     
     def _redirect_to_maintenance(self, request, message):
         """Redirect to maintenance page WITHOUT logging out.

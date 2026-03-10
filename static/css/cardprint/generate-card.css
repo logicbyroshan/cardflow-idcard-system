@@ -741,3 +741,40 @@
   color: #fff;
   border-color: #3b82f6;
 }
+
+/* ═══════════════════════════════════════════════════════
+   Generate Card Editor Modal (embedded in print-cards.html)
+   ═══════════════════════════════════════════════════════ */
+
+/* When the gen-layout lives inside the gc-editor-body flex container,
+   ensure it fills available height without relying on the full-page
+   .generate-card-page wrapper. */
+.gc-editor-body .gen-layout {
+  flex: 1;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Left panel: ensure it scrolls within the modal height */
+.gc-editor-body .gen-left-panel {
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* Right panel: ensure it scrolls within the modal height */
+.gc-editor-body .gen-right-panel {
+  overflow-y: auto;
+}
+
+/* Scale card canvas down slightly so it fits comfortably at 90vw */
+@media (max-width: 1200px) {
+  .gc-editor-body .gen-card-wrapper,
+  .gc-editor-body .gen-card-wrapper canvas {
+    transform: scale(0.85);
+    transform-origin: top center;
+  }
+  .gc-editor-body .gen-canvas-container {
+    overflow: visible;
+  }
+}
+

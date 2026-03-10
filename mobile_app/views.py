@@ -157,6 +157,93 @@ def mobile_login(request):
     return render(request, 'mobile_app/login.html')
 
 
+def pwa_manifest(request):
+    """Serve the PWA Web App Manifest at /app/manifest.json.
+    This is required for Chrome/Android to show the 'Add to Home Screen' prompt.
+    """
+    manifest = {
+        'name': 'Adarsh ID Cards',
+        'short_name': 'Adarsh IDs',
+        'description': 'Manage ID cards on the go — fast, secure, and mobile-first.',
+        'start_url': '/app/',
+        'scope': '/app/',
+        'display': 'standalone',
+        'orientation': 'portrait',
+        'background_color': '#667eea',
+        'theme_color': '#667eea',
+        'lang': 'en',
+        'icons': [
+            {
+                'src': '/static/mobile/images/icon-192.png',
+                'sizes': '192x192',
+                'type': 'image/png',
+                'purpose': 'any maskable',
+            },
+            {
+                'src': '/static/mobile/images/icon-512.png',
+                'sizes': '512x512',
+                'type': 'image/png',
+                'purpose': 'any maskable',
+            },
+        ],
+        'categories': ['business', 'productivity'],
+    }
+    response = JsonResponse(manifest)
+    response['Content-Type'] = 'application/manifest+json'
+    return response
+
+
+def pwa_service_worker(request):
+    """Serve the PWA service worker at /app/sw.js.
+    The Service-Worker-Allowed header extends scope to the full /app/ path.
+    A service worker is required by Chrome/Android to enable the PWA install prompt.
+    """
+    from django.http import HttpResponse
+    sw_content = """\
+/* Adarsh ID Cards — PWA Service Worker */
+const CACHE = 'adarsh-app-v1';
+const SHELL = ['/app/', '/app/login/'];
+
+self.addEventListener('install', function(e) {
+    e.waitUntil(
+        caches.open(CACHE).then(function(c) { return c.addAll(SHELL); })
+    );
+    self.skipWaiting();
+});
+
+self.addEventListener('activate', function(e) {
+    e.waitUntil(
+        caches.keys().then(function(keys) {
+            return Promise.all(
+                keys.filter(function(k) { return k !== CACHE; })
+                    .map(function(k) { return caches.delete(k); })
+            );
+        })
+    );
+    self.clients.claim();
+});
+
+self.addEventListener('fetch', function(e) {
+    /* Only intercept GET requests within /app/ */
+    if (e.request.method !== 'GET') return;
+    var url = new URL(e.request.url);
+    if (!url.pathname.startsWith('/app/')) return;
+
+    e.respondWith(
+        fetch(e.request).catch(function() {
+            return caches.match(e.request).then(function(cached) {
+                return cached || caches.match('/app/');
+            });
+        })
+    );
+});
+"""
+    response = HttpResponse(sw_content, content_type='application/javascript')
+    response['Service-Worker-Allowed'] = '/app/'
+    response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    return response
+
+
 @require_mobile_client
 def home(request):
     """Home dashboard with real card counts and recent activity."""

@@ -156,6 +156,16 @@ def print_cards(request, table_id):
     template_obj = CardTemplate.objects.filter(table=table).first()
     field_config = template_obj.field_config if template_obj else {}
 
+    # Generate-card editor data (for inline modal)
+    front_pdf_url = template_obj.front_pdf.url if template_obj and template_obj.front_pdf else ''
+    back_pdf_url  = template_obj.back_pdf.url  if template_obj and template_obj.back_pdf  else ''
+    template_data = {
+        'is_two_sided':   template_obj.is_two_sided   if template_obj else False,
+        'field_mappings': template_obj.field_mappings if template_obj else {'front': {}, 'back': {}},
+        'font_size':      template_obj.font_size      if template_obj else 8,
+        'font_family':    template_obj.font_family    if template_obj else 'Helvetica-Bold',
+    }
+
     import json as _json
     context = {
         'active_page': 'generate_card',
@@ -175,6 +185,9 @@ def print_cards(request, table_id):
         'field_config_json': _json.dumps(field_config),
         'has_template_front_pdf': bool(template_obj and template_obj.front_pdf),
         'has_template_back_pdf': bool(template_obj and template_obj.back_pdf),
+        'template_data_json': _json.dumps(template_data),
+        'front_pdf_url': front_pdf_url,
+        'back_pdf_url': back_pdf_url,
     }
     return render(request, 'cardprint/print-cards.html', context)
 

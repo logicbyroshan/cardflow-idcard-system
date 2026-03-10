@@ -630,6 +630,12 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
+        # Capture 500 errors from Django's request handler — written to error.log
+        'django.request': {
+            'handlers': _APP_HANDLERS,  # includes file_error (ERROR level) when LOG_TO_FILE
+            'level': 'WARNING',
+            'propagate': False,
+        },
         # Security-sensitive loggers — also write to security.log when enabled
         'django.security': {
             'handlers': _SEC_HANDLERS,

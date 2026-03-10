@@ -12,35 +12,29 @@
   <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
   <link rel="stylesheet" href="{% static 'css/idcard-group.css' %}">
   <style>
-    /* Override idcard-group.css column widths for 4-column generate-card layout */
+    /* 3-column layout: Client | List Name | Action */
     .gc-overview-table table {
       table-layout: fixed;
       width: 100%;
-      min-width: 800px;
+      min-width: 600px;
     }
     .gc-overview-table th:nth-child(1),
     .gc-overview-table td:nth-child(1) {
-      width: 14%;
+      width: 18%;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
     .gc-overview-table th:nth-child(2),
     .gc-overview-table td:nth-child(2) {
-      width: 22%;
-      text-align: center;
+      width: 32%;
       font-weight: 500;
       overflow: hidden;
       text-overflow: ellipsis;
     }
     .gc-overview-table th:nth-child(3),
     .gc-overview-table td:nth-child(3) {
-      width: 48%;
-      text-align: center;
-    }
-    .gc-overview-table th:nth-child(4),
-    .gc-overview-table td:nth-child(4) {
-      width: 16%;
+      width: 50%;
       text-align: center;
     }
   </style>
@@ -74,31 +68,18 @@
 
     <div class="main-content">
 
-    <!-- Action Bar (Filter + Search) -->
+    <!-- Search Bar -->
     <div class="action-bar">
       <div class="action-bar-left">
-        <div class="filter-group">
-          <div class="custom-dropdown" id="gcFilterDropdown">
-            <button class="dropdown-toggle" id="gcDropdownToggle" type="button">
-              <span id="gcSelectedText">All</span>
-              <i class="fa-solid fa-chevron-down"></i>
-            </button>
-            <div class="dropdown-options" id="gcDropdownOptions">
-              <div class="dropdown-option selected" data-value="all">All</div>
-              <div class="dropdown-option" data-value="has_data">Has Print Data</div>
-              <div class="dropdown-option" data-value="empty">Empty</div>
-            </div>
-          </div>
-        </div>
         <div class="search-box">
           <i class="fa-solid fa-magnifying-glass search-icon"></i>
-          <input type="text" class="search-input" id="gcSearchInput" placeholder="Search tables..." autocomplete="off">
+          <input type="text" class="search-input" id="gcSearchInput" placeholder="Search client or list..." autocomplete="off">
           <button class="search-clear-btn" id="gcSearchClearBtn" type="button" title="Clear search" aria-label="Clear search"><i class="fa-solid fa-xmark"></i></button>
         </div>
       </div>
     </div>
 
-    <!-- Table -->
+    <!-- Table — only shows tables that have print_list cards -->
     {% if tables %}
     <div class="table-container idcard-table gc-overview-table">
       <table>
@@ -106,54 +87,29 @@
           <tr>
             <th scope="col">Client</th>
             <th scope="col">List Name</th>
-            <th scope="col">Status</th>
             <th scope="col" class="text-center">Action</th>
           </tr>
         </thead>
         <tbody id="gcTableBody">
           {% for table in tables %}
-          {% with total=table.print_list_count|add:table.generate_count|add:table.finalized_count|add:table.pool_count %}
-          <tr data-table-id="{{ table.id }}" data-total-count="{{ total }}" data-client="{{ table.group.client.name|lower }}" data-name="{{ table.name|lower }}">
+          {% if table.print_list_count > 0 %}
+          <tr data-table-id="{{ table.id }}" data-client="{{ table.group.client.name|lower }}" data-name="{{ table.name|lower }}">
             <td>{{ table.group.client.name }}</td>
             <td class="font-medium">{{ table.name }}</td>
-            <td class="action-cell">
-              <div class="action-buttons">
-                <a href="{% url 'cardprint:print_cards' table.id %}?step=print_list" class="list-btn pending-btn">
+            <td class="text-center">
+              <div class="action-buttons" style="justify-content:center;">
+                <a href="{% url 'cardprint:print_cards' table.id %}?step=print_list" class="list-btn pending-btn" style="text-decoration:none;">
                   <i class="fa-solid fa-list"></i> Print List
                   <span class="count-badge">{{ table.print_list_count }}</span>
                 </a>
-                <a href="{% url 'cardprint:print_cards' table.id %}?step=generate" class="list-btn verified-btn">
-                  <i class="fa-solid fa-gears"></i> Generating
-                  <span class="count-badge">{{ table.generate_count }}</span>
-                </a>
-                <a href="{% url 'cardprint:print_cards' table.id %}?step=finalized" class="list-btn approved-btn">
+                <a href="{% url 'cardprint:print_cards' table.id %}?step=finalized" class="list-btn approved-btn" style="text-decoration:none;">
                   <i class="fa-solid fa-check-double"></i> Finalized
                   <span class="count-badge">{{ table.finalized_count }}</span>
                 </a>
-                <a href="{% url 'cardprint:print_cards' table.id %}?step=pool" class="list-btn pool-btn">
-                  <i class="fa-solid fa-layer-group"></i> Pool
-                  <span class="count-badge">{{ table.pool_count }}</span>
-                </a>
               </div>
-            </td>
-            <td class="text-center">
-              {% if total > 0 %}
-              <div class="flex items-center justify-center gap-2 flex-wrap">
-                <a href="{% url 'cardprint:print_cards' table.id %}?step=print_list" class="bulk-btn reupload-btn" style="text-decoration:none;">
-                  <i class="fa-solid fa-arrow-right"></i> Open
-                </a>
-                {% if table.generate_count > 0 %}
-                <a href="{% url 'cardprint:generate_card' table.id %}" class="bulk-btn download-all-btn" style="text-decoration:none;" title="Continue generating {{ table.generate_count }} cards">
-                  <i class="fa-solid fa-pen-to-square"></i> Editor
-                </a>
-                {% endif %}
-              </div>
-              {% else %}
-              <span class="text-gray-300 text-xs">—</span>
-              {% endif %}
             </td>
           </tr>
-          {% endwith %}
+          {% endif %}
           {% endfor %}
         </tbody>
       </table>
@@ -161,7 +117,7 @@
     {% else %}
     <div class="gen-overview-empty" style="text-align:center;padding:60px 20px;color:#9ca3af;">
       <i class="fa-solid fa-id-card-clip" style="font-size:48px;display:block;margin-bottom:14px;color:#d1d5db;"></i>
-      <p style="font-size:14px;margin:0;">No tables found. Create client lists in Group Settings first.</p>
+      <p style="font-size:14px;margin:0;">No tables with cards in the print list. Send approved cards to Print List first.</p>
     </div>
     {% endif %}
 
@@ -175,81 +131,54 @@
     var searchInput = document.getElementById('gcSearchInput');
     var clearBtn = document.getElementById('gcSearchClearBtn');
     var tableBody = document.getElementById('gcTableBody');
-    var dropdownToggle = document.getElementById('gcDropdownToggle');
-    var dropdownOptions = document.getElementById('gcDropdownOptions');
-    var selectedText = document.getElementById('gcSelectedText');
-    var filterDropdown = document.getElementById('gcFilterDropdown');
-    var currentFilter = 'all';
 
-    function applyFilters() {
+    function applySearch() {
       if (!tableBody) return;
       var term = (searchInput ? searchInput.value : '').toLowerCase();
       var rows = tableBody.querySelectorAll('tr[data-table-id]');
       rows.forEach(function(row) {
         var client = row.getAttribute('data-client') || '';
         var name = row.getAttribute('data-name') || '';
-        var total = parseInt(row.getAttribute('data-total-count') || '0', 10);
-        var matchSearch = !term || client.indexOf(term) !== -1 || name.indexOf(term) !== -1;
-        var matchFilter = true;
-        if (currentFilter === 'has_data') matchFilter = total > 0;
-        else if (currentFilter === 'empty') matchFilter = total === 0;
-        row.style.display = (matchSearch && matchFilter) ? '' : 'none';
+        var match = !term || client.indexOf(term) !== -1 || name.indexOf(term) !== -1;
+        row.style.display = match ? '' : 'none';
       });
     }
 
-    if (searchInput) {
-      searchInput.addEventListener('input', applyFilters);
-    }
+    if (searchInput) searchInput.addEventListener('input', applySearch);
     if (clearBtn) {
       clearBtn.addEventListener('click', function() {
-        if (searchInput) { searchInput.value = ''; }
-        applyFilters();
+        if (searchInput) searchInput.value = '';
+        applySearch();
       });
     }
 
-    if (dropdownToggle && filterDropdown) {
-      dropdownToggle.addEventListener('click', function(e) {
-        e.stopPropagation();
-        filterDropdown.classList.toggle('open');
-      });
-      document.addEventListener('click', function(e) {
-        if (!filterDropdown.contains(e.target)) filterDropdown.classList.remove('open');
-      });
-    }
-    if (dropdownOptions) {
-      dropdownOptions.querySelectorAll('.dropdown-option').forEach(function(opt) {
-        opt.addEventListener('click', function() {
-          dropdownOptions.querySelectorAll('.dropdown-option').forEach(function(o) { o.classList.remove('selected'); });
-          this.classList.add('selected');
-          selectedText.textContent = this.textContent;
-          currentFilter = this.getAttribute('data-value');
-          filterDropdown.classList.remove('open');
-          applyFilters();
-        });
-      });
-    }
-
-    // Row click → select, double-click → open print list
+    // Row click → highlight, double-click → open print list
     if (tableBody) {
       tableBody.addEventListener('click', function(e) {
         if (e.target.closest('a, button')) return;
         var row = e.target.closest('tr[data-table-id]');
         if (!row) return;
-        if (row.classList.contains('selected')) {
-          row.classList.remove('selected');
-        } else {
-          tableBody.querySelectorAll('tr.selected').forEach(function(r) { r.classList.remove('selected'); });
-          row.classList.add('selected');
-        }
+        tableBody.querySelectorAll('tr.selected').forEach(function(r) { r.classList.remove('selected'); });
+        row.classList.add('selected');
       });
       tableBody.addEventListener('dblclick', function(e) {
         if (e.target.closest('a, button')) return;
         var row = e.target.closest('tr[data-table-id]');
         if (!row) return;
-        var tid = row.getAttribute('data-table-id');
-        window.location.href = '/print/table/' + tid + '/?step=print_list';
+        window.location.href = '/print/table/' + row.getAttribute('data-table-id') + '/?step=print_list';
       });
     }
+
+    // Show empty state if no matching rows after template filtering
+    (function checkEmpty() {
+      if (!tableBody) return;
+      var rows = tableBody.querySelectorAll('tr[data-table-id]');
+      if (rows.length === 0) {
+        var noData = document.createElement('tr');
+        noData.innerHTML = '<td colspan="3" style="text-align:center;padding:48px;color:#9ca3af;font-size:13px;"><i class="fa-solid fa-inbox" style="font-size:32px;display:block;margin-bottom:10px;color:#d1d5db;"></i>No tables with cards in the print list.</td>';
+        tableBody.appendChild(noData);
+      }
+    })();
   })();
   </script>
 </body>
