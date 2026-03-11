@@ -189,6 +189,28 @@ CSS_BUNDLES = [
             "css/flatpickr-theme.css",
         ],
     ),
+    # ── Dashboard CSS (replaces dashboard.css @import chain) ──
+    (
+        "dashboard.min.css",
+        [
+            "css/dashboard-layout.css",
+            "css/dashboard-stats.css",
+            "css/dashboard-table.css",
+            "css/dashboard-actions.css",
+            "css/dashboard-activity.css",
+        ],
+    ),
+    # ── Website Admin CSS (replaces website-admin.css @import chain) ──
+    (
+        "wa.min.css",
+        [
+            "css/wa-layout.css",
+            "css/wa-components.css",
+            "css/wa-table.css",
+            "css/wa-forms.css",
+            "css/wa-modals.css",
+        ],
+    ),
     # ── Cropper CSS ──
     (
         "cropper.min.css",

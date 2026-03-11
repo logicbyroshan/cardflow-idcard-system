@@ -46,6 +46,9 @@
     background: #fff;
     border-bottom: 1px solid #e2e8f0;
     overflow-x: auto;
+    position: sticky;
+    top: var(--spacing-topbar, 40px);
+    z-index: 15;
 }
 .wa-tab {
     display: inline-flex;
