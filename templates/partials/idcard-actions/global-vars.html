@@ -1,4 +1,4 @@
-<!-- Global Variables -->
+﻿<!-- Global Variables -->
 {{ table.fields|json_script:"table-fields-data" }}
 <script>
   var TABLE_ID = {{ table.id }};
@@ -20,7 +20,7 @@
     idcard_created_at: {{ perm_idcard_created_at|yesno:"true,false" }},
     idcard_updated_at: {{ perm_idcard_updated_at|yesno:"true,false" }},
   };
-  // Client / client_staff readonly flag — cards in approved/download/reprint are view-only
+  // Client / client_staff readonly flag â€” cards in approved/download/reprint are view-only
   var IS_CLIENT_USER = {{ is_client|yesno:"true,false" }} || {{ is_client_staff|yesno:"true,false" }};
   var CLIENT_READONLY_STATUSES = ['approved', 'download', 'reprint'];
 </script>

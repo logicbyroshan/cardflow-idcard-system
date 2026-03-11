@@ -1,5 +1,5 @@
-{% comment %}
-Active Client Table Container — HTMX swappable partial.
+﻿{% comment %}
+Active Client Table Container â€” HTMX swappable partial.
 Contains: Active clients table + pagination. Returned for HX-Request.
 
 Required context:
@@ -39,7 +39,7 @@ Required context:
                 {% if p == page_obj.number %}
                 <button class="page-num active">{{ p }}</button>
                 {% elif p == '...' %}
-                <span class="page-ellipsis">…</span>
+                <span class="page-ellipsis">â€¦</span>
                 {% else %}
                 <button class="page-num"
                         hx-get="?page={{ p }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}&per_page={{ per_page }}"

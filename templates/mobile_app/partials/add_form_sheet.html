@@ -1,4 +1,4 @@
-<!-- Add/Edit Form Bottom Sheet -->
+﻿<!-- Add/Edit Form Bottom Sheet -->
 <div
     x-show="showAddForm"
     class="fixed inset-0 z-[70]"
@@ -51,7 +51,7 @@
             </button>
         </div>
 
-        <!-- Form Body (scrollable — submit is INSIDE so keyboard can't cover it) -->
+        <!-- Form Body (scrollable â€” submit is INSIDE so keyboard can't cover it) -->
         <div class="flex-1 overflow-y-auto px-4 py-4 space-y-4">
 
             <!-- Photo Section -->
@@ -84,7 +84,7 @@
                         Crop / Adjust
                     </button>
                 </div>
-                <p class="text-[10px] text-gray-400 text-center">Tap photo to change · Crop to adjust</p>
+                <p class="text-[10px] text-gray-400 text-center">Tap photo to change Â· Crop to adjust</p>
             </div>
 
             <!-- Image Picker -->
@@ -260,13 +260,13 @@
     </div>
 </div>
 
-<!-- Image Crop Modal (z-[80] — above add form) -->
+<!-- Image Crop Modal (z-[80] â€” above add form) -->
 <div x-show="showCropModal" x-cloak class="fixed inset-0 z-[80] flex flex-col bg-black">
     <!-- Header -->
     <div class="flex items-center justify-between px-4 py-3 bg-black/80 flex-shrink-0">
         <div>
             <h3 class="text-white font-bold text-sm">Crop Photo</h3>
-            <p class="text-white/50 text-[10px]">Drag to adjust · Pinch to zoom</p>
+            <p class="text-white/50 text-[10px]">Drag to adjust Â· Pinch to zoom</p>
         </div>
         <button @click="closeCropModal()" class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-white">
             <i class="fa-solid fa-xmark text-sm"></i>

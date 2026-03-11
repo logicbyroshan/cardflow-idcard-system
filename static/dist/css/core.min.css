@@ -119,7 +119,7 @@ body[style*="overflow:hidden"] {
 :is(.action-right, .action-bar-right) .btn {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   padding: 4px 8px;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
@@ -130,7 +130,7 @@ body[style*="overflow:hidden"] {
   height: 28px;
 }
 
-:is(.action-right, .action-bar-right) .btn i { font-size: 14px; }
+:is(.action-right, .action-bar-right) .btn i { font-size: 12px; }
 
 /* Standard Navigation Button (Group Setting, ID Card Group) */
 :is(.action-right, .action-bar-right) .btn-group-setting,

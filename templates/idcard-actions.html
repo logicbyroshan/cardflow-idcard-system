@@ -1,4 +1,4 @@
-{% load static %}
+﻿{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -27,7 +27,7 @@
       <!-- Search and Filter Bar -->
       {% include 'partials/idcard/search-filter-bar.html' %}
 
-      <!-- HTMX Table Container — swappable for pagination/filter/status -->
+      <!-- HTMX Table Container â€” swappable for pagination/filter/status -->
       <div id="card-table-container"
            hx-trigger="refreshTable from:body"
            hx-get="{{ actions_base_url }}{% if current_status %}?status={{ current_status }}{% endif %}"
@@ -66,7 +66,7 @@
         bindEvents: false  // IDCardApp handles search/filter events; only getParams() needed here
       });
 
-      // DateTime filter for download list — auto-apply on change (Flatpickr)
+      // DateTime filter for download list â€” auto-apply on change (Flatpickr)
       var fromDateEl = document.getElementById('fromDateFilter');
       var toDateEl = document.getElementById('toDateFilter');
       var clearDateBtn = document.getElementById('clearDateFilterBtn');
@@ -123,7 +123,7 @@
         });
       }
 
-      // Go Back button — navigates to previous page (referrer or dashboard)
+      // Go Back button â€” navigates to previous page (referrer or dashboard)
       var goBackBtn = document.getElementById('goBackBtn');
       function goBack() {
         var referrer = document.referrer;

@@ -1,5 +1,5 @@
-{% comment %}
-ID Card Table Container — HTMX swappable partial.
+﻿{% comment %}
+ID Card Table Container â€” HTMX swappable partial.
 Contains: Table + Pagination. Used as the swap target for HTMX requests.
 
 This partial is returned standalone for HX-Request, or included in the
@@ -17,7 +17,7 @@ Required context:
 <!-- Data Table -->
 {% include 'partials/idcard/table.html' %}
 
-<!-- Pagination Bar — JS-controlled navigation + HTMX rows-per-page -->
+<!-- Pagination Bar â€” JS-controlled navigation + HTMX rows-per-page -->
 <div class="pagination-bar" id="paginationBar"
      data-total-count="{{ total_count }}"
      data-initial-loaded="{{ id_cards|length }}"
@@ -55,7 +55,7 @@ Required context:
         </button>
     </div>
 
-    <!-- Right - Rows Per Page (HTMX — reloads from server with new batch size) -->
+    <!-- Right - Rows Per Page (HTMX â€” reloads from server with new batch size) -->
     <div class="pagination-right">
         <label>Rows per page:</label>
         <div class="custom-dropdown rows-dropdown" id="rowsDropdown">

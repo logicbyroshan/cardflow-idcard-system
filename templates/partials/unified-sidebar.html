@@ -1,4 +1,4 @@
-{% load static %}
+﻿{% load static %}
 
 <!-- Unified Sidebar - Permission-based menu visibility for all user roles -->
 <aside class="sidebar" id="sidebar">
@@ -101,7 +101,7 @@
     {% endif %}
 
     {% if is_super_admin or is_admin_staff %}
-    <!-- Services Dropdown — Admin & Admin Staff only -->
+    <!-- Services Dropdown â€” Admin & Admin Staff only -->
     <div class="nav-section">
       <div class="nav-section-line"></div>
       <span class="nav-section-title">Tools</span>
@@ -154,7 +154,7 @@
   </div>
 </aside>
 <script>
-// Fallback clock — runs independently of Alpine.js
+// Fallback clock â€” runs independently of Alpine.js
 (function(){
   function _sidebarClock(){
     var now = new Date();

@@ -1,4 +1,4 @@
-{% load static %}
+﻿{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Adarsh IDs">
-    <title>Sign In – Adarsh ID Cards</title>
+    <title>Sign In â€“ Adarsh ID Cards</title>
 
     <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -102,7 +102,7 @@
                         <i class="fa-solid fa-lock text-sm"></i>
                     </div>
                     <input id="password" type="password" autocomplete="current-password"
-                           placeholder="••••••••"
+                           placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                            class="input-field w-full pl-10 pr-12 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-300">
                     <button type="button" id="toggle-pwd"
                             class="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1">
@@ -156,7 +156,7 @@
         var sp  = document.getElementById('btn-spinner');
         var txt = document.getElementById('btn-text');
         btn.disabled = on;
-        if (on) { sp.classList.remove('hidden'); txt.textContent = 'Signing in…'; }
+        if (on) { sp.classList.remove('hidden'); txt.textContent = 'Signing inâ€¦'; }
         else     { sp.classList.add('hidden');    txt.textContent = 'Sign In'; }
     }
 
@@ -200,12 +200,12 @@
                 setLoading(false);
             }
         } catch (err) {
-            showError('Network error — please try again.');
+            showError('Network error â€” please try again.');
             setLoading(false);
         }
     });
 
-    // Auto-fill on Enter in email field → move to password
+    // Auto-fill on Enter in email field â†’ move to password
     document.getElementById('email').addEventListener('keydown', function (e) {
         if (e.key === 'Enter') { e.preventDefault(); document.getElementById('password').focus(); }
     });

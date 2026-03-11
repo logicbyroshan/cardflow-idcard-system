@@ -1,4 +1,4 @@
-{% extends "website/admin/base.html" %}
+﻿{% extends "website/admin/base.html" %}
 {% load static %}
 
 {% block title %}Portfolio / Our Works{% endblock %}
@@ -123,7 +123,7 @@
                                 <i class="{{ p.category.icon }}"></i> {{ p.category.name }}
                             </span>
                             {% else %}
-                            <span style="color:var(--wa-gray-400);font-size:12px;">—</span>
+                            <span style="color:var(--wa-gray-400);font-size:12px;">â€”</span>
                             {% endif %}
                         </td>
                         <td>
@@ -230,7 +230,7 @@
                 <div class="wa-form-group">
                     <label for="pf_category">Category</label>
                     <select id="pf_category" name="category">
-                        <option value="">— None —</option>
+                        <option value="">â€” None â€”</option>
                         {% for cat in categories %}
                         <option value="{{ cat.id }}">{{ cat.name }}</option>
                         {% endfor %}
@@ -289,7 +289,7 @@
                 <div class="wa-form-group">
                     <label for="bulk_category">Category *</label>
                     <select id="bulk_category" name="category" required>
-                        <option value="">— Select Category —</option>
+                        <option value="">â€” Select Category â€”</option>
                         {% for cat in categories %}
                         <option value="{{ cat.id }}">{{ cat.name }}</option>
                         {% endfor %}

@@ -22,7 +22,7 @@ import tempfile
 
 from django.conf import settings
 from django.core.files.base import ContentFile
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 logger = logging.getLogger(__name__)
 
@@ -107,6 +107,8 @@ def apply_text_watermark(file_obj):
         img = Image.open(file_obj)
         orig_fmt  = img.format or 'JPEG'
         orig_name = getattr(file_obj, 'name', 'image.jpg')
+        # Auto-rotate based on EXIF orientation (phone photos are often rotated)
+        img = ImageOps.exif_transpose(img)
 
         img = img.convert('RGBA')
         w, h = img.size
@@ -136,9 +138,9 @@ def apply_text_watermark(file_obj):
             tx, ty = pad // 2, pad // 2
             # Shadow
             for ox, oy in ((-1, -1), (-1, 1), (1, -1), (1, 1), (0, 2), (2, 0)):
-                td.text((tx + ox, ty + oy), text, font=font, fill=(0, 0, 0, 50))
-            # Main text
-            td.text((tx, ty), text, font=font, fill=(255, 255, 255, 70))
+                td.text((tx + ox, ty + oy), text, font=font, fill=(0, 0, 0, 80))
+            # Main text — 50% opacity
+            td.text((tx, ty), text, font=font, fill=(255, 255, 255, 128))
 
             txt_rot = txt_img.rotate(25, resample=Image.BICUBIC, expand=True)
             # Paste centered at (cx, cy)
@@ -227,7 +229,7 @@ def apply_logo_watermark(file_obj):
 
 # ── Image compression pipeline ───────────────────────────────────────────────
 
-def process_portfolio_image(file_obj, max_kb: int = 200) -> ContentFile:
+def process_portfolio_image(file_obj, max_kb: int = 500) -> ContentFile:
     """
     Full processing pipeline for portfolio images:
       1. Apply text watermark (brand protection — full diagonal tile)
@@ -264,7 +266,7 @@ def process_portfolio_image(file_obj, max_kb: int = 200) -> ContentFile:
         # Step 3: compress — reduce quality until <= max_kb
         for quality in range(85, 15, -5):
             buf = io.BytesIO()
-            img.save(buf, format='WEBP', quality=quality, method=4)
+            img.save(buf, format='WEBP', quality=quality, method=2)
             if buf.tell() <= max_bytes:
                 buf.seek(0)
                 return ContentFile(buf.read(), name=webp_name)
@@ -274,7 +276,7 @@ def process_portfolio_image(file_obj, max_kb: int = 200) -> ContentFile:
         img_sm = img.resize((max(1, int(w * 0.70)), max(1, int(h * 0.70))), Image.LANCZOS)
         for quality in (60, 40, 20):
             buf = io.BytesIO()
-            img_sm.save(buf, format='WEBP', quality=quality, method=4)
+            img_sm.save(buf, format='WEBP', quality=quality, method=2)
             if buf.tell() <= max_bytes:
                 buf.seek(0)
                 return ContentFile(buf.read(), name=webp_name)

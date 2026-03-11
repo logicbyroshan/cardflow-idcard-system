@@ -1,4 +1,4 @@
-<!-- Card List Area - Takes ALL remaining space -->
+﻿<!-- Card List Area - Takes ALL remaining space -->
 <div class="flex-1 overflow-hidden">
     <div id="students-scroll" class="h-full overflow-y-auto px-3 py-3 space-y-2.5" style="padding-bottom:90px;">
 
@@ -69,7 +69,7 @@
                     {% if student.name %}
                     <p class="font-bold text-gray-800 text-[14px] leading-tight">{{ student.name }}</p>
                     {% else %}
-                    <p class="font-semibold text-gray-300 text-[13px] leading-tight italic">—</p>
+                    <p class="font-semibold text-gray-300 text-[13px] leading-tight italic">â€”</p>
                     {% endif %}
 
                     <!-- Class & Section pill -->
@@ -80,7 +80,7 @@
                     </span>
                     {% endif %}
 
-                    <!-- Field data — two-column grid layout (label left, value right, no icons) -->
+                    <!-- Field data â€” two-column grid layout (label left, value right, no icons) -->
                     <div class="mt-2">
                         <div class="grid text-[11px] leading-snug" style="grid-template-columns: 40% 1fr;">
                             {% for key, val in student.field_data.items %}
@@ -123,7 +123,7 @@
                     :class="loading ? 'opacity-60 cursor-not-allowed' : ''">
                 <i class="fa-solid fa-spinner fa-spin text-[12px]" x-show="loading"></i>
                 <i class="fa-solid fa-rotate-down text-[12px]" x-show="!loading"></i>
-                <span x-text="loading ? 'Loading…' : 'Load More'"></span>
+                <span x-text="loading ? 'Loadingâ€¦' : 'Load More'"></span>
             </button>
         </div>
     </div>

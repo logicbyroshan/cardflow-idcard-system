@@ -1,4 +1,4 @@
-{% extends "mobile_app/base.html" %}
+﻿{% extends "mobile_app/base.html" %}
 {% load static %}
 
 {% block title %}Camera Capture - Adarsh ID Cards{% endblock %}
@@ -297,7 +297,7 @@ function cameraApp() {
                 if (data.success) {
                     this.showMsg('Photo uploaded successfully!', 'success');
                     this.photoTaken = false;
-                    /* Reset selection â€” keep full card list available for next capture */
+                    /* Reset selection Ã¢â‚¬â€ keep full card list available for next capture */
                     this.selectedCardId = 0;
                     this.cardSearch = '';
                     this.filteredCards = this.allCards;

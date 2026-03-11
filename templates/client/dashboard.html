@@ -1,4 +1,4 @@
-{% extends 'client/base.html' %}
+﻿{% extends 'client/base.html' %}
 {% load static %}
 
 {% block title %}Dashboard - Adarsh ID Cards{% endblock %}
@@ -81,7 +81,7 @@
     </div>
   </div>
 
-  <!-- Row 1 — Recent Activity + Quick Actions -->
+  <!-- Row 1 â€” Recent Activity + Quick Actions -->
   <div class="dashboard-grid">
 
     <!-- Recent Activity -->
@@ -183,7 +183,7 @@
         </div>
       </div>
 
-      <!-- Recent Reprints — collapsible -->
+      <!-- Recent Reprints â€” collapsible -->
       <div id="reprintDetailsPanel" style="display:none;">
         <div style="font-size:13px;font-weight:600;color:var(--gray-700,#374151);margin-bottom:10px;display:flex;align-items:center;gap:6px;">
           <i class="fa-solid fa-clock-rotate-left" style="color:var(--gray-400,#9ca3af);"></i> Latest Reprints
@@ -204,7 +204,7 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  // ── Welcome date/time ──
+  // â”€â”€ Welcome date/time â”€â”€
   function updateDateTime() {
     const now = new Date();
     const dateEl = document.getElementById('welcomeDate');
@@ -215,11 +215,11 @@ document.addEventListener('DOMContentLoaded', function() {
   updateDateTime();
   setInterval(updateDateTime, 1000);
 
-  // ── Load dashboard stats ──
+  // â”€â”€ Load dashboard stats â”€â”€
   loadDashboardData();
   loadReprintStats();
 
-  // ── Reprint details toggle ──
+  // â”€â”€ Reprint details toggle â”€â”€
   var reprintToggle = document.getElementById('reprintToggleBtn');
   var reprintPanel = document.getElementById('reprintDetailsPanel');
   var reprintIcon = document.getElementById('reprintToggleIcon');

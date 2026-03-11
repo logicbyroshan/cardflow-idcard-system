@@ -24,7 +24,7 @@ function initIdcardGroup(config) {
       if (tableId) {
         var printUrl = isClientRole
           ? '/client/table/' + tableId + '/print/'
-          : '/table/' + tableId + '/print/';
+          : '/print/table/' + tableId + '/';
         printCardsBtn.onclick = function() { window.location.href = printUrl; };
       }
     }
@@ -33,7 +33,7 @@ function initIdcardGroup(config) {
       if (tableId) {
         var reprintUrl = isClientRole
           ? '/client/table/' + tableId + '/reprint/'
-          : '/table/' + tableId + '/reprint/';
+          : '/reprint/table/' + tableId + '/';
         reprintCardsBtn.onclick = function() { window.location.href = reprintUrl; };
       }
     }

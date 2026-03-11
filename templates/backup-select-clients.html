@@ -1,4 +1,4 @@
-{% load static %}
+﻿{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <meta name="csrf-token" content="{{ csrf_token }}">
-  <title>Backup — Select Clients</title>
+  <title>Backup â€” Select Clients</title>
   <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
   <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
   <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}">
@@ -116,8 +116,8 @@
             <p>You are about to start a <strong>background backup</strong> for <strong><span id="confirmClientCount">0</span> school(s)</strong>.</p>
             <ul class="backup-confirm-list">
               <li>A single <strong>"Adarsh Backup {date}.zip"</strong> will be created with one folder per school.</li>
-              <li>Backup will run in the background — you can close this page.</li>
-              <li>Track progress in <strong>Manage Panel → Backups</strong> tab.</li>
+              <li>Backup will run in the background â€” you can close this page.</li>
+              <li>Track progress in <strong>Manage Panel â†’ Backups</strong> tab.</li>
               <li>Files will be <strong>auto-deleted after 24 hours</strong>.</li>
             </ul>
           </div>
@@ -196,7 +196,7 @@
     window.startBackup = function() {
       const btn = document.getElementById('startBackupBtn');
       btn.disabled = true;
-      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Starting…';
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Startingâ€¦';
 
       const ids = getSelectedIds();
       fetch('/api/backup/start/', {

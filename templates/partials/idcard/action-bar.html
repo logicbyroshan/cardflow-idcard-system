@@ -1,7 +1,7 @@
-{% load static %}
+ï»¿{% load static %}
 {% comment %}
 Phase 9: Shared action bar partial for all status lists.
-Renders buttons conditionally based on current_status — no hidden buttons in DOM.
+Renders buttons conditionally based on current_status â€” no hidden buttons in DOM.
 Phase 2: Reupload button always in left group, justify-between layout.
 
 Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_admin_staff, client, table
@@ -139,7 +139,7 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
 
         {% elif current_status == 'approved' %}
             {# === APPROVED LIST === #}
-            {# Clients/client_staff: view-only — no action or export buttons #}
+            {# Clients/client_staff: view-only â€” no action or export buttons #}
             {% if perm_idcard_info %}
             <button class="btn action-btn btn-gray" id="viewBtnA" disabled title="View selected card">
                 <i class="fa-solid fa-eye"></i>
@@ -193,7 +193,7 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
             {% endif %}
 
         {% elif current_status == 'download' %}
-            {# === DOWNLOAD LIST — clients/client_staff: view-only === #}
+            {# === DOWNLOAD LIST â€” clients/client_staff: view-only === #}
             {% if perm_idcard_info %}
             <button class="btn action-btn btn-gray" id="viewBtnD" disabled title="View selected card">
                 <i class="fa-solid fa-eye"></i>

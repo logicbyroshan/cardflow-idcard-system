@@ -60,9 +60,9 @@ class ImpersonateService:
             return {'success': False, 'message': 'Already impersonating. Stop first.'}
 
         try:
-            target_user = User.objects.get(pk=target_user_id, is_active=True)
+            target_user = User.objects.get(pk=target_user_id)
         except User.DoesNotExist:
-            return {'success': False, 'message': 'User not found or inactive.'}
+            return {'success': False, 'message': 'User not found.'}
 
         # Save original user info before login() flushes the session
         original_user_id = current_user.pk
@@ -135,10 +135,9 @@ class ImpersonateService:
 
         users = (
             User.objects
-            .filter(is_active=True)
             .exclude(pk=request.user.pk)
             .order_by('role', 'first_name', 'username')
-            .values('id', 'username', 'first_name', 'last_name', 'email', 'role')[:100]
+            .values('id', 'username', 'first_name', 'last_name', 'email', 'role', 'is_active')[:100]
         )
 
         result = []
@@ -150,6 +149,7 @@ class ImpersonateService:
                 'email': u['email'],
                 'role': u['role'],
                 'role_display': dict(User.ROLE_CHOICES).get(u['role'], u['role']),
+                'is_active': u['is_active'],
             })
 
         return result

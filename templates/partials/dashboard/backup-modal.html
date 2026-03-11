@@ -1,4 +1,4 @@
-{% load static %}
+﻿{% load static %}
 <!-- Backup Confirmation Modal -->
 <div id="backupModal" class="backup-modal-overlay" style="display:none;">
   <div class="backup-modal">
@@ -14,7 +14,7 @@
         <ul>
           <li>Backup will create a single <strong>"Adarsh Backup {date}.zip"</strong> containing all selected schools.</li>
           <li>Each school gets its own folder with <strong>XLSX files per status</strong> (Pending, Verified, etc.) and an <strong>images</strong> folder.</li>
-          <li>Backup runs in the <strong>background</strong> — you can close this page and track progress in the <strong>Manage Panel</strong>.</li>
+          <li>Backup runs in the <strong>background</strong> â€” you can close this page and track progress in the <strong>Manage Panel</strong>.</li>
           <li>Backup files will be <strong>automatically deleted after 24 hours</strong>. You can cancel auto-delete or delete manually from the Manage Panel.</li>
           <li>Download your backup before the timer expires.</li>
         </ul>
@@ -23,7 +23,7 @@
       <!-- Code section -->
       <div class="backup-code-section">
         <p class="backup-code-label">Type this code to confirm:</p>
-        <div class="backup-code-display" id="backupCodeDisplay">Loading…</div>
+        <div class="backup-code-display" id="backupCodeDisplay">Loadingâ€¦</div>
         <div class="backup-code-input-wrap">
           <input type="text" id="backupCodeInput" class="backup-code-input" maxlength="10"
                  placeholder="_ _ _ _ _ _ _ _ _ _" autocomplete="off"
@@ -88,7 +88,7 @@
 
     const btn = document.getElementById('backupConfirmBtn');
     btn.disabled = true;
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing…';
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processingâ€¦';
 
     fetch('/api/backup/initiate/', {
       method: 'POST',

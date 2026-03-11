@@ -1,11 +1,11 @@
-{% load static %}
+﻿{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
-  <title>Generate Card — {{ table.name }} — Adarsh ID Cards</title>
+  <title>Generate Card â€” {{ table.name }} â€” Adarsh ID Cards</title>
   <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
   <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
   <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}">
@@ -58,12 +58,12 @@
     <div class="main-content gen-editor-wrap">
       <div class="gen-layout">
 
-        <!-- ════════════════════════════════════════════ -->
+        <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
         <!-- LEFT PANEL                                   -->
-        <!-- ════════════════════════════════════════════ -->
+        <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
         <div class="gen-left-panel">
 
-          <!-- ── Section: Card Settings ── -->
+          <!-- â”€â”€ Section: Card Settings â”€â”€ -->
           <div class="gen-section">
             <div class="gen-section-header">
               <i class="fa-solid fa-sliders text-indigo-500"></i>
@@ -92,7 +92,7 @@
             </div>
           </div>
 
-          <!-- ── Section: Place Fields ── -->
+          <!-- â”€â”€ Section: Place Fields â”€â”€ -->
           <div class="gen-section">
             <div class="gen-section-header">
               <i class="fa-solid fa-crosshairs text-amber-500"></i>
@@ -102,7 +102,7 @@
             <div class="gen-row">
               <label>Field</label>
               <select id="fieldToPlaceSelect">
-                <option value="">— select —</option>
+                <option value="">â€” select â€”</option>
               </select>
               <button class="btn btn-xs btn-blue" id="startDrawBtn" disabled title="Click then drag on the card canvas to draw the field area">
                 <i class="fa-solid fa-vector-square"></i> Draw
@@ -111,7 +111,7 @@
                 <i class="fa-solid fa-wand-magic-sparkles"></i> Auto-Detect
               </button>
             </div>
-            <p class="gen-hint" id="drawHintText">Select a field, then click Draw and drag a rectangle on the card canvas →</p>
+            <p class="gen-hint" id="drawHintText">Select a field, then click Draw and drag a rectangle on the card canvas â†’</p>
 
             <!-- Placed fields list -->
             <div id="genPlacedFields">
@@ -119,7 +119,7 @@
             </div>
           </div>
 
-          <!-- ── Bottom actions ── -->
+          <!-- â”€â”€ Bottom actions â”€â”€ -->
           <div class="gen-actions">
             <button class="btn btn-gray" id="saveTemplateBtn">
               <i class="fa-solid fa-floppy-disk"></i> Save Template
@@ -131,9 +131,9 @@
 
         </div><!-- /gen-left-panel -->
 
-        <!-- ════════════════════════════════════════════ -->
+        <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
         <!-- RIGHT PANEL                                  -->
-        <!-- ════════════════════════════════════════════ -->
+        <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
         <div class="gen-right-panel">
 
           <!-- Canvas toolbar -->
@@ -147,8 +147,8 @@
             <!-- Draw mode indicator -->
             <div class="gen-draw-mode-indicator hidden" id="drawModeIndicator">
               <i class="fa-solid fa-crosshairs"></i>
-              Drawing: <strong id="drawFieldName">—</strong>
-              <button class="gen-cancel-draw" id="cancelDrawBtn">✕ Cancel</button>
+              Drawing: <strong id="drawFieldName">â€”</strong>
+              <button class="gen-cancel-draw" id="cancelDrawBtn">âœ• Cancel</button>
             </div>
 
             <!-- Upload PDF buttons -->
@@ -169,14 +169,14 @@
             <div class="gen-card-wrapper" id="genCardWrapper">
               <canvas id="genCardCanvas"></canvas>
               <div class="gen-pdf-loading hidden" id="pdfLoadingOverlay">
-                <i class="fa-solid fa-spinner fa-spin"></i> Loading template…
+                <i class="fa-solid fa-spinner fa-spin"></i> Loading templateâ€¦
               </div>
               <div class="gen-no-template" id="noTemplateMsg" {% if template.front_pdf %}hidden{% endif %}>
                 <i class="fa-solid fa-file-pdf"></i>
                 <p>Upload a PDF template to see it here.<br>Then draw rectangles to position each field.</p>
               </div>
             </div>
-            <p class="gen-canvas-info">Card size: 87 mm × 57 mm &nbsp;|&nbsp; 1 pixel = 0.143 mm</p>
+            <p class="gen-canvas-info">Card size: 87 mm Ã— 57 mm &nbsp;|&nbsp; 1 pixel = 0.143 mm</p>
           </div>
 
         </div><!-- /gen-right-panel -->

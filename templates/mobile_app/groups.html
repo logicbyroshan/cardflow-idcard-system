@@ -1,4 +1,4 @@
-{% extends "mobile_app/base.html" %}
+﻿{% extends "mobile_app/base.html" %}
 {% load static %}
 {% load custom_filters %}
 
@@ -144,7 +144,7 @@
         {% endfor %}
     </div>
 
-    <!-- Tables Tab (Group Settings â€” only for users with group management permission) -->
+    <!-- Tables Tab (Group Settings Ã¢â‚¬â€ only for users with group management permission) -->
     {% if is_super_admin or is_admin_staff or perm_idcard_group_create or perm_idcard_group_delete %}
     <div x-show="activeTab === 'tables'" class="px-4 pt-3 space-y-2.5">
         {% for table in tables %}
@@ -248,7 +248,7 @@
             </div>
             <!-- Fields list -->
             <div class="flex-1 overflow-y-auto px-4 py-3 space-y-2">
-                <p class="text-[10px] text-gray-400 mb-2">Tap a field name to rename it. Use arrows to reorder or × to remove.</p>
+                <p class="text-[10px] text-gray-400 mb-2">Tap a field name to rename it. Use arrows to reorder or Ã— to remove.</p>
                 <template x-for="(field, idx) in editableFields" :key="field._uid">
                     <div class="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2.5 border border-gray-100">
                         <span class="text-[10px] text-gray-400 font-mono w-5 text-center flex-shrink-0" x-text="idx+1"></span>

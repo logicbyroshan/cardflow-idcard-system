@@ -1,7 +1,7 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Login As User — Adarsh ID Cards{% endblock %}
+{% block title %}Login As User â€” Adarsh ID Cards{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -93,6 +93,21 @@
   .imp-role-tag.r-admin_staff  { background: #fef3c7; color: #d97706; }
   .imp-role-tag.r-client       { background: #d1fae5; color: #065f46; }
   .imp-role-tag.r-client_staff { background: #dbeafe; color: #1e40af; }
+
+  /* Inactive user badge */
+  .imp-inactive-tag {
+    display: inline-block;
+    margin-left: 5px;
+    padding: 1px 6px;
+    border-radius: 3px;
+    background: #fee2e2;
+    color: #b91c1c;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    vertical-align: middle;
+  }
 
   /* Login button on hover */
   .imp-login-btn {
@@ -202,9 +217,10 @@
     var h = '';
     f.forEach(function(u) {
       var init = (u.name[0] || '?').toUpperCase();
+      var inactiveBadge = u.is_active === false ? '<span class="imp-inactive-tag">Inactive</span>' : '';
       h += '<div class="imp-card" onclick="__impStart(' + u.id + ')" title="Login as ' + _esc(u.name) + '" role="button" tabindex="0">'
-        + '<div class="imp-avatar" style="background:' + (COLORS[u.role]||'#667eea') + '">' + init + '</div>'
-        + '<div class="imp-info"><div class="imp-name">' + _esc(u.name) + '</div><div class="imp-email">' + _esc(u.email) + '</div></div>'
+        + '<div class="imp-avatar" style="background:' + (COLORS[u.role]||'#667eea') + (!u.is_active ? ';opacity:0.6' : '') + '">' + init + '</div>'
+        + '<div class="imp-info"><div class="imp-name">' + _esc(u.name) + inactiveBadge + '</div><div class="imp-email">' + _esc(u.email) + '</div></div>'
         + '<span class="imp-role-tag r-' + u.role + '">' + _esc(u.role_display) + '</span>'
         + '<button class="imp-login-btn"><i class="fa-solid fa-right-to-bracket"></i> Login</button>'
         + '</div>';

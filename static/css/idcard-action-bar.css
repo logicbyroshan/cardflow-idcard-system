@@ -71,7 +71,7 @@
 .action-buttons-group .btn.action-btn {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
     padding: 4px 8px;
     font-size: 13px;
     font-weight: 500;

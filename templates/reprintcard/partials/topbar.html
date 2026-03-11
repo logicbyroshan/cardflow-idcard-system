@@ -1,4 +1,4 @@
-{% load static %}
+﻿{% load static %}
 <!-- Reprint Cards - Top Navbar (2-Step Workflow) -->
 <header class="topbar">
   <!-- Left - Breadcrumb -->
@@ -23,7 +23,7 @@
       <span class="breadcrumb-item">{{ client.name }}{% if client.status != 'active' %} <span class="status-badge inactive status-badge--sm">{{ client.get_status_display }}</span>{% endif %}</span>
       {% endif %}
       <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
-      <span class="breadcrumb-item active">Reprint — {{ table.name }}</span>
+      <span class="breadcrumb-item active">Reprint â€” {{ table.name }}</span>
     </div>
   </div>
 

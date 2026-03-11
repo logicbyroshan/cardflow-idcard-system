@@ -1,4 +1,4 @@
-{% load static %}
+﻿{% load static %}
 <!-- Search and Filter Bar -->
 <div class="action-bar search-filter-bar">
     <!-- Left Section - Select All, Image Sort, Class/Section Filters, Search -->
@@ -52,7 +52,7 @@
     <!-- Right Section - DateTime Filter (download list) + Group Setting & ID Card Group navigation -->
     <div class="action-right">
         {% if current_status == 'download' and not is_client and not is_client_staff %}
-        <!-- DateTime Range Filter (Download list — admin only) -->
+        <!-- DateTime Range Filter (Download list â€” admin only) -->
         <div class="filter-group datetime-filter-group" id="dateTimeFilterGroup">
             <label class="datetime-label">From</label>
             <input type="text" id="fromDateFilter" class="datetime-input" value="{{ from_date }}" title="Filter from date" placeholder="Select date & time" aria-label="From date" readonly>

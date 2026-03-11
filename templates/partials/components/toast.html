@@ -1,12 +1,12 @@
-{% load static %}
+﻿{% load static %}
 {% comment %}
 Unified Toast Notification Component
 ====================================
 Usage: {% include 'partials/components/toast.html' %}
 
 Provides TWO toast elements:
-  1. Alpine toast queue  – stacking, animated, preferred for simple toasts
-  2. DOM toast (#toast)  – used for progress bars and as fallback
+  1. Alpine toast queue  â€“ stacking, animated, preferred for simple toasts
+  2. DOM toast (#toast)  â€“ used for progress bars and as fallback
 
 core/toast.js automatically delegates simple toasts to Alpine when
 window.alpineShowToast exists. Progress toasts always use the DOM
@@ -29,7 +29,7 @@ Progress Toasts (always DOM):
   hideToast()                               - Hide immediately
 {% endcomment %}
 
-<!-- Alpine Toast Queue (preferred – stacking, animated) -->
+<!-- Alpine Toast Queue (preferred â€“ stacking, animated) -->
 <div class="alpine-toast-wrapper" x-show="toastQueue && toastQueue.length > 0" x-cloak>
   <template x-for="toast in toastQueue" :key="toast.id">
     <div class="alpine-toast"
