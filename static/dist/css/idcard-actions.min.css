@@ -1209,7 +1209,10 @@ body:has(.idcard-actions-page) {
     gap: 0;
 }
 
-/* Action bar: border-bottom for separation */
+/* Action bar: on the idcard-actions page the layout is a full-height flex column
+   (height: 100vh, overflow: hidden) so sticky is not meaningful here —
+   position: relative keeps it in the normal flex flow, directly below the topbar.
+   padding: symmetric 4px top/bottom so buttons have consistent vertical room. */
 .idcard-actions-page .action-bar {
     border: none;
     border-bottom: 1px solid #e5e7eb;
@@ -1219,7 +1222,7 @@ body:has(.idcard-actions-page) {
     background: #fff;
     flex-shrink: 0;
     margin: 0;
-    padding: 0 8px 4px;  /* top=0 removes gap between topbar and action buttons */
+    padding: 4px 8px;
     gap: 2px;
 }
 
