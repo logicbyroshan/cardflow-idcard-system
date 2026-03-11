@@ -16,10 +16,9 @@
   </button>
 </div>
 <style>
-  /* Push page content down when impersonation bar is visible */
+  /* Push grid layout down when impersonation bar is visible */
   body.impersonating .sidebar { top: 36px; height: calc(100vh - 36px); }
-  body.impersonating .main { padding-top: 36px; }
-  body.impersonating .topbar { top: 36px; }
+  body.impersonating .main { margin-top: 36px; height: calc(100vh - 36px); }
 </style>
 <script>
   document.body.classList.add('impersonating');

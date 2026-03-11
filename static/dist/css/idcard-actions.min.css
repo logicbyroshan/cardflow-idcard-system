@@ -1192,8 +1192,8 @@ body:has(.idcard-actions-page) {
    and thead sticks properly within scroll container.
    ========================================== */
 .idcard-actions-page {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-rows: var(--spacing-topbar, 40px) 1fr;
     height: 100vh;
     overflow: hidden;
     gap: 0;

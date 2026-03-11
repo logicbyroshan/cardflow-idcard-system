@@ -78,13 +78,12 @@ body[style*="overflow:hidden"] {
 }
 
 /* ===========================================
-   ACTION BAR — Universal guard
-   Sticky positioning is defined in tailwind-input.css @layer components.
-   This file's job: ensure .main-content never introduces a gap above
-   the action bar, and action-bar itself has no extra top margin.
-   DO NOT override `position` here — that would break sticky scrolling.
+   GRID LAYOUT — Universal guard
+   .main uses CSS grid: row 1 = topbar (var(--spacing-topbar)),
+   row 2 = content (1fr, overflow-y:auto).
+   .action-bar is sticky top:0 inside the scroll container.
    =========================================== */
-/* No gap between topbar and main-content (universal guard for all pages) */
+/* Grid row 2 should never have a top gap */
 .main .main-content {
   padding-top: 0 !important;
   margin-top: 0 !important;
