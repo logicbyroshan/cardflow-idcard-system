@@ -92,7 +92,7 @@ body[style*="overflow:hidden"] {
 
 .action-bar {
   border-top: none;
-  padding-top: 4px;
+  padding-top: 0;
   position: relative !important;
   top: 0 !important;
   margin-top: 0 !important;
