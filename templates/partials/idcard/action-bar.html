@@ -259,6 +259,13 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
             </button>
             {% endif %}
             {% endif %}
+            {% if perm_idcard_reprint_list %}
+            <div class="action-divider"></div>
+            <a href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table.id %}{% else %}{% url 'reprintcard:reprint_cards' table.id %}{% endif %}" class="btn action-btn btn-amber" title="Request Reprint">
+                <i class="fa-solid fa-rotate"></i>
+                <span class="btn-text">Reprint</span>
+            </a>
+            {% endif %}
 
         {% elif current_status == 'pool' %}
             {# === POOL LIST === #}

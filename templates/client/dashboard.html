@@ -25,12 +25,40 @@
 {% block content %}
 <div class="dashboard-content">
 
-  <!-- Notification Bar -->
-  {% include 'partials/dashboard/notification-bar.html' %}
+  <!-- Welcome Banner with Sliding Notifications -->
+  <div class="client-welcome-banner" id="clientWelcomeBanner">
+    <!-- Default welcome view -->
+    <div class="welcome-slide welcome-slide-active" id="welcomeDefaultSlide">
+      <div class="welcome-text">
+        <h2>Welcome back, {{ user.get_full_name|default:user.username }}!</h2>
+        <p>Here's what's happening with your ID card system today.</p>
+      </div>
+      <div class="welcome-right">
+        <div class="welcome-date">
+          <div class="date" id="welcomeDate">Loading...</div>
+          <div class="time" id="welcomeTime">--:--:--</div>
+        </div>
+      </div>
+    </div>
+    <!-- Notification slides (injected by JS) -->
+    <div class="welcome-slide" id="welcomeNotifSlide" style="display:none;">
+      <div class="welcome-notif-content" id="welcomeNotifContent"></div>
+      <div class="welcome-notif-actions">
+        <button class="welcome-notif-dismiss" id="welcomeNotifDismiss" title="Dismiss">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+        <a href="{% url 'notifications_page' %}" class="welcome-notif-viewall" title="View All Notifications">
+          <i class="fa-solid fa-arrow-right"></i>
+        </a>
+      </div>
+    </div>
+    <!-- Notification indicator dots -->
+    <div class="welcome-notif-dots" id="welcomeNotifDots" style="display:none;"></div>
+  </div>
 
-  <!-- Stats Cards -->
+  <!-- Stats Cards (clickable - navigate to ID Card Group) -->
   <div class="stats-cards">
-    <div class="stat-card">
+    <a href="{% url 'client:idcard_group' %}" class="stat-card-link stat-card">
       <div class="stat-icon pending">
         <i class="fa-solid fa-clock"></i>
       </div>
@@ -38,9 +66,9 @@
         <div class="stat-value" id="stat-pending">0</div>
         <div class="stat-label">Pending Cards</div>
       </div>
-    </div>
+    </a>
 
-    <div class="stat-card">
+    <a href="{% url 'client:idcard_group' %}" class="stat-card-link stat-card">
       <div class="stat-icon verified">
         <i class="fa-solid fa-check-circle"></i>
       </div>
@@ -48,9 +76,9 @@
         <div class="stat-value" id="stat-verified">0</div>
         <div class="stat-label">Verified Cards</div>
       </div>
-    </div>
+    </a>
 
-    <div class="stat-card">
+    <a href="{% url 'client:idcard_group' %}" class="stat-card-link stat-card">
       <div class="stat-icon approved">
         <i class="fa-solid fa-thumbs-up"></i>
       </div>
@@ -58,9 +86,9 @@
         <div class="stat-value" id="stat-approved">0</div>
         <div class="stat-label">Approved Cards</div>
       </div>
-    </div>
+    </a>
 
-    <div class="stat-card">
+    <a href="{% url 'client:idcard_group' %}" class="stat-card-link stat-card">
       <div class="stat-icon downloaded">
         <i class="fa-solid fa-download"></i>
       </div>
@@ -68,9 +96,9 @@
         <div class="stat-value" id="stat-download">0</div>
         <div class="stat-label">Downloaded Cards</div>
       </div>
-    </div>
+    </a>
 
-    <div class="stat-card">
+    <a href="{% url 'client:idcard_group' %}" class="stat-card-link stat-card">
       <div class="stat-icon bg-primary/10 text-primary">
         <i class="fa-solid fa-layer-group"></i>
       </div>
@@ -78,18 +106,49 @@
         <div class="stat-value" id="stat-total">0</div>
         <div class="stat-label">Total ID Cards</div>
       </div>
-    </div>
+    </a>
   </div>
 
-  <!-- Row 1 â€” Recent Activity + Quick Actions -->
+  <!-- Main Grid: Reprint History (left 2fr) + Recent Activity (right 1fr) -->
   <div class="dashboard-grid">
 
-    <!-- Recent Activity -->
+    <!-- Reprint Requests History (no permission needed - visible to all) -->
+    <div class="dashboard-card">
+      <div class="dashboard-card-header">
+        <h3><i class="fa-solid fa-rotate"></i> Reprint Requests History</h3>
+        <span class="reprint-history-count" id="reprintHistoryCount" style="display:none;">0</span>
+      </div>
+      <div class="dashboard-card-body tall-body p-0">
+        <div id="reprintHistoryTableWrap">
+          <table class="reprint-history-table" id="reprintHistoryTable">
+            <thead>
+              <tr>
+                <th style="width:36px;">#</th>
+                <th>Card Details</th>
+                <th style="width:56px;">Photo</th>
+                <th style="width:110px;">Group</th>
+                <th style="width:100px;">Date</th>
+                <th style="width:88px;">Status</th>
+              </tr>
+            </thead>
+            <tbody id="reprintHistoryBody">
+              <tr>
+                <td colspan="6" style="text-align:center;padding:30px;color:#9ca3af;font-size:13px;">
+                  <i class="fa-solid fa-spinner fa-spin"></i> Loading reprint history...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Activity (right side) -->
     <div class="dashboard-card">
       <div class="dashboard-card-header">
         <h3><i class="fa-solid fa-history"></i> Recent Activity</h3>
       </div>
-      <div class="dashboard-card-body">
+      <div class="dashboard-card-body tall-body">
         <div class="activity-list" id="recentActivityList">
           <div class="activity-item" id="activityLoadingMsg">
             <div class="activity-icon edit">
@@ -104,99 +163,47 @@
       </div>
     </div>
 
-    <!-- Quick Actions -->
-    <div class="dashboard-card">
-      <div class="dashboard-card-header">
-        <h3><i class="fa-solid fa-bolt"></i> Quick Actions</h3>
-      </div>
-      <div class="dashboard-card-body">
-        <div class="quick-actions">
-          {% if perm_idcard_setting_list or perm_idcard_pending_list or perm_idcard_verified_list or perm_idcard_approved_list or perm_idcard_download_list or perm_idcard_pool_list or perm_idcard_reprint_list %}
-          <a href="{% url 'client:idcard_group' %}" class="quick-action-btn">
-            <i class="fa-solid fa-id-card"></i>
-            <span>ID Card Group</span>
-          </a>
-          {% endif %}
-          {% if perm_idcard_setting_list %}
-          <a href="{% url 'client:group_settings' %}" class="quick-action-btn">
-            <i class="fa-solid fa-table-list"></i>
-            <span>Group Settings</span>
-          </a>
-          {% endif %}
-          {% if is_client_admin and perm_idcard_client_list %}
-          <a href="{% url 'client:staff' %}" class="quick-action-btn">
-            <i class="fa-solid fa-user-tie"></i>
-            <span>Manage Staff</span>
-          </a>
-          {% endif %}
-          {% if perm_idcard_bulk_download %}
-          <a href="#" class="quick-action-btn">
-            <i class="fa-solid fa-download"></i>
-            <span>Bulk Download</span>
-          </a>
-          {% endif %}
-          {% if perm_idcard_bulk_upload %}
-          <a href="#" class="quick-action-btn">
-            <i class="fa-solid fa-upload"></i>
-            <span>Bulk Upload</span>
-          </a>
-          {% endif %}
-          <a href="{% url 'settings' %}" class="quick-action-btn">
-            <i class="fa-solid fa-gear"></i>
-            <span>Settings</span>
-          </a>
-        </div>
-      </div>
-    </div>
-
   </div>
 
-  <!-- Reprint Cards Section -->
-  {% if perm_idcard_reprint_list %}
-  <div class="dashboard-card" id="reprintStatsSection" style="margin-top: 20px;">
-    <div class="dashboard-card-header" style="display:flex;justify-content:space-between;align-items:center;">
-      <h3><i class="fa-solid fa-rotate"></i> Reprint Cards</h3>
-      <button type="button" class="reprint-toggle-btn" id="reprintToggleBtn" title="Toggle details"
-        style="background:none;border:1px solid var(--gray-300,#d1d5db);border-radius:6px;padding:4px 12px;cursor:pointer;font-size:12px;color:var(--gray-600,#4b5563);display:flex;align-items:center;gap:4px;transition:all .2s;">
-        <i class="fa-solid fa-chevron-down" id="reprintToggleIcon"></i>
-        <span id="reprintToggleText">Show Details</span>
-      </button>
-    </div>
-    <div class="dashboard-card-body">
-      <!-- Summary Stats Row -->
-      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;">
-        <div style="flex:1;min-width:140px;background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);border-radius:10px;padding:16px;text-align:center;">
-          <div style="font-size:24px;font-weight:700;color:#1d4ed8;" id="reprintStatTotal">-</div>
-          <div style="font-size:12px;color:#3b82f6;font-weight:500;margin-top:2px;">Total Cards</div>
-        </div>
-        <div style="flex:1;min-width:140px;background:linear-gradient(135deg,#fffbeb 0%,#fef3c7 100%);border-radius:10px;padding:16px;text-align:center;">
-          <div style="font-size:24px;font-weight:700;color:#d97706;" id="reprintStatReprints">-</div>
-          <div style="font-size:12px;color:#f59e0b;font-weight:500;margin-top:2px;">Extra Reprints</div>
-        </div>
-        <div style="flex:1;min-width:140px;background:linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%);border-radius:10px;padding:16px;text-align:center;">
-          <div style="font-size:24px;font-weight:700;color:#16a34a;" id="reprintStatConfirmed">-</div>
-          <div style="font-size:12px;color:#22c55e;font-weight:500;margin-top:2px;">Confirmed</div>
-        </div>
-        <div style="flex:1;min-width:140px;background:linear-gradient(135deg,#faf5ff 0%,#f3e8ff 100%);border-radius:10px;padding:16px;text-align:center;">
-          <div style="font-size:24px;font-weight:700;color:#7c3aed;" id="reprintStatDownloaded">-</div>
-          <div style="font-size:12px;color:#8b5cf6;font-weight:500;margin-top:2px;">Printed</div>
-        </div>
-      </div>
-
-      <!-- Recent Reprints â€” collapsible -->
-      <div id="reprintDetailsPanel" style="display:none;">
-        <div style="font-size:13px;font-weight:600;color:var(--gray-700,#374151);margin-bottom:10px;display:flex;align-items:center;gap:6px;">
-          <i class="fa-solid fa-clock-rotate-left" style="color:var(--gray-400,#9ca3af);"></i> Latest Reprints
-        </div>
-        <div id="reprintRecentList" style="display:flex;flex-direction:column;gap:0;">
-          <div style="text-align:center;padding:20px;color:var(--gray-400,#9ca3af);font-size:13px;">
-            <i class="fa-solid fa-spinner fa-spin"></i> Loading...
-          </div>
-        </div>
-      </div>
+  <!-- Bottom Fixed Quick Actions Row -->
+  <div class="dashboard-bottom-fixed">
+    <div class="client-quick-actions-bar">
+      {% if perm_idcard_setting_list or perm_idcard_pending_list or perm_idcard_verified_list or perm_idcard_approved_list or perm_idcard_download_list or perm_idcard_pool_list or perm_idcard_reprint_list %}
+      <a href="{% url 'client:idcard_group' %}" class="quick-action-btn">
+        <i class="fa-solid fa-id-card"></i>
+        <span>ID Card Group</span>
+      </a>
+      {% endif %}
+      {% if perm_idcard_setting_list %}
+      <a href="{% url 'client:group_settings' %}" class="quick-action-btn">
+        <i class="fa-solid fa-table-list"></i>
+        <span>Group Settings</span>
+      </a>
+      {% endif %}
+      {% if is_client_admin and perm_idcard_client_list %}
+      <a href="{% url 'client:staff' %}" class="quick-action-btn">
+        <i class="fa-solid fa-user-tie"></i>
+        <span>Manage Staff</span>
+      </a>
+      {% endif %}
+      {% if perm_idcard_bulk_download %}
+      <a href="#" class="quick-action-btn">
+        <i class="fa-solid fa-download"></i>
+        <span>Bulk Download</span>
+      </a>
+      {% endif %}
+      {% if perm_idcard_bulk_upload %}
+      <a href="#" class="quick-action-btn">
+        <i class="fa-solid fa-upload"></i>
+        <span>Bulk Upload</span>
+      </a>
+      {% endif %}
+      <a href="{% url 'settings' %}" class="quick-action-btn">
+        <i class="fa-solid fa-gear"></i>
+        <span>Settings</span>
+      </a>
     </div>
   </div>
-  {% endif %}
 
 </div>
 {% endblock %}
@@ -204,7 +211,8 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  // â”€â”€ Welcome date/time â”€â”€
+
+  // ── Welcome date/time ──
   function updateDateTime() {
     const now = new Date();
     const dateEl = document.getElementById('welcomeDate');
@@ -215,27 +223,19 @@ document.addEventListener('DOMContentLoaded', function() {
   updateDateTime();
   setInterval(updateDateTime, 1000);
 
-  // â”€â”€ Load dashboard stats â”€â”€
+  // ── Load dashboard stats + activity ──
   loadDashboardData();
-  loadReprintStats();
 
-  // â”€â”€ Reprint details toggle â”€â”€
-  var reprintToggle = document.getElementById('reprintToggleBtn');
-  var reprintPanel = document.getElementById('reprintDetailsPanel');
-  var reprintIcon = document.getElementById('reprintToggleIcon');
-  var reprintText = document.getElementById('reprintToggleText');
-  if (reprintToggle && reprintPanel) {
-    reprintToggle.addEventListener('click', function() {
-      var visible = reprintPanel.style.display !== 'none';
-      reprintPanel.style.display = visible ? 'none' : 'block';
-      if (reprintIcon) reprintIcon.className = visible ? 'fa-solid fa-chevron-down' : 'fa-solid fa-chevron-up';
-      if (reprintText) reprintText.textContent = visible ? 'Show Details' : 'Hide Details';
-    });
-  }
+  // ── Load reprint history ──
+  loadReprintHistory();
 
-  // Notification bell is handled by notification-bell.js
+  // ── Load sliding notifications ──
+  loadSlidingNotifications();
 });
 
+// ════════════════════════════════════════
+// Dashboard Data (stats + activity)
+// ════════════════════════════════════════
 async function loadDashboardData() {
   try {
     const response = await fetch('{% url "client:api_dashboard" %}');
@@ -249,83 +249,232 @@ async function loadDashboardData() {
       document.getElementById('stat-approved').textContent = stats.approved || 0;
       document.getElementById('stat-download').textContent = stats.download || 0;
 
-      // Render recent activity (only client/client_staff actions)
+      // Render recent activity
       const actList = document.getElementById('recentActivityList');
       const activities = (data.data.recent_activity || []);
       if (actList) {
         if (activities.length === 0) {
-          actList.innerHTML = `<div class="activity-item"><div class="activity-icon edit"><i class="fa-solid fa-circle-info"></i></div><div class="activity-content"><div class="activity-text">No recent activity</div><div class="activity-time">Activity will appear as actions are performed</div></div></div>`;
+          actList.innerHTML = '<div class="activity-item"><div class="activity-icon edit"><i class="fa-solid fa-circle-info"></i></div><div class="activity-content"><div class="activity-text">No recent activity</div><div class="activity-time">Activity will appear as actions are performed</div></div></div>';
         } else {
           actList.innerHTML = activities.map(a => `
             <div class="activity-item">
-              <div class="activity-icon ${a.icon_color}">
-                <i class="fa-solid ${a.icon_class}"></i>
+              <div class="activity-icon ${escapeAttr(a.icon_color)}">
+                <i class="fa-solid ${escapeAttr(a.icon_class)}"></i>
               </div>
               <div class="activity-content">
-                <div class="activity-text">${a.description}</div>
-                <div class="activity-time">${a.time_ago} ago</div>
+                <div class="activity-text">${escHtml(a.description)}</div>
+                <div class="activity-time">${escHtml(a.time_ago)} ago</div>
               </div>
             </div>`).join('');
         }
       }
-    } else {
-      console.error('Dashboard data error:', data.error);
     }
   } catch (err) {
     console.error('Error loading dashboard:', err);
   }
 }
 
-async function loadReprintStats() {
-  var section = document.getElementById('reprintStatsSection');
-  if (!section) return;
+// ════════════════════════════════════════
+// Reprint History Table
+// ════════════════════════════════════════
+async function loadReprintHistory() {
   try {
-    const response = await fetch('{% url "client:api_reprint_stats" %}');
+    const response = await fetch('{% url "client:api_reprint_history" %}');
     const data = await response.json();
-    if (data.success) {
-      var d = data.data;
-      var totalEl = document.getElementById('reprintStatTotal');
-      var reprintEl = document.getElementById('reprintStatReprints');
-      var confirmedEl = document.getElementById('reprintStatConfirmed');
-      var downloadedEl = document.getElementById('reprintStatDownloaded');
-      if (totalEl) totalEl.textContent = d.total_cards || 0;
-      if (reprintEl) reprintEl.textContent = d.reprint_total || 0;
-      if (confirmedEl) confirmedEl.textContent = d.reprint_confirmed || 0;
-      if (downloadedEl) downloadedEl.textContent = d.reprint_downloaded || 0;
+    const tbody = document.getElementById('reprintHistoryBody');
+    const countBadge = document.getElementById('reprintHistoryCount');
 
-      // Render recent reprints
-      var listEl = document.getElementById('reprintRecentList');
-      if (listEl) {
-        var items = d.recent_reprints || [];
-        if (items.length === 0) {
-          listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--gray-400,#9ca3af);font-size:13px;"><i class="fa-solid fa-inbox"></i> No reprint requests yet</div>';
-        } else {
-          listEl.innerHTML = items.map(function(item) {
-            var statusColor = item.status === 'downloaded' ? '#7c3aed' : '#d97706';
-            var statusBg = item.status === 'downloaded' ? '#faf5ff' : '#fffbeb';
-            return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--gray-100,#f3f4f6);">'
-              + '<div style="width:36px;height:36px;border-radius:8px;background:' + statusBg + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
-              + '<i class="fa-solid fa-rotate" style="font-size:14px;color:' + statusColor + ';"></i></div>'
-              + '<div style="flex:1;min-width:0;">'
-              + '<div style="font-size:13px;font-weight:500;color:var(--gray-800,#1f2937);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtmlDash(item.display_name) + '</div>'
-              + '<div style="font-size:11px;color:var(--gray-500,#6b7280);margin-top:1px;">' + escapeHtmlDash(item.table_name) + (item.reason ? ' &mdash; ' + escapeHtmlDash(item.reason) : '') + '</div></div>'
-              + '<div style="text-align:right;flex-shrink:0;">'
-              + '<span style="font-size:11px;padding:2px 8px;border-radius:4px;background:' + statusBg + ';color:' + statusColor + ';font-weight:500;">' + escapeHtmlDash(item.status_display) + '</span>'
-              + '<div style="font-size:10px;color:var(--gray-400,#9ca3af);margin-top:3px;">' + escapeHtmlDash(item.created_at) + '</div></div></div>';
-          }).join('');
-        }
+    if (data.success) {
+      const items = data.data.items || [];
+      const total = data.data.total_count || 0;
+
+      // Update count badge
+      if (countBadge) {
+        countBadge.textContent = total;
+        countBadge.style.display = total > 0 ? '' : 'none';
       }
+
+      if (!tbody) return;
+
+      if (items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:#9ca3af;font-size:13px;"><i class="fa-solid fa-inbox" style="font-size:24px;display:block;margin-bottom:8px;"></i>No reprint requests yet</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = items.map((item, idx) => {
+        const statusClass = item.status === 'downloaded' ? 'printed' : item.status;
+        const photoHtml = item.photo_url
+          ? '<img src="' + escapeAttr(item.photo_url) + '" alt="Photo" class="reprint-photo">'
+          : '<div class="reprint-photo-placeholder"><i class="fa-solid fa-user"></i></div>';
+
+        return '<tr>' +
+          '<td class="rh-num">' + (idx + 1) + '</td>' +
+          '<td class="rh-details">' + escHtml(item.details) + '</td>' +
+          '<td class="rh-photo">' + photoHtml + '</td>' +
+          '<td class="rh-group">' + escHtml(item.table_name) + '</td>' +
+          '<td class="rh-date">' + escHtml(item.created_at) + '</td>' +
+          '<td class="rh-status"><span class="reprint-status-badge ' + escapeAttr(statusClass) + '">' + escHtml(item.status_display) + '</span></td>' +
+          '</tr>';
+      }).join('');
+    } else {
+      if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:#ef4444;font-size:13px;">Failed to load reprint history</td></tr>';
     }
   } catch (err) {
-    console.error('Error loading reprint stats:', err);
+    console.error('Error loading reprint history:', err);
+    var tbody = document.getElementById('reprintHistoryBody');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:#ef4444;font-size:13px;">Error loading data</td></tr>';
   }
 }
 
-function escapeHtmlDash(s) {
+// ════════════════════════════════════════
+// Sliding Notifications in Welcome Banner
+// ════════════════════════════════════════
+var _notifSlides = [];
+var _notifIndex = 0;
+var _notifTimer = null;
+
+async function loadSlidingNotifications() {
+  try {
+    const response = await fetch('/api/notifications/list/?limit=5&unread_only=true');
+    const data = await response.json();
+    if (!data || !data.success) return;
+
+    const items = data.notifications || [];
+    if (items.length === 0) return;
+
+    _notifSlides = items;
+    _notifIndex = 0;
+
+    // Build dots
+    const dotsEl = document.getElementById('welcomeNotifDots');
+    if (dotsEl && items.length > 1) {
+      dotsEl.innerHTML = items.map((_, i) =>
+        '<span class="notif-dot' + (i === 0 ? ' active' : '') + '" data-idx="' + i + '"></span>'
+      ).join('');
+      dotsEl.style.display = '';
+    }
+
+    // Show first notification
+    showNotifSlide(0);
+
+    // Auto-rotate every 6 seconds if more than 1
+    if (items.length > 1) {
+      _notifTimer = setInterval(function() {
+        _notifIndex = (_notifIndex + 1) % _notifSlides.length;
+        showNotifSlide(_notifIndex);
+      }, 6000);
+    }
+
+    // Dismiss button
+    document.getElementById('welcomeNotifDismiss').addEventListener('click', function() {
+      var notif = _notifSlides[_notifIndex];
+      if (notif) markNotifReadSlider(notif.id);
+    });
+
+  } catch (err) {
+    console.error('Error loading notifications:', err);
+  }
+}
+
+function showNotifSlide(idx) {
+  var notif = _notifSlides[idx];
+  if (!notif) return;
+
+  var contentEl = document.getElementById('welcomeNotifContent');
+  var banner = document.getElementById('clientWelcomeBanner');
+  var defaultSlide = document.getElementById('welcomeDefaultSlide');
+  var notifSlide = document.getElementById('welcomeNotifSlide');
+
+  var categoryIcons = {
+    general: 'fa-circle-info',
+    announcement: 'fa-bullhorn',
+    update: 'fa-arrow-up-right-dots',
+    maintenance: 'fa-wrench',
+    alert: 'fa-triangle-exclamation'
+  };
+
+  var icon = categoryIcons[notif.category] || 'fa-bell';
+  var cat = notif.category || 'general';
+
+  contentEl.innerHTML =
+    '<div class="welcome-notif-icon ' + escapeAttr(cat) + '">' +
+      '<i class="fa-solid ' + escapeAttr(icon) + '"></i>' +
+    '</div>' +
+    '<div class="welcome-notif-body">' +
+      '<div class="welcome-notif-title">' + escHtml(notif.title) + '</div>' +
+      '<div class="welcome-notif-msg">' + escHtml((notif.message || '').substring(0, 120)) + '</div>' +
+    '</div>';
+
+  // Apply category color to banner
+  banner.className = 'client-welcome-banner notif-cat-' + cat;
+
+  // Slide transition
+  defaultSlide.style.display = 'none';
+  notifSlide.style.display = '';
+  notifSlide.classList.remove('welcome-slide-enter');
+  void notifSlide.offsetWidth; // trigger reflow
+  notifSlide.classList.add('welcome-slide-enter');
+
+  // Update dots
+  var dots = document.querySelectorAll('#welcomeNotifDots .notif-dot');
+  dots.forEach(function(d, i) {
+    d.classList.toggle('active', i === idx);
+  });
+}
+
+function markNotifReadSlider(id) {
+  fetch('/api/notifications/' + id + '/read/', {
+    method: 'POST',
+    headers: { 'X-CSRFToken': getCsrfToken() },
+  }).then(function() {
+    // Remove this notification from slides
+    _notifSlides = _notifSlides.filter(function(n) { return n.id !== id; });
+
+    if (_notifSlides.length === 0) {
+      // No more notifications - revert to welcome
+      clearInterval(_notifTimer);
+      var banner = document.getElementById('clientWelcomeBanner');
+      banner.className = 'client-welcome-banner';
+      document.getElementById('welcomeDefaultSlide').style.display = '';
+      document.getElementById('welcomeNotifSlide').style.display = 'none';
+      document.getElementById('welcomeNotifDots').style.display = 'none';
+    } else {
+      _notifIndex = _notifIndex % _notifSlides.length;
+      // Rebuild dots
+      var dotsEl = document.getElementById('welcomeNotifDots');
+      if (dotsEl) {
+        if (_notifSlides.length <= 1) {
+          dotsEl.style.display = 'none';
+        } else {
+          dotsEl.innerHTML = _notifSlides.map(function(_, i) {
+            return '<span class="notif-dot' + (i === _notifIndex ? ' active' : '') + '" data-idx="' + i + '"></span>';
+          }).join('');
+        }
+      }
+      showNotifSlide(_notifIndex);
+    }
+  }).catch(function() {});
+}
+
+function getCsrfToken() {
+  var c = document.cookie.split(';').find(function(c) { return c.trim().startsWith('csrftoken='); });
+  if (c) return c.split('=')[1];
+  var m = document.querySelector('meta[name="csrf-token"]');
+  return m ? m.getAttribute('content') : '';
+}
+
+// ── Utility ──
+function escHtml(s) {
   if (!s) return '-';
   var d = document.createElement('div');
   d.textContent = s;
   return d.innerHTML;
+}
+function escapeAttr(s) {
+  if (!s) return '';
+  return s.replace(/[&"'<>]/g, function(c) {
+    return {'&':'&amp;','"':'&quot;',"'":'&#39;','<':'&lt;','>':'&gt;'}[c];
+  });
 }
 </script>
 {% endblock %}

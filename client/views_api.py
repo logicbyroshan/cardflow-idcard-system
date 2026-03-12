@@ -61,6 +61,20 @@ def api_reprint_stats(request):
 
 @require_client_user
 @require_http_methods(["GET"])
+def api_reprint_history(request):
+    """
+    API: Get detailed reprint request history for the client dashboard table.
+    """
+    result = ClientDashboardService.get_reprint_history(request.user)
+
+    if result.success:
+        return JsonResponse({'success': True, 'data': result.data})
+
+    return JsonResponse({'success': False, 'message': result.message}, status=400)
+
+
+@require_client_user
+@require_http_methods(["GET"])
 def api_groups_list(request):
     """
     API: Get list of groups with card counts.

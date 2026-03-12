@@ -187,3 +187,305 @@
     font-size: 15px;
     font-weight: 700;
 }
+
+/* ====================
+   Client Welcome Banner with Sliding Notifications
+   ==================== */
+.client-welcome-banner {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    padding: 0;
+    margin-bottom: 0;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+    transition: background 0.4s ease;
+}
+
+/* Category color overrides */
+.client-welcome-banner.notif-cat-maintenance {
+    background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+}
+.client-welcome-banner.notif-cat-alert {
+    background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+}
+.client-welcome-banner.notif-cat-announcement {
+    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+}
+.client-welcome-banner.notif-cat-update {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+}
+.client-welcome-banner.notif-cat-general {
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+}
+
+.welcome-slide {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    min-height: 56px;
+}
+
+/* Slide enter animation */
+.welcome-slide-enter {
+    animation: slideNotifIn 0.35s ease-out;
+}
+@keyframes slideNotifIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Notification content inside slide */
+.welcome-notif-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+}
+
+.welcome-notif-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+}
+
+.welcome-notif-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.welcome-notif-title {
+    font-size: 14px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.welcome-notif-msg {
+    font-size: 12px;
+    opacity: 0.9;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 1px;
+}
+
+.welcome-notif-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.welcome-notif-dismiss,
+.welcome-notif-viewall {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: #fff;
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s;
+    font-size: 13px;
+    text-decoration: none;
+}
+.welcome-notif-dismiss:hover,
+.welcome-notif-viewall:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Dots indicator */
+.welcome-notif-dots {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 0 0 8px 0;
+}
+.notif-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.35);
+    transition: all 0.2s;
+    cursor: pointer;
+}
+.notif-dot.active {
+    background: #fff;
+    width: 16px;
+    border-radius: 3px;
+}
+
+/* ====================
+   Client Quick Actions Bar (bottom fixed row)
+   ==================== */
+.client-quick-actions-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+}
+
+.client-quick-actions-bar .quick-action-btn {
+    flex: 1 1 auto;
+    min-width: 100px;
+    justify-content: center;
+    text-align: center;
+    margin: 0;
+    border-radius: 0;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    margin-left: -1px;
+    margin-top: -1px;
+    padding: 10px 12px;
+}
+.client-quick-actions-bar .quick-action-btn:first-child {
+    margin-left: 0;
+}
+
+/* ====================
+   Reprint History Table
+   ==================== */
+.reprint-history-table {
+    width: 100%;
+    font-size: 13px;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.reprint-history-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.reprint-history-table th {
+    padding: 6px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #ffffff;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.reprint-history-table td {
+    padding: 6px 10px;
+    font-size: 12px;
+    color: #374151;
+    border: 1px solid #e5e7eb;
+    vertical-align: middle;
+}
+
+.reprint-history-table tbody tr:nth-child(odd) { background: #f9fafb; }
+.reprint-history-table tbody tr:nth-child(even) { background: #ffffff; }
+.reprint-history-table tbody tr:hover { background: #f3f4f6; }
+
+.rh-num {
+    text-align: center;
+    color: #9ca3af;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.rh-details {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 500;
+    color: #1f2937;
+}
+
+.rh-photo {
+    text-align: center;
+}
+
+.reprint-photo {
+    width: 36px;
+    height: 36px;
+    border-radius: 4px;
+    object-fit: cover;
+    border: 1px solid #e5e7eb;
+}
+
+.reprint-photo-placeholder {
+    width: 36px;
+    height: 36px;
+    border-radius: 4px;
+    background: #f3f4f6;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #d1d5db;
+    font-size: 14px;
+    border: 1px solid #e5e7eb;
+}
+
+.rh-group {
+    font-size: 11px;
+    color: #6b7280;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.rh-date {
+    font-size: 11px;
+    color: #9ca3af;
+    white-space: nowrap;
+}
+
+.rh-status {
+    text-align: center;
+}
+
+.reprint-status-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+}
+.reprint-status-badge.requested {
+    background: #fef3c7;
+    color: #d97706;
+}
+.reprint-status-badge.confirmed {
+    background: #dbeafe;
+    color: #2563eb;
+}
+.reprint-status-badge.printed,
+.reprint-status-badge.downloaded {
+    background: #dcfce7;
+    color: #16a34a;
+}
+.reprint-status-badge.pool {
+    background: #ede9fe;
+    color: #7c3aed;
+}
+
+.reprint-history-count {
+    font-size: 11px;
+    font-weight: 700;
+    background: #667eea;
+    color: #fff;
+    padding: 1px 8px;
+    border-radius: 8px;
+    min-width: 20px;
+    text-align: center;
+    line-height: 18px;
+}

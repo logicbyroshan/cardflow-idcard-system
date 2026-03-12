@@ -273,3 +273,84 @@ class ClientDashboardService(BaseService):
             )
         except Exception as e:
             return ServiceResult(success=False, message=str(e))
+
+    @classmethod
+    def get_reprint_history(cls, user, client=None, limit=50) -> ServiceResult:
+        """
+        Get detailed reprint request history for the client dashboard table.
+        Returns card details (first few text fields + photo) for each reprint request.
+        """
+        try:
+            from reprintcard.models import ReprintRequest
+            from mediafiles.services import ImageService
+
+            if not client:
+                client = ClientAccessService.get_client_for_user(user)
+            if not client:
+                return ServiceResult(success=False, message='Client profile not found')
+
+            groups = IDCardGroup.objects.filter(client=client, is_active=True)
+            tables = IDCardTable.objects.filter(group__in=groups, is_active=True)
+
+            reprint_qs = (
+                ReprintRequest.objects.filter(table__in=tables)
+                .select_related('card', 'table', 'requested_by')
+                .order_by('-created_at')[:limit]
+            )
+
+            # Build table fields lookup
+            table_fields_map = {}
+            for t in tables:
+                table_fields_map[t.id] = t.fields or []
+
+            items = []
+            total_count = ReprintRequest.objects.filter(table__in=tables).count()
+
+            for rr in reprint_qs:
+                fd = rr.card.field_data or {}
+                fields = table_fields_map.get(rr.table_id, [])
+
+                # Collect first few text field values for display
+                detail_parts = []
+                photo_url = ''
+                for f in fields:
+                    fn = f.get('name', '')
+                    ft = f.get('type', 'text')
+                    val = fd.get(fn, '')
+                    if ft in ('image', 'photo') or fn.upper() in ('PHOTO', 'F PHOTO', 'M PHOTO', 'SIGN', 'SIGN.', 'SIGNATURE', 'FATHER PHOTO', 'MOTHER PHOTO'):
+                        if not photo_url:
+                            img_path = ImageService.get_image_path_for_card(
+                                card=rr.card, field_name=fn,
+                                fallback_to_field_data=True, prefer_thumbnail=True
+                            )
+                            if img_path:
+                                photo_url = f'/media/{img_path}'
+                        continue
+                    if val and isinstance(val, str) and not val.startswith(('PENDING:', '/')):
+                        detail_parts.append(val)
+                    if len(detail_parts) >= 4:
+                        break
+
+                req_by = rr.requested_by
+                items.append({
+                    'rr_id': rr.id,
+                    'card_id': rr.card_id,
+                    'details': ' | '.join(detail_parts) if detail_parts else f'Card #{rr.card_id}',
+                    'photo_url': photo_url,
+                    'table_name': rr.table.name,
+                    'status': rr.status,
+                    'status_display': rr.get_status_display(),
+                    'reason': rr.reason or '',
+                    'requested_by': (req_by.get_full_name() or req_by.username) if req_by else 'System',
+                    'created_at': localtime(rr.created_at).strftime('%d %b %Y, %H:%M'),
+                })
+
+            return ServiceResult(
+                success=True,
+                data={
+                    'items': items,
+                    'total_count': total_count,
+                },
+            )
+        except Exception as e:
+            return ServiceResult(success=False, message=str(e))
