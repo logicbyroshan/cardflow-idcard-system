@@ -26,35 +26,7 @@
 <div class="dashboard-content">
 
   <!-- Welcome Banner with Sliding Notifications -->
-  <div class="client-welcome-banner" id="clientWelcomeBanner">
-    <!-- Default welcome view -->
-    <div class="welcome-slide welcome-slide-active" id="welcomeDefaultSlide">
-      <div class="welcome-text">
-        <h2>Welcome back, {{ user.get_full_name|default:user.username }}!</h2>
-        <p>Here's what's happening with your ID card system today.</p>
-      </div>
-      <div class="welcome-right">
-        <div class="welcome-date">
-          <div class="date" id="welcomeDate">Loading...</div>
-          <div class="time" id="welcomeTime">--:--:--</div>
-        </div>
-      </div>
-    </div>
-    <!-- Notification slides (injected by JS) -->
-    <div class="welcome-slide" id="welcomeNotifSlide" style="display:none;">
-      <div class="welcome-notif-content" id="welcomeNotifContent"></div>
-      <div class="welcome-notif-actions">
-        <button class="welcome-notif-dismiss" id="welcomeNotifDismiss" title="Dismiss">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
-        <a href="{% url 'notifications_page' %}" class="welcome-notif-viewall" title="View All Notifications">
-          <i class="fa-solid fa-arrow-right"></i>
-        </a>
-      </div>
-    </div>
-    <!-- Notification indicator dots -->
-    <div class="welcome-notif-dots" id="welcomeNotifDots" style="display:none;"></div>
-  </div>
+  {% include 'partials/dashboard/welcome-notification-banner.html' %}
 
   <!-- Stats Cards (clickable - navigate to ID Card Group) -->
   <div class="stats-cards">
@@ -209,33 +181,16 @@
 {% endblock %}
 
 {% block extra_js %}
+{% include 'partials/dashboard/welcome-notification-js.html' %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-
-  // ── Welcome date/time ──
-  function updateDateTime() {
-    const now = new Date();
-    const dateEl = document.getElementById('welcomeDate');
-    const timeEl = document.getElementById('welcomeTime');
-    if (dateEl) dateEl.textContent = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'short', day: '2-digit' });
-    if (timeEl) timeEl.textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-  }
-  updateDateTime();
-  setInterval(updateDateTime, 1000);
-
-  // ── Load dashboard stats + activity ──
+  // Load dashboard stats + activity
   loadDashboardData();
-
-  // ── Load reprint history ──
+  // Load reprint history
   loadReprintHistory();
-
-  // ── Load sliding notifications ──
-  loadSlidingNotifications();
 });
 
-// ════════════════════════════════════════
 // Dashboard Data (stats + activity)
-// ════════════════════════════════════════
 async function loadDashboardData() {
   try {
     const response = await fetch('{% url "client:api_dashboard" %}');
@@ -274,9 +229,7 @@ async function loadDashboardData() {
   }
 }
 
-// ════════════════════════════════════════
 // Reprint History Table
-// ════════════════════════════════════════
 async function loadReprintHistory() {
   try {
     const response = await fetch('{% url "client:api_reprint_history" %}');
@@ -288,12 +241,10 @@ async function loadReprintHistory() {
       const items = data.data.items || [];
       const total = data.data.total_count || 0;
 
-      // Update count badge
       if (countBadge) {
         countBadge.textContent = total;
         countBadge.style.display = total > 0 ? '' : 'none';
       }
-
       if (!tbody) return;
 
       if (items.length === 0) {
@@ -326,144 +277,7 @@ async function loadReprintHistory() {
   }
 }
 
-// ════════════════════════════════════════
-// Sliding Notifications in Welcome Banner
-// ════════════════════════════════════════
-var _notifSlides = [];
-var _notifIndex = 0;
-var _notifTimer = null;
-
-async function loadSlidingNotifications() {
-  try {
-    const response = await fetch('/api/notifications/list/?limit=5&unread_only=true');
-    const data = await response.json();
-    if (!data || !data.success) return;
-
-    const items = data.notifications || [];
-    if (items.length === 0) return;
-
-    _notifSlides = items;
-    _notifIndex = 0;
-
-    // Build dots
-    const dotsEl = document.getElementById('welcomeNotifDots');
-    if (dotsEl && items.length > 1) {
-      dotsEl.innerHTML = items.map((_, i) =>
-        '<span class="notif-dot' + (i === 0 ? ' active' : '') + '" data-idx="' + i + '"></span>'
-      ).join('');
-      dotsEl.style.display = '';
-    }
-
-    // Show first notification
-    showNotifSlide(0);
-
-    // Auto-rotate every 6 seconds if more than 1
-    if (items.length > 1) {
-      _notifTimer = setInterval(function() {
-        _notifIndex = (_notifIndex + 1) % _notifSlides.length;
-        showNotifSlide(_notifIndex);
-      }, 6000);
-    }
-
-    // Dismiss button
-    document.getElementById('welcomeNotifDismiss').addEventListener('click', function() {
-      var notif = _notifSlides[_notifIndex];
-      if (notif) markNotifReadSlider(notif.id);
-    });
-
-  } catch (err) {
-    console.error('Error loading notifications:', err);
-  }
-}
-
-function showNotifSlide(idx) {
-  var notif = _notifSlides[idx];
-  if (!notif) return;
-
-  var contentEl = document.getElementById('welcomeNotifContent');
-  var banner = document.getElementById('clientWelcomeBanner');
-  var defaultSlide = document.getElementById('welcomeDefaultSlide');
-  var notifSlide = document.getElementById('welcomeNotifSlide');
-
-  var categoryIcons = {
-    general: 'fa-circle-info',
-    announcement: 'fa-bullhorn',
-    update: 'fa-arrow-up-right-dots',
-    maintenance: 'fa-wrench',
-    alert: 'fa-triangle-exclamation'
-  };
-
-  var icon = categoryIcons[notif.category] || 'fa-bell';
-  var cat = notif.category || 'general';
-
-  contentEl.innerHTML =
-    '<div class="welcome-notif-icon ' + escapeAttr(cat) + '">' +
-      '<i class="fa-solid ' + escapeAttr(icon) + '"></i>' +
-    '</div>' +
-    '<div class="welcome-notif-body">' +
-      '<div class="welcome-notif-title">' + escHtml(notif.title) + '</div>' +
-      '<div class="welcome-notif-msg">' + escHtml((notif.message || '').substring(0, 120)) + '</div>' +
-    '</div>';
-
-  // Apply category color to banner
-  banner.className = 'client-welcome-banner notif-cat-' + cat;
-
-  // Slide transition
-  defaultSlide.style.display = 'none';
-  notifSlide.style.display = '';
-  notifSlide.classList.remove('welcome-slide-enter');
-  void notifSlide.offsetWidth; // trigger reflow
-  notifSlide.classList.add('welcome-slide-enter');
-
-  // Update dots
-  var dots = document.querySelectorAll('#welcomeNotifDots .notif-dot');
-  dots.forEach(function(d, i) {
-    d.classList.toggle('active', i === idx);
-  });
-}
-
-function markNotifReadSlider(id) {
-  fetch('/api/notifications/' + id + '/read/', {
-    method: 'POST',
-    headers: { 'X-CSRFToken': getCsrfToken() },
-  }).then(function() {
-    // Remove this notification from slides
-    _notifSlides = _notifSlides.filter(function(n) { return n.id !== id; });
-
-    if (_notifSlides.length === 0) {
-      // No more notifications - revert to welcome
-      clearInterval(_notifTimer);
-      var banner = document.getElementById('clientWelcomeBanner');
-      banner.className = 'client-welcome-banner';
-      document.getElementById('welcomeDefaultSlide').style.display = '';
-      document.getElementById('welcomeNotifSlide').style.display = 'none';
-      document.getElementById('welcomeNotifDots').style.display = 'none';
-    } else {
-      _notifIndex = _notifIndex % _notifSlides.length;
-      // Rebuild dots
-      var dotsEl = document.getElementById('welcomeNotifDots');
-      if (dotsEl) {
-        if (_notifSlides.length <= 1) {
-          dotsEl.style.display = 'none';
-        } else {
-          dotsEl.innerHTML = _notifSlides.map(function(_, i) {
-            return '<span class="notif-dot' + (i === _notifIndex ? ' active' : '') + '" data-idx="' + i + '"></span>';
-          }).join('');
-        }
-      }
-      showNotifSlide(_notifIndex);
-    }
-  }).catch(function() {});
-}
-
-function getCsrfToken() {
-  var c = document.cookie.split(';').find(function(c) { return c.trim().startsWith('csrftoken='); });
-  if (c) return c.split('=')[1];
-  var m = document.querySelector('meta[name="csrf-token"]');
-  return m ? m.getAttribute('content') : '';
-}
-
-// ── Utility ──
+// Utility
 function escHtml(s) {
   if (!s) return '-';
   var d = document.createElement('div');

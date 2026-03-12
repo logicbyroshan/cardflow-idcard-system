@@ -1,0 +1,27 @@
+<!-- Welcome Banner with Sliding Notifications (shared partial) -->
+<div class="client-welcome-banner" id="clientWelcomeBanner">
+  <div class="welcome-slide welcome-slide-active" id="welcomeDefaultSlide">
+    <div class="welcome-text">
+      <h2>Welcome back, {{ user.get_full_name|default:user.username }}!</h2>
+      <p>Here's what's happening with your ID card system today.</p>
+    </div>
+    <div class="welcome-right">
+      <div class="welcome-date">
+        <div class="date" id="welcomeDate">Loading...</div>
+        <div class="time" id="welcomeTime">--:--:--</div>
+      </div>
+    </div>
+  </div>
+  <div class="welcome-slide" id="welcomeNotifSlide" style="display:none;">
+    <div class="welcome-notif-content" id="welcomeNotifContent"></div>
+    <div class="welcome-notif-actions">
+      <button class="welcome-notif-dismiss" id="welcomeNotifDismiss" title="Dismiss">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <a href="{% url 'notifications_page' %}" class="welcome-notif-viewall" title="View All Notifications">
+        <i class="fa-solid fa-arrow-right"></i>
+      </a>
+    </div>
+  </div>
+  <div class="welcome-notif-dots" id="welcomeNotifDots" style="display:none;"></div>
+</div>

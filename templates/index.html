@@ -33,8 +33,9 @@
     <!-- Dashboard Content -->
     <div class="dashboard-content">
 
-      <!-- Fixed Top: Stats Cards -->
+      <!-- Fixed Top: Welcome Banner + Stats Cards -->
       <div class="dashboard-top-fixed">
+        {% include 'partials/dashboard/welcome-notification-banner.html' %}
         {% include 'partials/dashboard/stats-cards.html' %}
       </div>
 
@@ -74,5 +75,6 @@
   <script defer src="{% static 'dist/js/core.min.js' %}"></script>
   <script defer src="{% static 'dist/js/dashboard.min.js' %}"></script>
   {% include 'partials/htmx-config.html' %}
+  {% include 'partials/dashboard/welcome-notification-js.html' %}
 </body>
 </html>

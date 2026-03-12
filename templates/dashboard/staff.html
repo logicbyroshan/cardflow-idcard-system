@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
+  <meta name="csrf-token" content="{{ csrf_token }}">
   <title>Dashboard - Adarsh ID Cards</title>
   <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
   <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
@@ -22,7 +23,7 @@
   {% include 'partials/sidebar.html' %}
 
   <!-- Main -->
-  <main class="main">
+  <main class="main dashboard-main">
 
     <!-- Top Navbar -->
     <header class="topbar">
@@ -47,249 +48,186 @@
     <!-- Dashboard Content -->
     <div class="dashboard-content">
 
-      <!-- Notification Bar -->
-      {% include 'partials/dashboard/notification-bar.html' %}
+      <!-- Fixed Top: Welcome Banner + Stats -->
+      <div class="dashboard-top-fixed">
 
-      <!-- Stats Cards -->
-      <div class="stats-cards">
-        <div class="stat-card">
-          <div class="stat-icon pending">
-            <i class="fa-solid fa-clock"></i>
-          </div>
-          <div class="stat-info">
-            <div class="stat-value" id="pendingCards">{{ pending_cards|default:0 }}</div>
-            <div class="stat-label">Pending Cards</div>
-          </div>
-        </div>
-        
-        <div class="stat-card">
-          <div class="stat-icon verified">
-            <i class="fa-solid fa-check-circle"></i>
-          </div>
-          <div class="stat-info">
-            <div class="stat-value" id="verifiedCards">{{ verified_cards|default:0 }}</div>
-            <div class="stat-label">Verified Cards</div>
-          </div>
-        </div>
-        
-        <div class="stat-card">
-          <div class="stat-icon approved">
-            <i class="fa-solid fa-thumbs-up"></i>
-          </div>
-          <div class="stat-info">
-            <div class="stat-value" id="approvedCards">{{ approved_cards|default:0 }}</div>
-            <div class="stat-label">Approved Cards</div>
-          </div>
-        </div>
-        
-        <div class="stat-card">
-          <div class="stat-icon downloaded">
-            <i class="fa-solid fa-download"></i>
-          </div>
-          <div class="stat-info">
-            <div class="stat-value" id="downloadedCards">{{ downloaded_cards|default:0 }}</div>
-            <div class="stat-label">Downloaded Cards</div>
-          </div>
-        </div>
-        
-        <div class="stat-card">
-          <div class="stat-icon bg-primary/10 text-primary">
-            <i class="fa-solid fa-layer-group"></i>
-          </div>
-          <div class="stat-info">
-            <div class="stat-value" id="totalCards">{{ total_id_cards|default:0 }}</div>
-            <div class="stat-label">Total ID Cards</div>
-
-          </div>
-        </div>
-      </div>
-
-      <!-- Main Grid - Recent Client Updates & Recent Activity -->
-      <div class="dashboard-grid">
-        
-        <!-- Recent Client Updates - Admin Staff view -->
-        <div class="dashboard-card">
-          <div class="dashboard-card-header">
-            <h3><i class="fa-solid fa-users"></i> Recent Client Updates</h3>
-            {% if perm_idcard_setting_list %}
-            <a href="{% url 'active_clients' %}" class="view-all">View All <i class="fa-solid fa-arrow-right"></i></a>
-            {% endif %}
-          </div>
-          <div class="dashboard-card-body tall-body p-0">
-            <table class="recent-table">
-              <thead>
-                <tr>
-                  <th scope="col">Client</th>
-                  <th scope="col" class="text-center">Pending</th>
-                  <th scope="col" class="text-center">Verified</th>
-                  <th scope="col" class="text-center">Approved</th>
-                  <th scope="col" class="text-center">Downloaded</th>
-                </tr>
-              </thead>
-              <tbody id="recentClientUpdatesBody">
-                <!-- Will be populated dynamically -->
-                <tr>
-                  <td colspan="5" class="text-center p-8 text-gray-400">
-                    <i class="fa-solid fa-spinner fa-spin"></i> Loading...
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- Recent Activity -->
-        <div class="dashboard-card">
-          <div class="dashboard-card-header">
-            <h3><i class="fa-solid fa-history"></i> Recent Activity</h3>
-          </div>
-          <div class="dashboard-card-body tall-body">
-            <div class="activity-list">
-              <div class="activity-item">
-                <div class="activity-icon add">
-                  <i class="fa-solid fa-plus"></i>
-                </div>
-                <div class="activity-content">
-                  <div class="activity-text"><strong>{{ user.username }}</strong> added 5 new ID cards</div>
-                  <div class="activity-time">2 hours ago</div>
-                </div>
-              </div>
-              <div class="activity-item">
-                <div class="activity-icon verify">
-                  <i class="fa-solid fa-check"></i>
-                </div>
-                <div class="activity-content">
-                  <div class="activity-text"><strong>Admin</strong> verified 12 cards</div>
-                  <div class="activity-time">4 hours ago</div>
-                </div>
-              </div>
-              <div class="activity-item">
-                <div class="activity-icon approve">
-                  <i class="fa-solid fa-thumbs-up"></i>
-                </div>
-                <div class="activity-content">
-                  <div class="activity-text"><strong>Admin</strong> approved 8 cards for download</div>
-                  <div class="activity-time">5 hours ago</div>
-                </div>
-              </div>
-              <div class="activity-item">
-                <div class="activity-icon edit">
-                  <i class="fa-solid fa-pen"></i>
-                </div>
-                <div class="activity-content">
-                  <div class="activity-text"><strong>Staff</strong> updated client details</div>
-                  <div class="activity-time">Yesterday</div>
-                </div>
+        <!-- Welcome Banner with Sliding Notifications -->
+        <div class="client-welcome-banner" id="clientWelcomeBanner">
+          <div class="welcome-slide welcome-slide-active" id="welcomeDefaultSlide">
+            <div class="welcome-text">
+              <h2>Welcome back, {{ user.get_full_name|default:user.username }}!</h2>
+              <p>Here's your admin staff dashboard overview.</p>
+            </div>
+            <div class="welcome-right">
+              <div class="welcome-date">
+                <div class="date" id="welcomeDate">Loading...</div>
+                <div class="time" id="welcomeTime">--:--:--</div>
               </div>
             </div>
           </div>
+          <div class="welcome-slide" id="welcomeNotifSlide" style="display:none;">
+            <div class="welcome-notif-content" id="welcomeNotifContent"></div>
+            <div class="welcome-notif-actions">
+              <button class="welcome-notif-dismiss" id="welcomeNotifDismiss" title="Dismiss">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+              <a href="{% url 'notifications_page' %}" class="welcome-notif-viewall" title="View All Notifications">
+                <i class="fa-solid fa-arrow-right"></i>
+              </a>
+            </div>
+          </div>
+          <div class="welcome-notif-dots" id="welcomeNotifDots" style="display:none;"></div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="stats-cards">
+          <a href="{% url 'active_clients' %}" class="stat-card-link stat-card">
+            <div class="stat-icon pending">
+              <i class="fa-solid fa-clock"></i>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value" id="pendingCards">{{ pending_cards|default:0 }}</div>
+              <div class="stat-label">Pending Cards</div>
+            </div>
+          </a>
+          <a href="{% url 'active_clients' %}" class="stat-card-link stat-card">
+            <div class="stat-icon verified">
+              <i class="fa-solid fa-check-circle"></i>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value" id="verifiedCards">{{ verified_cards|default:0 }}</div>
+              <div class="stat-label">Verified Cards</div>
+            </div>
+          </a>
+          <a href="{% url 'active_clients' %}" class="stat-card-link stat-card">
+            <div class="stat-icon approved">
+              <i class="fa-solid fa-thumbs-up"></i>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value" id="approvedCards">{{ approved_cards|default:0 }}</div>
+              <div class="stat-label">Approved Cards</div>
+            </div>
+          </a>
+          <a href="{% url 'active_clients' %}" class="stat-card-link stat-card">
+            <div class="stat-icon downloaded">
+              <i class="fa-solid fa-download"></i>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value" id="downloadedCards">{{ downloaded_cards|default:0 }}</div>
+              <div class="stat-label">Downloaded Cards</div>
+            </div>
+          </a>
+          <a href="{% url 'active_clients' %}" class="stat-card-link stat-card">
+            <div class="stat-icon bg-primary/10 text-primary">
+              <i class="fa-solid fa-layer-group"></i>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value" id="totalCards">{{ total_id_cards|default:0 }}</div>
+              <div class="stat-label">Total ID Cards</div>
+            </div>
+          </a>
         </div>
       </div>
 
-      <!-- Second Row Grid - Quick Actions & Team Overview -->
-      <div class="dashboard-grid">
-        
-        <!-- Quick Actions - Permission controlled -->
-        <div class="dashboard-card">
-          <div class="dashboard-card-header">
-            <h3><i class="fa-solid fa-bolt"></i> Quick Actions</h3>
-          </div>
-          <div class="dashboard-card-body">
-            <div class="quick-actions">
+      <!-- Scrollable Middle -->
+      <div class="dashboard-middle-scroll">
+        <!-- Main Grid: Recent Client Updates (left) + Recent Activity (right) -->
+        <div class="dashboard-grid">
+
+          <!-- Recent Client Updates -->
+          <div class="dashboard-card">
+            <div class="dashboard-card-header">
+              <h3><i class="fa-solid fa-users"></i> Recent Client Updates</h3>
               {% if perm_idcard_setting_list %}
-              <a href="{% url 'active_clients' %}" class="quick-action-btn">
-                <i class="fa-solid fa-id-card"></i>
-                <span>View ID Cards</span>
-              </a>
-              <a href="{% url 'active_clients' %}" class="quick-action-btn">
-                <i class="fa-solid fa-user-check"></i>
-                <span>Active Clients</span>
-              </a>
+              <a href="{% url 'active_clients' %}" class="view-all">View All <i class="fa-solid fa-arrow-right"></i></a>
               {% endif %}
-              {% if perm_idcard_bulk_download %}
-              <a href="#" class="quick-action-btn">
-                <i class="fa-solid fa-download"></i>
-                <span>Bulk Download</span>
-              </a>
-              {% endif %}
-              {% if perm_idcard_bulk_upload %}
-              <a href="#" class="quick-action-btn">
-                <i class="fa-solid fa-upload"></i>
-                <span>Bulk Upload</span>
-              </a>
-              {% endif %}
-
-              <a href="#" class="quick-action-btn">
-                <i class="fa-solid fa-chart-bar"></i>
-                <span>View Reports</span>
-              </a>
+            </div>
+            <div class="dashboard-card-body tall-body p-0">
+              <table class="recent-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Client</th>
+                    <th scope="col" class="text-center">Pending</th>
+                    <th scope="col" class="text-center">Verified</th>
+                    <th scope="col" class="text-center">Approved</th>
+                    <th scope="col" class="text-center">Downloaded</th>
+                  </tr>
+                </thead>
+                <tbody id="recentClientUpdatesBody">
+                  <tr>
+                    <td colspan="5" class="text-center p-8 text-gray-400">
+                      <i class="fa-solid fa-spinner fa-spin"></i> Loading...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
+
+          <!-- Recent Activity (right side) -->
+          <div class="dashboard-card">
+            <div class="dashboard-card-header">
+              <h3><i class="fa-solid fa-history"></i> Recent Activity</h3>
+            </div>
+            <div class="dashboard-card-body tall-body">
+              <div class="activity-list">
+                {% for activity in recent_activities %}
+                <div class="activity-item">
+                  <div class="activity-icon {{ activity.icon_color }}">
+                    <i class="fa-solid {{ activity.icon_class }}"></i>
+                  </div>
+                  <div class="activity-content">
+                    <div class="activity-text">{{ activity.description }}</div>
+                    <div class="activity-time">{{ activity.time_ago }} ago</div>
+                  </div>
+                </div>
+                {% empty %}
+                <div class="activity-item">
+                  <div class="activity-icon edit">
+                    <i class="fa-solid fa-circle-info"></i>
+                  </div>
+                  <div class="activity-content">
+                    <div class="activity-text">No recent activity</div>
+                    <div class="activity-time">Activity will appear as actions are performed</div>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+
         </div>
+      </div>
 
-        <!-- Team Overview - Admin Staff sees limited info -->
-        <div class="dashboard-card">
-          <div class="dashboard-card-header">
-            <h3><i class="fa-solid fa-users"></i> Overview</h3>
-          </div>
-          <div class="dashboard-card-body">
-            <div class="cards-overview">
-              <div class="card-overview-item">
-                <div class="card-overview-left">
-                  <div class="card-overview-icon active-clients">
-                    <i class="fa-solid fa-user-check"></i>
-                  </div>
-                  <span class="card-overview-label">Active Clients</span>
-                </div>
-                <span class="card-overview-value">{{ active_clients|default:0 }}</span>
-              </div>
-              <div class="card-overview-item">
-                <div class="card-overview-left">
-                  <div class="card-overview-icon clients">
-                    <i class="fa-solid fa-id-card"></i>
-                  </div>
-                  <span class="card-overview-label">Cards Processed</span>
-                </div>
-                <span class="card-overview-value">{{ total_id_cards|default:0 }}</span>
-              </div>
-              <div class="card-overview-item">
-                <div class="card-overview-left">
-                  <div class="card-overview-icon staff">
-                    <i class="fa-solid fa-clock"></i>
-                  </div>
-                  <span class="card-overview-label">Pending Tasks</span>
-                </div>
-                <span class="card-overview-value">{{ pending_cards|default:0 }}</span>
-              </div>
-              <div class="card-overview-item">
-                <div class="card-overview-left">
-                  <div class="card-overview-icon active-staff">
-                    <i class="fa-solid fa-check-circle"></i>
-                  </div>
-                  <span class="card-overview-label">Completed Today</span>
-                </div>
-                <span class="card-overview-value">{{ verified_cards|default:0 }}</span>
-              </div>
-              <div class="card-overview-item">
-                <div class="card-overview-left">
-                  <div class="card-overview-icon staff">
-                    <i class="fa-solid fa-user-gear"></i>
-                  </div>
-                  <span class="card-overview-label">Client Staff</span>
-                </div>
-                <span class="card-overview-value">{{ client_staff_count|default:0 }}</span>
-              </div>
-              <div class="card-overview-item">
-                <div class="card-overview-left">
-                  <div class="card-overview-icon active-clients">
-                    <i class="fa-solid fa-user-check"></i>
-                  </div>
-                  <span class="card-overview-label">Active Client Staff</span>
-                </div>
-                <span class="card-overview-value">{{ active_client_staff_count|default:0 }}</span>
-              </div>
-            </div>
-          </div>
+      <!-- Fixed Bottom: Quick Actions -->
+      <div class="dashboard-bottom-fixed">
+        <div class="client-quick-actions-bar">
+          {% if perm_idcard_setting_list %}
+          <a href="{% url 'active_clients' %}" class="quick-action-btn">
+            <i class="fa-solid fa-id-card"></i>
+            <span>View ID Cards</span>
+          </a>
+          <a href="{% url 'active_clients' %}" class="quick-action-btn">
+            <i class="fa-solid fa-user-check"></i>
+            <span>Active Clients</span>
+          </a>
+          {% endif %}
+          {% if perm_idcard_bulk_download %}
+          <a href="#" class="quick-action-btn">
+            <i class="fa-solid fa-download"></i>
+            <span>Bulk Download</span>
+          </a>
+          {% endif %}
+          {% if perm_idcard_bulk_upload %}
+          <a href="#" class="quick-action-btn">
+            <i class="fa-solid fa-upload"></i>
+            <span>Bulk Upload</span>
+          </a>
+          {% endif %}
+          <a href="{% url 'settings' %}" class="quick-action-btn">
+            <i class="fa-solid fa-gear"></i>
+            <span>Settings</span>
+          </a>
         </div>
       </div>
 
@@ -334,5 +272,134 @@
 
   <script defer src="{% static 'dist/js/core.min.js' %}"></script>
   <script defer src="{% static 'dist/js/dashboard.min.js' %}"></script>
+  {% include 'partials/htmx-config.html' %}
+
+  <script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Welcome date/time
+    function updateDateTime() {
+      var now = new Date();
+      var dateEl = document.getElementById('welcomeDate');
+      var timeEl = document.getElementById('welcomeTime');
+      if (dateEl) dateEl.textContent = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'short', day: '2-digit' });
+      if (timeEl) timeEl.textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+    }
+    updateDateTime();
+    setInterval(updateDateTime, 1000);
+
+    // Sliding notifications
+    loadSlidingNotifications();
+  });
+
+  var _notifSlides = [];
+  var _notifIndex = 0;
+  var _notifTimer = null;
+
+  function loadSlidingNotifications() {
+    fetch('/api/notifications/list/?limit=5&unread_only=true')
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(data) {
+        if (!data || !data.success) return;
+        var items = data.notifications || [];
+        if (items.length === 0) return;
+
+        _notifSlides = items;
+        _notifIndex = 0;
+
+        var dotsEl = document.getElementById('welcomeNotifDots');
+        if (dotsEl && items.length > 1) {
+          dotsEl.innerHTML = items.map(function(_, i) {
+            return '<span class="notif-dot' + (i === 0 ? ' active' : '') + '" data-idx="' + i + '"></span>';
+          }).join('');
+          dotsEl.style.display = '';
+        }
+
+        showNotifSlide(0);
+
+        if (items.length > 1) {
+          _notifTimer = setInterval(function() {
+            _notifIndex = (_notifIndex + 1) % _notifSlides.length;
+            showNotifSlide(_notifIndex);
+          }, 6000);
+        }
+
+        document.getElementById('welcomeNotifDismiss').addEventListener('click', function() {
+          var notif = _notifSlides[_notifIndex];
+          if (notif) markNotifReadSlider(notif.id);
+        });
+      })
+      .catch(function() {});
+  }
+
+  function showNotifSlide(idx) {
+    var notif = _notifSlides[idx];
+    if (!notif) return;
+
+    var contentEl = document.getElementById('welcomeNotifContent');
+    var banner = document.getElementById('clientWelcomeBanner');
+    var defaultSlide = document.getElementById('welcomeDefaultSlide');
+    var notifSlide = document.getElementById('welcomeNotifSlide');
+
+    var categoryIcons = {
+      general: 'fa-circle-info', announcement: 'fa-bullhorn',
+      update: 'fa-arrow-up-right-dots', maintenance: 'fa-wrench',
+      alert: 'fa-triangle-exclamation'
+    };
+    var icon = categoryIcons[notif.category] || 'fa-bell';
+    var cat = notif.category || 'general';
+
+    contentEl.innerHTML =
+      '<div class="welcome-notif-icon ' + _escAttr(cat) + '"><i class="fa-solid ' + _escAttr(icon) + '"></i></div>' +
+      '<div class="welcome-notif-body"><div class="welcome-notif-title">' + _escH(notif.title) + '</div>' +
+      '<div class="welcome-notif-msg">' + _escH((notif.message || '').substring(0, 120)) + '</div></div>';
+
+    banner.className = 'client-welcome-banner notif-cat-' + cat;
+    defaultSlide.style.display = 'none';
+    notifSlide.style.display = '';
+    notifSlide.classList.remove('welcome-slide-enter');
+    void notifSlide.offsetWidth;
+    notifSlide.classList.add('welcome-slide-enter');
+
+    var dots = document.querySelectorAll('#welcomeNotifDots .notif-dot');
+    dots.forEach(function(d, i) { d.classList.toggle('active', i === idx); });
+  }
+
+  function markNotifReadSlider(id) {
+    fetch('/api/notifications/' + id + '/read/', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': _getCsrf() },
+    }).then(function() {
+      _notifSlides = _notifSlides.filter(function(n) { return n.id !== id; });
+      if (_notifSlides.length === 0) {
+        clearInterval(_notifTimer);
+        document.getElementById('clientWelcomeBanner').className = 'client-welcome-banner';
+        document.getElementById('welcomeDefaultSlide').style.display = '';
+        document.getElementById('welcomeNotifSlide').style.display = 'none';
+        document.getElementById('welcomeNotifDots').style.display = 'none';
+      } else {
+        _notifIndex = _notifIndex % _notifSlides.length;
+        var dotsEl = document.getElementById('welcomeNotifDots');
+        if (dotsEl) {
+          if (_notifSlides.length <= 1) { dotsEl.style.display = 'none'; }
+          else {
+            dotsEl.innerHTML = _notifSlides.map(function(_, i) {
+              return '<span class="notif-dot' + (i === _notifIndex ? ' active' : '') + '" data-idx="' + i + '"></span>';
+            }).join('');
+          }
+        }
+        showNotifSlide(_notifIndex);
+      }
+    }).catch(function() {});
+  }
+
+  function _getCsrf() {
+    var c = document.cookie.split(';').find(function(c) { return c.trim().startsWith('csrftoken='); });
+    if (c) return c.split('=')[1];
+    var m = document.querySelector('meta[name="csrf-token"]');
+    return m ? m.getAttribute('content') : '';
+  }
+  function _escH(s) { if (!s) return '-'; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+  function _escAttr(s) { if (!s) return ''; return s.replace(/[&"'<>]/g, function(c) { return {'&':'&amp;','"':'&quot;',"'":'&#39;','<':'&lt;','>':'&gt;'}[c]; }); }
+  </script>
 </body>
 </html>
