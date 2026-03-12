@@ -38,6 +38,59 @@ function refreshCardTable() {
     refreshStatusCounts();
 }
 
+/**
+ * Remove a single card row from the table with a smooth slide-out animation.
+ * Updates internal state arrays so the row is gone without a full table reload.
+ * @param {string|number} cardId - The card ID to remove
+ */
+function removeCardRow(cardId) {
+    var _ts = IDCardApp._ts;
+    var row = document.querySelector('tr[data-card-id="' + cardId + '"]');
+
+    function _purgeFromState() {
+        if (!_ts) return;
+        // Remove from allRows and filteredRows
+        _ts.allRows = _ts.allRows.filter(function(r) { return r.getAttribute('data-card-id') !== String(cardId); });
+        _ts.filteredRows = _ts.filteredRows.filter(function(r) { return r.getAttribute('data-card-id') !== String(cardId); });
+        // Update lazy-load bookkeeping
+        if (_ts._loadedCardIds) _ts._loadedCardIds.delete(Number(cardId));
+        if (_ts.lazyLoadState) {
+            if (_ts.lazyLoadState.loadedCount > 0) _ts.lazyLoadState.loadedCount--;
+            if (_ts.lazyLoadState.totalCount > 0) _ts.lazyLoadState.totalCount--;
+        }
+        // Re-render (show/hide existing rows, update pagination) — no server call
+        if (typeof IDCardApp.renderTable === 'function') IDCardApp.renderTable();
+    }
+
+    if (row) {
+        // Animate the row out
+        row.style.transition = 'opacity 0.25s ease, transform 0.25s ease, max-height 0.3s ease';
+        row.style.opacity = '0';
+        row.style.transform = 'translateX(40px)';
+        row.style.maxHeight = row.offsetHeight + 'px';
+        row.style.overflow = 'hidden';
+        // After opacity transition, collapse height
+        setTimeout(function() {
+            row.style.maxHeight = '0';
+            row.style.padding = '0';
+            row.style.borderColor = 'transparent';
+        }, 200);
+        // After full animation, remove from DOM and state
+        setTimeout(function() {
+            if (row.parentNode) row.parentNode.removeChild(row);
+            _purgeFromState();
+        }, 450);
+    } else {
+        // Row not in viewport / virtual table — just purge state
+        _purgeFromState();
+    }
+
+    // Update tab badge counts live
+    refreshStatusCounts();
+    // Clear selection
+    if (typeof window.alpineClearSelection === 'function') window.alpineClearSelection();
+}
+
 /** Fetch latest status counts from API and update the topbar tab badges */
 function refreshStatusCounts() {
     if (typeof TABLE_ID === 'undefined') return;
@@ -204,7 +257,7 @@ function verifyCard(cardId) {
                         return;
                     }
                     if (typeof showToast === 'function') showToast('Card verified successfully');
-                    refreshCardTable();
+                    removeCardRow(cardId);
                 })
                 .catch(err => {
                     if (typeof showToast === 'function') showToast(err.message || 'Failed to verify card', false);
@@ -223,7 +276,7 @@ function approveCard(cardId) {
                         return;
                     }
                     if (typeof showToast === 'function') showToast('Card approved successfully');
-                    refreshCardTable();
+                    removeCardRow(cardId);
                 })
                 .catch(err => {
                     if (typeof showToast === 'function') showToast(err.message || 'Failed to approve card', false);
@@ -242,7 +295,7 @@ function unverifyCard(cardId) {
                         return;
                     }
                     if (typeof showToast === 'function') showToast('Card moved back to pending');
-                    refreshCardTable();
+                    removeCardRow(cardId);
                 })
                 .catch(err => {
                     if (typeof showToast === 'function') showToast(err.message || 'Failed to unverify card', false);
@@ -261,7 +314,7 @@ function retrieveCard(cardId) {
                         return;
                     }
                     if (typeof showToast === 'function') showToast('Card retrieved to pending list');
-                    refreshCardTable();
+                    removeCardRow(cardId);
                 })
                 .catch(err => {
                     if (typeof showToast === 'function') showToast(err.message || 'Failed to retrieve card', false);
@@ -280,7 +333,7 @@ function disapproveCard(cardId) {
                         return;
                     }
                     if (typeof showToast === 'function') showToast('Card moved back to pending');
-                    refreshCardTable();
+                    removeCardRow(cardId);
                 })
                 .catch(err => {
                     if (typeof showToast === 'function') showToast(err.message || 'Failed to disapprove card', false);
@@ -299,7 +352,7 @@ function moveToDownload(cardId) {
                         return;
                     }
                     if (typeof showToast === 'function') showToast('Card moved to download list');
-                    refreshCardTable();
+                    removeCardRow(cardId);
                 })
                 .catch(err => {
                     if (typeof showToast === 'function') showToast(err.message || 'Failed to move card', false);
@@ -313,6 +366,7 @@ function moveToDownload(cardId) {
 // ==========================================
 
 IDCardApp.refreshCardTable = refreshCardTable;
+IDCardApp.removeCardRow = removeCardRow;
 IDCardApp.refreshStatusCounts = refreshStatusCounts;
 IDCardApp.showWorkflowConfirm = showWorkflowConfirm;
 IDCardApp.verifyCard = verifyCard;
