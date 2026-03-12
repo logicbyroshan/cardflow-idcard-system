@@ -18,42 +18,10 @@
 
   <!-- Notification Stats -->
   <div class="notif-stats">
-    <div class="notif-stat-card">
-      <div class="notif-stat-icon notif-stat-icon-primary">
-        <i class="fa-solid fa-bell"></i>
-      </div>
-      <div class="notif-stat-info">
-        <div class="notif-stat-value" id="statTotal">0</div>
-        <div class="notif-stat-label">Total Sent</div>
-      </div>
-    </div>
-    <div class="notif-stat-card">
-      <div class="notif-stat-icon notif-stat-icon-success">
-        <i class="fa-solid fa-users"></i>
-      </div>
-      <div class="notif-stat-info">
-        <div class="notif-stat-value" id="statBroadcast">0</div>
-        <div class="notif-stat-label">Broadcasts</div>
-      </div>
-    </div>
-    <div class="notif-stat-card">
-      <div class="notif-stat-icon notif-stat-icon-warning">
-        <i class="fa-solid fa-user-check"></i>
-      </div>
-      <div class="notif-stat-info">
-        <div class="notif-stat-value" id="statTargeted">0</div>
-        <div class="notif-stat-label">Targeted</div>
-      </div>
-    </div>
-    <div class="notif-stat-card">
-      <div class="notif-stat-icon notif-stat-icon-danger">
-        <i class="fa-solid fa-triangle-exclamation"></i>
-      </div>
-      <div class="notif-stat-info">
-        <div class="notif-stat-value" id="statUrgent">0</div>
-        <div class="notif-stat-label">Urgent</div>
-      </div>
-    </div>
+    {% include 'components/stat-card.html' with icon="fa-solid fa-bell" value=0 label="Total Sent" color="notif-stat-icon-primary" card_class="notif-stat-card" icon_class="notif-stat-icon" info_class="notif-stat-info" value_class="notif-stat-value" label_class="notif-stat-label" id="statTotal" %}
+    {% include 'components/stat-card.html' with icon="fa-solid fa-users" value=0 label="Broadcasts" color="notif-stat-icon-success" card_class="notif-stat-card" icon_class="notif-stat-icon" info_class="notif-stat-info" value_class="notif-stat-value" label_class="notif-stat-label" id="statBroadcast" %}
+    {% include 'components/stat-card.html' with icon="fa-solid fa-user-check" value=0 label="Targeted" color="notif-stat-icon-warning" card_class="notif-stat-card" icon_class="notif-stat-icon" info_class="notif-stat-info" value_class="notif-stat-value" label_class="notif-stat-label" id="statTargeted" %}
+    {% include 'components/stat-card.html' with icon="fa-solid fa-triangle-exclamation" value=0 label="Urgent" color="notif-stat-icon-danger" card_class="notif-stat-card" icon_class="notif-stat-icon" info_class="notif-stat-info" value_class="notif-stat-value" label_class="notif-stat-label" id="statUrgent" %}
   </div>
 
   <!-- Notifications Table -->

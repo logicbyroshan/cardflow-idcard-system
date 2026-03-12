@@ -93,6 +93,11 @@ body:has(.idcard-actions-page) {
     border-bottom: 1px solid #e5e7eb;
 }
 
+/* Keep date filter + nav buttons on one row */
+.idcard-actions-page .search-filter-bar .action-right {
+    flex-wrap: nowrap;
+}
+
 /* Card table container fills remaining space */
 .idcard-actions-page #card-table-container {
     display: flex;
@@ -101,8 +106,13 @@ body:has(.idcard-actions-page) {
     min-height: 0;
     overflow: hidden;
     padding: 0;
-    padding-bottom: 38px; /* Reserve space for fixed pagination bar so scrollbar is visible above it */
     margin: 0;
+}
+
+/* Pagination bar stays fixed at bottom */
+.idcard-actions-page #card-table-container > .pagination-bar {
+    position: static;
+    flex-shrink: 0;
 }
 
 .idcard-actions-page .table-wrapper {

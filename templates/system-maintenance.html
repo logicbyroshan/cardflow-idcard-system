@@ -1,0 +1,196 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>System Maintenance - Adarsh ID Cards</title>
+  <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
+  <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
+  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
+  <link rel="stylesheet" href="{% static 'css/auth.css' %}">
+  <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
+  <style>
+    .countdown-grid {
+      display: flex; gap: 0.75rem; justify-content: center; margin: 1.25rem 0;
+    }
+    .countdown-unit {
+      display: flex; flex-direction: column; align-items: center;
+      background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.2);
+      border-radius: 10px; padding: 0.75rem 1rem; min-width: 72px;
+    }
+    .countdown-value {
+      font-size: 1.75rem; font-weight: 700; color: #b45309; line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .countdown-label {
+      font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em;
+      color: #92400e; margin-top: 0.25rem; font-weight: 600;
+    }
+    .maintenance-progress {
+      width: 100%; height: 4px; background: #fde68a; border-radius: 2px;
+      overflow: hidden; margin-top: 0.5rem;
+    }
+    .maintenance-progress-bar {
+      height: 100%; background: #f59e0b; border-radius: 2px;
+      transition: width 1s linear;
+    }
+  </style>
+</head>
+<body class="auth-body">
+  <main class="auth-container">
+    <div class="auth-card" style="max-width: 540px;">
+      <!-- Logo -->
+      <div class="auth-logo">
+        <img src="{% static 'assets/logo.png' %}" alt="Adarsh ID Cards" width="64" height="100" onerror="this.style.display='none'">
+      </div>
+
+      <!-- Maintenance Icon -->
+      <div class="auth-icon-header">
+        <div class="modal-icon-circle-xl auth-icon-circle-warning maintenance-pulse">
+          <i class="fa-solid fa-gear modal-icon-i-warning" style="animation: fa-spin 3s linear infinite;" aria-hidden="true"></i>
+        </div>
+        <h2 class="auth-icon-title">System Under Maintenance</h2>
+        <p class="auth-icon-desc" id="maintenanceMessage">
+          {{ message|default:"The system is under scheduled maintenance. Please check back shortly." }}
+        </p>
+      </div>
+
+      <!-- Countdown Timer -->
+      <div id="countdownSection">
+        <div class="countdown-grid" id="countdownGrid">
+          <div class="countdown-unit">
+            <span class="countdown-value" id="cdHours">--</span>
+            <span class="countdown-label">Hours</span>
+          </div>
+          <div class="countdown-unit">
+            <span class="countdown-value" id="cdMinutes">--</span>
+            <span class="countdown-label">Minutes</span>
+          </div>
+          <div class="countdown-unit">
+            <span class="countdown-value" id="cdSeconds">--</span>
+            <span class="countdown-label">Seconds</span>
+          </div>
+        </div>
+        <div class="maintenance-progress">
+          <div class="maintenance-progress-bar" id="progressBar" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- Status Info -->
+      <div class="auth-info-box auth-info-box-warning">
+        <div class="auth-info-box-body">
+          <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+          <div class="auth-info-box-text auth-info-box-text-warning">
+            <strong>What's happening?</strong><br>
+            We're performing scheduled maintenance to improve the system. This page will automatically redirect once maintenance is complete.
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Status Check -->
+      <div class="maintenance-status-bar">
+        <span class="status-dot"></span>
+        <span id="statusText">Checking maintenance status...</span>
+      </div>
+
+      <!-- Actions -->
+      <div class="auth-action-footer">
+        <div style="display: flex; gap: 0.5rem;">
+          <button onclick="checkStatus()" class="btn btn-md btn-primary">
+            <i class="fa-solid fa-rotate"></i> Check Now
+          </button>
+          <a href="{% url 'logout' %}" class="btn btn-md btn-cancel" style="text-decoration: none;">
+            <i class="fa-solid fa-right-from-bracket"></i> Logout
+          </a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script id="maintenance-config" type="application/json">
+  {
+    "endTime": {{ end_time_json|default:"null" }},
+    "apiUrl": "{% url 'api_system_maintenance_check' %}"
+  }
+  </script>
+  <script>
+  (function() {
+    var cfg = JSON.parse(document.getElementById('maintenance-config').textContent);
+    var endTime = cfg.endTime ? new Date(cfg.endTime) : null;
+    var startTime = new Date();
+    var statusText = document.getElementById('statusText');
+    var countdownSection = document.getElementById('countdownSection');
+    var progressBar = document.getElementById('progressBar');
+
+    // Hide countdown if no end time
+    if (!endTime) {
+      countdownSection.style.display = 'none';
+    }
+
+    // Calculate total duration for progress bar
+    var totalDuration = endTime ? (endTime - startTime) : 0;
+
+    function pad(n) { return n < 10 ? '0' + n : n; }
+
+    function updateCountdown() {
+      if (!endTime) return;
+      var now = new Date();
+      var diff = endTime - now;
+
+      if (diff <= 0) {
+        document.getElementById('cdHours').textContent = '00';
+        document.getElementById('cdMinutes').textContent = '00';
+        document.getElementById('cdSeconds').textContent = '00';
+        progressBar.style.width = '100%';
+        checkStatus();
+        return;
+      }
+
+      var h = Math.floor(diff / 3600000);
+      var m = Math.floor((diff % 3600000) / 60000);
+      var s = Math.floor((diff % 60000) / 1000);
+
+      document.getElementById('cdHours').textContent = pad(h);
+      document.getElementById('cdMinutes').textContent = pad(m);
+      document.getElementById('cdSeconds').textContent = pad(s);
+
+      // Progress bar
+      if (totalDuration > 0) {
+        var elapsed = totalDuration - diff;
+        var pct = Math.min(100, (elapsed / totalDuration) * 100);
+        progressBar.style.width = pct + '%';
+      }
+    }
+
+    function checkStatus() {
+      statusText.textContent = 'Checking maintenance status...';
+      fetch(cfg.apiUrl, { method: 'GET', credentials: 'same-origin' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (!data.enabled) {
+            statusText.innerHTML = '<span style="color:#059669;font-weight:600;">Maintenance complete! Redirecting...</span>';
+            setTimeout(function() { window.location.href = '/'; }, 1000);
+          } else {
+            statusText.textContent = 'Maintenance in progress. Will check again soon...';
+          }
+        })
+        .catch(function() {
+          statusText.textContent = 'Unable to check status. Will retry...';
+        });
+    }
+
+    // Run countdown every second
+    if (endTime) { setInterval(updateCountdown, 1000); updateCountdown(); }
+
+    // Poll status every 30 seconds
+    setInterval(checkStatus, 30000);
+    checkStatus();
+
+    // Expose for button
+    window.checkStatus = checkStatus;
+  })();
+  </script>
+</body>
+</html>

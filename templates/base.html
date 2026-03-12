@@ -16,13 +16,14 @@
   <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}">
   {% block extra_css %}{% endblock %}
   <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
+  {% block extra_head %}{% endblock %}
   
   <!-- Alpine.js State Module (MUST load before Alpine) -->
   <script defer src="{% static 'js/alpine-state.js' %}"></script>
   <!-- Alpine.js - Lightweight reactive UI framework -->
   <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
 </head>
-<body x-data="layoutState()" x-init="init()">
+<body {% block body_class %}{% endblock %} x-data="layoutState()" x-init="init()">
 
   <!-- Impersonation Banner (Pro User) -->
   {% include 'partials/impersonate-bar.html' %}
@@ -33,7 +34,7 @@
   {% include 'partials/sidebar.html' %}
 
   <!-- Main -->
-  <main class="main" id="main-content">
+  <main class="main {% block main_class %}{% endblock %}" id="main-content">
 
     <!-- Top Navbar -->
     <header class="topbar">
@@ -63,6 +64,9 @@
     {% block content %}{% endblock %}
 
   </main>
+
+  <!-- Modals / Drawers (outside <main>) -->
+  {% block modals %}{% endblock %}
 
   <!-- Alpine Toast Container -->
   <div class="alpine-toast-wrapper" x-show="toastQueue.length > 0" role="status" aria-live="polite">
@@ -146,6 +150,12 @@
 
   <!-- Impersonate Modal (Pro User) -->
   {% include 'partials/impersonate-modal.html' %}
+
+  <!-- Page-specific variables (rendered before page JS) -->
+  {% block page_vars %}{% endblock %}
+
+  <!-- Page-specific JS bundles -->
+  {% block page_js %}{% endblock %}
 
   {% block extra_js %}{% endblock %}
 

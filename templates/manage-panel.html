@@ -55,6 +55,11 @@
         <button class="panel-tab" data-tab="system" onclick="switchTab('system')">
           <i class="fa-solid fa-server"></i> System Info
         </button>
+        {% if is_super_admin %}
+        <button class="panel-tab" data-tab="maintenance" onclick="switchTab('maintenance'); loadMaintenanceStatus();">
+          <i class="fa-solid fa-gear"></i> Maintenance
+        </button>
+        {% endif %}
       </div>
 
       {% include 'partials/panel/tab-notifications.html' %}
@@ -64,6 +69,7 @@
       {% if is_super_admin %}{% include 'partials/panel/tab-email-logs.html' %}{% endif %}
       {% if is_super_admin %}{% include 'partials/panel/tab-monitoring.html' %}{% endif %}
       {% include 'partials/panel/tab-system.html' %}
+      {% if is_super_admin %}{% include 'partials/panel/tab-maintenance.html' %}{% endif %}
 
       {% include 'partials/panel/create-notification-modal.html' %}
 

@@ -14,11 +14,7 @@ Contains: Status filter tabs, search filter dropdown, search input, and navigati
     <!-- Left Section - Status Tabs, Filter and Search -->
     <div class="action-bar-left">
         <!-- Status Filter Tabs -->
-        <div class="status-tabs" id="status-tabs">
-            <button class="status-tab {% if status_filter == 'all' %}active{% endif %}" data-status="all">All</button>
-            <button class="status-tab {% if status_filter == 'active' or not status_filter %}active{% endif %}" data-status="active">Active</button>
-            <button class="status-tab {% if status_filter == 'inactive' %}active{% endif %}" data-status="inactive">Inactive</button>
-        </div>
+        {% include 'components/status-tabs.html' with tabs_id="status-tabs" %}
 
         <div class="filter-group">
             <div class="custom-dropdown" id="filter-dropdown">
@@ -34,13 +30,7 @@ Contains: Status filter tabs, search filter dropdown, search input, and navigati
                 </div>
             </div>
         </div>
-        <div class="search-box">
-            <i class="fa-solid fa-magnifying-glass search-icon"></i>
-            <input type="text" id="search-input" class="search-input" placeholder="Search All..." autocomplete="off">
-            <button class="search-clear-btn" id="searchClearBtn" type="button" title="Clear search" aria-label="Clear search">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
-        </div>
+        {% include 'components/search-box.html' with input_id="search-input" placeholder="Search All..." clear_id="searchClearBtn" %}
     </div>
 
     <!-- Right Section - Action Buttons -->

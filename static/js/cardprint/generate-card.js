@@ -43,7 +43,8 @@
   let lastPdfBlob = null;
 
   /* ── PDF.js worker ─────────────────────────────────────── */
-  if (typeof pdfjsLib !== 'undefined') {
+  const hasPdfJs = (typeof pdfjsLib !== 'undefined');
+  if (hasPdfJs) {
     pdfjsLib.GlobalWorkerOptions.workerSrc =
       'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
   }
@@ -408,49 +409,82 @@
     overlay.classList.remove('hidden');
     noTpl.classList.add('hidden');
 
-    pdfjsLib.getDocument(url).promise.then(function (pdfDoc) {
-      return pdfDoc.getPage(1);
-    }).then(function (page) {
-      lastPdfPage = page;
-
-      // Scale the PDF page to fit exactly CARD_W × CARD_H
-      const viewport = page.getViewport({ scale: 1 });
-      const scaleX   = CARD_W  / viewport.width;
-      const scaleY   = CARD_H / viewport.height;
-      const pdfScale = Math.min(scaleX, scaleY);
-      const scaledVP = page.getViewport({ scale: pdfScale });
-
-      const offscreen = document.createElement('canvas');
-      offscreen.width  = scaledVP.width;
-      offscreen.height = scaledVP.height;
-      const ctx = offscreen.getContext('2d');
-
-      return page.render({ canvasContext: ctx, viewport: scaledVP }).promise.then(function () {
-        fabric.Image.fromURL(offscreen.toDataURL(), function (img) {
-          img.set({
-            left:       0,
-            top:        0,
-            selectable: false,
-            evented:    false,
-          });
-          img.scaleToWidth(CARD_W);
-          fabric_canvas.setBackgroundImage(img, function () {
-            fabric_canvas.renderAll();
-            overlay.classList.add('hidden');
-            renderMappingsOnCanvas();
-            // Auto-detect on first load if no mappings exist yet
-            if (autoDetectOnLoad && Object.keys(fieldMappings[currentSide] || {}).length === 0) {
-              autoDetectFields();
-            }
-          });
-        });
-      });
-    }).catch(function (err) {
-      console.error('PDF.js error:', err);
+    if (!hasPdfJs) {
+      console.error('PDF.js library not loaded (CDN may be unreachable).');
       overlay.classList.add('hidden');
       noTpl.classList.remove('hidden');
-      showToast('Failed to load PDF template.', 'error');
-    });
+      showToast('PDF viewer library failed to load. Please refresh the page or check your internet connection.', 'error');
+      return;
+    }
+
+    try {
+      pdfjsLib.getDocument(url).promise.then(function (pdfDoc) {
+        return pdfDoc.getPage(1);
+      }).then(function (page) {
+        lastPdfPage = page;
+
+        // Scale the PDF page to fit exactly CARD_W × CARD_H
+        const viewport = page.getViewport({ scale: 1 });
+        const scaleX   = CARD_W  / viewport.width;
+        const scaleY   = CARD_H / viewport.height;
+        const pdfScale = Math.min(scaleX, scaleY);
+        const scaledVP = page.getViewport({ scale: pdfScale });
+
+        const offscreen = document.createElement('canvas');
+        offscreen.width  = scaledVP.width;
+        offscreen.height = scaledVP.height;
+        const ctx = offscreen.getContext('2d');
+
+        return page.render({ canvasContext: ctx, viewport: scaledVP }).promise.then(function () {
+          var dataUrl;
+          try { dataUrl = offscreen.toDataURL(); }
+          catch (e) {
+            console.error('Canvas toDataURL failed:', e);
+            overlay.classList.add('hidden');
+            noTpl.classList.remove('hidden');
+            showToast('Failed to convert PDF to image.', 'error');
+            return;
+          }
+
+          fabric.Image.fromURL(dataUrl, function (img) {
+            if (!img || img.width === 0) {
+              console.error('fabric.Image.fromURL produced an empty image.');
+              overlay.classList.add('hidden');
+              noTpl.classList.remove('hidden');
+              showToast('Failed to render PDF onto canvas.', 'error');
+              return;
+            }
+
+            img.set({
+              left:       0,
+              top:        0,
+              selectable: false,
+              evented:    false,
+            });
+            img.scaleToWidth(CARD_W);
+            fabric_canvas.setBackgroundImage(img, function () {
+              fabric_canvas.renderAll();
+              overlay.classList.add('hidden');
+              renderMappingsOnCanvas();
+              // Auto-detect on first load if no mappings exist yet
+              if (autoDetectOnLoad && Object.keys(fieldMappings[currentSide] || {}).length === 0) {
+                autoDetectFields();
+              }
+            });
+          });
+        });
+      }).catch(function (err) {
+        console.error('PDF.js error:', err);
+        overlay.classList.add('hidden');
+        noTpl.classList.remove('hidden');
+        showToast('Failed to load PDF template.', 'error');
+      });
+    } catch (err) {
+      console.error('renderPdf error:', err);
+      overlay.classList.add('hidden');
+      noTpl.classList.remove('hidden');
+      showToast('Failed to render PDF template.', 'error');
+    }
   }
 
   /* ═══════════════════════ AUTO-DETECT FIELDS ═══════════ */
@@ -460,6 +494,10 @@
    * names, and auto-populate fieldMappings for the current side.
    */
   function autoDetectFields() {
+    if (!hasPdfJs) {
+      showToast('PDF viewer library not available. Auto-detect requires PDF.js.', 'warning');
+      return;
+    }
     if (!lastPdfPage) {
       showToast('Upload a PDF template first.', 'warning');
       return;
@@ -598,6 +636,8 @@
         showToast('Auto-detected ' + addedCount + ' field(s). You can adjust them manually.', 'success');
       } else if (Object.keys(newMappings).length > 0) {
         showToast('All detected fields were already placed.', 'info');
+      } else if (textContent.items.length === 0) {
+        showToast('This PDF appears to be an image/scan with no selectable text. Please place fields manually by selecting a field and clicking Draw.', 'warning');
       } else {
         showToast('No matching field labels found in PDF. Place fields manually.', 'warning');
       }

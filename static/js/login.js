@@ -136,7 +136,7 @@ document.addEventListener('DOMContentLoaded', function() {
     btnStep2Next.addEventListener('click', async function() {
         email = emailInput.value.trim();
         if (!email) {
-            showMessage('Please enter your email');
+            showMessage('Please enter your email or username');
             return;
         }
         

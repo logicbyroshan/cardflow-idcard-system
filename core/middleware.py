@@ -591,6 +591,83 @@ class RoleScopingMiddleware:
         return self.get_response(request)
 
 
+class MaintenanceModeMiddleware:
+    """
+    Blocks panel access for non-super-admin users when system maintenance
+    mode is enabled via SystemSettings.
+
+    Super-admin and pro-user roles can still access the panel.
+    Static, media, auth, and maintenance-status API paths are exempt.
+    """
+
+    EXEMPT_PREFIXES = (
+        '/static/',
+        '/media/',
+        '/favicon.ico',
+        '/admin/',
+    )
+
+    # Panel-relative suffixes that are exempt (prepended with panel prefix)
+    EXEMPT_SUFFIXES = (
+        'auth/login/',
+        'auth/logout/',
+        'api/auth/',
+        'api/maintenance/',
+        'maintenance/',
+        'maintenance/system/',
+    )
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        # Only intercept panel routes
+        if not self._is_panel_path(request):
+            return self.get_response(request)
+
+        if self._is_exempt(request):
+            return self.get_response(request)
+
+        # Check maintenance status
+        from core.services.maintenance_service import MaintenanceService
+        if not MaintenanceService.is_active():
+            return self.get_response(request)
+
+        # Allow super_admin / pro_user through
+        user = request.user
+        if user.is_authenticated and getattr(user, 'role', '') in ('super_admin', 'pro_user'):
+            return self.get_response(request)
+
+        # Block everyone else — redirect to maintenance page
+        prefix = self._panel_prefix(request)
+        return redirect(f'{prefix}/maintenance/system/')
+
+    # ── helpers ──
+
+    @staticmethod
+    def _panel_prefix(request):
+        if getattr(request, '_is_panel_subdomain', False):
+            return ''
+        return '/panel'
+
+    @staticmethod
+    def _is_panel_path(request):
+        if getattr(request, '_is_panel_subdomain', False):
+            return True
+        return request.path.startswith('/panel/')
+
+    def _is_exempt(self, request):
+        path = request.path
+        for pfx in self.EXEMPT_PREFIXES:
+            if path.startswith(pfx):
+                return True
+        prefix = self._panel_prefix(request)
+        for sfx in self.EXEMPT_SUFFIXES:
+            if path.startswith(f'{prefix}/{sfx}'):
+                return True
+        return False
+
+
 class WebsiteOfflineMiddleware:
     """
     Intercepts all PUBLIC website requests when WebsiteStatus is 'draft'.

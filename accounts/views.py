@@ -153,16 +153,16 @@ class CheckEmailAPIView(View):
     def post(self, request):
         try:
             data = json.loads(request.body)
-            email = data.get('email', '').strip()
+            identifier = data.get('email', '').strip()
             role = data.get('role')
             
-            if not email:
+            if not identifier:
                 return JsonResponse({
                     'success': False,
-                    'message': 'Email is required'
+                    'message': 'Email or username is required'
                 }, status=400)
             
-            result = AuthService.check_user_exists(email, role)
+            result = AuthService.check_user_exists(identifier, role)
             
             return JsonResponse({
                 'success': result['exists'],
@@ -193,20 +193,20 @@ class LoginAPIView(View):
     """
     
     def post(self, request):
-        email = None
+        identifier = None
         try:
             data = json.loads(request.body)
-            email = data.get('email', '').strip()
+            identifier = data.get('email', '').strip()
             password = data.get('password', '')
             role = data.get('role')
             
-            if not email or not password:
+            if not identifier or not password:
                 return JsonResponse({
                     'success': False,
-                    'message': 'Email and password are required'
+                    'message': 'Email/username and password are required'
                 }, status=400)
             
-            result = AuthService.authenticate_user(email, password, role)
+            result = AuthService.authenticate_user(identifier, password, role)
             
             if result['success']:
                 # Log the user in
@@ -217,7 +217,7 @@ class LoginAPIView(View):
                 
                 # Log activity
                 ActivityService.log_login(request, result['user'])
-                logger.info("Login success: user=%s role=%s", email, role)
+                logger.info("Login success: user=%s role=%s", identifier, role)
                 
                 return JsonResponse({
                     'success': True,
@@ -225,7 +225,7 @@ class LoginAPIView(View):
                     'message': result['message']
                 })
             else:
-                logger.warning("Login failed: email=%s role=%s reason=%s", email, role, result['message'])
+                logger.warning("Login failed: identifier=%s role=%s reason=%s", identifier, role, result['message'])
                 return JsonResponse({
                     'success': False,
                     'message': result['message']
@@ -237,7 +237,7 @@ class LoginAPIView(View):
                 'message': 'Invalid JSON data'
             }, status=400)
         except Exception as e:
-            logger.exception("Login error for email=%s", email or 'unknown')
+            logger.exception("Login error for user=%s", identifier or 'unknown')
             return JsonResponse({
                 'success': False,
                 'message': 'An unexpected error occurred. Please try again.'

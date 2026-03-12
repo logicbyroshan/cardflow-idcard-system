@@ -1,155 +1,80 @@
+{% extends 'base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="robots" content="noindex, nofollow">
-  <meta name="csrf-token" content="{{ csrf_token }}">
-  <title>Manage Clients - Adarsh ID Cards</title>
-  <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
-  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
-  <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}">
-  <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
-  <!-- Alpine.js State Module (MUST load before Alpine) -->
-  <script defer src="{% static 'js/alpine-state.js' %}"></script>
-  <!-- Alpine.js -->
-  <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
-</head>
-<body x-data="layoutState()" x-init="init()">
 
-  <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:z-[9999] focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-gray-900 focus:shadow-lg">Skip to main content</a>
+{% block title %}Manage Clients - Adarsh ID Cards{% endblock %}
 
-  {% include 'partials/sidebar.html' %}
+{% block breadcrumb %}
+  {% if is_super_admin %}
+  <a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+  {% elif is_admin_staff %}
+  <a href="{% url 'admin_staff_dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+  {% endif %}
+  <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+  <span class="breadcrumb-item active">Manage Clients</span>
+{% endblock %}
 
-  <!-- Main -->
-  <main class="main" id="main-content">
-
-    <!-- Top Navbar -->
-    <header class="topbar">
-      <div class="nav-left">
-        <button class="sidebar-toggle" id="sidebarToggle" @click="toggleSidebar()" aria-label="Toggle sidebar">
-          <i class="fa-solid fa-bars" :class="sidebarOpen ? 'fa-xmark' : 'fa-bars'"></i>
-        </button>
-        <div class="breadcrumb">
-            {% if is_super_admin %}
-            <a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
-            {% elif is_admin_staff %}
-            <a href="{% url 'admin_staff_dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
-            {% endif %}
-            <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
-            <span class="breadcrumb-item active">Manage Clients</span>
-        </div>
-      </div>
-      <div class="nav-right">
-        <button class="global-search-btn" id="globalSearchBtn">
-          <i class="fa-solid fa-magnifying-glass"></i>
-          <span>Search ID cards...</span>
-          <kbd>Ctrl+K</kbd>
-        </button>
-        {% include 'partials/notification-bell.html' %}
-      </div>
-    </header>
-
-    <div class="main-content">
-
+{% block content %}
+  <div class="main-content">
     {% include 'partials/client/action-bar.html' %}
 
-    <!-- HTMX Table Container -->
     <div id="client-table-container"
          hx-trigger="refreshTable from:body"
          hx-get="{% url 'manage_clients' %}"
          hx-target="#client-table-container"
          hx-swap="innerHTML">
-    <!-- Table -->
-    <div class="table-wrapper">
+      <div class="table-wrapper">
         <table class="data-table" id="clientsTable">
-            <thead>
-                <tr>
-                    <th scope="col">Name</th>
-                    <th scope="col">Email</th>
-                    <th scope="col">Mobile</th>
-                    <th scope="col">Status</th>
-                    <th scope="col">Created At</th>
-                    <th scope="col">Updated At</th>
-                </tr>
-            </thead>
-
-            <tbody id="client-table-body">
-                {% for client in clients %}
-                <tr data-client-id="{{ client.id }}" data-client-status="{{ client.status }}">
-                    <td>{{ client.name }}</td>
-                    <td>{{ client.user.email }}</td>
-                    <td>{{ client.user.phone|default:"-" }}</td>
-                    <td><span class="status-badge {% if client.status == 'active' %}active{% else %}inactive{% endif %}">{{ client.get_status_display }}</span></td>
-                    <td>{{ client.created_at|date:"d-m-Y H:i" }}</td>
-                    <td>{{ client.updated_at|date:"d-m-Y H:i" }}</td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="6">
-                        <div class="empty-state">
-                            <i class="fa-solid fa-building-slash"></i>
-                            <h3>No Clients Found</h3>
-                            <p>No clients match your current filters. Try adjusting your search.</p>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
+          <thead>
+            <tr>
+              <th scope="col">Name</th>
+              <th scope="col">Email</th>
+              <th scope="col">Mobile</th>
+              <th scope="col">Status</th>
+              <th scope="col">Created At</th>
+              <th scope="col">Updated At</th>
+            </tr>
+          </thead>
+          <tbody id="client-table-body">
+            {% for client in clients %}
+            <tr data-client-id="{{ client.id }}" data-client-status="{{ client.status }}">
+              <td>{{ client.name }}</td>
+              <td>{{ client.user.email }}</td>
+              <td>{{ client.user.phone|default:"-" }}</td>
+              <td><span class="status-badge {% if client.status == 'active' %}active{% else %}inactive{% endif %}">{{ client.get_status_display }}</span></td>
+              <td>{{ client.created_at|date:"d-m-Y H:i" }}</td>
+              <td>{{ client.updated_at|date:"d-m-Y H:i" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="6">
+                {% include 'components/empty-state.html' with id="client-empty" icon="fa-building-slash" title="No Clients Found" message="No clients match your current filters. Try adjusting your search." hidden=False %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
         </table>
+      </div>
+
+      {% include 'components/pagination.html' %}
     </div>
+  </div>
+{% endblock %}
 
-    <!-- Pagination Bar -->
-    <div class="pagination-bar">
-        <div class="pagination-left">
-            <span class="pagination-info">Showing <strong>1-{{ clients|length }}</strong> of <strong>{{ clients|length }}</strong> results</span>
-        </div>
-        <div class="pagination-center">
-            <button class="pagination-btn" id="firstPage" aria-label="First page"><i class="fa-solid fa-angles-left"></i></button>
-            <button class="pagination-btn" id="prevPage" aria-label="Previous page"><i class="fa-solid fa-chevron-left"></i></button>
-            <span class="page-numbers">
-                <button class="page-num active">1</button>
-            </span>
-            <button class="pagination-btn" id="nextPage" aria-label="Next page"><i class="fa-solid fa-chevron-right"></i></button>
-            <button class="pagination-btn" id="lastPage" aria-label="Last page"><i class="fa-solid fa-angles-right"></i></button>
-        </div>
-        <div class="pagination-right">
-            <label>Rows per page:</label>
-            <div class="custom-dropdown rows-dropdown" id="rowsDropdown">
-                <button class="dropdown-toggle" id="rowsToggle" type="button" aria-expanded="false">
-                    <span id="rowsSelectedText">10</span>
-                    <i class="fa-solid fa-chevron-down"></i>
-                </button>
-                <div class="dropdown-options" id="rowsOptions">
-                    <div class="dropdown-option" data-value="5">5</div>
-                    <div class="dropdown-option selected" data-value="10">10</div>
-                    <div class="dropdown-option" data-value="25">25</div>
-                    <div class="dropdown-option" data-value="50">50</div>
-                    <div class="dropdown-option" data-value="100">100</div>
-                </div>
-            </div>
-        </div>
-    </div>
-    </div><!-- /client-table-container -->
-
-    </div>
-
-  </main>
-
-  <!-- Drawers / Modals / Toast (outside <main> â€” avoids flex-column gap) -->
+{% block modals %}
   {% include 'partials/client/client-drawer.html' %}
   {% include 'partials/client/view-modal.html' %}
   {% include 'partials/client/delete-modal.html' %}
   {% include 'partials/client/status-modal.html' %}
-  {% include 'partials/components/toast.html' %}
   {% include 'partials/staff/temp-password-modal.html' %}
   {% include 'partials/client/staff-drawer.html' %}
+{% endblock %}
 
-  <script defer src="{% static 'dist/js/core.min.js' %}"></script>
-  <script>window.isSuperAdmin = {% if is_super_admin %}true{% else %}false{% endif %};</script>
+{% block page_vars %}
+  <script>window.isSuperAdmin = JSON.parse('{{ is_super_admin|yesno:"true,false" }}');</script>
+{% endblock %}
+
+{% block page_js %}
   <script defer src="{% static 'dist/js/manage-client.min.js' %}"></script>
-  {% include 'partials/htmx-config.html' %}
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       initHTMXFilters({
@@ -160,5 +85,4 @@
       });
     });
   </script>
-</body>
-</html>
+{% endblock %}

@@ -27,81 +27,13 @@
             <h3 class="wa-dashboard-section-title"><i class="fa-solid fa-chart-pie"></i> Overview</h3>
         </div>
         <div class="wa-stats-grid">
-            <div class="wa-stat-card">
-                <div class="wa-stat-icon green">
-                    <i class="fa-solid fa-star"></i>
-                </div>
-                <div class="wa-stat-info">
-                    <div class="wa-stat-value">{{ total_reviews|default:0 }}</div>
-                    <div class="wa-stat-label">Reviews</div>
-                    <div class="wa-stat-meta">{{ active_reviews|default:0 }} approved</div>
-                </div>
-            </div>
-
-            <div class="wa-stat-card">
-                <div class="wa-stat-icon purple">
-                    <i class="fa-solid fa-handshake"></i>
-                </div>
-                <div class="wa-stat-info">
-                    <div class="wa-stat-value">{{ total_clients|default:0 }}</div>
-                    <div class="wa-stat-label">Client Logos</div>
-                    <div class="wa-stat-meta">{{ active_clients|default:0 }} visible</div>
-                </div>
-            </div>
-
-            <div class="wa-stat-card">
-                <div class="wa-stat-icon yellow">
-                    <i class="fa-solid fa-images"></i>
-                </div>
-                <div class="wa-stat-info">
-                    <div class="wa-stat-value">{{ total_portfolio|default:0 }}</div>
-                    <div class="wa-stat-label">Portfolio Items</div>
-                    <div class="wa-stat-meta">{{ active_portfolio|default:0 }} active</div>
-                </div>
-            </div>
-
-            <div class="wa-stat-card">
-                <div class="wa-stat-icon teal">
-                    <i class="fa-solid fa-bolt"></i>
-                </div>
-                <div class="wa-stat-info">
-                    <div class="wa-stat-value">{{ total_features|default:0 }}</div>
-                    <div class="wa-stat-label">Features</div>
-                </div>
-            </div>
-
-            <div class="wa-stat-card">
-                <div class="wa-stat-icon blue">
-                    <i class="fa-solid fa-panorama"></i>
-                </div>
-                <div class="wa-stat-info">
-                    <div class="wa-stat-value">{{ total_hero_images|default:0 }}</div>
-                    <div class="wa-stat-label">Hero Images</div>
-                    <div class="wa-stat-meta">{{ active_hero_images|default:0 }} active</div>
-                </div>
-            </div>
-
-            <div class="wa-stat-card">
-                <div class="wa-stat-icon orange">
-                    <i class="fa-solid fa-tags"></i>
-                </div>
-                <div class="wa-stat-info">
-                    <div class="wa-stat-value">{{ total_categories|default:0 }}</div>
-                    <div class="wa-stat-label">Categories</div>
-                    <div class="wa-stat-meta">{{ bento_categories_count|default:0 }} in bento grid</div>
-                </div>
-            </div>
-
-            <div class="wa-stat-card">
-                <div class="wa-stat-icon red">
-                    <i class="fa-solid fa-envelope"></i>
-                </div>
-                <div class="wa-stat-info">
-                    <div class="wa-stat-value">{{ total_contacts|default:0 }}</div>
-                    <div class="wa-stat-label">Contact Leads</div>
-                    <div class="wa-stat-meta">{{ new_contacts|default:0 }} new</div>
-                </div>
-            </div>
+            {% include 'components/stat-card.html' with icon="fa-solid fa-star" value=total_reviews label="Reviews" meta=active_reviews|default:0 meta_suffix="approved" color="green" card_class="wa-stat-card" icon_class="wa-stat-icon" info_class="wa-stat-info" value_class="wa-stat-value" label_class="wa-stat-label" meta_class="wa-stat-meta" %}
+            {% include 'components/stat-card.html' with icon="fa-solid fa-handshake" value=total_clients label="Client Logos" meta=active_clients|default:0 meta_suffix="visible" color="purple" card_class="wa-stat-card" icon_class="wa-stat-icon" info_class="wa-stat-info" value_class="wa-stat-value" label_class="wa-stat-label" meta_class="wa-stat-meta" %}
+            {% include 'components/stat-card.html' with icon="fa-solid fa-images" value=total_portfolio label="Portfolio Items" meta=active_portfolio|default:0 meta_suffix="active" color="yellow" card_class="wa-stat-card" icon_class="wa-stat-icon" info_class="wa-stat-info" value_class="wa-stat-value" label_class="wa-stat-label" meta_class="wa-stat-meta" %}
+            {% include 'components/stat-card.html' with icon="fa-solid fa-bolt" value=total_features label="Features" color="teal" card_class="wa-stat-card" icon_class="wa-stat-icon" info_class="wa-stat-info" value_class="wa-stat-value" label_class="wa-stat-label" %}
+            {% include 'components/stat-card.html' with icon="fa-solid fa-panorama" value=total_hero_images label="Hero Images" meta=active_hero_images|default:0 meta_suffix="active" color="blue" card_class="wa-stat-card" icon_class="wa-stat-icon" info_class="wa-stat-info" value_class="wa-stat-value" label_class="wa-stat-label" meta_class="wa-stat-meta" %}
+            {% include 'components/stat-card.html' with icon="fa-solid fa-tags" value=total_categories label="Categories" meta=bento_categories_count|default:0 meta_suffix="in bento grid" color="orange" card_class="wa-stat-card" icon_class="wa-stat-icon" info_class="wa-stat-info" value_class="wa-stat-value" label_class="wa-stat-label" meta_class="wa-stat-meta" %}
+            {% include 'components/stat-card.html' with icon="fa-solid fa-envelope" value=total_contacts label="Contact Leads" meta=new_contacts|default:0 meta_suffix="new" color="red" card_class="wa-stat-card" icon_class="wa-stat-icon" info_class="wa-stat-info" value_class="wa-stat-value" label_class="wa-stat-label" meta_class="wa-stat-meta" %}
         </div>
     </div>
 

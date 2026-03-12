@@ -38,18 +38,30 @@
     --wa-shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -1px rgba(0,0,0,0.04);
 }
 
+/* ===== WEBSITE-ADMIN 3-ROW GRID =====
+   base.html uses grid-template-rows: topbar 1fr  (2 rows).
+   website/admin/base.html has 3 children (topbar, wa-tabs, main-content)
+   so we need 3 explicit rows.  */
+.main.wa-page {
+    grid-template-rows: var(--spacing-topbar) auto 1fr;
+}
+.main.wa-page > .main-content {
+    overflow-y: auto;
+}
+
 /* ===== TAB NAVIGATION ===== */
 .wa-tabs {
     display: flex;
+    flex-shrink: 0;
     gap: 2px;
     padding: 0 20px;
     background: #fff;
     border-bottom: 1px solid #e2e8f0;
     overflow-x: auto;
-    position: sticky;
-    top: 0;
+    scrollbar-width: none;
     z-index: 15;
 }
+.wa-tabs::-webkit-scrollbar { display: none; }
 .wa-tab {
     display: inline-flex;
     align-items: center;
@@ -89,7 +101,9 @@
    (action-bars and table-wraps are full-width intentionally)
    ===================================================== */
 .wa-dashboard-section > .wa-stats-grid,
-.wa-dashboard-section > .wa-quick-links-grid {
+.wa-dashboard-section > .wa-quick-links-grid,
+.wa-dashboard-section > .wa-quick-links,
+.wa-dashboard-section > .wa-activity-list {
     padding: 14px 20px;
 }
 
