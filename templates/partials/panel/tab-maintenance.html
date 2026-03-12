@@ -1,0 +1,174 @@
+<!-- === MAINTENANCE TAB === -->
+<div class="panel-tab-content" id="tab-maintenance">
+  <div class="system-grid" style="grid-template-columns: 1fr; max-width: 640px;">
+
+    <!-- Current Status Card -->
+    <div class="system-card" id="maintenanceStatusCard">
+      <div class="system-card-header">
+        <i class="fa-solid fa-gear"></i> Maintenance Mode
+      </div>
+      <div class="system-card-body" style="padding: 1.25rem;">
+
+        <!-- Status badge -->
+        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem;">
+          <span id="mtStatusBadge" class="badge badge-success" style="font-size: 13px; padding: 4px 12px;">
+            <i class="fa-solid fa-circle-check"></i> Inactive
+          </span>
+          <span id="mtStatusLabel" style="color: var(--text-secondary); font-size: 13px;">System is running normally</span>
+        </div>
+
+        <!-- Toggle -->
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+
+          <!-- Message -->
+          <div>
+            <label style="display: block; font-weight: 600; font-size: 13px; margin-bottom: 4px; color: var(--text-primary);">
+              Maintenance Message
+            </label>
+            <textarea id="mtMessage" rows="2" class="form-input" style="width: 100%; resize: vertical; font-size: 13px;"
+                      placeholder="The system is under scheduled maintenance. Please check back shortly."></textarea>
+          </div>
+
+          <!-- Duration -->
+          <div>
+            <label style="display: block; font-weight: 600; font-size: 13px; margin-bottom: 4px; color: var(--text-primary);">
+              Duration (minutes)
+            </label>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+              <button type="button" class="btn btn-sm btn-neutral mt-dur-btn" data-min="15" onclick="setMtDuration(15)">15 min</button>
+              <button type="button" class="btn btn-sm btn-neutral mt-dur-btn" data-min="30" onclick="setMtDuration(30)">30 min</button>
+              <button type="button" class="btn btn-sm btn-neutral mt-dur-btn" data-min="60" onclick="setMtDuration(60)">1 hour</button>
+              <button type="button" class="btn btn-sm btn-neutral mt-dur-btn" data-min="120" onclick="setMtDuration(120)">2 hours</button>
+              <input type="number" id="mtDuration" class="form-input" min="1" max="1440" value="30"
+                     style="width: 80px; font-size: 13px; text-align: center;" placeholder="min">
+            </div>
+          </div>
+
+          <!-- Or: specific end time -->
+          <div>
+            <label style="display: block; font-weight: 600; font-size: 13px; margin-bottom: 4px; color: var(--text-primary);">
+              Or set specific end time
+            </label>
+            <input type="datetime-local" id="mtEndTime" class="form-input" style="width: 100%; font-size: 13px;">
+          </div>
+
+          <!-- Actions -->
+          <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+            <button type="button" id="mtEnableBtn" class="btn btn-md btn-danger" onclick="toggleMaintenance('enable')">
+              <i class="fa-solid fa-power-off"></i> Enable Maintenance Mode
+            </button>
+            <button type="button" id="mtDisableBtn" class="btn btn-md btn-success" onclick="toggleMaintenance('disable')" style="display: none;">
+              <i class="fa-solid fa-circle-check"></i> Disable Maintenance Mode
+            </button>
+          </div>
+        </div>
+
+        <!-- Info box -->
+        <div class="alert-box alert-box--info" style="margin-top: 1.25rem;">
+          <p class="alert-box-heading"><i class="fa-solid fa-circle-info"></i> How it works</p>
+          <ul class="alert-box-list">
+            <li>All non-admin users will be redirected to a maintenance page</li>
+            <li>A notification will be sent to all users automatically</li>
+            <li>Super admin can still access the panel normally</li>
+            <li>Maintenance ends automatically when the timer expires</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function() {
+  var API_URL = "{% url 'api_maintenance_toggle' %}";
+  var STATUS_URL = "{% url 'api_system_maintenance_check' %}";
+  var csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+  function setMtDuration(min) {
+    document.getElementById('mtDuration').value = min;
+    document.querySelectorAll('.mt-dur-btn').forEach(function(b) {
+      b.classList.toggle('btn-primary', parseInt(b.dataset.min) === min);
+      b.classList.toggle('btn-neutral', parseInt(b.dataset.min) !== min);
+    });
+  }
+  window.setMtDuration = setMtDuration;
+
+  function updateUI(status) {
+    var badge = document.getElementById('mtStatusBadge');
+    var label = document.getElementById('mtStatusLabel');
+    var enableBtn = document.getElementById('mtEnableBtn');
+    var disableBtn = document.getElementById('mtDisableBtn');
+
+    if (status.enabled) {
+      badge.className = 'badge badge-danger';
+      badge.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Active';
+      var msg = 'Maintenance mode is active';
+      if (status.end_time) {
+        var end = new Date(status.end_time);
+        msg += ' — ends ' + end.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      }
+      label.textContent = msg;
+      enableBtn.style.display = 'none';
+      disableBtn.style.display = '';
+    } else {
+      badge.className = 'badge badge-success';
+      badge.innerHTML = '<i class="fa-solid fa-circle-check"></i> Inactive';
+      label.textContent = 'System is running normally';
+      enableBtn.style.display = '';
+      disableBtn.style.display = 'none';
+    }
+  }
+
+  function toggleMaintenance(action) {
+    var body = { action: action };
+    if (action === 'enable') {
+      var endTimeInput = document.getElementById('mtEndTime').value;
+      var durationInput = document.getElementById('mtDuration').value;
+      body.message = document.getElementById('mtMessage').value;
+      if (endTimeInput) {
+        body.end_time = new Date(endTimeInput).toISOString();
+      } else if (durationInput) {
+        body.duration_minutes = parseInt(durationInput);
+      }
+    }
+
+    fetch(API_URL, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+      body: JSON.stringify(body)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.success) {
+        updateUI(data.status);
+        if (typeof showToast === 'function') showToast(data.message, 'success');
+      } else {
+        if (typeof showToast === 'function') showToast(data.message || 'Error', 'error');
+      }
+    })
+    .catch(function() {
+      if (typeof showToast === 'function') showToast('Network error', 'error');
+    });
+  }
+  window.toggleMaintenance = toggleMaintenance;
+
+  // Load initial status
+  function loadMaintenanceStatus() {
+    fetch(STATUS_URL, { method: 'GET', credentials: 'same-origin' })
+      .then(function(r) { return r.json(); })
+      .then(updateUI)
+      .catch(function() {});
+  }
+  window.loadMaintenanceStatus = loadMaintenanceStatus;
+
+  // Auto-load when tab is opened
+  document.addEventListener('DOMContentLoaded', function() {
+    var tab = document.querySelector('[data-tab="maintenance"]');
+    if (tab) {
+      tab.addEventListener('click', loadMaintenanceStatus);
+    }
+  });
+})();
+</script>

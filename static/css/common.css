@@ -53,8 +53,45 @@ body[style*="overflow:hidden"] {
   margin-top: 0 !important;
 }
 
+/* ===========================================
+   PAGINATION — Fixed at bottom of content area
+   Main-content becomes a flex column. The table container
+   expands to fill space and scrolls internally. Pagination
+   stays pinned at the bottom, never scrolling away.
+   Excludes .idcard-actions-page which has its own layout.
+   =========================================== */
+.main:not(.idcard-actions-page) .main-content {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Table containers fill remaining vertical space */
+.main:not(.idcard-actions-page) .main-content > [id$="-table-container"] {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Table wrapper scrolls independently */
+.main:not(.idcard-actions-page) .main-content > [id$="-table-container"] > .table-wrapper {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Pagination bar stays at bottom, never scrolls */
+.main:not(.idcard-actions-page) .main-content .pagination-bar {
+  position: static;
+  flex-shrink: 0;
+}
+
 .action-bar {
   margin-top: 0;
+  flex-shrink: 0;
 }
 
 /* ===========================================

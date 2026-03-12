@@ -101,8 +101,13 @@ body:has(.idcard-actions-page) {
     min-height: 0;
     overflow: hidden;
     padding: 0;
-    padding-bottom: 38px; /* Reserve space for fixed pagination bar so scrollbar is visible above it */
     margin: 0;
+}
+
+/* Pagination bar stays fixed at bottom */
+.idcard-actions-page #card-table-container > .pagination-bar {
+    position: static;
+    flex-shrink: 0;
 }
 
 .idcard-actions-page .table-wrapper {

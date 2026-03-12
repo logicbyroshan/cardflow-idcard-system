@@ -123,6 +123,8 @@ MIDDLEWARE = [
     'core.middleware.SessionIdleTimeoutMiddleware',
     # Security headers — Permissions-Policy, Cache-Control
     'core.middleware.SecurityHeadersMiddleware',
+    # Maintenance mode — blocks panel for non-superadmin when enabled
+    'core.middleware.MaintenanceModeMiddleware',
     # Website Offline Middleware — blocks public site when status is 'draft'
     'core.middleware.WebsiteOfflineMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
