@@ -1,52 +1,8 @@
 <!-- Stats Cards -->
 <div class="stats-cards">
-  <a href="/active-clients/" class="stat-card stat-card-link">
-    <div class="stat-icon pending">
-      <i class="fa-solid fa-clock"></i>
-    </div>
-    <div class="stat-info">
-      <div class="stat-value" id="pendingCards">{{ pending_cards|default:0 }}</div>
-      <div class="stat-label">Pending Cards</div>
-    </div>
-  </a>
-  
-  <a href="/active-clients/" class="stat-card stat-card-link">
-    <div class="stat-icon verified">
-      <i class="fa-solid fa-check-circle"></i>
-    </div>
-    <div class="stat-info">
-      <div class="stat-value" id="verifiedCards">{{ verified_cards|default:0 }}</div>
-      <div class="stat-label">Verified Cards</div>
-    </div>
-  </a>
-  
-  <a href="/active-clients/" class="stat-card stat-card-link">
-    <div class="stat-icon approved">
-      <i class="fa-solid fa-thumbs-up"></i>
-    </div>
-    <div class="stat-info">
-      <div class="stat-value" id="approvedCards">{{ approved_cards|default:0 }}</div>
-      <div class="stat-label">Approved Cards</div>
-    </div>
-  </a>
-  
-  <a href="/active-clients/" class="stat-card stat-card-link">
-    <div class="stat-icon downloaded">
-      <i class="fa-solid fa-download"></i>
-    </div>
-    <div class="stat-info">
-      <div class="stat-value" id="downloadedCards">{{ downloaded_cards|default:0 }}</div>
-      <div class="stat-label">Downloaded Cards</div>
-    </div>
-  </a>
-  
-  <a href="/active-clients/" class="stat-card stat-card-link">
-    <div class="stat-icon bg-primary/10 text-primary">
-      <i class="fa-solid fa-layer-group"></i>
-    </div>
-    <div class="stat-info">
-      <div class="stat-value" id="totalCards">{{ total_id_cards|default:0 }}</div>
-      <div class="stat-label">Total ID Cards</div>
-    </div>
-  </a>
+  {% include 'components/stat-card.html' with icon="fa-solid fa-clock" value=pending_cards label="Pending Cards" color="pending" card_class="stat-card stat-card-link" href="/active-clients/" id="pendingCards" %}
+  {% include 'components/stat-card.html' with icon="fa-solid fa-check-circle" value=verified_cards label="Verified Cards" color="verified" card_class="stat-card stat-card-link" href="/active-clients/" id="verifiedCards" %}
+  {% include 'components/stat-card.html' with icon="fa-solid fa-thumbs-up" value=approved_cards label="Approved Cards" color="approved" card_class="stat-card stat-card-link" href="/active-clients/" id="approvedCards" %}
+  {% include 'components/stat-card.html' with icon="fa-solid fa-download" value=downloaded_cards label="Downloaded Cards" color="downloaded" card_class="stat-card stat-card-link" href="/active-clients/" id="downloadedCards" %}
+  {% include 'components/stat-card.html' with icon="fa-solid fa-layer-group" value=total_id_cards label="Total ID Cards" color="bg-primary/10 text-primary" card_class="stat-card stat-card-link" href="/active-clients/" id="totalCards" %}
 </div>

@@ -18,11 +18,7 @@
                 </div>
             </div>
         </div>
-        <div class="search-box">
-            <i class="fa-solid fa-magnifying-glass search-icon"></i>
-            <input type="text" class="search-input" id="searchInput" placeholder="Search All..." autocomplete="off">
-            <button class="search-clear-btn" id="searchClearBtn" type="button" title="Clear search" aria-label="Clear search"><i class="fa-solid fa-xmark"></i></button>
-        </div>
+        {% include 'components/search-box.html' with input_id="searchInput" placeholder="Search All..." clear_id="searchClearBtn" %}
     </div>
 
     <!-- Right Section - Action Buttons -->
