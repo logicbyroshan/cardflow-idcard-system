@@ -101,7 +101,9 @@
    (action-bars and table-wraps are full-width intentionally)
    ===================================================== */
 .wa-dashboard-section > .wa-stats-grid,
-.wa-dashboard-section > .wa-quick-links-grid {
+.wa-dashboard-section > .wa-quick-links-grid,
+.wa-dashboard-section > .wa-quick-links,
+.wa-dashboard-section > .wa-activity-list {
     padding: 14px 20px;
 }
 
