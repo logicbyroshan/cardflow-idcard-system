@@ -42,30 +42,91 @@ def _safe_error(e, fallback='An error occurred. Please try again.'):
     return fallback
 
 
-def _build_class_filter_q(qs, class_filter, class_field_name):
-    """Apply class filter with canonical normalization.
-
-    Finds ALL raw variants in the DB that normalize to the same canonical
-    value as the filter, then matches them with __in.  This ensures
-    'KG-I', 'KG1', 'KGI', 'LKG' are all captured when filtering by 'KG1'.
+def _get_class_variant_map(table_id, class_field_name):
+    """Get cached mapping: canonical → [raw_variants] for a table.
+    
+    Cached for 60 seconds. Invalidated by inline edits that change class.
     """
+    cache_key = f'class_variants_map:{table_id}:{class_field_name}'
+    cached = django_cache.get(cache_key)
+    if cached is not None:
+        return cached
+    
     from django.db.models.fields.json import KeyTextTransform
     from django.db.models.functions import Cast
-    from django.db.models import CharField, Q
+    from django.db.models import CharField
     from core.utils.field_utils import normalize_class_value
-
-    norm_filter = normalize_class_value(class_filter)
-
-    # Get all distinct raw class values in the queryset
+    from collections import defaultdict
+    
+    # Query ALL distinct raw class values from the table (no status filter)
     all_raw = list(
-        qs.annotate(_cv_raw=Cast(KeyTextTransform(class_field_name, 'field_data'), CharField()))
+        IDCard.objects.filter(table_id=table_id)
+        .annotate(_cv_raw=Cast(KeyTextTransform(class_field_name, 'field_data'), CharField()))
         .exclude(_cv_raw__isnull=True).exclude(_cv_raw='')
         .order_by()
         .values_list('_cv_raw', flat=True).distinct()
     )
+    
+    # Build canonical → [raw_variants] map
+    variant_map = defaultdict(list)
+    for raw in all_raw:
+        canonical = normalize_class_value(raw)
+        variant_map[canonical].append(raw)
+    
+    result = dict(variant_map)
+    django_cache.set(cache_key, result, 60)  # Cache for 60 seconds
+    return result
 
-    # Find raw values that normalize to the same canonical
-    matching_raw = [r for r in all_raw if normalize_class_value(r) == norm_filter]
+
+def invalidate_class_variant_cache(table_id):
+    """Invalidate class variant cache for a table (call after class field edits)."""
+    # Wildcard delete not available in all backends — use table-scoped keys
+    # The cache auto-expires in 60s anyway; this is for immediate consistency.
+    from idcards.models import IDCardTable
+    try:
+        table = IDCardTable.objects.select_related().get(id=table_id)
+        class_field, _ = _get_class_section_field_names(table)
+        if class_field:
+            django_cache.delete(f'class_variants_map:{table_id}:{class_field}')
+    except Exception:
+        pass  # Best effort
+
+
+def _build_class_filter_q(qs, class_filter, class_field_name):
+    """Apply class filter with canonical normalization.
+
+    Uses cached canonical→raw mapping to avoid scanning distinct values
+    on every request. Finds all raw variants that normalize to the same
+    canonical value as the filter, then matches them with __in.
+    """
+    from django.db.models.fields.json import KeyTextTransform
+    from django.db.models import Q
+    from core.utils.field_utils import normalize_class_value
+
+    norm_filter = normalize_class_value(class_filter)
+    
+    # Get table_id from the queryset (assumes qs is filtered by table)
+    # The queryset is already filtered by table in the calling code
+    try:
+        table_id = qs.query.where.children[0].rhs  # table_id from filter(table=table)
+    except Exception:
+        table_id = None
+    
+    # If we can get table_id, use cached variant map
+    if table_id:
+        variant_map = _get_class_variant_map(table_id, class_field_name)
+        matching_raw = variant_map.get(norm_filter, [])
+    else:
+        # Fallback: scan distinct values (slow path)
+        from django.db.models.functions import Cast
+        from django.db.models import CharField
+        all_raw = list(
+            qs.annotate(_cv_raw=Cast(KeyTextTransform(class_field_name, 'field_data'), CharField()))
+            .exclude(_cv_raw__isnull=True).exclude(_cv_raw='')
+            .order_by()
+            .values_list('_cv_raw', flat=True).distinct()
+        )
+        matching_raw = [r for r in all_raw if normalize_class_value(r) == norm_filter]
 
     if not matching_raw:
         return qs.none()

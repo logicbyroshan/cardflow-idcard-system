@@ -11,6 +11,8 @@ from .idcard_helpers import (
     _safe_error,
     _build_class_filter_q,
     _get_class_section_field_names,
+    _get_class_variant_map,
+    invalidate_class_variant_cache,
     _access_denied_response,
     _check_client_scope_by_group,
     _check_client_scope_by_table,

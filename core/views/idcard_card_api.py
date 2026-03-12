@@ -394,6 +394,8 @@ def api_idcard_filter_options(request, table_id):
     E.g. 'KG-I', 'KGI', 'KG1', 'kgI' all map to canonical 'KG1' and show
     the most-used raw format as the display label.
 
+    Cached for 30 seconds per table (no status filter).
+
     Response shape:
         class_values:   [{value: "KG1", display: "KG-I"}, ...]
         section_values: ["A", "B", ...]
@@ -401,6 +403,7 @@ def api_idcard_filter_options(request, table_id):
     from django.db.models.fields.json import KeyTextTransform
     from django.db.models.functions import Cast
     from django.db.models import CharField, Count
+    from django.core.cache import cache as django_cache
     from core.utils.field_utils import (
         CLASS_ORDER, CLASS_ORDER_UNKNOWN, normalize_class_value,
     )
@@ -411,10 +414,18 @@ def api_idcard_filter_options(request, table_id):
         return err
 
     status_filter = request.GET.get('status', '').strip()
+    
+    # Cache key includes table_id but NOT status — we cache all-status options
+    # Status filtering was removed because filtering a dropdown by status
+    # makes no sense (user wants to see all possible class/section values).
+    cache_key = f'filter_options:{table_id}'
+    cached = django_cache.get(cache_key)
+    if cached is not None:
+        return JsonResponse(cached)
 
     qs = IDCard.objects.filter(table=table)
-    if status_filter and status_filter in IDCardService.VALID_STATUSES:
-        qs = qs.filter(status=status_filter)
+    # NOTE: Removed status filter — filter options should show ALL values
+    # across the entire table, not just the current status view.
 
     class_field_name, section_field_name = _get_class_section_field_names(table)
 
@@ -464,13 +475,18 @@ def api_idcard_filter_options(request, table_id):
             ],
         )
 
-    return JsonResponse({
+    result = {
         'success': True,
         'class_values': class_values,
         'section_values': list(section_values),
         'class_field': class_field_name,
         'section_field': section_field_name,
-    })
+    }
+    
+    # Cache for 30 seconds
+    django_cache.set(cache_key, result, 30)
+
+    return JsonResponse(result)
 
 
 @require_http_methods(["POST"])

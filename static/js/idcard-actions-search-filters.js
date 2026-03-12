@@ -158,7 +158,12 @@ function initSectionFilterDropdown() {
  * Populate class/section filter dropdowns from the server-side API.
  * Calls /api/table/{id}/filter-options/ to get ALL distinct values from the database,
  * not just from loaded rows.
+ * 
+ * Debounced: multiple rapid calls within 500ms coalesce into one request.
  */
+var _populateFilterOptionsTimer = null;
+var _populateFilterOptionsInFlight = false;
+
 function populateFilterOptions() {
     // Virtual table mode: table-render.js calls _populateFilterOptions()
     // after every fetch — no DOM scanning needed here.
@@ -166,15 +171,31 @@ function populateFilterOptions() {
         return;
     }
 
+    // Debounce: wait 500ms before making request — coalesces rapid inline edits
+    if (_populateFilterOptionsTimer) {
+        clearTimeout(_populateFilterOptionsTimer);
+    }
+    _populateFilterOptionsTimer = setTimeout(_doPopulateFilterOptions, 500);
+}
+
+function _doPopulateFilterOptions() {
+    _populateFilterOptionsTimer = null;
+    
+    // Skip if already in flight
+    if (_populateFilterOptionsInFlight) return;
+
     var tableId = (IDCardApp.lazyLoadState && IDCardApp.lazyLoadState.tableId) ||
                   (typeof TABLE_ID !== 'undefined' ? TABLE_ID : null);
     if (!tableId) return;
+
+    _populateFilterOptionsInFlight = true;
 
     // Fetch filter options for ALL statuses (no status param) so users can
     // see every class/section value across the entire table, not just the
     // current list.
     ApiClient.get('/api/table/' + tableId + '/filter-options/')
         .then(function(data) {
+            _populateFilterOptionsInFlight = false;
             if (!data || !data.success) return;
 
             var classValues = data.class_values || [];
@@ -224,6 +245,7 @@ function populateFilterOptions() {
             }
         })
         .catch(function(err) {
+            _populateFilterOptionsInFlight = false;
             console.error('Failed to load filter options:', err);
         });
 }

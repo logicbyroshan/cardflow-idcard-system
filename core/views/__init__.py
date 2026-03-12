@@ -107,6 +107,7 @@ from .idcard_api import (
     api_idcard_bulk_upload,
     api_idcard_reupload_images,
     api_idcard_modals_html,
+    invalidate_class_variant_cache,
 )
 
 from .settings_api import (

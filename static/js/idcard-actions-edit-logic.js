@@ -97,15 +97,43 @@ function saveCellEdit(cell, newValue, cardId, field) {
             showToast('Field updated successfully', 'success');
         }
         
-        // Re-apply filters so edited row hides/shows correctly
-        // e.g. if user changes section from A→C while filter is "A", row disappears
-        if (typeof IDCardApp.applyFiltersAndSort === 'function') {
-            IDCardApp.applyFiltersAndSort();
-        } else if (typeof applyFiltersAndSort === 'function') {
-            applyFiltersAndSort();
+        // ── Check if row should be removed from current filtered view ──
+        // If a class/section filter is active and we just changed that field,
+        // the row may no longer match the filter — animate it out.
+        const fieldUpper = field.toUpperCase();
+        const row = cell.closest('tr');
+        let shouldRemoveRow = false;
+        
+        // Check class filter
+        if ((fieldUpper === 'CLASS' || fieldUpper === 'STD' || fieldUpper === 'STANDARD' || fieldUpper === 'GRADE') 
+            && IDCardApp.currentClassFilter) {
+            // User changed class while a class filter is active
+            // The new value may not match the filter — remove row to avoid stale view
+            shouldRemoveRow = true;
+        }
+        // Check section filter
+        if ((fieldUpper === 'SECTION' || fieldUpper === 'SEC' || fieldUpper === 'DIV' || fieldUpper === 'DIVISION')
+            && IDCardApp.currentSectionFilter) {
+            // User changed section while a section filter is active
+            shouldRemoveRow = true;
+        }
+        
+        if (shouldRemoveRow && row && cardId) {
+            // Use removeCardRow for smooth animation (same as verify/approve)
+            if (typeof IDCardApp.removeCardRow === 'function') {
+                IDCardApp.removeCardRow(cardId);
+            }
+        } else {
+            // No filter active for this field, just re-apply date filter
+            if (typeof IDCardApp.applyFiltersAndSort === 'function') {
+                IDCardApp.applyFiltersAndSort();
+            } else if (typeof applyFiltersAndSort === 'function') {
+                applyFiltersAndSort();
+            }
         }
         
         // Refresh filter dropdown options in case new values were introduced
+        // (debounced in populateFilterOptions if it fires too often)
         if (typeof IDCardApp.populateFilterOptions === 'function') {
             IDCardApp.populateFilterOptions();
         } else if (typeof populateFilterOptions === 'function') {
