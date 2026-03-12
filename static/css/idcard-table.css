@@ -93,6 +93,11 @@ body:has(.idcard-actions-page) {
     border-bottom: 1px solid #e5e7eb;
 }
 
+/* Keep date filter + nav buttons on one row */
+.idcard-actions-page .search-filter-bar .action-right {
+    flex-wrap: nowrap;
+}
+
 /* Card table container fills remaining space */
 .idcard-actions-page #card-table-container {
     display: flex;
