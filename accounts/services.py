@@ -62,44 +62,59 @@ class AuthService:
     """
     
     @staticmethod
-    def check_user_exists(email, role=None):
+    def _find_user(identifier, role=None):
         """
-        Check if a user exists with the given email and optionally role.
-        
+        Find a user by email or username, with optional role filter.
+
         Args:
-            email: User's email address
+            identifier: Email address or username
             role: Optional role to filter by
-            
+
+        Returns:
+            User instance or None
+        """
+        from django.db.models import Q
+        role_filter = Q()
+        if role and role in ROLE_MAPPING:
+            if role == 'super_admin':
+                role_filter = Q(role__in=['super_admin', 'pro_user'])
+            else:
+                role_filter = Q(role=role)
+
+        # Try email first, then username
+        user = User.objects.filter(Q(email__iexact=identifier) & role_filter).first()
+        if not user:
+            user = User.objects.filter(Q(username__iexact=identifier) & role_filter).first()
+        return user
+
+    @staticmethod
+    def check_user_exists(identifier, role=None):
+        """
+        Check if a user exists with the given email/username and optionally role.
+
+        Args:
+            identifier: User's email address or username
+            role: Optional role to filter by
+
         Returns:
             dict: {exists: bool, user_name: str, message: str}
         """
         try:
-            user_filter = {'email__iexact': email}
-            if role and role in ROLE_MAPPING:
-                # Pro user logs in via super_admin role selection
-                if role == 'super_admin':
-                    user_filter['role__in'] = ['super_admin', 'pro_user']
-                else:
-                    user_filter['role'] = role
-            
-            user = User.objects.filter(**user_filter).first()
-            
+            user = AuthService._find_user(identifier, role)
+
             if user:
-                # Only return minimal info needed for the login flow
-                # (first name initial + masked email) to prevent enumeration
                 first_name = user.first_name or user.username
-                display_name = first_name  # Only first name, no full details
+                display_name = first_name
                 return {
                     'exists': True,
                     'user_name': display_name,
-                    'user_email': email,  # Echo back what they typed, don't reveal stored email
+                    'user_email': identifier,  # Echo back what they typed
                     'message': 'User found'
                 }
-            
-            # Generic message — identical regardless of whether email exists with a different role
+
             return {
                 'exists': False,
-                'message': 'No account found. Please check your email and selected role.'
+                'message': 'No account found. Please check your email/username and selected role.'
             }
         except Exception as e:
             return {
@@ -108,55 +123,48 @@ class AuthService:
             }
     
     @staticmethod
-    def authenticate_user(email, password, role=None):
+    def authenticate_user(identifier, password, role=None):
         """
-        Authenticate user with email and password.
-        
+        Authenticate user with email/username and password.
+
         Args:
-            email: User's email
+            identifier: User's email or username
             password: User's password
             role: Expected role (optional)
-            
+
         Returns:
             dict: {success: bool, user: User, redirect_url: str, message: str}
         """
         try:
-            # Find user by email
-            user = User.objects.filter(email__iexact=email).first()
-            
-            # Use a single generic failure message for all auth failures
-            # to prevent user/role/status enumeration
-            _AUTH_FAIL_MSG = 'Invalid email or password. Please try again.'
-            
+            user = AuthService._find_user(identifier, role=None)
+
+            _AUTH_FAIL_MSG = 'Invalid credentials. Please try again.'
+
             if not user:
                 return {'success': False, 'message': _AUTH_FAIL_MSG}
-            
+
             # Check role if specified
             if role and user.role != role:
-                # Allow pro_user to login via super_admin role selection
                 if not (role == 'super_admin' and user.role == 'pro_user'):
                     return {'success': False, 'message': _AUTH_FAIL_MSG}
-            
-            # Check if user is active (same generic message to prevent enumeration)
+
             if not user.is_active:
                 return {'success': False, 'message': _AUTH_FAIL_MSG}
-            
-            # Authenticate with username (Django's default)
+
             authenticated_user = authenticate(username=user.username, password=password)
-            
+
             if authenticated_user is None:
                 return {'success': False, 'message': _AUTH_FAIL_MSG}
-            
-            # Get redirect URL based on role
+
             redirect_url = DASHBOARD_URLS.get(user.role, '/panel/')
-            
+
             return {
                 'success': True,
                 'user': authenticated_user,
                 'redirect_url': redirect_url,
                 'message': 'Login successful'
             }
-            
+
         except Exception as e:
             return {
                 'success': False,

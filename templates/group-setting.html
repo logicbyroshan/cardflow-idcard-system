@@ -73,9 +73,11 @@
 {% endblock %}
 
 {% block page_vars %}
+  <script id="page-config" type="application/json">{"groupId": {{ group.id|default:"null" }}, "isClient": {{ is_client|yesno:"true,false" }}, "isClientStaff": {{ is_client_staff|yesno:"true,false" }} }</script>
   <script>
-    const GROUP_ID = {% if group %}{{ group.id }}{% else %}null{% endif %};
-    const IS_CLIENT_ROLE = {% if is_client or is_client_staff %}true{% else %}false{% endif %};
+    var _cfg = JSON.parse(document.getElementById('page-config').textContent);
+    const GROUP_ID = _cfg.groupId;
+    const IS_CLIENT_ROLE = _cfg.isClient || _cfg.isClientStaff;
   </script>
 {% endblock %}
 
@@ -94,7 +96,7 @@
   <script defer src="{% static 'js/create-xlsx.js' %}"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      var isClientRole = {% if is_client or is_client_staff %}true{% else %}false{% endif %};
+      var isClientRole = IS_CLIENT_ROLE;
       var apiUrl = isClientRole
         ? '/client/api/create-from-xlsx/'
         : '/api/group/' + GROUP_ID + '/table/create-from-xlsx/';

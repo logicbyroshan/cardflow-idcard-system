@@ -63,26 +63,30 @@
 {% endblock %}
 
 {% block page_js %}
+  <script id="page-config" type="application/json">{"clientId": {{ client.id }}, "isClientRole": {{ is_client|yesno:"true,false" }}, "isClientStaff": {{ is_client_staff|yesno:"true,false" }}, "groupId": {{ group.id|default:"null" }}, "csrfToken": "{{ csrf_token }}"}</script>
   <script defer src="{% static 'js/idcard-group.js' %}"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
+      var _cfg = JSON.parse(document.getElementById('page-config').textContent);
+      var isClientRole = _cfg.isClientRole || _cfg.isClientStaff;
       initIdcardGroup({
-        clientId: {{ client.id }},
-        isClientRole: {% if is_client or is_client_staff %}true{% else %}false{% endif %}
+        clientId: _cfg.clientId,
+        isClientRole: isClientRole
       });
     });
   </script>
   <script defer src="{% static 'js/create-xlsx.js' %}"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      var isClientRole = {% if is_client or is_client_staff %}true{% else %}false{% endif %};
-      var groupId = {% if group %}{{ group.id }}{% else %}null{% endif %};
+      var _cfg = JSON.parse(document.getElementById('page-config').textContent);
+      var isClientRole = _cfg.isClientRole || _cfg.isClientStaff;
+      var groupId = _cfg.groupId;
       var apiUrl = isClientRole
         ? '/client/api/create-from-xlsx/'
         : '/api/group/' + groupId + '/table/create-from-xlsx/';
       initCreateWithXlsx({
         apiUrl: apiUrl,
-        csrfToken: '{{ csrf_token }}',
+        csrfToken: _cfg.csrfToken,
         onSuccess: function() { window.location.reload(); }
       });
     });

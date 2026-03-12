@@ -70,7 +70,7 @@
 {% endblock %}
 
 {% block page_vars %}
-  <script>window.isSuperAdmin = {% if is_super_admin %}true{% else %}false{% endif %};</script>
+  <script>window.isSuperAdmin = JSON.parse('{{ is_super_admin|yesno:"true,false" }}');</script>
 {% endblock %}
 
 {% block page_js %}
