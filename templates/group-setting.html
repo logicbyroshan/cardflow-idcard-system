@@ -1,252 +1,86 @@
+{% extends 'base.html' %}
 {% load static custom_filters %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="robots" content="noindex, nofollow">
-  <meta name="csrf-token" content="{{ csrf_token }}">
-  <title>Group Settings - Adarsh ID Cards</title>
-  <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
-  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
-  <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}">
-  <!-- Page-specific: group settings UI -->
+
+{% block title %}Group Settings - Adarsh ID Cards{% endblock %}
+
+{% block extra_css %}
   <link rel="stylesheet" href="{% static 'css/group-setting.css' %}">
-  <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
-  <!-- Alpine.js State Module (MUST load before Alpine) -->
-  <script defer src="{% static 'js/alpine-state.js' %}"></script>
-  <!-- Alpine.js -->
-  <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
-  <!-- SheetJS for Excel export -->
+{% endblock %}
+
+{% block extra_head %}
   <script defer src="{% static 'js/vendor/xlsx.full.min.js' %}"></script>
-</head>
-<body class="group-setting-page" x-data="layoutState()" x-init="init()">
+{% endblock %}
 
-  {% include 'partials/sidebar.html' %}
+{% block body_class %}class="group-setting-page"{% endblock %}
 
-  <!-- Main -->
-  <main class="main">
+{% block breadcrumb %}
+  {% if is_super_admin %}
+  <a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+  {% elif is_admin_staff %}
+  <a href="{% url 'admin_staff_dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+  {% elif is_client or is_client_staff %}
+  <a href="{% url 'client:dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+  {% endif %}
+  <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+  {% if is_client or is_client_staff %}
+  <span class="breadcrumb-item active">Group Settings</span>
+  {% else %}
+  <a href="{% url 'active_clients' %}" class="breadcrumb-item">Clients</a>
+  <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+  {% if client %}
+  <span class="breadcrumb-item active">{{ client.name }}{% if client.status != 'active' %} <span class="status-badge inactive status-badge--sm">{{ client.get_status_display }}</span>{% endif %} - Group Settings</span>
+  {% else %}
+  <span class="breadcrumb-item active">Group Settings</span>
+  {% endif %}
+  {% endif %}
+{% endblock %}
 
-    <!-- Top Navbar -->
-    <header class="topbar">
-      <div class="nav-left">
-        <button class="sidebar-toggle" id="sidebarToggle" @click="toggleSidebar()" aria-label="Toggle sidebar">
-          <i class="fa-solid fa-bars" :class="sidebarOpen ? 'fa-xmark' : 'fa-bars'"></i>
-        </button>
-        <div class="breadcrumb">
-            {% if is_super_admin %}
-            <a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
-            {% elif is_admin_staff %}
-            <a href="{% url 'admin_staff_dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
-            {% elif is_client or is_client_staff %}
-            <a href="{% url 'client:dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
-            {% endif %}
-            <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
-            {% if is_client or is_client_staff %}
-            <span class="breadcrumb-item active">Group Settings</span>
-            {% else %}
-            <a href="{% url 'active_clients' %}" class="breadcrumb-item">Clients</a>
-            <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
-            {% if client %}
-            <span class="breadcrumb-item active">{{ client.name }}{% if client.status != 'active' %} <span class="status-badge inactive status-badge--sm">{{ client.get_status_display }}</span>{% endif %} - Group Settings</span>
-            {% else %}
-            <span class="breadcrumb-item active">Group Settings</span>
-            {% endif %}
-            {% endif %}
-        </div>
-      </div>
-
-      <!-- Right - Page Switch Buttons -->
-      <div class="nav-right">
-        {% include 'partials/notification-bell.html' %}
-        <div class="page-switch-btns">
-          {% if client %}
-          <a href="{% if is_client or is_client_staff %}{% url 'client:idcard_group' %}{% else %}{% url 'idcard_group' client.id %}{% endif %}" class="btn btn-md btn-neutral" title="ID Card Group">
-            <i class="fa-solid fa-id-card"></i> <span>ID Card Group</span>
-          </a>
-          {% endif %}
-          <a href="#" class="btn btn-md btn-primary" title="Group Setting">
-            <i class="fa-solid fa-table-list"></i> <span>Group Setting</span>
-          </a>
-        </div>
-      </div>
-    </header>
-
-    <div class="main-content">
-
-      <!-- Action Bar -->
-      <div class="action-bar">
-        
-        <!-- Left Section - Filter and Search -->
-        <div class="action-bar-left">
-          <div class="filter-group">
-            <div class="custom-dropdown" id="filterDropdown">
-              <button class="dropdown-toggle" id="dropdownToggle" type="button" aria-expanded="false">
-                <span id="selectedText">All</span>
-                <i class="fa-solid fa-chevron-down"></i>
-              </button>
-              <div class="dropdown-options" id="dropdownOptions">
-                <div class="dropdown-option selected" data-value="all">All</div>
-                <div class="dropdown-option" data-value="name">Name</div>
-                <div class="dropdown-option" data-value="status">Status</div>
-              </div>
-            </div>
-          </div>
-          <div class="search-box">
-            <i class="fa-solid fa-magnifying-glass search-icon"></i>
-            <input type="text" id="searchInput" placeholder="Search All..." class="search-input" autocomplete="off">
-            <button class="search-clear-btn" id="searchClearBtn" type="button" title="Clear search" aria-label="Clear search">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
-          </div>
-        </div>
-
-        <!-- Right Section - Action Buttons -->
-        <div class="action-bar-right">
-          <div class="actions">
-            <div class="btn-group">
-              {% if is_super_admin or perm_idcard_setting_add %}
-              <button class="btn btn-md btn-primary" id="addBtn"><i class="fa-solid fa-plus"></i> Add</button>
-              {% endif %}
-              {% if is_super_admin or perm_idcard_setting_edit %}
-              <button class="btn btn-md btn-neutral" id="editBtn" disabled><i class="fa-solid fa-pen"></i> Edit</button>
-              {% endif %}
-              <button class="btn btn-md btn-neutral" id="viewBtn" disabled><i class="fa-solid fa-eye"></i> View</button>
-            </div>
-            <div class="btn-separator"></div>
-            <div class="btn-group">
-              {% if is_super_admin or perm_idcard_setting_delete %}
-              <button class="btn btn-md btn-danger" id="deleteBtn" disabled><i class="fa-solid fa-trash"></i> Delete</button>
-              {% endif %}
-              {% if is_super_admin or perm_idcard_setting_status %}
-              <button id="toggle-status-btn" class="btn btn-md btn-warning" disabled><i class="fa-solid fa-check"></i> Active</button>
-              {% endif %}
-            </div>
-            {% if is_super_admin or perm_idcard_bulk_upload %}
-            <div class="btn-separator"></div>
-            <div class="btn-group">
-              <button class="btn btn-md btn-success" id="createFromXlsxBtn" title="Create table directly from an XLSX file"><i class="fa-solid fa-file-excel"></i> Create with XLSX</button>
-            </div>
-            {% endif %}
-          </div>
-        </div>
-      </div>
-
-      <!-- HTMX Table Container -->
-      <div id="gs-table-container"
-           hx-trigger="refreshTable from:body"
-           hx-get="{% if is_client or is_client_staff %}{% url 'client:group_settings' %}{% else %}{% url 'group_settings' client.id %}{% endif %}"
-           hx-target="#gs-table-container"
-           hx-swap="innerHTML">
-        {% include 'partials/group-setting/table-container.html' %}
-      </div>
-
-    </div>
-  </main>
-
-  <!-- Drawer / Modals / Toast (outside <main> â€” avoids flex-column gap) -->
-
-  <!-- Add/Edit Drawer Modal -->
-  <div id="add-drawer" class="drawer-modal">
-    <div class="drawer-content">
-      <div class="drawer-header">
-        <h3><i class="fa-solid fa-table-list" id="drawerIcon"></i> <span id="drawerTitle">Create New Group Table</span></h3>
-        <button class="drawer-close" id="closeDrawer" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
-      </div>
-      <div class="drawer-body">
-
-        <!-- Table Name Section -->
-        <div class="form-section">
-          <div class="section-title"><i class="fa-solid fa-pen-to-square"></i> Table Details</div>
-          <div class="form-group">
-            <label class="form-label" for="tableName">Table Name <span class="required">*</span></label>
-            <input type="text" id="tableName" class="form-input" placeholder="Enter table name" required>
-          </div>
-        </div>
-
-        <!-- Add New Field Section -->
-        <div class="form-section add-field-section">
-          <div class="section-title"><i class="fa-solid fa-plus-circle"></i> Add New Field</div>
-          <div class="add-field-form">
-            <div class="gs-field-row">
-              <div class="gs-field-col gs-field-col-type">
-                <label class="form-label">Field Type</label>
-                <div class="custom-dropdown field-type-dropdown" id="fieldTypeDropdown">
-                  <button type="button" class="dropdown-toggle gs-dropdown-toggle" id="fieldTypeToggle" aria-expanded="false">
-                    <span>Text</span>
-                    <i class="fa-solid fa-chevron-down"></i>
-                  </button>
-                  <div class="dropdown-options">
-                    <div class="dropdown-option selected" data-value="text">Text</div>
-                    <div class="dropdown-option" data-value="email">Email</div>
-                    <div class="dropdown-option" data-value="class_section">Class &amp; Section</div>
-                    <div class="dropdown-option" data-value="photo">Photo</div>
-                    <div class="dropdown-option" data-value="mother_photo">Mother Photo</div>
-                    <div class="dropdown-option" data-value="father_photo">Father Photo</div>
-                    <div class="dropdown-option" data-value="barcode">Barcode</div>
-                    <div class="dropdown-option" data-value="qr_code">QR Code</div>
-                    <div class="dropdown-option" data-value="signature">Signature</div>
-                  </div>
-                </div>
-                <input type="hidden" id="new-field-type" value="text">
-              </div>
-              <div class="gs-field-col gs-field-col-name">
-                <label class="form-label">Field Name</label>
-                <input type="text" id="new-field-name" class="form-input" placeholder="e.g., Student Name">
-              </div>
-            </div>
-            <div class="gs-field-actions">
-              <label class="gs-required-toggle" title="Mark field as mandatory">
-                <input type="checkbox" id="new-field-mandatory">
-                <span class="gs-required-label"><i class="fa-solid fa-asterisk"></i> Required</span>
-              </label>
-              <button id="add-field-btn" class="btn btn-md btn-primary"><i class="fa-solid fa-plus"></i> Add Field</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Field List Section -->
-        <div class="form-section">
-          <div class="section-title"><i class="fa-solid fa-list-check"></i> Table Fields <span class="gs-field-badge"><span id="fieldCount">0</span>/20</span></div>
-          <p class="gs-field-hint"><i class="fa-solid fa-grip-vertical"></i> Drag to reorder &bull; Click remove to delete</p>
-          <div class="field-list-section">
-            <ul id="field-list" class="field-list">
-              <!-- Fields will be dynamically added here -->
-            </ul>
-            <div id="no-fields-message" class="no-fields-message">
-              <i class="fa-solid fa-info-circle"></i> No fields added yet. Use the form above to add fields.
-            </div>
-          </div>
-        </div>
-
-      </div>
-      <div class="drawer-footer">
-        <button type="button" class="btn btn-md btn-neutral" id="cancelDrawer"><i class="fa-solid fa-xmark"></i> Cancel</button>
-        <button type="button" class="btn btn-md btn-primary" id="saveDrawer"><i class="fa-solid fa-plus"></i> Create</button>
-      </div>
+{% block topbar_right %}
+  <div class="nav-right">
+    {% include 'partials/notification-bell.html' %}
+    <div class="page-switch-btns">
+      {% if client %}
+      <a href="{% if is_client or is_client_staff %}{% url 'client:idcard_group' %}{% else %}{% url 'idcard_group' client.id %}{% endif %}" class="btn btn-md btn-neutral" title="ID Card Group">
+        <i class="fa-solid fa-id-card"></i> <span>ID Card Group</span>
+      </a>
+      {% endif %}
+      <a href="#" class="btn btn-md btn-primary" title="Group Setting">
+        <i class="fa-solid fa-table-list"></i> <span>Group Setting</span>
+      </a>
     </div>
   </div>
+{% endblock %}
 
-  <!-- Status Confirmation Modal -->
+{% block content %}
+  <div class="main-content">
+    {% include 'partials/group-setting/action-bar.html' %}
+
+    <div id="gs-table-container"
+         hx-trigger="refreshTable from:body"
+         hx-get="{% if is_client or is_client_staff %}{% url 'client:group_settings' %}{% else %}{% url 'group_settings' client.id %}{% endif %}"
+         hx-target="#gs-table-container"
+         hx-swap="innerHTML">
+      {% include 'partials/group-setting/table-container.html' %}
+    </div>
+  </div>
+{% endblock %}
+
+{% block modals %}
+  {% include 'partials/group-setting/drawer.html' %}
   {% include 'components/status-modal.html' with modal_id="status-modal" item_name="table" %}
-
-  <!-- Delete Confirmation Modal -->
   {% include 'components/delete-modal.html' with modal_id="delete-modal" item_name="table" %}
-
-  <!-- Toast notification -->
-  {% include 'partials/components/toast.html' %}
-
-  <!-- Create with XLSX Modal (2-step) -->
   {% include 'partials/components/create-xlsx-modal.html' %}
+{% endblock %}
 
+{% block page_vars %}
   <script>
     const GROUP_ID = {% if group %}{{ group.id }}{% else %}null{% endif %};
     const IS_CLIENT_ROLE = {% if is_client or is_client_staff %}true{% else %}false{% endif %};
   </script>
-  
-  <script defer src="{% static 'dist/js/core.min.js' %}"></script>
+{% endblock %}
+
+{% block page_js %}
   <script defer src="{% static 'dist/js/group-setting.min.js' %}"></script>
-  {% include 'partials/htmx-config.html' %}
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       initHTMXFilters({
@@ -257,21 +91,18 @@
       });
     });
   </script>
-
-  <!-- Create with XLSX logic -->
   <script defer src="{% static 'js/create-xlsx.js' %}"></script>
   <script>
-  document.addEventListener('DOMContentLoaded', function() {
-    var isClientRole = {% if is_client or is_client_staff %}true{% else %}false{% endif %};
-    var apiUrl = isClientRole
-      ? '/client/api/create-from-xlsx/'
-      : '/api/group/' + GROUP_ID + '/table/create-from-xlsx/';
-    initCreateWithXlsx({
-      apiUrl: apiUrl,
-      csrfToken: '{{ csrf_token }}',
-      onSuccess: function() { document.body.dispatchEvent(new Event('refreshTable')); }
+    document.addEventListener('DOMContentLoaded', function() {
+      var isClientRole = {% if is_client or is_client_staff %}true{% else %}false{% endif %};
+      var apiUrl = isClientRole
+        ? '/client/api/create-from-xlsx/'
+        : '/api/group/' + GROUP_ID + '/table/create-from-xlsx/';
+      initCreateWithXlsx({
+        apiUrl: apiUrl,
+        csrfToken: '{{ csrf_token }}',
+        onSuccess: function() { document.body.dispatchEvent(new Event('refreshTable')); }
+      });
     });
-  });
   </script>
-</body>
-</html>
+{% endblock %}

@@ -1,58 +1,68 @@
+{% extends 'base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="robots" content="noindex, nofollow">
-  <meta name="csrf-token" content="{{ csrf_token }}">
-  <title>ID Card Group - {{ client.name }} - Adarsh ID Cards</title>
-  <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
-  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
-  <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}">
-  <!-- Page-specific: ID card group UI -->
+
+{% block title %}ID Card Group - {{ client.name }} - Adarsh ID Cards{% endblock %}
+
+{% block extra_css %}
   <link rel="stylesheet" href="{% static 'css/idcard-group.css' %}">
-  <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
-  <!-- Alpine.js State Module (MUST load before Alpine) -->
-  <script defer src="{% static 'js/alpine-state.js' %}"></script>
-  <!-- Alpine.js -->
-  <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
-  <!-- SheetJS for Excel parsing (used by Create with XLSX) -->
+{% endblock %}
+
+{% block extra_head %}
   <script defer src="{% static 'js/vendor/xlsx.full.min.js' %}"></script>
-</head>
-<body x-data="layoutState()" x-init="init()">
+{% endblock %}
 
-  {% include 'partials/sidebar.html' %}
+{% block breadcrumb %}
+  {% if is_super_admin %}
+  <a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+  {% elif is_admin_staff %}
+  <a href="{% url 'admin_staff_dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+  {% elif is_client or is_client_staff %}
+  <a href="{% url 'client:dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+  {% endif %}
+  <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+  {% if is_client or is_client_staff %}
+  <span class="breadcrumb-item active">ID Card Group</span>
+  {% else %}
+  <a href="{% url 'active_clients' %}" class="breadcrumb-item">Clients</a>
+  <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+  <span class="breadcrumb-item">{{ client.name }}{% if client.status != 'active' %} <span class="status-badge inactive status-badge--sm">{{ client.get_status_display }}</span>{% endif %}</span>
+  <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+  <span class="breadcrumb-item active">ID Card Group</span>
+  {% endif %}
+{% endblock %}
 
-  <!-- Main -->
-  <main class="main">
+{% block topbar_right %}
+  <div class="nav-right">
+    {% include 'partials/notification-bell.html' %}
+    <div class="page-switch-btns">
+      <a href="{% if is_client or is_client_staff %}{% url 'client:idcard_group' %}{% else %}{% url 'idcard_group' client.id %}{% endif %}" class="btn btn-md btn-primary" title="ID Card Group">
+        <i class="fa-solid fa-id-card"></i> <span>ID Card Group</span>
+      </a>
+      {% if is_super_admin or perm_idcard_setting_list %}
+      <a href="{% if is_client or is_client_staff %}{% url 'client:group_settings' %}{% else %}#{% endif %}" {% if not is_client and not is_client_staff %}id="switchToGroupSetting"{% endif %} class="btn btn-md btn-neutral" title="Group Setting">
+        <i class="fa-solid fa-table-list"></i> <span>Group Setting</span>
+      </a>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}
 
-    {% include 'partials/idcard-group/topbar.html' %}
-
-    <div class="main-content">
-
+{% block content %}
+  <div class="main-content">
     {% include 'partials/idcard-group/action-bar.html' %}
     {% include 'partials/idcard-group/table.html' %}
+  </div>
+{% endblock %}
 
-    </div>
-
-  </main>
-
-  <!-- Toast notification -->
-  {% include 'partials/components/toast.html' %}
-
-  <!-- Create with XLSX Modal (2-step) -->
+{% block modals %}
   {% include 'partials/components/create-xlsx-modal.html' %}
-
-  <!-- Modals -->
   {% include 'partials/idcard-group/modal-download-all.html' %}
   {% include 'partials/idcard-group/modal-delete-all.html' %}
   {% include 'partials/idcard-group/modal-upgrade-all.html' %}
   {% include 'partials/idcard-group/modal-reupload.html' %}
+{% endblock %}
 
-  <script defer src="{% static 'dist/js/core.min.js' %}"></script>
-
-  <!-- ID Card Group page logic -->
+{% block page_js %}
   <script defer src="{% static 'js/idcard-group.js' %}"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -62,24 +72,19 @@
       });
     });
   </script>
-
-  {% include 'partials/htmx-config.html' %}
-
-  <!-- Create with XLSX logic -->
   <script defer src="{% static 'js/create-xlsx.js' %}"></script>
   <script>
-  document.addEventListener('DOMContentLoaded', function() {
-    var isClientRole = {% if is_client or is_client_staff %}true{% else %}false{% endif %};
-    var groupId = {% if group %}{{ group.id }}{% else %}null{% endif %};
-    var apiUrl = isClientRole
-      ? '/client/api/create-from-xlsx/'
-      : '/api/group/' + groupId + '/table/create-from-xlsx/';
-    initCreateWithXlsx({
-      apiUrl: apiUrl,
-      csrfToken: '{{ csrf_token }}',
-      onSuccess: function() { window.location.reload(); }
+    document.addEventListener('DOMContentLoaded', function() {
+      var isClientRole = {% if is_client or is_client_staff %}true{% else %}false{% endif %};
+      var groupId = {% if group %}{{ group.id }}{% else %}null{% endif %};
+      var apiUrl = isClientRole
+        ? '/client/api/create-from-xlsx/'
+        : '/api/group/' + groupId + '/table/create-from-xlsx/';
+      initCreateWithXlsx({
+        apiUrl: apiUrl,
+        csrfToken: '{{ csrf_token }}',
+        onSuccess: function() { window.location.reload(); }
+      });
     });
-  });
   </script>
-</body>
-</html>
+{% endblock %}

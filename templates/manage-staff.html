@@ -1,95 +1,45 @@
+{% extends 'base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="robots" content="noindex, nofollow">
-    <meta name="csrf-token" content="{{ csrf_token }}">
-    <title>Manage Staff - Adarsh Admin</title>
-    <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
-    <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
-    <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}">
-    <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
-    <!-- Alpine.js State Module (MUST load before Alpine) -->
-    <script defer src="{% static 'js/alpine-state.js' %}"></script>
-    <!-- Alpine.js -->
-    <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
-</head>
-<body x-data="layoutState()" x-init="init()">
-    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:z-[9999] focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-gray-900 focus:shadow-lg">Skip to main content</a>
-    <!-- Sidebar -->
-    {% include 'partials/sidebar.html' %}
 
-    <!-- Main Content -->
-    <main class="main" id="main-content">
-        <!-- Topbar -->
-        <header class="topbar">
-            <div class="nav-left">
-                <button class="sidebar-toggle" id="sidebarToggle" @click="toggleSidebar()" title="Toggle Sidebar" aria-label="Toggle sidebar">
-                    <i class="fa-solid fa-bars" :class="sidebarOpen ? 'fa-xmark' : 'fa-bars'"></i>
-                </button>
-                <div class="breadcrumb">
-                    <a href="{% url 'dashboard' %}" class="breadcrumb-item">
-                        <i class="fa-solid fa-house"></i> Home
-                    </a>
-                    <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
-                    <span class="breadcrumb-item active">Manage Staff</span>
-                </div>
-            </div>
-            <div class="nav-right">
-                <button class="global-search-btn" id="globalSearchBtn">
-                    <i class="fa-solid fa-magnifying-glass"></i>
-                    <span>Search ID cards...</span>
-                    <kbd>Ctrl+K</kbd>
-                </button>
-                {% include 'partials/notification-bell.html' %}
-            </div>
-        </header>
+{% block title %}Manage Staff - Adarsh Admin{% endblock %}
 
-        <!-- Page Content -->
-        <div class="main-content">
-            <!-- Action Bar -->
-            {% include 'partials/staff/action-bar.html' %}
+{% block breadcrumb %}
+  <a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+  <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+  <span class="breadcrumb-item active">Manage Staff</span>
+{% endblock %}
 
-            <!-- HTMX Table Container -->
-            <div id="staff-table-container"
-                 hx-trigger="refreshTable from:body"
-                 hx-get="{% url 'manage_staff' %}"
-                 hx-target="#staff-table-container"
-                 hx-swap="innerHTML">
-                {% include 'partials/staff/table-container.html' %}
-            </div>
-        </div>
-    </main>
+{% block content %}
+  <div class="main-content">
+    {% include 'partials/staff/action-bar.html' %}
 
-    <!-- Staff Drawer (Add/Edit) -->
-    {% include 'partials/staff/staff-drawer.html' %}
+    <div id="staff-table-container"
+         hx-trigger="refreshTable from:body"
+         hx-get="{% url 'manage_staff' %}"
+         hx-target="#staff-table-container"
+         hx-swap="innerHTML">
+      {% include 'partials/staff/table-container.html' %}
+    </div>
+  </div>
+{% endblock %}
 
-    <!-- Delete Confirmation Modal -->
-    {% include 'components/delete-modal.html' with modal_id="delete-modal" item_name="staff member" %}
+{% block modals %}
+  {% include 'partials/staff/staff-drawer.html' %}
+  {% include 'components/delete-modal.html' with modal_id="delete-modal" item_name="staff member" %}
+  {% include 'components/status-modal.html' with modal_id="status-modal" item_name="staff member" %}
+  {% include 'partials/staff/temp-password-modal.html' %}
+{% endblock %}
 
-    <!-- Status Change Confirmation Modal -->
-    {% include 'components/status-modal.html' with modal_id="status-modal" item_name="staff member" %}
-
-    <!-- Toast Notifications -->
-    {% include 'components/toast.html' %}
-
-    <!-- Temp Password Verification Modal (Center Modal) -->
-    {% include 'partials/staff/temp-password-modal.html' %}
-
-    <script defer src="{% static 'dist/js/core.min.js' %}"></script>
-    <script defer src="{% static 'dist/js/manage-staff.min.js' %}"></script>
-    {% include 'partials/htmx-config.html' %}
-    <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        initHTMXFilters({
-          baseUrl: '{% url "manage_staff" %}',
-          target:  '#staff-table-container',
-          searchInputId: 'searchInput',
-          filters: [{ name: 'status', optionsId: 'statusOptions' }]
-        });
+{% block page_js %}
+  <script defer src="{% static 'dist/js/manage-staff.min.js' %}"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      initHTMXFilters({
+        baseUrl: '{% url "manage_staff" %}',
+        target:  '#staff-table-container',
+        searchInputId: 'searchInput',
+        filters: [{ name: 'status', optionsId: 'statusOptions' }]
       });
-    </script>
-</body>
-</html>
+    });
+  </script>
+{% endblock %}

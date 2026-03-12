@@ -1,90 +1,43 @@
+{% extends 'base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="robots" content="noindex, nofollow">
-    <meta name="csrf-token" content="{{ csrf_token }}">
-    <title>{% if is_admin_staff %}Assigned Clients{% else %}Active Clients{% endif %} - Adarsh Admin</title>
-    <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
-  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
-  <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}">
-    <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
-    <!-- Alpine.js State Module (MUST load before Alpine) -->
-    <script defer src="{% static 'js/alpine-state.js' %}"></script>
-    <!-- Alpine.js -->
-    <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
-</head>
-<body x-data="layoutState()" x-init="init()">
-    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:z-[9999] focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-gray-900 focus:shadow-lg">Skip to main content</a>
-    <!-- Sidebar -->
-    {% include 'partials/sidebar.html' %}
 
-    <!-- Main Content -->
-    <main class="main" id="main-content">
-        <!-- Topbar -->
-        <header class="topbar">
-            <div class="nav-left">
-                <button class="sidebar-toggle" id="sidebarToggle" @click="toggleSidebar()" title="Toggle Sidebar" aria-label="Toggle sidebar">
-                    <i class="fa-solid fa-bars" :class="sidebarOpen ? 'fa-xmark' : 'fa-bars'"></i>
-                </button>
-                <div class="breadcrumb">
-                    {% if is_super_admin %}
-                    <a href="{% url 'dashboard' %}" class="breadcrumb-item">
-                        <i class="fa-solid fa-house"></i> Home
-                    </a>
-                    {% elif is_admin_staff %}
-                    <a href="{% url 'admin_staff_dashboard' %}" class="breadcrumb-item">
-                        <i class="fa-solid fa-house"></i> Home
-                    </a>
-                    {% endif %}
-                    <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
-                    <span class="breadcrumb-item active">{% if is_admin_staff %}Assigned Clients{% else %}Active Clients{% endif %}</span>
-                </div>
-            </div>
-            <div class="nav-right">
-                <button class="global-search-btn" id="globalSearchBtn">
-                    <i class="fa-solid fa-magnifying-glass"></i>
-                    <span>Search ID cards...</span>
-                    <kbd>Ctrl+K</kbd>
-                </button>
-                {% include 'partials/notification-bell.html' %}
-            </div>
-        </header>
+{% block title %}{% if is_admin_staff %}Assigned Clients{% else %}Active Clients{% endif %} - Adarsh Admin{% endblock %}
 
-        <!-- Page Content -->
-        <div class="main-content">
-            <!-- Action Bar -->
-            {% include 'partials/active-client/action-bar.html' %}
+{% block breadcrumb %}
+  {% if is_super_admin %}
+  <a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+  {% elif is_admin_staff %}
+  <a href="{% url 'admin_staff_dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+  {% endif %}
+  <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+  <span class="breadcrumb-item active">{% if is_admin_staff %}Assigned Clients{% else %}Active Clients{% endif %}</span>
+{% endblock %}
 
-            <!-- Clients Table + Pagination (HTMX Container) -->
-            <div id="active-client-table-container"
-                 hx-trigger="refreshTable from:body"
-                 hx-get="{% url 'active_clients' %}"
-                 hx-target="#active-client-table-container"
-                 hx-swap="innerHTML">
-              {% include 'partials/active-client/table-container.html' %}
-            </div>
-        </div>
-    </main>
+{% block content %}
+  <div class="main-content">
+    {% include 'partials/active-client/action-bar.html' %}
 
-    <!-- Toast Notifications -->
-    {% include 'partials/common/toast.html' %}
+    <div id="active-client-table-container"
+         hx-trigger="refreshTable from:body"
+         hx-get="{% url 'active_clients' %}"
+         hx-target="#active-client-table-container"
+         hx-swap="innerHTML">
+      {% include 'partials/active-client/table-container.html' %}
+    </div>
+  </div>
+{% endblock %}
 
-    <script defer src="{% static 'dist/js/core.min.js' %}"></script>
-    <script defer src="{% static 'js/active-client.js' %}"></script>
-    {% include 'partials/htmx-config.html' %}
-    <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        initHTMXFilters({
-          baseUrl: '{% url "active_clients" %}',
-          target:  '#active-client-table-container',
-          searchInputId: 'search-input',
-          filters: [],
-          tabs: [{ name: 'status', selector: '#status-tabs .status-tab' }]
-        });
+{% block page_js %}
+  <script defer src="{% static 'js/active-client.js' %}"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      initHTMXFilters({
+        baseUrl: '{% url "active_clients" %}',
+        target:  '#active-client-table-container',
+        searchInputId: 'search-input',
+        filters: [],
+        tabs: [{ name: 'status', selector: '#status-tabs .status-tab' }]
       });
-    </script>
-</body>
-</html>
+    });
+  </script>
+{% endblock %}
