@@ -59,7 +59,7 @@
                             <i class="fa-solid fa-upload"></i> Reupload Image
                         </button>
                         {% endif %}
-                        {% if is_super_admin or perm_idcard_bulk_download %}
+                        {% if is_super_admin or perm_idcard_bulk_download and not is_client and not is_client_staff %}
                         <button class="bulk-btn download-all-btn" data-action="download-all" data-table="{{ table.id }}" {% if total_count == 0 %}disabled title="No data in this table"{% endif %}>
                             <i class="fa-solid fa-id-card"></i> Download All ID Card
                         </button>

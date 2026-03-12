@@ -25,7 +25,13 @@
       <a href="{% url 'idcard_group' client.id %}" class="breadcrumb-item">ID Card Group</a>
       {% endif %}
       <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
-      <span class="breadcrumb-item active">{% if current_status %}{{ current_status|title }} List{% else %}{{ table.name }}{% endif %}</span>
+      {% if current_status %}
+      <a href="{% if is_client or is_client_staff %}{% url 'client:idcard_actions' table.id %}{% else %}{% url 'idcard_actions' table.id %}{% endif %}" class="breadcrumb-item">{{ table.name }}</a>
+      <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+      <span class="breadcrumb-item active">{{ current_status|title }} List</span>
+      {% else %}
+      <span class="breadcrumb-item active">{{ table.name }}</span>
+      {% endif %}
     </div>
   </div>
 

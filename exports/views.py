@@ -156,12 +156,13 @@ def _get_card_ids_from_request(request, table_id: int = None) -> Optional[List[i
     return card_ids if card_ids else None
 
 
-def _check_export_permission(request):
+def _check_export_permission(request, skip_status_check=False):
     """
     Check if user has export permission.
     
     Clients/client_staff are blocked from exporting approved/download status
-    cards and from the download-all endpoint.
+    cards and from the download-all endpoint (unless skip_status_check=True,
+    used for PDF exports which clients are allowed on all statuses).
     
     Returns:
         None if permitted, JsonResponse with error if not
@@ -179,7 +180,8 @@ def _check_export_permission(request):
         }, status=403)
     
     # Block client/client_staff from exporting approved or download status cards
-    if request.user.role in ('client', 'client_staff'):
+    # (skipped for PDF exports — clients can download PDF on all statuses)
+    if not skip_status_check and request.user.role in ('client', 'client_staff'):
         status = _get_status_from_request(request)
         if status in ('approved', 'download'):
             return JsonResponse({
@@ -428,7 +430,7 @@ def api_export_pdf(request, table_id: int) -> HttpResponse:
     Returns:
         PDF file download or JSON error
     """
-    perm_error = _check_export_permission(request)
+    perm_error = _check_export_permission(request, skip_status_check=True)
     if perm_error:
         return perm_error
     
@@ -516,7 +518,7 @@ def api_export_pdf_async(request, table_id: int) -> JsonResponse:
     Returns:
         { "success": true, "task_id": "abc123", "async": true }
     """
-    perm_error = _check_export_permission(request)
+    perm_error = _check_export_permission(request, skip_status_check=True)
     if perm_error:
         return perm_error
     

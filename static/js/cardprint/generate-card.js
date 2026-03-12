@@ -64,8 +64,20 @@
   window.gcEditorRefresh = function (frontUrl, backUrl) {
     if (frontUrl) FRONT_PDF_URL = frontUrl;
     if (backUrl)  BACK_PDF_URL  = backUrl;
-    loadCardList();
-    if (FRONT_PDF_URL && currentSide === 'front') renderPdf(FRONT_PDF_URL, false);
+
+    // The Fabric canvas may have been created while the modal was hidden
+    // (display:none), so getBoundingClientRect returned zeros and internal
+    // offsets are wrong. Recalculate after the modal is visible.
+    requestAnimationFrame(function () {
+      if (fabric_canvas) {
+        fabric_canvas.setDimensions({ width: CARD_W, height: CARD_H });
+        fabric_canvas.calcOffset();
+        fabric_canvas.renderAll();
+      }
+      loadCardList();
+      var pdfUrl = (currentSide === 'front') ? FRONT_PDF_URL : BACK_PDF_URL;
+      if (pdfUrl) renderPdf(pdfUrl, false);
+    });
   };
 
   // Download the last generated PDF blob (triggered by footer Download PDF button)
@@ -462,6 +474,8 @@
               evented:    false,
             });
             img.scaleToWidth(CARD_W);
+            // Recalculate canvas offsets (critical when inside a just-shown modal)
+            fabric_canvas.calcOffset();
             fabric_canvas.setBackgroundImage(img, function () {
               fabric_canvas.renderAll();
               overlay.classList.add('hidden');

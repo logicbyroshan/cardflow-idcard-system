@@ -125,45 +125,37 @@ def process_export_zip(task):
     # Create exports directory
     exports_dir = ensure_exports_directory()
     
-    # Create separate ZIP for each image field
+    # Create a SINGLE ZIP with subdirectories per image field
+    from exports.zip import _get_readable_field_name
+    
+    timestamp = django_tz.localtime(django_tz.now()).strftime('%Y%m%d_%H%M%S')
+    zip_filename = f"{clean_client}_{clean_table}_Images_{timestamp}.zip"
+    zip_path = os.path.join(exports_dir, zip_filename)
+    
     zip_files_created = []
     total_images = 0
     current_progress = 0
     
     try:
-        for field_info in image_fields:
-            field_name = field_info['name']
-            
-            # Generate ZIP filename
-            timestamp = django_tz.localtime(django_tz.now()).strftime('%Y%m%d_%H%M%S')
-            clean_field = clean_filename(field_name)
-            zip_filename = f"{clean_client}_{clean_table}_{clean_field}_{timestamp}.zip"
-            zip_path = os.path.join(exports_dir, zip_filename)
-            
-            # Create ZIP file on disk with ZIP_STORED (no compression)
-            images_in_zip = 0
-            used_names = {}
-            
-            with zipfile.ZipFile(zip_path, 'w', compression=zipfile.ZIP_STORED) as zf:
+        with zipfile.ZipFile(zip_path, 'w', compression=zipfile.ZIP_STORED) as zf:
+            for field_info in image_fields:
+                field_name = field_info['name']
+                folder_name = _get_readable_field_name(field_name)
+                used_names = {}
+                
                 for card in cards_qs.iterator(chunk_size=100):
-                    # Get image path for this card/field
                     img_path = ImageService.get_image_path_for_card(
                         card=card,
                         field_name=field_name,
                         fallback_to_field_data=True
                     )
                     
-                    # Skip if no valid path (type narrowing for str)
                     if not img_path or not is_valid_image_path(img_path):
                         current_progress += 1
                         continue
                     
                     try:
                         if default_storage.exists(img_path):
-                            # Prefer direct-to-disk write (no Python-level byte buffer).
-                            # FileSystemStorage exposes the real path; ZipFile.write()
-                            # copies in 8 KB chunks internally — peak RAM ~8 KB vs
-                            # img_size * 2 with writestr().
                             try:
                                 real_path = default_storage.path(img_path)
                                 file_size = os.path.getsize(real_path)
@@ -173,7 +165,6 @@ def process_export_zip(task):
 
                             base = os.path.basename(img_path)
 
-                            # Handle duplicate filenames
                             if base in used_names:
                                 used_names[base] += 1
                                 name, ext = os.path.splitext(base)
@@ -182,46 +173,42 @@ def process_export_zip(task):
                                 used_names[base] = 0
                                 download_filename = base
 
+                            arcname = f"{folder_name}/{download_filename}"
+
                             if real_path and file_size >= 100:
-                                # Fast path: stream directly from filesystem (no RAM copy)
-                                zf.write(real_path, arcname=download_filename)
-                                images_in_zip += 1
+                                zf.write(real_path, arcname=arcname)
+                                total_images += 1
                             elif not real_path:
-                                # Fallback: remote/custom storage — read into memory
                                 with default_storage.open(img_path, 'rb') as img_file:
                                     img_data = img_file.read()
                                 if img_data and len(img_data) >= 100:
-                                    zf.writestr(download_filename, img_data)
-                                    images_in_zip += 1
+                                    zf.writestr(arcname, img_data)
+                                    total_images += 1
                     except Exception as e:
                         logger.warning("Error adding image to ZIP: %s", e)
                     
                     current_progress += 1
                     
-                    # Update progress every 50 images
                     if current_progress % 50 == 0:
                         task.update_progress(current_progress)
-            
-            # Only keep ZIP if it has images
-            if images_in_zip > 0:
-                relative_path = os.path.relpath(zip_path, settings.MEDIA_ROOT)
-                zip_files_created.append({
-                    'field_name': field_name,
-                    'filename': zip_filename,
-                    'path': relative_path,
-                    'image_count': images_in_zip
-                })
-                total_images += images_in_zip
-            else:
-                # Remove empty ZIP
-                os.remove(zip_path)
         
-        # Update final progress
         task.update_progress(current_progress)
         
-        if not zip_files_created:
+        if total_images == 0:
+            try:
+                os.remove(zip_path)
+            except Exception:
+                pass
             task.mark_failed("No images found to export")
             return
+        
+        relative_path = os.path.relpath(zip_path, settings.MEDIA_ROOT)
+        zip_files_created.append({
+            'field_name': 'ALL',
+            'filename': zip_filename,
+            'path': relative_path,
+            'image_count': total_images
+        })
         
         # Store results in metadata
         task.metadata['result'] = {
@@ -231,7 +218,6 @@ def process_export_zip(task):
         }
         task.save(update_fields=['metadata'])
         
-        # Set result path to first ZIP (or could be a combined ZIP)
         task.mark_completed(result_path=zip_files_created[0]['path'])
 
         # Determine total file size on disk

@@ -211,21 +211,7 @@ FC.validate = function (fieldName, fieldType, value) {
             if (v.indexOf('.') === -1)
                 return { valid: false, message: 'Email should contain a domain (e.g. @gmail.com)' };
             break;
-        case 'phone':
-            var digits = v.replace(/[^0-9]/g, '');
-            if (digits.length > 0 && (digits.length < 6 || digits.length > 15))
-                return { valid: false, message: 'Phone number should have 6-15 digits' };
-            break;
-        case 'date':
-            // Accept DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY, YYYY-MM-DD, etc.
-            if (!/^\d{1,4}[\/.\-]\d{1,2}[\/.\-]\d{1,4}$/.test(v))
-                return { valid: false, message: 'Date format should be DD/MM/YYYY or similar' };
-            break;
-        case 'pincode':
-            var pcDigits = v.replace(/[^0-9]/g, '');
-            if (pcDigits.length > 0 && (pcDigits.length < 4 || pcDigits.length > 10))
-                return { valid: false, message: 'Pincode seems incorrect' };
-            break;
+
     }
     return { valid: true };
 };
