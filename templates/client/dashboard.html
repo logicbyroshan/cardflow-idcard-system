@@ -11,6 +11,8 @@
 <span class="breadcrumb-item active"><i class="fa-solid fa-house"></i> Dashboard</span>
 {% endblock %}
 
+{% block main_class %}dashboard-main{% endblock %}
+
 {% block topbar_right %}
 <div class="nav-right flex items-center gap-2">
   <button class="global-search-btn" id="globalSearchBtn">
@@ -24,6 +26,9 @@
 
 {% block content %}
 <div class="dashboard-content">
+
+  <!-- Fixed Top: Welcome Banner + Stats -->
+  <div class="dashboard-top-fixed">
 
   <!-- Welcome Banner with Sliding Notifications -->
   {% include 'partials/dashboard/welcome-notification-banner.html' %}
@@ -81,6 +86,11 @@
     </a>
   </div>
 
+  </div><!-- /dashboard-top-fixed -->
+
+  <!-- Scrollable Middle -->
+  <div class="dashboard-middle-scroll">
+
   <!-- Main Grid: Reprint History (left 2fr) + Recent Activity (right 1fr) -->
   <div class="dashboard-grid">
 
@@ -136,6 +146,8 @@
     </div>
 
   </div>
+
+  </div><!-- /dashboard-middle-scroll -->
 
   <!-- Bottom Fixed Quick Actions Row -->
   <div class="dashboard-bottom-fixed">
