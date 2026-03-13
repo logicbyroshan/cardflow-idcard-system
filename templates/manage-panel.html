@@ -52,6 +52,11 @@
           <i class="fa-solid fa-chart-line"></i> Monitoring
         </button>
         {% endif %}
+        {% if is_super_admin %}
+        <button class="panel-tab" data-tab="server-info" onclick="switchTab('server-info'); initServerInfoTab();">
+          <i class="fa-solid fa-hard-drive"></i> Server Info
+        </button>
+        {% endif %}
         <button class="panel-tab" data-tab="system" onclick="switchTab('system')">
           <i class="fa-solid fa-server"></i> System Info
         </button>
@@ -68,6 +73,7 @@
       {% include 'partials/panel/tab-log-history.html' %}
       {% if is_super_admin %}{% include 'partials/panel/tab-email-logs.html' %}{% endif %}
       {% if is_super_admin %}{% include 'partials/panel/tab-monitoring.html' %}{% endif %}
+      {% if is_super_admin %}{% include 'partials/panel/tab-server-info.html' %}{% endif %}
       {% include 'partials/panel/tab-system.html' %}
       {% if is_super_admin %}{% include 'partials/panel/tab-maintenance.html' %}{% endif %}
 

@@ -33,4 +33,5 @@ from .notification_views import (
 from .monitoring_views import (
     api_client_errors,
     api_monitoring_data,
+    api_server_info_snapshot,
 )

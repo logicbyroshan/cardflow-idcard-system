@@ -1,0 +1,75 @@
+<!-- === SERVER INFO TAB === -->
+<div class="panel-tab-content" id="tab-server-info">
+  <div class="notif-actions-bar">
+    <div class="notif-actions-left">
+      <span class="panel-title">
+        <i class="fa-solid fa-hard-drive"></i>
+        Server Storage Snapshot
+      </span>
+    </div>
+    <div class="notif-actions-right">
+      <span id="serverInfoLastUpdated" class="text-xs text-gray-400 mr-2.5">Not fetched yet</span>
+      <button class="btn btn-sm btn-outline-primary" onclick="loadServerInfo(false)" id="serverInfoFetchBtn">
+        <i class="fa-solid fa-download"></i> Fetch Snapshot
+      </button>
+      <button class="btn btn-sm btn-outline-primary" onclick="loadServerInfo(true)" id="serverInfoRefreshBtn" style="display:none;">
+        <i class="fa-solid fa-arrows-rotate"></i> Refresh Latest
+      </button>
+    </div>
+  </div>
+
+  <div class="server-info-overview" id="serverInfoOverview">
+    <div class="server-donut-wrap">
+      <div class="server-donut" id="serverStorageDonut" style="--pct:0;">
+        <div class="server-donut-inner">
+          <span id="serverStoragePct">0%</span>
+          <small>Disk Used</small>
+        </div>
+      </div>
+      <div class="server-donut-meta">
+        <div class="server-meta-row"><span>Total</span><strong id="serverDiskTotal">-</strong></div>
+        <div class="server-meta-row"><span>Used</span><strong id="serverDiskUsed">-</strong></div>
+        <div class="server-meta-row"><span>Free</span><strong id="serverDiskFree">-</strong></div>
+        <div class="server-meta-row"><span>Tracked</span><strong id="serverDiskTracked">-</strong></div>
+      </div>
+    </div>
+
+    <div class="server-system-grid">
+      <div class="system-card">
+        <div class="system-card-header"><i class="fa-solid fa-microchip"></i> CPU</div>
+        <div class="system-card-body">
+          <div class="system-row"><span class="system-label">Logical Cores</span><span class="system-value" id="serverCpuCores">-</span></div>
+        </div>
+      </div>
+      <div class="system-card">
+        <div class="system-card-header"><i class="fa-solid fa-memory"></i> Memory</div>
+        <div class="system-card-body">
+          <div class="system-row"><span class="system-label">RAM Used</span><span class="system-value" id="serverMemoryUsed">-</span></div>
+          <div class="system-row"><span class="system-label">RAM Total</span><span class="system-value" id="serverMemoryTotal">-</span></div>
+          <div class="system-row"><span class="system-label">Usage</span><span class="system-value" id="serverMemoryPct">-</span></div>
+        </div>
+      </div>
+      <div class="system-card">
+        <div class="system-card-header"><i class="fa-solid fa-desktop"></i> Host</div>
+        <div class="system-card-body">
+          <div class="system-row"><span class="system-label">Machine</span><span class="system-value" id="serverHostName">-</span></div>
+          <div class="system-row"><span class="system-label">Python</span><span class="system-value" id="serverPythonVersion">-</span></div>
+          <div class="system-row"><span class="system-label">Platform</span><span class="system-value" id="serverPlatformText">-</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="system-card" style="margin-top:0;padding:0;overflow:hidden;">
+    <div class="system-card-header">
+      <i class="fa-solid fa-folder-tree"></i> Storage By Project Folder
+    </div>
+    <div class="server-path-list" id="serverInfoPathRows">
+      <div class="empty-state" style="padding:18px 16px;">
+        <i class="fa-solid fa-inbox"></i>
+        <p>No snapshot loaded</p>
+        <span>Click "Fetch Snapshot" to load server usage.</span>
+      </div>
+    </div>
+  </div>
+</div>

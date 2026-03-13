@@ -47,4 +47,5 @@ urlpatterns = [
     # ── Monitoring ────────────────────────────────────────────────────
     path('api/client-errors/', views.api_client_errors, name='api_client_errors_app'),
     path('api/monitoring/', views.api_monitoring_data, name='api_monitoring_data_app'),
+    path('api/server-info/', views.api_server_info_snapshot, name='api_server_info_snapshot_app'),
 ]

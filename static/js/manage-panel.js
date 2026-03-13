@@ -11,6 +11,9 @@ let panelTotal = 0;
 let allUsers = {};       // { role: [{id, name, username, role_display}] }
 let selectedUserIds = new Set();
 let searchTimer = null;
+let serverInfoSnapshot = null;
+let serverInfoHasFetched = false;
+let serverInfoLoading = false;
 
 /* ============ Init ============ */
 document.addEventListener('DOMContentLoaded', function() {
@@ -881,5 +884,131 @@ async function loadMonitoring() {
   } finally {
     if (refreshBtn) { refreshBtn.disabled = false; refreshBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Refresh'; }
   }
+}
+
+
+/* ============ Server Info Tab ============ */
+
+function initServerInfoTab() {
+  const rows = document.getElementById('serverInfoPathRows');
+  if (!rows) return;
+
+  if (serverInfoSnapshot) {
+    renderServerInfo(serverInfoSnapshot);
+    return;
+  }
+
+  if (!serverInfoHasFetched) {
+    rows.innerHTML = `<div class="empty-state" style="padding:18px 16px;"><i class="fa-solid fa-cloud-arrow-down"></i><p>Snapshot not loaded</p><span>Click "Fetch Snapshot" to load current server usage.</span></div>`;
+  }
+}
+
+async function loadServerInfo(forceRefresh) {
+  if (serverInfoLoading) return;
+
+  const fetchBtn = document.getElementById('serverInfoFetchBtn');
+  const refreshBtn = document.getElementById('serverInfoRefreshBtn');
+  const rows = document.getElementById('serverInfoPathRows');
+  if (!rows) return;
+
+  serverInfoLoading = true;
+  serverInfoHasFetched = true;
+
+  if (fetchBtn) {
+    fetchBtn.disabled = true;
+    fetchBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading...';
+  }
+  if (refreshBtn) {
+    refreshBtn.disabled = true;
+    refreshBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Refreshing...';
+  }
+
+  try {
+    const qs = forceRefresh ? '?force_refresh=1' : '';
+    const res = await fetch('/api/server-info/' + qs);
+    if (!res.ok) {
+      window.showToast && showToast('Failed to load server info', 'error');
+      return;
+    }
+
+    const data = await res.json();
+    if (!data.success || !data.snapshot) {
+      window.showToast && showToast('Server info is unavailable right now', 'error');
+      return;
+    }
+
+    serverInfoSnapshot = data.snapshot;
+    renderServerInfo(serverInfoSnapshot, data.cached === true);
+  } catch (err) {
+    console.error('Server info load error:', err);
+    window.showToast && showToast('Unable to fetch server info', 'error');
+  } finally {
+    serverInfoLoading = false;
+    if (fetchBtn) {
+      fetchBtn.disabled = false;
+      fetchBtn.innerHTML = '<i class="fa-solid fa-download"></i> Fetch Snapshot';
+      fetchBtn.style.display = serverInfoSnapshot ? 'none' : '';
+    }
+    if (refreshBtn) {
+      refreshBtn.disabled = false;
+      refreshBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Refresh Latest';
+      refreshBtn.style.display = serverInfoSnapshot ? '' : 'none';
+    }
+  }
+}
+
+function renderServerInfo(snapshot, fromCache) {
+  const storage = snapshot.storage || {};
+  const memory = snapshot.memory || {};
+  const cpu = snapshot.cpu || {};
+  const rows = document.getElementById('serverInfoPathRows');
+  if (!rows) return;
+
+  const usedPct = Number(storage.used_pct || 0);
+  const donut = document.getElementById('serverStorageDonut');
+  const donutPct = document.getElementById('serverStoragePct');
+  if (donut) donut.style.setProperty('--pct', String(usedPct));
+  if (donutPct) donutPct.textContent = `${usedPct.toFixed(1)}%`;
+
+  const setText = (id, value) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value == null || value === '' ? '-' : String(value);
+  };
+
+  setText('serverDiskTotal', storage.total_human || '-');
+  setText('serverDiskUsed', storage.used_human || '-');
+  setText('serverDiskFree', storage.free_human || '-');
+  setText('serverDiskTracked', storage.tracked_total_human || '-');
+  setText('serverCpuCores', cpu.logical_cores || '-');
+  setText('serverMemoryUsed', memory.used_human || '-');
+  setText('serverMemoryTotal', memory.total_human || '-');
+  setText('serverMemoryPct', (memory.used_pct != null ? `${memory.used_pct}%` : '-'));
+  setText('serverHostName', snapshot.host || '-');
+  setText('serverPythonVersion', snapshot.python_version || '-');
+  setText('serverPlatformText', snapshot.platform || '-');
+
+  const updatedEl = document.getElementById('serverInfoLastUpdated');
+  if (updatedEl) {
+    const cacheText = fromCache ? ' (cached)' : '';
+    updatedEl.textContent = `Last fetched: ${snapshot.fetched_at_human || '-'}${cacheText}`;
+  }
+
+  const pathUsage = Array.isArray(snapshot.path_usage) ? snapshot.path_usage : [];
+  if (!pathUsage.length) {
+    rows.innerHTML = `<div class="empty-state" style="padding:18px 16px;"><i class="fa-solid fa-folder-open"></i><p>No tracked folders found</p><span>Tracked folders are missing or empty on this server.</span></div>`;
+    return;
+  }
+
+  rows.innerHTML = pathUsage.map(item => {
+    const pctTracked = Number(item.pct_of_tracked || 0);
+    return `<div class="server-path-row">
+      <div class="server-path-main">
+        <div class="server-path-name">${escHtml(item.name || '')}</div>
+        <div class="server-path-size">${escHtml(item.size_human || '-')}</div>
+      </div>
+      <div class="server-path-bar-bg"><div class="server-path-bar-fill" style="width:${Math.max(0, Math.min(100, pctTracked))}%;"></div></div>
+      <div class="server-path-meta">${pctTracked.toFixed(1)}% of tracked storage</div>
+    </div>`;
+  }).join('');
 }
 

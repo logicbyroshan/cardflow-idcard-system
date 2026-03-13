@@ -233,6 +233,7 @@ urlpatterns = [
 
     # Monitoring dashboard data (super_admin only)
     path('api/monitoring/', views.api_monitoring_data, name='api_monitoring_data'),
+    path('api/server-info/', views.api_server_info_snapshot, name='api_server_info_snapshot'),
 ]
 
 # Debug endpoints — only available when DEBUG=True

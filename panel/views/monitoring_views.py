@@ -7,8 +7,16 @@ Moved from core/views/monitoring_api.py.
 
 import json
 import logging
+import os
+import platform
 import re
+import shutil
+import socket
+from datetime import datetime, timezone as dt_timezone
+from pathlib import Path
 
+from django.conf import settings
+from django.core.cache import cache
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods, require_POST
 from django.views.decorators.csrf import csrf_protect
@@ -18,6 +26,8 @@ logger = logging.getLogger('core.views')
 
 _MAX_REPORTS_PER_MIN = 10
 _MAX_LOG_FIELD_LEN = 500
+_SERVER_INFO_CACHE_KEY = 'panel:server-info:snapshot:v1'
+_SERVER_INFO_CACHE_TTL = 300
 
 
 def _sanitize_log_value(val, max_len=_MAX_LOG_FIELD_LEN):
@@ -25,6 +35,102 @@ def _sanitize_log_value(val, max_len=_MAX_LOG_FIELD_LEN):
         val = str(val) if val is not None else ''
     val = re.sub(r'[\r\n\x00-\x1f\x7f]', ' ', val)
     return val[:max_len]
+
+
+def _format_bytes(size_bytes):
+    size = float(max(size_bytes or 0, 0))
+    units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
+    idx = 0
+    while size >= 1024 and idx < len(units) - 1:
+        size /= 1024.0
+        idx += 1
+    return f"{size:.1f} {units[idx]}"
+
+
+def _dir_size_bytes(root_path):
+    total = 0
+    stack = [root_path]
+    while stack:
+        current = stack.pop()
+        try:
+            with os.scandir(current) as entries:
+                for entry in entries:
+                    try:
+                        if entry.is_symlink():
+                            continue
+                        if entry.is_file(follow_symlinks=False):
+                            total += entry.stat(follow_symlinks=False).st_size
+                        elif entry.is_dir(follow_symlinks=False):
+                            stack.append(entry.path)
+                    except (FileNotFoundError, PermissionError, OSError):
+                        continue
+        except (FileNotFoundError, PermissionError, OSError):
+            continue
+    return total
+
+
+def _memory_snapshot():
+    # Keep this dependency-free for quick deployment.
+    if platform.system().lower().startswith('win'):
+        import ctypes
+
+        class MEMORYSTATUSEX(ctypes.Structure):
+            _fields_ = [
+                ('dwLength', ctypes.c_ulong),
+                ('dwMemoryLoad', ctypes.c_ulong),
+                ('ullTotalPhys', ctypes.c_ulonglong),
+                ('ullAvailPhys', ctypes.c_ulonglong),
+                ('ullTotalPageFile', ctypes.c_ulonglong),
+                ('ullAvailPageFile', ctypes.c_ulonglong),
+                ('ullTotalVirtual', ctypes.c_ulonglong),
+                ('ullAvailVirtual', ctypes.c_ulonglong),
+                ('sullAvailExtendedVirtual', ctypes.c_ulonglong),
+            ]
+
+        stat = MEMORYSTATUSEX()
+        stat.dwLength = ctypes.sizeof(MEMORYSTATUSEX)
+        if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(stat)):
+            total = int(stat.ullTotalPhys)
+            free = int(stat.ullAvailPhys)
+            used = max(total - free, 0)
+            pct = round((used / total) * 100, 1) if total > 0 else 0
+            return {
+                'total_bytes': total,
+                'used_bytes': used,
+                'free_bytes': free,
+                'used_pct': pct,
+                'total_human': _format_bytes(total),
+                'used_human': _format_bytes(used),
+                'free_human': _format_bytes(free),
+            }
+
+    try:
+        page_size = os.sysconf('SC_PAGE_SIZE')
+        total_pages = os.sysconf('SC_PHYS_PAGES')
+        avail_pages = os.sysconf('SC_AVPHYS_PAGES')
+        total = int(page_size * total_pages)
+        free = int(page_size * avail_pages)
+        used = max(total - free, 0)
+        pct = round((used / total) * 100, 1) if total > 0 else 0
+        return {
+            'total_bytes': total,
+            'used_bytes': used,
+            'free_bytes': free,
+            'used_pct': pct,
+            'total_human': _format_bytes(total),
+            'used_human': _format_bytes(used),
+            'free_human': _format_bytes(free),
+        }
+    except Exception:
+        return {
+            'total_bytes': 0,
+            'used_bytes': 0,
+            'free_bytes': 0,
+            'used_pct': 0,
+            'total_human': '0 B',
+            'used_human': '0 B',
+            'free_human': '0 B',
+        }
 
 
 @require_POST
@@ -183,4 +289,92 @@ def api_monitoring_data(request):
         },
         'recent_tasks': recent_tasks,
         'backup_tasks': backup_tasks,
+    })
+
+
+@require_http_methods(["GET"])
+@login_required
+def api_server_info_snapshot(request):
+    """
+    Return a server snapshot for Manage Panel -> Server Info tab.
+    Uses short-lived cache by default and recomputes when force_refresh=1.
+    """
+    from core.services.permission_service import PermissionService
+
+    if not PermissionService.is_super_admin(request.user):
+        return JsonResponse({'success': False, 'message': 'Super admin / pro user only'}, status=403)
+
+    force_refresh = request.GET.get('force_refresh') == '1'
+    if not force_refresh:
+        cached = cache.get(_SERVER_INFO_CACHE_KEY)
+        if cached:
+            return JsonResponse({
+                'success': True,
+                'cached': True,
+                'cache_ttl_seconds': _SERVER_INFO_CACHE_TTL,
+                'snapshot': cached,
+            })
+
+    base_dir = Path(settings.BASE_DIR)
+    disk = shutil.disk_usage(str(base_dir))
+    disk_used_pct = round((disk.used / disk.total) * 100, 1) if disk.total > 0 else 0
+
+    tracked_labels = [
+        ('media', base_dir / 'media'),
+        ('mediafiles', base_dir / 'mediafiles'),
+        ('static', base_dir / 'static'),
+        ('staticfiles', base_dir / 'staticfiles'),
+        ('logs', base_dir / 'logs'),
+        ('Face Cropper/logs', base_dir / 'Face Cropper' / 'logs'),
+    ]
+
+    path_usage = []
+    for label, path_obj in tracked_labels:
+        if not path_obj.exists() or not path_obj.is_dir():
+            continue
+        size_bytes = _dir_size_bytes(str(path_obj))
+        path_usage.append({
+            'name': label,
+            'size_bytes': size_bytes,
+            'size_human': _format_bytes(size_bytes),
+        })
+
+    path_usage.sort(key=lambda x: x['size_bytes'], reverse=True)
+    tracked_total = sum(p['size_bytes'] for p in path_usage)
+    for item in path_usage:
+        item['pct_of_tracked'] = round((item['size_bytes'] / tracked_total) * 100, 1) if tracked_total > 0 else 0
+        item['pct_of_disk'] = round((item['size_bytes'] / disk.total) * 100, 3) if disk.total > 0 else 0
+
+    now = datetime.now(dt_timezone.utc)
+    snapshot = {
+        'fetched_at': now.isoformat(),
+        'fetched_at_human': now.strftime('%d-%m-%Y %H:%M:%S UTC'),
+        'host': socket.gethostname(),
+        'platform': platform.platform(),
+        'python_version': platform.python_version(),
+        'cpu': {
+            'logical_cores': os.cpu_count() or 0,
+        },
+        'memory': _memory_snapshot(),
+        'storage': {
+            'total_bytes': disk.total,
+            'used_bytes': disk.used,
+            'free_bytes': disk.free,
+            'used_pct': disk_used_pct,
+            'total_human': _format_bytes(disk.total),
+            'used_human': _format_bytes(disk.used),
+            'free_human': _format_bytes(disk.free),
+            'tracked_total_bytes': tracked_total,
+            'tracked_total_human': _format_bytes(tracked_total),
+        },
+        'path_usage': path_usage,
+    }
+
+    cache.set(_SERVER_INFO_CACHE_KEY, snapshot, _SERVER_INFO_CACHE_TTL)
+
+    return JsonResponse({
+        'success': True,
+        'cached': False,
+        'cache_ttl_seconds': _SERVER_INFO_CACHE_TTL,
+        'snapshot': snapshot,
     })
