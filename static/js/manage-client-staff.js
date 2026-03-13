@@ -12,24 +12,54 @@ document.addEventListener('DOMContentLoaded', function () {
     var selectedClasses = new Set();
     var selectedSections = new Set();
     var selectedBranches = new Set();
-    var csOptionsLoaded = false;
+    var csOptionsCache = {};
 
     var _esc = window.escapeHtml || function (s) {
         return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
     };
 
-    async function fetchClassSectionOptions() {
-        if (csOptionsLoaded) return;
+    function _normalizeGroupIds(groupIds) {
+        if (!Array.isArray(groupIds) || groupIds.length === 0) return [];
+        return Array.from(new Set(groupIds
+            .map(function (v) { return parseInt(v, 10); })
+            .filter(function (v) { return Number.isFinite(v) && v > 0; })))
+            .sort(function (a, b) { return a - b; });
+    }
+
+    function _buildGroupScopedOptionsUrl(groupIds) {
+        var normalized = _normalizeGroupIds(groupIds);
+        if (!normalized.length) return '/client/api/class-section-options/';
+        return '/client/api/class-section-options/?group_ids=' + encodeURIComponent(normalized.join(','));
+    }
+
+    function _applyClassSectionOptions(data) {
+        allClasses = data.classes || [];
+        allSections = data.sections || [];
+        allBranches = data.branches || [];
+        classSectionMap = data.class_sections || {};
+    }
+
+    async function fetchClassSectionOptions(groupIds) {
+        var normalized = _normalizeGroupIds(groupIds);
+        var cacheKey = normalized.length ? normalized.join(',') : 'all';
+
+        if (csOptionsCache[cacheKey]) {
+            _applyClassSectionOptions(csOptionsCache[cacheKey]);
+            return;
+        }
+
         try {
-            var resp = await fetch('/client/api/class-section-options/', { credentials: 'same-origin' });
+            var resp = await fetch(_buildGroupScopedOptionsUrl(normalized), { credentials: 'same-origin' });
             if (!resp.ok) return;
             var data = await resp.json();
             if (data.success) {
-                allClasses = data.classes || [];
-                allSections = data.sections || [];
-                allBranches = data.branches || [];
-                classSectionMap = data.class_sections || {};
-                csOptionsLoaded = true;
+                csOptionsCache[cacheKey] = {
+                    classes: data.classes || [],
+                    sections: data.sections || [],
+                    branches: data.branches || [],
+                    class_sections: data.class_sections || {}
+                };
+                _applyClassSectionOptions(csOptionsCache[cacheKey]);
             }
         } catch (_) { /* silently fail */ }
     }
@@ -127,8 +157,8 @@ document.addEventListener('DOMContentLoaded', function () {
     var sectionMs = null;
     var branchMs = null;
 
-    async function initClassSection(preClasses, preSections, preBranches) {
-        await fetchClassSectionOptions();
+    async function initClassSection(preClasses, preSections, preBranches, groupIds) {
+        await fetchClassSectionOptions(groupIds || []);
         selectedClasses = new Set(preClasses || []);
         selectedSections = new Set(preSections || []);
         selectedBranches = new Set(preBranches || []);
@@ -160,6 +190,24 @@ document.addEventListener('DOMContentLoaded', function () {
             if (branchMs) { branchMs.render(); branchMs.updateText(); }
         } else {
             if (branchRow) branchRow.style.display = 'none';
+        }
+    }
+
+    async function refreshDrawerClassSectionByGroups(groupIds) {
+        await fetchClassSectionOptions(groupIds || []);
+        _pruneSectionsBySelectedClasses(selectedSections, selectedClasses);
+
+        if (classMs) { classMs.render(''); classMs.updateText(); }
+        if (sectionMs) { sectionMs.render(''); sectionMs.updateText(); }
+
+        var branchRow = document.getElementById('branch-filter-row');
+        if (allBranches.length > 0) {
+            if (branchRow) branchRow.style.display = '';
+            if (!branchMs) branchMs = buildCsMultiselect('branch', allBranches, selectedBranches);
+            if (branchMs) { branchMs.render(''); branchMs.updateText(); }
+        } else {
+            if (branchRow) branchRow.style.display = 'none';
+            selectedBranches.clear();
         }
     }
 
@@ -304,6 +352,24 @@ document.addEventListener('DOMContentLoaded', function () {
     var assignSectionMs = null;
     var assignBranchMs  = null;
 
+    async function refreshAssignClassSectionByGroups(groupIds) {
+        await fetchClassSectionOptions(groupIds || []);
+        _pruneSectionsBySelectedClasses(assignSelectedSections, assignSelectedClasses);
+
+        if (assignClassMs) { assignClassMs.render(''); assignClassMs.updateText(); }
+        if (assignSectionMs) { assignSectionMs.render(''); assignSectionMs.updateText(); }
+
+        var branchBlock = document.getElementById('assign-branch-block');
+        if (allBranches.length > 0) {
+            if (branchBlock) branchBlock.style.display = '';
+            if (!assignBranchMs) assignBranchMs = buildAssignMultiselect('branch', allBranches, assignSelectedBranches);
+            if (assignBranchMs) { assignBranchMs.render(''); assignBranchMs.updateText(); }
+        } else {
+            if (branchBlock) branchBlock.style.display = 'none';
+            assignSelectedBranches.clear();
+        }
+    }
+
     async function loadAssignGroups() {
         if (_assignGroupsLoaded) return;
         try {
@@ -318,7 +384,7 @@ document.addEventListener('DOMContentLoaded', function () {
         _assignStaffId = staffId;
 
         // Load options in parallel
-        await Promise.all([loadAssignGroups(), fetchClassSectionOptions()]);
+        await Promise.all([loadAssignGroups()]);
 
         // Fetch current staff data
         try {
@@ -341,10 +407,16 @@ document.addEventListener('DOMContentLoaded', function () {
             assignSelectedBranches.clear();
             (data.allowed_branches || []).forEach(function (v) { assignSelectedBranches.add(v); });
 
+            await fetchClassSectionOptions(Array.from(assignSelectedGroups).map(function (id) { return parseInt(id, 10); }));
+
             _pruneSectionsBySelectedClasses(assignSelectedSections, assignSelectedClasses);
 
             // Build/update multi-selects
-            if (!assignGroupMs)   assignGroupMs   = buildAssignMultiselect('group', _assignAllGroups, assignSelectedGroups);
+            if (!assignGroupMs) {
+                assignGroupMs = buildAssignMultiselect('group', _assignAllGroups, assignSelectedGroups, null, function () {
+                    refreshAssignClassSectionByGroups(Array.from(assignSelectedGroups).map(function (id) { return parseInt(id, 10); }));
+                });
+            }
             if (!assignClassMs) {
                 assignClassMs = buildAssignMultiselect('class', allClasses, assignSelectedClasses, null, function () {
                     _pruneSectionsBySelectedClasses(assignSelectedSections, assignSelectedClasses);
@@ -486,10 +558,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
         onDrawerReset: function () {
             resetClassSection();
-            initClassSection([], [], []);
+            initClassSection([], [], [], []);
         },
         onPopulateForm: function (data) {
-            initClassSection(data.allowed_classes, data.allowed_sections, data.allowed_branches);
+            initClassSection(data.allowed_classes, data.allowed_sections, data.allowed_branches, data.assigned_group_ids || []);
+        },
+        onAssignmentSelectionChange: function (selectedGroupIds) {
+            refreshDrawerClassSectionByGroups(selectedGroupIds || []);
         },
         onBeforeSubmit: function (formData) {
             formData.allowed_classes = Array.from(selectedClasses);
@@ -515,7 +590,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Init class/section on page load for "add" drawer
-    fetchClassSectionOptions();
+    fetchClassSectionOptions([]);
 
     // Expose manager for temp password modal access
     window._staffPageMgr = mgr;

@@ -311,14 +311,27 @@ def api_class_section_options(request):
     if not client:
         return JsonResponse({'success': False, 'message': 'Client not found'}, status=400)
 
-    cache_key = f'client:class-section-options:{client.id}'
+    raw_group_ids = request.GET.get('group_ids', '').strip()
+    group_ids = []
+    if raw_group_ids:
+        try:
+            group_ids = sorted({int(x) for x in raw_group_ids.split(',') if str(x).strip().isdigit()})
+        except Exception:
+            group_ids = []
+
+    group_key = ','.join(str(gid) for gid in group_ids) if group_ids else 'all'
+    cache_key = f'client:class-section-options:{client.id}:{group_key}'
     cached = cache.get(cache_key)
     if cached is not None:
         return JsonResponse(cached)
 
-    # Get all tables for this client
-    group_ids = IDCardGroup.objects.filter(client=client).values_list('id', flat=True)
-    tables = list(IDCardTable.objects.filter(group_id__in=group_ids).values('id', 'fields'))
+    # Resolve effective client group ids. Empty input means all groups.
+    valid_group_qs = IDCardGroup.objects.filter(client=client)
+    if group_ids:
+        valid_group_qs = valid_group_qs.filter(id__in=group_ids)
+    effective_group_ids = list(valid_group_qs.values_list('id', flat=True))
+
+    tables = list(IDCardTable.objects.filter(group_id__in=effective_group_ids).values('id', 'fields'))
 
     classes = set()
     sections = set()
