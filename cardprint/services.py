@@ -252,6 +252,9 @@ class GenerateCardService:
             font_size = max(7, min(10, template.font_size or 8))
             front_mappings = (template.field_mappings or {}).get('front', {})
             back_mappings = (template.field_mappings or {}).get('back', {})
+            field_cfg = template.field_config or {}
+            front_allowed = set(field_cfg.get('front_fields') or [])
+            back_allowed = set(field_cfg.get('back_fields') or [])
 
             # Build field type map from table definition
             field_type_map = {f['name']: f.get('type', 'text') for f in (table.fields or [])}
@@ -262,12 +265,18 @@ class GenerateCardService:
                 fd_upper = {k.upper(): v for k, v in fd.items()}
 
                 # Front
-                cls._draw_side(c, fd, fd_upper, field_type_map, front_mappings, font, font_size, card_h_pt)
+                cls._draw_side(
+                    c, fd, fd_upper, field_type_map, front_mappings,
+                    font, font_size, card_h_pt, front_allowed,
+                )
                 c.showPage()
 
                 # Back (only if 2-sided and back mappings exist)
                 if template.is_two_sided and back_mappings:
-                    cls._draw_side(c, fd, fd_upper, field_type_map, back_mappings, font, font_size, card_h_pt)
+                    cls._draw_side(
+                        c, fd, fd_upper, field_type_map, back_mappings,
+                        font, font_size, card_h_pt, back_allowed,
+                    )
                     c.showPage()
 
             c.save()
@@ -279,12 +288,25 @@ class GenerateCardService:
             return None, str(exc)
 
     @classmethod
-    def _draw_side(cls, c, fd, fd_upper, field_type_map, mappings, font, font_size, card_h_pt):
+    def _draw_side(
+        cls,
+        c,
+        fd,
+        fd_upper,
+        field_type_map,
+        mappings,
+        font,
+        font_size,
+        card_h_pt,
+        allowed_fields=None,
+    ):
         """Draw all mapped fields onto the current ReportLab canvas page."""
         from reportlab.lib.units import mm
         from django.conf import settings
 
         for field_name, mapping in mappings.items():
+            if allowed_fields and field_name not in allowed_fields:
+                continue
             value = fd.get(field_name) or fd_upper.get(field_name.upper()) or ''
             ftype = field_type_map.get(field_name, 'text')
 

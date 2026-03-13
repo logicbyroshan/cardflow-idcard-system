@@ -53,6 +53,93 @@
     return !!(fabric_canvas && typeof fabric_canvas.getObjects === 'function');
   }
 
+  function getConfiguredFields(side) {
+    const cfg = (typeof FIELD_CONFIG !== 'undefined') ? FIELD_CONFIG : {};
+    const names = (side === 'front') ? (cfg.front_fields || []) : (cfg.back_fields || []);
+    if (Array.isArray(names) && names.length > 0) {
+      return TABLE_FIELDS.filter(f => names.indexOf(f.name) >= 0);
+    }
+    return TABLE_FIELDS.slice();
+  }
+
+  function seedMissingMappingsForSide(side) {
+    const targetFields = getConfiguredFields(side);
+    if (!targetFields.length) return 0;
+
+    fieldMappings[side] = fieldMappings[side] || {};
+    const existing = fieldMappings[side];
+
+    const hasImageSelected = targetFields.some(function(f) {
+      return isImageFieldType(f.type, f.name);
+    });
+
+    const placements = [];
+    const marginX = 4;
+    const marginY = 4;
+    const rowGap = 1.2;
+    const colGap = 3;
+    const colWidth = hasImageSelected ? 56 : 79;
+    const secondColX = marginX + colWidth + colGap;
+    const secondColWidth = Math.max(18, 87 - secondColX - marginX);
+    let cursorY = marginY;
+    let useSecondCol = false;
+
+    function nextTextBox() {
+      let h = 5.2;
+      if (cursorY + h > 57 - marginY) {
+        useSecondCol = true;
+        cursorY = marginY;
+        h = 5.2;
+      }
+      const box = {
+        x_mm: useSecondCol ? secondColX : marginX,
+        y_mm: cursorY,
+        w_mm: useSecondCol ? secondColWidth : colWidth,
+        h_mm: h,
+      };
+      cursorY += (h + rowGap);
+      return box;
+    }
+
+    targetFields.forEach(function(f) {
+      if (existing[f.name]) return;
+      if (isImageFieldType(f.type, f.name)) {
+        placements.push({
+          name: f.name,
+          box: { x_mm: 63, y_mm: 6, w_mm: 20, h_mm: 25 },
+        });
+      } else {
+        placements.push({ name: f.name, box: nextTextBox() });
+      }
+    });
+
+    placements.forEach(function(p) {
+      existing[p.name] = {
+        x_mm: Math.round(p.box.x_mm * 100) / 100,
+        y_mm: Math.round(p.box.y_mm * 100) / 100,
+        w_mm: Math.round(p.box.w_mm * 100) / 100,
+        h_mm: Math.round(p.box.h_mm * 100) / 100,
+      };
+    });
+
+    return placements.length;
+  }
+
+  function findMissingConfiguredFields() {
+    const missing = [];
+    ['front', 'back'].forEach(function(side) {
+      if (side === 'back' && !isTwoSided) return;
+      const required = getConfiguredFields(side);
+      const mapped = fieldMappings[side] || {};
+      required.forEach(function(f) {
+        if (!mapped[f.name]) {
+          missing.push((side === 'front' ? 'Front: ' : 'Back: ') + f.name);
+        }
+      });
+    });
+    return missing;
+  }
+
   /*  DOM READY  */
   document.addEventListener('DOMContentLoaded', function () {
     if (!document.getElementById('genCardCanvas')) {
@@ -178,6 +265,7 @@
 
     renderMappingsOnCanvas();
     renderPlacedFields();
+    updateGenerateBtn();
   }
 
   /*  Bind UI events  */
@@ -710,12 +798,15 @@
       });
       fieldMappings[currentSide] = existing;
 
+      // Always seed any remaining selected fields so every configured field has a placeholder.
+      const seededCount = seedMissingMappingsForSide(currentSide);
+
       renderMappingsOnCanvas();
       renderPlacedFields();
       updateGenerateBtn();
 
-      if (addedCount > 0) {
-        showToast('Auto-detected ' + addedCount + ' field(s). You can adjust them manually.', 'success');
+      if (addedCount > 0 || seededCount > 0) {
+        showToast('Auto-detected ' + addedCount + ' field(s) and created ' + seededCount + ' placeholder(s).', 'success');
       } else if (Object.keys(newMappings).length > 0) {
         showToast('All detected fields were already placed.', 'info');
       } else if (textContent.items.length === 0) {
@@ -934,8 +1025,7 @@
 
   function updateGenerateBtn() {
     const hasCards    = selectedPrIds.size > 0;
-    const hasMappings = Object.keys(fieldMappings.front).length > 0 ||
-                        Object.keys(fieldMappings.back).length > 0;
+    const hasMappings = findMissingConfiguredFields().length === 0;
     document.getElementById('generatePdfBtn').disabled = !(hasCards && hasMappings);
   }
 
@@ -971,6 +1061,12 @@
   function generatePdf() {
     if (selectedPrIds.size === 0) {
       showToast('Select at least one card.', 'warning');
+      return;
+    }
+
+    const missing = findMissingConfiguredFields();
+    if (missing.length > 0) {
+      showToast('Place all selected fields before generating. Missing: ' + missing.slice(0, 3).join(', ') + (missing.length > 3 ? '...' : ''), 'warning');
       return;
     }
 
