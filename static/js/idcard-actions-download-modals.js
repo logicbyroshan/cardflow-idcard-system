@@ -104,7 +104,10 @@ function initReprintPickerHandlers() {
 
     function resolveFields(items) {
         var headerFields = [];
-        document.querySelectorAll('#data-table thead th[data-field-name]').forEach(function(th) {
+        var cardsBody = document.getElementById('cardsTableBody');
+        var sourceTable = cardsBody ? cardsBody.closest('table') : document.getElementById('data-table');
+        if (sourceTable) {
+            sourceTable.querySelectorAll('thead th[data-field-name]').forEach(function(th) {
             var name = (th.getAttribute('data-field-name') || '').trim();
             if (!name) return;
             headerFields.push({
@@ -112,7 +115,8 @@ function initReprintPickerHandlers() {
                 type: (th.getAttribute('data-field-type') || 'text').trim(),
                 label: (th.textContent || name).trim().replace(/\s+/g, ' '),
             });
-        });
+            });
+        }
 
         if (headerFields.length > 0) {
             resolvedFields = headerFields;
@@ -312,12 +316,10 @@ function initReprintPickerHandlers() {
         ApiClient.post(endpoints.requestCreate, { card_ids: ids })
             .then(function(data) {
                 if (data && data.status === 'ok') {
-                    if (typeof showToast === 'function') showToast(data.message || 'Reprint request created', 'success');
+                    if (typeof showToast === 'function') showToast(data.message || 'Successfully sent for reprint', 'success');
+                    selectedIds.clear();
                     closeConfirm();
-                    closePicker();
-                    if (endpoints.requestListPage) {
-                        window.location.href = endpoints.requestListPage;
-                    }
+                    fetchList(lastQuery);
                 } else {
                     if (typeof showToast === 'function') showToast((data && data.message) || 'Could not create reprint request', 'error');
                 }

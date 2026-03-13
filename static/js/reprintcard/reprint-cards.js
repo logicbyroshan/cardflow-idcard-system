@@ -288,6 +288,16 @@ function updateEmptyTable(tableBody, iconClass, text, totalCountEl, showingRange
   function openModal(cardIds) {
     pendingCardIds = cardIds;
     if (countEl) countEl.textContent = cardIds.length;
+    if (wantEditBtn) {
+      wantEditBtn.disabled = cardIds.length !== 1;
+      wantEditBtn.title = cardIds.length === 1
+        ? 'Edit selected card before request'
+        : 'Want to Edit is available for single selection only';
+    }
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.title = 'Continue without edit and send to request list';
+    }
     if (modal) modal.classList.add('show');
   }
 
@@ -311,7 +321,7 @@ function updateEmptyTable(tableBody, iconClass, text, totalCountEl, showingRange
       ApiClient.post(ENDPOINTS.requestCreate, { card_ids: pendingCardIds })
         .then(function(data) {
           if (data.status === 'ok') {
-            showToast(data.message || 'Added to Request List', 'success');
+            showToast(data.message || 'Successfully sent for reprint', 'success');
             refreshStepCounts();
           } else {
             showToast(data.message || 'Could not add to Request List', 'error');

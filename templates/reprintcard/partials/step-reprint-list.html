@@ -1,6 +1,23 @@
 {% load static %}
 {% load custom_filters %}
 <!-- ===== STEP 1: REPRINT LIST (Download Source) ===== -->
+<style>
+    #reprintListSearchInput {
+        height: 40px;
+        min-height: 40px;
+        font-size: 14px;
+    }
+    .search-filter-bar #reprintListSearchInput {
+        width: 100%;
+    }
+    .search-filter-bar .action-left {
+        flex: 1;
+    }
+    .search-filter-bar .action-left .search-box {
+        width: 100%;
+        max-width: none;
+    }
+</style>
 
 <!-- Action Bar -->
 <div class="action-bar action-buttons-bar" id="reprintListActionBar">
