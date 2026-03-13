@@ -389,3 +389,89 @@ def send_password_changed_notification(name, email, request=None):
 
     except Exception:
         return False
+
+
+def send_emergency_panel_access_email(target_email, request=None, issued_by=None):
+        """
+        Send a tokenized panel login link to an existing active account.
+        Used by pro users when website entry flow is unavailable.
+
+        Returns:
+                tuple: (success: bool, message: str)
+        """
+        try:
+                email = (target_email or '').strip()
+                if not email:
+                        return False, 'Email is required.'
+
+                from django.contrib.auth import get_user_model
+
+                User = get_user_model()
+                target_user = User.objects.filter(email__iexact=email, is_active=True).first()
+                if not target_user:
+                        return False, 'No active account found for this email.'
+
+                login_url = _get_panel_login_url(request)
+
+                display_name = target_user.get_full_name() or target_user.username or 'User'
+                issuer_name = 'System'
+                if issued_by is not None:
+                        issuer_name = issued_by.get_full_name() or issued_by.username or 'Pro User'
+
+                subject = 'Emergency Panel Access Link - Adarsh Admin'
+                from_email = settings.DEFAULT_FROM_EMAIL
+                to_email = [target_user.email]
+
+                html_content = f'''<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background-color:#f4f4f7;font-family:Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f7;padding:40px 0;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.1);">
+    <tr><td style="background:linear-gradient(135deg,#4f46e5,#7c3aed);padding:30px 40px;text-align:center;">
+        <h1 style="color:#ffffff;margin:0;font-size:22px;">Emergency Access Link</h1>
+    </td></tr>
+    <tr><td style="padding:32px 40px;">
+        <p style="font-size:16px;color:#333;">Hello <strong>{display_name}</strong>,</p>
+        <p style="font-size:15px;color:#555;line-height:1.6;">
+            A Pro User has shared a secure panel login link for your account. Use this link to open the panel login flow directly.
+        </p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin:24px 0;">
+            <tr><td align="center">
+                <a href="{login_url}" style="display:inline-block;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:15px;font-weight:600;">
+                    Open Panel Login
+                </a>
+            </td></tr>
+        </table>
+        <p style="font-size:13px;color:#666;line-height:1.5;">
+            Issued by: <strong>{issuer_name}</strong><br>
+            If you did not request this, contact support immediately.
+        </p>
+        <p style="font-size:12px;color:#999;margin-top:24px;border-top:1px solid #eee;padding-top:16px;text-align:center;">
+            This is an automated message. Please do not reply.
+        </p>
+    </td></tr>
+</table>
+</td></tr></table>
+</body></html>'''
+
+                plain_content = (
+                        f'Hello {display_name},\n\n'
+                        f'A Pro User has shared a secure panel login link for your account.\n'
+                        f'Use this link: {login_url}\n\n'
+                        f'Issued by: {issuer_name}\n\n'
+                        f'If you did not request this, contact support immediately.'
+                )
+
+                send_html_email_async(subject, plain_content, html_content, from_email, to_email)
+
+                logger.info(
+                        'Emergency panel access email queued for %s by %s',
+                        target_user.email,
+                        issuer_name,
+                )
+                return True, 'Emergency access link email has been sent.'
+        except Exception as e:
+                logger.error('Failed to send emergency panel access email to %s: %s', target_email, e)
+                return False, 'Failed to send emergency access email.'

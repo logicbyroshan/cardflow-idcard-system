@@ -36,6 +36,29 @@
         {% endif %}
     </div>
 
+    {% if is_pro_user %}
+    <div class="wa-status-banner live" id="proAccessBanner" style="margin-top: 10px; gap: 10px; flex-wrap: wrap;">
+        <span class="wa-status-label">
+            <i class="fa-solid fa-user-shield"></i>
+            Pro Emergency Access Link
+        </span>
+        <input
+            type="email"
+            id="proAccessEmailInput"
+            placeholder="Enter account email"
+            style="min-width:260px;flex:1;max-width:380px;padding:8px 10px;border:1px solid #d1d5db;border-radius:8px;"
+        >
+        <button
+            class="btn btn-sm btn-primary"
+            id="sendProAccessBtn"
+            {% if not website_not_found_mode %}disabled title="Enable Domain Not Found Mode first"{% endif %}
+        >
+            <i class="fa-solid fa-paper-plane"></i>
+            Send Access Link
+        </button>
+    </div>
+    {% endif %}
+
     <!-- Overview Section -->
     <div class="wa-dashboard-section">
         <div class="wa-dashboard-section-header">
@@ -145,6 +168,8 @@
 (function() {
     const toggleBtn = document.getElementById('toggleStatusBtn');
     const toggleNotFoundBtn = document.getElementById('toggleNotFoundBtn');
+    const sendProAccessBtn = document.getElementById('sendProAccessBtn');
+    const proAccessEmailInput = document.getElementById('proAccessEmailInput');
 
     if (toggleBtn) {
         toggleBtn.addEventListener('click', async function() {
@@ -199,6 +224,49 @@
                 }
             } catch (e) {
                 showToast('Network error', 'error');
+            }
+        });
+    }
+
+    if (sendProAccessBtn && proAccessEmailInput) {
+        sendProAccessBtn.addEventListener('click', async function() {
+            const email = (proAccessEmailInput.value || '').trim();
+            if (!email) {
+                showToast('Please enter an email address', 'error');
+                return;
+            }
+
+            const ok = await waConfirm({
+                title: 'Send Emergency Access Link?',
+                text: 'A tokenized panel login link will be sent to this email.',
+                icon: 'fa-solid fa-user-shield',
+                confirmLabel: 'Send Link',
+                btnClass: 'btn-primary'
+            });
+            if (!ok) return;
+
+            sendProAccessBtn.disabled = true;
+            try {
+                const res = await fetch('{% url "website_admin:api_status_pro_access_link" %}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCSRFToken(),
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: new URLSearchParams({ email })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(data.message || 'Access link sent', 'success');
+                    proAccessEmailInput.value = '';
+                } else {
+                    showToast(data.message || 'Failed to send access link', 'error');
+                }
+            } catch (e) {
+                showToast('Network error', 'error');
+            } finally {
+                sendProAccessBtn.disabled = false;
             }
         });
     }

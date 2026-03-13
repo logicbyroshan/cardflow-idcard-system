@@ -25,6 +25,7 @@ from core.services.permission_service import (
 from core.services.activity_service import ActivityService
 from core.models import SystemSettings
 from accounts.rate_limit import rate_limit
+from core.utils.email_utils import send_emergency_panel_access_email
 
 from .models import (
     BusinessDetails,
@@ -300,6 +301,49 @@ def api_set_website_not_found_mode(request):
         return JsonResponse({'success': True, 'enabled': enabled})
     except Exception as e:
         logging.getLogger(__name__).exception("Toggle website not-found mode error: %s", e)
+        return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
+
+
+@require_POST
+@website_publish_required
+def api_send_pro_panel_access_link(request):
+    """
+    Pro-only endpoint: send tokenized panel access link email to an active account.
+    Intended for emergency login support when website Not Found mode is active.
+    """
+    try:
+        if not PermissionService.is_pro_user(request.user):
+            return JsonResponse(
+                {'success': False, 'message': 'Only Pro User can send emergency access links.'},
+                status=403,
+            )
+
+        not_found_mode = SystemSettings.get_value('website_not_found_mode', 'false') == 'true'
+        if not not_found_mode:
+            return JsonResponse(
+                {'success': False, 'message': 'Enable Domain Not Found Mode first.'},
+                status=400,
+            )
+
+        email = (request.POST.get('email') or '').strip()
+        if not email:
+            return JsonResponse({'success': False, 'message': 'Email is required.'}, status=400)
+
+        success, message = send_emergency_panel_access_email(
+            target_email=email,
+            request=request,
+            issued_by=request.user,
+        )
+        if not success:
+            return JsonResponse({'success': False, 'message': message}, status=400)
+
+        ActivityService.log_website_update(
+            request,
+            f'pro emergency panel access link sent to {email}',
+        )
+        return JsonResponse({'success': True, 'message': message})
+    except Exception as e:
+        logging.getLogger(__name__).exception("Send pro panel access link error: %s", e)
         return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 
 

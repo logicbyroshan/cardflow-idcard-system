@@ -230,6 +230,10 @@ class PanelEntryGateMiddleware:
             return self.get_response(request)
 
         from core.models import SystemSettings
+        not_found_mode = SystemSettings.get_value('website_not_found_mode', 'false') == 'true'
+        if not not_found_mode:
+            return self.get_response(request)
+
         gate_enabled = SystemSettings.get_value('panel_entry_gate_enabled', 'true') == 'true'
         if not gate_enabled:
             return self.get_response(request)
