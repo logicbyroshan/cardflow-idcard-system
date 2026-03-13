@@ -1,6 +1,6 @@
 <!-- Reprint Confirmation Modal -->
 <div class="center-modal-overlay" id="reprintConfirmModal">
-  <div class="center-modal reprint-confirm-modal">
+  <div class="center-modal reprint-confirm-modal" style="width:min(760px,94vw);max-height:85vh;overflow:auto;">
     <div class="modal-header" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
       <h3><i class="fa-solid fa-rotate"></i> Confirm Reprint Request</h3>
       <button class="modal-close" id="reprintConfirmClose" type="button" aria-label="Close">
@@ -16,7 +16,7 @@
           Reprint <strong id="reprintConfirmCount">0</strong> card(s)?
         </p>
         <p style="font-size:13px;color:var(--gray-500,#6b7280);margin:0 0 16px;">
-          You are about to send the selected cards for reprinting.
+          Selected cards will be added to Request List for print processing.
         </p>
 
         <!-- Charges notice -->
@@ -39,6 +39,13 @@
           <textarea id="reprintReasonInput" rows="2" maxlength="300"
             placeholder="e.g. Spelling correction, photo update..."
             style="width:100%;border:1px solid var(--gray-300,#d1d5db);border-radius:6px;padding:8px 10px;font-size:13px;resize:vertical;font-family:inherit;"></textarea>
+        </div>
+
+        <div style="text-align:left;margin-top:12px;padding-top:10px;border-top:1px dashed #e5e7eb;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+          <span style="font-size:12px;color:#6b7280;">Need to update data before requesting?</span>
+          <button class="btn btn-secondary" id="reprintWantEditBtn" type="button">
+            <i class="fa-solid fa-pen-to-square"></i> Want to Edit
+          </button>
         </div>
       </div>
     </div>

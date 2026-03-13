@@ -20,7 +20,7 @@ class ReprintWorkflowService:
     """
     Single authority for ReprintRequest status transitions.
 
-    Workflow: confirmed → downloaded (after send-to-print)
+    Workflow: requested → confirmed → downloaded
     Reject deletes the ReprintRequest and moves card to IDCard pool.
     """
 
@@ -32,7 +32,7 @@ class ReprintWorkflowService:
 
     VALID_STATUSES = ['requested', 'confirmed', 'downloaded']
 
-    INITIAL_STATUS = 'confirmed'
+    INITIAL_STATUS = 'requested'
 
     # ── Single transition ───────────────────────────────────────────
 

@@ -18,7 +18,7 @@
       <span class="breadcrumb-item active">{{ table.name }}</span>
     </div>
   </div>
-  <div class="nav-right" style="margin-left:auto;margin-right:8px;flex-grow:0;">
+  <div class="nav-right cp-topbar-bell-wrap">
     {% include 'partials/notification-bell.html' %}
   </div>
   <div class="nav-right">
@@ -26,6 +26,10 @@
       <a href="{% url 'cardprint:print_cards' table.id %}?step=print_list" class="action-tab print-list-tab {% if current_step == 'print_list' %}active{% endif %}">
         <span class="tab-label">Print List</span>
         <span class="tab-count">{{ step_counts.print_list }}</span>
+      </a>
+      <a href="{% url 'cardprint:print_cards' table.id %}?step=generate_list" class="action-tab print-generate-tab {% if current_step == 'generate_list' %}active{% endif %}">
+        <span class="tab-label">Generate List</span>
+        <span class="tab-count">{{ step_counts.generate_list }}</span>
       </a>
       <a href="{% url 'cardprint:print_cards' table.id %}?step=finalized" class="action-tab print-finalized-tab {% if current_step == 'finalized' %}active{% endif %}">
         <span class="tab-label">Finalized</span>

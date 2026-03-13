@@ -13,10 +13,10 @@ Required JavaScript handlers:
 {% endcomment %}
 
 <!-- Delete Confirmation Modal -->
-<div class="center-modal-overlay" id="{{ modal_id|default:'delete-modal' }}">
-    <div class="center-modal delete-modal">
+<div class="center-modal-overlay modal-backdrop" id="{{ modal_id|default:'delete-modal' }}" role="dialog" aria-modal="true" aria-labelledby="{{ modal_id|default:'delete-modal' }}-title">
+    <div class="center-modal delete-modal modal-center modal-danger">
         <div class="modal-header">
-            <h3><i class="fa-solid fa-triangle-exclamation"></i> Confirm Delete</h3>
+            <h3 id="{{ modal_id|default:'delete-modal' }}-title"><i class="fa-solid fa-triangle-exclamation"></i> Confirm Delete</h3>
             <button class="modal-close" id="closeDeleteModal" type="button" aria-label="Close delete modal">
                 <i class="fa-solid fa-xmark"></i>
             </button>

@@ -14,6 +14,7 @@ urlpatterns = [
 
     # API endpoints
     path('api/table/<int:table_id>/request/', views.api_reprint_request_create, name='api_reprint_request_create'),
+    path('api/table/<int:table_id>/request-list/', views.api_request_list, name='api_request_list'),
     path('api/table/<int:table_id>/step-counts/', views.api_reprint_step_counts, name='api_reprint_step_counts'),
     path('api/table/<int:table_id>/reprint-list/', views.api_reprint_list, name='api_reprint_list'),
     path('api/table/<int:table_id>/confirm/', views.api_reprint_confirm, name='api_reprint_confirm'),

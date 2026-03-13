@@ -31,6 +31,8 @@ from .idcard_helpers import (
     _check_client_scope_by_card,
     _get_class_section_field_names,
     _build_class_filter_q,
+    invalidate_class_variant_cache,
+    invalidate_filter_options_cache,
     _is_client_readonly,
     _client_readonly_response,
 )
@@ -655,6 +657,19 @@ def api_idcard_update_field(request, card_id):
             card_id, field, value,
             modified_by=request.user.username if request.user.is_authenticated else '',
         )
+
+        if result.success and field:
+            try:
+                class_field_name, section_field_name = _get_class_section_field_names(_card.table)
+                normalized_field = str(field).strip().lower()
+                if class_field_name and normalized_field == str(class_field_name).strip().lower():
+                    invalidate_class_variant_cache(_card.table_id)
+                    invalidate_filter_options_cache(_card.table_id)
+                elif section_field_name and normalized_field == str(section_field_name).strip().lower():
+                    invalidate_filter_options_cache(_card.table_id)
+            except Exception:
+                pass
+
         return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON data!'}, status=400)

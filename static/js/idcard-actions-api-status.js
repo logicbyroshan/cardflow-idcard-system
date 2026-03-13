@@ -7,6 +7,18 @@
 
 window.IDCardApp = window.IDCardApp || {};
 
+function reindexVisibleSrNumbers() {
+    var rows = document.querySelectorAll('#cardsTableBody tr[data-card-id]');
+    var sr = 1;
+    rows.forEach(function(row) {
+        if (row.style.display === 'none') return;
+        var srCell = row.querySelector('td:nth-child(2)');
+        if (!srCell) return;
+        srCell.textContent = String(sr);
+        sr += 1;
+    });
+}
+
 // ==========================================
 // HTMX TABLE REFRESH HELPER
 // ==========================================
@@ -60,6 +72,7 @@ function removeCardRow(cardId) {
         }
         // Re-render (show/hide existing rows, update pagination) — no server call
         if (typeof IDCardApp.renderTable === 'function') IDCardApp.renderTable();
+        reindexVisibleSrNumbers();
     }
 
     if (row) {
@@ -368,6 +381,7 @@ function moveToDownload(cardId) {
 IDCardApp.refreshCardTable = refreshCardTable;
 IDCardApp.removeCardRow = removeCardRow;
 IDCardApp.refreshStatusCounts = refreshStatusCounts;
+IDCardApp.reindexVisibleSrNumbers = reindexVisibleSrNumbers;
 IDCardApp.showWorkflowConfirm = showWorkflowConfirm;
 IDCardApp.verifyCard = verifyCard;
 IDCardApp.approveCard = approveCard;

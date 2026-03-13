@@ -418,6 +418,66 @@
     font-size: 12px;
 }
 
+/* ===== Export Settings / Templates (de-inline Phase 2) ===== */
+.settings-export-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.settings-export-status {
+    font-size: 13px;
+    color: #64748b;
+}
+
+.settings-template-list {
+    margin-bottom: 16px;
+}
+
+.settings-template-loading {
+    color: #94a3b8;
+    font-size: 13px;
+}
+
+.settings-template-create-box {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 16px;
+    background: #f8fafc;
+}
+
+.settings-template-create-title {
+    margin: 0 0 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #334155;
+}
+
+.settings-template-create-title-icon {
+    margin-right: 6px;
+}
+
+.settings-template-add-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-top: 4px;
+}
+
+.settings-template-default-label {
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    color: #475569;
+}
+
+.settings-template-submit-btn {
+    margin-left: auto;
+}
+
 /* ===== Password Input ===== */
 .password-input-wrapper {
     position: relative;

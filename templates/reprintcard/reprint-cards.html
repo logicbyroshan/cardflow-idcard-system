@@ -23,6 +23,15 @@
     var CURRENT_STEP = '{{ current_step|default:"reprint_list"|escapejs }}';
     var IS_CLIENT_USER = {{ is_client|yesno:"true,false" }};
     var IS_CLIENT_STAFF_USER = {{ is_client_staff|yesno:"true,false" }};
+    var REPRINT_ENDPOINTS = {
+      stepCounts: '{% url "reprintcard:api_reprint_step_counts" table.id %}',
+      reprintList: '{% url "reprintcard:api_reprint_list" table.id %}',
+      requestCreate: '{% url "reprintcard:api_reprint_request_create" table.id %}',
+      requestList: '{% url "reprintcard:api_request_list" table.id %}',
+      confirmedList: '{% url "reprintcard:api_confirmed_list" table.id %}',
+      sendToPrint: '{% url "reprintcard:api_reprint_send_to_print" table.id %}',
+      reject: '{% url "reprintcard:api_reprint_reject" table.id %}'
+    };
   </script>
 </head>
 <body x-data="layoutState()" x-init="init()">

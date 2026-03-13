@@ -5,7 +5,7 @@ Handles DOCX file generation for ID card data.
 This module is READ-ONLY - it never mutates data.
 
 Features:
-- Landscape A4 format with 1cm margins
+- Landscape A4 format with 0.5cm margins
 - Header with institution name, table name, date, and branding
 - Footer with note, timestamp, and page numbers
 - Table with text fields on left, image fields on right
@@ -68,12 +68,12 @@ class WordExporter(WordStylesMixin, WordTablesMixin, WordImagesMixin):
     IMAGE_HEIGHT_CM = 2.5
     IMAGE_DEFAULT_WIDTH_CM = 1.9  # 3:4 portrait default
     ROW_HEIGHT_CM = 2.5
-    PAGE_WIDTH_CM = 27.5  # Landscape A4 with margins
+    PAGE_WIDTH_CM = 28.7  # Landscape A4 usable width with 0.5cm left/right margins
     # Page height budget (landscape A4 = 21cm)
     PAGE_HEIGHT_CM = 21.0
-    TOP_MARGIN_CM = 0.8
-    BOTTOM_MARGIN_CM = 0.3
-    FOOTER_EFFECTIVE_CM = 1.0  # footer_distance setting
+    TOP_MARGIN_CM = 0.5
+    BOTTOM_MARGIN_CM = 0.5
+    FOOTER_EFFECTIVE_CM = 0.5  # footer_distance setting
     # Phase 3: DOCX always uses ORIGINAL images for full quality print.
     # PDF uses thumbnails. ZIP uses originals.
     

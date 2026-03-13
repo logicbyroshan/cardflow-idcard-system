@@ -450,7 +450,8 @@ def api_export_pdf(request, table_id: int) -> HttpResponse:
     if len(card_ids) > MAX_PDF_EXPORT_CARD_IDS:
         card_ids = card_ids[:MAX_PDF_EXPORT_CARD_IDS]
     
-    # Extract template_id and font_mode from request
+    # Extract template_id from request.
+    # Font mode is intentionally locked to 'auto' for consistent layout.
     template_id = None
     font_mode = 'auto'
     shorten_titles = False
@@ -463,9 +464,6 @@ def api_export_pdf(request, table_id: int) -> HttpResponse:
                     template_id = int(tpl_val)
                 except (ValueError, TypeError):
                     pass
-            fm = (data.get('font_mode', '') or '').strip().lower()
-            if fm in ('normal', 'compact', 'condensed', 'auto'):
-                font_mode = fm
             shorten_titles = bool(data.get('shorten_titles', False))
         except (json.JSONDecodeError, ValueError):
             pass
@@ -548,9 +546,6 @@ def api_export_pdf_async(request, table_id: int) -> JsonResponse:
                     template_id = int(tpl_val)
                 except (ValueError, TypeError):
                     pass
-            fm = (data.get('font_mode', '') or '').strip().lower()
-            if fm in ('normal', 'compact', 'condensed', 'auto'):
-                font_mode = fm
             shorten_titles = bool(data.get('shorten_titles', False))
         except (json.JSONDecodeError, ValueError):
             pass

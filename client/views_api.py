@@ -6,6 +6,7 @@ card listing/status changes, image uploads, and group/class helpers.
 """
 import json
 
+from django.core.cache import cache
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
@@ -87,7 +88,7 @@ def api_groups_list(request):
         }, status=403)
 
     result = ClientDashboardService.get_groups_with_counts(request.user)
-    
+
     if result.success:
         return JsonResponse({
             'success': True,
@@ -102,7 +103,7 @@ def api_groups_list(request):
 
 # =============================================================================
 # API VIEWS - Staff Management
-# =============================================================================
+
 
 @require_client_admin
 @require_http_methods(["GET", "POST"])
@@ -112,18 +113,17 @@ def api_staff_list_create(request):
     """
     if request.method == 'GET':
         result = ClientStaffService.list_staff(request.user)
-        
         if result.success:
             return JsonResponse({
                 'success': True,
                 'data': {'staff': result.data.get('staff', [])}
             })
-        
+
         return JsonResponse({
             'success': False,
             'error': result.message
         }, status=400 if 'Permission' not in result.message else 403)
-    
+
     # POST - Create new staff
     content_type = request.content_type or ''
     if 'multipart/form-data' in content_type:
@@ -157,7 +157,7 @@ def api_staff_list_create(request):
             'message': result.message,
             'data': {'staff_id': result.data.get('staff_id')}
         })
-    
+
     status_code = 403 if 'Permission' in result.message else 400
     return JsonResponse({
         'success': False,
@@ -311,20 +311,27 @@ def api_class_section_options(request):
     if not client:
         return JsonResponse({'success': False, 'message': 'Client not found'}, status=400)
 
+    cache_key = f'client:class-section-options:{client.id}'
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return JsonResponse(cached)
+
     # Get all tables for this client
     group_ids = IDCardGroup.objects.filter(client=client).values_list('id', flat=True)
-    tables = IDCardTable.objects.filter(group_id__in=group_ids)
+    tables = list(IDCardTable.objects.filter(group_id__in=group_ids).values('id', 'fields'))
 
     classes = set()
     sections = set()
     branches = set()
+    class_sections = {}
+    table_field_map = {}
 
     for table in tables:
         # Determine which field names are class/section/branch type
         class_field = None
         section_field = None
         branch_field = None
-        for field in (table.fields or []):
+        for field in (table.get('fields') or []):
             ft = field.get('type', '').lower()
             fn = field.get('name', '')
             if ft == 'class' or fn.lower() == 'class':
@@ -334,33 +341,59 @@ def api_class_section_options(request):
             elif ft == 'branch' or fn.lower() == 'branch':
                 branch_field = fn
 
-        if not class_field and not section_field and not branch_field:
+        if class_field or section_field or branch_field:
+            table_field_map[table['id']] = (class_field, section_field, branch_field)
+
+    if table_field_map:
+        cards = IDCard.objects.filter(table_id__in=table_field_map.keys()).values_list('table_id', 'field_data')
+    else:
+        cards = []
+
+    for table_id, fd in cards:
+        if not fd:
             continue
 
-        # Query cards in this table
-        cards = IDCard.objects.filter(table=table).values_list('field_data', flat=True)
-        for fd in cards:
-            if not fd:
-                continue
-            if class_field:
-                val = fd.get(class_field, '') or fd.get(class_field.upper(), '') or fd.get(class_field.lower(), '')
-                if val:
-                    classes.add(str(val).strip())
-            if section_field:
-                val = fd.get(section_field, '') or fd.get(section_field.upper(), '') or fd.get(section_field.lower(), '')
-                if val:
-                    sections.add(str(val).strip())
-            if branch_field:
-                val = fd.get(branch_field, '') or fd.get(branch_field.upper(), '') or fd.get(branch_field.lower(), '')
-                if val:
-                    branches.add(str(val).strip())
+        class_field, section_field, branch_field = table_field_map.get(table_id, (None, None, None))
+        class_val = ''
+        section_val = ''
+        if class_field:
+            val = fd.get(class_field, '') or fd.get(class_field.upper(), '') or fd.get(class_field.lower(), '')
+            if val:
+                class_val = str(val).strip()
+                if class_val:
+                    classes.add(class_val)
+        if section_field:
+            val = fd.get(section_field, '') or fd.get(section_field.upper(), '') or fd.get(section_field.lower(), '')
+            if val:
+                section_val = str(val).strip()
+                if section_val:
+                    sections.add(section_val)
+        if branch_field:
+            val = fd.get(branch_field, '') or fd.get(branch_field.upper(), '') or fd.get(branch_field.lower(), '')
+            if val:
+                branch_val = str(val).strip()
+                if branch_val:
+                    branches.add(branch_val)
 
-    return JsonResponse({
+        # Build class -> sections mapping from actual card rows.
+        if class_val:
+            if class_val not in class_sections:
+                class_sections[class_val] = set()
+            if section_val:
+                class_sections[class_val].add(section_val)
+
+    payload = {
         'success': True,
         'classes': sorted(classes),
         'sections': sorted(sections),
         'branches': sorted(branches),
-    })
+        'class_sections': {
+            cls_name: sorted(sec_values)
+            for cls_name, sec_values in sorted(class_sections.items(), key=lambda x: x[0])
+        },
+    }
+    cache.set(cache_key, payload, 120)
+    return JsonResponse(payload)
 
 
 # =============================================================================

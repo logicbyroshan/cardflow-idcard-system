@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var allClasses = [];
     var allSections = [];
     var allBranches = [];
+    var classSectionMap = {};
     var selectedClasses = new Set();
     var selectedSections = new Set();
     var selectedBranches = new Set();
@@ -27,12 +28,33 @@ document.addEventListener('DOMContentLoaded', function () {
                 allClasses = data.classes || [];
                 allSections = data.sections || [];
                 allBranches = data.branches || [];
+                classSectionMap = data.class_sections || {};
                 csOptionsLoaded = true;
             }
         } catch (_) { /* silently fail */ }
     }
 
-    function buildCsMultiselect(prefix, allItems, selectedSet) {
+    function _getSectionsForSelectedClasses(classSet) {
+        if (!classSet || classSet.size === 0) {
+            return allSections.slice();
+        }
+        var out = new Set();
+        classSet.forEach(function (cls) {
+            var secList = classSectionMap[cls] || [];
+            secList.forEach(function (sec) { out.add(sec); });
+        });
+        return Array.from(out).sort(function (a, b) { return a.localeCompare(b); });
+    }
+
+    function _pruneSectionsBySelectedClasses(sectionSet, classSet) {
+        if (!sectionSet || !classSet || classSet.size === 0) return;
+        var allowed = new Set(_getSectionsForSelectedClasses(classSet));
+        Array.from(sectionSet).forEach(function (sec) {
+            if (!allowed.has(sec)) sectionSet.delete(sec);
+        });
+    }
+
+    function buildCsMultiselect(prefix, allItems, selectedSet, getItemsFn, onSelectionChange) {
         var toggle   = document.getElementById(prefix + '-multiselect-toggle');
         var dropdown = document.getElementById(prefix + '-multiselect-dropdown');
         var list     = document.getElementById(prefix + '-multiselect-list');
@@ -41,10 +63,15 @@ document.addEventListener('DOMContentLoaded', function () {
         var empty    = document.getElementById(prefix + '-multiselect-empty');
         if (!toggle || !list) return;
 
+        function _items() {
+            return typeof getItemsFn === 'function' ? (getItemsFn() || []) : (allItems || []);
+        }
+
         function render(filter) {
             list.innerHTML = '';
             var term = (filter || '').toLowerCase().trim();
-            var filtered = allItems.filter(function (v) { return !term || v.toLowerCase().includes(term); });
+            var sourceItems = _items();
+            var filtered = sourceItems.filter(function (v) { return !term || v.toLowerCase().includes(term); });
             filtered.sort(function (a, b) {
                 var sa = selectedSet.has(a) ? 0 : 1, sb = selectedSet.has(b) ? 0 : 1;
                 if (sa !== sb) return sa - sb;
@@ -63,6 +90,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (cb.checked) { selectedSet.add(val); div.classList.add('selected'); }
                     else            { selectedSet.delete(val); div.classList.remove('selected'); }
                     updateText();
+                    if (typeof onSelectionChange === 'function') onSelectionChange(val, cb.checked);
                 });
                 list.appendChild(div);
             });
@@ -104,8 +132,23 @@ document.addEventListener('DOMContentLoaded', function () {
         selectedClasses = new Set(preClasses || []);
         selectedSections = new Set(preSections || []);
         selectedBranches = new Set(preBranches || []);
-        if (!classMs) classMs = buildCsMultiselect('class', allClasses, selectedClasses);
-        if (!sectionMs) sectionMs = buildCsMultiselect('section', allSections, selectedSections);
+
+        _pruneSectionsBySelectedClasses(selectedSections, selectedClasses);
+
+        if (!classMs) {
+            classMs = buildCsMultiselect('class', allClasses, selectedClasses, null, function () {
+                _pruneSectionsBySelectedClasses(selectedSections, selectedClasses);
+                if (sectionMs) {
+                    sectionMs.render('');
+                    sectionMs.updateText();
+                }
+            });
+        }
+        if (!sectionMs) {
+            sectionMs = buildCsMultiselect('section', allSections, selectedSections, function () {
+                return _getSectionsForSelectedClasses(selectedClasses);
+            });
+        }
         if (classMs) { classMs.render(); classMs.updateText(); }
         if (sectionMs) { sectionMs.render(); sectionMs.updateText(); }
 
@@ -167,7 +210,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (assignCancelBtn) assignCancelBtn.addEventListener('click', closeAssignModal);
 
     // Reusable multi-select builder for the assign modal
-    function buildAssignMultiselect(prefix, allItems, selectedSet) {
+    function buildAssignMultiselect(prefix, allItems, selectedSet, getItemsFn, onSelectionChange) {
         var toggle   = document.getElementById('assign-' + prefix + '-toggle');
         var dropdown = document.getElementById('assign-' + prefix + '-dropdown');
         var list     = document.getElementById('assign-' + prefix + '-list');
@@ -178,10 +221,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
         var defaultLabel = prefix === 'group' ? 'Select groups...' : (prefix === 'class' ? 'All classes' : (prefix === 'branch' ? 'All branches' : 'All sections'));
 
+        function _items() {
+            return typeof getItemsFn === 'function' ? (getItemsFn() || []) : (allItems || []);
+        }
+
         function render(filter) {
             list.innerHTML = '';
             var term = (filter || '').toLowerCase().trim();
-            var filtered = allItems.filter(function (item) {
+            var sourceItems = _items();
+            var filtered = sourceItems.filter(function (item) {
                 var label = typeof item === 'object' ? item.name : item;
                 return !term || label.toLowerCase().includes(term);
             });
@@ -210,6 +258,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (cb.checked) { selectedSet.add(id); div.classList.add('selected'); }
                     else            { selectedSet.delete(id); div.classList.remove('selected'); }
                     updateText();
+                    if (typeof onSelectionChange === 'function') onSelectionChange(id, cb.checked);
                 });
                 list.appendChild(div);
             });
@@ -221,7 +270,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (count === 0) { text.textContent = defaultLabel; text.classList.remove('has-selection'); }
             else if (count <= 2) {
                 var labels = [];
-                allItems.forEach(function (item) {
+                _items().forEach(function (item) {
                     var id = typeof item === 'object' ? String(item.id) : item;
                     if (selectedSet.has(id)) labels.push(typeof item === 'object' ? item.name : item);
                 });
@@ -292,10 +341,24 @@ document.addEventListener('DOMContentLoaded', function () {
             assignSelectedBranches.clear();
             (data.allowed_branches || []).forEach(function (v) { assignSelectedBranches.add(v); });
 
+            _pruneSectionsBySelectedClasses(assignSelectedSections, assignSelectedClasses);
+
             // Build/update multi-selects
             if (!assignGroupMs)   assignGroupMs   = buildAssignMultiselect('group', _assignAllGroups, assignSelectedGroups);
-            if (!assignClassMs)   assignClassMs   = buildAssignMultiselect('class', allClasses, assignSelectedClasses);
-            if (!assignSectionMs) assignSectionMs = buildAssignMultiselect('section', allSections, assignSelectedSections);
+            if (!assignClassMs) {
+                assignClassMs = buildAssignMultiselect('class', allClasses, assignSelectedClasses, null, function () {
+                    _pruneSectionsBySelectedClasses(assignSelectedSections, assignSelectedClasses);
+                    if (assignSectionMs) {
+                        assignSectionMs.render('');
+                        assignSectionMs.updateText();
+                    }
+                });
+            }
+            if (!assignSectionMs) {
+                assignSectionMs = buildAssignMultiselect('section', allSections, assignSelectedSections, function () {
+                    return _getSectionsForSelectedClasses(assignSelectedClasses);
+                });
+            }
 
             // Branch multi-select: only show if branches exist (auto-detect college)
             var branchBlock = document.getElementById('assign-branch-block');

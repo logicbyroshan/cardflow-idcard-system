@@ -299,10 +299,23 @@ class GenerateCardService:
             rl_w = w_mm * mm
             rl_h = h_mm * mm
 
-            if ftype in IMAGE_FIELD_TYPES:
+            if cls._is_image_field(ftype, field_name):
                 cls._draw_image(c, value, rl_x, rl_y, rl_w, rl_h, settings)
             else:
                 cls._draw_text(c, str(value) if value else '', rl_x, rl_y, rl_w, rl_h, font, font_size)
+
+    @classmethod
+    def _is_image_field(cls, ftype, field_name=''):
+        """Detect image-like fields from type/name using tolerant matching."""
+        t = (ftype or '').strip().lower()
+        n = (field_name or '').strip().lower()
+        if t in IMAGE_FIELD_TYPES:
+            return True
+        if t in {'file', 'img', 'picture'}:
+            return True
+        if any(key in n for key in ('photo', 'image', 'signature', 'sign', 'barcode', 'qr')):
+            return True
+        return False
 
     @classmethod
     def _draw_image(cls, c, value, x, y, w, h, settings):
@@ -311,7 +324,14 @@ class GenerateCardService:
             return
         try:
             from reportlab.lib.utils import ImageReader
-            img_path = os.path.join(settings.MEDIA_ROOT, str(value))
+
+            raw_value = str(value).replace('\\', '/')
+            if raw_value.startswith('/media/'):
+                raw_value = raw_value[len('/media/'):]
+            elif raw_value.startswith('media/'):
+                raw_value = raw_value[len('media/'):]
+
+            img_path = os.path.join(settings.MEDIA_ROOT, raw_value)
             if not os.path.exists(img_path):
                 return
             img_reader = ImageReader(img_path)

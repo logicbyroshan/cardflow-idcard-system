@@ -21,13 +21,13 @@ class WordStylesMixin:
         section.page_height = new_height
         section.orientation = WD_ORIENT.LANDSCAPE
         
-        # Set margins
-        section.left_margin = Cm(1)
-        section.right_margin = Cm(1)
-        section.top_margin = Cm(0.8)
-        section.bottom_margin = Cm(0.3)
-        section.header_distance = Cm(0.3)
-        section.footer_distance = Cm(1)
+        # Set uniform margins to 0.5 cm on all sides.
+        section.left_margin = Cm(0.5)
+        section.right_margin = Cm(0.5)
+        section.top_margin = Cm(0.5)
+        section.bottom_margin = Cm(0.5)
+        section.header_distance = Cm(0.5)
+        section.footer_distance = Cm(0.5)
     
     def _add_header(self, doc, institution_name, table_name, Cm, Pt, RGBColor,
                     WD_TABLE_ALIGNMENT, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls):

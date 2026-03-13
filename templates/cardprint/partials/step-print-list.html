@@ -4,12 +4,12 @@
 
 <!-- Generate List Banner (if cards are waiting in generate_list) -->
 {% if step_counts.generate_list > 0 %}
-<div class="action-bar" style="background:#fef3c7;border-bottom:1px solid #fcd34d;padding:8px 16px;display:flex;align-items:center;gap:10px;">
-    <i class="fa-solid fa-exclamation-triangle" style="color:#b45309;"></i>
-    <span style="font-size:13px;color:#92400e;">
+<div class="action-bar cp-generate-banner">
+    <i class="fa-solid fa-exclamation-triangle cp-generate-banner-icon"></i>
+    <span class="cp-generate-banner-text">
         <strong>{{ step_counts.generate_list }}</strong> card(s) are ready to generate.
     </span>
-    <a href="{% url 'cardprint:generate_card' table.id %}" class="btn btn-amber btn-xs" style="margin-left:auto;text-decoration:none;">
+    <a href="{% url 'cardprint:generate_card' table.id %}" class="btn btn-amber btn-xs cp-generate-banner-link">
         <i class="fa-solid fa-pen-to-square"></i> Open Editor
     </a>
 </div>

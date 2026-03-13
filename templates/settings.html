@@ -267,11 +267,11 @@
                 <p class="form-hint">Appears alongside the timestamp in the second footer line</p>
                 <textarea id="exportCopyrightLine" rows="2">{{ export_settings.export_copyright_line }}</textarea>
               </div>
-              <div class="form-actions" style="display:flex;align-items:center;gap:12px;">
+              <div class="form-actions settings-export-actions">
                 <button type="submit" class="btn btn-save" id="saveExportSettingsBtn">
                   <i class="fa-solid fa-save"></i> Save Export Settings
                 </button>
-                <span id="exportSettingsStatus" style="font-size:13px;color:#64748b;"></span>
+                <span id="exportSettingsStatus" class="settings-export-status"></span>
               </div>
             </form>
           </div>
@@ -290,14 +290,14 @@
           </div>
           <div class="section-body">
             <!-- Template List -->
-            <div id="exportTemplateList" style="margin-bottom:16px;">
-              <p style="color:#94a3b8;font-size:13px;">Loading templates...</p>
+            <div id="exportTemplateList" class="settings-template-list">
+              <p class="settings-template-loading">Loading templates...</p>
             </div>
 
             <!-- Add New Template Form -->
-            <div style="border:1px solid #e2e8f0;border-radius:8px;padding:16px;background:#f8fafc;">
-              <h4 style="margin:0 0 12px;font-size:14px;font-weight:600;color:#334155;">
-                <i class="fa-solid fa-plus" style="margin-right:6px;"></i>Add New Template
+            <div class="settings-template-create-box">
+              <h4 class="settings-template-create-title">
+                <i class="fa-solid fa-plus settings-template-create-title-icon"></i>Add New Template
               </h4>
               <form id="addExportTemplateForm">
                 <div class="form-group">
@@ -308,11 +308,11 @@
                   <label for="newTplInstructions">Footer Instructions</label>
                   <textarea id="newTplInstructions" rows="3" placeholder="Instructions that will appear at the bottom of the exported document..."></textarea>
                 </div>
-                <div class="form-actions" style="display:flex;align-items:center;gap:10px;padding-top:4px;">
-                  <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:500;color:#475569;">
+                <div class="form-actions settings-template-add-actions">
+                  <label class="settings-template-default-label">
                     <input type="checkbox" id="newTplDefault"> Set as default
                   </label>
-                  <button type="submit" class="btn btn-save" style="margin-left:auto;">
+                  <button type="submit" class="btn btn-save settings-template-submit-btn">
                     <i class="fa-solid fa-plus"></i> Add Template
                   </button>
                 </div>

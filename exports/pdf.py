@@ -683,13 +683,36 @@ class PdfExporter:
         image_pct = sum(configs[i]['width'] for i in image_indices)
         remaining_pct = max(100.0 - image_pct, 20.0)
 
-        # ── Step 3: Compute proportional weights (P90) ──────────
+        # ── Step 3: Compute proportional weights (P90 + text density) ──────
+        # For sparse tables we can safely allocate more width to verbose text
+        # columns (address/email/name) while keeping short numeric fields tight.
         text_indices = [i for i in range(len(configs)) if i not in image_indices]
         text_weights = []
+        text_score_meta = {}
+
+        def _category_weight_boost(category: str, nowrap: bool) -> float:
+            if nowrap:
+                return 0.88
+            boosts = {
+                'address': 1.45,
+                'email': 1.30,
+                'full_name': 1.22,
+                'parent_name': 1.16,
+                'guardian_name': 1.16,
+                'spouse_name': 1.16,
+            }
+            return boosts.get(category, 1.0)
+
         for i in text_indices:
             if i == 0:
                 # Sr No — use spec pref_chars
                 text_weights.append(max(sr_spec.pref_chars, 4))
+                text_score_meta[i] = {
+                    'category': 'sr_no',
+                    'nowrap': True,
+                    'density_score': 1.0,
+                    'boost': 1.0,
+                }
                 continue
 
             field = ordered_fields[i - 1]
@@ -729,7 +752,24 @@ class PdfExporter:
                 max_word_len = min(max_word_len, spec.max_chars)
             representative = max(representative, max_word_len)
 
-            text_weights.append(max(representative, 3))
+            # Density score: gives more weight when real values are longer than
+            # the category's preferred width (safe upper bound avoids extremes).
+            density_score = 1.0
+            if spec.pref_chars > 0:
+                density_score = max(1.0, min(representative / float(spec.pref_chars), 1.55))
+
+            category = getattr(spec, 'category', '')
+            nowrap = configs[i].get('nowrap', False)
+            boost = _category_weight_boost(category, nowrap)
+            final_weight = max(representative * density_score * boost, 3)
+
+            text_weights.append(final_weight)
+            text_score_meta[i] = {
+                'category': category,
+                'nowrap': nowrap,
+                'density_score': density_score,
+                'boost': boost,
+            }
 
         total_tw = sum(text_weights) or 1
 
@@ -751,16 +791,21 @@ class PdfExporter:
             'course': 6.0,
             'branch': 6.0,
         }
-        _dense_pdf = len(configs) > 20  # >20 data columns
+        total_cols = len(configs)
+        _dense_pdf = total_cols > 20  # >20 data columns
+        _sparse_pdf = total_cols <= 10
 
         # ── Step 4: Distribute width, clamp by spec bounds ──────
         for idx, i in enumerate(text_indices):
             raw_pct = (text_weights[idx] / total_tw) * remaining_pct
             spec = configs[i].get('_spec', sr_spec if i == 0 else get_column_spec(''))
-            # Effective max: tighter cap in dense-table mode
+            # Effective max: tighter cap in dense-table mode; slightly wider
+            # cap for verbose text in sparse tables for better readability.
             eff_max_pct = spec.pdf_max_pct
             if _dense_pdf and spec.category in _DENSE_PDF_MAX:
                 eff_max_pct = min(eff_max_pct, _DENSE_PDF_MAX[spec.category])
+            if _sparse_pdf and spec.category in ('address', 'email', 'full_name', 'parent_name', 'guardian_name', 'spouse_name'):
+                eff_max_pct = min(max(eff_max_pct, spec.pdf_max_pct * 1.25), 28.0)
             # Clamp to semantic min/max from column_spec
             clamped = max(spec.pdf_min_pct, min(raw_pct, eff_max_pct))
             configs[i]['width'] = clamped

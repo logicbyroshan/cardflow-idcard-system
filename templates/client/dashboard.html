@@ -98,24 +98,24 @@
     <div class="dashboard-card">
       <div class="dashboard-card-header">
         <h3><i class="fa-solid fa-rotate"></i> Reprint Requests History</h3>
-        <span class="reprint-history-count" id="reprintHistoryCount" style="display:none;">0</span>
+        <span class="reprint-history-count is-hidden" id="reprintHistoryCount">0</span>
       </div>
       <div class="dashboard-card-body tall-body p-0">
         <div id="reprintHistoryTableWrap">
           <table class="reprint-history-table" id="reprintHistoryTable">
             <thead>
               <tr>
-                <th style="width:36px;">#</th>
+                <th class="rh-col-num">#</th>
                 <th>Card Details</th>
-                <th style="width:56px;">Photo</th>
-                <th style="width:110px;">Group</th>
-                <th style="width:100px;">Date</th>
-                <th style="width:88px;">Status</th>
+                <th class="rh-col-photo">Photo</th>
+                <th class="rh-col-group">Group</th>
+                <th class="rh-col-date">Date</th>
+                <th class="rh-col-status">Status</th>
               </tr>
             </thead>
             <tbody id="reprintHistoryBody">
               <tr>
-                <td colspan="6" style="text-align:center;padding:30px;color:#9ca3af;font-size:13px;">
+                <td colspan="6" class="rh-state-cell">
                   <i class="fa-solid fa-spinner fa-spin"></i> Loading reprint history...
                 </td>
               </tr>
@@ -260,7 +260,7 @@ async function loadReprintHistory() {
       if (!tbody) return;
 
       if (items.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:#9ca3af;font-size:13px;"><i class="fa-solid fa-inbox" style="font-size:24px;display:block;margin-bottom:8px;"></i>No reprint requests yet</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="rh-state-cell rh-state-cell-lg"><i class="fa-solid fa-inbox rh-state-icon"></i>No reprint requests yet</td></tr>';
         return;
       }
 
@@ -280,12 +280,12 @@ async function loadReprintHistory() {
           '</tr>';
       }).join('');
     } else {
-      if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:#ef4444;font-size:13px;">Failed to load reprint history</td></tr>';
+      if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="rh-state-cell rh-state-cell-error">Failed to load reprint history</td></tr>';
     }
   } catch (err) {
     console.error('Error loading reprint history:', err);
     var tbody = document.getElementById('reprintHistoryBody');
-    if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:#ef4444;font-size:13px;">Error loading data</td></tr>';
+    if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="rh-state-cell rh-state-cell-error">Error loading data</td></tr>';
   }
 }
 

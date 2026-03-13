@@ -1,5 +1,5 @@
 {% load static %}
-<!-- Reprint Cards - Top Navbar (2-Step Workflow) -->
+<!-- Reprint Cards - Top Navbar (3-Step Workflow) -->
 <header class="topbar">
   <!-- Left - Breadcrumb -->
   <div class="nav-left">
@@ -23,18 +23,22 @@
       <span class="breadcrumb-item">{{ client.name }}{% if client.status != 'active' %} <span class="status-badge inactive status-badge--sm">{{ client.get_status_display }}</span>{% endif %}</span>
       {% endif %}
       <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
-      <span class="breadcrumb-item active">Reprint â€” {{ table.name }}</span>
+      <span class="breadcrumb-item active">Reprint - {{ table.name }}</span>
     </div>
   </div>
 
-  <!-- Right - 4-Step Workflow Tabs -->
+  <!-- Right - 3-Step Workflow Tabs -->
   <div class="nav-right">
     <div class="action-tabs">
       <a href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table.id %}{% else %}{% url 'reprintcard:reprint_cards' table.id %}{% endif %}?step=reprint_list" class="action-tab reprint-requests-tab {% if current_step == 'reprint_list' %}active{% endif %}">
         <span class="tab-label">Reprint List</span>
         <span class="tab-count">{{ step_counts.reprint_list }}</span>
       </a>
-      <a href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table.id %}{% else %}{% url 'reprintcard:reprint_cards' table.id %}{% endif %}?step=confirmed" class="action-tab reprint-confirm-tab {% if current_step == 'confirmed' %}active{% endif %}">
+      <a href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table.id %}{% else %}{% url 'reprintcard:reprint_cards' table.id %}{% endif %}?step=request_list" class="action-tab reprint-confirm-tab {% if current_step == 'request_list' %}active{% endif %}">
+        <span class="tab-label">Request List</span>
+        <span class="tab-count">{{ step_counts.request_list }}</span>
+      </a>
+      <a href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table.id %}{% else %}{% url 'reprintcard:reprint_cards' table.id %}{% endif %}?step=confirmed" class="action-tab reprint-pool-tab {% if current_step == 'confirmed' %}active{% endif %}">
         <span class="tab-label">Confirmed List</span>
         <span class="tab-count">{{ step_counts.confirmed }}</span>
       </a>

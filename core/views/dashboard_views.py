@@ -322,36 +322,71 @@ def api_print_reprint_overview(request):
                 'pool': t['pool'],
             })
 
-        # ── Reprint counts per client ────────────────────────────────
+        # ── Reprint source counts per client (Approved + Download cards) ─
+        reprint_source_qs = IDCard.objects.filter(
+            table__group__client_id__in=client_ids,
+            status__in=['approved', 'download'],
+        ).values('table__group__client_id').annotate(
+            reprint_list=Count('id')
+        )
+        reprint_source_map = {r['table__group__client_id']: r for r in reprint_source_qs}
+
+        # ── Reprint request/confirmed counts per client ──────────────
         reprint_counts_qs = ReprintRequest.objects.filter(
             table__group__client_id__in=client_ids
         ).values('table__group__client_id').annotate(
             requested=Count('id', filter=Q(status='requested')),
             confirmed=Count('id', filter=Q(status='confirmed')),
-            pool=Count('id', filter=Q(status='pool')),
         )
         reprint_map = {r['table__group__client_id']: r for r in reprint_counts_qs}
 
-        # ── Reprint counts per table ─────────────────────────────────
+        # ── Reprint source counts per table ──────────────────────────
+        reprint_source_table_qs = IDCard.objects.filter(
+            table__group__client_id__in=client_ids,
+            status__in=['approved', 'download'],
+        ).values('table__id', 'table__name', 'table__group__client_id').annotate(
+            reprint_list=Count('id')
+        ).order_by('table__id')
+        reprint_source_table_map = {}
+        for t in reprint_source_table_qs:
+            cid = t['table__group__client_id']
+            if cid not in reprint_source_table_map:
+                reprint_source_table_map[cid] = {}
+            reprint_source_table_map[cid][t['table__id']] = {
+                'id': t['table__id'],
+                'name': t['table__name'],
+                'reprint_list': t['reprint_list'],
+                'requested': 0,
+                'confirmed': 0,
+            }
+
+        # ── Reprint request/confirmed counts per table ───────────────
         reprint_table_qs = ReprintRequest.objects.filter(
             table__group__client_id__in=client_ids
         ).values('table__id', 'table__name', 'table__group__client_id').annotate(
             requested=Count('id', filter=Q(status='requested')),
             confirmed=Count('id', filter=Q(status='confirmed')),
-            pool=Count('id', filter=Q(status='pool')),
         ).order_by('table__id')
-        reprint_tables_map = {}
+
         for t in reprint_table_qs:
             cid = t['table__group__client_id']
-            if cid not in reprint_tables_map:
-                reprint_tables_map[cid] = []
-            reprint_tables_map[cid].append({
-                'id': t['table__id'],
-                'name': t['table__name'],
-                'requested': t['requested'],
-                'confirmed': t['confirmed'],
-                'pool': t['pool'],
-            })
+            if cid not in reprint_source_table_map:
+                reprint_source_table_map[cid] = {}
+            if t['table__id'] not in reprint_source_table_map[cid]:
+                reprint_source_table_map[cid][t['table__id']] = {
+                    'id': t['table__id'],
+                    'name': t['table__name'],
+                    'reprint_list': 0,
+                    'requested': 0,
+                    'confirmed': 0,
+                }
+            reprint_source_table_map[cid][t['table__id']]['requested'] = t['requested']
+            reprint_source_table_map[cid][t['table__id']]['confirmed'] = t['confirmed']
+
+        reprint_tables_map = {
+            cid: list(table_map.values())
+            for cid, table_map in reprint_source_table_map.items()
+        }
 
         # ── Build per-client results ─────────────────────────────────
         print_clients = []
@@ -370,13 +405,14 @@ def api_print_reprint_overview(request):
             })
 
             rc = reprint_map.get(c.id, {})
+            source = reprint_source_map.get(c.id, {})
             reprint_clients.append({
                 'id': c.id,
                 'name': c.name,
                 'status': c.status,
+                'reprint_list': source.get('reprint_list', 0),
                 'requested': rc.get('requested', 0),
                 'confirmed': rc.get('confirmed', 0),
-                'pool': rc.get('pool', 0),
                 'tables': reprint_tables_map.get(c.id, []),
             })
 
@@ -427,12 +463,17 @@ def api_global_search(request):
                 'results': [],
                 'message': 'Please enter at least 2 characters to search'
             })
+
+        user = request.user
+        cache_key = f'global-search:{user.id}:{filter_type}:{query.lower()}'
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return JsonResponse(cached)
         
         results = []
         query_upper = query.upper()
         
         # Build base queryset - scope by user role
-        user = request.user
         base_cards = IDCard.objects.select_related(
             'table', 'table__group', 'table__group__client'
         ).only(
@@ -546,12 +587,14 @@ def api_global_search(request):
         # Sort by title
         results.sort(key=lambda x: x['title'])
         
-        return JsonResponse({
+        payload = {
             'success': True,
             'results': results,
             'count': len(results),
             'query': query
-        })
+        }
+        cache.set(cache_key, payload, 30)
+        return JsonResponse(payload)
     except Exception as e:
         logger.exception('api_global_search error: %s', e)
         return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)

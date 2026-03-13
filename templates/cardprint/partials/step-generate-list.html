@@ -1,15 +1,15 @@
 {% load static %}
 {% load custom_filters %}
-<!-- ===== STEP 1: REPRINT LIST (Approved + Download Source) ===== -->
+<!-- ===== STEP 2: GENERATE LIST ===== -->
 
 <!-- Action Bar -->
-<div class="action-bar action-buttons-bar" id="reprintListActionBar">
+<div class="action-bar action-buttons-bar" id="generateListActionBar">
     <div class="action-buttons-group">
-        <button class="btn action-btn btn-amber" id="sendToRequestBtn" disabled title="Send selected cards to Request list">
-            <i class="fa-solid fa-check-double"></i>
-            <span class="btn-text">Send to Request</span>
+        <button class="btn action-btn btn-green" id="continueGenerateBtn" disabled title="Continue generating selected cards">
+            <i class="fa-solid fa-gears"></i>
+            <span class="btn-text">Continue Generate</span>
         </button>
-        <button class="btn action-btn btn-gray" id="reprintListViewBtn" disabled title="View selected card details">
+        <button class="btn action-btn btn-gray" id="generateListViewBtn" disabled title="View selected card">
             <i class="fa-solid fa-eye"></i>
             <span class="btn-text">View</span>
         </button>
@@ -21,8 +21,8 @@
     <div class="action-left">
         <div class="search-box">
             <i class="fa-solid fa-magnifying-glass search-icon"></i>
-            <input type="text" id="reprintListSearchInput" placeholder="Search Reprint List..." class="search-input" autocomplete="off">
-            <button class="search-clear-btn" id="reprintListSearchClearBtn" type="button" title="Clear search" aria-label="Clear search">
+            <input type="text" id="generateListSearchInput" placeholder="Search generate list..." class="search-input" autocomplete="off">
+            <button class="search-clear-btn" id="generateListSearchClearBtn" type="button" title="Clear search" aria-label="Clear search">
                 <i class="fa-solid fa-xmark"></i>
             </button>
         </div>
@@ -37,14 +37,14 @@
     </div>
 </div>
 
-<!-- Reprint List Table -->
+<!-- Generate List Table -->
 <div class="table-wrapper">
     <div class="table-container idcard-table">
-        <table id="reprintList-data-table">
+        <table id="generateList-data-table">
             <thead class="sticky top-0 z-20">
                 <tr>
                     <th class="w-[24px] min-w-[24px] text-center px-[1px]">
-                        <input type="checkbox" id="reprintListSelectAll" title="Select all" aria-label="Select all">
+                        <input type="checkbox" id="generateListSelectAll" title="Select all" aria-label="Select all">
                     </th>
                     <th class="w-[36px] min-w-[36px] px-[1px] py-1 text-center align-middle">
                         <div class="leading-tight">
@@ -60,15 +60,15 @@
                     <th class="{{ field|get_column_width_class }} px-[1px] py-1 {{ field|get_column_align_class }} align-middle" data-field-name="{{ field.name }}" data-field-type="{{ field.type }}">{{ field.name|humanize_header }}</th>
                     {% endif %}
                     {% endfor %}
-                    <th class="w-[120px] min-w-[120px] px-[1px] py-1 text-center align-middle">Action</th>
-                    <th class="w-[65px] min-w-[65px] px-[1px] py-1 text-center align-middle">Status</th>
+                    <th class="w-[65px] min-w-[65px] px-[1px] py-1 text-center align-middle">Requested By</th>
+                    <th class="w-[90px] min-w-[90px] px-[1px] py-1 text-center align-middle">Moved At</th>
                 </tr>
             </thead>
-            <tbody id="reprintListTableBody" class="divide-y divide-gray-200">
-                {% for item in reprint_items %}
-                <tr data-card-id="{{ item.card_id }}" data-sr-no="{{ item.sr_no }}">
+            <tbody id="generateListTableBody" class="divide-y divide-gray-200">
+                {% for item in generate_items %}
+                <tr data-pr-id="{{ item.pr_id }}" data-card-id="{{ item.card_id }}" data-sr-no="{{ item.sr_no }}">
                     <td class="w-[24px] px-[1px] py-1 text-center align-middle checkbox-cell">
-                        <input type="checkbox" class="reprintListRowCheckbox">
+                        <input type="checkbox" class="generateListRowCheckbox">
                     </td>
                     <td class="w-[36px] px-[1px] py-1 text-center align-middle sr-no-cell">{{ item.sr_no }}</td>
                     {% for field in item.ordered_fields|reorder_card_fields_for_display %}
@@ -81,9 +81,9 @@
                         data-original-value="{{ field.value }}">
                         <div class="image-with-edit">
                             {% if field.value and field.value != '' and field.value != 'NOT_FOUND' and not field.value|slice:":8" == "PENDING:" %}
-                            <img src="/media/{{ field.value|get_thumbnail_path }}" 
-                                 alt="{{ field.name }}" 
-                                 class="table-image {{ field.name|get_image_class }}" 
+                            <img src="/media/{{ field.value|get_thumbnail_path }}"
+                                 alt="{{ field.name }}"
+                                 class="table-image {{ field.name|get_image_class }}"
                                  loading="lazy"
                                  decoding="async"
                                  onerror="this.onerror=null; this.src='/media/{{ field.value|escapejs }}'">
@@ -108,24 +108,16 @@
                     </td>
                     {% endif %}
                     {% endfor %}
-                    <td class="w-[120px] px-[1px] py-1 text-center align-middle action-cell">
-                        <div class="confirm-action-btns">
-                            <button class="btn-send-to-request-single" data-card-id="{{ item.card_id }}" title="Send to Request list" aria-label="Send to Request list">
-                                <i class="fa-solid fa-check"></i> <span>Request</span>
-                            </button>
-                        </div>
-                    </td>
-                    <td class="w-[65px] px-[1px] py-1 align-middle text-center">
-                        <span class="status-badge status-{{ item.status }}">{{ item.get_status_display }}</span>
-                    </td>
+                    <td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center">{{ item.requested_by_name }}</td>
+                    <td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">{{ item.moved_at|date:"d-M-Y H:i" }}</td>
                 </tr>
                 {% empty %}
                 <tr>
                     <td colspan="50">
                         <div class="empty-state">
-                            <i class="fa-solid fa-id-card"></i>
-                            <h3>No Cards in Reprint List</h3>
-                            <p>No approved or downloaded cards are available for reprint.</p>
+                            <i class="fa-solid fa-gears"></i>
+                            <h3>No Cards in Generate List</h3>
+                            <p>Cards moved from Print List will appear here until PDF generation is completed.</p>
                         </div>
                     </td>
                 </tr>
@@ -136,34 +128,34 @@
 </div>
 
 <!-- Pagination -->
-{% if reprint_total > 0 %}
-<div class="pagination-bar" id="reprintListPaginationBar"
-     data-total-count="{{ reprint_total }}"
-     data-initial-loaded="{{ reprint_items|length }}"
-     data-has-more="{{ reprint_has_more|yesno:'true,false' }}">
+{% if generate_total > 0 %}
+<div class="pagination-bar" id="generateListPaginationBar"
+     data-total-count="{{ generate_total }}"
+     data-initial-loaded="{{ generate_items|length }}"
+     data-has-more="{{ generate_has_more|yesno:'true,false' }}">
     <div class="pagination-left">
         <span class="pagination-info">
-            Showing <strong id="reprintListShowingRange">1-{{ reprint_items|length }}</strong> of <strong id="reprintListTotalCount">{{ reprint_total }}</strong> results
+            Showing <strong id="generateListShowingRange">1-{{ generate_items|length }}</strong> of <strong id="generateListTotalCount">{{ generate_total }}</strong> results
         </span>
-        <span class="pagination-selected" id="reprintListSelectionInfo" style="display: none;">
-            (<strong id="reprintListSelectedCount">0</strong> selected)
+        <span class="pagination-selected" id="generateListSelectionInfo" style="display: none;">
+            (<strong id="generateListSelectedCount">0</strong> selected)
         </span>
     </div>
     <div class="pagination-center">
-        <button class="pagination-btn" id="reprintListFirstPage" title="Go to first page" aria-label="First page"><i class="fa-solid fa-angles-left"></i></button>
-        <button class="pagination-btn" id="reprintListPrevPage" title="Previous page" aria-label="Previous page"><i class="fa-solid fa-chevron-left"></i></button>
-        <span class="page-numbers" id="reprintListPageNumbers"><button class="page-num active">1</button></span>
-        <button class="pagination-btn" id="reprintListNextPage" title="Next page" aria-label="Next page"><i class="fa-solid fa-chevron-right"></i></button>
-        <button class="pagination-btn" id="reprintListLastPage" title="Go to last page" aria-label="Last page"><i class="fa-solid fa-angles-right"></i></button>
+        <button class="pagination-btn" id="generateListFirstPage" title="Go to first page" aria-label="First page"><i class="fa-solid fa-angles-left"></i></button>
+        <button class="pagination-btn" id="generateListPrevPage" title="Previous page" aria-label="Previous page"><i class="fa-solid fa-chevron-left"></i></button>
+        <span class="page-numbers" id="generateListPageNumbers"><button class="page-num active">1</button></span>
+        <button class="pagination-btn" id="generateListNextPage" title="Next page" aria-label="Next page"><i class="fa-solid fa-chevron-right"></i></button>
+        <button class="pagination-btn" id="generateListLastPage" title="Go to last page" aria-label="Last page"><i class="fa-solid fa-angles-right"></i></button>
     </div>
     <div class="pagination-right">
-        <label for="reprintListRowsToggle">Rows per page:</label>
-        <div class="custom-dropdown rows-dropdown" id="reprintListRowsDropdown">
-            <button class="dropdown-toggle" id="reprintListRowsToggle" type="button" aria-expanded="false">
-                <span id="reprintListRowsSelectedText">50</span>
+        <label for="generateListRowsToggle">Rows per page:</label>
+        <div class="custom-dropdown rows-dropdown" id="generateListRowsDropdown">
+            <button class="dropdown-toggle" id="generateListRowsToggle" type="button" aria-expanded="false">
+                <span id="generateListRowsSelectedText">50</span>
                 <i class="fa-solid fa-chevron-down"></i>
             </button>
-            <div class="dropdown-options" id="reprintListRowsOptions">
+            <div class="dropdown-options" id="generateListRowsOptions">
                 <div class="dropdown-option selected" data-value="50">50</div>
                 <div class="dropdown-option" data-value="100">100</div>
                 <div class="dropdown-option" data-value="all">All</div>

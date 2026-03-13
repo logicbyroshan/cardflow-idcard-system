@@ -2,7 +2,7 @@
 Reprint Card Views
 ==================
 Page views + API endpoints for the Reprint Cards workflow:
-  Reprint List (all IDCards) → Confirmed List
+    Reprint List (approved/download source) → Request List → Confirmed List
 
 ARCHITECTURE RULES:
 - Views are ULTRA-THIN: parse request → call service → return JsonResponse.
@@ -84,7 +84,7 @@ def _require_admin_role(user):
 @login_required
 @require_any_admin
 def reprint_cards(request, table_id):
-    """Reprint Cards page — Reprint List (all IDCards) → Confirmed."""
+    """Reprint Cards page — Reprint List → Request List → Confirmed."""
     table = get_object_or_404(
         IDCardTable.objects.select_related('group__client'), id=table_id,
     )
@@ -95,24 +95,27 @@ def reprint_cards(request, table_id):
         return redirect('active_clients')
 
     current_step = request.GET.get('step', 'reprint_list')
-    if current_step not in ('reprint_list', 'confirmed'):
+    if current_step not in ('reprint_list', 'request_list', 'confirmed'):
         current_step = 'reprint_list'
 
     # Step counts
+    source_cards_qs = IDCard.objects.filter(table=table, status__in=['approved', 'download'])
+    source_cards_count = source_cards_qs.count()
+    request_count = ReprintRequest.objects.filter(table=table, status='requested').count()
     confirmed_count = ReprintRequest.objects.filter(table=table, status='confirmed').count()
-    all_cards_count = IDCard.objects.filter(table=table).count()
     step_counts = {
-        'reprint_list': all_cards_count,
+        'reprint_list': source_cards_count,
+        'request_list': request_count,
         'confirmed': confirmed_count,
     }
 
     INITIAL_LOAD_LIMIT = 100
 
-    # Reprint List — shows ALL IDCards from the table
+    # Reprint List — source cards limited to Approved + Download
     reprint_items = []
     reprint_total = 0
     if current_step == 'reprint_list':
-        card_qs = IDCard.objects.filter(table=table).order_by('-updated_at')
+        card_qs = source_cards_qs.order_by('-updated_at')
         reprint_total = card_qs.count()
         card_batch = card_qs[:INITIAL_LOAD_LIMIT]
         for idx, card in enumerate(card_batch):
@@ -123,6 +126,30 @@ def reprint_cards(request, table_id):
                 'get_status_display': card.get_status_display(),
                 'ordered_fields': _build_ordered_fields(card, table),
                 'updated_at': card.updated_at,
+            })
+
+    # Request List — status='requested'
+    request_items = []
+    request_total = 0
+    if current_step == 'request_list':
+        req_qs = ReprintRequest.objects.filter(
+            table=table, status='requested',
+        ).select_related('card', 'requested_by').order_by('-created_at')
+        request_total = req_qs.count()
+        req_batch = req_qs[:INITIAL_LOAD_LIMIT]
+        for idx, rr in enumerate(req_batch):
+            req_by = rr.requested_by
+            request_items.append({
+                'rr_id': rr.id,
+                'card_id': rr.card_id,
+                'sr_no': idx + 1,
+                'status': rr.card.status,
+                'get_status_display': rr.card.get_status_display(),
+                'reason': rr.reason,
+                'requested_by_name': (req_by.get_full_name() or req_by.username) if req_by else 'System',
+                'requested_at': rr.created_at,
+                'ordered_fields': _build_ordered_fields(rr.card, table),
+                'updated_at': rr.card.updated_at,
             })
 
     # Confirmed List — status='confirmed'
@@ -161,6 +188,9 @@ def reprint_cards(request, table_id):
         'reprint_items': reprint_items,
         'reprint_total': reprint_total,
         'reprint_has_more': reprint_total > INITIAL_LOAD_LIMIT,
+        'request_items': request_items,
+        'request_total': request_total,
+        'request_has_more': request_total > INITIAL_LOAD_LIMIT,
         'confirmed_items': confirmed_items,
         'confirmed_total': confirmed_total,
         'confirmed_has_more': confirmed_total > INITIAL_LOAD_LIMIT,
@@ -181,11 +211,13 @@ def api_reprint_step_counts(request, table_id):
     if err:
         return err
 
+    source_cards_count = IDCard.objects.filter(table=table, status__in=['approved', 'download']).count()
+    request_count = ReprintRequest.objects.filter(table=table, status='requested').count()
     confirmed_count = ReprintRequest.objects.filter(table=table, status='confirmed').count()
-    all_cards_count = IDCard.objects.filter(table=table).count()
     return JsonResponse({
         'status': 'ok',
-        'reprint_list': all_cards_count,
+        'reprint_list': source_cards_count,
+        'request_list': request_count,
         'confirmed': confirmed_count,
     })
 
@@ -193,7 +225,7 @@ def api_reprint_step_counts(request, table_id):
 @require_http_methods(["GET"])
 @api_require_permission('perm_idcard_reprint_list')
 def api_reprint_list(request, table_id):
-    """List ALL IDCards from the table (Reprint List step)."""
+    """List source IDCards (Approved + Download) for Reprint List step."""
     table, err = _check_reprint_table_scope(request.user, table_id)
     if err:
         return err
@@ -205,7 +237,10 @@ def api_reprint_list(request, table_id):
     except (ValueError, TypeError):
         offset, limit = 0, 100
 
-    card_qs = IDCard.objects.filter(table=table).order_by('-updated_at')
+    card_qs = IDCard.objects.filter(
+        table=table,
+        status__in=['approved', 'download'],
+    ).order_by('-updated_at')
 
     if query:
         search_q = Q(field_data__icontains=query)
@@ -243,7 +278,7 @@ def api_reprint_list(request, table_id):
 @require_http_methods(["POST"])
 @api_require_permission('perm_idcard_reprint_list')
 def api_reprint_request_create(request, table_id):
-    """Create reprint requests for card IDs (goes directly to confirmed).
+    """Create reprint requests for card IDs (goes to request list).
     Body: { "card_ids": [1, 2, 3], "reason": "optional" }
     """
     table, err = _check_reprint_table_scope(request.user, table_id)
@@ -306,6 +341,63 @@ def api_reprint_confirm(request, table_id):
             'confirmed_count': result.data.get('updated_count', 0),
         })
     return JsonResponse({'status': 'error', 'message': result.message}, status=400)
+
+
+@require_http_methods(["GET"])
+@api_require_permission('perm_idcard_reprint_list')
+def api_request_list(request, table_id):
+    """List requested reprint requests (status='requested')."""
+    table, err = _check_reprint_table_scope(request.user, table_id)
+    if err:
+        return err
+
+    query = request.GET.get('q', '').strip()
+    try:
+        offset = int(request.GET.get('offset', 0))
+        limit = int(request.GET.get('limit', 100))
+    except (ValueError, TypeError):
+        offset, limit = 0, 100
+
+    rr_qs = ReprintRequest.objects.filter(
+        table=table, status='requested',
+    ).select_related('card', 'requested_by').order_by('-created_at')
+
+    if query:
+        rr_qs = rr_qs.filter(
+            Q(card__field_data__icontains=query) |
+            Q(reason__icontains=query) |
+            Q(card__id__icontains=query)
+        )
+
+    total = rr_qs.count()
+    batch = list(rr_qs[offset:offset + limit + 1])
+    has_more = len(batch) > limit
+    if has_more:
+        batch = batch[:limit]
+
+    items = []
+    for idx, rr in enumerate(batch):
+        req_by = rr.requested_by
+        items.append({
+            'rr_id': rr.id,
+            'card_id': rr.card_id,
+            'sr_no': offset + idx + 1,
+            'status': rr.card.status,
+            'status_display': rr.card.get_status_display(),
+            'reason': rr.reason,
+            'requested_by_name': (req_by.get_full_name() or req_by.username) if req_by else 'System',
+            'requested_at': localtime(rr.created_at).strftime('%d-%b-%Y %H:%M'),
+            'ordered_fields': _build_ordered_fields(rr.card, table),
+        })
+
+    return JsonResponse({
+        'status': 'ok',
+        'items': items,
+        'total': total,
+        'has_more': has_more,
+        'offset': offset,
+        'limit': limit,
+    })
 
 
 @require_http_methods(["POST"])
@@ -494,10 +586,10 @@ def api_download_list(request, table_id):
 @login_required
 @api_require_permission('perm_idcard_reprint_list')
 def api_reprint_send_to_print(request, table_id):
-    """Send confirmed reprint items to the cardprint Print List.
+    """Send requested reprint items to the cardprint Print List.
 
     Body: { "rr_ids": [1, 2, 3] }
-    Extracts card IDs from the confirmed reprint requests and creates
+    Extracts card IDs from requested reprint requests and creates
     PrintRequest entries in the cardprint app.
     """
     admin_err = _require_admin_role(request.user)
@@ -516,17 +608,17 @@ def api_reprint_send_to_print(request, table_id):
     if not rr_ids:
         return JsonResponse({'status': 'error', 'message': 'No items selected'}, status=400)
 
-    # Only allow confirmed reprint requests
-    confirmed_rrs = ReprintRequest.objects.filter(
+    # Only allow requested reprint requests
+    requested_rrs = ReprintRequest.objects.filter(
         id__in=rr_ids,
         table=table,
-        status='confirmed',
+        status='requested',
     ).values_list('card_id', flat=True)
 
-    card_ids = list(confirmed_rrs)
+    card_ids = list(requested_rrs)
     if not card_ids:
         return JsonResponse(
-            {'status': 'error', 'message': 'No confirmed reprint items found'},
+            {'status': 'error', 'message': 'No requested reprint items found'},
             status=400,
         )
 
@@ -538,17 +630,17 @@ def api_reprint_send_to_print(request, table_id):
     if not result.success:
         return JsonResponse({'status': 'error', 'message': result.message}, status=400)
 
-    # Move the reprint requests from confirmed → downloaded
+    # Move the reprint requests from requested → confirmed
     if result.data['created'] > 0:
         ReprintRequest.objects.filter(
             id__in=rr_ids,
             table=table,
-            status='confirmed',
-        ).update(status='downloaded')
+            status='requested',
+        ).update(status='confirmed')
 
     return JsonResponse({
         'status': 'ok',
-        'message': f"{result.data['created']} card(s) sent to print list"
+        'message': f"{result.data['created']} card(s) sent to print list and moved to confirmed"
                    + (f" ({result.data['skipped']} already in list)" if result.data['skipped'] else ''),
         'created': result.data['created'],
         'skipped': result.data['skipped'],

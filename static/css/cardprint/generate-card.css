@@ -648,6 +648,36 @@
   }
 }
 
+/* Phase 2 de-inline helpers for cardprint partials */
+.cp-topbar-bell-wrap {
+  margin-left: auto;
+  margin-right: 8px;
+  flex-grow: 0;
+}
+
+.cp-generate-banner {
+  background: #fef3c7;
+  border-bottom: 1px solid #fcd34d;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cp-generate-banner-icon {
+  color: #b45309;
+}
+
+.cp-generate-banner-text {
+  font-size: 13px;
+  color: #92400e;
+}
+
+.cp-generate-banner-link {
+  margin-left: auto;
+  text-decoration: none;
+}
+
 /* ── Overview Table ── */
 .gen-overview-table {
   width: 100%;

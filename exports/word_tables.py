@@ -111,6 +111,34 @@ class WordTablesMixin:
                 if spec.max_chars > 0:
                     representative = min(representative, spec.max_chars)
 
+                # Safe text-column boost: verbose categories tend to need
+                # slightly more room for clean wrapping.
+                verbose_weight_boost = {
+                    'full_name': 1.20,
+                    'parent_name': 1.15,
+                    'guardian_name': 1.15,
+                    'spouse_name': 1.15,
+                    'reporting_manager': 1.15,
+                    'address': 1.30,
+                    'email': 1.10,
+                    'allergies': 1.20,
+                    'medical_condition': 1.20,
+                    'department': 1.08,
+                    'designation': 1.08,
+                    'course': 1.08,
+                    'branch': 1.08,
+                }
+                boost = verbose_weight_boost.get(spec.category, 1.0)
+                representative = max(spec.min_chars, int(round(representative * boost)))
+                if spec.max_chars > 0:
+                    representative = min(representative, spec.max_chars)
+
+                # Density score: if data is significantly longer than the
+                # category's preferred baseline, grant limited extra weight.
+                density = representative / max(float(spec.pref_chars or 1), 1.0)
+                density = max(0.85, min(density, 1.60))
+                representative = int(round(representative * density))
+
                 # ── Longest-single-word floor ─────────────────────────────
                 # Min column width must fit the longest unbreakable word so
                 # text is never clipped mid-character in a fixed-layout table.
@@ -161,6 +189,14 @@ class WordTablesMixin:
                 eff_max_cm = spec.word_max_cm
                 if _dense_word and spec.category in _DENSE_WORD_MAX:
                     eff_max_cm = min(eff_max_cm, _DENSE_WORD_MAX[spec.category])
+                elif spec.category in {
+                    'full_name', 'parent_name', 'guardian_name', 'spouse_name',
+                    'reporting_manager', 'address', 'email', 'allergies',
+                    'medical_condition',
+                }:
+                    # Sparse/medium tables can afford a little more width for
+                    # verbose text columns before wrapping hard.
+                    eff_max_cm = min(spec.word_max_cm * 1.15, spec.word_max_cm + 0.5)
                 clamped = max(spec.word_min_cm, min(raw_cm, eff_max_cm))
                 column_widths[col_idx] = clamped
             else:
@@ -355,6 +391,7 @@ class WordTablesMixin:
             # at natural word boundaries, e.g. "FATHER_NAME" → "FATHER NAME".
             _label = _re2.sub(r'[_\-.]+', ' ', _raw).strip()
             _label = _re2.sub(r'\s+', ' ', _label).upper()
+            _label = self._prepare_text_for_word(_label)
             cells[col_idx].text = _label
             self._style_header_cell(cells[col_idx], column_widths[col_idx],
                                     Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls,
@@ -378,24 +415,12 @@ class WordTablesMixin:
         self._set_cell_vertical_align(cell, parse_xml, nsdecls)
         self._set_para_spacing(para, parse_xml, nsdecls)
         cell.width = Cm(width)
-        # Heading word-break rule:
-        #  • Multi-word labels (already have spaces, e.g. "FATHER NAME") wrap
-        #    at space boundaries — remove any stale noWrap.
-        #  • Single-word labels (e.g. "CLASS", "PHOTO") must NOT be split
-        #    mid-letter by Word; add noWrap so Word honours the column width.
-        from lxml import etree
         from docx.oxml.ns import qn as _qn
         tcPr = cell._tc.get_or_add_tcPr()
-        # Use the actual cell text (already normalised by caller)
-        actual_text = cell.paragraphs[0].text if cell.paragraphs else header_text
-        if ' ' not in actual_text.strip():
-            # Single token — tell Word: do NOT break this word mid-letter.
-            if not tcPr.findall(_qn('w:noWrap')):
-                etree.SubElement(tcPr, _qn('w:noWrap'))
-        else:
-            # Multi-word — remove any pre-existing noWrap; let spaces work.
-            for nw in tcPr.findall(_qn('w:noWrap')):
-                tcPr.remove(nw)
+        # Always allow wrapping in header cells so text cannot overflow outside
+        # fixed column boundaries in dense tables.
+        for nw in tcPr.findall(_qn('w:noWrap')):
+            tcPr.remove(nw)
     
     def _add_data_row(self, table, card, ordered_fields, column_widths, sr_no,
                       Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls,
@@ -467,11 +492,11 @@ class WordTablesMixin:
         """Insert zero-width spaces in very long unbreakable words.
 
         Rules:
-        1. Words ≤ 8 chars: leave untouched.
-        2. Words > 8 chars with no natural break opportunity: insert
-           U+200B (ZERO-WIDTH SPACE) every 8 chars so Word can wrap
+          1. Words ≤ 6 chars: leave untouched.
+          2. Words > 6 chars with no natural break opportunity: insert
+              U+200B (ZERO-WIDTH SPACE) every 6 chars so Word can wrap
            the text without inserting ANY visible character or dash.
-        3. Natural separators (, / ; :) already act as break points.
+          3. Natural separators (, / ; : - @ . _) already act as break points.
         4. NEVER insert U+00AD (soft hyphen) — it can render as a dash
            when the text is copied from the document.
         """
@@ -482,25 +507,25 @@ class WordTablesMixin:
         ZWSP = '\u200B'  # zero-width space — breaks without any visible char
 
         def _insert_zwsp(word):
-            """Insert ZWSP every 8 chars in a long word."""
-            if len(word) <= 8:
+            """Insert ZWSP every 6 chars in a long word."""
+            if len(word) <= 6:
                 return word
-            parts = [word[i:i+8] for i in range(0, len(word), 8)]
+            parts = [word[i:i+6] for i in range(0, len(word), 6)]
             return ZWSP.join(parts)
 
         tokens = text.split(' ')
         processed = []
         for token in tokens:
-            if not token or len(token) <= 8:
+            if not token or len(token) <= 6:
                 processed.append(token)
                 continue
             # Split on natural separators first; process each sub-part
-            sub_parts = _re.split(r'([,/;:\-@])', token)
+            sub_parts = _re.split(r'([,/;:\-@._])', token)
             result = []
             for sp in sub_parts:
-                if sp in (',', '/', ';', ':', '-'):
+                if sp in (',', '/', ';', ':', '-', '@', '.', '_'):
                     result.append(sp)
-                elif len(sp) > 8:
+                elif len(sp) > 6:
                     result.append(_insert_zwsp(sp))
                 else:
                     result.append(sp)

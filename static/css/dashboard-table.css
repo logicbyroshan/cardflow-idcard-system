@@ -169,3 +169,51 @@
     background: rgba(0, 0, 0, 0.15);
     border-radius: 3px;
 }
+
+/* ====================
+   Reprint History (client dashboard)
+   ==================== */
+.is-hidden {
+    display: none;
+}
+
+.rh-col-num {
+    width: 36px;
+}
+
+.rh-col-photo {
+    width: 56px;
+}
+
+.rh-col-group {
+    width: 110px;
+}
+
+.rh-col-date {
+    width: 100px;
+}
+
+.rh-col-status {
+    width: 88px;
+}
+
+.rh-state-cell {
+    text-align: center;
+    padding: 30px;
+    color: #9ca3af;
+    font-size: 13px;
+}
+
+.rh-state-cell-lg {
+    padding: 40px;
+}
+
+.rh-state-cell-error {
+    color: #ef4444;
+}
+
+.rh-state-icon {
+    font-size: 24px;
+    display: block;
+    margin-bottom: 8px;
+}

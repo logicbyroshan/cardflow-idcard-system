@@ -1,48 +1,8 @@
 {% comment %}
-Common Pagination Partial
-Usage: {% include 'partials/common/pagination.html' %}
-
-This provides a reusable pagination bar that can be controlled via JavaScript.
-The parent page should define handlers for pagination functionality.
-
-Required IDs:
-- firstPage: First page button
-- prevPage: Previous page button
-- nextPage: Next page button
-- lastPage: Last page button
-- rowsToggle: Rows per page dropdown toggle
-- rowsSelectedText: Selected rows text
+Common Pagination Partial - Compatibility Wrapper
+=================================================
+Legacy include path kept for backward compatibility.
+Canonical markup lives in components/pagination.html.
 {% endcomment %}
 
-<!-- Pagination Bar Start -->
-<div class="pagination-bar">
-    <div class="pagination-left">
-        <span class="pagination-info" id="row-count">Showing <strong>0-0</strong> of <strong>0</strong> results</span>
-    </div>
-    <div class="pagination-center">
-        <button class="pagination-btn" id="firstPage" title="First Page" aria-label="First page"><i class="fa-solid fa-angles-left"></i></button>
-        <button class="pagination-btn" id="prevPage" title="Previous Page" aria-label="Previous page"><i class="fa-solid fa-chevron-left"></i></button>
-        <span class="page-numbers" id="page-numbers">
-            <button class="page-num active">1</button>
-        </span>
-        <button class="pagination-btn" id="nextPage" title="Next Page" aria-label="Next page"><i class="fa-solid fa-chevron-right"></i></button>
-        <button class="pagination-btn" id="lastPage" title="Last Page" aria-label="Last page"><i class="fa-solid fa-angles-right"></i></button>
-    </div>
-    <div class="pagination-right">
-        <label>Rows per page:</label>
-        <div class="custom-dropdown rows-dropdown" id="rowsDropdown">
-            <button class="dropdown-toggle" id="rowsToggle" type="button">
-                <span id="rowsSelectedText">10</span>
-                <i class="fa-solid fa-chevron-down"></i>
-            </button>
-            <div class="dropdown-options" id="rowsOptions">
-                <div class="dropdown-option" data-value="5">5</div>
-                <div class="dropdown-option selected" data-value="10">10</div>
-                <div class="dropdown-option" data-value="25">25</div>
-                <div class="dropdown-option" data-value="50">50</div>
-                <div class="dropdown-option" data-value="100">100</div>
-            </div>
-        </div>
-    </div>
-</div>
-<!-- Pagination Bar End -->
+{% include 'components/pagination.html' %}

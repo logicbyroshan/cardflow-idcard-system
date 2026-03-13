@@ -1,9 +1,11 @@
 {% load static %}
 {% load custom_filters %}
-<!-- Reprint Cards Content â€” {{ table.name }} â€” Step: {{ current_step }} -->
+<!-- Reprint Cards Content - {{ table.name }} - Step: {{ current_step }} -->
 
 {% if current_step == 'reprint_list' %}
 {% include "reprintcard/partials/step-reprint-list.html" %}
+{% elif current_step == 'request_list' %}
+{% include "reprintcard/partials/step-request-list.html" %}
 {% elif current_step == 'confirmed' %}
 {% include "reprintcard/partials/step-confirmed.html" %}
 {% endif %}

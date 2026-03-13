@@ -7,6 +7,21 @@
 
 window.IDCardApp = window.IDCardApp || {};
 
+function _isClassLikeField(fieldName) {
+    var f = String(fieldName || '').trim().toUpperCase();
+    return f === 'CLASS' || f === 'STD' || f === 'STANDARD' || f === 'GRADE';
+}
+
+function _isSectionLikeField(fieldName) {
+    var f = String(fieldName || '').trim().toUpperCase();
+    return f === 'SECTION' || f === 'SEC' || f === 'DIV' || f === 'DIVISION';
+}
+
+function _shouldRefetchAfterInlineEdit(fieldName) {
+    return (_isClassLikeField(fieldName) && !!IDCardApp.currentClassFilter) ||
+           (_isSectionLikeField(fieldName) && !!IDCardApp.currentSectionFilter);
+}
+
 // ==========================================
 // SAVE CELL EDIT
 // ==========================================
@@ -102,23 +117,24 @@ function saveCellEdit(cell, newValue, cardId, field) {
         // the row may no longer match the filter — animate it out.
         const fieldUpper = field.toUpperCase();
         const row = cell.closest('tr');
+        var shouldRefetch = _shouldRefetchAfterInlineEdit(fieldUpper);
         let shouldRemoveRow = false;
         
         // Check class filter
-        if ((fieldUpper === 'CLASS' || fieldUpper === 'STD' || fieldUpper === 'STANDARD' || fieldUpper === 'GRADE') 
-            && IDCardApp.currentClassFilter) {
+        if (_isClassLikeField(fieldUpper) && IDCardApp.currentClassFilter) {
             // User changed class while a class filter is active
             // The new value may not match the filter — remove row to avoid stale view
             shouldRemoveRow = true;
         }
         // Check section filter
-        if ((fieldUpper === 'SECTION' || fieldUpper === 'SEC' || fieldUpper === 'DIV' || fieldUpper === 'DIVISION')
-            && IDCardApp.currentSectionFilter) {
+        if (_isSectionLikeField(fieldUpper) && IDCardApp.currentSectionFilter) {
             // User changed section while a section filter is active
             shouldRemoveRow = true;
         }
         
-        if (shouldRemoveRow && row && cardId) {
+        if (shouldRefetch && typeof IDCardApp.resetAndReload === 'function') {
+            IDCardApp.resetAndReload();
+        } else if (shouldRemoveRow && row && cardId) {
             // Use removeCardRow for smooth animation (same as verify/approve)
             if (typeof IDCardApp.removeCardRow === 'function') {
                 IDCardApp.removeCardRow(cardId);
@@ -233,6 +249,16 @@ window.saveInlineEdit = async function (cardId, fieldName, value) {
             field: fieldName,
             value: finalValue
         });
+
+        if (_shouldRefetchAfterInlineEdit(fieldName) && typeof IDCardApp.resetAndReload === 'function') {
+            IDCardApp.resetAndReload();
+        } else if (typeof IDCardApp.applyFiltersAndSort === 'function') {
+            IDCardApp.applyFiltersAndSort();
+        }
+
+        if (typeof IDCardApp.populateFilterOptions === 'function') {
+            IDCardApp.populateFilterOptions();
+        }
 
         if (typeof showToast === 'function') showToast('Field updated', 'success');
         return true;

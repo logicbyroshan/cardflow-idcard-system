@@ -35,6 +35,7 @@ function refreshStepCounts() {
     .then(function(data) {
       if (data.status === 'ok') {
         updateTabCount('.print-list-tab .tab-count', data.print_list || 0);
+        updateTabCount('.print-generate-tab .tab-count', data.generate_list || 0);
         updateTabCount('.print-finalized-tab .tab-count', data.finalized || 0);
       }
     }).catch(function() {});
@@ -320,7 +321,12 @@ function createPaginator(opts) {
       })
       .then(function(r) { return r.json(); })
       .then(function(data) {
-        if (data.status === 'ok') resolve(data);
+        if (data.status === 'ok') {
+          // Keep global editor URLs in sync with freshly uploaded template files.
+          if (side === 'front' && data.pdf_url) window.FRONT_PDF_URL = data.pdf_url;
+          if (side === 'back' && data.pdf_url) window.BACK_PDF_URL = data.pdf_url;
+          resolve(data);
+        }
         else reject(new Error(data.message || 'Upload failed'));
       })
       .catch(reject);
@@ -349,6 +355,13 @@ function createPaginator(opts) {
     .then(function(data) {
       if (data.status !== 'ok') throw new Error(data.message || 'Failed to save config');
 
+      // Keep runtime field config in sync so generate editor dropdowns use latest selections.
+      window.FIELD_CONFIG = {
+        is_two_sided: isTwoSided,
+        front_fields: frontFields,
+        back_fields: backFields,
+      };
+
       // Step 2: Upload PDFs if file selected
       var uploads = [];
       if (frontPdfInput.files[0]) {
@@ -373,11 +386,11 @@ function createPaginator(opts) {
       // Step 4: Open the generate-card editor modal (instead of navigating away)
       closeModal();
       if (typeof window.openGcEditorModal === 'function') {
-        // Update PDF URLs in case new PDFs were just uploaded
-        var newFrontUrl = (frontPdfInput && frontPdfInput.files[0] && window.FRONT_PDF_URL) ? window.FRONT_PDF_URL : undefined;
-        var newBackUrl  = (backPdfInput  && backPdfInput.files[0]  && window.BACK_PDF_URL)  ? window.BACK_PDF_URL  : undefined;
+        // Always pass latest known template URLs so editor renders current files.
+        var newFrontUrl = window.FRONT_PDF_URL || undefined;
+        var newBackUrl  = window.BACK_PDF_URL || undefined;
         window.openGcEditorModal();
-        if ((newFrontUrl || newBackUrl) && typeof window.gcEditorRefresh === 'function') {
+        if (typeof window.gcEditorRefresh === 'function') {
           window.gcEditorRefresh(newFrontUrl, newBackUrl);
         }
       } else {
@@ -587,7 +600,153 @@ function createPaginator(opts) {
 
 
 /* ═══════════════════════════════════════════════════════════════════
-   STEP 2: FINALIZED LIST (status = finalized)
+   STEP 2: GENERATE LIST (status = generate_list)
+   Actions: Continue Generate (bulk selected), View
+   ═══════════════════════════════════════════════════════════════════ */
+(function generateListStep() {
+  var tableBody      = document.getElementById('generateListTableBody');
+  var selectAllCb    = document.getElementById('generateListSelectAll');
+  var searchInput    = document.getElementById('generateListSearchInput');
+  var searchClearBtn = document.getElementById('generateListSearchClearBtn');
+  var continueBtn    = document.getElementById('continueGenerateBtn');
+  var viewBtn        = document.getElementById('generateListViewBtn');
+  var showingRange   = document.getElementById('generateListShowingRange');
+  var totalCountEl   = document.getElementById('generateListTotalCount');
+
+  if (!tableBody) return;
+
+  var paginator = createPaginator({
+    barId: 'generateListPaginationBar',
+    prefix: 'generateList',
+    getTableBody: function() { return tableBody; }
+  });
+  if (paginator) paginator.paginate();
+
+  function getCheckboxes() {
+    return Array.from(tableBody.querySelectorAll('.generateListRowCheckbox:not(:disabled)'));
+  }
+  function getSelectedPrIds() {
+    return getCheckboxes().filter(function(cb) { return cb.checked; })
+      .map(function(cb) { return parseInt(cb.closest('tr').dataset.prId); });
+  }
+  function getSelectedCardIds() {
+    return getCheckboxes().filter(function(cb) { return cb.checked; })
+      .map(function(cb) { return parseInt(cb.closest('tr').dataset.cardId); });
+  }
+
+  function updateSelectionUI() {
+    var ids = getSelectedPrIds();
+    var count = ids.length;
+    if (continueBtn) continueBtn.disabled = count === 0;
+    if (viewBtn) viewBtn.disabled = count !== 1;
+    if (paginator) paginator.updateSelectionCount(count);
+    if (selectAllCb) {
+      var allCbs = getCheckboxes();
+      var allChecked = allCbs.length > 0 && allCbs.every(function(cb) { return cb.checked; });
+      var someChecked = allCbs.some(function(cb) { return cb.checked; });
+      selectAllCb.checked = allChecked;
+      selectAllCb.indeterminate = someChecked && !allChecked;
+    }
+  }
+
+  function openGeneratorWithSelection(prIds) {
+    window.GEN_PRESELECT_PR_IDS = prIds.slice();
+    if (typeof window.openGcEditorModal === 'function') {
+      window.openGcEditorModal();
+      if (typeof window.gcEditorRefresh === 'function') {
+        window.gcEditorRefresh(window.FRONT_PDF_URL || undefined, window.BACK_PDF_URL || undefined);
+      }
+    } else {
+      window.location.href = '/print/generate-card/table/' + TABLE_ID + '/';
+    }
+  }
+
+  if (selectAllCb) {
+    selectAllCb.addEventListener('change', function() {
+      var checked = this.checked;
+      getCheckboxes().forEach(function(cb) { cb.checked = checked; });
+      updateSelectionUI();
+    });
+  }
+  if (tableBody) {
+    tableBody.addEventListener('change', function(e) {
+      if (e.target.classList.contains('generateListRowCheckbox')) updateSelectionUI();
+    });
+  }
+
+  if (continueBtn) {
+    continueBtn.addEventListener('click', function() {
+      var ids = getSelectedPrIds();
+      if (ids.length === 0) return;
+      openGeneratorWithSelection(ids);
+    });
+  }
+
+  if (viewBtn) {
+    viewBtn.addEventListener('click', function() {
+      var cardIds = getSelectedCardIds();
+      if (cardIds.length !== 1) return;
+      if (typeof fetchCardAndOpenModal === 'function') fetchCardAndOpenModal('view', cardIds[0]);
+    });
+  }
+
+  var searchTimer = null;
+  if (searchInput) {
+    searchInput.addEventListener('input', function() {
+      clearTimeout(searchTimer);
+      var q = this.value.trim();
+      if (searchClearBtn) searchClearBtn.style.display = q ? '' : 'none';
+      searchTimer = setTimeout(function() { fetchGenerateItems(q); }, 350);
+    });
+  }
+  if (searchClearBtn) {
+    searchClearBtn.addEventListener('click', function() {
+      searchInput.value = '';
+      searchClearBtn.style.display = 'none';
+      searchInput.focus();
+      fetchGenerateItems('');
+    });
+    searchClearBtn.style.display = searchInput && searchInput.value ? '' : 'none';
+  }
+
+  function fetchGenerateItems(query) {
+    var url = '/print/api/table/' + TABLE_ID + '/generate-list/?q=' + encodeURIComponent(query || '') + '&limit=200';
+    ApiClient.get(url)
+    .then(function(data) {
+      if (data.status === 'ok') renderGenerateItems(data.items || [], data.total || 0);
+    }).catch(function(err) { console.error('[GenerateList] Search failed:', err); });
+  }
+
+  function renderGenerateItems(items, total) {
+    if (items.length === 0) {
+      tableBody.innerHTML = '<tr class="no-data-row"><td colspan="50" class="no-data-cell"><div class="no-data"><i class="fa-solid fa-gears"></i><span>No cards in generate list</span></div></td></tr>';
+      if (showingRange) showingRange.textContent = '0';
+      if (totalCountEl) totalCountEl.textContent = total;
+      updateSelectionUI();
+      return;
+    }
+    var html = '';
+    items.forEach(function(item, idx) {
+      html += '<tr data-pr-id="' + item.pr_id + '" data-card-id="' + item.card_id + '" data-sr-no="' + (idx + 1) + '">';
+      html += '<td class="w-[24px] px-[1px] py-1 text-center align-middle checkbox-cell"><input type="checkbox" class="generateListRowCheckbox"></td>';
+      html += '<td class="w-[36px] px-[1px] py-1 text-center align-middle sr-no-cell">' + (idx + 1) + '</td>';
+      html += renderOrderedFields(item.ordered_fields);
+      html += '<td class="w-[65px] px-[1px] py-1 align-middle user-cell text-center">' + escapeHtml(item.requested_by_name || '-') + '</td>';
+      html += '<td class="w-[90px] px-[1px] py-1 align-middle date-cell text-center">' + escapeHtml(item.moved_at || '-') + '</td>';
+      html += '</tr>';
+    });
+    tableBody.innerHTML = html;
+    if (showingRange) showingRange.textContent = '1-' + items.length;
+    if (totalCountEl) totalCountEl.textContent = total;
+    updateSelectionUI();
+    if (paginator) { paginator.reset(); paginator.paginate(); }
+  }
+
+})();
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   STEP 3: FINALIZED LIST (status = finalized)
    Actions: Move to Pool (bulk + single)
    ═══════════════════════════════════════════════════════════════════ */
 (function finalizedStep() {

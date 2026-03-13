@@ -80,7 +80,7 @@ def _build_ordered_fields(table, fd=None, fd_upper=None):
 @login_required
 @require_any_admin
 def print_cards(request, table_id):
-    """Print Cards workflow page with tabs: Print List | Finalized."""
+    """Print Cards workflow page with tabs: Print List | Generate List | Finalized."""
     table = get_object_or_404(
         IDCardTable.objects.select_related('group__client'), id=table_id,
     )
@@ -89,7 +89,7 @@ def print_cards(request, table_id):
         return redirect('active_clients')
 
     current_step = request.GET.get('step', 'print_list')
-    if current_step not in ('print_list', 'finalized'):
+    if current_step not in ('print_list', 'generate_list', 'finalized'):
         current_step = 'print_list'
 
     # Step counts for tabs
@@ -106,8 +106,10 @@ def print_cards(request, table_id):
 
     # Items for the current step
     print_items = []
+    generate_items = []
     finalized_items = []
     print_total = 0
+    generate_total = 0
     finalized_total = 0
 
     if current_step == 'print_list':
@@ -128,6 +130,27 @@ def print_cards(request, table_id):
                 'status_display': card.get_status_display(),
                 'requested_by_name': req_by.get_full_name() or req_by.username if req_by else 'System',
                 'requested_at': localtime(pr.created_at).strftime('%d %b %Y %H:%M'),
+                'ordered_fields': ordered_fields,
+            })
+
+    elif current_step == 'generate_list':
+        base_qs = PrintRequest.objects.filter(table=table, status='generate_list')
+        generate_total = base_qs.count()
+        pr_qs = base_qs.select_related('card', 'requested_by').order_by('-updated_at')[:200]
+        for idx, pr in enumerate(pr_qs):
+            card = pr.card
+            fd = card.field_data or {}
+            fd_upper = {k.upper(): v for k, v in fd.items()}
+            ordered_fields = _build_ordered_fields(table, fd, fd_upper)
+            req_by = pr.requested_by
+            generate_items.append({
+                'pr_id': pr.id,
+                'card_id': card.id,
+                'sr_no': idx + 1,
+                'status': card.status,
+                'status_display': card.get_status_display(),
+                'requested_by_name': req_by.get_full_name() or req_by.username if req_by else 'System',
+                'moved_at': localtime(pr.updated_at).strftime('%d %b %Y %H:%M'),
                 'ordered_fields': ordered_fields,
             })
 
@@ -176,9 +199,12 @@ def print_cards(request, table_id):
         'current_step': current_step,
         'step_counts': step_counts,
         'print_items': print_items,
+        'generate_items': generate_items,
         'finalized_items': finalized_items,
         'print_total': print_total,
         'print_has_more': print_total > len(print_items),
+        'generate_total': generate_total,
+        'generate_has_more': generate_total > len(generate_items),
         'finalized_total': finalized_total,
         'finalized_has_more': finalized_total > len(finalized_items),
         'table_fields_json': _json.dumps(table.fields if table.fields else []),
@@ -417,6 +443,66 @@ def api_print_generate(request, table_id):
         'message': f"{result.data['updated']} item(s) sent to generate list",
         'updated': result.data['updated'],
         'skipped': result.data['skipped'],
+    })
+
+
+@require_http_methods(["GET"])
+@login_required
+@api_require_permission('perm_print_list')
+def api_print_generate_list(request, table_id):
+    """List generate_list items with pagination and search."""
+    table, err = _check_print_table_scope(request.user, table_id)
+    if err:
+        return err
+
+    query = request.GET.get('q', '').strip()
+    try:
+        offset = int(request.GET.get('offset', 0))
+        limit = int(request.GET.get('limit', 100))
+    except (ValueError, TypeError):
+        offset, limit = 0, 100
+
+    pr_qs = PrintRequest.objects.filter(
+        table=table, status='generate_list',
+    ).select_related('card', 'requested_by').order_by('-updated_at')
+
+    if query:
+        search_q = Q(card__field_data__icontains=query)
+        if query.isdigit():
+            search_q |= Q(card__id=int(query))
+        pr_qs = pr_qs.filter(search_q)
+
+    total = pr_qs.count()
+    batch = list(pr_qs[offset:offset + limit + 1])
+    has_more = len(batch) > limit
+    if has_more:
+        batch = batch[:limit]
+
+    items = []
+    for idx, pr in enumerate(batch):
+        card = pr.card
+        fd = card.field_data or {}
+        fd_upper = {k.upper(): v for k, v in fd.items()}
+        ordered_fields = _build_ordered_fields(table, fd, fd_upper)
+        req_by = pr.requested_by
+        items.append({
+            'pr_id': pr.id,
+            'card_id': card.id,
+            'sr_no': offset + idx + 1,
+            'status': card.status,
+            'status_display': card.get_status_display(),
+            'requested_by_name': req_by.get_full_name() or req_by.username if req_by else 'System',
+            'moved_at': localtime(pr.updated_at).strftime('%d %b %Y %H:%M'),
+            'ordered_fields': ordered_fields,
+        })
+
+    return JsonResponse({
+        'status': 'ok',
+        'items': items,
+        'total': total,
+        'has_more': has_more,
+        'offset': offset,
+        'limit': limit,
     })
 
 

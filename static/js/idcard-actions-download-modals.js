@@ -282,18 +282,12 @@ function openDownloadPdfModal(cardIds) {
     var colCount = thElements.length || 0;
     var denseWarning = document.getElementById('downloadPdfDenseWarning');
     var colCountEl2 = document.getElementById('downloadPdfColCount');
-    var fontModeSelect = document.getElementById('downloadPdfFontMode');
-    var fontModeHidden = document.getElementById('downloadPdfFontModeHidden');
 
     if (colCount > DENSE_THRESHOLD && denseWarning) {
         denseWarning.style.display = 'block';
         if (colCountEl2) colCountEl2.textContent = colCount;
-        // Pre-select compact for dense tables
-        if (fontModeSelect) fontModeSelect.value = 'compact';
     } else if (denseWarning) {
         denseWarning.style.display = 'none';
-        // Reset hidden value to auto for non-dense tables
-        if (fontModeHidden) fontModeHidden.value = 'auto';
     }
 
     // Load templates dynamically (from init sub-module)
@@ -336,13 +330,7 @@ function initDownloadPdfHandlers() {
     document.getElementById('downloadPdfConfirm')?.addEventListener('click', function() {
         const templateSelect = document.getElementById('downloadPdfTemplate');
         const templateId = templateSelect ? templateSelect.value : '';
-        // Get font mode: from visible select (dense) or hidden input (normal)
-        var denseWarning = document.getElementById('downloadPdfDenseWarning');
         var fontMode = 'auto';
-        if (denseWarning && denseWarning.style.display !== 'none') {
-            var fontModeSelect = document.getElementById('downloadPdfFontMode');
-            fontMode = fontModeSelect ? fontModeSelect.value : 'auto';
-        }
         // Read shorten-titles checkbox
         var shortenCb = document.getElementById('downloadPdfShortenTitles');
         var shortenTitles = shortenCb ? shortenCb.checked : false;

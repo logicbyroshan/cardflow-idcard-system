@@ -245,6 +245,18 @@ class ClientStaffService(BaseService):
                     'department': data.get('department', ''),
                     'designation': data.get('designation', ''),
                     'address': data.get('address', ''),
+                    'allowed_classes': [
+                        str(v).strip() for v in (data.get('allowed_classes') or [])
+                        if isinstance(v, str) and str(v).strip()
+                    ] if isinstance(data.get('allowed_classes', []), list) else [],
+                    'allowed_sections': [
+                        str(v).strip() for v in (data.get('allowed_sections') or [])
+                        if isinstance(v, str) and str(v).strip()
+                    ] if isinstance(data.get('allowed_sections', []), list) else [],
+                    'allowed_branches': [
+                        str(v).strip() for v in (data.get('allowed_branches') or [])
+                        if isinstance(v, str) and str(v).strip()
+                    ] if isinstance(data.get('allowed_branches', []), list) else [],
                 }
                 
                 # Add permissions (only those the client themselves has)

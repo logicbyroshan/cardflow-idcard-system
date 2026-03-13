@@ -65,6 +65,13 @@
     if (frontUrl) FRONT_PDF_URL = frontUrl;
     if (backUrl)  BACK_PDF_URL  = backUrl;
 
+    // Rebuild side-aware field options from latest runtime FIELD_CONFIG.
+    const latestCfg = (typeof FIELD_CONFIG !== 'undefined') ? FIELD_CONFIG : {};
+    if (typeof latestCfg.is_two_sided !== 'undefined') {
+      setTwoSided(!!latestCfg.is_two_sided, true);
+    }
+    populateFieldDropdown();
+
     // The Fabric canvas may have been created while the modal was hidden
     // (display:none), so getBoundingClientRect returned zeros and internal
     // offsets are wrong. Recalculate after the modal is visible.
@@ -788,17 +795,31 @@
       if (loadingEl) loadingEl.classList.add('hidden');
       if (data.error)  { showToast(data.error, 'error'); return; }
       genCards = data.items || data.cards || [];
+      const preselected = Array.isArray(window.GEN_PRESELECT_PR_IDS) ? window.GEN_PRESELECT_PR_IDS : [];
       const countBadge = document.getElementById('genCardCountBadge');
       if (countBadge) countBadge.textContent = data.total || genCards.length;
       if (hasListUI) {
         if (genCards.length === 0) {
           if (emptyEl) emptyEl.classList.remove('hidden');
         } else {
+          if (preselected.length > 0) {
+            selectedPrIds.clear();
+            genCards.forEach(c => {
+              if (preselected.indexOf(c.pr_id) >= 0) selectedPrIds.add(c.pr_id);
+            });
+          }
           renderCardList(genCards);
         }
       } else {
-        // No selection UI — auto-select all loaded cards
-        genCards.forEach(c => selectedPrIds.add(c.pr_id));
+        // No selection UI in modal mode: preselect requested IDs, else all cards.
+        selectedPrIds.clear();
+        if (preselected.length > 0) {
+          genCards.forEach(c => {
+            if (preselected.indexOf(c.pr_id) >= 0) selectedPrIds.add(c.pr_id);
+          });
+        } else {
+          genCards.forEach(c => selectedPrIds.add(c.pr_id));
+        }
       }
       updateGenerateBtn();
     }).catch(err => {
@@ -871,26 +892,13 @@
       field_mappings: fieldMappings,
     };
 
-    fetch(`/print/api/generate-card/table/${TABLE_ID}/template/save/`, {
-      method:  'POST',
-      headers: {
-        'Content-Type':     'application/json',
-        'X-CSRFToken':       getCookie('csrftoken'),
-        'X-Requested-With': 'XMLHttpRequest',
-      },
-      body: JSON.stringify(payload),
-    })
-    .then(r => r.json())
-    .then(data => {
-      if (data.error) {
-        showToast(data.error, 'error');
-      } else {
-        showToast('Template saved!', 'success');
-      }
+    persistTemplate(payload)
+    .then(() => {
+      showToast('Template saved!', 'success');
     })
     .catch(err => {
       console.error(err);
-      showToast('Failed to save template.', 'error');
+      showToast(err.message || 'Failed to save template.', 'error');
     })
     .finally(() => {
       btn.disabled = false;
@@ -909,7 +917,17 @@
     btn.disabled = true;
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generating…';
 
-    fetch(`/print/api/generate-card/table/${TABLE_ID}/generate/`, {
+    const payload = {
+      is_two_sided:   isTwoSided,
+      font_size:      parseInt(document.getElementById('fontSizeInput').value) || 8,
+      font_family:    document.getElementById('fontFamilySelect').value,
+      field_mappings: fieldMappings,
+    };
+
+    // Persist latest manual/auto mapping edits + font before rendering PDF.
+    persistTemplate(payload)
+    .then(function() {
+      return fetch(`/print/api/generate-card/table/${TABLE_ID}/generate/`, {
       method:  'POST',
       headers: {
         'Content-Type':     'application/json',
@@ -917,6 +935,7 @@
         'X-Requested-With': 'XMLHttpRequest',
       },
       body: JSON.stringify({ request_ids: Array.from(selectedPrIds) }),
+      });
     })
     .then(response => {
       if (!response.ok) {
@@ -946,6 +965,28 @@
     .finally(() => {
       btn.disabled = false;
       btn.innerHTML = '<i class="fa-solid fa-gears"></i> Generate PDF';
+    });
+  }
+
+  function persistTemplate(payload) {
+    return fetch(`/print/api/generate-card/table/${TABLE_ID}/template/save/`, {
+      method:  'POST',
+      headers: {
+        'Content-Type':     'application/json',
+        'X-CSRFToken':       getCookie('csrftoken'),
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      body: JSON.stringify(payload),
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.status && data.status !== 'ok') {
+        throw new Error(data.message || data.error || 'Failed to save template');
+      }
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      return data;
     });
   }
 

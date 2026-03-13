@@ -92,6 +92,14 @@ def invalidate_class_variant_cache(table_id):
         pass  # Best effort
 
 
+def invalidate_filter_options_cache(table_id):
+    """Invalidate class/section filter-options cache for a table."""
+    try:
+        django_cache.delete(f'filter_options:{table_id}')
+    except Exception:
+        pass  # Best effort
+
+
 def _build_class_filter_q(qs, class_filter, class_field_name):
     """Apply class filter with canonical normalization.
 
