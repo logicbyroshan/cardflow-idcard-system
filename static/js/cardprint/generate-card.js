@@ -42,7 +42,8 @@
   // Last generated PDF blob (for the Download PDF footer button)
   let lastPdfBlob = null;
   let canvasInitInProgress = false;
-  let canvasReadyWarned = false;
+  let editorBootstrapped = false;
+  const isInlineModalEditor = !!document.getElementById('gcEditorModal');
 
   /*  PDF.js worker  */
   const hasPdfJs = (typeof pdfjsLib !== 'undefined');
@@ -147,17 +148,31 @@
     if (!document.getElementById('genCardCanvas')) {
       return;
     }
+    // In print-cards page, the editor is inside a hidden modal.
+    // Do not initialize/render in background; bootstrap only when modal opens.
+    if (isInlineModalEditor) {
+      return;
+    }
+
+    bootstrapEditor();
+    if (FRONT_PDF_URL) renderPdf(FRONT_PDF_URL, true);
+  });
+
+  function bootstrapEditor() {
+    if (editorBootstrapped) return;
     initFabric();
     populateFieldDropdown();
     loadState();
     bindEvents();
     loadCardList();
-    if (FRONT_PDF_URL) renderPdf(FRONT_PDF_URL, true);
-  });
+    editorBootstrapped = true;
+  }
 
   /*  Expose public API for the modal in print-cards.html  */
   // Called when the modal opens: refreshes the card list and re-renders the PDF
   window.gcEditorRefresh = function (frontUrl, backUrl) {
+    bootstrapEditor();
+
     if (frontUrl) FRONT_PDF_URL = frontUrl;
     if (backUrl)  BACK_PDF_URL  = backUrl;
 
@@ -242,7 +257,6 @@
     fabric_canvas.on('mouse:up',   onMouseUp);
     fabric_canvas.calcOffset();
     canvasInitInProgress = false;
-    canvasReadyWarned = false;
   }
 
   /*  Populate field dropdown from TABLE_FIELDS (filtered by FIELD_CONFIG)  */
@@ -584,22 +598,29 @@
   /*  PDF.js rendering  */
   function renderPdf(url, autoDetectOnLoad, attempt) {
     const retry = Number.isFinite(attempt) ? attempt : 0;
+
+    // If editor lives in a hidden modal, skip background rendering.
+    if (isInlineModalEditor) {
+      const overlay = document.getElementById('gcEditorModal');
+      if (overlay && overlay.classList.contains('hidden')) {
+        return;
+      }
+    }
+
     if (!isCanvasReady()) {
       initFabric();
       if (retry < 20) {
-        if (!canvasReadyWarned) {
-          canvasReadyWarned = true;
-          showToast('Preparing editor canvas...', 'info');
-        }
         setTimeout(function () {
           renderPdf(url, autoDetectOnLoad, retry + 1);
         }, 120);
         return;
       }
-      showToast('Editor canvas is not ready. Please close and reopen Generate Card.', 'error');
+      // Avoid noisy background errors; only show in standalone editor page.
+      if (!isInlineModalEditor) {
+        showToast('Editor canvas is not ready. Please refresh and try again.', 'error');
+      }
       return;
     }
-    canvasReadyWarned = false;
 
     const overlay = document.getElementById('pdfLoadingOverlay');
     const noTpl   = document.getElementById('noTemplateMsg');
