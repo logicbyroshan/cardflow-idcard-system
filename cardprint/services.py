@@ -113,6 +113,43 @@ class PrintWorkflowService:
         )
 
     @classmethod
+    def bulk_move_to_print_list(cls, request_ids, user, from_status):
+        """Move items back to print_list from generate_list/finalized.
+
+        Returns ServiceResult with data: {updated: int, skipped: int}
+        """
+        if from_status not in ('generate_list', 'finalized'):
+            return ServiceResult(
+                success=False,
+                message='Invalid source status for move-to-print operation.',
+                data={'updated': 0, 'skipped': len(request_ids or [])},
+            )
+
+        with transaction.atomic():
+            qs = PrintRequest.objects.select_for_update().filter(
+                id__in=request_ids,
+                status=from_status,
+            )
+            updated = qs.update(status='print_list', updated_at=timezone.now())
+
+        skipped = len(request_ids) - updated
+        logger.info(
+            'PrintWorkflow: move_to_print from=%s updated=%d skipped=%d user=%s',
+            from_status, updated, skipped, user.username,
+        )
+        if not updated:
+            return ServiceResult(
+                success=False,
+                message='No items eligible to move back to print list.',
+                data={'updated': 0, 'skipped': skipped},
+            )
+        return ServiceResult(
+            success=True,
+            message=f'{updated} item(s) moved to print list',
+            data={'updated': updated, 'skipped': skipped},
+        )
+
+    @classmethod
     def bulk_generate(cls, request_ids, user):
         """Transition generate_list → finalized for a batch of PrintRequest IDs.
         Called after PDF has been generated and downloaded in Generate Card page.

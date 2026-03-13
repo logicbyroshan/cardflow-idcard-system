@@ -446,6 +446,49 @@ def api_print_generate(request, table_id):
     })
 
 
+@require_http_methods(["POST"])
+@login_required
+@api_require_permission('perm_print_list')
+def api_print_generate_to_print(request, table_id):
+    """Move generate_list items back to print_list.
+
+    Body: { "request_ids": [1, 2, 3] }
+    """
+    table, err = _check_print_table_scope(request.user, table_id)
+    if err:
+        return err
+
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+
+    request_ids = data.get('request_ids', [])
+    if not request_ids:
+        return JsonResponse({'status': 'error', 'message': 'No items selected'}, status=400)
+
+    valid_ids = list(
+        PrintRequest.objects.filter(
+            id__in=request_ids, table=table, status='generate_list',
+        ).values_list('id', flat=True)
+    )
+    if not valid_ids:
+        return JsonResponse(
+            {'status': 'error', 'message': 'No valid generate list items found'},
+            status=400,
+        )
+
+    result = PrintWorkflowService.bulk_move_to_print_list(valid_ids, request.user, 'generate_list')
+    if not result.success:
+        return JsonResponse({'status': 'error', 'message': result.message}, status=400)
+    return JsonResponse({
+        'status': 'ok',
+        'message': f"{result.data['updated']} item(s) moved to print list",
+        'updated': result.data['updated'],
+        'skipped': result.data['skipped'],
+    })
+
+
 @require_http_methods(["GET"])
 @login_required
 @api_require_permission('perm_print_list')
@@ -685,6 +728,49 @@ def api_print_mark_pool(request, table_id):
     return JsonResponse({
         'status': 'ok',
         'message': f"{result.data['updated']} item(s) moved to pool",
+        'updated': result.data['updated'],
+        'skipped': result.data['skipped'],
+    })
+
+
+@require_http_methods(["POST"])
+@login_required
+@api_require_permission('perm_finalized_list')
+def api_print_finalized_to_print(request, table_id):
+    """Move finalized items back to print_list.
+
+    Body: { "request_ids": [1, 2, 3] }
+    """
+    table, err = _check_print_table_scope(request.user, table_id)
+    if err:
+        return err
+
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+
+    request_ids = data.get('request_ids', [])
+    if not request_ids:
+        return JsonResponse({'status': 'error', 'message': 'No items selected'}, status=400)
+
+    valid_ids = list(
+        PrintRequest.objects.filter(
+            id__in=request_ids, table=table, status='finalized',
+        ).values_list('id', flat=True)
+    )
+    if not valid_ids:
+        return JsonResponse(
+            {'status': 'error', 'message': 'No valid finalized items found'},
+            status=400,
+        )
+
+    result = PrintWorkflowService.bulk_move_to_print_list(valid_ids, request.user, 'finalized')
+    if not result.success:
+        return JsonResponse({'status': 'error', 'message': result.message}, status=400)
+    return JsonResponse({
+        'status': 'ok',
+        'message': f"{result.data['updated']} item(s) moved to print list",
         'updated': result.data['updated'],
         'skipped': result.data['skipped'],
     })

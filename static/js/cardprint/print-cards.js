@@ -608,6 +608,7 @@ function createPaginator(opts) {
   var selectAllCb    = document.getElementById('generateListSelectAll');
   var searchInput    = document.getElementById('generateListSearchInput');
   var searchClearBtn = document.getElementById('generateListSearchClearBtn');
+  var moveToPrintBtn = document.getElementById('generateListMoveToPrintBtn');
   var continueBtn    = document.getElementById('continueGenerateBtn');
   var viewBtn        = document.getElementById('generateListViewBtn');
   var showingRange   = document.getElementById('generateListShowingRange');
@@ -637,6 +638,7 @@ function createPaginator(opts) {
   function updateSelectionUI() {
     var ids = getSelectedPrIds();
     var count = ids.length;
+    if (moveToPrintBtn) moveToPrintBtn.disabled = count === 0;
     if (continueBtn) continueBtn.disabled = count === 0;
     if (viewBtn) viewBtn.disabled = count !== 1;
     if (paginator) paginator.updateSelectionCount(count);
@@ -679,6 +681,32 @@ function createPaginator(opts) {
       var ids = getSelectedPrIds();
       if (ids.length === 0) return;
       openGeneratorWithSelection(ids);
+    });
+  }
+
+  if (moveToPrintBtn) {
+    moveToPrintBtn.addEventListener('click', async function() {
+      var ids = getSelectedPrIds();
+      if (ids.length === 0) return;
+      var ok = await showConfirm({ title: 'Move to Print List?', text: 'Move ' + ids.length + ' item(s) back to print list?', icon: 'fa-solid fa-arrow-rotate-left', confirmLabel: 'Move', btnClass: 'btn-primary', hideWarning: true });
+      if (!ok) return;
+      ApiClient.post('/print/api/table/' + TABLE_ID + '/generate-to-print/', { request_ids: ids })
+      .then(function(data) {
+        if (data.status === 'ok') {
+          showToast(data.message || 'Moved to print list', 'success');
+          ids.forEach(function(id) {
+            var row = tableBody.querySelector('tr[data-pr-id="' + id + '"]');
+            if (row) row.remove();
+          });
+          refreshStepCounts();
+          fetchGenerateItems(searchInput ? searchInput.value.trim() : '');
+        } else {
+          showToast(data.message || 'Failed to move items', 'error');
+        }
+      }).catch(function(err) {
+        showToast('Network error', 'error');
+        console.error('[GenerateList] Move to print error:', err);
+      });
     });
   }
 
@@ -754,6 +782,7 @@ function createPaginator(opts) {
   var selectAllCb   = document.getElementById('finalizedSelectAll');
   var searchInput   = document.getElementById('finalizedSearchInput');
   var searchClearBtn = document.getElementById('finalizedSearchClearBtn');
+  var moveToPrintBtn = document.getElementById('finalizedMoveToPrintBtn');
   var poolBtn       = document.getElementById('finalizedMoveToPoolBtn');
   var viewBtn       = document.getElementById('finalizedViewBtn');
   var showingRange  = document.getElementById('finalizedShowingRange');
@@ -783,6 +812,7 @@ function createPaginator(opts) {
   function updateSelectionUI() {
     var ids = getSelectedPrIds();
     var count = ids.length;
+    if (moveToPrintBtn) moveToPrintBtn.disabled = count === 0;
     if (poolBtn) poolBtn.disabled = count === 0;
     if (viewBtn) viewBtn.disabled = count !== 1;
     if (paginator) paginator.updateSelectionCount(count);
@@ -830,6 +860,17 @@ function createPaginator(opts) {
     });
   }
 
+  // Bulk Move to Print List
+  if (moveToPrintBtn) {
+    moveToPrintBtn.addEventListener('click', async function() {
+      var ids = getSelectedPrIds();
+      if (ids.length === 0) return;
+      var ok = await showConfirm({ title: 'Move to Print List?', text: 'Move ' + ids.length + ' item(s) back to print list?', icon: 'fa-solid fa-arrow-rotate-left', confirmLabel: 'Move', btnClass: 'btn-primary', hideWarning: true });
+      if (!ok) return;
+      performMoveToPrint(ids);
+    });
+  }
+
   // View
   if (viewBtn) {
     viewBtn.addEventListener('click', function() {
@@ -858,6 +899,28 @@ function createPaginator(opts) {
     }).catch(function(err) {
       showToast('Network error', 'error');
       console.error('[Finalized] Move to pool error:', err);
+    });
+  }
+
+  // Move to Print List API (finalized -> print_list)
+  function performMoveToPrint(prIds) {
+    ApiClient.post('/print/api/table/' + TABLE_ID + '/finalized-to-print/', { request_ids: prIds })
+    .then(function(data) {
+      if (data.status === 'ok') {
+        showToast(data.message || 'Moved to print list', 'success');
+        prIds.forEach(function(id) {
+          var row = tableBody.querySelector('tr[data-pr-id="' + id + '"]');
+          if (row) row.remove();
+        });
+        updatePagination();
+        updateSelectionUI();
+        refreshStepCounts();
+      } else {
+        showToast(data.message || 'Failed', 'error');
+      }
+    }).catch(function(err) {
+      showToast('Network error', 'error');
+      console.error('[Finalized] Move to print error:', err);
     });
   }
 
