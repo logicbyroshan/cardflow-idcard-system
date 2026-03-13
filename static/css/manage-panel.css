@@ -864,6 +864,18 @@ textarea.panel-form-input {
   font-size: 11px;
   color: #64748b;
 }
+.server-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+}
+.server-detail-grid .system-card {
+  border-right: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+}
+.server-detail-grid .system-card:nth-child(2n) {
+  border-right: none;
+}
 
 /* ================================
    PANEL CONFIRM MODAL
@@ -970,6 +982,8 @@ textarea.panel-form-input {
   .server-info-overview { grid-template-columns: 1fr; }
   .server-donut-wrap { border-right: none; border-bottom: 1px solid #e5e7eb; }
   .server-system-grid { grid-template-columns: 1fr; }
+  .server-detail-grid { grid-template-columns: 1fr; }
+  .server-detail-grid .system-card { border-right: none; }
   .system-card:nth-child(odd) { border-right: none; }
   .system-card:last-child:nth-child(odd) { border-right: none; }
   .quick-actions-grid { grid-template-columns: repeat(2, 1fr); }

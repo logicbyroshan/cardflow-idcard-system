@@ -72,28 +72,43 @@
     </div>
   </div>
 
-  <div class="system-card" style="margin-top:0;padding:0;overflow:hidden;">
-    <div class="system-card-header">
-      <i class="fa-solid fa-chart-pie"></i> Used Disk Breakdown
-    </div>
-    <div class="server-path-list" id="serverInfoBreakdownRows">
-      <div class="empty-state" style="padding:18px 16px;">
-        <i class="fa-solid fa-inbox"></i>
-        <p>No breakdown yet</p>
-        <span>Fetch snapshot to see project vs database vs other usage.</span>
+  <div class="server-detail-grid">
+    <div class="system-card" style="margin-top:0;padding:0;overflow:hidden;">
+      <div class="system-card-header">
+        <i class="fa-solid fa-chart-pie"></i> Used Disk Breakdown
+      </div>
+      <div class="server-path-list" id="serverInfoBreakdownRows">
+        <div class="empty-state" style="padding:18px 16px;">
+          <i class="fa-solid fa-inbox"></i>
+          <p>No breakdown yet</p>
+          <span>Fetch snapshot to see project vs database vs other usage.</span>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="system-card" style="margin-top:0;padding:0;overflow:hidden;">
-    <div class="system-card-header">
-      <i class="fa-solid fa-folder-tree"></i> Project Folder Breakdown
+    <div class="system-card" style="margin-top:0;padding:0;overflow:hidden;">
+      <div class="system-card-header">
+        <i class="fa-solid fa-layer-group"></i> Other System Details
+      </div>
+      <div class="server-path-list" id="serverOtherBreakdownRows">
+        <div class="empty-state" style="padding:18px 16px;">
+          <i class="fa-solid fa-inbox"></i>
+          <p>No details yet</p>
+          <span>Fetch snapshot to inspect what is inside Other System usage.</span>
+        </div>
+      </div>
     </div>
-    <div class="server-path-list" id="serverInfoPathRows">
-      <div class="empty-state" style="padding:18px 16px;">
-        <i class="fa-solid fa-inbox"></i>
-        <p>No snapshot loaded</p>
-        <span>Click "Fetch Snapshot" to load server usage.</span>
+
+    <div class="system-card" style="margin-top:0;padding:0;overflow:hidden;">
+      <div class="system-card-header">
+        <i class="fa-solid fa-folder-tree"></i> Project Folder Breakdown
+      </div>
+      <div class="server-path-list" id="serverInfoPathRows">
+        <div class="empty-state" style="padding:18px 16px;">
+          <i class="fa-solid fa-inbox"></i>
+          <p>No snapshot loaded</p>
+          <span>Click "Fetch Snapshot" to load server usage.</span>
+        </div>
       </div>
     </div>
   </div>

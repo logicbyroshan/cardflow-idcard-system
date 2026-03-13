@@ -892,7 +892,8 @@ async function loadMonitoring() {
 function initServerInfoTab() {
   const rows = document.getElementById('serverInfoPathRows');
   const breakdownRows = document.getElementById('serverInfoBreakdownRows');
-  if (!rows || !breakdownRows) return;
+  const otherRows = document.getElementById('serverOtherBreakdownRows');
+  if (!rows || !breakdownRows || !otherRows) return;
 
   if (serverInfoSnapshot) {
     renderServerInfo(serverInfoSnapshot);
@@ -902,6 +903,7 @@ function initServerInfoTab() {
   if (!serverInfoHasFetched) {
     rows.innerHTML = `<div class="empty-state" style="padding:18px 16px;"><i class="fa-solid fa-cloud-arrow-down"></i><p>Snapshot not loaded</p><span>Click "Fetch Snapshot" to load current server usage.</span></div>`;
     breakdownRows.innerHTML = `<div class="empty-state" style="padding:18px 16px;"><i class="fa-solid fa-chart-pie"></i><p>Breakdown not loaded</p><span>Fetch snapshot to see detailed used-space accounting.</span></div>`;
+    otherRows.innerHTML = `<div class="empty-state" style="padding:18px 16px;"><i class="fa-solid fa-layer-group"></i><p>Other usage details not loaded</p><span>Fetch snapshot to see where "Other System" is likely used.</span></div>`;
   }
 }
 
@@ -963,11 +965,13 @@ function renderServerInfo(snapshot, fromCache) {
   const storage = snapshot.storage || {};
   const database = snapshot.database || {};
   const usageBreakdown = Array.isArray(snapshot.usage_breakdown) ? snapshot.usage_breakdown : [];
+  const otherUsageBreakdown = Array.isArray(snapshot.other_usage_breakdown) ? snapshot.other_usage_breakdown : [];
   const memory = snapshot.memory || {};
   const cpu = snapshot.cpu || {};
   const rows = document.getElementById('serverInfoPathRows');
   const breakdownRows = document.getElementById('serverInfoBreakdownRows');
-  if (!rows || !breakdownRows) return;
+  const otherRows = document.getElementById('serverOtherBreakdownRows');
+  if (!rows || !breakdownRows || !otherRows) return;
 
   const usedPct = Number(storage.used_pct || 0);
   const donut = document.getElementById('serverStorageDonut');
@@ -1018,6 +1022,22 @@ function renderServerInfo(snapshot, fromCache) {
         </div>
         <div class="server-path-bar-bg"><div class="server-path-bar-fill" style="width:${Math.max(0, Math.min(100, pctUsed))}%;"></div></div>
         <div class="server-path-meta">${pctUsed.toFixed(1)}% of used disk</div>
+      </div>`;
+    }).join('');
+  }
+
+  if (!otherUsageBreakdown.length) {
+    otherRows.innerHTML = `<div class="empty-state" style="padding:18px 16px;"><i class="fa-solid fa-layer-group"></i><p>Other usage details unavailable</p><span>No extra system-level detail could be estimated.</span></div>`;
+  } else {
+    otherRows.innerHTML = otherUsageBreakdown.map(item => {
+      const pctOther = Number(item.pct_of_other || 0);
+      return `<div class="server-path-row">
+        <div class="server-path-main">
+          <div class="server-path-name">${escHtml(item.name || '')}</div>
+          <div class="server-path-size">${escHtml(item.size_human || '-')}</div>
+        </div>
+        <div class="server-path-bar-bg"><div class="server-path-bar-fill" style="width:${Math.max(0, Math.min(100, pctOther))}%;"></div></div>
+        <div class="server-path-meta">${pctOther.toFixed(1)}% of Other System usage</div>
       </div>`;
     }).join('');
   }

@@ -12,6 +12,7 @@ import platform
 import re
 import shutil
 import socket
+import subprocess
 from datetime import datetime, timezone as dt_timezone
 from pathlib import Path
 
@@ -132,6 +133,102 @@ def _memory_snapshot():
             'used_human': '0 B',
             'free_human': '0 B',
         }
+
+
+def _dir_size_fast(path_obj):
+    """Prefer fast native 'du' on Unix; fallback to Python walker."""
+    path_str = str(path_obj)
+    if os.name != 'nt' and shutil.which('du'):
+        try:
+            proc = subprocess.run(
+                ['du', '-sb', path_str],
+                capture_output=True,
+                text=True,
+                timeout=20,
+                check=False,
+            )
+            if proc.returncode == 0 and proc.stdout:
+                first_token = proc.stdout.split()[0]
+                return int(first_token)
+        except Exception:
+            pass
+    return _dir_size_bytes(path_str)
+
+
+def _safe_rel_contains(parent: Path, child: Path) -> bool:
+    try:
+        child.resolve().relative_to(parent.resolve())
+        return True
+    except Exception:
+        return False
+
+
+def _other_usage_breakdown(base_dir: Path, other_total_bytes: int, project_total_bytes: int):
+    """
+    Estimate where 'other system usage' is consumed on the same machine.
+    We only expose labels, never absolute paths.
+    """
+    candidates = [
+        ('System Packages', Path('/usr')),
+        ('System Data', Path('/var')),
+        ('Other Home Data', Path('/home')),
+        ('Optional Software', Path('/opt')),
+        ('Snap Packages', Path('/snap')),
+        ('Temp Data', Path('/tmp')),
+        ('Root Home', Path('/root')),
+    ]
+
+    if os.name == 'nt':
+        # Windows fallback labels (only if paths exist)
+        system_drive = Path(os.environ.get('SystemDrive', 'C:') + '\\')
+        candidates = [
+            ('Windows OS', system_drive / 'Windows'),
+            ('Program Files', system_drive / 'Program Files'),
+            ('Program Files x86', system_drive / 'Program Files (x86)'),
+            ('ProgramData', system_drive / 'ProgramData'),
+            ('Users Data', system_drive / 'Users'),
+            ('Temp Data', Path(os.environ.get('TEMP', str(system_drive / 'Temp')))),
+        ]
+
+    parts = []
+    measured_sum = 0
+    for label, dir_path in candidates:
+        if not dir_path.exists() or not dir_path.is_dir():
+            continue
+
+        try:
+            size_bytes = _dir_size_fast(dir_path)
+        except Exception:
+            continue
+
+        # If this bucket contains project root, remove project to avoid double counting.
+        if _safe_rel_contains(dir_path, base_dir):
+            size_bytes = max(size_bytes - project_total_bytes, 0)
+
+        if size_bytes <= 0:
+            continue
+
+        measured_sum += size_bytes
+        parts.append({
+            'name': label,
+            'size_bytes': int(size_bytes),
+            'size_human': _format_bytes(size_bytes),
+        })
+
+    unattributed = max(other_total_bytes - measured_sum, 0)
+    if unattributed > 0:
+        parts.append({
+            'name': 'Unattributed / Restricted',
+            'size_bytes': int(unattributed),
+            'size_human': _format_bytes(unattributed),
+        })
+
+    for item in parts:
+        item['pct_of_other'] = round((item['size_bytes'] / other_total_bytes) * 100, 1) if other_total_bytes > 0 else 0
+        item['pct_of_used_disk'] = round((item['size_bytes'] / max(other_total_bytes, 1)) * 100, 1) if other_total_bytes > 0 else 0
+
+    parts.sort(key=lambda x: x['size_bytes'], reverse=True)
+    return parts
 
 
 def _database_storage_snapshot(base_dir):
@@ -436,6 +533,12 @@ def api_server_info_snapshot(request):
 
     usage_breakdown.sort(key=lambda x: x['size_bytes'], reverse=True)
 
+    other_breakdown = _other_usage_breakdown(
+        base_dir=base_dir,
+        other_total_bytes=other_system_used,
+        project_total_bytes=project_root_size,
+    )
+
     now = datetime.now(dt_timezone.utc)
     snapshot = {
         'fetched_at': now.isoformat(),
@@ -466,6 +569,7 @@ def api_server_info_snapshot(request):
         },
         'database': db_info,
         'usage_breakdown': usage_breakdown,
+        'other_usage_breakdown': other_breakdown,
         'path_usage': path_usage,
     }
 
