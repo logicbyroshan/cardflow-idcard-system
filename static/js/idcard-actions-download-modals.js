@@ -47,6 +47,7 @@ function initReprintPickerHandlers() {
     var pickerSearch = document.getElementById('reprintPickerSearchInput');
     var pickerSearchClear = document.getElementById('reprintPickerSearchClearBtn');
     var pickerTableBody = document.getElementById('reprintPickerTableBody');
+    var pickerTableHead = document.getElementById('reprintPickerTableHead');
     var pickerSelectAll = document.getElementById('reprintPickerSelectAll');
     var pickerRequestBtn = document.getElementById('reprintPickerRequestBtn');
     var pickerSelectedInfo = document.getElementById('reprintPickerSelectedInfo');
@@ -67,6 +68,7 @@ function initReprintPickerHandlers() {
     if (!endpoints.list || !endpoints.requestCreate) return;
 
     var rows = [];
+    var tableFields = Array.isArray(window.TABLE_FIELDS) ? window.TABLE_FIELDS : [];
     var selectedIds = new Set();
     var lastQuery = '';
     var pendingEditIds = [];
@@ -86,6 +88,54 @@ function initReprintPickerHandlers() {
             if (keys.indexOf(name) !== -1) return fields[i].value || '';
         }
         return '';
+    }
+
+    function getFieldByName(item, fieldName) {
+        var fields = item && item.ordered_fields ? item.ordered_fields : [];
+        var key = String(fieldName || '').toUpperCase();
+        var i;
+        for (i = 0; i < fields.length; i += 1) {
+            var name = String(fields[i].name || '').toUpperCase();
+            if (name === key) return fields[i].value || '';
+        }
+        return '';
+    }
+
+    function isImageFieldLocal(type, name) {
+        var t = String(type || '').toLowerCase();
+        var n = String(name || '').toLowerCase();
+        return t === 'image' || t === 'photo' || t === 'file' ||
+               n === 'photo' || n === 'image' || n === 'picture' || n === 'pic' || n === 'img';
+    }
+
+    function buildTableHead() {
+        if (!pickerTableHead) return;
+        var html = '<tr>';
+        html += '<th class="center-cell" style="width:34px;"><input type="checkbox" id="reprintPickerSelectAll" aria-label="Select all"></th>';
+        html += '<th class="center-cell" style="width:40px;">Sr</th>';
+        tableFields.forEach(function(field) {
+            var isImg = isImageFieldLocal(field.type, field.name);
+            if (isImg) {
+                html += '<th class="center-cell" style="width:52px;">' + esc(field.name) + '</th>';
+            } else {
+                html += '<th>' + esc(field.name) + '</th>';
+            }
+        });
+        html += '<th>Status</th>';
+        html += '</tr>';
+        pickerTableHead.innerHTML = html;
+        pickerSelectAll = document.getElementById('reprintPickerSelectAll');
+        if (pickerSelectAll) {
+            pickerSelectAll.addEventListener('change', function() {
+                var checked = !!pickerSelectAll.checked;
+                rows.forEach(function(item) {
+                    var key = String(item.card_id);
+                    if (checked) selectedIds.add(key);
+                    else selectedIds.delete(key);
+                });
+                renderRows(rows);
+            });
+        }
     }
 
     function getStudentName(item) {
@@ -115,22 +165,35 @@ function initReprintPickerHandlers() {
     function renderRows(items) {
         rows = items || [];
         var html = '';
+        var colCount = (tableFields.length || 0) + 3;
         if (!rows.length) {
-            html = '<tr><td colspan="5" style="padding:24px;text-align:center;color:#6b7280;">No cards found in download list</td></tr>';
+            html = '<tr><td colspan="' + colCount + '" style="padding:24px;text-align:center;color:#6b7280;">No cards found in download list</td></tr>';
             pickerTableBody.innerHTML = html;
             updateSelectionUi();
             return;
         }
 
-        rows.forEach(function(item) {
+        rows.forEach(function(item, idx) {
             var id = String(item.card_id);
             var checked = selectedIds.has(id) ? ' checked' : '';
             html += '<tr data-card-id="' + esc(id) + '">';
-            html += '<td style="padding:8px;text-align:center;"><input type="checkbox" class="reprint-picker-row" data-card-id="' + esc(id) + '"' + checked + '></td>';
-            html += '<td style="padding:8px;">' + esc(getStudentName(item)) + '</td>';
-            html += '<td style="padding:8px;">' + esc(getClassName(item)) + '</td>';
-            html += '<td style="padding:8px;">' + esc(getSectionName(item)) + '</td>';
-            html += '<td style="padding:8px;"><span class="status-badge status-' + esc(item.status || 'download') + '">' + esc(item.status_display || 'Download') + '</span></td>';
+            html += '<td class="center-cell"><input type="checkbox" class="reprint-picker-row" data-card-id="' + esc(id) + '"' + checked + '></td>';
+            html += '<td class="center-cell">' + (idx + 1) + '</td>';
+            tableFields.forEach(function(field) {
+                var rawVal = getFieldByName(item, field.name);
+                if (isImageFieldLocal(field.type, field.name)) {
+                    var value = String(rawVal || '');
+                    if (value && value !== 'NOT_FOUND' && value.indexOf('PENDING:') !== 0) {
+                        var thumbPath = value.replace(/\/([^\/]+)$/, '/thumbnails/$1');
+                        html += '<td class="center-cell photo-cell"><img src="/media/' + esc(thumbPath) + '" alt="' + esc(field.name) + '" loading="lazy" onerror="this.onerror=null;this.src=\'/media/' + esc(value) + '\'" /></td>';
+                    } else {
+                        html += '<td class="center-cell">-</td>';
+                    }
+                } else {
+                    html += '<td>' + esc(rawVal || '-') + '</td>';
+                }
+            });
+            html += '<td><span class="status-badge status-' + esc(item.status || 'download') + '">' + esc(item.status_display || 'Download') + '</span></td>';
             html += '</tr>';
         });
         pickerTableBody.innerHTML = html;
@@ -165,6 +228,7 @@ function initReprintPickerHandlers() {
     }
 
     function openPicker() {
+        buildTableHead();
         pickerModal.style.display = 'flex';
         fetchList(lastQuery);
     }
@@ -240,18 +304,6 @@ function initReprintPickerHandlers() {
             if (pickerSearch) pickerSearch.value = '';
             pickerSearchClear.style.display = 'none';
             fetchList('');
-        });
-    }
-
-    if (pickerSelectAll) {
-        pickerSelectAll.addEventListener('change', function() {
-            var checked = !!pickerSelectAll.checked;
-            rows.forEach(function(item) {
-                var key = String(item.card_id);
-                if (checked) selectedIds.add(key);
-                else selectedIds.delete(key);
-            });
-            renderRows(rows);
         });
     }
 
