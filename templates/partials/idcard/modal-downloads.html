@@ -165,28 +165,46 @@
   }
   #reprintPickerModal .reprint-picker-search {
     display: flex;
-    align-items: center;
-    gap: 10px;
+    align-items: stretch;
+    gap: 8px;
+    width: 100%;
   }
   #reprintPickerModal .search-box {
-    width: min(420px, 100%);
-    min-width: 280px;
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
     background: #fff;
     border: 1px solid #d1d5db;
     border-radius: 8px;
   }
+  #reprintPickerModal .search-box .search-icon {
+    left: 11px;
+    font-size: 15px;
+  }
   #reprintPickerModal .search-box .search-input {
-    padding: 7px 30px 7px 28px;
-    font-size: 13px;
+    height: 40px;
+    min-height: 40px;
+    padding: 10px 38px 10px 33px;
+    font-size: 14px;
+    line-height: 1.2;
+  }
+  #reprintPickerModal .search-box .search-clear-btn {
+    right: 10px;
+    width: 20px;
+    height: 20px;
   }
   #reprintPickerModal .reprint-picker-selection {
-    margin-left: auto;
+    margin-left: 0;
     font-size: 12px;
     color: #475569;
     background: #ffffff;
     border: 1px solid #e2e8f0;
     border-radius: 999px;
-    padding: 4px 10px;
+    padding: 0 12px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
   }
   #reprintPickerModal #reprintPickerPreview {
     display: none;
@@ -201,8 +219,8 @@
     flex: 1;
     min-height: 0;
     border: 1px solid #dbe3ec;
-    border-radius: 10px;
-    overflow: hidden;
+    border-radius: 0;
+    overflow: auto;
     background: #fff;
   }
   #reprintPickerModal .reprint-picker-table {
@@ -251,6 +269,43 @@
   #reprintPickerModal .reprint-picker-footer {
     border-top: 1px solid #e5e7eb;
     background: #f8fafc;
+    padding: 12px 16px;
+    gap: 10px;
+  }
+  #reprintPickerModal #reprintPickerCancel {
+    min-width: 96px;
+  }
+  #reprintPickerModal #reprintPickerRequestBtn {
+    min-width: 150px;
+    background: linear-gradient(135deg, #d97706, #f59e0b);
+    color: #fff;
+    border: none;
+    opacity: 1;
+  }
+  #reprintPickerModal #reprintPickerRequestBtn:hover:not(:disabled) {
+    filter: brightness(0.95);
+  }
+  #reprintPickerModal #reprintPickerRequestBtn:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+    background: linear-gradient(135deg, #f59e0b, #fbbf24);
+    color: #fff;
+  }
+  #reprintPickerConfirmModal #reprintPickerEditBtn {
+    min-width: 110px;
+  }
+  #reprintPickerConfirmModal #reprintPickerConfirmBtn {
+    min-width: 110px;
+  }
+  @media (max-width: 900px) {
+    #reprintPickerModal .reprint-picker-search {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    #reprintPickerModal .reprint-picker-selection {
+      width: fit-content;
+      height: 32px;
+    }
   }
   #reprintPickerConfirmModal .reprint-confirm-header {
     background: linear-gradient(135deg, #2563eb, #3b82f6);
