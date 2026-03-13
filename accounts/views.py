@@ -11,7 +11,9 @@ from django.http import JsonResponse
 from django.views import View
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.utils.decorators import method_decorator
+from django.utils import timezone
 from django.contrib.auth import login, logout
+from django.contrib.sessions.models import Session
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from core.services.activity_service import ActivityService
@@ -54,6 +56,19 @@ class LoginPageView(View):
 
 class LogoutView(View):
     """Handle user logout. Only POST allowed to prevent CSRF logout attacks."""
+
+    @staticmethod
+    def _count_active_sessions_for_user(user_id):
+        """Count non-expired authenticated sessions for a user id."""
+        active = 0
+        for session in Session.objects.filter(expire_date__gt=timezone.now()):
+            try:
+                data = session.get_decoded()
+            except Exception:
+                continue
+            if str(data.get('_auth_user_id')) == str(user_id):
+                active += 1
+        return active
     
     def get(self, request):
         # GET requests redirect to login — do NOT perform logout on GET
@@ -61,7 +76,26 @@ class LogoutView(View):
         return redirect('accounts:login')
     
     def post(self, request):
+        from .services_impersonate import ImpersonateService
+
+        # If this session is impersonating, stopping logout returns control to Pro User.
+        if request.user.is_authenticated and ImpersonateService.is_impersonating(request):
+            result = ImpersonateService.stop(request)
+            if result.get('success'):
+                return redirect(result.get('redirect_url') or '/panel/')
+
         if request.user.is_authenticated:
+            # Pro User cannot logout the final active session.
+            if getattr(request.user, 'role', '') == 'pro_user':
+                active_sessions = self._count_active_sessions_for_user(request.user.id)
+                if active_sessions <= 1:
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return JsonResponse({
+                            'success': False,
+                            'message': 'Pro User must remain logged in on at least one active session.'
+                        }, status=400)
+                    return redirect('/panel/?pro_logout_blocked=1')
+
             ActivityService.log_logout(request, request.user)
         logout(request)
         # Respect ?next= or POST body next (e.g. from PWA logout)

@@ -475,3 +475,80 @@ def send_emergency_panel_access_email(target_email, request=None, issued_by=None
         except Exception as e:
                 logger.error('Failed to send emergency panel access email to %s: %s', target_email, e)
                 return False, 'Failed to send emergency access email.'
+
+
+def send_not_found_mode_enabled_broadcast(request=None, enabled_by=None):
+        """
+        Broadcast a notice email to all active users when website not-found mode is enabled.
+
+        Returns:
+                tuple: (success: bool, sent_count: int, message: str)
+        """
+        try:
+                from django.contrib.auth import get_user_model
+
+                User = get_user_model()
+                recipients = list(
+                        User.objects.filter(is_active=True)
+                        .exclude(email__isnull=True)
+                        .exclude(email__exact='')
+                        .values_list('email', flat=True)
+                        .distinct()
+                )
+
+                if not recipients:
+                        return False, 0, 'No active users with email found.'
+
+                login_url = _get_panel_login_url(request)
+                actor = 'System'
+                if enabled_by is not None:
+                        actor = enabled_by.get_full_name() or enabled_by.username or 'Admin'
+
+                subject = 'Website Not Found Mode Enabled - Panel Access Notice'
+                from_email = settings.DEFAULT_FROM_EMAIL
+
+                html_content = f'''<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background-color:#f4f4f7;font-family:Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f7;padding:40px 0;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.1);">
+    <tr><td style="background:linear-gradient(135deg,#dc2626,#b91c1c);padding:30px 40px;text-align:center;">
+        <h1 style="color:#ffffff;margin:0;font-size:22px;">Website Access Mode Updated</h1>
+    </td></tr>
+    <tr><td style="padding:32px 40px;">
+        <p style="font-size:15px;color:#555;line-height:1.7;">
+            Public website domain is now in <strong>Not Found Mode</strong>. If you need panel access,
+            use the secure panel login link below.
+        </p>
+        <p style="text-align:center;margin:24px 0;">
+            <a href="{login_url}" style="display:inline-block;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:8px;font-size:15px;font-weight:600;">
+                Open Panel Login
+            </a>
+        </p>
+        <p style="font-size:12px;color:#666;line-height:1.6;">
+            Updated by: <strong>{actor}</strong><br>
+            This is an automated notification to all active users.
+        </p>
+    </td></tr>
+</table>
+</td></tr></table>
+</body></html>'''
+
+                plain_content = (
+                        'Website Not Found Mode has been enabled.\n\n'
+                        f'Use this panel login link: {login_url}\n\n'
+                        f'Updated by: {actor}'
+                )
+
+                sent_count = 0
+                for email in recipients:
+                        send_html_email_async(subject, plain_content, html_content, from_email, [email])
+                        sent_count += 1
+
+                logger.info('Not-found mode broadcast queued for %d users', sent_count)
+                return True, sent_count, 'Broadcast queued successfully.'
+        except Exception as e:
+                logger.error('Failed to send not-found mode broadcast: %s', e)
+                return False, 0, 'Failed to queue notification emails.'

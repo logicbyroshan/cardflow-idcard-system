@@ -25,7 +25,10 @@ from core.services.permission_service import (
 from core.services.activity_service import ActivityService
 from core.models import SystemSettings
 from accounts.rate_limit import rate_limit
-from core.utils.email_utils import send_emergency_panel_access_email
+from core.utils.email_utils import (
+    send_emergency_panel_access_email,
+    send_not_found_mode_enabled_broadcast,
+)
 
 from .models import (
     BusinessDetails,
@@ -284,6 +287,7 @@ def api_set_website_not_found_mode(request):
     """Enable/disable public website Not Found mode."""
     try:
         enabled = _parse_bool(request.POST.get('enabled', 'false'))
+        previous_enabled = SystemSettings.get_value('website_not_found_mode', 'false') == 'true'
 
         SystemSettings.set_value(
             'website_not_found_mode',
@@ -293,6 +297,9 @@ def api_set_website_not_found_mode(request):
 
         from django.core.cache import cache
         cache.delete('website_not_found_mode_cache')
+
+        if enabled and not previous_enabled:
+            send_not_found_mode_enabled_broadcast(request=request, enabled_by=request.user)
 
         ActivityService.log_website_update(
             request,
