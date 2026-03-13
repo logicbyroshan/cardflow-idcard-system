@@ -166,12 +166,12 @@ var _populateFilterOptionsInFlight = false;
 
 function populateFilterOptions() {
     // Virtual table mode: table-render.js calls _populateFilterOptions()
-    // after every fetch — no DOM scanning needed here.
+    // after every fetch  no DOM scanning needed here.
     if (window.USE_VIRTUAL_TABLE && window.IDCardApp && window.IDCardApp.virtualTable) {
         return;
     }
 
-    // Debounce: wait 500ms before making request — coalesces rapid inline edits
+    // Debounce: wait 500ms before making request  coalesces rapid inline edits
     if (_populateFilterOptionsTimer) {
         clearTimeout(_populateFilterOptionsTimer);
     }
@@ -276,7 +276,7 @@ function getClassSectionColumnIndices() {
 
 function applyClassSectionFilters() {
     // Virtual table mode: server handles search/class/section filtering.
-    // Just trigger a single re-fetch — the JSON API includes filter params.
+    // Just trigger a single re-fetch  the JSON API includes filter params.
     // Image-sort is applied client-side inside the virtual table's _applyFilters().
     if (window.USE_VIRTUAL_TABLE && typeof IDCardApp.applyFiltersAndSort === 'function') {
         IDCardApp.applyFiltersAndSort();
@@ -356,7 +356,7 @@ function updateImageSortBtnText(columnName, conditionText) {
     if (columnName && conditionText) {
         btn.innerHTML = '<i class="fa-solid fa-image"></i> ' + conditionText;
         btn.classList.add('filter-active');
-        btn.title = 'Image filter: ' + columnName.toUpperCase() + ' — ' + conditionText;
+        btn.title = 'Image filter: ' + columnName.toUpperCase() + '  ' + conditionText;
     } else {
         btn.innerHTML = '<i class="fa-solid fa-image"></i> Image Sort';
         btn.classList.remove('filter-active');
@@ -364,7 +364,7 @@ function updateImageSortBtnText(columnName, conditionText) {
     }
 }
 
-/** Clear image sort filter — resets rows, button text, and state */
+/** Clear image sort filter  resets rows, button text, and state */
 function clearImageSortFilter() {
     var imageSortColumn = document.getElementById('imageSortColumn');
     var imageSortCondition = document.getElementById('imageSortCondition');
@@ -416,7 +416,7 @@ function initImageSortModal() {
         });
     }
     
-    // Click outside to close — disabled to prevent accidental closure
+    // Click outside to close  disabled to prevent accidental closure
     if (imageSortModalOverlay) {
         // Disabled
     }

@@ -1,5 +1,5 @@
 /**
- * error-monitor.js — Minimal client-side error namespace stub
+ * error-monitor.js  Minimal client-side error namespace stub
  *
  * NOTE: This file is NOT loaded in any page template.
  * HTMX errors are already handled by htmx-config.html (shows toast on 4xx/5xx).

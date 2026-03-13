@@ -1,5 +1,5 @@
-// Dashboard Page – UI animations, stat counters, hover effects
-// Split from dashboard.js — see also dashboard-actions.js
+// Dashboard Page  UI animations, stat counters, hover effects
+// Split from dashboard.js  see also dashboard-actions.js
 
 window.DashboardPage = window.DashboardPage || {};
 

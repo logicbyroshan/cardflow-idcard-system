@@ -1,37 +1,37 @@
 /**
- * IDCard Actions — Crop Selected Images Module
+ * IDCard Actions  Crop Selected Images Module
  *
  * Orchestrates the "Crop Selected" workflow:
- *   1. Prepare  — copies card images to a temp batch folder
- *   2. Process  — sends the batch to the Face Cropper engine
- *   3. Preview  — shows cropped / failed / original grids
- *   4. Reupload — pushes cropped images back to the cards
+ *   1. Prepare   copies card images to a temp batch folder
+ *   2. Process   sends the batch to the Face Cropper engine
+ *   3. Preview   shows cropped / failed / original grids
+ *   4. Reupload  pushes cropped images back to the cards
  *
  * Depends on: IDCardApp (global namespace), apiCall(), showToast()
  */
 ;(function () {
     'use strict';
 
-    // ── Constants ──────────────────────────────────────────────────
+    //  Constants 
     const TABLE_ID_FN = () =>
         typeof TABLE_ID !== 'undefined'
             ? TABLE_ID
             : window.IDCardApp?.tableId || null;
 
-    // ── State ──────────────────────────────────────────────────────
+    //  State 
     let _batchId = null;
     let _currentTab = 'cropped';
     let _pendingIds = [];    // card IDs waiting for user to confirm
     let _pendingTableId = null;
     let _confirmCode = '';   // 4-digit code shown in Step 0
 
-    // ── DOM references (cached on first use) ───────────────────────
+    //  DOM references (cached on first use) 
     const $ = (id) => document.getElementById(id);
 
     function _overlay()   { return $('cropModalOverlay'); }
     function _step(n)     { return $(`cropStep${n}`); }
 
-    // ── Show / hide helpers ────────────────────────────────────────
+    //  Show / hide helpers 
     function _show(el)  { if (el) el.style.display = ''; }
     function _hide(el)  { if (el) el.style.display = 'none'; }
 
@@ -61,7 +61,7 @@
         }
     }
 
-    // ── API helpers ────────────────────────────────────────────────
+    //  API helpers 
     function _post(url, body) {
         return fetch(url, {
             method: 'POST',
@@ -93,10 +93,10 @@
         _post(`/api/crop-batch/${batchId}/cleanup/`, {}).catch(() => {});
     }
 
-    // ── Main flow ──────────────────────────────────────────────────
+    //  Main flow 
 
     /**
-     * Entry point — called when "Crop Selected" button is clicked.
+     * Entry point  called when "Crop Selected" button is clicked.
      * Shows Step 0 (path input) first; the user clicks Start Crop to proceed.
      */
     function startCropFlow() {
@@ -148,7 +148,7 @@
 
     /**
      * Called when user clicks "Start Crop" after entering the confirmation code.
-     * Validates code then kicks off the prepare → process → preview flow.
+     * Validates code then kicks off the prepare  process  preview flow.
      */
     function _startWithConfirmCode() {
         const codeInput = $('cropConfirmCodeInput');
@@ -173,10 +173,10 @@
         // Update status
         const status1 = $('cropStatus1');
         const progress1 = $('cropProgress1');
-        if (status1) status1.textContent = `Preparing ${ids.length} card(s)…`;
+        if (status1) status1.textContent = `Preparing ${ids.length} card(s)`;
         if (progress1) progress1.style.width = '20%';
 
-        // No output_path — backend auto-creates a temp folder inside MEDIA_ROOT
+        // No output_path  backend auto-creates a temp folder inside MEDIA_ROOT
         _post(`/api/table/${tableId}/cards/prepare-crop/`, { card_ids: ids })
             .then((data) => {
                 if (!data.success) {
@@ -197,12 +197,12 @@
     }
 
     /**
-     * Step 2 — Send batch to engine for cropping.
+     * Step 2  Send batch to engine for cropping.
      */
     function _processStep(tableId) {
         _showOnly(2);
         const status2 = $('cropStatus2');
-        if (status2) status2.textContent = 'Sending to Face Cropper engine…';
+        if (status2) status2.textContent = 'Sending to Face Cropper engine';
 
         _post(`/api/table/${tableId}/cards/process-crop/`, {
             batch_id: _batchId,
@@ -227,7 +227,7 @@
     }
 
     /**
-     * Step 3 — Load preview of cropped / failed / original images.
+     * Step 3  Load preview of cropped / failed / original images.
      */
     function _previewStep() {
         _showOnly(3);
@@ -311,7 +311,7 @@
         // Format: {card_id}___{FIELD}.ext
         const noExt = filename.replace(/\.[^.]+$/, '');
         const parts = noExt.split('___');
-        if (parts.length === 2) return `#${parts[0]} — ${parts[1]}`;
+        if (parts.length === 2) return `#${parts[0]}  ${parts[1]}`;
         return filename;
     }
 
@@ -361,7 +361,7 @@
     }
 
     /**
-     * Step 4 — Re-upload cropped images back to cards.
+     * Step 4  Re-upload cropped images back to cards.
      */
     function _reuploadCropped() {
         const tableId = TABLE_ID_FN();
@@ -370,7 +370,7 @@
         const btn = $('cropReuploadBtn');
         if (btn) {
             btn.disabled = true;
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Re-uploading…';
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Re-uploading';
         }
 
         _post(`/api/table/${tableId}/cards/reupload-cropped/`, {
@@ -388,7 +388,7 @@
                     return;
                 }
 
-                // Success — batch is already cleaned up by the service
+                // Success  batch is already cleaned up by the service
                 _batchId = null; // prevent double cleanup on close
 
                 _showOnly('Done');
@@ -436,7 +436,7 @@
         if (el) el.textContent = msg;
     }
 
-    // ── Event listeners ────────────────────────────────────────────
+    //  Event listeners 
 
     function initCropModule() {
         // Crop Selected button in action bar
@@ -496,7 +496,7 @@
         });
     }
 
-    // ── Enable/disable crop button based on selection ──────────────
+    //  Enable/disable crop button based on selection 
     function _updateCropButtonState() {
         const cropBtn = $('cropSelectedBtn');
         if (!cropBtn) return;
@@ -512,7 +512,7 @@
     // Also poll periodically as fallback
     setInterval(_updateCropButtonState, 500);
 
-    // ── Exports ────────────────────────────────────────────────────
+    //  Exports 
     IDCardApp.initCropModule = initCropModule;
     IDCardApp.startCropFlow = startCropFlow;
 })();

@@ -1,5 +1,5 @@
 /**
- * Website Admin — Reviews Module
+ * Website Admin  Reviews Module
  * CRUD operations for Testimonials / Reviews
  */
 (function () {

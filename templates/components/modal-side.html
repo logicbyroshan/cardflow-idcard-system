@@ -18,13 +18,13 @@ Parameters:
   - icon      : FontAwesome icon class (optional)
   - form_id   : Wraps body+footer in a <form> if provided (optional)
 
-JS contract (vanilla â€” keeps compat with existing DrawerController):
+JS contract (vanilla  -  keeps compat with existing DrawerController):
   Open:  window.openSideModal('modal_id')
   Close: window.closeSideModal('modal_id')
 
 Slots are injected via:
-  #<modal_id>-body   â†’ scrollable body content
-  #<modal_id>-footer â†’ fixed footer with buttons
+  #<modal_id>-body   -> scrollable body content
+  #<modal_id>-footer -> fixed footer with buttons
 {% endcomment %}
 
 <!-- Backdrop -->
@@ -69,7 +69,7 @@ Slots are injected via:
 </aside>
 
 <script>
-/* Side Modal open/close helpers â€” auto-register for {{ modal_id }} */
+/* Side Modal open/close helpers  -  auto-register for {{ modal_id }} */
 (function() {
   var id = '{{ modal_id|escapejs }}';
   var FOCUSABLE_SEL = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';

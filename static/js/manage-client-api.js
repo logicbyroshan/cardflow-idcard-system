@@ -1,6 +1,6 @@
 /**
- * Manage Client Page — API calls and temp password functions
- * Split from manage-client.js — loaded second
+ * Manage Client Page  API calls and temp password functions
+ * Split from manage-client.js  loaded second
  */
 document.addEventListener('DOMContentLoaded', function() {
       var NS = window.ManageClientPage;

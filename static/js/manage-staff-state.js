@@ -1,5 +1,5 @@
-// Manage Staff Page — State: namespace, shared state, dropdowns, row selection
-// Split from manage-staff-ui.js — loaded first
+// Manage Staff Page  State: namespace, shared state, dropdowns, row selection
+// Split from manage-staff-ui.js  loaded first
 
 window.ManageStaffPage = {};
 
@@ -178,7 +178,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
-    // Set up row click handlers — delegate from stable container to survive HTMX swaps
+    // Set up row click handlers  delegate from stable container to survive HTMX swaps
     if (tableContainer) {
         // Row click - select row (delegated from stable parent)
         tableContainer.addEventListener('click', function(e) {

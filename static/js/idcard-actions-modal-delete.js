@@ -107,7 +107,7 @@ function initDeleteModal() {
     }
     
     if (deleteModalOverlay) {
-        // Disabled — prevent accidental closure on outside click
+        // Disabled  prevent accidental closure on outside click
     }
     
     // Verification code input handler
@@ -123,7 +123,7 @@ function initDeleteModal() {
                     this.classList.add('valid');
                     if (confirmBtn) confirmBtn.disabled = false;
                     if (verificationStatus) {
-                        verificationStatus.textContent = '✓ Code matched';
+                        verificationStatus.textContent = ' Code matched';
                         verificationStatus.classList.remove('no-match');
                         verificationStatus.classList.add('match');
                     }
@@ -132,7 +132,7 @@ function initDeleteModal() {
                     this.classList.add('invalid');
                     if (confirmBtn) confirmBtn.disabled = true;
                     if (verificationStatus) {
-                        verificationStatus.textContent = '✗ Code does not match';
+                        verificationStatus.textContent = ' Code does not match';
                         verificationStatus.classList.remove('match');
                         verificationStatus.classList.add('no-match');
                     }
@@ -247,7 +247,7 @@ function initSimpleDeleteModal() {
         cancelBtn.addEventListener('click', closeSimpleDeleteModalFn);
     }
     if (modal) {
-        // Disabled — prevent accidental closure on outside click
+        // Disabled  prevent accidental closure on outside click
     }
     
     document.addEventListener('keydown', function(e) {

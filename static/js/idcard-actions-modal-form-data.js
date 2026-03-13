@@ -28,7 +28,7 @@ function getFormData() {
         const fieldType = input.getAttribute('data-field-type');
         if (fieldName) {
             // PHOTO now uses the same unified image grid as other image fields
-            // (formPhotoInput element no longer exists — all images go through image_<fieldName>)
+            // (formPhotoInput element no longer exists  all images go through image_<fieldName>)
             
             if (IDCardApp._isImageFieldModal(fieldType, fieldName) || input.type === 'file') {
                 if (input._croppedFile) {
@@ -50,16 +50,16 @@ function getFormData() {
                         const originalFilename = originalPath ? originalPath.split('/').pop() : '';
                         
                         if (pathValue === '') {
-                            // Path was cleared — send empty for backend to handle removal
+                            // Path was cleared  send empty for backend to handle removal
                             fieldData[fieldName] = '';
                         } else if (originalPath && pathValue === originalFilename) {
-                            // User didn't change the displayed filename — keep original path
+                            // User didn't change the displayed filename  keep original path
                             fieldData[fieldName] = originalPath;
                         } else {
                             // User typed a new value (different from original filename)
-                            // or there was no original path — send as-is.
-                            // Backend will validate: if file exists → store path,
-                            // if not → mark as PENDING:{value}
+                            // or there was no original path  send as-is.
+                            // Backend will validate: if file exists  store path,
+                            // if not  mark as PENDING:{value}
                             fieldData[fieldName] = pathValue;
                         }
                     }
@@ -164,7 +164,7 @@ function initFormDataHandlers() {
         });
     }
     
-    // Image field upload previews — use event delegation on cardForm
+    // Image field upload previews  use event delegation on cardForm
     // so it works even if inputs are re-rendered or initially disabled
     // Integrates with ImageCropper when available
     const cardFormEl = document.getElementById('cardForm');
@@ -180,10 +180,10 @@ function initFormDataHandlers() {
             const isImage = originalFile.type && originalFile.type.startsWith('image/');
             
             if (isImage && window.ImageCropper) {
-                // Open crop modal — use result to populate preview & file input
+                // Open crop modal  use result to populate preview & file input
                 window.ImageCropper.open(originalFile).then(function(result) {
                     if (result === null) {
-                        // User cancelled — clear the file input
+                        // User cancelled  clear the file input
                         input.value = '';
                         return;
                     }
@@ -206,7 +206,7 @@ function initFormDataHandlers() {
                     applyImageToField(input, fileToUse);
                 });
             } else {
-                // Not an image or no cropper — apply directly
+                // Not an image or no cropper  apply directly
                 applyImageToField(input, originalFile);
             }
         });

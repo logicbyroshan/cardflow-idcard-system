@@ -29,7 +29,7 @@ function _shouldRefetchAfterInlineEdit(fieldName) {
 function saveCellEdit(cell, newValue, cardId, field) {
     const originalValue = cell.getAttribute('data-original-value') || '';
     
-    // Check if this is an image field — image paths must NOT be uppercased
+    // Check if this is an image field  image paths must NOT be uppercased
     const fieldType = (cell.getAttribute('data-field-type') || '').toLowerCase();
     const IMAGE_TYPES = ['photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature', 'image'];
     const isImageField = IMAGE_TYPES.includes(fieldType);
@@ -37,7 +37,7 @@ function saveCellEdit(cell, newValue, cardId, field) {
     // Convert to uppercase only for non-image text fields
     const finalValue = (typeof newValue === 'string' && !isImageField) ? newValue.toUpperCase() : newValue;
     
-    // ── Basic field validation via FieldClassifier ──
+    //  Basic field validation via FieldClassifier 
     if (window.FieldClassifier && typeof newValue === 'string' && !isImageField) {
         var vResult = window.FieldClassifier.validate(field, fieldType, finalValue);
         if (!vResult.valid) {
@@ -112,9 +112,9 @@ function saveCellEdit(cell, newValue, cardId, field) {
             showToast('Field updated successfully', 'success');
         }
         
-        // ── Check if row should be removed from current filtered view ──
+        //  Check if row should be removed from current filtered view 
         // If a class/section filter is active and we just changed that field,
-        // the row may no longer match the filter — animate it out.
+        // the row may no longer match the filter  animate it out.
         const fieldUpper = field.toUpperCase();
         const row = cell.closest('tr');
         var shouldRefetch = _shouldRefetchAfterInlineEdit(fieldUpper);
@@ -123,7 +123,7 @@ function saveCellEdit(cell, newValue, cardId, field) {
         // Check class filter
         if (_isClassLikeField(fieldUpper) && IDCardApp.currentClassFilter) {
             // User changed class while a class filter is active
-            // The new value may not match the filter — remove row to avoid stale view
+            // The new value may not match the filter  remove row to avoid stale view
             shouldRemoveRow = true;
         }
         // Check section filter

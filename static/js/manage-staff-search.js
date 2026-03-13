@@ -1,5 +1,5 @@
-// Manage Staff Page — Search: filter, search, pagination, initialization, auto-open from URL
-// Split from manage-staff-events.js — loaded fifth (after handlers)
+// Manage Staff Page  Search: filter, search, pagination, initialization, auto-open from URL
+// Split from manage-staff-events.js  loaded fifth (after handlers)
 
 document.addEventListener('DOMContentLoaded', function() {
     var NS = window.ManageStaffPage;

@@ -1,6 +1,6 @@
 // ID Card Actions - Download Init Sub-module
 // Template loading, reupload section, initDownloadModule, shared helpers
-// Part of IDCardApp module system — registers functions on window.IDCardApp
+// Part of IDCardApp module system  registers functions on window.IDCardApp
 
 (function() {
 'use strict';
@@ -151,7 +151,7 @@ function initReuploadHandlers() {
     reuploadActionsBar = document.getElementById('reuploadActionsBar');
     reuploadActionsStatus = document.getElementById('reuploadActionsStatus');
 
-    // Drop zone — click opens file picker
+    // Drop zone  click opens file picker
     if (reuploadActionsDropZone) {
         reuploadActionsDropZone.addEventListener('click', function() {
             if (reuploadActionsFileInput) reuploadActionsFileInput.click();
@@ -169,7 +169,7 @@ function initReuploadHandlers() {
         });
     }
 
-    // File input change — validate ZIP and enable confirm
+    // File input change  validate ZIP and enable confirm
     if (reuploadActionsFileInput) {
         reuploadActionsFileInput.addEventListener('change', function() {
             if (this.files.length) {
@@ -186,7 +186,7 @@ function initReuploadHandlers() {
                 var _maxZip = 950 * 1024 * 1024;
                 if (file.size > _maxZip) {
                     var _sizeMB = (file.size / (1024 * 1024)).toFixed(0);
-                    if (typeof showToast === 'function') showToast('ZIP is ' + _sizeMB + ' MB — maximum allowed is 950 MB. Please split into smaller ZIPs.', 'error');
+                    if (typeof showToast === 'function') showToast('ZIP is ' + _sizeMB + ' MB  maximum allowed is 950 MB. Please split into smaller ZIPs.', 'error');
                     this.value = '';
                     if (reuploadActionsFileName) reuploadActionsFileName.textContent = 'Click or drag & drop a ZIP file';
                     if (reuploadActionsConfirmBtn) {
@@ -210,7 +210,7 @@ function initReuploadHandlers() {
         if (e.key === 'Escape' && reuploadActionsModal && reuploadActionsModal.style.display === 'flex') closeReuploadActionsModal();
     });
 
-    // Confirm — upload ZIP via XHR (background task + polling)
+    // Confirm  upload ZIP via XHR (background task + polling)
     if (reuploadActionsConfirmBtn) {
         reuploadActionsConfirmBtn.addEventListener('click', function() {
             if (!reuploadActionsFileInput || !reuploadActionsFileInput.files.length) return;
@@ -229,7 +229,7 @@ function initReuploadHandlers() {
             var _actPollInterval = null;
             var _actUploadDone = false; // guard against duplicate handler calls
 
-            // ── Stall detection: abort if no progress for 30 seconds ──
+            //  Stall detection: abort if no progress for 30 seconds 
             var _actLastProgress = Date.now();
             var _actStallTimer = setInterval(function() {
                 if (_actUploadDone) { clearInterval(_actStallTimer); return; }
@@ -238,7 +238,7 @@ function initReuploadHandlers() {
                     if (!_actUploadDone) {
                         _actUploadDone = true;
                         xhr.abort();
-                        if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Upload stalled — server may have rejected the file.';
+                        if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Upload stalled  server may have rejected the file.';
                         if (typeof showToast === 'function') showToast(
                             'Upload stalled. Check that Nginx client_max_body_size is large enough (1000M) and the server is running.',
                             false
@@ -275,7 +275,7 @@ function initReuploadHandlers() {
                 }
             };
 
-            // ── Catch early server error (e.g. Nginx 413) before upload finishes ──
+            //  Catch early server error (e.g. Nginx 413) before upload finishes 
             xhr.onreadystatechange = function() {
                 if (xhr.readyState === 4 && !_actUploadDone) {
                     if (xhr.status !== 200 && xhr.status !== 0) {
@@ -283,7 +283,7 @@ function initReuploadHandlers() {
                         let earlyErr = 'Server rejected the upload (HTTP ' + xhr.status + ').';
                         if (xhr.status === 413) earlyErr = 'ZIP file too large. Increase Nginx client_max_body_size.';
                         else if (xhr.status === 403) earlyErr = 'Forbidden (403). Try reloading the page.';
-                        else if (xhr.status === 502 || xhr.status === 504) earlyErr = 'Server timeout — try a smaller ZIP.';
+                        else if (xhr.status === 502 || xhr.status === 504) earlyErr = 'Server timeout  try a smaller ZIP.';
                         if (reuploadActionsStatus) reuploadActionsStatus.textContent = earlyErr;
                         if (typeof showToast === 'function') showToast(earlyErr, false);
                         reuploadActionsConfirmBtn.disabled = false;
@@ -340,7 +340,7 @@ function initReuploadHandlers() {
                                     console.warn('[Reupload] Poll error #' + _actPollErrors + ':', err);
                                     if (_actPollErrors >= 5) {
                                         clearInterval(_actPollInterval);
-                                        if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Lost connection to server. Task may still be running — refresh to check.';
+                                        if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Lost connection to server. Task may still be running  refresh to check.';
                                         if (typeof showToast === 'function') showToast('Lost connection while tracking progress. Please refresh.', false);
                                         reuploadActionsConfirmBtn.disabled = false;
                                         reuploadActionsConfirmBtn.textContent = 'Upload & Match';
@@ -357,7 +357,7 @@ function initReuploadHandlers() {
                     console.error('Reupload parse error:', e, 'Status:', xhr.status, 'Response:', xhr.responseText ? xhr.responseText.substring(0, 200) : '(empty)');
                     let errMsg = 'Error processing response';
                     if (xhr.status === 413) errMsg = 'ZIP file too large. Please reduce the file size.';
-                    else if (xhr.status === 502 || xhr.status === 504) errMsg = 'Server timeout — try with a smaller ZIP file.';
+                    else if (xhr.status === 502 || xhr.status === 504) errMsg = 'Server timeout  try with a smaller ZIP file.';
                     else if (xhr.status === 500) errMsg = 'Server error during reupload. Please try again.';
                     else if (xhr.status === 0) errMsg = 'Connection lost. Check your internet and try again.';
                     else errMsg = 'Error processing response (HTTP ' + xhr.status + ')';
@@ -384,7 +384,7 @@ function initReuploadHandlers() {
             xhr.ontimeout = function() {
                 if (_actUploadDone) return;
                 _cleanupReuploadActions();
-                if (typeof showToast === 'function') showToast('Upload timed out — try with a smaller ZIP.', 'warning');
+                if (typeof showToast === 'function') showToast('Upload timed out  try with a smaller ZIP.', 'warning');
                 reuploadActionsConfirmBtn.disabled = false;
                 reuploadActionsConfirmBtn.textContent = 'Upload & Match';
                 if (reuploadActionsProgress) reuploadActionsProgress.style.display = 'none';
@@ -422,6 +422,9 @@ function initDownloadModule() {
     window.IDCardApp.initDownloadDocxHandlers();
     window.IDCardApp.initDownloadXlsxHandlers();
     window.IDCardApp.initDownloadPdfHandlers();
+    if (typeof window.IDCardApp.initReprintPickerHandlers === 'function') {
+        window.IDCardApp.initReprintPickerHandlers();
+    }
     initReuploadHandlers();
 }
 

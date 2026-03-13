@@ -1,6 +1,6 @@
 /**
- * Manage Client Page — UI: state, elements, dropdowns, row selection, drawer, modals
- * Split from manage-client.js — loaded first
+ * Manage Client Page  UI: state, elements, dropdowns, row selection, drawer, modals
+ * Split from manage-client.js  loaded first
  * Dependencies: api.js, toast.js, modal.js, utils.js, init.js, Alpine.js
  */
 window.ManageClientPage = {};

@@ -189,15 +189,15 @@
             <div class="space-y-2">
                 <div class="flex justify-between p-2.5 bg-gray-50 rounded-xl">
                     <span class="text-xs text-gray-500">Phone</span>
-                    <span class="text-xs font-medium text-gray-800" x-text="detailStaff.phone || 'â€”'"></span>
+                    <span class="text-xs font-medium text-gray-800" x-text="detailStaff.phone || ' - '"></span>
                 </div>
                 <div class="flex justify-between p-2.5 bg-gray-50 rounded-xl">
                     <span class="text-xs text-gray-500">Department</span>
-                    <span class="text-xs font-medium text-gray-800" x-text="detailStaff.department || 'â€”'"></span>
+                    <span class="text-xs font-medium text-gray-800" x-text="detailStaff.department || ' - '"></span>
                 </div>
                 <div class="flex justify-between p-2.5 bg-gray-50 rounded-xl">
                     <span class="text-xs text-gray-500">Designation</span>
-                    <span class="text-xs font-medium text-gray-800" x-text="detailStaff.designation || 'â€”'"></span>
+                    <span class="text-xs font-medium text-gray-800" x-text="detailStaff.designation || ' - '"></span>
                 </div>
                 <div class="flex justify-between p-2.5 bg-gray-50 rounded-xl">
                     <span class="text-xs text-gray-500">Status</span>
@@ -206,7 +206,7 @@
                 </div>
                 <div class="flex justify-between p-2.5 bg-gray-50 rounded-xl">
                     <span class="text-xs text-gray-500">Created</span>
-                    <span class="text-xs font-medium text-gray-800" x-text="detailStaff.created_at || 'â€”'"></span>
+                    <span class="text-xs font-medium text-gray-800" x-text="detailStaff.created_at || ' - '"></span>
                 </div>
             </div>
             <button @click="showDetail = false" class="w-full mt-4 py-2.5 text-xs font-semibold text-gray-500 bg-gray-100 rounded-xl active:bg-gray-200 transition-colors">Close</button>

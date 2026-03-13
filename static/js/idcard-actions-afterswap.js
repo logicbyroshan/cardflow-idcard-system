@@ -2,7 +2,7 @@
 document.body.addEventListener('htmx:afterSwap', function(evt) {
   if (evt.target.id === 'card-table-container') {
     if (typeof window._savedScrollTop === 'number') {
-      // Action refresh (verify/edit/delete) → restore previous scroll position
+      // Action refresh (verify/edit/delete)  restore previous scroll position
       requestAnimationFrame(function() {
         window.scrollTo(0, window._savedScrollTop);
         var tableContainer = document.getElementById('card-table-container');
@@ -14,7 +14,7 @@ document.body.addEventListener('htmx:afterSwap', function(evt) {
         delete window._savedScrollParentTop;
       });
     } else {
-      // Pagination / filter change → scroll to top of table
+      // Pagination / filter change  scroll to top of table
       requestAnimationFrame(function() {
         var tableContainer = document.getElementById('card-table-container');
         if (tableContainer) {
@@ -66,8 +66,8 @@ document.body.addEventListener('htmx:afterSwap', function(evt) {
       });
     }
 
-    // Row action buttons — delegation is already handled by
-    // initTableModule() → _initTableBodyDelegation().  Do NOT add
+    // Row action buttons  delegation is already handled by
+    // initTableModule()  _initTableBodyDelegation().  Do NOT add
     // a duplicate listener here; the old block caused double-fire.
     // (Bug #2 fix: removed duplicate _rowActionHandlersInit block)
   }

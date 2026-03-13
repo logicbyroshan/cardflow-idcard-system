@@ -1,5 +1,5 @@
 /**
- * Manage Client Page — Button click handlers, form submit, delete/status confirm,
+ * Manage Client Page  Button click handlers, form submit, delete/status confirm,
  * close/escape handlers, staff drawer
  * Split from manage-client-events.js
  */
@@ -206,7 +206,7 @@ document.addEventListener('DOMContentLoaded', function() {
       closeViewModalBtn.addEventListener('click', function() { NS.closeViewModalFn(); });
       // Close handlers for delete/status modals now managed by Alpine @click in template
 
-      // Outside click close disabled — prevent accidental closure
+      // Outside click close disabled  prevent accidental closure
 
       // ==================== STAFF DRAWER ====================
       var staffDrawer = document.getElementById('staff-drawer');

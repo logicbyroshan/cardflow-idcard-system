@@ -1,6 +1,6 @@
 // ID Card Actions - Upload UI Sub-module
 // Constants, helpers, wizard navigation, field mapping UI, modal management
-// Part of IDCardApp module system — registers functions on window.IDCardApp
+// Part of IDCardApp module system  registers functions on window.IDCardApp
 
 (function() {
 'use strict';
@@ -13,7 +13,7 @@ var IMAGE_FIELD_TYPES = ['photo', 'mother_photo', 'father_photo', 'barcode', 'qr
 var IMAGE_FIELD_NAME_PATTERNS = ['photo', 'f photo', 'father photo', 'm photo', 'mother photo', 'sign', 'signature', 'barcode', 'qr', 'qr_code', 'image'];
 var VALID_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
 
-// Populate on upload — currently empty (populated during XLSX validation)
+// Populate on upload  currently empty (populated during XLSX validation)
 window.currentImageFields = [];
 
 // ==========================================
@@ -356,7 +356,7 @@ function updateMappingStatusIcons() {
     if (matchedCount > 0) {
         if (uploadStatus) {
             uploadStatus.className = 'upload-status';
-            uploadStatus.innerHTML = '<i class="fa-solid fa-check-circle success-icon"></i><span id="uploadStatusText">Fields matched — ' + matchedCount + ' of ' + selects.length + '</span>';
+            uploadStatus.innerHTML = '<i class="fa-solid fa-check-circle success-icon"></i><span id="uploadStatusText">Fields matched  ' + matchedCount + ' of ' + selects.length + '</span>';
         }
         if (modalHeader) modalHeader.classList.remove('error');
     } else {

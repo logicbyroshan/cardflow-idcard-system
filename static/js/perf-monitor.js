@@ -1,9 +1,9 @@
 /**
- * perf-monitor.js — Minimal performance namespace stub
+ * perf-monitor.js  Minimal performance namespace stub
  *
  * NOTE: This file is NOT loaded in any page template.
  * Server-Timing headers from RequestTimingMiddleware are visible
- * natively in browser DevTools → Network → Timing tab.
+ * natively in browser DevTools  Network  Timing tab.
  *
  * This stub only exists to keep the window.Adarsh.perf namespace
  * intact in case any console debugging code references it.
@@ -15,6 +15,6 @@
         navigation: function () { return null; },
         htmx:       function () { return []; },
         longTasks:  function () { return []; },
-        summary:    function () { return 'Use browser DevTools → Network → Timing tab for Server-Timing data.'; }
+        summary:    function () { return 'Use browser DevTools  Network  Timing tab for Server-Timing data.'; }
     };
 })();

@@ -250,7 +250,7 @@
             });
         }
 
-        // Table row selection — delegate from stable container to survive HTMX swaps
+        // Table row selection  delegate from stable container to survive HTMX swaps
         var tableContainer = document.getElementById('active-client-table-container');
         if (tableContainer) {
             // Row click handler (delegated)

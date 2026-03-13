@@ -65,7 +65,7 @@ function initIdcardGroup(config) {
     });
   }
 
-  // ==================== DOUBLE-CLICK → PENDING LIST ====================
+  // ==================== DOUBLE-CLICK  PENDING LIST ====================
   if (tableBody) {
     tableBody.addEventListener('dblclick', function(e) {
       var row = e.target.closest('tr[data-table-id]');
@@ -325,7 +325,7 @@ function initIdcardGroup(config) {
     .catch(function(err) {
       progressTimers.forEach(function(t) { clearTimeout(t); });
       console.error('Download all error:', err);
-      var errMsg = (err.name === 'AbortError') ? 'Download timed out — the server took too long. Try again later.' : 'Error downloading files';
+      var errMsg = (err.name === 'AbortError') ? 'Download timed out  the server took too long. Try again later.' : 'Error downloading files';
       dlBar.style.width = '100%';
       dlBar.style.background = '#ef4444';
       dlStatus.textContent = errMsg;
@@ -419,7 +419,7 @@ function initIdcardGroup(config) {
         var _maxZip = 950 * 1024 * 1024;
         if (file.size > _maxZip) {
           var _sizeMB = (file.size / (1024 * 1024)).toFixed(0);
-          window.showToast('ZIP is ' + _sizeMB + ' MB — maximum allowed is 950 MB. Please split into smaller ZIPs.', 'error');
+          window.showToast('ZIP is ' + _sizeMB + ' MB  maximum allowed is 950 MB. Please split into smaller ZIPs.', 'error');
           this.value = '';
           reuploadFileName.textContent = 'Click or drag & drop a ZIP file';
           reuploadConfirmBtn.disabled = true;
@@ -444,7 +444,7 @@ function initIdcardGroup(config) {
       var _grpPollInterval = null;
       var _uploadDone = false; // guard against duplicate handler calls
 
-      // ── Stall detection: abort if no progress for 30 seconds ──
+      //  Stall detection: abort if no progress for 30 seconds 
       var _lastProgressTime = Date.now();
       var _stallTimer = setInterval(function() {
         if (_uploadDone) { clearInterval(_stallTimer); return; }
@@ -453,7 +453,7 @@ function initIdcardGroup(config) {
           if (!_uploadDone) {
             _uploadDone = true;
             xhr.abort();
-            reuploadStatus.textContent = 'Upload stalled — server may have rejected the file.';
+            reuploadStatus.textContent = 'Upload stalled  server may have rejected the file.';
             window.showToast(
               'Upload stalled. Check that Nginx client_max_body_size is large enough (1000M) and the server is running.',
               'error'
@@ -488,7 +488,7 @@ function initIdcardGroup(config) {
         }
       };
 
-      // ── Catch early server error (e.g. Nginx 413) before upload finishes ──
+      //  Catch early server error (e.g. Nginx 413) before upload finishes 
       xhr.onreadystatechange = function() {
         if (xhr.readyState === 4 && !_uploadDone) {
           if (xhr.status !== 200) {
@@ -496,7 +496,7 @@ function initIdcardGroup(config) {
             var errMsg = 'Server rejected the upload (HTTP ' + xhr.status + ').';
             if (xhr.status === 413) errMsg = 'ZIP file too large.';
             else if (xhr.status === 403) errMsg = 'Forbidden (403). Try reloading the page.';
-            else if (xhr.status === 502 || xhr.status === 504) errMsg = 'Server timeout — try a smaller ZIP.';
+            else if (xhr.status === 502 || xhr.status === 504) errMsg = 'Server timeout  try a smaller ZIP.';
             else if (xhr.status === 0) errMsg = 'Connection lost. Check your internet.';
             reuploadStatus.textContent = errMsg;
             window.showToast(errMsg, 'error');
@@ -547,7 +547,7 @@ function initIdcardGroup(config) {
                   console.warn('[Reupload] Poll error #' + _pollErrors + ':', err);
                   if (_pollErrors >= 5) {
                     clearInterval(_grpPollInterval);
-                    reuploadStatus.textContent = 'Lost connection to server. The task may still be running — refresh the page to check.';
+                    reuploadStatus.textContent = 'Lost connection to server. The task may still be running  refresh the page to check.';
                     window.showToast('Lost connection while tracking progress. Please refresh.', 'error');
                     reuploadConfirmBtn.disabled = false;
                     reuploadConfirmBtn.textContent = 'Upload & Match';
@@ -564,7 +564,7 @@ function initIdcardGroup(config) {
           console.error('Reupload parse error:', parseErr, 'Status:', xhr.status, 'Response:', xhr.responseText ? xhr.responseText.substring(0, 300) : '(empty)');
           var errMsg = 'Unexpected error during reupload';
           if (xhr.status === 413) errMsg = 'ZIP file too large. Increase Nginx client_max_body_size (need 1000M).';
-          else if (xhr.status === 502 || xhr.status === 504) errMsg = 'Server timeout — try a smaller ZIP file.';
+          else if (xhr.status === 502 || xhr.status === 504) errMsg = 'Server timeout  try a smaller ZIP file.';
           else if (xhr.status === 500) errMsg = 'Server error. Please try again.';
           else if (xhr.status === 0) errMsg = 'Connection lost. Check your internet and server status.';
           window.showToast(errMsg, (xhr.status === 413 || xhr.status === 502 || xhr.status === 504) ? 'warning' : 'error');
@@ -590,7 +590,7 @@ function initIdcardGroup(config) {
       xhr.ontimeout = function() {
         if (_uploadDone) return;
         _cleanupReuploadGroup();
-        window.showToast('Upload timed out — try a smaller ZIP.', 'warning');
+        window.showToast('Upload timed out  try a smaller ZIP.', 'warning');
         reuploadConfirmBtn.disabled = false;
         reuploadConfirmBtn.textContent = 'Upload & Match';
         reuploadProgress.style.display = 'none';

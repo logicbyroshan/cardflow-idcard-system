@@ -198,7 +198,7 @@
      * No custom error monitoring JS needed.
      */
     function initErrorHandling() {
-        // htmx-config.html handles HTMX errors (4xx/5xx → toast)
+        // htmx-config.html handles HTMX errors (4xx/5xx  toast)
         // Browser DevTools Console catches JS errors natively
     }
 

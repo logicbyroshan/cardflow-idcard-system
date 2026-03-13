@@ -233,7 +233,7 @@ def client_reprint_cards(request, table_id):
         current_step = 'reprint_list'
     
     # Real step counts
-    source_cards_qs = IDCard.objects.filter(table=table, status__in=['approved', 'download'])
+    source_cards_qs = IDCard.objects.filter(table=table, status='download')
     source_cards_count = source_cards_qs.count()
     request_count = ReprintRequest.objects.filter(table=table, status='requested').count()
     confirmed_count = ReprintRequest.objects.filter(table=table, status='confirmed').count()
@@ -247,7 +247,7 @@ def client_reprint_cards(request, table_id):
     
     from reprintcard.views import _build_ordered_fields
 
-    # Reprint List — source cards limited to Approved + Download
+    # Reprint List — source cards limited to Download
     reprint_items = []
     reprint_total = source_cards_count
     if current_step == 'reprint_list':

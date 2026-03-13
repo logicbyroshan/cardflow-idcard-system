@@ -3,16 +3,16 @@
  * Single authority for every modal / drawer in the application.
  *
  * Rules enforced by this module:
- *   • Overlay click does NOT close (only close-button or Escape).
- *   • Escape closes the topmost open modal / drawer.
- *   • No duplicate listeners — each modal is registered once.
- *   • Body scroll is locked while any modal / drawer is open.
+ *    Overlay click does NOT close (only close-button or Escape).
+ *    Escape closes the topmost open modal / drawer.
+ *    No duplicate listeners  each modal is registered once.
+ *    Body scroll is locked while any modal / drawer is open.
  *
  * Public API:
  *   ModalManager.open(id, data?)
  *   ModalManager.close(id)
  *   ModalManager.closeAll()
- *   ModalManager.register(id, options?)  — auto-called by open() if needed
+ *   ModalManager.register(id, options?)   auto-called by open() if needed
  *   ModalManager.isOpen(id)
  *   ModalManager.get(id)
  *
@@ -66,7 +66,7 @@
         this.options = Object.assign({
             overlayClass:       'active',
             lockBodyScroll:     true,
-            closeOnOverlayClick: false,   // ← CHANGED from true
+            closeOnOverlayClick: false,   //  CHANGED from true
             closeOnEscape:      true,
             onOpen:  null,
             onClose: null
@@ -92,7 +92,7 @@
             btn.addEventListener('click', function (e) { e.preventDefault(); self.close(); });
         });
 
-        // Overlay click — disabled by default
+        // Overlay click  disabled by default
         if (this.options.closeOnOverlayClick) {
             this.modal.addEventListener('click', function (e) {
                 if (e.target === self.modal) self.close();
@@ -164,7 +164,7 @@
             openClass:           'open',
             overlayActiveClass:  'active',
             lockBodyScroll:      true,
-            closeOnOverlayClick: false,   // ← CHANGED from true
+            closeOnOverlayClick: false,   //  CHANGED from true
             closeOnEscape:       true,
             onOpen:  null,
             onClose: null,
@@ -319,7 +319,7 @@
     };
 
     // ==========================================
-    // GLOBAL ESCAPE KEY — single listener
+    // GLOBAL ESCAPE KEY  single listener
     // ==========================================
     document.addEventListener('keydown', function (e) {
         if (e.key !== 'Escape') return;
@@ -348,7 +348,7 @@
     });
 
     // ==========================================
-    // ModalManager — high-level façade
+    // ModalManager  high-level faade
     // ==========================================
     function _getOrRegister(id, options) {
         var existing = modalRegistry.get(id) || drawerRegistry.get(id);
@@ -363,7 +363,7 @@
     }
 
     var ModalManager = {
-        /** Register a modal/drawer before first use (optional — open() auto-registers). */
+        /** Register a modal/drawer before first use (optional  open() auto-registers). */
         register: function (id, options) { return _getOrRegister(id, options); },
 
         /** Open a modal/drawer by element ID. */

@@ -20,7 +20,12 @@
     idcard_created_at: {{ perm_idcard_created_at|yesno:"true,false" }},
     idcard_updated_at: {{ perm_idcard_updated_at|yesno:"true,false" }},
   };
-  // Client / client_staff readonly flag â€” cards in approved/download/reprint are view-only
+  // Client / client_staff readonly flag  -  cards in approved/download/reprint are view-only
   var IS_CLIENT_USER = {{ is_client|yesno:"true,false" }} || {{ is_client_staff|yesno:"true,false" }};
   var CLIENT_READONLY_STATUSES = ['approved', 'download', 'reprint'];
+  var REPRINT_MODAL_ENDPOINTS = {
+    list: '{% url "reprintcard:api_reprint_list" table.id %}',
+    requestCreate: '{% url "reprintcard:api_reprint_request_create" table.id %}',
+    requestListPage: '{% if is_client or is_client_staff %}{% url "client:reprint_cards" table.id %}{% else %}{% url "reprintcard:reprint_cards" table.id %}{% endif %}?step=request_list'
+  };
 </script>

@@ -1,5 +1,5 @@
 /**
- * Manage Client Page — Search, filter, pagination, auto-open from URL, initialization
+ * Manage Client Page  Search, filter, pagination, auto-open from URL, initialization
  * Split from manage-client-events.js
  */
 document.addEventListener('DOMContentLoaded', function() {

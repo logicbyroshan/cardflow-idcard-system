@@ -81,14 +81,14 @@
                         <td>
                             <div class="custom-dropdown wa-status-dropdown" data-id="{{ c.id }}">
                                 <button type="button" class="dropdown-toggle wa-status-toggle status-{{ c.status }}" onclick="this.closest('.wa-status-dropdown').classList.toggle('open');event.stopPropagation();">
-                                    <span>{% if c.status == 'new' %}â— New{% elif c.status == 'read' %}â—Ž Read{% elif c.status == 'replied' %}âœ“ Replied{% elif c.status == 'closed' %}âœ• Closed{% endif %}</span>
+                                    <span>{% if c.status == 'new' %} New{% elif c.status == 'read' %} Read{% elif c.status == 'replied' %} Replied{% elif c.status == 'closed' %}x Closed{% endif %}</span>
                                     <i class="fa-solid fa-chevron-down"></i>
                                 </button>
                                 <div class="dropdown-options">
-                                    <div class="dropdown-option{% if c.status == 'new' %} selected{% endif %}" onclick="pickContactStatus(this,'new')">â— New</div>
-                                    <div class="dropdown-option{% if c.status == 'read' %} selected{% endif %}" onclick="pickContactStatus(this,'read')">â—Ž Read</div>
-                                    <div class="dropdown-option{% if c.status == 'replied' %} selected{% endif %}" onclick="pickContactStatus(this,'replied')">âœ“ Replied</div>
-                                    <div class="dropdown-option{% if c.status == 'closed' %} selected{% endif %}" onclick="pickContactStatus(this,'closed')">âœ• Closed</div>
+                                    <div class="dropdown-option{% if c.status == 'new' %} selected{% endif %}" onclick="pickContactStatus(this,'new')"> New</div>
+                                    <div class="dropdown-option{% if c.status == 'read' %} selected{% endif %}" onclick="pickContactStatus(this,'read')"> Read</div>
+                                    <div class="dropdown-option{% if c.status == 'replied' %} selected{% endif %}" onclick="pickContactStatus(this,'replied')"> Replied</div>
+                                    <div class="dropdown-option{% if c.status == 'closed' %} selected{% endif %}" onclick="pickContactStatus(this,'closed')">x Closed</div>
                                 </div>
                             </div>
                         </td>
@@ -209,7 +209,7 @@ function pickContactStatus(optEl, status) {
     const drop = optEl.closest('.wa-status-dropdown');
     drop.classList.remove('open');
     const id = drop.dataset.id;
-    const labels = { new: 'â— New', read: 'â—Ž Read', replied: 'âœ“ Replied', closed: 'âœ• Closed' };
+    const labels = { new: ' New', read: ' Read', replied: ' Replied', closed: 'x Closed' };
     const toggle = drop.querySelector('.dropdown-toggle');
     toggle.querySelector('span').textContent = labels[status] || status;
     toggle.className = 'dropdown-toggle wa-status-toggle status-' + status;

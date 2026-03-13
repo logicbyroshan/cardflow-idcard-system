@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Alpine.js Global State Module
  * Provides unified UI state management across all pages
  *
@@ -185,7 +185,7 @@ function layoutState() {
         // TOAST NOTIFICATIONS
         // ================================================
         showToast(message, type) {
-            // Normalise boolean → string (matches core/toast.js behaviour)
+            // Normalise boolean  string (matches core/toast.js behaviour)
             if (typeof type === 'boolean') type = type ? 'success' : 'error';
             type = type || 'success';
             // Deduplicate: skip if same message is already in the queue
@@ -267,7 +267,7 @@ function layoutState() {
             window.alpineShowLoading      = ()              => this.startLoading();
             window.alpineHideLoading      = ()              => this.stopLoading();
 
-            // Upload progress bridges — vanilla JS can feed into
+            // Upload progress bridges  vanilla JS can feed into
             // any Alpine uploadProgress() component via these globals.
             // Components self-register on init (see uploadProgress._bridgeGlobals).
         }

@@ -12,10 +12,10 @@
  *  - If adding a 4th download, oldest active download is cancelled
  *
  * Public API:
- *   DownloadManager.start(options)   → downloadId
+ *   DownloadManager.start(options)    downloadId
  *   DownloadManager.cancel(id)
  *   DownloadManager.cancelAll()
- *   DownloadManager.getActive()      → [{id, name, progress, ...}]
+ *   DownloadManager.getActive()       [{id, name, progress, ...}]
  *
  * @module core/download-manager
  * @version 1.0.0
@@ -35,7 +35,7 @@
     // STATE
     // =========================================
     var _nextId = 1;
-    var _active = {};    // id → { id, name, xhr, startTime, loaded, total, toastEl, status }
+    var _active = {};    // id  { id, name, xhr, startTime, loaded, total, toastEl, status }
     var _queue = [];     // [{ id, options }]  waiting to start
     var _currentOverlayId = null;   // ID of the download currently shown in blocking overlay
     var _overlayStartTime = null;   // Track start time for ETA calculation
@@ -417,7 +417,7 @@
 
     function _processQueue() {
         while (_queue.length > 0 && _getActiveCount() < MAX_CONCURRENT) {
-            // Check size threshold — if active bytes > 500MB, don't start another
+            // Check size threshold  if active bytes > 500MB, don't start another
             if (_getActiveTotalBytes() > SIZE_THRESHOLD && _getActiveCount() > 0) {
                 break;
             }
@@ -528,7 +528,7 @@
                     if (bar2) { bar2.style.animation = ''; bar2.dataset.indeterminate = ''; }
                 }
             } else if (!dl._indeterminateTimer) {
-                // No Content-Length — use time-based estimation (exponential approach to 85%)
+                // No Content-Length  use time-based estimation (exponential approach to 85%)
                 var _indStart = Date.now();
                 dl._indeterminateTimer = setInterval(function() {
                     var bar = dl.toastEl ? dl.toastEl.querySelector('.dl-toast-bar') : null;
@@ -550,7 +550,7 @@
             if (dl.status !== 'downloading') return; // was cancelled
 
             if (xhr.status === 200) {
-                // Success — trigger download
+                // Success  trigger download
                 var blob = xhr.response;
                 var filename = opts.filename || _extractFilename(xhr, opts.fallbackExt || 'zip');
                 _triggerBlobDownload(blob, filename);
@@ -584,14 +584,14 @@
         xhr.onerror = function () {
             if (dl._indeterminateTimer) { clearInterval(dl._indeterminateTimer); dl._indeterminateTimer = null; }
             if (dl.status !== 'downloading') return;
-            _finishToast(dl, 'error', 'Network error — download failed');
+            _finishToast(dl, 'error', 'Network error  download failed');
             if (typeof opts.onError === 'function') opts.onError('Network error');
         };
 
         xhr.ontimeout = function () {
             if (dl._indeterminateTimer) { clearInterval(dl._indeterminateTimer); dl._indeterminateTimer = null; }
             if (dl.status !== 'downloading') return;
-            _finishToast(dl, 'error', 'Download timed out — the server took too long to respond. Please try again.');
+            _finishToast(dl, 'error', 'Download timed out  the server took too long to respond. Please try again.');
             if (typeof opts.onError === 'function') opts.onError('Timeout');
         };
 
@@ -609,16 +609,16 @@
     function start(options) {
         /**
          * options:
-         *   name          – display name for toast (e.g. "ID Cards DOCX")
-         *   url           – endpoint URL
-         *   method        – HTTP method (default: POST)
-         *   body          – request body (object or string)
-         *   headers       – extra headers
-         *   filename      – override filename (optional)
-         *   fallbackExt   – fallback extension if no Content-Disposition (default: zip)
-         *   completeMessage – toast message on success
-         *   onComplete    – callback(blob, filename)
-         *   onError       – callback(errorMsg)
+         *   name           display name for toast (e.g. "ID Cards DOCX")
+         *   url            endpoint URL
+         *   method         HTTP method (default: POST)
+         *   body           request body (object or string)
+         *   headers        extra headers
+         *   filename       override filename (optional)
+         *   fallbackExt    fallback extension if no Content-Disposition (default: zip)
+         *   completeMessage  toast message on success
+         *   onComplete     callback(blob, filename)
+         *   onError        callback(errorMsg)
          *
          * Returns: downloadId (number)
          */
@@ -661,7 +661,7 @@
         if (_getActiveCount() < MAX_CONCURRENT) {
             // Check size threshold
             if (_getActiveTotalBytes() > SIZE_THRESHOLD && _getActiveCount() > 0) {
-                // Queue it — will start when current finishes
+                // Queue it  will start when current finishes
                 _queue.push({ id: id, options: options });
                 _updateToastQueued(_active[id]);
             } else {
@@ -772,7 +772,7 @@
                             _updateToast(dl, downloadIndex, totalZips);
 
                             try {
-                                // CSP-safe base64 → Blob (no fetch('data:') needed)
+                                // CSP-safe base64  Blob (no fetch('data:') needed)
                                 var bin = atob(zipInfo.data);
                                 var bytes = new Uint8Array(bin.length);
                                 for (var j = 0; j < bin.length; j++) bytes[j] = bin.charCodeAt(j);
@@ -805,12 +805,12 @@
 
         xhr.onerror = function () {
             if (dl.status !== 'downloading') return;
-            _finishToast(dl, 'error', 'Network error — download failed');
+            _finishToast(dl, 'error', 'Network error  download failed');
         };
 
         xhr.ontimeout = function () {
             if (dl.status !== 'downloading') return;
-            _finishToast(dl, 'error', 'Image download timed out — too many images or slow connection. Try fewer cards.');
+            _finishToast(dl, 'error', 'Image download timed out  too many images or slow connection. Try fewer cards.');
         };
 
         xhr.send(options.body ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body)) : null);

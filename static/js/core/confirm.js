@@ -4,17 +4,17 @@
  * Dynamically creates DOM + styles on first use.
  *
  * Public API:
- *   showConfirm(opts)  → Promise<boolean>
+ *   showConfirm(opts)   Promise<boolean>
  *
  * Options:
- *   title        {string}   – Modal title (default: 'Are you sure?')
- *   text         {string}   – Description text (default: 'This action cannot be undone.')
- *   icon         {string}   – FontAwesome class (default: 'fa-solid fa-triangle-exclamation')
- *   confirmLabel {string}   – Confirm button text (default: 'Confirm')
- *   cancelLabel  {string}   – Cancel button text  (default: 'Cancel')
- *   btnClass     {string}   – Confirm button class (default: 'btn-danger')
- *   warnings     {string[]} – Warning bullet list items
- *   hideWarning  {boolean}  – Hide the warning box entirely
+ *   title        {string}    Modal title (default: 'Are you sure?')
+ *   text         {string}    Description text (default: 'This action cannot be undone.')
+ *   icon         {string}    FontAwesome class (default: 'fa-solid fa-triangle-exclamation')
+ *   confirmLabel {string}    Confirm button text (default: 'Confirm')
+ *   cancelLabel  {string}    Cancel button text  (default: 'Cancel')
+ *   btnClass     {string}    Confirm button class (default: 'btn-danger')
+ *   warnings     {string[]}  Warning bullet list items
+ *   hideWarning  {boolean}   Hide the warning box entirely
  *
  * @module core/confirm
  * @version 1.0.0
@@ -25,7 +25,7 @@
   var OVERLAY_ID  = 'coreConfirmOverlay';
   var _injected   = false;
 
-  /* ── CSS (injected once) ─────────────────────────────────────────── */
+  /*  CSS (injected once)  */
   var CSS = [
     '#' + OVERLAY_ID + '{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(3px);z-index:9999;align-items:center;justify-content:center}',
     '#' + OVERLAY_ID + '.show{display:flex}',
@@ -42,7 +42,7 @@
     '.cc-warning-list{margin:0;padding:0 0 0 16px;font-size:12px;color:#7f1d1d;line-height:1.7}'
   ].join('\n');
 
-  /* ── Ensure DOM + CSS exist ──────────────────────────────────────── */
+  /*  Ensure DOM + CSS exist  */
   function ensureDOM() {
     if (_injected) return;
     _injected = true;
@@ -77,7 +77,7 @@
     document.body.appendChild(overlay);
   }
 
-  /* ── Public: showConfirm(opts) → Promise<boolean> ────────────────── */
+  /*  Public: showConfirm(opts)  Promise<boolean>  */
   function showConfirm(opts) {
     opts = opts || {};
 

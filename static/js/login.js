@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     /**
-     * Safe JSON POST — handles redirects, non-JSON responses, and CSRF errors
+     * Safe JSON POST  handles redirects, non-JSON responses, and CSRF errors
      * gracefully instead of showing a generic "Network error".
      */
     async function safePost(url, body) {
@@ -188,7 +188,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const data = await safePost('/api/auth/login/', { email, password, role: selectedRole });
             if (data.success) {
                 showMessage('Login successful! Redirecting...', 'success');
-                // Respect ?next= param (e.g. from PWA → login redirect)
+                // Respect ?next= param (e.g. from PWA  login redirect)
                 const nextUrl = new URLSearchParams(window.location.search).get('next');
                 const safeNext = nextUrl && nextUrl.startsWith('/') && !nextUrl.startsWith('//') ? nextUrl : null;
 

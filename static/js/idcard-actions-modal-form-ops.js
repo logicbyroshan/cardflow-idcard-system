@@ -95,6 +95,12 @@ function updateExistingCard(cardId, fieldData, imageFiles, mainPhoto) {
             // Update the row in-place instead of full page reload.
             // This preserves scroll position and avoids losing user context.
             IDCardApp._updateRowInPlace(cardId, data.card);
+            document.dispatchEvent(new CustomEvent('idcard:card-updated', {
+                detail: {
+                    cardId: cardId,
+                    card: data.card || null,
+                }
+            }));
             if (IDCardApp._restoreSaveBtn) IDCardApp._restoreSaveBtn();
         } else {
             // Check for concurrency conflict
@@ -224,7 +230,7 @@ function initModalModule() {
             const { fieldData, imageFiles } = IDCardApp.getFormData();
             const mainPhoto = IDCardApp.getMainPhotoFile();
             
-            // ── Validate text fields via FieldClassifier ──
+            //  Validate text fields via FieldClassifier 
             if (window.FieldClassifier) {
                 var errors = [];
                 var cardForm = document.getElementById('cardForm');

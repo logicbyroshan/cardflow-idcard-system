@@ -1,5 +1,5 @@
-// Manage Staff Page — Drawer: client assignment multi-select, drawer open/close/populate
-// Split from manage-staff-ui.js — loaded second (after state)
+// Manage Staff Page  Drawer: client assignment multi-select, drawer open/close/populate
+// Split from manage-staff-ui.js  loaded second (after state)
 
 document.addEventListener('DOMContentLoaded', function() {
     var NS = window.ManageStaffPage;

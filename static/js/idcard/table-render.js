@@ -9,12 +9,12 @@
  * Data source: GET /api/table/{id}/cards-json/
  *
  * Architecture:
- *   _allCards[]        – all card objects fetched from server so far
- *   _filteredCards[]   – subset after client-side image-sort / sort
- *   _pool[]            – fixed array of pre-created TR elements
+ *   _allCards[]         all card objects fetched from server so far
+ *   _filteredCards[]    subset after client-side image-sort / sort
+ *   _pool[]             fixed array of pre-created TR elements
  *                         rebound to different card data as user scrolls
- *   spacerTop/Bottom   – empty TR whose height represents un-rendered rows
- *   sentinel           – TR at bottom; IntersectionObserver triggers next fetch
+ *   spacerTop/Bottom    empty TR whose height represents un-rendered rows
+ *   sentinel            TR at bottom; IntersectionObserver triggers next fetch
  *
  * @module idcard/table-render
  * @version 1.0.0
@@ -22,29 +22,29 @@
 (function () {
     'use strict';
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
     // FEATURE GATE
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
     if (!window.USE_VIRTUAL_TABLE) return;
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
     // TUNABLES
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    var DEFAULT_ROW_HEIGHT = 57;   // px – refined after first paint
+    // 
+    var DEFAULT_ROW_HEIGHT = 57;   // px  refined after first paint
     var OVERSCAN           = 10;   // extra rows above & below viewport
     var FETCH_BATCH        = 100;  // cards per server request
     var FETCH_AHEAD        = 30;   // start fetch when within N rows of data end
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
     // STATE
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
     var _allCards       = [];
     var _filteredCards  = [];
     var _totalServer    = 0;
     var _serverHasMore  = false;
     var _isFetching     = false;
     var _nextOffset     = 0;
-    var _fetchSeq       = 0;       // monotonic – stale-response guard
+    var _fetchSeq       = 0;       // monotonic  stale-response guard
     var _rowHeight      = DEFAULT_ROW_HEIGHT;
     var _measured       = false;
 
@@ -82,9 +82,9 @@
     var _sortMode       = 'sr-asc';
     var _searchTimer    = 0;
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
     // UTILITY HELPERS
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
     function _imageTypeClass(name) {
         if (!name) return 'photo-type';
         var n = name.toLowerCase();
@@ -101,7 +101,7 @@
         return 'min-w-[80px] text-left whitespace-normal break-words';
     }
 
-    // ── Phone / Email cell-break helpers ─────────────────────────────
+    //  Phone / Email cell-break helpers 
     function _escHtml(s) {
         if (!s) return '';
         return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -154,9 +154,9 @@
         return new Date(a) - new Date(b);
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
     // COLUMN CONFIG (read from <thead>)
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
     function _buildColumns() {
         _status = (typeof CURRENT_STATUS !== 'undefined') ? CURRENT_STATUS : 'pending';
         _tableId = (typeof TABLE_ID !== 'undefined') ? TABLE_ID : 0;
@@ -204,15 +204,15 @@
         }
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // POOL ROW FACTORY  (pure DOM – no innerHTML)
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
+    // POOL ROW FACTORY  (pure DOM  no innerHTML)
+    // 
     function _createPoolEntry() {
         var doc = document;
         var tr = doc.createElement('tr');
         tr.style.display = 'none';
 
-        // ── Checkbox cell ──
+        //  Checkbox cell 
         var tdCb = doc.createElement('td');
         tdCb.className = 'w-[24px] text-center checkbox-cell';
         var cbInput = doc.createElement('input');
@@ -222,12 +222,12 @@
         tdCb.appendChild(cbInput);
         tr.appendChild(tdCb);
 
-        // ── SR NO cell ──
+        //  SR NO cell 
         var tdSr = doc.createElement('td');
         tdSr.className = 'w-[36px] text-center sr-no-cell';
         tr.appendChild(tdSr);
 
-        // ── Field cells ──
+        //  Field cells 
         var fields = [];
         for (var c = 0; c < _cols.length; c++) {
             if (_cols[c].isImage) {
@@ -237,7 +237,7 @@
             }
         }
 
-        // ── Status-dependent column ──
+        //  Status-dependent column 
         var actionBtns = null;
         var dateCell   = null;
 
@@ -262,7 +262,7 @@
             tr.appendChild(actionTd);
         }
 
-        // ── Updated At / By ──
+        //  Updated At / By 
         var updatedAt = null;
         var updatedBy = null;
         if (_perms.idcard_updated_at) {
@@ -366,16 +366,16 @@
         return { td: td, img: img, pending: pendDiv, empty: emptyDiv, editBtn: editBtn, type: 'image' };
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
     // ROW BINDING / UNBINDING
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
     function _bindRow(entry, card, idx) {
         var tr = entry.tr;
         tr.style.display = '';
         tr.dataset.cardId = card.id;
         entry.cardIndex    = idx;
 
-        // Checkbox — restore selection state
+        // Checkbox  restore selection state
         var isSelected = _selectedIds.has(String(card.id));
         entry.checkbox.checked = isSelected;
         if (isSelected) tr.classList.add('selected');
@@ -405,7 +405,7 @@
                     f.span.textContent = val;
                 }
             } else {
-                // Image cell — show one of three states
+                // Image cell  show one of three states
                 var isPending = val.indexOf('PENDING:') === 0;
                 var isNotFound = val === 'NOT_FOUND';
                 var looksLikePath = val.indexOf('.') !== -1;
@@ -469,9 +469,9 @@
         entry.cardIndex = -1;
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
     // CHECKBOX / SELECTION
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
     function _onCheckboxChange() {
         var tr = this.closest('tr');
         var cardId = tr ? tr.dataset.cardId : null;
@@ -526,9 +526,9 @@
         }
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
     // VIRTUAL SCROLL RENDER
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
     var _renderInProgress = false;  // guard against re-entrant render
 
     function _render(force) {
@@ -564,7 +564,7 @@
         var newEnd   = Math.min(total, newStart + visCount + OVERSCAN * 2);
         if (newEnd - newStart > _pool.length) newEnd = newStart + _pool.length;
 
-        // Skip if visible range unchanged (prevents spacer ↔ scroll feedback loop)
+        // Skip if visible range unchanged (prevents spacer  scroll feedback loop)
         if (!force && newStart === _startIdx && newEnd === _endIdx) {
             return;
         }
@@ -603,9 +603,9 @@
         _updatePaginationUI();
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
     // SCROLL HANDLER (rAF-throttled)
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
     function _onScroll() {
         if (_rafId) return;
         _rafId = requestAnimationFrame(function () {
@@ -614,9 +614,9 @@
         });
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
     // DATA FETCHING
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
     async function _fetchBatch() {
         if (_isFetching) return;
         if (!_serverHasMore || !_tableId) return;
@@ -712,9 +712,9 @@
         _fetchFilterOptions();
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
     // CLIENT-SIDE SORT (filters are now all server-side)
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
     function _applyFilters() {
         // Server handles search/class/section AND image filtering.
         // Client only applies sort order.
@@ -737,9 +737,9 @@
         });
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
     // PAGINATION UI
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
     function _updatePaginationUI() {
         var total    = _filteredCards.length;
         var srvTotal = _totalServer;
@@ -803,9 +803,9 @@
         _scrollEl.scrollTo({ top: (page - 1) * rpp * _rowHeight });
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
     // FILTER DROPDOWN POPULATION (from API)
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
     var _filterOptionsFetched = false;
 
     /**
@@ -912,9 +912,9 @@
         }
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
     // EMPTY STATE / LOADING INDICATOR
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
     function _showEmptyState(show) {
         if (show) {
             if (!_emptyRow) {
@@ -945,9 +945,9 @@
         if (el) el.style.display = show ? 'flex' : 'none';
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
     // EVENT DELEGATION (tbody click)
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
     function _initDelegation() {
         if (!_tbody || _tbody._vtDelegation) return;
         _tbody._vtDelegation = true;
@@ -987,9 +987,9 @@
         });
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
     // HTMX INTERCEPT
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
     // Prevent HTMX from swapping out the virtual-table container.
     // Instead, re-fetch data from the JSON API.
     function _installHtmxIntercept() {
@@ -1005,11 +1005,11 @@
         });
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
     // OVERRIDE EXISTING MODULE FUNCTIONS
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
     function _installOverrides() {
-        // ── Search ──
+        //  Search 
         IDCardApp.searchRows = function (query) {
             _searchQuery = (query || '').trim();
             // Debounced server re-fetch (server handles search filtering)
@@ -1017,9 +1017,9 @@
             _searchTimer = setTimeout(function () { _resetAndFetch(); }, 400);
         };
 
-        // ── Filter / sort ──
+        //  Filter / sort 
         IDCardApp.applyFiltersAndSort = function () {
-            // Class/section changes → server re-fetch
+            // Class/section changes  server re-fetch
             _resetAndFetch();
         };
 
@@ -1030,17 +1030,17 @@
             _render(true);
         };
 
-        // ── Render ──
+        //  Render 
         IDCardApp.renderTable = function () { _render(true); };
 
-        // ── Lazy-load overrides ──
+        //  Lazy-load overrides 
         IDCardApp.loadMoreData = function () { return _fetchBatch(); };
         IDCardApp.loadAllData  = async function () {
             while (_serverHasMore) await _fetchBatch();
         };
         IDCardApp.checkLoadMore = function () {};
 
-        // ── Pagination navigation ──
+        //  Pagination navigation 
         IDCardApp.goToPage = function (p) { _jumpToPage(p); };
         IDCardApp.goToFirstPage = function () { _scrollEl.scrollTo({ top: 0 }); };
         IDCardApp.goToPrevPage = function () {
@@ -1061,18 +1061,18 @@
         IDCardApp.setRowsPerPage = function () { _render(true); };
         IDCardApp.initializeRows = function () {};
 
-        // ── Selection ──
+        //  Selection 
         IDCardApp.getSelectedCardIds = function () { return Array.from(_selectedIds); };
 
-        // ── populateFilterOptions ──
+        //  populateFilterOptions 
         IDCardApp.populateFilterOptions = function () { _fetchFilterOptions(); };
 
-        // ── initTableModule override ──
+        //  initTableModule override 
         if (window.IDCardApp) {
             window.IDCardApp.initTableModule = function () { _init(); };
         }
 
-        // ── Expose public API ──
+        //  Expose public API 
         window.IDCardApp = window.IDCardApp || {};
         window.IDCardApp.virtualTable = {
             get allCards()      { return _allCards; },
@@ -1090,9 +1090,9 @@
         return (pb && pb.dataset.perPage) ? (parseInt(pb.dataset.perPage) || 100) : 100;
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
     // INITIALIZATION
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
     var _initialized = false;
 
     function _init() {
@@ -1137,10 +1137,10 @@
         // Disconnect old IntersectionObserver (if accessible)
         if (_observer) { _observer.disconnect(); _observer = null; }
 
-        // ── Clear server-rendered rows ──
+        //  Clear server-rendered rows 
         _tbody.innerHTML = '';
 
-        // ── Spacer top ──
+        //  Spacer top 
         var spTopRow = document.createElement('tr');
         spTopRow.className = 'vt-spacer';
         spTopRow.setAttribute('aria-hidden', 'true');
@@ -1150,7 +1150,7 @@
         spTopRow.appendChild(_spacerTopTd);
         _tbody.appendChild(spTopRow);
 
-        // ── Pool rows ──
+        //  Pool rows 
         var viewH     = _scrollEl.clientHeight || 600;
         var visCount  = Math.ceil(viewH / _rowHeight);
         var poolSize  = visCount + OVERSCAN * 2;
@@ -1162,7 +1162,7 @@
             _tbody.appendChild(entry.tr);
         }
 
-        // ── Spacer bottom ──
+        //  Spacer bottom 
         var spBotRow = document.createElement('tr');
         spBotRow.className = 'vt-spacer';
         spBotRow.setAttribute('aria-hidden', 'true');
@@ -1172,7 +1172,7 @@
         spBotRow.appendChild(_spacerBotTd);
         _tbody.appendChild(spBotRow);
 
-        // ── Sentinel ──
+        //  Sentinel 
         _sentinel = document.createElement('tr');
         _sentinel.id = 'vtSentinel';
         _sentinel.setAttribute('aria-hidden', 'true');
@@ -1182,11 +1182,11 @@
         _sentinel.appendChild(sentTd);
         _tbody.appendChild(_sentinel);
 
-        // ── Scroll listener ──
+        //  Scroll listener 
         _scrollEl.removeEventListener('scroll', _onScroll);
         _scrollEl.addEventListener('scroll', _onScroll, { passive: true });
 
-        // ── IntersectionObserver for auto-fetch ──
+        //  IntersectionObserver for auto-fetch 
         // Only fetch when sentinel is actually close to viewport (not 800px away)
         _observer = new IntersectionObserver(function (entries) {
             if (entries[0] && entries[0].isIntersecting && _serverHasMore && !_isFetching
@@ -1196,26 +1196,26 @@
         }, { root: _scrollEl, rootMargin: '0px 0px 200px 0px', threshold: 0 });
         _observer.observe(_sentinel);
 
-        // ── Select-all checkbox ──
+        //  Select-all checkbox 
         _setupSelectAll();
 
-        // ── Delegation ──
+        //  Delegation 
         _initDelegation();
 
-        // ── Install overrides (only once) ──
+        //  Install overrides (only once) 
         if (!_initialized) {
             _initialized = true;
             _installOverrides();
             _installHtmxIntercept();
         }
 
-        // ── Kick off first fetch ──
+        //  Kick off first fetch 
         _fetchBatch();
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // BOOT — wait for all other modules to init first
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 
+    // BOOT  wait for all other modules to init first
+    // 
     document.addEventListener('idcard-actions-ready', function () {
         setTimeout(_init, 50);
     });

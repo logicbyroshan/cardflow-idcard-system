@@ -109,7 +109,7 @@
     {% endif %}
 
     {% if is_super_admin or is_admin_staff %}
-    <!-- Tools â€” Admin & Admin Staff only -->
+    <!-- Tools  -  Admin & Admin Staff only -->
     <div class="nav-section">
       <div class="nav-section-line"></div>
       <span class="nav-section-title">Tools</span>
@@ -121,7 +121,7 @@
     {% endif %}
 
     {% if is_pro_user and not is_impersonating %}
-    <!-- Pro User â€” Impersonation -->
+    <!-- Pro User  -  Impersonation -->
     <div class="nav-section">
       <div class="nav-section-line"></div>
       <span class="nav-section-title">Pro User</span>
@@ -172,7 +172,7 @@
     document.body.classList.add('sidebar-collapsed');
   }
 })();
-// Fallback clock â€” runs independently of Alpine.js
+// Fallback clock  -  runs independently of Alpine.js
 (function(){
   function _sidebarClock(){
     var now = new Date();

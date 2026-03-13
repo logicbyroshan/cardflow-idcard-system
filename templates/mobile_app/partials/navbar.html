@@ -2,7 +2,7 @@
 <div class="pwa-topbar sticky top-0 z-50 bg-white shadow-[0_1px_8px_rgba(0,0,0,0.08)]">
     <div class="flex items-center justify-between px-4" style="height:56px;">
 
-        <!-- â”€â”€ LEFT: Profile avatar icon only (opens left profile drawer) â”€â”€ -->
+        <!-- -- LEFT: Profile avatar icon only (opens left profile drawer) -- -->
         <button type="button"
                 @click="$dispatch('open-profile-drawer')"
                 class="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#667eea] to-[#764ba2] flex items-center justify-center text-white shadow-sm active:scale-95 transition-transform flex-shrink-0 select-none">
@@ -17,10 +17,10 @@
             {% endif %}
         </button>
 
-        <!-- â”€â”€ CENTER: App title (subtle) â”€â”€ -->
+        <!-- -- CENTER: App title (subtle) -- -->
         <p class="text-[13px] font-bold text-gray-700 tracking-tight select-none">Adarsh ID Cards</p>
 
-        <!-- â”€â”€ RIGHT: Notification bell + Hamburger â”€â”€ -->
+        <!-- -- RIGHT: Notification bell + Hamburger -- -->
         <div class="flex items-center gap-1">
             <!-- Notification bell with count -->
             <button type="button"
@@ -33,7 +33,7 @@
                 </span>
                 {% endif %}
             </button>
-            <!-- Hamburger â€” opens the right side drawer -->
+            <!-- Hamburger  -  opens the right side drawer -->
             <button type="button"
                     @click="$dispatch('open-hamburger')"
                     class="w-10 h-10 flex flex-col items-center justify-center gap-[5px] rounded-xl bg-gray-50 text-gray-600 active:bg-gray-100 transition-colors">

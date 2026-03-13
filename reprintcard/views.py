@@ -2,7 +2,7 @@
 Reprint Card Views
 ==================
 Page views + API endpoints for the Reprint Cards workflow:
-    Reprint List (approved/download source) → Request List → Confirmed List
+    Reprint List (download source) → Request List → Confirmed List
 
 ARCHITECTURE RULES:
 - Views are ULTRA-THIN: parse request → call service → return JsonResponse.
@@ -99,7 +99,7 @@ def reprint_cards(request, table_id):
         current_step = 'reprint_list'
 
     # Step counts
-    source_cards_qs = IDCard.objects.filter(table=table, status__in=['approved', 'download'])
+    source_cards_qs = IDCard.objects.filter(table=table, status='download')
     source_cards_count = source_cards_qs.count()
     request_count = ReprintRequest.objects.filter(table=table, status='requested').count()
     confirmed_count = ReprintRequest.objects.filter(table=table, status='confirmed').count()
@@ -111,7 +111,7 @@ def reprint_cards(request, table_id):
 
     INITIAL_LOAD_LIMIT = 100
 
-    # Reprint List — source cards limited to Approved + Download
+    # Reprint List — source cards limited to Download
     reprint_items = []
     reprint_total = 0
     if current_step == 'reprint_list':
@@ -211,7 +211,7 @@ def api_reprint_step_counts(request, table_id):
     if err:
         return err
 
-    source_cards_count = IDCard.objects.filter(table=table, status__in=['approved', 'download']).count()
+    source_cards_count = IDCard.objects.filter(table=table, status='download').count()
     request_count = ReprintRequest.objects.filter(table=table, status='requested').count()
     confirmed_count = ReprintRequest.objects.filter(table=table, status='confirmed').count()
     return JsonResponse({
@@ -225,7 +225,7 @@ def api_reprint_step_counts(request, table_id):
 @require_http_methods(["GET"])
 @api_require_permission('perm_idcard_reprint_list')
 def api_reprint_list(request, table_id):
-    """List source IDCards (Approved + Download) for Reprint List step."""
+    """List source IDCards (Download only) for Reprint List step."""
     table, err = _check_reprint_table_scope(request.user, table_id)
     if err:
         return err
@@ -239,7 +239,7 @@ def api_reprint_list(request, table_id):
 
     card_qs = IDCard.objects.filter(
         table=table,
-        status__in=['approved', 'download'],
+        status='download',
     ).order_by('-updated_at')
 
     if query:

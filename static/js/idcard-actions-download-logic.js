@@ -1,6 +1,6 @@
 // ID Card Actions - Download Logic Sub-module
 // Core download functions: Images, DOCX, XLSX, PDF, and status management
-// Part of IDCardApp module system — registers functions on window.IDCardApp
+// Part of IDCardApp module system  registers functions on window.IDCardApp
 // Uses DownloadManager for concurrent downloads with progress, cancel, queuing
 
 (function() {
@@ -27,7 +27,7 @@ function _moveCardsToDownloadIfApproved(cardIds) {
     var tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
     if (!tableId) return;
 
-    // If cardIds is empty, we exported ALL approved cards — fetch them from backend first
+    // If cardIds is empty, we exported ALL approved cards  fetch them from backend first
     if (!cardIds || cardIds.length === 0) {
         // Use the all-ids endpoint to get every approved card
         var idsUrl = '/api/table/' + tableId + '/cards/all-ids/?status=approved';
@@ -60,7 +60,7 @@ function _doBulkMoveToDownload(tableId, cardIds) {
         }, { timeout: 120000 })
         .then(function(data) {
             if (data.success === false) {
-                // Permission denied or validation error — silently log, don't interrupt UX
+                // Permission denied or validation error  silently log, don't interrupt UX
                 console.warn('Move to download skipped:', data.message);
                 return;
             }
@@ -77,7 +77,7 @@ function _doBulkMoveToDownload(tableId, cardIds) {
             }
         })
         .catch(function(err) {
-            // Don't show error toast — the export itself succeeded, this is a secondary action
+            // Don't show error toast  the export itself succeeded, this is a secondary action
             console.error('Failed to move cards to download:', err);
         });
     }
@@ -158,7 +158,7 @@ function downloadImages(cardIds) {
                         const zipInfo = response.zip_files[downloadIndex];
 
                         try {
-                            // CSP-safe base64 → Blob (no fetch('data:') needed)
+                            // CSP-safe base64  Blob (no fetch('data:') needed)
                             var bin = atob(zipInfo.data);
                             var bytes = new Uint8Array(bin.length);
                             for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
@@ -455,7 +455,7 @@ function downloadPdf(cardIds, templateId, fontMode, shortenTitles) {
     }
 
     // Determine card count for async decision
-    // If cardIds is empty, it means "all cards" — use async to be safe
+    // If cardIds is empty, it means "all cards"  use async to be safe
     var totalCards = (window.IDCardApp && window.IDCardApp.lazyLoadState)
         ? (window.IDCardApp.lazyLoadState.totalCount || 0)
         : 0;
@@ -621,11 +621,11 @@ function _pollExportStatus(taskId, cardCount, isCancelled, cancelFn) {
                 if (typeof hideProgressToast === 'function') hideProgressToast();
                 if (typeof showToast === 'function') showToast(data.message || 'PDF generation failed', false);
             } else {
-                // Still processing — compute display progress
+                // Still processing  compute display progress
                 var serverPct = data.progress || 0;
                 // Time-based estimation: exponential approach to 90%
                 var elapsed = (Date.now() - _pollStartTime) / 1000;
-                var tau = _estSeconds / 3; // reaches ~95% at 3×tau
+                var tau = _estSeconds / 3; // reaches ~95% at 3tau
                 var estimatedPct = Math.round(90 * (1 - Math.exp(-elapsed / tau)));
                 // Use whichever is higher (server or estimated), cap at 95%
                 var displayPct = Math.min(Math.max(serverPct, estimatedPct), 95);
@@ -716,7 +716,7 @@ function _downloadPdfLegacy(tableId, cardIds, templateId, fontMode, shortenTitle
 
 /**
  * Extract filename from Content-Disposition header, or use fallback.
- * (Legacy helper — used only by fallback XHR paths)
+ * (Legacy helper  used only by fallback XHR paths)
  */
 function _getDownloadFilename(xhr, fallbackExt) {
     const disposition = xhr.getResponseHeader('Content-Disposition');

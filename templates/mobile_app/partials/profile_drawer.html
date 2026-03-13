@@ -1,5 +1,5 @@
 {% load static %}
-<!-- Profile Drawer â€” slides in from the LEFT -->
+<!-- Profile Drawer  -  slides in from the LEFT -->
 <!-- Triggered by $dispatch('open-profile-drawer') from navbar avatar button -->
 <div x-data="profileDrawer()"
      x-on:open-profile-drawer.window="open()"
@@ -63,7 +63,7 @@
         <!-- Info rows -->
         <div class="flex-1 overflow-y-auto pb-[env(safe-area-inset-bottom,16px)]" style="-webkit-overflow-scrolling:touch;">
 
-            <!-- Client info: only shown for client / client_staff roles (H3 fix â€” admins don't belong to a client) -->
+            <!-- Client info: only shown for client / client_staff roles (H3 fix  -  admins don't belong to a client) -->
             {% if client and not is_super_admin and not is_admin_staff %}
             <div class="px-5 py-4 border-b border-gray-100">
                 <p class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2.5">Organization</p>

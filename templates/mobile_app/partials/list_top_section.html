@@ -27,7 +27,7 @@
             </p>
         </div>
 
-        <!-- Status pills — Pending & Verified in top bar where hamburger was -->
+        <!-- Status pills  Pending & Verified in top bar where hamburger was -->
         <div class="flex items-center gap-1.5 flex-shrink-0">
             {% if perm_idcard_pending_list %}
             <a href="{% url 'mobile_app:card_list' table_id=table.id status='pending' %}"
@@ -61,7 +61,7 @@
                     class="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition"
                 >
             </div>
-            <!-- Filter toggle — beside search -->
+            <!-- Filter toggle  beside search -->
             <button @click="showFilters = !showFilters"
                     :class="showFilters || filtersActive ? 'bg-brand-light text-white border-brand-light shadow-md' : 'bg-gray-50 text-gray-500 border-gray-200'"
                     class="w-[42px] h-[42px] rounded-xl border flex items-center justify-center active:scale-95 transition-all relative flex-shrink-0">

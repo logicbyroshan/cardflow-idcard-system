@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <style>
 
-/* â”€â”€â”€ Font Faces â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* --- Font Faces --------------------------------------------------- */
 @font-face {
     font-family: 'Arial';
     src: url('{{ font_dir }}/arial.ttf');
@@ -42,9 +42,9 @@
     font-style: normal;
 }
 
-/* â”€â”€â”€ Page setup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* --- Page setup --------------------------------------------------- */
 /*
-   A4 landscape = 297mm Ã— 210mm
+   A4 landscape = 297mm x 210mm
    Top margin enlarged to 2.0cm to accommodate the larger 3-line header.
    Bottom margin 1.2cm for the footer row.
 */
@@ -52,7 +52,7 @@
     size: A4 landscape;
     margin: 2.0cm 0.5cm 1.2cm 0.5cm;
 
-    /* â”€â”€ Page-level header â”€â”€ */
+    /* -- Page-level header -- */
     @top-left {
         content: element(hdr-left);
         vertical-align: bottom;
@@ -72,7 +72,7 @@
         padding-bottom: 2pt;
     }
 
-    /* â”€â”€ Page-level footer â”€â”€ */
+    /* -- Page-level footer -- */
     @bottom-left {
         content: element(ftr-left);
         vertical-align: middle;
@@ -89,7 +89,7 @@
     }
 }
 
-/* â”€â”€â”€ Running (margin-box) elements â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* --- Running (margin-box) elements ------------------------------- */
 /* WeasyPrint picks these up via position: running() and renders them
    into the @top-* / @bottom-* boxes on every page automatically. */
 #hdr-left {
@@ -133,7 +133,7 @@
     word-break: normal;
 }
 
-/* â”€â”€â”€ Global reset â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* --- Global reset ------------------------------------------------- */
 *, *::before, *::after { box-sizing: border-box; }
 
 body {
@@ -144,7 +144,7 @@ body {
     color: #111;
 }
 
-/* â”€â”€â”€ Page break containers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* --- Page break containers ---------------------------------------- */
 .page {
     page-break-after: always;
 }
@@ -152,7 +152,7 @@ body {
     page-break-after: avoid;
 }
 
-/* â”€â”€â”€ Data table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* --- Data table --------------------------------------------------- */
 table.data-table {
     table-layout: fixed;
     width: 100%;
@@ -165,7 +165,7 @@ table.data-table td {
     padding: {{ cell_padding }};
     vertical-align: middle;
 }
-/* Clip data cells only â€” never let cell text bleed across a column border.
+/* Clip data cells only  -  never let cell text bleed across a column border.
    Excluded from <th>: header words must wrap/flow naturally inside the cell. */
 table.data-table td {
     overflow: hidden;
@@ -189,8 +189,8 @@ table.data-table tbody tr {
     page-break-inside: avoid;
 }
 
-/* â”€â”€â”€ Text cells â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-/* Natural word wrap â€” break only at spaces.
+/* --- Text cells --------------------------------------------------- */
+/* Natural word wrap  -  break only at spaces.
    If a single word is too long it is allowed to break silently WITHOUT a dash. */
 table.data-table td.text-cell {
     white-space: normal;
@@ -219,7 +219,7 @@ table.data-table td.text-cell.email-cell {
     overflow-wrap: anywhere;
 }
 
-/* â”€â”€â”€ Image cells â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* --- Image cells -------------------------------------------------- */
 table.data-table td.img-cell {
     text-align: center;
     padding: 1.5pt;
@@ -230,12 +230,12 @@ table.data-table td.img-cell img {
     object-fit: cover;
     object-position: top center;
 }
-/* Placeholder images: reduced opacity to signal missing photo â€” keep rectangular (passport size) */
+/* Placeholder images: reduced opacity to signal missing photo  -  keep rectangular (passport size) */
 table.data-table td.img-cell.placeholder-cell img {
     opacity: 0.35;
 }
 
-/* â”€â”€â”€ Instructions block (last page only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* --- Instructions block (last page only) ------------------------- */
 .instructions-block {
     margin-top: 0.3cm;
     font-family: Arial, Helvetica, sans-serif;
@@ -246,7 +246,7 @@ table.data-table td.img-cell.placeholder-cell img {
     line-height: 1.5;
 }
 
-/* â”€â”€â”€ Copyright / generated line â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* --- Copyright / generated line ----------------------------------- */
 .footer-line {
     margin-top: 0.12cm;
     font-family: Arial, Helvetica, sans-serif;
@@ -259,17 +259,17 @@ table.data-table td.img-cell.placeholder-cell img {
 </head>
 <body>
 
-{# â”€â”€ Running header/footer elements â€” rendered once; WeasyPrint repeats on every page â”€â”€ #}
-{# LEFT: Institute name â€” large, bold, prominent #}
+{# -- Running header/footer elements  -  rendered once; WeasyPrint repeats on every page -- #}
+{# LEFT: Institute name  -  large, bold, prominent #}
 <div id="hdr-left">{{ institution_name|upper }}</div>
-{# CENTER: List name + year â€” clearly identifies the document #}
+{# CENTER: List name + year  -  clearly identifies the document #}
 <div id="hdr-center">{{ table_name|upper }}{% if current_year %} &mdash; {{ current_year }}{% endif %}</div>
 {# RIGHT: Branding #}
 <div id="hdr-right">ADARSH ID CARDS</div>
-{# FOOTER LEFT: Instruction/note text â€” naturally wraps into ~3 lines at 9pt #}
+{# FOOTER LEFT: Instruction/note text  -  naturally wraps into ~3 lines at 9pt #}
 <div id="ftr-left">{{ export_note_line }}</div>
 
-{# â”€â”€ Pages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ #}
+{# -- Pages -------------------------------------------------------------------- #}
 {% for page_rows in pages %}
 <div class="page">
 

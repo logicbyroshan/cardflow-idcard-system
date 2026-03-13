@@ -1,5 +1,5 @@
 /**
- * list-app.js — Alpine.js component for mobile list page
+ * list-app.js  Alpine.js component for mobile list page
  * Globals expected: CSRF, TABLE_ID, LIST_TYPE, STUDENTS_DATA
  */
 function listApp() {
@@ -86,7 +86,7 @@ function listApp() {
 
         // --- Filtering & Sorting ---
         filterStudents() {
-            // Debounced text search — also applies active filters
+            // Debounced text search  also applies active filters
             this._applyAllFilters();
         },
         resetFilters() {
@@ -121,7 +121,7 @@ function listApp() {
                 if (this.filters.selectedClass && s.class_name !== this.filters.selectedClass) return false;
                 // Section filter
                 if (this.filters.selectedSection && s.section !== this.filters.selectedSection) return false;
-                // Date range (DOB) — only active for download list
+                // Date range (DOB)  only active for download list
                 if (this.filters.dateFrom && s.dob && s.dob < this.filters.dateFrom) return false;
                 if (this.filters.dateTo && s.dob && s.dob > this.filters.dateTo) return false;
                 return true;
@@ -266,7 +266,7 @@ function listApp() {
 
             const nameHtml = card.name
                 ? `<p class="font-bold text-gray-800 leading-tight" style="font-size:14px;">${this._escHtml(card.name)}</p>`
-                : `<p class="font-semibold text-gray-300 leading-tight italic" style="font-size:13px;">—</p>`;
+                : `<p class="font-semibold text-gray-300 leading-tight italic" style="font-size:13px;"></p>`;
 
             const cbHtml = !IS_VIEW_ONLY
                 ? `<label class="custom-checkbox custom-checkbox-lg dyn-cb" style="cursor:pointer;"><input type="checkbox"><span class="checkmark"></span></label>`
@@ -372,9 +372,9 @@ function listApp() {
                 if (!val) continue;
                 const kl = key.toLowerCase();
                 if (kl.includes('photo') || kl.includes('image') || kl === 'name') continue;
-                const truncKey = key.length > 12 ? key.slice(0, 11) + '…' : key;
+                const truncKey = key.length > 12 ? key.slice(0, 11) + '' : key;
                 const valStr = String(val);
-                const truncVal = valStr.length > 16 ? valStr.slice(0, 15) + '…' : valStr;
+                const truncVal = valStr.length > 16 ? valStr.slice(0, 15) + '' : valStr;
                 const sp = document.createElement('span');
                 sp.className = 'text-gray-500';
                 sp.style.cssText = 'font-size:10px;line-height:1.4;';
@@ -522,7 +522,7 @@ function listApp() {
         openImagePicker() { this.showImagePicker = !this.showImagePicker; },
         takePhoto() {
             if (this.editMode && this.editingId) {
-                // Redirect to full camera.html — same as top-bar camera button
+                // Redirect to full camera.html  same as top-bar camera button
                 sessionStorage.setItem('cam_return_edit', String(this.editingId));
                 sessionStorage.setItem('cam_return_url', window.location.href);
                 window.location.href = '/app/camera/' + TABLE_ID + '/' + this.editingId + '/';
@@ -636,7 +636,7 @@ function listApp() {
             this.loading = false;
         },
 
-        // List action methods — wired to real APIs
+        // List action methods  wired to real APIs
         viewSelected() {
             if (!this.selectedIds.length) { this.showToast('Select an item first', 'error'); return; }
             if (this.selectedIds.length > 1) { this.showToast('Select only 1 item to view', 'error'); return; }

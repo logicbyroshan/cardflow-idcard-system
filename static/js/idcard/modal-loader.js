@@ -1,5 +1,5 @@
 /**
- * modal-loader.js — Lazy-loads modals HTML on first user interaction.
+ * modal-loader.js  Lazy-loads modals HTML on first user interaction.
  *
  * Instead of pre-rendering all 11 modals in the initial page HTML (~424 lines,
  * ~300 DOM nodes), this module fetches them on demand from the server and
@@ -10,12 +10,12 @@
  *     focus on any input), fire off the fetch.
  *  2. After injection, re-run all modal init functions so event listeners
  *     get bound to the freshly-injected elements.
- *  3. Expose window.ensureModalsLoaded() → Promise for any code path that
+ *  3. Expose window.ensureModalsLoaded()  Promise for any code path that
  *     must guarantee modals exist before proceeding.
  *
  * All existing init functions use `if (element)` guards, so they already
  * no-op during the initial init when modals aren't in the DOM yet. The
- * re-init after injection is safe — the only side-effect is a few extra
+ * re-init after injection is safe  the only side-effect is a few extra
  * harmless document-level keydown listeners whose closure-captured
  * references are null and thus never fire.
  */
@@ -93,17 +93,17 @@
     function _initModalsAfterLoad() {
         var app = window.IDCardApp || {};
 
-        // Upload module — binds to #uploadModalOverlay
+        // Upload module  binds to #uploadModalOverlay
         if (typeof app.initUploadModule === 'function') {
             try { app.initUploadModule(); } catch (e) { console.error('[modal-loader] initUploadModule error:', e); }
         }
 
-        // Download module — binds all download/reupload/docformat modals
+        // Download module  binds all download/reupload/docformat modals
         if (typeof app.initDownloadModule === 'function') {
             try { app.initDownloadModule(); } catch (e) { console.error('[modal-loader] initDownloadModule error:', e); }
         }
 
-        // Search module modal inits — Image Sort + Search All
+        // Search module modal inits  Image Sort + Search All
         if (typeof app.initSearchAllModal === 'function') {
             try { app.initSearchAllModal(); } catch (e) { console.error('[modal-loader] initSearchAllModal error:', e); }
         }
@@ -111,7 +111,7 @@
             try { app.initImageSortModal(); } catch (e) { console.error('[modal-loader] initImageSortModal error:', e); }
         }
 
-        // Modal module — Delete modal + Simple Delete modal
+        // Modal module  Delete modal + Simple Delete modal
         // We call the specific sub-inits rather than the full initModalModule
         // because initModalModule also handles the side-modal which is already in DOM.
         if (typeof app.initDeleteModal === 'function') {

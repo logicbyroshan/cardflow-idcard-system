@@ -1,5 +1,5 @@
-// Manage Staff Page — Handlers: button clicks, form submit, delete/status modals, close/escape
-// Split from manage-staff-events.js — loaded fourth (after api)
+// Manage Staff Page  Handlers: button clicks, form submit, delete/status modals, close/escape
+// Split from manage-staff-events.js  loaded fourth (after api)
 
 document.addEventListener('DOMContentLoaded', function() {
     var NS = window.ManageStaffPage;
@@ -143,7 +143,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Close drawer on overlay click — disabled to prevent accidental closure
+    // Close drawer on overlay click  disabled to prevent accidental closure
     // if (staffDrawerOverlay) {
     //     staffDrawerOverlay.addEventListener('click', NS.closeDrawer);
     // }

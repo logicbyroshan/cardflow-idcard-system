@@ -1,6 +1,6 @@
 /**
  * Core API Module
- * Single API wrapper — every fetch call in the app routes through here.
+ * Single API wrapper  every fetch call in the app routes through here.
  *
  * Provides:
  *   ApiClient.get(url, options)
@@ -33,8 +33,8 @@
 
     window.fetch = function () {
         return _originalFetch.apply(this, arguments).then(function (response) {
-            // ── Redirect detection ──
-            // If the server redirected (302 → login page) and we're NOT
+            //  Redirect detection 
+            // If the server redirected (302  login page) and we're NOT
             // already on the login page, the session is expired/invalid.
             if (response.redirected && !_isLoginPage) {
                 var finalUrl = response.url || '';
@@ -44,7 +44,7 @@
                     // don't fail with a JSON-parse error on the HTML body.
                     return new Response(JSON.stringify({
                         success: false,
-                        message: 'Session expired. Redirecting to login…'
+                        message: 'Session expired. Redirecting to login'
                     }), {
                         status: 401,
                         headers: { 'Content-Type': 'application/json' }
@@ -86,7 +86,7 @@
 })();
 
 /* ================================================
-   ApiClient — the single authority for network IO
+   ApiClient  the single authority for network IO
    ================================================ */
 (function () {
     'use strict';
@@ -229,7 +229,7 @@
     }
 
     // ------------------------------------------
-    // DOWNLOAD (XHR with progress → Blob)
+    // DOWNLOAD (XHR with progress  Blob)
     // ------------------------------------------
     function _download(url, method, data, options) {
         method = method || 'GET';
@@ -320,7 +320,7 @@
         downloadBase64: downloadBase64
     };
 
-    // Legacy globals (backward compat — will be removed)
+    // Legacy globals (backward compat  will be removed)
     window.getCSRFToken = getCSRFToken;
     window.apiCall      = function (url, method, data, options) {
         return _request(url, method || 'GET', data, options);

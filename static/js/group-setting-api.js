@@ -96,13 +96,13 @@ document.addEventListener('DOMContentLoaded', function() {
         // Each rule: [patterns[], fieldType, mode]
         // mode: 'exact' = full string match, 'keyword' = word-boundary match, 'includes' = substring
         const rules = [
-            // Mother photo — must match before generic 'photo'
+            // Mother photo  must match before generic 'photo'
             { type: 'mother_photo', exact: ['mother photo', "mother's photo", 'mother image', 'mother pic', 'mother photograph', 'mom photo', 'maa photo', 'm photo'],
               keywords: ['mother photo', 'mother image', 'mother pic'] },
-            // Father photo — must match before generic 'photo'
+            // Father photo  must match before generic 'photo'
             { type: 'father_photo', exact: ['father photo', "father's photo", 'father image', 'father pic', 'father photograph', 'dad photo', 'papa photo', 'f photo'],
               keywords: ['father photo', 'father image', 'father pic'] },
-            // Signature — word-boundary to avoid "designation"
+            // Signature  word-boundary to avoid "designation"
             { type: 'signature', exact: ['signature', 'sign', 'student signature', 'child signature', 'student sign'],
               keywords: ['signature'] },
             // QR Code

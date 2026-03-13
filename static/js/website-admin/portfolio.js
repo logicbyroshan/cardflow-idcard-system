@@ -1,5 +1,5 @@
 /**
- * Website Admin — Portfolio Module (v3)
+ * Website Admin  Portfolio Module (v3)
  * CRUD for Portfolio items + Category management
  * Type & orientation are auto-detected server-side.
  */
@@ -7,7 +7,7 @@
     const BASE = '/website/api';
 
     /* ================================================================
-       PORTFOLIO ITEM — MODAL
+       PORTFOLIO ITEM  MODAL
     ================================================================ */
 
     window.openPortfolioModal = function (id) {
@@ -107,7 +107,7 @@
         var count = this.files ? this.files.length : 0;
         if (count > 0) {
             countEl.textContent = count + ' image' + (count !== 1 ? 's' : '') + ' selected';
-            if (count > 50) countEl.textContent += ' (max 50 — extra will be ignored)';
+            if (count > 50) countEl.textContent += ' (max 50  extra will be ignored)';
             countEl.style.display = 'block';
         } else {
             countEl.style.display = 'none';
@@ -124,7 +124,7 @@
 
         var files = Array.from(fileInput.files).slice(0, 50);
 
-        // ── Client-side validation: file type + size ──
+        //  Client-side validation: file type + size 
         var allowedExts = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
         var maxSingleMB = 20;
         for (var vi = 0; vi < files.length; vi++) {
@@ -152,7 +152,7 @@
         var _portfolioProcessingTimer = null;
         var _portfolioUploadDone = false;
 
-        // ── Stall detection: abort if no progress for 60 seconds ──
+        //  Stall detection: abort if no progress for 60 seconds 
         // (Raised from 30s because server-side processing of 50 images is synchronous)
         var _pfLastProgress = Date.now();
         var _pfStallTimer = setInterval(function() {
@@ -163,7 +163,7 @@
                     _portfolioUploadDone = true;
                     xhr.abort();
                     if (_portfolioProcessingTimer) { clearInterval(_portfolioProcessingTimer); _portfolioProcessingTimer = null; }
-                    progressText.textContent = 'Upload stalled — server may have rejected the files.';
+                    progressText.textContent = 'Upload stalled  server may have rejected the files.';
                     showToast(
                         'Upload stalled. Check that Nginx client_max_body_size is large enough (1000M) and the server is running.',
                         'error'
@@ -192,7 +192,7 @@
         xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
         console.log('[Portfolio] Starting bulk upload to', uploadUrl, '| Files:', files.length, '| Total size:', Math.round(files.reduce(function(s,f){return s+f.size;},0) / 1024) + 'KB');
 
-        // Phase 1: Upload progress (0% → 80%)
+        // Phase 1: Upload progress (0%  80%)
         xhr.upload.onprogress = function (ev) {
             _pfLastProgress = Date.now();
             if (ev.lengthComputable) {
@@ -209,12 +209,12 @@
             if (_portfolioUploadDone) return;
             _cleanupPortfolioUpload();
             if (_portfolioProcessingTimer) { clearInterval(_portfolioProcessingTimer); _portfolioProcessingTimer = null; }
-            progressText.textContent = 'Upload timed out — try fewer images.';
+            progressText.textContent = 'Upload timed out  try fewer images.';
             showToast('Upload timed out after 5 minutes. Try uploading fewer images at once.', 'error');
             btn.disabled = false;
         };
 
-        // Phase 2: Upload done → server processing (80% → 95%)
+        // Phase 2: Upload done  server processing (80%  95%)
         xhr.upload.onloadend = function () {
             // CRITICAL: Reset stall timer so it doesn't fire during server processing
             _pfLastProgress = Date.now();
@@ -228,7 +228,7 @@
             }, 400);
         };
 
-        // ── Catch early server error (e.g. Nginx 413) before upload finishes ──
+        //  Catch early server error (e.g. Nginx 413) before upload finishes 
         xhr.onreadystatechange = function() {
             if (xhr.readyState >= 2) {
                 console.log('[Portfolio] XHR state:', xhr.readyState, '| HTTP:', xhr.status);
@@ -266,8 +266,8 @@
                 console.error('Portfolio upload parse error:', err, 'Status:', xhr.status, 'Response:', xhr.responseText ? xhr.responseText.substring(0, 300) : '(empty)');
                 var errMsg = 'Upload failed';
                 if (xhr.status === 413) errMsg = 'Files too large. Increase Nginx client_max_body_size (need 1000M).';
-                else if (xhr.status === 502 || xhr.status === 504) errMsg = 'Server timeout — try fewer images.';
-                else if (xhr.status === 0) errMsg = 'Connection lost — server may have rejected the upload size.';
+                else if (xhr.status === 502 || xhr.status === 504) errMsg = 'Server timeout  try fewer images.';
+                else if (xhr.status === 0) errMsg = 'Connection lost  server may have rejected the upload size.';
                 showToast(errMsg, 'error');
                 btn.disabled = false;
             }
@@ -276,9 +276,9 @@
             if (_portfolioUploadDone) return;
             _cleanupPortfolioUpload();
             if (_portfolioProcessingTimer) { clearInterval(_portfolioProcessingTimer); _portfolioProcessingTimer = null; }
-            console.error('Portfolio XHR onerror — status:', xhr.status, 'readyState:', xhr.readyState);
+            console.error('Portfolio XHR onerror  status:', xhr.status, 'readyState:', xhr.readyState);
             var errMsg = 'Upload failed. ';
-            if (xhr.status === 0) errMsg += 'Connection was reset — server may have rejected the file size. Check Nginx client_max_body_size.';
+            if (xhr.status === 0) errMsg += 'Connection was reset  server may have rejected the file size. Check Nginx client_max_body_size.';
             else errMsg += 'Network error during upload.';
             showToast(errMsg, 'error');
             btn.disabled = false;

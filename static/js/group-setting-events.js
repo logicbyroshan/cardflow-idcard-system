@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
             GSP.updateActionButtons();
         });
 
-        // Double-click on a row → navigate to that table's pending cards
+        // Double-click on a row  navigate to that table's pending cards
         gsTableContainer.addEventListener('dblclick', function(e) {
             var row = e.target.closest('tr[data-table-id]');
             if (!row || row.classList.contains('no-data-row')) return;
@@ -139,7 +139,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (GSP.closeDrawerEl) GSP.closeDrawerEl.addEventListener('click', GSP.closeDrawerModal);
     if (GSP.cancelDrawer) GSP.cancelDrawer.addEventListener('click', GSP.closeDrawerModal);
     if (GSP.saveDrawer) GSP.saveDrawer.addEventListener('click', GSP.saveTable);
-    // Outside click close disabled — prevent accidental closure
+    // Outside click close disabled  prevent accidental closure
 
     // Escape key closes drawer (modals now handled by Alpine layoutState)
     document.addEventListener('keydown', function(e) {

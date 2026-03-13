@@ -13,7 +13,7 @@ window.IDCardApp = window.IDCardApp || {};
 
 function initSidebar() {
     // Sidebar toggle is handled by Alpine.js layoutState() in alpine-state.js.
-    // Only set the active sidebar link here — no toggle logic.
+    // Only set the active sidebar link here  no toggle logic.
     const activeClientsLink = document.getElementById('activeClientsLink');
     const allClientsLink = document.getElementById('allClientsLink');
     if (activeClientsLink) activeClientsLink.classList.add('active');
@@ -103,7 +103,7 @@ function applyDynamicAlignment() {
                 if (cells[j].style.textAlign) cells[j].style.textAlign = '';
             }
         }
-        // Sr No column — center
+        // Sr No column  center
         var srCells = document.querySelectorAll('.idcard-table td:nth-child(2)');
         for (var k = 0; k < srCells.length; k++) {
             srCells[k].style.textAlign = 'center';

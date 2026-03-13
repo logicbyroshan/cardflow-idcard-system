@@ -1,4 +1,4 @@
-// Manage Client Staff Page — config wrapper for manage-staff-common.js
+// Manage Client Staff Page  config wrapper for manage-staff-common.js
 // Uses client API endpoints and Group Assignment instead of Client Assignment.
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -460,7 +460,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Set header name
             if (assignStaffName) assignStaffName.textContent = data.name || 'Staff';
 
-            // Populate selections — clear and refill (NOT replace) to keep closure refs intact
+            // Populate selections  clear and refill (NOT replace) to keep closure refs intact
             assignSelectedGroups.clear();
             (data.assigned_group_ids || []).forEach(function (id) { assignSelectedGroups.add(String(id)); });
             assignSelectedClasses.clear();
@@ -592,7 +592,7 @@ document.addEventListener('DOMContentLoaded', function () {
             pluralLabel:     'groups',
         },
 
-        // Permissions — full set mirroring STAFF_PERMISSION_FIELDS in services_staff.py
+        // Permissions  full set mirroring STAFF_PERMISSION_FIELDS in services_staff.py
         permissionFields: [
             // ID Card List Tabs
             'perm-idcard-pending-list', 'perm-idcard-verified-list', 'perm-idcard-pool-list',

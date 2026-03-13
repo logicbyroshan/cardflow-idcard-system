@@ -1,6 +1,6 @@
 /**
- * AdarshEngine — Render Pipeline & Auto Adjustments
- * ═══════════════════════════════════════════════════════════════
+ * AdarshEngine  Render Pipeline & Auto Adjustments
+ * 
  *
  * Extends AdarshEngine with:
  *   - Render pipeline (levels + vibrance + temperature)
@@ -18,9 +18,9 @@
     return;
   }
 
-  // ═══════════════════════════════════════════════════════════════════
+  // 
   //  PHASE 3 + 4: RENDER PIPELINE
-  // ═══════════════════════════════════════════════════════════════════
+  // 
 
   /**
    * Master render function (Phase 3 + 4).
@@ -40,7 +40,7 @@
     try {
       var t0 = this.debug ? performance.now() : 0;
 
-      // Create a working copy — never mutate the original
+      // Create a working copy  never mutate the original
       var src = this.originalImageData.data;
       var out = this.ctx.createImageData(
         this.originalImageData.width,
@@ -71,16 +71,16 @@
    *
    * @param {Uint8ClampedArray} src  - Source pixel data (RGBA).
    * @param {Uint8ClampedArray} dst  - Destination pixel data (RGBA).
-   * @param {number}            len  - Total byte length (w × h × 4).
+   * @param {number}            len  - Total byte length (w  h  4).
    */
   AdarshEngine.prototype._applyPipeline = function (src, dst, len) {
     var bp    = this.params.blackPoint;
     var wp    = this.params.whitePoint;
     var gamma = this.params.gamma;
-    var vib   = this.params.vibrance / 100;  // normalise to -1…+1
-    var temp  = this.params.temperature || 0; // -100…+100
+    var vib   = this.params.vibrance / 100;  // normalise to -1+1
+    var temp  = this.params.temperature || 0; // -100+100
 
-    // ── Phase 8: Safety guards ──────────────────────────────────
+    //  Phase 8: Safety guards 
     if (gamma <= 0) gamma = 0.01;
     var range = wp - bp;
     if (range < 1) range = 1;  // prevent division by zero
@@ -88,33 +88,33 @@
     var invRange = 1 / range;
     var invGamma = 1 / gamma;
 
-    // ── Phase 3: Pre-compute LUT for Levels ─────────────────────
-    // Maps 0–255 input → 0–255 output after levels + gamma.
+    //  Phase 3: Pre-compute LUT for Levels 
+    // Maps 0255 input  0255 output after levels + gamma.
     // LUT avoids per-pixel pow() calls for massive speed gain.
     var lut = new Uint8Array(256);
     for (var i = 0; i < 256; i++) {
       // 1. Normalise against black/white points
       var norm = (i - bp) * invRange;
-      // 2. Clamp 0–1
+      // 2. Clamp 01
       if (norm < 0) norm = 0;
       if (norm > 1) norm = 1;
       // 3. Gamma correction
       var gc = Math.pow(norm, invGamma);
-      // 4. Map back to 0–255 (fast round)
+      // 4. Map back to 0255 (fast round)
       lut[i] = (gc * 255 + 0.5) | 0;
     }
 
-    // ── Process every pixel ─────────────────────────────────────
-    // ── Temperature: pre-compute R/B shift ──────────────────────
+    //  Process every pixel 
+    //  Temperature: pre-compute R/B shift 
     // Warm: boost red, reduce blue.  Cool: boost blue, reduce red.
     // Uses a gentle cubic curve for natural feel (like Lightroom).
     var tempShiftR = 0, tempShiftB = 0;
     if (temp !== 0) {
-      var tNorm = temp / 100;  // -1…+1
+      var tNorm = temp / 100;  // -1+1
       // Cubic for smooth response: sign * abs^0.7 * maxShift
       var sign = tNorm >= 0 ? 1 : -1;
       var curve = sign * Math.pow(Math.abs(tNorm), 0.7);
-      tempShiftR =  curve * 30;  // max ±30
+      tempShiftR =  curve * 30;  // max 30
       tempShiftB = -curve * 30;  // opposite direction
     }
 
@@ -139,7 +139,7 @@
 
         // Amount: boost less-saturated pixels more, protect already-
         // saturated colours. Quadratic scaling for smooth response.
-        // diff/255 → 0 when fully saturated, 1 when grey.
+        // diff/255  0 when fully saturated, 1 when grey.
         var sat = diff / 255;
         var amt = vib * (1 - sat) * (1 - sat);
 
@@ -163,7 +163,7 @@
   };
 
   /**
-   * Clamp value to 0–255 integer (static utility).
+   * Clamp value to 0255 integer (static utility).
    * @param {number} v
    * @returns {number}
    */
@@ -173,9 +173,9 @@
     return v | 0;
   };
 
-  // ═══════════════════════════════════════════════════════════════════
-  //  v2: AUTO LEVELS — Histogram-based intelligent correction
-  // ═══════════════════════════════════════════════════════════════════
+  // 
+  //  v2: AUTO LEVELS  Histogram-based intelligent correction
+  // 
 
   /**
    * Auto-detect optimal black point, white point, and gamma by
@@ -184,10 +184,10 @@
    * Production-hardened algorithm:
    *   1. Build a luminance histogram (256 bins) from originalImageData.
    *   2. Compute cumulative distribution.
-   *   3. Find shadow boundary (bottom 1% outlier clip) → black point.
-   *   4. Find highlight boundary (top 1% outlier clip) → white point.
-   *   5. Compute average luminance → derive gamma for balanced midtones.
-   *   6. Apply safety clamps: min range 30, gamma 0.5–2.0, skin-safe.
+   *   3. Find shadow boundary (bottom 1% outlier clip)  black point.
+   *   4. Find highlight boundary (top 1% outlier clip)  white point.
+   *   5. Compute average luminance  derive gamma for balanced midtones.
+   *   6. Apply safety clamps: min range 30, gamma 0.52.0, skin-safe.
    *   7. Update slider DOM + params, trigger render.
    *
    * Designed to improve:
@@ -204,7 +204,7 @@
       return;
     }
 
-    // Guard: don't run during active crop — canvas state is invalid
+    // Guard: don't run during active crop  canvas state is invalid
     if (this.cropActive) {
       this._warn('autoLevels: Cannot run while crop is active');
       return;
@@ -215,7 +215,7 @@
 
     if (totalPixels < 1) return;
 
-    // ── Step 1: Build luminance histogram ────────────────────────
+    //  Step 1: Build luminance histogram 
     var hist = new Uint32Array(256);
     var lumSum = 0;
 
@@ -228,7 +228,7 @@
       lumSum += lum;
     }
 
-    // ── Step 2: Cumulative distribution for outlier clipping ─────
+    //  Step 2: Cumulative distribution for outlier clipping 
     // Using 1% clip (wider buffer than 0.5%) to prevent shadow crush
     // and highlight washout on passport photos.
     var clipPercent = 0.01; // 1%
@@ -258,7 +258,7 @@
       }
     }
 
-    // ── Step 3: Safety — enforce minimum range ──────────────────
+    //  Step 3: Safety  enforce minimum range 
     // Minimum 30-unit range prevents over-stretch on narrow histograms
     // (e.g., fully white backgrounds, very low contrast images).
     if (whitePoint - blackPoint < 30) {
@@ -273,31 +273,31 @@
     // Hard floor: never set white below 200 (preserves highlight detail)
     if (whitePoint < 200) whitePoint = 200;
 
-    // ── Step 4: Derive gamma from average luminance ─────────────
+    //  Step 4: Derive gamma from average luminance 
     // Map the average brightness to a gamma correction.
     // Target midpoint = 128. If avg < 128, gamma > 1 (brighten).
     var avgLum = lumSum / totalPixels;
     var range = whitePoint - blackPoint;
     if (range < 1) range = 1;
 
-    // Normalise average to 0–1 within the detected range
+    // Normalise average to 01 within the detected range
     var normAvg = (avgLum - blackPoint) / range;
     if (normAvg < 0.02) normAvg = 0.02;
     if (normAvg > 0.98) normAvg = 0.98;
 
-    // Target: midtone should map to 0.5 → solve gamma
-    // 0.5 = normAvg ^ (1/gamma) → gamma = -ln(2) / ln(normAvg)
+    // Target: midtone should map to 0.5  solve gamma
+    // 0.5 = normAvg ^ (1/gamma)  gamma = -ln(2) / ln(normAvg)
     var rawGamma = -Math.log(2) / Math.log(normAvg);
 
     // Guard NaN/Infinity from edge-case log values
     if (!isFinite(rawGamma) || isNaN(rawGamma)) rawGamma = 1.0;
 
-    // Blend: 50% calculated, 50% neutral — gentle correction
+    // Blend: 50% calculated, 50% neutral  gentle correction
     // preserves natural skin tones and prevents over-correction
     var gamma = rawGamma * 0.5 + 1.0 * 0.5;
 
-    // ── Step 5: Safety clamps ───────────────────────────────────
-    // Tighter range (0.5–2.0) than v1 — prevents unnatural contrast
+    //  Step 5: Safety clamps 
+    // Tighter range (0.52.0) than v1  prevents unnatural contrast
     if (gamma < 0.5) gamma = 0.5;
     if (gamma > 2.0) gamma = 2.0;
 
@@ -313,7 +313,7 @@
       'AvgLum=' + avgLum.toFixed(1)
     );
 
-    // ── Step 6: Apply to sliders and parameters ─────────────────
+    //  Step 6: Apply to sliders and parameters 
     this.params.blackPoint = blackPoint;
     this.params.whitePoint = whitePoint;
     this.params.gamma = gamma;
@@ -331,36 +331,36 @@
 
     this._syncHandlePositions();
 
-    // ── Step 7: Re-render with new values ───────────────────────
+    //  Step 7: Re-render with new values 
     this.render();
   };
 
-  // ═══════════════════════════════════════════════════════════════════
+  // 
   //  v2: FUTURE PLACEHOLDERS
-  // ═══════════════════════════════════════════════════════════════════
+  // 
 
   /**
-   * Auto skin-tone balance — placeholder for future implementation.
+   * Auto skin-tone balance  placeholder for future implementation.
    * Will detect skin-tone regions and balance colour temperature.
    */
   AdarshEngine.prototype.autoSkinBalance = function () {
-    this._log('autoSkinBalance() — not yet implemented (future release)');
+    this._log('autoSkinBalance()  not yet implemented (future release)');
   };
 
   /**
-   * Background whitening — placeholder for future implementation.
+   * Background whitening  placeholder for future implementation.
    * Will detect and whiten passport photo backgrounds.
    */
   AdarshEngine.prototype.backgroundWhitening = function () {
-    this._log('backgroundWhitening() — not yet implemented (future release)');
+    this._log('backgroundWhitening()  not yet implemented (future release)');
   };
 
   /**
-   * Sharpness enhancement — placeholder for future implementation.
+   * Sharpness enhancement  placeholder for future implementation.
    * Will apply unsharp mask for improved detail clarity.
    */
   AdarshEngine.prototype.sharpnessEnhancement = function () {
-    this._log('sharpnessEnhancement() — not yet implemented (future release)');
+    this._log('sharpnessEnhancement()  not yet implemented (future release)');
   };
 
 })();

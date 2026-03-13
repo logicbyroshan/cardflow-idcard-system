@@ -4,7 +4,7 @@
 (function() {
 'use strict';
 
-// IMAGE FIELD TYPES — Must stay in sync with mediafiles/constants.py and idcard-actions-upload.js
+// IMAGE FIELD TYPES  Must stay in sync with mediafiles/constants.py and idcard-actions-upload.js
 if (typeof IMAGE_FIELD_TYPES === 'undefined') {
     var IMAGE_FIELD_TYPES = ['photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature', 'image'];
 }
@@ -222,7 +222,7 @@ function populateFormFields(cardData) {
             if (!fieldName) {
                 return;
             }
-            // Skip .image-path-input elements — they are already populated
+            // Skip .image-path-input elements  they are already populated
             // when their sibling .image-input (file input) is processed above.
             if (input.classList.contains('image-path-input')) {
                 return;

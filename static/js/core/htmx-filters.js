@@ -1,8 +1,8 @@
 /**
  * HTMX Filter Bridge v1.1.0
- * ──────────────────────────
+ * 
  * Replaces client-side DOM show/hide filtering with server-side HTMX requests.
- * Layers on top of existing JS — does not modify page-specific code.
+ * Layers on top of existing JS  does not modify page-specific code.
  *
  * v1.1.0: In-flight dedup guard, abort on new request, expose refresh/abort
  *
@@ -26,13 +26,13 @@
 
   /**
    * @param {Object} config
-   * @param {string}   config.baseUrl      — Django view URL (no query string)
-   * @param {string}   config.target       — CSS selector for HTMX swap target
-   * @param {string}   config.searchInputId — ID of the search <input>
-   * @param {Array}    [config.filters]    — [{name, optionsId}] custom dropdown filters
-   * @param {Array}    [config.tabs]       — [{name, selector}] status tab groups
-   * @param {Object}   [config.staticParams] — {key: value|function}
-   * @param {number}   [config.debounceMs] — debounce delay for search (default: 400)
+   * @param {string}   config.baseUrl       Django view URL (no query string)
+   * @param {string}   config.target        CSS selector for HTMX swap target
+   * @param {string}   config.searchInputId  ID of the search <input>
+   * @param {Array}    [config.filters]     [{name, optionsId}] custom dropdown filters
+   * @param {Array}    [config.tabs]        [{name, selector}] status tab groups
+   * @param {Object}   [config.staticParams]  {key: value|function}
+   * @param {number}   [config.debounceMs]  debounce delay for search (default: 400)
    * @returns {{ refresh: Function, getParams: Function }}
    */
   function initHTMXFilters(config) {
@@ -45,10 +45,10 @@
     var debounceMs   = config.debounceMs || 400;
     var bindEvents   = config.bindEvents !== false; // default true
 
-    // ── In-flight request guard (prevents duplicate network requests) ──
+    //  In-flight request guard (prevents duplicate network requests) 
     var _inFlight    = false;
 
-    // ── Collect current filter parameters ──────────────────────────
+    //  Collect current filter parameters 
     function getParams() {
       var params = new URLSearchParams();
 
@@ -98,7 +98,7 @@
       return params;
     }
 
-    // ── Fire HTMX request (with dedup + abort previous) ───────────
+    //  Fire HTMX request (with dedup + abort previous) 
     var _requestSeq = 0;  // Sequence counter to discard stale responses
     function refresh() {
       if (typeof htmx === 'undefined') return;
@@ -122,9 +122,9 @@
       });
     }
 
-    // ── Wire event listeners (skipped when bindEvents is false) ───
+    //  Wire event listeners (skipped when bindEvents is false) 
     if (bindEvents) {
-      // ── Wire search input (debounced) ────────────────────────────
+      //  Wire search input (debounced) 
       var timer;
       if (searchInput) {
         searchInput.addEventListener('input', function () {
@@ -145,7 +145,7 @@
         }
       }
 
-      // ── Wire dropdown filter option clicks (delegated) ───────────
+      //  Wire dropdown filter option clicks (delegated) 
       for (var i = 0; i < filters.length; i++) {
         (function (f) {
           var optionsEl = document.getElementById(f.optionsId);
@@ -159,7 +159,7 @@
         })(filters[i]);
       }
 
-      // ── Wire status tabs ─────────────────────────────────────────
+      //  Wire status tabs 
       for (var t = 0; t < tabs.length; t++) {
         (function (tabConfig) {
           var tabEls = document.querySelectorAll(tabConfig.selector);
@@ -180,6 +180,6 @@
     return { refresh: refresh, getParams: getParams };
   }
 
-  // ── Expose globally ──────────────────────────────────────────────
+  //  Expose globally 
   window.initHTMXFilters = initHTMXFilters;
 })();

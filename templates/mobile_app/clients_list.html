@@ -1,7 +1,7 @@
 {% extends "mobile_app/base.html" %}
 {% load static %}
 
-{% block title %}Clients – Adarsh ID Cards{% endblock %}
+{% block title %}Clients  Adarsh ID Cards{% endblock %}
 
 {% block content %}
 <div class="flex flex-col" style="height: 100vh; height: 100dvh;"
@@ -74,9 +74,9 @@
                         <div class="flex items-center gap-2 mt-0.5 flex-wrap">
                             <span class="text-[9px] font-bold px-2 py-0.5 rounded-full"
                                   :class="c.status === 'active' ? 'bg-green-50 text-green-600 border border-green-200' : 'bg-gray-100 text-gray-400 border border-gray-200'">
-                                <span x-text="c.status === 'active' ? '● Active' : '○ Inactive'"></span>
+                                <span x-text="c.status === 'active' ? ' Active' : ' Inactive'"></span>
                             </span>
-                            <span class="text-[10px] text-gray-400" x-text="(c.tables_count || 0) + ' tables · ' + (c.cards_count || 0) + ' cards'"></span>
+                            <span class="text-[10px] text-gray-400" x-text="(c.tables_count || 0) + ' tables  ' + (c.cards_count || 0) + ' cards'"></span>
                         </div>
                     </div>
                     <!-- Chevron -->
@@ -105,7 +105,7 @@
                     <template x-if="loadingTables[c.id]">
                         <div class="flex items-center justify-center py-6 gap-2 text-indigo-400">
                             <i class="fa-solid fa-spinner fa-spin text-sm"></i>
-                            <span class="text-xs font-medium">Loading tables…</span>
+                            <span class="text-xs font-medium">Loading tables</span>
                         </div>
                     </template>
 

@@ -28,7 +28,11 @@ function bulkVerify(cardIds) {
                     if (typeof showToast === 'function') {
                         showToast(data.message || `${data.updated_count} card(s) verified`, !data.skipped_count);
                     }
-                    IDCardApp.refreshCardTable();
+                    if (typeof IDCardApp.removeCardRows === 'function') {
+                        IDCardApp.removeCardRows(cardIds, { removedCount: data.updated_count });
+                    } else {
+                        IDCardApp.refreshCardTable();
+                    }
                 })
                 .catch(err => {
                     if (typeof showToast === 'function') showToast(err.message || 'Bulk verify failed', false);
@@ -54,7 +58,11 @@ function bulkApprove(cardIds) {
                     if (typeof showToast === 'function') {
                         showToast(data.message || `${data.updated_count} card(s) approved`, !data.skipped_count);
                     }
-                    IDCardApp.refreshCardTable();
+                    if (typeof IDCardApp.removeCardRows === 'function') {
+                        IDCardApp.removeCardRows(cardIds, { removedCount: data.updated_count });
+                    } else {
+                        IDCardApp.refreshCardTable();
+                    }
                 })
                 .catch(err => {
                     if (typeof showToast === 'function') showToast(err.message || 'Bulk approve failed', false);
@@ -285,7 +293,7 @@ function initBulkActionHandlers() {
         }
     });
 
-    // Delete button — Verified list
+    // Delete button  Verified list
     document.getElementById('deleteBtnV')?.addEventListener('click', function() {
         const selectedIds = _getIds();
         if (selectedIds.length > 0) {
@@ -293,7 +301,7 @@ function initBulkActionHandlers() {
         }
     });
 
-    // Delete button — Approved list
+    // Delete button  Approved list
     document.getElementById('deleteBtnA')?.addEventListener('click', function() {
         const selectedIds = _getIds();
         if (selectedIds.length > 0) {
@@ -301,7 +309,7 @@ function initBulkActionHandlers() {
         }
     });
 
-    // Delete button — Download list
+    // Delete button  Download list
     document.getElementById('deleteBtnD')?.addEventListener('click', function() {
         const selectedIds = _getIds();
         if (selectedIds.length > 0) {
@@ -325,7 +333,7 @@ function initBulkActionHandlers() {
         }
     });
     
-    // Disapprove Selected button (Approved list → move to pending)
+    // Disapprove Selected button (Approved list  move to pending)
     document.getElementById('disapproveBtn')?.addEventListener('click', function() {
         const selectedIds = _getIds();
         if (selectedIds.length > 0) {

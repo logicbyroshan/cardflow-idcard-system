@@ -6,7 +6,7 @@
  * appears letting the user adjust the crop area before the image
  * is set on the field.
  *
- * Usage: window.ImageCropper.open(file, options) → Promise<File|null>
+ * Usage: window.ImageCropper.open(file, options)  Promise<File|null>
  */
 (function() {
 'use strict';
@@ -33,10 +33,10 @@ function getElements() {
 }
 
 function bindEvents() {
-    // Close / Cancel → resolve(null)
+    // Close / Cancel  resolve(null)
     closeBtn?.addEventListener('click', cancel);
     cancelBtn?.addEventListener('click', skip);
-    // Do NOT close on click-outside — user may accidentally lose their crop
+    // Do NOT close on click-outside  user may accidentally lose their crop
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape' && overlay?.classList.contains('active')) cancel();
     });
@@ -79,18 +79,18 @@ function openModal(file) {
     return new Promise(function(resolve) {
         resolvePromise = resolve;
 
-        // Read file → set image src
+        // Read file  set image src
         var reader = new FileReader();
         reader.onload = function(ev) {
             image.src = ev.target.result;
 
-            // Show overlay — use style.display directly so that an initial
+            // Show overlay  use style.display directly so that an initial
             // style="display:none" inline attribute does not block us,
             // and any CSS-class bleed from other modals cannot interfere.
             overlay.style.display = 'flex';
             document.body.style.overflow = 'hidden';
 
-            // Reset aspect buttons — default to free (select whole image)
+            // Reset aspect buttons  default to free (select whole image)
             aspectBtns.forEach(b => b.classList.remove('active'));
             var freeBtn = overlay.querySelector('[data-aspect="free"]');
             if (freeBtn) freeBtn.classList.add('active');
@@ -124,7 +124,7 @@ function openModal(file) {
 
 function closeModal() {
     if (cropper) { cropper.destroy(); cropper = null; }
-    // Hide via inline style — robust against any CSS class conflicts
+    // Hide via inline style  robust against any CSS class conflicts
     if (overlay) { overlay.style.display = 'none'; }
     document.body.style.overflow = '';
     if (image) { image.src = ''; }
@@ -136,7 +136,7 @@ function cancel() {
 }
 
 function skip() {
-    // Skip cropping — return original file reference marker
+    // Skip cropping  return original file reference marker
     closeModal();
     if (resolvePromise) { resolvePromise('skip'); resolvePromise = null; }
 }

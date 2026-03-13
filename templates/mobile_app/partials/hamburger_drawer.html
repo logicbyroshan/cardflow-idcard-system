@@ -1,5 +1,5 @@
 {% load static %}
-<!-- Hamburger Side Drawer â€” slides in from the right -->
+<!-- Hamburger Side Drawer  -  slides in from the right -->
 <!-- Controlled by Alpine.js; opened via $dispatch('open-hamburger') from navbar btn -->
 <div x-data="hamburgerDrawer()"
      x-on:open-hamburger.window="open()"
@@ -29,7 +29,7 @@
          class="pwa-drawer-panel fixed top-0 right-0 bottom-0 z-[201] w-[78vw] max-w-[310px] bg-white shadow-2xl flex flex-col"
          style="display:none;">
 
-        <!-- â”€â”€ Header â”€â”€ -->
+        <!-- -- Header -- -->
         <div class="pwa-drawer-header relative flex items-center justify-between px-5 pt-[calc(env(safe-area-inset-top,0px)+14px)] pb-4 bg-gradient-to-br from-[#667eea] to-[#764ba2]">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white select-none border border-white/30">
@@ -58,10 +58,10 @@
             </button>
         </div>
 
-        <!-- â”€â”€ Scrollable menu body â”€â”€ -->
+        <!-- -- Scrollable menu body -- -->
         <div class="flex-1 overflow-y-auto pb-[env(safe-area-inset-bottom,16px)]">
 
-            <!-- â”€â”€ TEAM STATS 2Ã—2 (admins only) â”€â”€ -->
+            <!-- -- TEAM STATS 2x2 (admins only) -- -->
             {% if is_super_admin or is_admin_staff %}
             <div class="px-4 pt-5 pb-3">
                 <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Team Overview</p>
@@ -116,14 +116,14 @@
             <div class="mx-4 border-t border-gray-100"></div>
             {% endif %}
 
-            <!-- â”€â”€ ACTION BUTTONS â”€â”€ -->
+            <!-- -- ACTION BUTTONS -- -->
             {% if is_super_admin or is_admin_staff or is_client %}
             <div class="px-4 pt-4 pb-1">
                 <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Quick Actions</p>
                 <div class="flex flex-col gap-2.5">
 
                     {% if is_super_admin or is_admin_staff %}
-                    <!-- Add Client â€” opens desktop panel in new tab to keep PWA shell intact (H4 fix) -->
+                    <!-- Add Client  -  opens desktop panel in new tab to keep PWA shell intact (H4 fix) -->
                     <a href="/panel/manage-clients/"
                        target="_blank" rel="noopener noreferrer"
                        @click="close()"
@@ -150,7 +150,7 @@
             <div class="mx-4 mt-4 border-t border-gray-100"></div>
             {% endif %}
 
-            <!-- â”€â”€ NAVIGATION â”€â”€ -->
+            <!-- -- NAVIGATION -- -->
             <div class="px-4 pt-4 pb-1">
                 <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Navigation</p>
             </div>

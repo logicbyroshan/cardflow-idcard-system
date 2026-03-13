@@ -1,6 +1,6 @@
 /**
- * AdarshEngine — Navigation, Crop & Save
- * ═══════════════════════════════════════════════════════════════
+ * AdarshEngine  Navigation, Crop & Save
+ * 
  *
  * Extends AdarshEngine with:
  *   - Image list navigation (prev/next)
@@ -18,9 +18,9 @@
     return;
   }
 
-  // ═══════════════════════════════════════════════════════════════════
+  // 
   //  v3: IMAGE NAVIGATION (prev/next)
-  // ═══════════════════════════════════════════════════════════════════
+  // 
 
   /**
    * Set the image list for navigation.
@@ -106,9 +106,9 @@
     }
   };
 
-  // ═══════════════════════════════════════════════════════════════════
+  // 
   //  PHASE 5: MANUAL CROP (using existing Cropper.js)
-  // ═══════════════════════════════════════════════════════════════════
+  // 
 
   /**
    * Toggle crop mode on/off.
@@ -175,7 +175,7 @@
     this.cropActive = true;
     e.cropBtn.classList.add('ae-active');
     e.cropBtn.innerHTML =
-      '<i class="fa-solid fa-crop-simple" aria-hidden="true"></i> Cropping…';
+      '<i class="fa-solid fa-crop-simple" aria-hidden="true"></i> Cropping';
     e.cropToolbar.classList.add('ae-visible');
 
     this._log('Crop mode started');
@@ -224,7 +224,7 @@
       // Replace the full-res image with cropped version
       self.loadImage(img);
       self._showLoading(false);
-      self._log('Crop applied:', img.naturalWidth, '×', img.naturalHeight);
+      self._log('Crop applied:', img.naturalWidth, '', img.naturalHeight);
     };
     img.onerror = function () {
       self._showLoading(false);
@@ -257,9 +257,9 @@
     }
   };
 
-  // ═══════════════════════════════════════════════════════════════════
-  //  PHASE 6 + v2: SAVE — Re-apply pipeline at full resolution
-  // ═══════════════════════════════════════════════════════════════════
+  // 
+  //  PHASE 6 + v2: SAVE  Re-apply pipeline at full resolution
+  // 
 
   /**
    * Extract the filesystem path from a serve-image URL.
@@ -310,7 +310,7 @@
     e.save.disabled = true;
     e.save.classList.add('ae-saving');
     e.save.innerHTML =
-      '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Saving…';
+      '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Saving';
 
     // Phase 7: Let UI update before heavy pixel work
     setTimeout(function () {
@@ -324,10 +324,10 @@
           var scale = AdarshEngine.MAX_EXPORT_DIM / Math.max(fw, fh);
           fw = Math.round(fw * scale);
           fh = Math.round(fh * scale);
-          self._log('Export capped to:', fw, '×', fh);
+          self._log('Export capped to:', fw, '', fh);
         }
 
-        self._log('Saving at full resolution:', fw, '×', fh);
+        self._log('Saving at full resolution:', fw, '', fh);
         var t0 = self.debug ? performance.now() : 0;
 
         // Draw full-res to offscreen canvas
@@ -362,7 +362,7 @@
         srcData = null;
         dstData = null;
 
-        // ── v3: Save to /edited/ folder via engine-based adjustments ─────────────
+        //  v3: Save to /edited/ folder via engine-based adjustments 
         var originalPath = self.sourcePath || self._extractPathFromUrl(self.sourceUrl);
         if (originalPath) {
           // Check if any adjustments were made
@@ -378,11 +378,11 @@
             // Use engine-based adjustments for higher quality
             self._saveViaEngine(originalPath, self.currentFilename, self.params);
           } else {
-            // No adjustments — skip saving (file would be identical)
-            self._log('No adjustments made — skipping /edited/ save');
+            // No adjustments  skip saving (file would be identical)
+            self._log('No adjustments made  skipping /edited/ save');
           }
         } else {
-          self._log('No filesystem path detected — skipping /edited/ save');
+          self._log('No filesystem path detected  skipping /edited/ save');
         }
 
         // Phase 6: Call the callback (replaces preview + triggers save)
@@ -395,7 +395,7 @@
           Toast.success('Image saved!');
         }
 
-        // v3: Save does NOT close the editor — user uses X to close
+        // v3: Save does NOT close the editor  user uses X to close
 
       } catch (err) {
         // Phase 8: Catch save errors
@@ -461,7 +461,7 @@
       if (!resp.ok) {
         // Handle 503 (engine not running) specifically
         if (resp.status === 503) {
-          self._warn('Engine not running — falling back to browser save');
+          self._warn('Engine not running  falling back to browser save');
           // Fallback: use the legacy base64 save
           return self._saveToEditedFolderFallback(originalPath, filename);
         }
@@ -482,7 +482,7 @@
       }
     })
     .catch(function (err) {
-      // Network error — non-blocking, just log
+      // Network error  non-blocking, just log
       self._warn('Engine adjust-image request failed:', err.message || err);
     });
   };
@@ -536,7 +536,7 @@
 
   /**
    * v2: POST the edited image to the backend for /edited/ folder save.
-   * Non-blocking — errors are logged but don't prevent the callback save.
+   * Non-blocking  errors are logged but don't prevent the callback save.
    * This is the legacy method used as fallback when engine is unavailable.
    *
    * @param {string} dataUrl      - The full-res JPEG data URL.
@@ -592,7 +592,7 @@
       }
     })
     .catch(function (err) {
-      // Network error — non-blocking, just log
+      // Network error  non-blocking, just log
       self._warn('Save to /edited/ request failed:', err.message || err);
     });
   };

@@ -1,5 +1,5 @@
 /**
- * Lazy Loader — dynamic script/CSS injection for heavy vendor libraries.
+ * Lazy Loader  dynamic script/CSS injection for heavy vendor libraries.
  * Avoids loading ~740KB+ on every page load.
  *
  * Paths are resolved via window.__STATIC_URLS (set by Django {% static %} tags)
@@ -67,7 +67,7 @@ function _loadCSS(url) {
 
 window.LazyLoad = {
     /**
-     * Load SheetJS (XLSX) — ~500KB
+     * Load SheetJS (XLSX)  ~500KB
      * @returns {Promise<XLSX>}
      */
     xlsx: function() {
@@ -75,7 +75,7 @@ window.LazyLoad = {
     },
 
     /**
-     * Load JSZip — ~100KB
+     * Load JSZip  ~100KB
      * @returns {Promise<JSZip>}
      */
     jszip: function() {
@@ -83,7 +83,7 @@ window.LazyLoad = {
     },
 
     /**
-     * Load Cropper.js + CSS — ~90KB + 4KB CSS
+     * Load Cropper.js + CSS  ~90KB + 4KB CSS
      * @returns {Promise<Cropper>}
      */
     cropper: function() {
@@ -94,7 +94,7 @@ window.LazyLoad = {
     },
 
     /**
-     * Load Flatpickr + CSS — ~50KB + 16KB CSS
+     * Load Flatpickr + CSS  ~50KB + 16KB CSS
      * @returns {Promise<flatpickr>}
      */
     flatpickr: function() {

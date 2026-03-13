@@ -1,6 +1,6 @@
 // ID Card Actions - Upload Logic Sub-module
 // XLSX file parsing, validation, XHR upload, ZIP handling
-// Part of IDCardApp module system — registers functions on window.IDCardApp
+// Part of IDCardApp module system  registers functions on window.IDCardApp
 
 (function() {
 'use strict';
@@ -45,7 +45,7 @@ function initXlsxUpload() {
     if (closeUploadModal) closeUploadModal.addEventListener('click', closeUploadModalFn);
     if (cancelUploadModal) cancelUploadModal.addEventListener('click', closeUploadModalFn);
     if (uploadModalOverlay) {
-        // Disabled — prevent accidental closure on outside click
+        // Disabled  prevent accidental closure on outside click
     }
 
     // Upload XLSX button opens the modal (Step 1)
@@ -80,7 +80,7 @@ function initXlsxUpload() {
         });
     }
 
-    // File input change handler — validates and shows field mapping
+    // File input change handler  validates and shows field mapping
     if (xlsxFileInput) {
         xlsxFileInput.addEventListener('change', async function() {
             var file = this.files[0];
@@ -201,7 +201,7 @@ function initXlsxUpload() {
         });
     }
 
-    // ── NEXT button (Step 1 → Step 2) ──
+    //  NEXT button (Step 1  Step 2) 
     if (nextBtn) {
         nextBtn.addEventListener('click', function() {
             var mapping = getCurrentFieldMapping();
@@ -213,14 +213,14 @@ function initXlsxUpload() {
         });
     }
 
-    // ── BACK button (Step 2 → Step 1) ──
+    //  BACK button (Step 2  Step 1) 
     if (backBtn) {
         backBtn.addEventListener('click', function() {
             setWizardStep(1);
         });
     }
 
-    // ── UPLOAD button (Step 2 — send to server) ──
+    //  UPLOAD button (Step 2  send to server) 
     if (confirmUploadModal) {
         var _uploadXhr = null; // Store current XHR for cancel support
         
@@ -280,7 +280,7 @@ function initXlsxUpload() {
                 formData.append('unified_zip_count', unifiedZips.length.toString());
             }
 
-            // ── Reusable upload sender (supports retry with fresh XHR) ──
+            //  Reusable upload sender (supports retry with fresh XHR) 
             function _createAndSendXhr() {
             var xhr = new XMLHttpRequest();
             _uploadXhr = xhr; // Store reference for cancel
@@ -334,7 +334,7 @@ function initXlsxUpload() {
                 if (progressBar) progressBar.classList.add('processing');
             });
 
-            // ── Retry helper: creates a fresh XHR with all handlers ──
+            //  Retry helper: creates a fresh XHR with all handlers 
             function _retryUpload(reason) {
                 _uploadRetryCount = (_uploadRetryCount || 0) + 1;
                 if (_uploadRetryCount > 2) {
@@ -379,15 +379,15 @@ function initXlsxUpload() {
                             }, 1500);
                         }, 500);
                     } else if (xhr.status === 429) {
-                        // Rate limited or duplicate request — retry after delay
+                        // Rate limited or duplicate request  retry after delay
                         var retryMsg = result.message || 'Server is busy. Retrying...';
                         if (typeof showToast === 'function') showToast(retryMsg, 'warning');
                         _retryUpload('ratelimit');
                     } else {
                         var errorMessage = result.message || 'Upload failed (status: ' + xhr.status + ')';
                         if (result.errors && Array.isArray(result.errors) && result.errors.length > 0) {
-                            var errorList = result.errors.slice(0, 3).join('\n• ');
-                            errorMessage += '\n\n• ' + errorList;
+                            var errorList = result.errors.slice(0, 3).join('\n ');
+                            errorMessage += '\n\n ' + errorList;
                             if (result.errors.length > 3) {
                                 errorMessage += '\n... and ' + (result.errors.length - 3) + ' more errors';
                             }
@@ -399,7 +399,7 @@ function initXlsxUpload() {
                     console.error('Parse error:', error, 'Response status:', xhr.status, 'Response text:', xhr.responseText ? xhr.responseText.substring(0, 200) : '(empty)');
                     var parseErrorMsg = 'Server error';
                     if (xhr.status === 413) parseErrorMsg = 'File too large. Please reduce the file size and try again.';
-                    else if (xhr.status === 502 || xhr.status === 504) parseErrorMsg = 'Server timeout — the file may be too large. Please try again.';
+                    else if (xhr.status === 502 || xhr.status === 504) parseErrorMsg = 'Server timeout  the file may be too large. Please try again.';
                     else if (xhr.status === 500) parseErrorMsg = 'Server error while processing upload. Please try again.';
                     else if (xhr.status === 0) parseErrorMsg = 'Connection lost. Please check your internet and try again.';
                     else parseErrorMsg = 'Failed to process server response (HTTP ' + xhr.status + ')';
@@ -409,13 +409,13 @@ function initXlsxUpload() {
             });
 
             xhr.addEventListener('error', function() {
-                console.error('Upload XHR error — network failure');
+                console.error('Upload XHR error  network failure');
                 _retryUpload('network');
             });
 
             xhr.addEventListener('timeout', function() {
                 console.error('Upload XHR timeout after 10 minutes');
-                if (typeof showToast === 'function') showToast('Upload timed out — the server took too long to respond. Please try with a smaller file.', 'warning');
+                if (typeof showToast === 'function') showToast('Upload timed out  the server took too long to respond. Please try with a smaller file.', 'warning');
                 resetUploadState();
             });
 
@@ -470,7 +470,7 @@ function initUnifiedZipUpload() {
             }
             if (file.size > MAX_ZIP_SIZE_BYTES) {
                 var sizeMB = (file.size / (1024 * 1024)).toFixed(0);
-                if (typeof showToast === 'function') showToast(file.name + ' is ' + sizeMB + ' MB — maximum allowed is 950 MB. Please split into smaller ZIPs.', 'error');
+                if (typeof showToast === 'function') showToast(file.name + ' is ' + sizeMB + ' MB  maximum allowed is 950 MB. Please split into smaller ZIPs.', 'error');
                 continue;
             }
             if (_us.unifiedZipFiles.some(function(f) { return f.name === file.name; })) {
@@ -572,7 +572,7 @@ function initZipUpload() {
         var _maxZip = 950 * 1024 * 1024;
         if (file.size > _maxZip) {
             var _sizeMB = (file.size / (1024 * 1024)).toFixed(0);
-            if (typeof showToast === 'function') showToast('ZIP is ' + _sizeMB + ' MB — maximum allowed is 950 MB. Please split into smaller ZIPs.', 'error');
+            if (typeof showToast === 'function') showToast('ZIP is ' + _sizeMB + ' MB  maximum allowed is 950 MB. Please split into smaller ZIPs.', 'error');
             fileInput.value = '';
             return;
         }

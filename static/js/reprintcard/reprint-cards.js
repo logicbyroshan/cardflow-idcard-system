@@ -279,7 +279,6 @@ function updateEmptyTable(tableBody, iconClass, text, totalCountEl, showingRange
 
   var modal = document.getElementById('reprintConfirmModal');
   var countEl = document.getElementById('reprintConfirmCount');
-  var reasonEl = document.getElementById('reprintReasonInput');
   var submitBtn = document.getElementById('reprintConfirmSubmit');
   var cancelBtn = document.getElementById('reprintConfirmCancel');
   var closeBtn = document.getElementById('reprintConfirmClose');
@@ -289,7 +288,6 @@ function updateEmptyTable(tableBody, iconClass, text, totalCountEl, showingRange
   function openModal(cardIds) {
     pendingCardIds = cardIds;
     if (countEl) countEl.textContent = cardIds.length;
-    if (reasonEl) reasonEl.value = '';
     if (modal) modal.classList.add('show');
   }
 
@@ -309,9 +307,8 @@ function updateEmptyTable(tableBody, iconClass, text, totalCountEl, showingRange
   if (submitBtn) {
     submitBtn.addEventListener('click', function() {
       if (!pendingCardIds.length) return;
-      var reason = reasonEl ? reasonEl.value.trim() : '';
       closeModal();
-      ApiClient.post(ENDPOINTS.requestCreate, { card_ids: pendingCardIds, reason: reason })
+      ApiClient.post(ENDPOINTS.requestCreate, { card_ids: pendingCardIds })
         .then(function(data) {
           if (data.status === 'ok') {
             showToast(data.message || 'Added to Request List', 'success');

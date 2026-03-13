@@ -1,4 +1,4 @@
-// idcard-actions-modal-view.js — SPLIT INTO SUB-MODULES
+// idcard-actions-modal-view.js  SPLIT INTO SUB-MODULES
 // This file has been split for maintainability.
 // Sub-modules:
 //   - idcard-actions-modal-view-helpers.js

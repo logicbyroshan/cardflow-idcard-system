@@ -1,5 +1,5 @@
-// Manage Staff Page — API calls and temp password functions
-// Split from manage-staff.js — loaded second
+// Manage Staff Page  API calls and temp password functions
+// Split from manage-staff.js  loaded second
 
 document.addEventListener('DOMContentLoaded', function() {
     var NS = window.ManageStaffPage;

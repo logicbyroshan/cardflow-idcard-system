@@ -1,6 +1,6 @@
 /**
- * Adarsh Cropper — Donut Chart Renderer
- * ───────────────────────────────────────
+ * Adarsh Cropper  Donut Chart Renderer
+ * 
  * Pure canvas-based donut chart.  No external chart library.
  * Must be loaded BEFORE adarsh-cropper.js.
  *

@@ -236,7 +236,7 @@ window._StaffDrawerSetup = function (cfg, ctx) {
         document.getElementById('staff-phone').value   = d.phone   || '';
         document.getElementById('staff-address').value = d.address || '';
 
-        // Status — page-specific hook sets the dropdown or hidden input
+        // Status  page-specific hook sets the dropdown or hidden input
         if (cfg.onSetStatus) cfg.onSetStatus(d.status === 'active' ? 'true' : 'false');
         else document.getElementById('staff-status').value = d.status === 'active' ? 'true' : 'false';
 
@@ -387,7 +387,7 @@ window._StaffDrawerSetup = function (cfg, ctx) {
     // Close drawer events
     if (closeDrawerBtn)  closeDrawerBtn.addEventListener('click', closeDrawer);
     if (cancelDrawerBtn) cancelDrawerBtn.addEventListener('click', function (e) { e.preventDefault(); closeDrawer(); });
-    // Outside click close disabled — prevent accidental closure
+    // Outside click close disabled  prevent accidental closure
 
     // ==================== RETURN DRAWER API ====================
     return {

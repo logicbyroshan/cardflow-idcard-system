@@ -6,39 +6,39 @@
     <table id="data-table">
         <thead class="sticky top-0 z-20">
             <tr>
-                <!-- Checkbox â€” 24px -->
+                <!-- Checkbox  -  24px -->
                 <th class="w-[24px] min-w-[24px] text-center">
                     <input type="checkbox" id="selectAll" title="Select all" aria-label="Select all">
                 </th>
-                <!-- SR NO â€” 36px, 2-line -->
+                <!-- SR NO  -  36px, 2-line -->
                 <th class="w-[36px] min-w-[36px] text-center leading-tight">SR<br>NO</th>
                 {% for field in table.fields|reorder_fields_for_display %}
                 {% check_image_field field.type field.name as is_img %}
                 {% if is_img %}
-                <!-- Image columns â€” 30px fixed -->
+                <!-- Image columns  -  30px fixed -->
                 <th class="w-[50px] min-w-[50px] text-center" data-field-name="{{ field.name }}" data-field-type="image">{{ field.name|wrap_header }}</th>
                 {% else %}
-                <!-- Dynamic columns â€” intelligent width -->
+                <!-- Dynamic columns  -  intelligent width -->
                 <th class="{{ field|get_column_width_class }} {{ field|get_column_align_class }}" data-field-name="{{ field.name }}" data-field-type="{{ field.type }}">{{ field.name|humanize_header }}</th>
                 {% endif %}
                 {% endfor %}
                 {% if current_status == 'download' and not is_client and not is_client_staff %}
-                <!-- Downloaded At â€” admin only -->
+                <!-- Downloaded At  -  admin only -->
                 <th class="w-[90px] min-w-[90px] text-center">Downloaded At</th>
                 {% elif current_status == 'pool' and not is_client and not is_client_staff %}
-                <!-- Deleted At â€” admin only -->
+                <!-- Deleted At  -  admin only -->
                 <th class="w-[90px] min-w-[90px] text-center">Deleted At</th>
                 {% elif current_status != 'download' and current_status != 'pool' and current_status != 'approved' %}
-                <!-- Action â€” fit buttons -->
+                <!-- Action  -  fit buttons -->
                 <th class="w-[60px] min-w-[60px] text-center">Action</th>
                 {% endif %}
                 {% if perm_idcard_updated_at %}
                 {% if not is_client and not is_client_staff %}
-                <!-- Updated At / Updated By â€” all statuses for admin users -->
+                <!-- Updated At / Updated By  -  all statuses for admin users -->
                 <th class="w-[90px] min-w-[90px] text-center">Last Updated</th>
                 <th class="w-[65px] min-w-[65px] text-center">Updated By</th>
                 {% elif current_status == 'pending' or current_status == 'verified' %}
-                <!-- Updated At / Updated By â€” pending/verified only for client users -->
+                <!-- Updated At / Updated By  -  pending/verified only for client users -->
                 <th class="w-[90px] min-w-[90px] text-center">Last Updated</th>
                 <th class="w-[65px] min-w-[65px] text-center">Updated By</th>
                 {% endif %}

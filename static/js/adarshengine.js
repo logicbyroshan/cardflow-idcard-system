@@ -1,6 +1,6 @@
 /**
- * AdarshEngine v2 — Intelligent Passport Photo Correction Engine
- * ═══════════════════════════════════════════════════════════════
+ * AdarshEngine v2  Intelligent Passport Photo Correction Engine
+ * 
  *
  * Professional ID-photo correction tool that runs entirely in the browser.
  * Built as a modular class for maintainability and clean lifecycle management.
@@ -17,9 +17,9 @@
  * Architecture:
  *   - ALL image processing happens on an HTML5 Canvas (no backend).
  *   - Stores originalImageData on load; every slider change reapplies
- *     the full pipeline from scratch → zero quality degradation.
+ *     the full pipeline from scratch  zero quality degradation.
  *   - Preview capped at 1200px; full-res kept separately for export.
- *   - No CDN, no WebGL, no external dependencies — 100% offline.
+ *   - No CDN, no WebGL, no external dependencies  100% offline.
  *   - Event listeners tracked for clean destroy (Phase 14).
  *   - Optional debug logging (Phase 13).
  *   - Auto Levels analyses luminance histogram with 0.5% outlier
@@ -36,9 +36,9 @@
 ;(function () {
   'use strict';
 
-  // ═══════════════════════════════════════════════════════════════════
+  // 
   //  CLASS: AdarshEngine
-  // ═══════════════════════════════════════════════════════════════════
+  // 
 
   /**
    * @class AdarshEngine
@@ -46,7 +46,7 @@
    */
   function AdarshEngine(canvasId) {
 
-    // ── Phase 2: Core references ──────────────────────────────────
+    //  Phase 2: Core references 
     /** @type {HTMLCanvasElement} */
     this.canvas = document.getElementById(canvasId);
     /** @type {CanvasRenderingContext2D} */
@@ -54,19 +54,19 @@
       ? this.canvas.getContext('2d', { willReadFrequently: true })
       : null;
 
-    // ── Phase 2: Image storage ────────────────────────────────────
+    //  Phase 2: Image storage 
     /** Full-resolution Image element (never displayed directly). */
     this.originalFullResolutionImage = null;
     /** Scaled preview Image element (displayed on canvas). */
     this.previewScaledImage = null;
     /**
      * Original pixel data for the preview canvas.
-     * Never mutated — every render copies from this.
+     * Never mutated  every render copies from this.
      * @type {ImageData|null}
      */
     this.originalImageData = null;
 
-    // ── Phase 3 + 4: Slider parameters ────────────────────────────
+    //  Phase 3 + 4: Slider parameters 
     this.params = {
       blackPoint: 0,
       gamma:      1.0,
@@ -75,48 +75,48 @@
       temperature: 0,
     };
 
-    // ── Phase 5: Crop state ───────────────────────────────────────
+    //  Phase 5: Crop state 
     this.cropperInstance = null;
     this.cropActive = false;
 
-    // ── Phase 7: Performance ──────────────────────────────────────
+    //  Phase 7: Performance 
     this.pendingRender = null;
     this.debounceTimer = null;
 
-    // ── Phase 6: Save callback ────────────────────────────────────
+    //  Phase 6: Save callback 
     this.onSaveCallback = null;
     this.currentFilename = '';
 
-    // ── v2: Source URL for /edited/ save routing ──────────────────
+    //  v2: Source URL for /edited/ save routing 
     this.sourceUrl = '';
 
-    // ── Phase 13: Debug logging ───────────────────────────────────
+    //  Phase 13: Debug logging 
     this.debug = false;
 
-    // ── Production hardening: guards ──────────────────────────────
+    //  Production hardening: guards 
     this._saving = false;
 
-    // ── Phase 14: Tracked event listeners for clean destroy ───────
+    //  Phase 14: Tracked event listeners for clean destroy 
     this._listeners = [];  // Array of { el, event, handler }
 
-    // ── Scroll position preservation ──────────────────────────────
+    //  Scroll position preservation 
     this._savedScrollY = 0;
 
-    // ── v3: Image navigation list ─────────────────────────────────
+    //  v3: Image navigation list 
     this._imageList = [];       // Array of { url, name }
     this._imageIndex = -1;      // Current index in _imageList
     this._onNavigate = null;    // Callback when navigating: (dataUrl, name) => void
 
-    // ── v3: Histogram state ───────────────────────────────────────
+    //  v3: Histogram state 
     this._histogramData = null;
     this._dragging = null;      // 'black' | 'gamma' | 'white' | null
 
-    // ── Phase 1: DOM references (resolved on first open) ──────────
+    //  Phase 1: DOM references (resolved on first open) 
     this._els = {};
     this._bound = false;
   }
 
-  // ── Constants ────────────────────────────────────────────────────
+  //  Constants 
 
   /** Max preview dimension (Phase 7). */
   AdarshEngine.PREVIEW_MAX = 1200;
@@ -127,7 +127,7 @@
   /** Engine version string (Phase 16). */
   AdarshEngine.VERSION = '2.0.0';
 
-  /** JPEG export quality — studio-grade (Phase 4 hardening). */
+  /** JPEG export quality  studio-grade (Phase 4 hardening). */
   AdarshEngine.EXPORT_QUALITY = 0.95;
 
   /** Maximum image dimension for full-res export canvas. */
@@ -143,9 +143,9 @@
    */
   AdarshEngine.IS_PRODUCTION = false;
 
-  // ═══════════════════════════════════════════════════════════════════
+  // 
   //  PHASE 14: TRACKED EVENT LISTENER MANAGEMENT
-  // ═══════════════════════════════════════════════════════════════════
+  // 
 
   /**
    * Attach an event listener and track it for later removal.
@@ -170,9 +170,9 @@
     this._listeners = [];
   };
 
-  // ═══════════════════════════════════════════════════════════════════
+  // 
   //  PHASE 13: DEBUG LOGGING
-  // ═══════════════════════════════════════════════════════════════════
+  // 
 
   /**
    * Log a message if debug mode is enabled.
@@ -193,9 +193,9 @@
     console.warn.apply(console, args);
   };
 
-  // ═══════════════════════════════════════════════════════════════════
+  // 
   //  PHASE 1: DOM RESOLUTION + EVENT BINDING
-  // ═══════════════════════════════════════════════════════════════════
+  // 
 
   /**
    * Lazily resolve all modal DOM elements and bind events once.
@@ -298,11 +298,11 @@
     };
     this._on(document, 'keydown', this._escHandler);
 
-    // Vibrance slider — debounced input
+    // Vibrance slider  debounced input
     var vibranceHandler = function () { self._onSliderInput(); };
     this._on(e.vibrance, 'input', vibranceHandler);
 
-    // Temperature slider — debounced input
+    // Temperature slider  debounced input
     var tempHandler = function () { self._onSliderInput(); };
     this._on(e.temp, 'input', tempHandler);
 
@@ -324,23 +324,23 @@
     this._on(e.navPrev, 'click', function () { self.navigatePrev(); });
     this._on(e.navNext, 'click', function () { self.navigateNext(); });
 
-    // ── Histogram handle dragging ───────────────────────────────
+    //  Histogram handle dragging 
     this._bindLevelHandles();
 
-    // ── Preset controls ─────────────────────────────────────────
+    //  Preset controls 
     this._bindPresetControls();
   };
 
-  // ═══════════════════════════════════════════════════════════════════
+  // 
   //  PHASE 1: OPEN / CLOSE (Public API)
-  // ═══════════════════════════════════════════════════════════════════
+  // 
 
   /**
    * Open the editor modal with an image.
    *
    * @param {string}   srcUrl   - Image URL (http, blob:, data:).
    * @param {string}   filename - Display name for header.
-   * @param {function} onSave   - Callback: (dataUrl, filename) → void.
+   * @param {function} onSave   - Callback: (dataUrl, filename)  void.
    */
   AdarshEngine.prototype.open = function (srcUrl, filename, onSave, fsPath) {
     this._resolveElements();
@@ -386,13 +386,13 @@
     this.originalFullResolutionImage.crossOrigin = 'anonymous';
 
     this.originalFullResolutionImage.onload = function () {
-      self._log('Image loaded:', this.naturalWidth, '×', this.naturalHeight);
+      self._log('Image loaded:', this.naturalWidth, '', this.naturalHeight);
       self.loadImage(self.originalFullResolutionImage);
       self._showLoading(false);
       self._updateNavButtons();
     };
 
-    // Phase 8: Error handling — image load failure
+    // Phase 8: Error handling  image load failure
     this.originalFullResolutionImage.onerror = function () {
       self._showLoading(false);
       self._showError('Failed to load image. The file may be corrupt or inaccessible.');
@@ -445,9 +445,9 @@
     this._log('Editor closed, memory released');
   };
 
-  // ═══════════════════════════════════════════════════════════════════
+  // 
   //  PHASE 2: IMAGE LOADING + CANVAS INIT
-  // ═══════════════════════════════════════════════════════════════════
+  // 
 
   /**
    * Load an image element into the engine canvas.
@@ -466,7 +466,7 @@
 
     // Guard: reject images below minimum dimension
     if (w < AdarshEngine.MIN_IMAGE_DIM || h < AdarshEngine.MIN_IMAGE_DIM) {
-      this._showError('Image is too small (' + w + '×' + h + '). Minimum ' + AdarshEngine.MIN_IMAGE_DIM + 'px required.');
+      this._showError('Image is too small (' + w + '' + h + '). Minimum ' + AdarshEngine.MIN_IMAGE_DIM + 'px required.');
       return;
     }
 
@@ -496,10 +496,10 @@
 
     // Update dimensions badge
     if (this._els.dimText) {
-      this._els.dimText.textContent = w + ' × ' + h + ' px';
+      this._els.dimText.textContent = w + '  ' + h + ' px';
     }
 
-    this._log('Canvas initialized:', pw, '×', ph, '(preview),', w, '×', h, '(full)');
+    this._log('Canvas initialized:', pw, '', ph, '(preview),', w, '', h, '(full)');
 
     // Draw histogram from original image data
     this._drawHistogram();
@@ -509,9 +509,9 @@
     this.render();
   };
 
-  // ═══════════════════════════════════════════════════════════════════
+  // 
   //  PHASE 3 + 4: SLIDER HANDLING
-  // ═══════════════════════════════════════════════════════════════════
+  // 
 
   /**
    * Read all slider values, apply validation (Phase 8), update labels,
@@ -526,7 +526,7 @@
     var vib = parseInt(e.vibrance.value, 10) || 0;
     var temp = (e.temp ? parseInt(e.temp.value, 10) : 0) || 0;
 
-    // Phase 8: Gamma slider 10–300 → 0.1–3.0. Guard against 0/NaN.
+    // Phase 8: Gamma slider 10300  0.13.0. Guard against 0/NaN.
     var rawGamma = parseInt(e.gamma.value, 10) || 100;
     if (rawGamma < 1) rawGamma = 1;  // Prevent gamma = 0
     var gamma = rawGamma / 100;
@@ -567,7 +567,7 @@
   };
 
   /**
-   * Debounce slider changes → requestAnimationFrame (Phase 7).
+   * Debounce slider changes  requestAnimationFrame (Phase 7).
    */
   AdarshEngine.prototype._scheduleRender = function () {
     var self = this;
@@ -617,9 +617,9 @@
     this._log('Reset to original');
   };
 
-  // ═══════════════════════════════════════════════════════════════════
+  // 
   //  PHASE 8: ERROR / LOADING UI HELPERS
-  // ═══════════════════════════════════════════════════════════════════
+  // 
 
   /**
    * Show the loading spinner overlay.
@@ -655,9 +655,9 @@
     }
   };
 
-  // ═══════════════════════════════════════════════════════════════════
+  // 
   //  PRESETS SYSTEM
-  // ═══════════════════════════════════════════════════════════════════
+  // 
 
   /**
    * Bind preset control events.
@@ -858,7 +858,7 @@
   };
 
   /**
-   * Apply to all callback — can be overridden by the page.
+   * Apply to all callback  can be overridden by the page.
    */
   AdarshEngine.prototype._applyToAllImages = function () {
     // This calls the onApplyToAll callback if set
@@ -869,9 +869,9 @@
     }
   };
 
-  // ═══════════════════════════════════════════════════════════════════
+  // 
   //  PHASE 14: FULL DESTROY
-  // ═══════════════════════════════════════════════════════════════════
+  // 
 
   /**
    * Completely destroy the engine instance.
@@ -909,12 +909,12 @@
     this._log('Engine destroyed');
   };
 
-  // ═══════════════════════════════════════════════════════════════════
+  // 
   //  SINGLETON INSTANCE + PUBLIC INTERFACE
-  // ═══════════════════════════════════════════════════════════════════
+  // 
 
   /**
-   * Singleton instance — created lazily on first open().
+   * Singleton instance  created lazily on first open().
    * @type {AdarshEngine|null}
    */
   var _instance = null;
@@ -930,7 +930,7 @@
     return _instance;
   }
 
-  // ── Expose public API on window ─────────────────────────────────
+  //  Expose public API on window 
 
   window.AdarshEngine = {
     /** Engine version (Phase 16). */
@@ -941,7 +941,7 @@
      *
      * @param {string}   srcUrl   - Image URL (http, blob:, data:).
      * @param {string}   filename - Display filename.
-     * @param {function} onSave   - Callback: (dataUrl, filename) → void.
+     * @param {function} onSave   - Callback: (dataUrl, filename)  void.
      */
     open: function (srcUrl, filename, onSave) {
       _getInstance().open(srcUrl, filename, onSave);
@@ -952,7 +952,7 @@
       if (_instance) _instance.close();
     },
 
-    /** Full destroy — removes listeners, frees memory (Phase 14). */
+    /** Full destroy  removes listeners, frees memory (Phase 14). */
     destroy: function () {
       if (_instance) {
         _instance.destroy();
@@ -971,7 +971,7 @@
     },
 
     /**
-     * v2: Auto Levels — histogram-based intelligent correction.
+     * v2: Auto Levels  histogram-based intelligent correction.
      * Analyses luminance histogram with 0.5% outlier clipping
      * to find optimal black point, white point, and gamma.
      */
@@ -980,21 +980,21 @@
     },
 
     /**
-     * v2: Future placeholder — auto skin-tone balance.
+     * v2: Future placeholder  auto skin-tone balance.
      */
     autoSkinBalance: function () {
       _getInstance().autoSkinBalance();
     },
 
     /**
-     * v2: Future placeholder — background whitening.
+     * v2: Future placeholder  background whitening.
      */
     backgroundWhitening: function () {
       _getInstance().backgroundWhitening();
     },
 
     /**
-     * v2: Future placeholder — sharpness enhancement.
+     * v2: Future placeholder  sharpness enhancement.
      */
     sharpnessEnhancement: function () {
       _getInstance().sharpnessEnhancement();

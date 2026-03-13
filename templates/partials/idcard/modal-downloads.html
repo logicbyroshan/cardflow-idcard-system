@@ -32,7 +32,7 @@
              class="w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
       <label for="downloadPdfShortenTitles" class="text-sm text-gray-700 cursor-pointer select-none">
         Shorten Column Titles
-        <span class="text-xs text-gray-500 ml-1">(e.g. Date Of Birth â†’ DOB, Mobile No â†’ Mob.)</span>
+        <span class="text-xs text-gray-500 ml-1">(e.g. Date Of Birth -> DOB, Mobile No -> Mob.)</span>
       </label>
     </div>
     
@@ -135,6 +135,67 @@
     <div class="center-modal-footer-area">
       <button id="downloadImgCancel" class="center-modal-btn center-modal-btn-cancel">Cancel</button>
       <button id="downloadImgConfirm" class="center-modal-btn center-modal-btn-confirm">Download</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reprint Picker Modal (Download list only) -->
+<div id="reprintPickerModal" class="center-modal-overlay" style="display:none;z-index:1200;">
+  <div class="center-modal-card" style="width:90vw;max-width:90vw;height:90vh;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;border-radius:14px;">
+    <div class="center-modal-header" style="padding:18px 20px;">
+      <h3><i class="fa-solid fa-rotate"></i> Reprint Cards</h3>
+      <button type="button" class="center-modal-header-close" id="reprintPickerClose" title="Close"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="center-modal-body-area" style="display:flex;flex-direction:column;gap:12px;min-height:0;flex:1;">
+      <div class="search-box" style="width:100%;">
+        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+        <input type="text" id="reprintPickerSearchInput" placeholder="Search student to reprint card" class="search-input" autocomplete="off">
+        <button class="search-clear-btn" id="reprintPickerSearchClearBtn" type="button" title="Clear search" aria-label="Clear search">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div id="reprintPickerPreview" style="display:none;padding:10px 12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;color:#1e3a8a;font-size:13px;"></div>
+      <div style="flex:1;min-height:0;overflow:auto;border:1px solid #e5e7eb;border-radius:10px;">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead style="position:sticky;top:0;background:#f9fafb;z-index:1;">
+            <tr>
+              <th style="padding:10px;width:40px;text-align:center;"><input type="checkbox" id="reprintPickerSelectAll" aria-label="Select all"></th>
+              <th style="padding:10px;text-align:left;">Student</th>
+              <th style="padding:10px;text-align:left;">Class</th>
+              <th style="padding:10px;text-align:left;">Section</th>
+              <th style="padding:10px;text-align:left;">Status</th>
+            </tr>
+          </thead>
+          <tbody id="reprintPickerTableBody">
+            <tr><td colspan="5" style="padding:20px;text-align:center;color:#6b7280;">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="center-modal-footer-area">
+      <span id="reprintPickerSelectedInfo" style="margin-right:auto;color:#6b7280;font-size:13px;">0 selected</span>
+      <button id="reprintPickerCancel" class="center-modal-btn center-modal-btn-cancel" type="button">Cancel</button>
+      <button id="reprintPickerRequestBtn" class="center-modal-btn center-modal-btn-confirm" type="button" disabled>Request Reprint</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reprint Confirmation Modal -->
+<div id="reprintPickerConfirmModal" class="center-modal-overlay" style="display:none;z-index:1210;">
+  <div class="center-modal-card" style="width:min(620px,94vw);">
+    <div class="center-modal-header">
+      <h3><i class="fa-solid fa-circle-question"></i> Confirm Reprint</h3>
+      <button type="button" class="center-modal-header-close" id="reprintPickerConfirmClose" title="Close"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="center-modal-body-area">
+      <p class="center-modal-subtitle">Selected cards: <strong id="reprintPickerConfirmCount">0</strong></p>
+      <p class="center-modal-note" style="margin-top:6px;">Do you want to edit selected card data first, or print as it is?</p>
+      <div id="reprintPickerConfirmPreview" style="display:none;margin-top:10px;padding:10px 12px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;color:#166534;font-size:13px;"></div>
+    </div>
+    <div class="center-modal-footer-area">
+      <button id="reprintPickerConfirmCancel" class="center-modal-btn center-modal-btn-cancel" type="button">Cancel</button>
+      <button id="reprintPickerEditBtn" class="center-modal-btn" type="button" style="background:#2563eb;color:#fff;">Want to Edit</button>
+      <button id="reprintPickerConfirmBtn" class="center-modal-btn center-modal-btn-confirm" type="button">Print As Is</button>
     </div>
   </div>
 </div>

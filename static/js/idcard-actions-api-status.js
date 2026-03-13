@@ -70,7 +70,7 @@ function removeCardRow(cardId) {
             if (_ts.lazyLoadState.loadedCount > 0) _ts.lazyLoadState.loadedCount--;
             if (_ts.lazyLoadState.totalCount > 0) _ts.lazyLoadState.totalCount--;
         }
-        // Re-render (show/hide existing rows, update pagination) — no server call
+        // Re-render (show/hide existing rows, update pagination)  no server call
         if (typeof IDCardApp.renderTable === 'function') IDCardApp.renderTable();
         reindexVisibleSrNumbers();
     }
@@ -94,7 +94,7 @@ function removeCardRow(cardId) {
             _purgeFromState();
         }, 450);
     } else {
-        // Row not in viewport / virtual table — just purge state
+        // Row not in viewport / virtual table  just purge state
         _purgeFromState();
     }
 
@@ -102,6 +102,86 @@ function removeCardRow(cardId) {
     refreshStatusCounts();
     // Clear selection
     if (typeof window.alpineClearSelection === 'function') window.alpineClearSelection();
+}
+
+/**
+ * Remove multiple card rows in one pass to avoid full table refresh after bulk actions.
+ * Keeps SR numbering stable and clears selection state.
+ * @param {Array<string|number>} cardIds
+ * @param {Object} [options]
+ * @param {number} [options.removedCount] - Number of rows updated on server (for total count sync).
+ */
+function removeCardRows(cardIds, options) {
+    var _ts = IDCardApp._ts;
+    var ids = Array.isArray(cardIds) ? cardIds.map(function(id) { return String(id); }) : [];
+    if (!ids.length) return;
+
+    var idSet = new Set(ids);
+    var rows = ids
+        .map(function(id) { return document.querySelector('tr[data-card-id="' + id + '"]'); })
+        .filter(Boolean);
+
+    rows.forEach(function(row) {
+        row.style.transition = 'opacity 0.2s ease, transform 0.2s ease, max-height 0.24s ease';
+        row.style.opacity = '0';
+        row.style.transform = 'translateX(30px)';
+        row.style.maxHeight = row.offsetHeight + 'px';
+        row.style.overflow = 'hidden';
+    });
+
+    setTimeout(function() {
+        rows.forEach(function(row) {
+            row.style.maxHeight = '0';
+            row.style.padding = '0';
+            row.style.borderColor = 'transparent';
+        });
+    }, 160);
+
+    setTimeout(function() {
+        rows.forEach(function(row) {
+            if (row.parentNode) row.parentNode.removeChild(row);
+        });
+
+        if (_ts) {
+            _ts.allRows = _ts.allRows.filter(function(r) {
+                return !idSet.has(String(r.getAttribute('data-card-id')));
+            });
+            _ts.filteredRows = _ts.filteredRows.filter(function(r) {
+                return !idSet.has(String(r.getAttribute('data-card-id')));
+            });
+
+            if (_ts._loadedCardIds) {
+                ids.forEach(function(id) { _ts._loadedCardIds.delete(Number(id)); });
+            }
+
+            if (_ts.lazyLoadState) {
+                var removedVisible = rows.length;
+                if (_ts.lazyLoadState.loadedCount > 0) {
+                    _ts.lazyLoadState.loadedCount = Math.max(0, _ts.lazyLoadState.loadedCount - removedVisible);
+                }
+                var removedTotal = Number(options && options.removedCount);
+                if (Number.isFinite(removedTotal) && removedTotal > 0 && _ts.lazyLoadState.totalCount > 0) {
+                    _ts.lazyLoadState.totalCount = Math.max(0, _ts.lazyLoadState.totalCount - removedTotal);
+                } else if (removedVisible > 0 && _ts.lazyLoadState.totalCount > 0) {
+                    _ts.lazyLoadState.totalCount = Math.max(0, _ts.lazyLoadState.totalCount - removedVisible);
+                }
+            }
+
+            if (typeof IDCardApp.renderTable === 'function') IDCardApp.renderTable();
+        }
+
+        reindexVisibleSrNumbers();
+        refreshStatusCounts();
+
+        // Clear selection and any DB-wide select-all flags.
+        IDCardApp.allDbCardIds = null;
+        var selectAll = document.getElementById('selectAll');
+        if (selectAll) selectAll.checked = false;
+        var selectAllDbBtn = document.getElementById('selectAllDbBtn');
+        if (selectAllDbBtn) selectAllDbBtn.classList.remove('active');
+        if (typeof window.alpineClearSelection === 'function') window.alpineClearSelection();
+        if (typeof IDCardApp.updateButtonStates === 'function') IDCardApp.updateButtonStates();
+    }, 420);
 }
 
 /** Fetch latest status counts from API and update the topbar tab badges */
@@ -136,7 +216,7 @@ function refreshStatusCounts() {
 // CONFIRMATION MODAL UTILITY
 // ==========================================
 
-/* Action theme config — icon, colors, labels, status flow */
+/* Action theme config  icon, colors, labels, status flow */
 var _actionThemes = {
     verify:      { icon: 'fa-shield-check',     color: '#10b981', bg: '#ecfdf5', label: 'Verify',      confirmLabel: 'Verify',      from: 'Pending',   to: 'Verified',  fromColor: '#f59e0b', toColor: '#10b981' },
     approve:     { icon: 'fa-circle-check',      color: '#3b82f6', bg: '#eff6ff', label: 'Approve',     confirmLabel: 'Approve',     from: 'Verified',  to: 'Approved',  fromColor: '#10b981', toColor: '#3b82f6' },
@@ -178,7 +258,7 @@ function showWorkflowConfirm(message, onConfirm, options) {
                 <span class="wf-status-badge" style="background:${theme.toColor}15;color:${theme.toColor};border:1px solid ${theme.toColor}30">${theme.to}</span>
             </div>`;
     } else if (theme.to) {
-        // One-sided flow (e.g. delete → Pool)
+        // One-sided flow (e.g. delete  Pool)
         flowHTML = `
             <div class="wf-status-flow">
                 <i class="fa-solid fa-arrow-right wf-flow-arrow" style="color:${theme.color}"></i>
@@ -248,7 +328,7 @@ function showWorkflowConfirm(message, onConfirm, options) {
     // Click handlers
     document.getElementById('workflowConfirmClose').onclick = function() { cleanup(); document.removeEventListener('keydown', onKeyDown); };
     document.getElementById('workflowConfirmCancel').onclick = function() { cleanup(); document.removeEventListener('keydown', onKeyDown); };
-    overlay.addEventListener('click', function(e) { /* disabled — prevent accidental closure */ });
+    overlay.addEventListener('click', function(e) { /* disabled  prevent accidental closure */ });
     document.getElementById('workflowConfirmOk').onclick = function() {
         cleanup();
         document.removeEventListener('keydown', onKeyDown);
@@ -380,6 +460,7 @@ function moveToDownload(cardId) {
 
 IDCardApp.refreshCardTable = refreshCardTable;
 IDCardApp.removeCardRow = removeCardRow;
+IDCardApp.removeCardRows = removeCardRows;
 IDCardApp.refreshStatusCounts = refreshStatusCounts;
 IDCardApp.reindexVisibleSrNumbers = reindexVisibleSrNumbers;
 IDCardApp.showWorkflowConfirm = showWorkflowConfirm;

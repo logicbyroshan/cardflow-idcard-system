@@ -1,5 +1,5 @@
 /**
- * Notification Bell — Client-side JS
+ * Notification Bell  Client-side JS
  * Handles: polling unread count, loading dropdown, mark read, mark all read
  * Include on any page that has the notification-bell.html partial.
  */
@@ -11,7 +11,7 @@
   let notifData = [];
   const POLL_INTERVAL = 60000; // 60 seconds
 
-  /* ── Init ── */
+  /*  Init  */
   document.addEventListener('DOMContentLoaded', function() {
     // Skip polling entirely when the bell partial is not rendered (e.g. admin users)
     if (!document.getElementById('notifWrapper')) return;
@@ -33,7 +33,7 @@
     });
   });
 
-  /* ── Toggle ── */
+  /*  Toggle  */
   window.toggleNotifDropdown = function() {
     if (notifDropdownOpen) {
       closeNotifDropdown();
@@ -59,7 +59,7 @@
     }
   }
 
-  /* ── Poll Unread Count ── */
+  /*  Poll Unread Count  */
   async function pollUnreadCount() {
     try {
       const res = await fetch('/api/notifications/unread-count/');
@@ -69,7 +69,7 @@
         updateBadge(data.unread_count);
       }
     } catch (err) {
-      // Silently fail — non-critical
+      // Silently fail  non-critical
     }
   }
 
@@ -85,7 +85,7 @@
     }
   }
 
-  /* ── Load Notifications ── */
+  /*  Load Notifications  */
   async function loadNotifications() {
     const list = document.getElementById('notifList');
     if (!list) return;
@@ -128,7 +128,7 @@
     }
   }
 
-  /* ── Mark Read ── */
+  /*  Mark Read  */
   window.markNotificationRead = async function(id, el) {
     try {
       await fetch(`/api/notifications/${id}/read/`, {
@@ -146,7 +146,7 @@
     }
   };
 
-  /* ── Mark All Read ── */
+  /*  Mark All Read  */
   window.markAllNotificationsRead = async function() {
     try {
       await fetch('/api/notifications/mark-all-read/', {
@@ -161,7 +161,7 @@
     }
   };
 
-  /* ── Helpers ── */
+  /*  Helpers  */
   // Use canonical getCSRFToken from core/api.js (exposed as window.getCSRFToken)
   function getCsrfTokenBell() {
     return (typeof window.getCSRFToken === 'function') ? window.getCSRFToken() : '';

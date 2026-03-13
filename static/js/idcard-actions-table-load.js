@@ -1,6 +1,6 @@
 // ID Card Actions - Table Loading & Init Module
 // Contains: Lazy loading, IntersectionObserver, resetAndReload, initTableModule
-// Part of: idcard-actions-table split (state → render → load)
+// Part of: idcard-actions-table split (state  render  load)
 
 (function() {
 'use strict';
@@ -38,7 +38,7 @@ async function loadMoreData() {
             
             var dbSelectActive = window.IDCardApp.allDbCardIds && window.IDCardApp.allDbCardIds.length > 0;
             data.cards.forEach((card, index) => {
-                // Prevent duplicates — skip if card already loaded (Set lookup is O(1))
+                // Prevent duplicates  skip if card already loaded (Set lookup is O(1))
                 if (_ts._loadedCardIds.has(card.id)) return;
                 _ts._loadedCardIds.add(card.id);
                 const row = window.IDCardApp._createRowFromCard(card, index);
@@ -59,7 +59,7 @@ async function loadMoreData() {
             
             _ts.filteredRows = [..._ts.allRows];
             if (_ts.endlessScrollMode) {
-                // In endless mode new rows are already in the DOM — just update pagination UI.
+                // In endless mode new rows are already in the DOM  just update pagination UI.
                 // Calling full renderTable() here would hide/show ALL rows causing scroll jumps.
                 window.IDCardApp._updatePaginationInfoEndless(_ts.filteredRows.length);
             } else {
@@ -75,13 +75,13 @@ async function loadMoreData() {
             if (paginationBar) {
                 paginationBar.dataset.hasMore = data.has_more.toString();
                 paginationBar.dataset.totalCount = data.total_count.toString();
-                // Don't update data-initial-loaded here — it represents the
+                // Don't update data-initial-loaded here  it represents the
                 // server-rendered count and is read by _initLazyLoadState().
                 // Overwriting it caused loadedCount=100 on reinit, making
                 // the first lazy-load fetch offset=100 (sr_no 101+).
             }
         } else {
-            // No results — update pagination UI with zero state
+            // No results  update pagination UI with zero state
             _ts.filteredRows = [];
             window.IDCardApp.updateLazyLoadPaginationInfo();
         }
@@ -185,7 +185,7 @@ function _setupLazyLoadObserver() {
     
     _ts._sentinelObserver.observe(sentinel);
     
-    // Also trigger an initial check — if table is short and sentinel is already visible
+    // Also trigger an initial check  if table is short and sentinel is already visible
     if (_ts.lazyLoadState.hasMore && !_ts.lazyLoadState.isLoading) {
         // Use rAF to avoid synchronous layout
         requestAnimationFrame(function() {
@@ -246,7 +246,7 @@ async function resetAndReload() {
     // Bump sequence so any in-flight loadMoreData calls are discarded
     _ts._loadRequestSeq = (_ts._loadRequestSeq || 0) + 1;
 
-    // ── Clear selection state so stale "select all" doesn't persist ──
+    //  Clear selection state so stale "select all" doesn't persist 
     window.IDCardApp.allDbCardIds = null;
     var selectAllCb = document.getElementById('selectAll');
     if (selectAllCb) selectAllCb.checked = false;
@@ -298,7 +298,7 @@ async function resetAndReload() {
 // ==========================================
 
 function initTableModule() {
-    // ── Cleanup previous init ──
+    //  Cleanup previous init 
     if (_ts._lazyLoadInterval) { clearInterval(_ts._lazyLoadInterval); _ts._lazyLoadInterval = null; }
     if (_ts._scrollHandler && _ts._scrollTarget) {
         _ts._scrollTarget.removeEventListener('scroll', _ts._scrollHandler);
@@ -308,7 +308,7 @@ function initTableModule() {
     _ts._loadRequestSeq = 0;
     _ts.lazyLoadState.isLoading = false;  // Reset so stale in-flight loads don't block new fetches
 
-    // ── Clear stale rows from DOM (prevents loadedCount=100 on re-init) ──
+    //  Clear stale rows from DOM (prevents loadedCount=100 on re-init) 
     var tableBody = document.getElementById('cardsTableBody');
     if (tableBody) {
         tableBody.querySelectorAll('tr[data-card-id]').forEach(function(row) { row.remove(); });
@@ -353,10 +353,10 @@ function initTableModule() {
     }
 
     
-    // ── Delegated click handler for row actions + editable cells ──
+    //  Delegated click handler for row actions + editable cells 
     window.IDCardApp._initTableBodyDelegation();
 
-    // ── IntersectionObserver-based lazy loading (replaces setInterval + scroll) ──
+    //  IntersectionObserver-based lazy loading (replaces setInterval + scroll) 
     _setupLazyLoadObserver();
     
     // Scroll listener ONLY for pagination UI updates (not for lazy loading)

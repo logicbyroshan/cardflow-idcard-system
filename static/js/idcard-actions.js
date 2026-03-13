@@ -69,7 +69,7 @@
         }
         
         // Initialize modules in order (each wrapped individually so one failure
-        // doesn't prevent the rest from loading — defensive against cross-IIFE issues)
+        // doesn't prevent the rest from loading  defensive against cross-IIFE issues)
         var _modules = [
             ['initCoreModule',    'Core'],
             ['initTableModule',   'Table'],
@@ -378,7 +378,7 @@
         logPerformance();
     }
 
-    // Handle bfcache restore (browser back button) — reinitialize table
+    // Handle bfcache restore (browser back button)  reinitialize table
     // from scratch so data loads from offset=0 (sr_no 1) instead of stale state.
     window.addEventListener('pageshow', function(e) {
         if (e.persisted) {

@@ -3,7 +3,7 @@
  * 
  * Self-contained module that provides global ID card search via Ctrl+K.
  * Auto-injects the search button into the topbar and the search overlay into the body.
- * Works on any page — just include this script.
+ * Works on any page  just include this script.
  */
 (function () {
     'use strict';
@@ -284,7 +284,7 @@
             closeBtn.addEventListener('click', closeGlobalSearch);
         }
 
-        // Click outside modal — disabled to prevent accidental closure
+        // Click outside modal  disabled to prevent accidental closure
         // if (overlay) {
         //     overlay.addEventListener('click', function (e) {
         //         if (e.target === this) closeGlobalSearch();

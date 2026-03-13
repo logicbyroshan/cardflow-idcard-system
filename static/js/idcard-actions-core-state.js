@@ -127,12 +127,12 @@ function updateButtonStates() {
     if (_cachedAddBtn) _cachedAddBtn.disabled = anySelected;
     if (_cachedUploadXlsxBtn) _cachedUploadXlsxBtn.disabled = anySelected;
     
-    // Single select buttons (Edit, View) — use cached refs
+    // Single select buttons (Edit, View)  use cached refs
     if (_cachedSingleBtns) {
         _cachedSingleBtns.forEach(btn => { btn.disabled = !singleSelected; });
     }
     
-    // Multi select buttons — use cached refs
+    // Multi select buttons  use cached refs
     if (_cachedMultiBtns) {
         _cachedMultiBtns.forEach(btn => { btn.disabled = !anySelected; });
     }
@@ -149,7 +149,7 @@ function updateButtonStates() {
 function initCheckboxes() {
     const selectAll = document.getElementById("selectAll");
     
-    // Select All checkbox — when checked, selects ALL cards in the database (not just loaded rows)
+    // Select All checkbox  when checked, selects ALL cards in the database (not just loaded rows)
     if (selectAll) {
         selectAll.addEventListener("change", async function() {
             const rowCheckboxes = getRowCheckboxes();
@@ -390,7 +390,7 @@ async function getAllCardIdsForAction() {
         return selectedIds;
     }
 
-    // No explicit selection — fetch ALL card IDs from database (filter-aware)
+    // No explicit selection  fetch ALL card IDs from database (filter-aware)
     const tableId = window.IDCardApp.tableId || (typeof TABLE_ID !== 'undefined' ? TABLE_ID : null);
 
     if (!tableId) {

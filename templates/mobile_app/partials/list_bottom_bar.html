@@ -1,5 +1,5 @@
 {% load static %}
-<!-- Fixed Bottom Action Bar — navbar style -->
+<!-- Fixed Bottom Action Bar  navbar style -->
 <div class="fixed bottom-0 left-0 right-0 z-40"
      style="padding-bottom: env(safe-area-inset-bottom, 0px);">
     <div class="max-w-[430px] mx-auto relative">
@@ -25,7 +25,7 @@
         {% if view_only_list %}
             <div class="flex items-center justify-center gap-1.5 text-[10px] text-gray-400 font-medium px-4" style="height:58px;">
                 <i class="fa-solid fa-eye text-[11px]"></i>
-                <span>View only — no actions available</span>
+                <span>View only  no actions available</span>
             </div>
         {% else %}
             <div class="flex items-end px-1" style="height:58px;">
@@ -50,7 +50,7 @@
                 </button>
                 {% endif %}
 
-                <!-- 3. Add/Edit — center prominent button (25% above) -->
+                <!-- 3. Add/Edit  center prominent button (25% above) -->
                 {% if perm_idcard_add or perm_idcard_edit %}
                 <div class="flex-1 flex flex-col items-center justify-end pb-2" style="position:relative;">
                     <button @click="selectedIds.length === 1 ? editSelected() : (selectedIds.length === 0 ? addNew() : null)"

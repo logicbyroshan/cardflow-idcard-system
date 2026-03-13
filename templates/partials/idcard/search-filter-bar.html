@@ -52,7 +52,7 @@
     <!-- Right Section - DateTime Filter (download list) + Group Setting & ID Card Group navigation -->
     <div class="action-right">
         {% if current_status == 'download' and not is_client and not is_client_staff %}
-        <!-- DateTime Range Filter (Download list â€” admin only) -->
+        <!-- DateTime Range Filter (Download list  -  admin only) -->
         <div class="filter-group datetime-filter-group" id="dateTimeFilterGroup">
             <label class="datetime-label">From</label>
             <input type="text" id="fromDateFilter" class="datetime-input" value="{{ from_date }}" title="Filter from date" placeholder="Select date & time" aria-label="From date" readonly>
@@ -80,6 +80,11 @@
                 <i class="fa-solid fa-gear"></i> Group Setting
             </a>
             {% endif %}
+            {% endif %}
+            {% if current_status == 'download' and perm_idcard_reprint_list %}
+            <button type="button" class="btn btn-settings" id="openReprintModalBtn" title="Request reprint from download list">
+                <i class="fa-solid fa-rotate"></i> Reprint
+            </button>
             {% endif %}
         </div>
     </div>

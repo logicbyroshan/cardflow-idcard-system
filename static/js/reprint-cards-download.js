@@ -24,7 +24,7 @@ var _refreshStepCounts = NS._refreshStepCounts;
   if (!TABLE_ID_VAL) return;
   if (STEP !== 'download') return;
 
-  // ── DOM refs ──
+  //  DOM refs 
   const selectAllCb = document.getElementById('downloadSelectAll');
   const tableBody = document.getElementById('downloadTableBody');
   const searchInput = document.getElementById('downloadSearchInput');
@@ -34,7 +34,7 @@ var _refreshStepCounts = NS._refreshStepCounts;
   const showingRange = document.getElementById('downloadShowingRange');
   const totalCountEl = document.getElementById('downloadTotalCount');
 
-  // ── Paginator ──
+  //  Paginator 
   const paginator = createReprintPaginator({
     barId: 'downloadPaginationBar',
     prefix: 'download',
@@ -44,7 +44,7 @@ var _refreshStepCounts = NS._refreshStepCounts;
   // Initial pagination on page load
   if (paginator) paginator.paginate();
 
-  // ── Helpers (aliases to shared file-scope helpers) ──
+  //  Helpers (aliases to shared file-scope helpers) 
   const getCSRFToken = _getCSRFToken, escapeHtml = _escapeHtml, isImageField = _isImageField, showToast = _showToast;
   function refreshStepCounts() { _refreshStepCounts(TABLE_ID_VAL); }
 
@@ -87,7 +87,7 @@ var _refreshStepCounts = NS._refreshStepCounts;
     }
   }
 
-  // ── Select All ──
+  //  Select All 
   if (selectAllCb) {
     selectAllCb.addEventListener('change', function() {
       const checked = this.checked;
@@ -96,7 +96,7 @@ var _refreshStepCounts = NS._refreshStepCounts;
     });
   }
 
-  // ── Row Checkboxes (delegated) ──
+  //  Row Checkboxes (delegated) 
   if (tableBody) {
     tableBody.addEventListener('change', function(e) {
       if (e.target.classList.contains('downloadRowCheckbox')) {
@@ -105,7 +105,7 @@ var _refreshStepCounts = NS._refreshStepCounts;
     });
   }
 
-  // ── Single Download Button (delegated) ──
+  //  Single Download Button (delegated) 
   if (tableBody) {
     tableBody.addEventListener('click', function(e) {
       const btn = e.target.closest('.btn-download-single');
@@ -115,7 +115,7 @@ var _refreshStepCounts = NS._refreshStepCounts;
     });
   }
 
-  // ── Bulk Download Button ──
+  //  Bulk Download Button 
   if (downloadBtn) {
     downloadBtn.addEventListener('click', function() {
       const ids = getSelectedRrIds();
@@ -124,7 +124,7 @@ var _refreshStepCounts = NS._refreshStepCounts;
     });
   }
 
-  // ── View Button ──
+  //  View Button 
   if (viewBtn) {
     viewBtn.addEventListener('click', function() {
       const cardIds = getSelectedCardIds();
@@ -135,7 +135,7 @@ var _refreshStepCounts = NS._refreshStepCounts;
     });
   }
 
-  // ── Download (Mark as Downloaded) API Call ──
+  //  Download (Mark as Downloaded) API Call 
   function performDownload(rrIds) {
     ApiClient.post(`/api/table/${TABLE_ID_VAL}/reprint/mark-downloaded/`, { rr_ids: rrIds })
     .then(data => {
@@ -154,12 +154,12 @@ var _refreshStepCounts = NS._refreshStepCounts;
       }
     })
     .catch(err => {
-      showToast('Network error — please try again', 'error');
+      showToast('Network error  please try again', 'error');
       console.error('[Reprint Download] Error:', err);
     });
   }
 
-  // ── Search ──
+  //  Search 
   let searchTimer = null;
 
   if (searchInput) {
@@ -181,7 +181,7 @@ var _refreshStepCounts = NS._refreshStepCounts;
     searchClearBtn.style.display = searchInput && searchInput.value ? '' : 'none';
   }
 
-  // ── Fetch Download Items API ──
+  //  Fetch Download Items API 
   function fetchDownloadItems(query) {
     const url = `/api/table/${TABLE_ID_VAL}/reprint/download-list/?q=${encodeURIComponent(query || '')}&limit=200`;
 
@@ -196,7 +196,7 @@ var _refreshStepCounts = NS._refreshStepCounts;
     });
   }
 
-  // ── Render Download Items into Table ──
+  //  Render Download Items into Table 
   function renderDownloadItems(items, total) {
     if (!tableBody) return;
 
@@ -275,7 +275,7 @@ var _refreshStepCounts = NS._refreshStepCounts;
     if (paginator) { paginator.reset(); paginator.paginate(); }
   }
 
-  // ── Update Pagination ──
+  //  Update Pagination 
   function updatePagination() {
     if (!tableBody) return;
     const rows = tableBody.querySelectorAll('tr:not(.no-data-row)');

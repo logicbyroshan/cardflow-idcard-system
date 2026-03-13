@@ -10,7 +10,7 @@ const PERMISSION_CATEGORIES = {
   settings: ['can_view_idcard_settings', 'can_add_idcard_settings', 'can_edit_idcard_settings', 'can_delete_idcard_settings', 'can_upload_images', 'can_reupload_images', 'can_bulk_upload', 'can_bulk_download', 'can_export_data', 'can_download_cards', 'can_view_workflow', 'can_manage_workflow']
 };
 
-// CSRF token — use centralized ApiClient.getCSRFToken()
+// CSRF token  use centralized ApiClient.getCSRFToken()
 function getCSRFToken() {
   return ApiClient.getCSRFToken();
 }

@@ -1,6 +1,6 @@
 /**
- * Adarsh Cropper — Utility Helpers
- * ─────────────────────────────────
+ * Adarsh Cropper  Utility Helpers
+ * 
  * Pure utility functions used by cropperApp().
  * Must be loaded BEFORE adarsh-cropper.js.
  *

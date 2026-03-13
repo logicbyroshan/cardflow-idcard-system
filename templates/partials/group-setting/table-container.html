@@ -1,5 +1,5 @@
 {% comment %}
-Group Setting Table Container â€” HTMX swappable partial.
+Group Setting Table Container  -  HTMX swappable partial.
 Contains: Tables list + Pagination. Returned for HX-Request.
 
 Required context:
@@ -87,7 +87,7 @@ Required context:
                 {% if p == page_obj.number %}
                 <button class="page-num active">{{ p }}</button>
                 {% elif p == '...' %}
-                <span class="page-ellipsis">â€¦</span>
+                <span class="page-ellipsis">...</span>
                 {% else %}
                 <button class="page-num"
                         hx-get="?page={{ p }}{% if search_query %}&search={{ search_query }}{% endif %}&per_page={{ per_page }}"

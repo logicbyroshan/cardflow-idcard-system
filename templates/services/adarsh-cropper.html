@@ -22,7 +22,7 @@
   <div class="engine-badge"
        :class="{ 'connected': eng.connected, 'disconnected': eng.checked && !eng.connected }">
     <template x-if="eng.loading">
-      <span><i class="fa-solid fa-circle-notch fa-spin"></i> Checkingâ€¦</span>
+      <span><i class="fa-solid fa-circle-notch fa-spin"></i> Checking...</span>
     </template>
     <template x-if="!eng.loading && eng.connected">
       <span><i class="fa-solid fa-circle-check"></i> Engine v<span x-text="eng.version"></span></span>
@@ -42,13 +42,13 @@
 <div class="cropper-page" x-data="cropperApp()" x-init="init()"
      @engine-refresh.window="checkEngine()">
 
-  {# â•â•â•â•â•â•â•â•â•â•â• UPDATE AVAILABLE BANNER (shown on top) â•â•â•â•â•â•â•â•â•â•â• #}
+  {#  UPDATE AVAILABLE BANNER (shown on top)  #}
   <div class="update-banner" x-show="update.available" x-transition x-cloak>
     <div class="update-banner-content">
       <div class="update-banner-info">
         <i class="fa-solid fa-arrow-up-from-bracket"></i>
         <div>
-          <strong>Update Available â€” v<span x-text="update.version"></span></strong>
+          <strong>Update Available  -  v<span x-text="update.version"></span></strong>
           <p x-show="update.changelog" x-text="update.changelog" class="update-changelog"></p>
         </div>
       </div>
@@ -64,16 +64,16 @@
     </div>
   </div>
 
-  {# â•â•â•â•â•â•â•â•â•â•â• SECTION A â€” Engine Status Card â•â•â•â•â•â•â•â•â•â•â• #}
+  {#  SECTION A  -  Engine Status Card  #}
   <div class="engine-status-card">
 
     {# Loading #}
     <div class="engine-loading" x-show="engine.loading" x-cloak>
       <i class="fa-solid fa-circle-notch fa-spin"></i>
-      <span>Detecting engineâ€¦</span>
+      <span>Detecting engine...</span>
     </div>
 
-    {# Connected â€” shown only after engine is confirmed connected #}
+    {# Connected  -  shown only after engine is confirmed connected #}
     <div class="engine-connected" x-show="engine.checked && engine.connected" x-cloak x-transition>
       <div class="engine-info-row">
         <div class="engine-info-left">
@@ -127,9 +127,9 @@
           <i class="fa-solid fa-shield-halved"></i>
           <div>
             <strong>If your browser blocks the download:</strong>
-            Chrome / Edge â€” click the <em>arrow</em> next to the blocked file â†’ <em>"Keep"</em> or <em>"Keep anyway"</em>.<br>
-            Firefox â€” click <em>"Keep file"</em> in the download warning.<br>
-            <strong>If Windows SmartScreen appears after installing:</strong> click <em>"More info"</em> â†’ <em>"Run anyway"</em>.
+            Chrome / Edge  -  click the <em>arrow</em> next to the blocked file -> <em>"Keep"</em> or <em>"Keep anyway"</em>.<br>
+            Firefox  -  click <em>"Keep file"</em> in the download warning.<br>
+            <strong>If Windows SmartScreen appears after installing:</strong> click <em>"More info"</em> -> <em>"Run anyway"</em>.
             This is expected for new software without a paid code-signing certificate.
           </div>
         </div>
@@ -143,20 +143,20 @@
 
   </div>
 
-  {# â•â•â•â•â•â•â•â•â•â•â• PROCESSING SECTIONS (visible when connected) â•â•â•â•â•â•â•â•â•â•â• #}
+  {#  PROCESSING SECTIONS (visible when connected)  #}
   <template x-if="engine.connected">
     <div class="processing-sections">
 
-      {# â”€â”€â”€â”€ Folder Path Input â”€â”€â”€â”€ #}
+      {# ---- Folder Path Input ---- #}
       <div class="process-card">
         <div class="card-header">
           <h3><i class="fa-solid fa-folder-open"></i> Process Folder</h3>
           <p class="card-desc">Select a client or enter a local folder path containing passport photos. Cropped and failed images
             will be placed inside <em>cropped/</em> and <em>failed/</em> sub-folders within the same directory.
-            No size limit â€” large folders are processed in batches automatically.</p>
+            No size limit  -  large folders are processed in batches automatically.</p>
         </div>
 
-        {# â”€â”€ Client Selection â”€â”€ #}
+        {# -- Client Selection -- #}
         <div class="client-select-group">
           <div class="input-mode-toggle">
             <button type="button" class="mode-btn" :class="{ 'active': inputMode === 'client' }" 
@@ -173,13 +173,13 @@
           <template x-if="inputMode === 'client'">
             <div class="client-dropdown-wrapper">
               <select x-model="selectedClientId" @change="onClientSelect()" class="client-dropdown" :disabled="clientsLoading || processing || folderLocked">
-                <option value="">â€” Select a client â€”</option>
+                <option value=""> -  Select a client  - </option>
                 <template x-for="client in clients" :key="client.id">
                   <option :value="client.id" x-text="client.name"></option>
                 </template>
               </select>
               <template x-if="clientsLoading">
-                <span class="client-loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading clientsâ€¦</span>
+                <span class="client-loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading clients...</span>
               </template>
             </div>
           </template>
@@ -211,7 +211,7 @@
           </p>
         </div>
 
-        {# â”€â”€ Pipeline Options (Preset) â”€â”€ #}
+        {# -- Pipeline Options (Preset) -- #}
         <div class="pipeline-options">
           <div class="pipeline-header">
             <span class="pipeline-title"><i class="fa-solid fa-sliders"></i> Processing Pipeline</span>
@@ -249,7 +249,7 @@
               <div class="pipeline-step-options" x-show="pipeline.rename">
                 <select x-model="pipeline.renameOperation" class="pipeline-select">
                   <option value="remove_camera_prefix">Remove camera prefix</option>
-                  <option value="sequential">Sequential (001, 002â€¦)</option>
+                  <option value="sequential">Sequential (001, 002...)</option>
                   <option value="add_prefix">Add prefix</option>
                 </select>
                 <input type="text" x-model="pipeline.renameParam" 
@@ -276,13 +276,13 @@
               <span><i class="fa-solid fa-play"></i> Process</span>
             </template>
             <template x-if="processing">
-              <span><i class="fa-solid fa-spinner fa-spin"></i> Processingâ€¦</span>
+              <span><i class="fa-solid fa-spinner fa-spin"></i> Processing...</span>
             </template>
           </button>
         </div>
       </div>
 
-      {# â•â•â•â•â•â•â•â•â•â• Progress Bar â•â•â•â•â•â•â•â•â•â• #}
+      {#  Progress Bar  #}
       <div class="progress-section" x-show="progress.visible" x-transition x-cloak>
         <div class="progress-header">
           <span class="progress-label" x-text="progress.label"></span>
@@ -294,7 +294,7 @@
         <p class="progress-detail" x-text="progress.detail"></p>
       </div>
 
-      {# â•â•â•â•â•â•â•â•â•â• Result Summary with Chart â•â•â•â•â•â•â•â•â•â• #}
+      {#  Result Summary with Chart  #}
       <div class="result-section" x-show="result.visible" x-transition x-cloak>
         <div class="result-header">
           <h3><i class="fa-solid fa-chart-bar"></i> Processing Results</h3>
@@ -303,7 +303,7 @@
           </button>
         </div>
 
-        {# â”€â”€ Stats Grid + Donut Chart side by side â”€â”€ #}
+        {# -- Stats Grid + Donut Chart side by side -- #}
         <div class="result-body">
           {# Stats grid (left) #}
           <div class="result-grid">
@@ -370,7 +370,7 @@
         </div>
       </div>
 
-      {# â•â•â•â•â•â•â•â•â•â• Image Preview Grid with Tabs â•â•â•â•â•â•â•â•â•â• #}
+      {#  Image Preview Grid with Tabs  #}
       <div class="preview-section" x-show="preview.visible" x-transition x-cloak>
         <div class="preview-header">
           <h3><i class="fa-solid fa-images"></i> Output Photos</h3>
@@ -390,7 +390,7 @@
           </div>
         </div>
 
-        {# â”€â”€ Tabs â”€â”€ #}
+        {# -- Tabs -- #}
         <div class="preview-tabs">
           <button class="preview-tab" :class="{ active: activeTab === 'cropped' }" @click="switchTab('cropped')" type="button">
             <i class="fa-solid fa-crop"></i> Cropped
@@ -410,7 +410,7 @@
           </button>
         </div>
 
-        {# â”€â”€ Selection Toolbar â”€â”€ #}
+        {# -- Selection Toolbar -- #}
         <div class="selection-toolbar" x-show="currentTabImages().length > 0" x-cloak>
           <div class="selection-toolbar-left">
             <label class="select-all-checkbox">
@@ -433,7 +433,7 @@
         {# Loading #}
         <div class="preview-loading" x-show="preview.loading" x-cloak>
           <i class="fa-solid fa-circle-notch fa-spin"></i>
-          <span>Loading previewsâ€¦</span>
+          <span>Loading previews...</span>
         </div>
 
         {# Grid #}
@@ -471,7 +471,7 @@
         </div>
       </div>
 
-      {# â•â•â•â•â•â•â•â•â•â• Delete Confirmation Modal â•â•â•â•â•â•â•â•â•â• #}
+      {#  Delete Confirmation Modal  #}
       <div class="delete-confirm-backdrop" x-show="deleteConfirm.visible" x-cloak x-transition.opacity>
         <div class="delete-confirm-modal" x-transition.scale @click.stop>
           <div class="delete-confirm-modal-header">
@@ -489,14 +489,14 @@
                 <span><i class="fa-solid fa-trash"></i> Delete</span>
               </template>
               <template x-if="deleteConfirm.deleting">
-                <span><i class="fa-solid fa-spinner fa-spin"></i> Deletingâ€¦</span>
+                <span><i class="fa-solid fa-spinner fa-spin"></i> Deleting...</span>
               </template>
             </button>
           </div>
         </div>
       </div>
 
-      {# â•â•â•â•â•â•â•â•â•â• Rename Images Modal â•â•â•â•â•â•â•â•â•â• #}
+      {#  Rename Images Modal  #}
       <div class="rename-modal-backdrop" x-show="renameModal.visible" x-cloak x-transition.opacity>
         <div class="rename-modal" x-transition.scale>
           <div class="rename-modal-header">
@@ -575,9 +575,9 @@
                 <template x-for="item in renameModal.preview.slice(0, 5)" :key="item.original">
                   <div class="rename-preview-item" :class="{ 'has-conflict': item.conflict }">
                     <span class="rename-original" x-text="item.original"></span>
-                    <span class="rename-arrow">â†’</span>
+                    <span class="rename-arrow">-></span>
                     <span class="rename-new" x-text="item.new"></span>
-                    <span class="rename-conflict-badge" x-show="item.conflict" title="Conflict">âš ï¸</span>
+                    <span class="rename-conflict-badge" x-show="item.conflict" title="Conflict"></span>
                   </div>
                 </template>
                 <div class="rename-preview-more" x-show="renameModal.preview.length > 5">
@@ -587,7 +587,7 @@
               <p class="rename-preview-stats">
                 <span x-text="renameModal.previewStats.changed + ' will change'"></span>
                 <span x-show="renameModal.previewStats.conflicts > 0" class="rename-conflict-warning">
-                  â€¢ <span x-text="renameModal.previewStats.conflicts + ' conflicts'"></span>
+                   <span x-text="renameModal.previewStats.conflicts + ' conflicts'"></span>
                 </span>
               </p>
             </div>
@@ -602,7 +602,7 @@
                 <span><i class="fa-solid fa-eye"></i> Preview</span>
               </template>
               <template x-if="renameModal.loading">
-                <span><i class="fa-solid fa-spinner fa-spin"></i> Loadingâ€¦</span>
+                <span><i class="fa-solid fa-spinner fa-spin"></i> Loading...</span>
               </template>
             </button>
             <button class="btn btn-primary" @click="executeRename()" type="button" 
@@ -613,7 +613,7 @@
         </div>
       </div>
 
-      {# â•â•â•â•â•â•â•â•â•â• Error Message â•â•â•â•â•â•â•â•â•â• #}
+      {#  Error Message  #}
       <div class="error-section" x-show="error.visible" x-transition x-cloak>
         <div class="error-content">
           <i class="fa-solid fa-circle-exclamation"></i>
@@ -631,12 +631,12 @@
   </template>
 </div>
 
-{# â•â•â•â•â•â•â•â•â•â•â• AdarshEngine Photo Correction Modal â•â•â•â•â•â•â•â•â•â•â• #}
+{#  AdarshEngine Photo Correction Modal  #}
 {% include 'engine_modal.html' %}
 {% endblock %}
 
 {% block extra_js %}
 <script src="{% static 'js/vendor/cropper.min.js' %}"></script>
-<!-- Cropper JS bundle (adarshengine + adarsh-cropper â€” 9 files â†’ 1) -->
+<!-- Cropper JS bundle (adarshengine + adarsh-cropper  -  9 files -> 1) -->
 <script src="{% static 'dist/js/cropper.min.js' %}"></script>
 {% endblock %}

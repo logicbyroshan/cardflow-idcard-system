@@ -10,7 +10,7 @@
   var STORAGE_KEY = 'adarsh_engine_presets';
 
   /**
-   * AdarshEnginePresets — static manager for adjustment presets.
+   * AdarshEnginePresets  static manager for adjustment presets.
    */
   var AdarshEnginePresets = {
     /**

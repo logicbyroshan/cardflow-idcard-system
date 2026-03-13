@@ -1,12 +1,12 @@
 /**
- * Reels Admin — CRUD
+ * Reels Admin  CRUD
  * v1.0
  */
 (function () {
     const API = window.API_BASE_URL || '/website/';
     const csrf = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
 
-    /* ─── Modal helpers ─── */
+    /*  Modal helpers  */
     function openReelModal(data) {
         const modal = document.getElementById('reelModal');
         document.getElementById('reelModalTitle').textContent = data ? 'Edit Reel' : 'Add Reel';
@@ -26,7 +26,7 @@
     }
     window.closeReelModal = closeReelModal;
 
-    /* ─── Edit ─── */
+    /*  Edit  */
     window.editReel = async function (id) {
         try {
             const res = await fetch(API + 'api/reels/' + id + '/', {
@@ -39,7 +39,7 @@
         } catch { window.showToast?.('Network error', 'error'); }
     };
 
-    /* ─── Toggle ─── */
+    /*  Toggle  */
     window.toggleReel = async function (id, el) {
         try {
             const res = await fetch(API + 'api/reels/' + id + '/toggle/', {
@@ -55,7 +55,7 @@
         } catch { window.showToast?.('Network error', 'error'); }
     };
 
-    /* ─── Delete ─── */
+    /*  Delete  */
     window.deleteReel = async function (id) {
         const yes = await window.waConfirm({
             title: 'Delete Reel?',
@@ -81,7 +81,7 @@
         } catch { window.showToast?.('Network error', 'error'); }
     };
 
-    /* ─── Save (create / update) ─── */
+    /*  Save (create / update)  */
     document.getElementById('reelForm')?.addEventListener('submit', async function (e) {
         e.preventDefault();
         const id = document.getElementById('reelId').value;
@@ -105,7 +105,7 @@
         } catch { window.showToast?.('Network error', 'error'); }
     });
 
-    /* ─── Helpers ─── */
+    /*  Helpers  */
     function updateCount() {
         const badge = document.querySelector('.wa-count-badge');
         if (badge) {

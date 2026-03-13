@@ -1,6 +1,6 @@
 // ID Card Actions - Table Render & Pagination Module
 // Contains: Table rendering, pagination UI, broken image handling, loading indicators
-// Part of: idcard-actions-table split (state → render-row → render-main → load)
+// Part of: idcard-actions-table split (state  render-row  render-main  load)
 
 (function() {
 'use strict';
@@ -90,7 +90,7 @@ function updatePaginationInfoEndless(totalLoaded) {
         if (hasMore) {
             paginationInfo.innerHTML = `Showing <strong>1-${totalLoaded}</strong> of <strong>${totalLoaded}</strong> loaded (${totalCount} total)`;
         } else if (hasFilter && totalLoaded < totalCount) {
-            // Filters active — show filtered count out of total
+            // Filters active  show filtered count out of total
             paginationInfo.innerHTML = `Showing <strong>${totalLoaded}</strong> of <strong>${totalCount}</strong> results (filtered)`;
         } else {
             paginationInfo.innerHTML = `Showing <strong>all ${totalLoaded}</strong> results`;

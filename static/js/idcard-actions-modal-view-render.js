@@ -190,7 +190,7 @@ function closeSideModal() {
 function _updateRowInPlace(cardId, cardData) {
     const row = document.querySelector(`tr[data-card-id="${cardId}"]`);
     if (!row || !cardData || !cardData.field_data) {
-        // Row not in DOM (filtered/paginated away) — do a soft table refresh
+        // Row not in DOM (filtered/paginated away)  do a soft table refresh
         if (typeof refreshCardTable === 'function') {
             refreshCardTable();
         } else if (window.IDCardApp && typeof window.IDCardApp.refreshCardTable === 'function') {
@@ -213,7 +213,7 @@ function _updateRowInPlace(cardId, cardData) {
 
         td.setAttribute('data-original-value', _esc(newValue));
 
-        // Image cell — update src
+        // Image cell  update src
         if (td.classList.contains('image-field')) {
             const img = td.querySelector('img.table-image');
             const isPending = newValue && newValue.startsWith('PENDING:');
@@ -221,7 +221,7 @@ function _updateRowInPlace(cardId, cardData) {
             const hasValidImage = newValue && newValue !== '' && !isPending && !isNotFound;
 
             if (hasValidImage) {
-                // Valid image path — show thumbnail
+                // Valid image path  show thumbnail
                 const cacheBuster = '?t=' + Date.now();
                 const thumbPath = window.getThumbPath ? window.getThumbPath(newValue) : newValue;
                 const thumbSrc = thumbPath ? '/media/' + thumbPath + cacheBuster : null;
@@ -231,14 +231,14 @@ function _updateRowInPlace(cardId, cardData) {
                 const placeholder = td.querySelector('.no-image');
                 if (placeholder) placeholder.remove();
 
-                // Chained onerror: thumb → original → placeholder (keeps edit btn visible)
+                // Chained onerror: thumb  original  placeholder (keeps edit btn visible)
                 var _makeOnerror = function(fallbackSrc, cellTd) {
                     return function() {
                         if (fallbackSrc) {
                             this.onerror = _makeOnerror(null, cellTd);
                             this.src = fallbackSrc;
                         } else {
-                            // Both thumb and original failed — show placeholder, keep edit button
+                            // Both thumb and original failed  show placeholder, keep edit button
                             this.onerror = null;
                             this.style.display = 'none';
                             if (!this.parentElement.querySelector('.no-image')) {
@@ -256,12 +256,12 @@ function _updateRowInPlace(cardId, cardData) {
                 };
 
                 if (img) {
-                    // Existing img element — just update src
+                    // Existing img element  just update src
                     img.src = thumbSrc || originalSrc;
                     img.onerror = _makeOnerror(thumbSrc ? originalSrc : null, td);
                     img.style.display = '';
                 } else {
-                    // No img element exists (was a placeholder) — create one
+                    // No img element exists (was a placeholder)  create one
                     var wrapper = td.querySelector('.image-with-edit') || td;
                     var newImg = document.createElement('img');
                     newImg.src = thumbSrc || originalSrc;
@@ -288,7 +288,7 @@ function _updateRowInPlace(cardId, cardData) {
                     wrapper2.appendChild(newEditBtn);
                 }
             } else {
-                // Image removed, empty, PENDING, or NOT_FOUND — hide img, show placeholder
+                // Image removed, empty, PENDING, or NOT_FOUND  hide img, show placeholder
                 if (img) {
                     img.style.display = 'none';
                     img.removeAttribute('src');
@@ -331,7 +331,7 @@ function _updateRowInPlace(cardId, cardData) {
                 }
             }
         } else {
-            // Text cell — update span
+            // Text cell  update span
             const span = td.querySelector('.cell-value');
             if (span) {
                 span.textContent = newValue;
@@ -369,7 +369,7 @@ function _updateRowInPlace(cardId, cardData) {
 
     // NOTE: We intentionally do NOT call handleBrokenImages() here.
     // The chained onerror handlers above already handle failed images
-    // (thumb → original → placeholder) without the race-condition risk
+    // (thumb  original  placeholder) without the race-condition risk
     // of a delayed handleBrokenImages() flagging still-loading images
     // as broken and hiding the edit button.
 }

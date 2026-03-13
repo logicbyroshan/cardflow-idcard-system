@@ -319,14 +319,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.success) {
                     showToast('Export settings saved successfully!', 'success');
                     if (statusSpan) {
-                        statusSpan.textContent = '✓ Saved';
+                        statusSpan.textContent = ' Saved';
                         statusSpan.style.color = 'var(--success-color, #28a745)';
                         setTimeout(() => { statusSpan.textContent = ''; }, 3000);
                     }
                 } else {
                     showToast(data.message || 'Failed to save export settings', 'error');
                     if (statusSpan) {
-                        statusSpan.textContent = '✗ Failed';
+                        statusSpan.textContent = ' Failed';
                         statusSpan.style.color = 'var(--danger-color, #dc3545)';
                     }
                 }
@@ -334,7 +334,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Export settings save error:', err);
                 showToast('Network error saving export settings', 'error');
                 if (statusSpan) {
-                    statusSpan.textContent = '✗ Error';
+                    statusSpan.textContent = ' Error';
                     statusSpan.style.color = 'var(--danger-color, #dc3545)';
                 }
             } finally {

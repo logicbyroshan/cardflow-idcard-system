@@ -1,4 +1,4 @@
-<!-- Bottom Navigation Bar â€” 5 items, Search center prominent -->
+<!-- Bottom Navigation Bar  -  5 items, Search center prominent -->
 <nav class="pwa-bottom-nav fixed bottom-0 left-0 right-0 z-50">
     <div class="max-w-[430px] mx-auto relative">
 
@@ -28,7 +28,7 @@
                 </a>
                 {% endif %}
 
-                <!-- Search (center) â€” spacer so the floating button sits above -->
+                <!-- Search (center)  -  spacer so the floating button sits above -->
                 <div class="flex-1 flex flex-col items-center justify-end pb-2" style="position:relative;">
                     <!-- invisible tap target that mirrors the floating btn -->
                     <a href="{% url 'mobile_app:search_page' %}"
@@ -69,7 +69,7 @@
             <div style="height: env(safe-area-inset-bottom, 0px);"></div>
         </div>
 
-        <!-- Floating Search button â€” sits above the center of nav bar -->
+        <!-- Floating Search button  -  sits above the center of nav bar -->
         <a href="{% url 'mobile_app:search_page' %}"
            class="pwa-nav-search-btn {% if request.resolver_match.url_name == 'search_page' %}pwa-nav-search-active{% endif %}"
            aria-label="Search">

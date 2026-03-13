@@ -18,7 +18,7 @@
     <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
     <!-- Alpine.js State Module (MUST load before Alpine) -->
     <script src="{% static 'js/alpine-state.js' %}"></script>
-    <!-- Alpine.js (self-hosted â€” consistent with main app) -->
+    <!-- Alpine.js (self-hosted  -  consistent with main app) -->
     <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
 </head>
 <body x-data="layoutState()" x-init="init()">
@@ -113,7 +113,7 @@
     <script src="{% static 'dist/js/core.min.js' %}"></script>
 
     <script>
-    /* Reusable confirm modal â€” returns a Promise<boolean> */
+    /* Reusable confirm modal  -  returns a Promise<boolean> */
     window.waConfirm = function(opts = {}) {
         return new Promise(resolve => {
             const overlay = document.getElementById('waConfirmOverlay');

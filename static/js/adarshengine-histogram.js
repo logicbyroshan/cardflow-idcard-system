@@ -1,6 +1,6 @@
 /**
- * AdarshEngine — Histogram & Level Handles
- * ═══════════════════════════════════════════════════════════════
+ * AdarshEngine  Histogram & Level Handles
+ * 
  *
  * Extends AdarshEngine with:
  *   - Level handle dragging (black point, gamma, white point)
@@ -115,14 +115,14 @@
       e.whiteVal.textContent = wp;
       e.handleWhite.style.left = ((wp / 255) * 100) + '%';
     } else if (handle === 'gamma') {
-      // Gamma track maps 0..1 → gamma 0.1..3.0 (logarithmic)
-      // pct=0 → gamma 3.0 (brighten), pct=1 → gamma 0.1 (darken), pct=0.5 → gamma 1.0
+      // Gamma track maps 0..1  gamma 0.1..3.0 (logarithmic)
+      // pct=0  gamma 3.0 (brighten), pct=1  gamma 0.1 (darken), pct=0.5  gamma 1.0
       var gamma;
       if (pct <= 0.5) {
-        // Left half: 3.0 → 1.0
+        // Left half: 3.0  1.0
         gamma = 3.0 - (pct / 0.5) * 2.0;
       } else {
-        // Right half: 1.0 → 0.1
+        // Right half: 1.0  0.1
         gamma = 1.0 - ((pct - 0.5) / 0.5) * 0.9;
       }
       gamma = Math.max(0.1, Math.min(3.0, gamma));
@@ -158,13 +158,13 @@
     }
   };
 
-  // ═══════════════════════════════════════════════════════════════════
+  // 
   //  v3: HISTOGRAM DRAWING
-  // ═══════════════════════════════════════════════════════════════════
+  // 
 
   /**
    * Draw a luminance histogram from originalImageData onto the histogram canvas.
-   * Styled like Photoshop's Levels dialog — white histogram bars on dark background.
+   * Styled like Photoshop's Levels dialog  white histogram bars on dark background.
    */
   AdarshEngine.prototype._drawHistogram = function () {
     var e = this._els;

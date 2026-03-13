@@ -1,6 +1,6 @@
 /**
- * Adarsh Cropper — Auto-Adjust Image Processing
- * ────────────────────────────────────────────────
+ * Adarsh Cropper  Auto-Adjust Image Processing
+ * 
  * Client-side auto-levels adjustment for a single image.
  * Runs entirely in the browser via <canvas>.
  * Must be loaded BEFORE adarsh-cropper.js.
@@ -11,7 +11,7 @@
 window.CropperAutoAdjust = {
 
   /**
-   * Auto-adjust a single image: load → auto-levels → export → save.
+   * Auto-adjust a single image: load  auto-levels  export  save.
    * Returns a Promise that resolves to the new served URL, or null.
    *
    * @param {Object} imgObj      - { url, name, path }
@@ -48,7 +48,7 @@ window.CropperAutoAdjust = {
           var total   = src.length / 4;
           if (total < 1) { resolve(null); return; }
 
-          // ── Histogram ──
+          //  Histogram 
           var hist   = new Uint32Array(256);
           var lumSum = 0;
 
@@ -60,7 +60,7 @@ window.CropperAutoAdjust = {
             lumSum += lum;
           }
 
-          // ── Black / white points (1% clip) ──
+          //  Black / white points (1% clip) 
           var clip    = 0.01;
           var clipLo  = Math.floor(total * clip);
           var clipHi  = Math.floor(total * (1 - clip));
@@ -87,7 +87,7 @@ window.CropperAutoAdjust = {
           if (bp > 60)  bp = 60;
           if (wp < 200) wp = 200;
 
-          // ── Gamma from average luminance ──
+          //  Gamma from average luminance 
           var avgLum = lumSum / total;
           var range  = wp - bp;
           if (range < 1) range = 1;
@@ -102,7 +102,7 @@ window.CropperAutoAdjust = {
           if (gamma < 0.5) gamma = 0.5;
           if (gamma > 2.0) gamma = 2.0;
 
-          // ── Build LUT ──
+          //  Build LUT 
           var lut    = new Uint8Array(256);
           var invG   = 1.0 / gamma;
           for (var v = 0; v < 256; v++) {
@@ -112,7 +112,7 @@ window.CropperAutoAdjust = {
             lut[v] = (Math.pow(norm, invG) * 255 + 0.5) | 0;
           }
 
-          // ── Apply LUT to pixels ──
+          //  Apply LUT to pixels 
           var dstData = ctx.createImageData(w, h);
           var dst     = dstData.data;
 
@@ -125,13 +125,13 @@ window.CropperAutoAdjust = {
 
           ctx.putImageData(dstData, 0, 0);
 
-          // ── Export ──
+          //  Export 
           var dataUrl = canvas.toDataURL('image/jpeg', 0.95);
 
           // Cleanup
           canvas.width = 1; canvas.height = 1;
 
-          // ── Extract original path from URL ──
+          //  Extract original path from URL 
           var originalPath = null;
           try {
             var fullUrl = imgObj.url;
@@ -150,7 +150,7 @@ window.CropperAutoAdjust = {
             return;
           }
 
-          // ── Save to /edited/ ──
+          //  Save to /edited/ 
           fetch('/api/engine/save-edited/', {
             method: 'POST',
             headers: {
@@ -174,7 +174,7 @@ window.CropperAutoAdjust = {
                 encodeURIComponent(data.saved_path);
               resolve(servedUrl);
             } else {
-              // Image was saved but no path returned — keep old URL
+              // Image was saved but no path returned  keep old URL
               resolve(imgObj.url);
             }
           })

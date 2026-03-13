@@ -1,6 +1,6 @@
 // ID Card Actions - Table Row Rendering Module
 // Contains: Row creation, row action buttons, table body delegation, highlight search
-// Part of: idcard-actions-table split (state → render-row → render-main → load)
+// Part of: idcard-actions-table split (state  render-row  render-main  load)
 
 (function() {
 'use strict';
@@ -28,7 +28,7 @@ function getTdWidthClass(fieldName, fieldType) {
 function addCommaBreaks(text) {
     if (!text) return text;
     // Insert zero-width word-break opportunity after comma (and optional space)
-    // so text wraps at "COLONY, NEW JAIL" → wraps after comma
+    // so text wraps at "COLONY, NEW JAIL"  wraps after comma
     // Do NOT insert breaks after dots (avoids breaking "10.5" or "B.A.")
     return text.replace(/,(\s*)/g, ',<wbr>$1');
 }
@@ -194,20 +194,20 @@ function createRowFromCard(card, index) {
             </div>
         </td>`;
     }
-    // Approved: no extra column — Print Selected button is in the action bar above
+    // Approved: no extra column  Print Selected button is in the action bar above
     
     // Last Updated / Updated By
     // Admin users: shown on all statuses
     // Client users: shown only on pending/verified, and only if modified by a client/client_staff
     if (typeof PERMS === 'undefined' || PERMS.idcard_updated_at) {
         if (!isClientUser) {
-            // Admin view — show all updated_at/modified_by as-is
+            // Admin view  show all updated_at/modified_by as-is
             html += `<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">${card.updated_at || ''}</td>`;
             const rawUser = (card.modified_by && card.modified_by.trim()) ? card.modified_by : 'Admin';
             const updatedByLabel = window.FieldClassifier ? window.FieldClassifier.truncateUser(rawUser, 7) : rawUser;
             html += `<td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center" title="${rawUser}">${updatedByLabel}</td>`;
         } else if (status === 'pending' || status === 'verified') {
-            // Client view — only pending/verified; API already filters admin edits out
+            // Client view  only pending/verified; API already filters admin edits out
             html += `<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">${card.updated_at || ''}</td>`;
             const rawUserC = card.modified_by || '';
             const clientByLabel = window.FieldClassifier ? window.FieldClassifier.truncateUser(rawUserC, 7) : rawUserC;
@@ -341,10 +341,10 @@ function highlightSearchResult() {
         return true;
     }
 
-    // Try immediately — card may already be in DOM
+    // Try immediately  card may already be in DOM
     if (doHighlight()) return;
 
-    // Card not in DOM yet — force load all data then highlight
+    // Card not in DOM yet  force load all data then highlight
     if (_ts.lazyLoadState.hasMore && _ts.lazyLoadState.tableId) {
         (async function() {
             try {
@@ -364,7 +364,7 @@ function highlightSearchResult() {
             }
         })();
     } else {
-        // No lazy load, but card not found — observe mutations as fallback
+        // No lazy load, but card not found  observe mutations as fallback
         var tableBody = document.getElementById('cardsTableBody');
         if (!tableBody) return;
         var _hlObserver = new MutationObserver(function() {

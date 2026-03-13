@@ -6,7 +6,7 @@
 {% block content %}
 <div class="flex flex-col" style="height:100vh;height:100dvh;" x-data="websiteManageApp()" x-init="init()">
 
-    <!-- Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ TOP NAV + TABS Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ -->
+    <!--  TOP NAV + TABS  -->
     <div class="flex-shrink-0" style="background:linear-gradient(135deg,#667eea,#764ba2);">
 
         <!-- Header row -->
@@ -37,10 +37,10 @@
         </div>
     </div>
 
-    <!-- Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ SCROLLABLE CONTENT Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ -->
+    <!--  SCROLLABLE CONTENT  -->
     <div class="flex-1 overflow-y-auto" style="background:#f7f8fc;">
 
-        <!-- Ã¢â€â‚¬Ã¢â€â‚¬ PORTFOLIO TAB Ã¢â€â‚¬Ã¢â€â‚¬ -->
+        <!--  PORTFOLIO TAB  -->
         <div x-show="tab==='portfolio'" x-cloak>
             <div class="px-3 pt-3 pb-24">
                 <p class="text-[11px] text-gray-400 mb-3 font-medium">{% if perm_website_edit %}Tap a category to upload photos{% else %}Your portfolio categories{% endif %}</p>
@@ -78,7 +78,7 @@
             </div>
         </div>
 
-        <!-- Ã¢â€â‚¬Ã¢â€â‚¬ REELS TAB Ã¢â€â‚¬Ã¢â€â‚¬ -->
+        <!--  REELS TAB  -->
         <div x-show="tab==='reels'" x-cloak>
             <div class="px-3 pt-3 pb-28">
                 <p class="text-[11px] text-gray-400 mb-3 font-medium">Your showcase reels visible on the website</p>
@@ -127,7 +127,7 @@
         </div>
     </div>
 
-    <!-- Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ FAB: Add Reel (visible on reels tab) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ -->
+    <!--  FAB: Add Reel (visible on reels tab)  -->
     <div x-show="tab==='reels'" x-cloak class="fixed bottom-6 right-5 z-40">
         <button @click="openReelSheet()"
                 class="w-14 h-14 rounded-full flex items-center justify-center text-white shadow-xl active:scale-90 transition-transform"
@@ -137,9 +137,9 @@
     </div>
 
 
-    <!-- Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+    <!-- 
          PORTFOLIO UPLOAD SHEET
-    Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â -->
+     -->
     <div x-show="uploadSheetOpen" x-cloak
          class="fixed inset-0 z-50 flex flex-col justify-end"
          @keydown.escape.window="closeUploadSheet()">
@@ -237,9 +237,9 @@
     </div>
 
 
-    <!-- Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+    <!-- 
          ADD REEL SHEET
-    Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â -->
+     -->
     <div x-show="reelSheetOpen" x-cloak
          class="fixed inset-0 z-50 flex flex-col justify-end"
          @keydown.escape.window="closeReelSheet()">
@@ -375,7 +375,7 @@
     </div>
 
 
-    <!-- Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Toast Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ -->
+    <!--  Toast  -->
     <div x-show="toast.show" x-cloak
          x-transition:enter="transition ease-out duration-200"
          x-transition:enter-start="opacity-0 -translate-y-2"
@@ -433,7 +433,7 @@ function websiteManageApp() {
             setTimeout(() => { this.toast.show = false; }, 3200);
         },
 
-        /* Ã¢â€â‚¬Ã¢â€â‚¬ PORTFOLIO Ã¢â€â‚¬Ã¢â€â‚¬ */
+        /*  PORTFOLIO  */
         openUploadSheet(cat) {
             this.activeCategory = cat;
             this.pendingFiles = [];
@@ -492,13 +492,13 @@ function websiteManageApp() {
                     this.showToast(data.message || 'Upload failed', false);
                 }
             } catch (err) {
-                this.showToast('Network error â€” please try again', false);
+                this.showToast('Network error  -  please try again', false);
             } finally {
                 this.uploading = false;
             }
         },
 
-        /* Ã¢â€â‚¬Ã¢â€â‚¬ REELS Ã¢â€â‚¬Ã¢â€â‚¬ */
+        /*  REELS  */
         openReelSheet() {
             this.reelTitle = '';
             this.reelVideoFile = null;
@@ -563,7 +563,7 @@ function websiteManageApp() {
                     this.showToast(data.message || 'Upload failed', false);
                 }
             } catch (err) {
-                this.showToast('Network error â€” please try again', false);
+                this.showToast('Network error  -  please try again', false);
             } finally {
                 this.uploading = false;
             }

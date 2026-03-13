@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
-  <title>Print Cards â€” {{ table.name }} â€” Adarsh ID Cards</title>
+  <title>Print Cards  -  {{ table.name }}  -  Adarsh ID Cards</title>
   <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
   <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
   <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}">
@@ -29,7 +29,7 @@
     var BACK_PDF_URL  = '{{ back_pdf_url|escapejs }}';
   </script>
   <style>
-    /* â”€â”€ Configure Modal Container â”€â”€ */
+    /* -- Configure Modal Container -- */
     .modal-container {
       background: #fff;
       border-radius: 12px;
@@ -73,7 +73,7 @@
       border-radius: 0 0 12px 12px;
     }
 
-    /* â”€â”€ Generate-Card Editor Modal â”€â”€ */
+    /* -- Generate-Card Editor Modal -- */
     .gc-editor-overlay { position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px); }
     .gc-editor-overlay.hidden { display:none; }
     .gc-editor-box { width:90vw;height:90vh;background:var(--bg-surface,#fff);border-radius:14px;box-shadow:0 24px 64px rgba(0,0,0,0.28);display:flex;flex-direction:column;overflow:hidden; }
@@ -86,7 +86,7 @@
     .gc-editor-footer { display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:10px 20px;border-top:1px solid var(--border-color,#e5e7eb);background:var(--bg-surface,#fff);flex-shrink:0; }
     #gcDownloadPdfBtn:disabled { opacity:0.45;cursor:not-allowed; }
 
-    /* â”€â”€ Global btn colour / size variants (not scoped to action-bar) â”€â”€ */
+    /* -- Global btn colour / size variants (not scoped to action-bar) -- */
     .btn-green  { background:#22c55e;color:#fff!important;border-color:#22c55e; }
     .btn-green:hover:not(:disabled)  { background:#16a34a;border-color:#16a34a; }
     .btn-blue   { background:#3b82f6;color:#fff!important;border-color:#3b82f6; }
@@ -107,7 +107,7 @@
     </div>
   </main>
 
-  <!-- â•â•â• Configure & Print Modal â•â•â• -->
+  <!--  Configure & Print Modal  -->
   <div class="modal-overlay" id="configureModal">
     <div class="modal-container max-w-[520px]">
       <div class="modal-header">
@@ -181,7 +181,7 @@
   {% include 'partials/idcard/side-modal.html' %}
   {% include 'partials/components/toast.html' %}
 
-  <!-- â•â•â• Generate Card Editor Modal â•â•â• -->
+  <!--  Generate Card Editor Modal  -->
   <div class="gc-editor-overlay hidden" id="gcEditorModal">
     <div class="gc-editor-box">
       <!-- Header -->
@@ -196,7 +196,7 @@
       <div class="gc-editor-body">
         <div class="gen-layout">
 
-          <!-- â”€â”€ LEFT PANEL â”€â”€ -->
+          <!-- -- LEFT PANEL -- -->
           <div class="gen-left-panel">
 
             <!-- Card Settings -->
@@ -262,7 +262,7 @@
 
           </div><!-- /gen-left-panel -->
 
-          <!-- â”€â”€ RIGHT PANEL â”€â”€ -->
+          <!-- -- RIGHT PANEL -- -->
           <div class="gen-right-panel">
 
             <!-- Canvas toolbar -->

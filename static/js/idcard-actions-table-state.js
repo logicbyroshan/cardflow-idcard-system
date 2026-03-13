@@ -1,6 +1,6 @@
 // ID Card Actions - Table State & Filters Module
 // Shared state, helpers, and filter/sort functions
-// Part of: idcard-actions-table split (state → render → load)
+// Part of: idcard-actions-table split (state  render  load)
 
 (function() {
 'use strict';
@@ -207,7 +207,7 @@ function searchRows(query) {
 
 function filterByField(fieldName) {
     _ts.currentFilterField = fieldName;
-    // Field filter is client-side only — just re-run local filter on loaded rows
+    // Field filter is client-side only  just re-run local filter on loaded rows
     applyFiltersAndSort();
 }
 
@@ -235,7 +235,7 @@ function _buildFilterParams() {
         params.set('image_column', IDCardApp._activeImageSort.column || '');
         params.set('image_condition', IDCardApp._activeImageSort.condition || '');
     }
-    // DateTime range (download list) — read from Flatpickr inputs
+    // DateTime range (download list)  read from Flatpickr inputs
     var fromDate = document.getElementById('fromDateFilter');
     var toDate = document.getElementById('toDateFilter');
     if (fromDate && fromDate.value) params.set('from', fromDate.value);

@@ -1,5 +1,5 @@
 /**
- * Backup Panel JS — Manage Panel "Backups" tab
+ * Backup Panel JS  Manage Panel "Backups" tab
  *
  * Handles:
  *  - Loading / polling backup tasks via API
@@ -16,7 +16,7 @@
   let _activeModalTaskId = null;
   let _deleteNowCode = '';
 
-  /* ──── Init ──── */
+  /*  Init  */
   document.addEventListener('DOMContentLoaded', function () {
     // Auto-open backups tab if URL contains ?tab=backups
     const params = new URLSearchParams(window.location.search);
@@ -26,7 +26,7 @@
     }
   });
 
-  /* ──── Hook into tab switching → lazy load ──── */
+  /*  Hook into tab switching  lazy load  */
   if (typeof switchTab === 'function') {
     const _origSwitch = switchTab;
     switchTab = function (tabName) {
@@ -43,7 +43,7 @@
     };
   }
 
-  /* ──── Load backups ──── */
+  /*  Load backups  */
   window.loadBackups = function () {
     const container = document.getElementById('backupsList');
     if (!container) return;
@@ -66,7 +66,7 @@
       });
   };
 
-  /* ──── Render ──── */
+  /*  Render  */
   function _renderBackups() {
     const container = document.getElementById('backupsList');
     if (!container) return;
@@ -129,7 +129,7 @@
       html += '<div style="font-size:12px;color:#ef4444;margin-bottom:8px;">' + _esc(b.error_message) + '</div>';
     }
 
-    // Downloads — single combined ZIP
+    // Downloads  single combined ZIP
     if (b.status === 'completed') {
       if (b.combined_zip) {
         const sizeStr = _formatBytes(b.combined_zip.size || 0);
@@ -161,7 +161,7 @@
     return html;
   }
 
-  /* ──── Delete now modal ──── */
+  /*  Delete now modal  */
   window.openDeleteNowModal = function (taskId) {
     _activeModalTaskId = taskId;
     const freshCode = (typeof ConfirmationCode !== 'undefined') ? ConfirmationCode.generate() : String(Math.floor(1000000000 + Math.random() * 9000000000));
@@ -218,7 +218,7 @@
       });
   };
 
-  /* ──── Polling ──── */
+  /*  Polling  */
   function _startPolling() {
     if (_pollTimer) return;
     _pollTimer = setInterval(loadBackups, 3000);
@@ -231,7 +231,7 @@
     }
   }
 
-  /* ──── Utils ──── */
+  /*  Utils  */
   function _esc(s) {
     const el = document.createElement('span');
     el.textContent = s || '';
@@ -248,7 +248,7 @@
   }
 
   function _formatDate(iso) {
-    if (!iso) return '—';
+    if (!iso) return '';
     const d = new Date(iso);
     return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) +
       ' ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });

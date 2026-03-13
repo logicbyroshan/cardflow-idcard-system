@@ -155,7 +155,7 @@ function initSearchAllModal() {
     }
     
     if (searchAllModalOverlay) {
-        // Disabled — prevent accidental closure on outside click
+        // Disabled  prevent accidental closure on outside click
     }
     
     if (clearSearchInput) {

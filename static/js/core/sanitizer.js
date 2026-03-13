@@ -4,8 +4,8 @@
  * Enforces clean text-field rules across all forms and Excel imports.
  *
  * ALLOWED characters in plain text fields:
- *   Letters (a–z, A–Z, Unicode/Devanagari etc.)
- *   Digits  (0–9)
+ *   Letters (az, AZ, Unicode/Devanagari etc.)
+ *   Digits  (09)
  *   Spaces
  *   Comma   ,
  *   Period  .
@@ -61,7 +61,7 @@
         // Allowed special: , . + ' and optionally /
         var slashPart = keepSlash ? '\\/' : '';
         var forbiddenRe = new RegExp('[^\\w\\s,\\.\\+\'' + slashPart + ']', 'g');
-        // But \w includes _ which we don't want — replace \w with explicit chars
+        // But \w includes _ which we don't want  replace \w with explicit chars
         // Allow: letters (a-z, A-Z, Unicode via \p if supported), digits 0-9, space
         // Use a permissive "remove known bad" approach for broad Unicode support
         var badCharsRe = /[_@#$%^&*()\[\]{}<>\|\\:;"~`!?=]/g;
@@ -82,7 +82,7 @@
     }
 
     /**
-     * Sanitize an email field — only remove newlines and double quotes.
+     * Sanitize an email field  only remove newlines and double quotes.
      * @param {string} value
      * @returns {{ value: string, changed: boolean, removed: string[] }}
      */
@@ -112,7 +112,7 @@
      * an inline warning beneath it if content was changed.
      *
      * @param {HTMLElement} inputEl    The input/textarea element
-     * @param {boolean}     isEmail    True for email fields → use sanitizeEmail
+     * @param {boolean}     isEmail    True for email fields  use sanitizeEmail
      */
     function sanitizeInputElement(inputEl, isEmail) {
         if (!inputEl) return;
@@ -236,7 +236,7 @@
         return { rows: cleaned, warnings: warnings };
     }
 
-    // ── Expose globally ──────────────────────────────────────────────
+    //  Expose globally 
     window.DataSanitizer = {
         sanitizeText:        sanitizeText,
         sanitizeEmail:       sanitizeEmail,

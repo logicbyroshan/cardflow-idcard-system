@@ -1,5 +1,5 @@
-// Dashboard Page – Bulk actions, API calls, modals, data loading
-// Split from dashboard.js — see also dashboard-ui.js
+// Dashboard Page  Bulk actions, API calls, modals, data loading
+// Split from dashboard.js  see also dashboard-ui.js
 
 window.DashboardPage = window.DashboardPage || {};
 
@@ -408,7 +408,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 var _maxZip = 950 * 1024 * 1024;
                 if (_file.size > _maxZip) {
                     var _sizeMB = (_file.size / (1024 * 1024)).toFixed(0);
-                    if (typeof showToast === 'function') showToast('ZIP is ' + _sizeMB + ' MB — maximum allowed is 950 MB. Please split into smaller ZIPs.', 'error');
+                    if (typeof showToast === 'function') showToast('ZIP is ' + _sizeMB + ' MB  maximum allowed is 950 MB. Please split into smaller ZIPs.', 'error');
                     this.value = '';
                     if (dashReuploadFileName) dashReuploadFileName.textContent = 'Click or drag & drop a ZIP file';
                     if (dashReuploadConfirmBtn) { dashReuploadConfirmBtn.disabled = true; dashReuploadConfirmBtn.style.opacity = '0.5'; }
@@ -491,7 +491,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     console.error('Dashboard reupload parse error:', parseErr, 'Status:', xhr.status);
                     let errMsg = 'Unexpected error';
                     if (xhr.status === 413) errMsg = 'ZIP file too large.';
-                    else if (xhr.status === 502 || xhr.status === 504) errMsg = 'Server timeout — try a smaller ZIP.';
+                    else if (xhr.status === 502 || xhr.status === 504) errMsg = 'Server timeout  try a smaller ZIP.';
                     else if (xhr.status === 500) errMsg = 'Server error. Please try again.';
                     else if (xhr.status === 0) errMsg = 'Connection lost. Check your internet.';
                     if (typeof showToast === 'function') showToast(errMsg, 'error');
@@ -508,7 +508,7 @@ document.addEventListener('DOMContentLoaded', function() {
             };
 
             xhr.ontimeout = function() {
-                if (typeof showToast === 'function') showToast('Upload timed out — try a smaller ZIP.', 'warning');
+                if (typeof showToast === 'function') showToast('Upload timed out  try a smaller ZIP.', 'warning');
                 dashReuploadConfirmBtn.disabled = false; dashReuploadConfirmBtn.textContent = 'Upload & Match';
                 if (dashReuploadProgress) dashReuploadProgress.style.display = 'none';
             };
@@ -534,7 +534,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 if (!data.success) throw new Error(data.error || 'Failed');
 
-                // ── Render Print table ────────────────────────────────
+                //  Render Print table 
                 if (printBody) {
                     const clients = data.print_clients || [];
                     if (clients.length > 0) {
@@ -568,7 +568,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
 
-                // ── Render Reprint table ──────────────────────────────
+                //  Render Reprint table 
                 if (reprintBody) {
                     const clients = data.reprint_clients || [];
                     if (clients.length > 0) {

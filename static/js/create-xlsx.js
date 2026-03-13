@@ -1,5 +1,5 @@
 /**
- * Create with XLSX — 3-step modal controller
+ * Create with XLSX  3-step modal controller
  *
  * Step 1: Select XLSX/CSV file + optional table name
  * Step 2: Preview detected fields (columns, types, mandatory toggles)
@@ -15,7 +15,7 @@ function initCreateWithXlsx(opts) {
   var onSuccess  = opts.onSuccess || function() { window.location.reload(); };
   var csrfToken  = opts.csrfToken || '';
 
-  // ── Header → type map (mirrors backend _HEADER_TYPE_MAP) ──
+  //  Header  type map (mirrors backend _HEADER_TYPE_MAP) 
   var HEADER_TYPE_MAP = [
     { patterns: ['mother photo', 'm photo', 'mother_photo', 'mother pic'], type: 'mother_photo' },
     { patterns: ['father photo', 'f photo', 'father_photo', 'father pic'], type: 'father_photo' },
@@ -51,7 +51,7 @@ function initCreateWithXlsx(opts) {
     return 'text';
   }
 
-  // Elements — Step 1
+  // Elements  Step 1
   var dropzone   = document.getElementById('cxDropzone');
   var browse     = document.getElementById('cxBrowse');
   var fileInput  = document.getElementById('cxFileInput');
@@ -61,13 +61,13 @@ function initCreateWithXlsx(opts) {
   var nextBtn    = document.getElementById('cxNextBtn');
   var tableNameInput = document.getElementById('cxTableName');
 
-  // Elements — Step 2 (Field Preview)
+  // Elements  Step 2 (Field Preview)
   var fieldsBody     = document.getElementById('cxFieldsBody');
   var dataRowsCount  = document.getElementById('cxDataRowsCount');
   var backToStep1Btn = document.getElementById('cxBackToStep1');
   var nextToStep3Btn = document.getElementById('cxNextToStep3');
 
-  // Elements — Step 3 (ZIP)
+  // Elements  Step 3 (ZIP)
   var zipDropzone = document.getElementById('cxZipDropzone');
   var zipBrowse   = document.getElementById('cxZipBrowse');
   var zipInput    = document.getElementById('cxZipInput');
@@ -98,7 +98,7 @@ function initCreateWithXlsx(opts) {
   var detectedFields = [];
   var parsedDataRowCount = 0;
 
-  // ── Helpers ──
+  //  Helpers 
   function showStep(n) {
     step1El.style.display = n === 1 ? '' : 'none';
     step2El.style.display = n === 2 ? '' : 'none';
@@ -147,7 +147,7 @@ function initCreateWithXlsx(opts) {
     nextBtn.disabled = false;
   }
 
-  // ── Parse XLSX and detect fields ──
+  //  Parse XLSX and detect fields 
   function parseFileAndShowPreview() {
     if (!selectedFile) return;
 
@@ -312,7 +312,7 @@ function initCreateWithXlsx(opts) {
     step2El.style.display = 'none';
     step3El.style.display = 'none';
     progress.style.display = '';
-    progressText.textContent = 'Preparing upload…';
+    progressText.textContent = 'Preparing upload';
 
     var progressBar = document.getElementById('cxProgressBar');
     var progressPct = document.getElementById('cxProgressPct');
@@ -348,21 +348,21 @@ function initCreateWithXlsx(opts) {
       xhr.setRequestHeader('X-CSRFToken', csrfToken);
       xhr.timeout = 600000; // 10-minute timeout
 
-      // Phase 1: Upload progress (0% → 70%)
+      // Phase 1: Upload progress (0%  70%)
       xhr.upload.onprogress = function(e) {
         if (e.lengthComputable) {
           var uploadPct = Math.round((e.loaded / e.total) * 70);
           if (progressBar) progressBar.style.width = uploadPct + '%';
           if (progressPct) progressPct.textContent = Math.round((e.loaded / e.total) * 100) + '% uploaded';
-          progressText.textContent = 'Uploading file…';
+          progressText.textContent = 'Uploading file';
         }
       };
 
-      // Phase 2: Upload complete → server processing (70% → 95%)
+      // Phase 2: Upload complete  server processing (70%  95%)
       xhr.upload.onloadend = function() {
         if (progressBar) progressBar.style.width = '70%';
         if (progressPct) progressPct.textContent = '';
-        progressText.textContent = 'Creating table and importing data…';
+        progressText.textContent = 'Creating table and importing data';
         var _procStart = Date.now();
         _processingTimer = setInterval(function() {
           var el = (Date.now() - _procStart) / 1000;
@@ -415,7 +415,7 @@ function initCreateWithXlsx(opts) {
 
       xhr.ontimeout = function() {
         if (_processingTimer) { clearInterval(_processingTimer); _processingTimer = null; }
-        if (window.showToast) showToast('Upload timed out — server took too long. Try a smaller file.', 'error');
+        if (window.showToast) showToast('Upload timed out  server took too long. Try a smaller file.', 'error');
         showStep(1);
       };
 
@@ -425,7 +425,7 @@ function initCreateWithXlsx(opts) {
     attemptUpload();
   }
 
-  // ── Event listeners — Step 1 ──
+  //  Event listeners  Step 1 
   browse.addEventListener('click', function() { fileInput.click(); });
   dropzone.addEventListener('click', function() { fileInput.click(); });
   dropzone.addEventListener('dragover', function(e) { e.preventDefault(); dropzone.style.borderColor = '#22c55e'; dropzone.style.background = '#f0fdf4'; });
@@ -441,16 +441,16 @@ function initCreateWithXlsx(opts) {
     fileInfo.style.display = 'none'; dropzone.style.display = '';
     nextBtn.disabled = true;
   });
-  // Step 1 → Step 2: Parse file and show field preview
+  // Step 1  Step 2: Parse file and show field preview
   nextBtn.addEventListener('click', function() {
     if (selectedFile) parseFileAndShowPreview();
   });
 
-  // ── Event listeners — Step 2 (Field Preview) ──
+  //  Event listeners  Step 2 (Field Preview) 
   backToStep1Btn.addEventListener('click', function() { showStep(1); });
   nextToStep3Btn.addEventListener('click', function() { showStep(3); });
 
-  // ── Event listeners — Step 3 (ZIP) ──
+  //  Event listeners  Step 3 (ZIP) 
   zipBrowse.addEventListener('click', function() { zipInput.click(); });
   zipDropzone.addEventListener('click', function() { zipInput.click(); });
   zipDropzone.addEventListener('dragover', function(e) { e.preventDefault(); zipDropzone.style.borderColor = '#3b82f6'; zipDropzone.style.background = '#eff6ff'; });
@@ -474,7 +474,7 @@ function initCreateWithXlsx(opts) {
   skipBtn.addEventListener('click', function() { zipFiles = []; doUpload(); });
   uploadBtn.addEventListener('click', function() { doUpload(); });
 
-  // ── Button trigger ──
+  //  Button trigger 
   var btn = document.getElementById('createFromXlsxBtn');
   if (btn) {
     btn.addEventListener('click', function() {

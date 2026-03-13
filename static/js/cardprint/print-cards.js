@@ -1,6 +1,6 @@
 /**
- * Print Cards — Single-file JS for the Print Cards workflow.
- * Steps: Print List → (Configure & Generate) → Finalized
+ * Print Cards  Single-file JS for the Print Cards workflow.
+ * Steps: Print List  (Configure & Generate)  Finalized
  *
  * Self-contained for the cardprint app.
  */
@@ -10,9 +10,9 @@
 var TABLE_ID = window.TABLE_ID;
 if (!TABLE_ID) return;
 
-/* ═══════════════════════════════════════════════════════════════════
+/* 
    SHARED HELPERS
-   ═══════════════════════════════════════════════════════════════════ */
+    */
 var getCSRFToken = window.getCSRFToken || function() { return ''; };
 var showToast    = window.showToast    || function() {};
 var escapeHtml   = window.escapeHtml   || function(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
@@ -74,9 +74,9 @@ function renderOrderedFields(fields) {
 }
 
 
-/* ═══════════════════════════════════════════════════════════════════
+/* 
    PAGINATION FACTORY
-   ═══════════════════════════════════════════════════════════════════ */
+    */
 function createPaginator(opts) {
   var currentPage = 1;
   var rowsPerPage = 50;
@@ -210,9 +210,9 @@ function createPaginator(opts) {
 }
 
 
-/* ═══════════════════════════════════════════════════════════════════
+/* 
    CONFIGURE & PRINT MODAL
-   ═══════════════════════════════════════════════════════════════════ */
+    */
 (function configureModal() {
   var modal      = document.getElementById('configureModal');
   var closeBtn   = document.getElementById('configureModalClose');
@@ -344,7 +344,7 @@ function createPaginator(opts) {
     }
 
     generateBtn.disabled = true;
-    generateBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing…';
+    generateBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing';
 
     // Step 1: Save field_config
     ApiClient.post('/print/api/table/' + TABLE_ID + '/field-config/', {
@@ -377,7 +377,7 @@ function createPaginator(opts) {
       return Promise.all(uploads);
     })
     .then(function() {
-      // Step 3: Move all print_list → generate_list
+      // Step 3: Move all print_list  generate_list
       return ApiClient.post('/print/api/table/' + TABLE_ID + '/generate-all/', {});
     })
     .then(function(data) {
@@ -408,10 +408,10 @@ function createPaginator(opts) {
 })();
 
 
-/* ═══════════════════════════════════════════════════════════════════
+/* 
    STEP 1: PRINT LIST (status = print_list)
    Actions: Print All (opens modal), Remove (bulk + single)
-   ═══════════════════════════════════════════════════════════════════ */
+    */
 (function printListStep() {
   var tableBody     = document.getElementById('printListTableBody');
   var selectAllCb   = document.getElementById('printListSelectAll');
@@ -599,10 +599,10 @@ function createPaginator(opts) {
 })();
 
 
-/* ═══════════════════════════════════════════════════════════════════
+/* 
    STEP 2: GENERATE LIST (status = generate_list)
    Actions: Continue Generate (bulk selected), View
-   ═══════════════════════════════════════════════════════════════════ */
+    */
 (function generateListStep() {
   var tableBody      = document.getElementById('generateListTableBody');
   var selectAllCb    = document.getElementById('generateListSelectAll');
@@ -745,10 +745,10 @@ function createPaginator(opts) {
 })();
 
 
-/* ═══════════════════════════════════════════════════════════════════
+/* 
    STEP 3: FINALIZED LIST (status = finalized)
    Actions: Move to Pool (bulk + single)
-   ═══════════════════════════════════════════════════════════════════ */
+    */
 (function finalizedStep() {
   var tableBody     = document.getElementById('finalizedTableBody');
   var selectAllCb   = document.getElementById('finalizedSelectAll');
@@ -839,7 +839,7 @@ function createPaginator(opts) {
     });
   }
 
-  // Move to Pool API (finalized → pool)
+  // Move to Pool API (finalized  pool)
   function performMoveToPool(prIds) {
     ApiClient.post('/print/api/table/' + TABLE_ID + '/mark-pool/', { request_ids: prIds })
     .then(function(data) {

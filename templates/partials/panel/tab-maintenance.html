@@ -137,7 +137,7 @@
       var msg = 'Maintenance mode is active';
       if (status.end_time) {
         var end = new Date(status.end_time);
-        msg += ' — ends ' + end.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        msg += '  ends ' + end.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
       }
       label.textContent = msg;
       enableBtn.style.display = 'none';

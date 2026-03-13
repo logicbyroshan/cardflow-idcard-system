@@ -1,5 +1,5 @@
 /**
- * Manage Panel — Notification Management JS
+ * Manage Panel  Notification Management JS
  * Handles: CRUD notifications, tab switching, user picker, search
  */
 
@@ -116,9 +116,9 @@ function updateStats() {
   document.getElementById('statTotal').textContent = panelTotal;
   // Use server-side aggregates (returned by API) for accurate full-dataset counts
   const s = window._panelNotifStats || {};
-  document.getElementById('statBroadcast').textContent = s.broadcast != null ? s.broadcast : '—';
-  document.getElementById('statTargeted').textContent  = s.targeted  != null ? s.targeted  : '—';
-  document.getElementById('statUrgent').textContent    = s.urgent    != null ? s.urgent    : '—';
+  document.getElementById('statBroadcast').textContent = s.broadcast != null ? s.broadcast : '';
+  document.getElementById('statTargeted').textContent  = s.targeted  != null ? s.targeted  : '';
+  document.getElementById('statUrgent').textContent    = s.urgent    != null ? s.urgent    : '';
 }
 
 /* ============ Search ============ */
@@ -468,13 +468,13 @@ function renderTemplateTable() {
   tbody.innerHTML = panelTemplates.map((t, i) => {
     const preview = t.instructions.length > 80 ? t.instructions.substring(0, 80) + '...' : t.instructions;
     const fontLabel = t.font_name === 'hindi' ? 'Hindi' : 'Arial';
-    const boldLabel = t.is_bold ? ' · <b>Bold</b>' : '';
+    const boldLabel = t.is_bold ? '  <b>Bold</b>' : '';
     return `<tr>
       <td class="text-center text-xs text-gray-400">${i + 1}</td>
       <td><strong class="text-sm">${escHtml(t.name)}</strong><br><span class="text-xs text-gray-400">${fontLabel}${boldLabel}</span></td>
       <td><span class="text-xs text-gray-600">${escHtml(preview)}</span></td>
-      <td class="text-center">${t.is_default ? '<span class="notif-badge-priority normal">Default</span>' : '—'}</td>
-      <td class="text-center text-xs text-gray-400">${t.created_at ? new Date(t.created_at).toLocaleDateString() : '—'}</td>
+      <td class="text-center">${t.is_default ? '<span class="notif-badge-priority normal">Default</span>' : ''}</td>
+      <td class="text-center text-xs text-gray-400">${t.created_at ? new Date(t.created_at).toLocaleDateString() : ''}</td>
       <td>
         <div class="notif-actions-cell">
           <button class="btn btn-icon btn-neutral" title="Edit" onclick="editTemplate(${t.id})"><i class="fa-solid fa-pen"></i></button>
@@ -583,7 +583,7 @@ async function deleteTemplate(id) {
    ================================================================ */
 let panelLogs = [];
 let logOffset = 0;
-const LOG_LIMIT = 500;  // Load all logs at once — table scrolls natively
+const LOG_LIMIT = 500;  // Load all logs at once  table scrolls natively
 let logTotal = 0;
 let logSearchTimer = null;
 
@@ -640,16 +640,16 @@ function renderLogTable() {
       <td><span class="text-xs font-medium">${escHtml(l.user_name || 'System')}</span></td>
       <td><span class="log-action-badge ${colorClass}"><i class="fa-solid ${l.icon_class || 'fa-circle-info'}"></i> ${escHtml(actionLabel)}</span></td>
       <td><span class="text-xs text-gray-600">${escHtml(l.description || '')}</span></td>
-      <td><span class="text-xs text-gray-500">${escHtml(l.target_name || '—')}</span></td>
-      <td><span class="text-xs text-gray-400">${escHtml(l.ip_address || '—')}</span></td>
-      <td><span class="notif-time">${l.time_ago || '—'}</span></td>
+      <td><span class="text-xs text-gray-500">${escHtml(l.target_name || '')}</span></td>
+      <td><span class="text-xs text-gray-400">${escHtml(l.ip_address || '')}</span></td>
+      <td><span class="notif-time">${l.time_ago || ''}</span></td>
     </tr>`;
   }).join('');
 }
 
 /* ================================================================
    EMAIL MANAGEMENT TAB
-   (Previously embedded in tab-email-logs.html — moved here for
+   (Previously embedded in tab-email-logs.html  moved here for
     proper file-based caching, linting and CSP compliance)
    ================================================================ */
 let _emailPage = 1;
@@ -668,7 +668,7 @@ window.loadEmailLogs = function (page) {
     tbody.innerHTML =
       '<tr><td colspan="8" class="notif-table-empty-cell">' +
       '<div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i>' +
-      '<p>Loading…</p></div></td></tr>';
+      '<p>Loading</p></div></td></tr>';
   }
 
   fetch(url, { headers: { 'X-CSRFToken': getCSRFToken() } })
@@ -706,16 +706,16 @@ window.loadEmailLogs = function (page) {
           const noteHtml  = log.error_message
             ? '<span title="' + escAttr(log.error_message) + '" style="cursor:help;">' +
               '<i class="fa-solid fa-circle-info" style="color:#dc2626;"></i></span>'
-            : '<span style="color:#9ca3af;">—</span>';
+            : '<span style="color:#9ca3af;"></span>';
           const canResend = log.status === 'on_hold' || log.status === 'failed';
           const actionHtml = canResend
             ? '<button class="btn btn-icon" style="width:28px;height:28px;padding:0;" ' +
               'onclick="resendEmail(' + log.id + ')" title="Resend email">' +
               '<i class="fa-solid fa-paper-plane" style="font-size:11px;"></i></button>'
-            : '<span style="color:#9ca3af;">—</span>';
+            : '<span style="color:#9ca3af;"></span>';
           return '<tr id="email-log-row-' + log.id + '">' +
             '<td class="text-center text-xs text-gray-400">' + (((_emailPage - 1) * 50) + i + 1) + '</td>' +
-            '<td><strong style="font-size:12.5px;color:#1e293b;">' + escHtml(log.recipient_name || '—') + '</strong></td>' +
+            '<td><strong style="font-size:12.5px;color:#1e293b;">' + escHtml(log.recipient_name || '') + '</strong></td>' +
             '<td class="notif-time">' + escHtml(log.recipient_email) + '</td>' +
             '<td><span class="notif-badge-cat">' + escHtml(log.email_type_display) + '</span></td>' +
             '<td><span class="email-status-badge ' + statusCls + '" id="email-log-status-' + log.id + '">' + escHtml(log.status_display) + '</span></td>' +
@@ -781,7 +781,7 @@ window.resendEmail = async function (logId) {
     });
 };
 
-/* ============ Tab switch hook — lazy-load data ============ */
+/* ============ Tab switch hook  lazy-load data ============ */
 const _origSwitchTab = switchTab;
 switchTab = function(tabName) {
   _origSwitchTab(tabName);
@@ -807,7 +807,7 @@ function _statusBadge(status, displayText) {
 
 async function loadMonitoring() {
   const refreshBtn = document.getElementById('monitoringRefreshBtn');
-  if (refreshBtn) { refreshBtn.disabled = true; refreshBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Loading…'; }
+  if (refreshBtn) { refreshBtn.disabled = true; refreshBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Loading'; }
 
   try {
     const res = await fetch('/api/monitoring/');
@@ -834,7 +834,7 @@ async function loadMonitoring() {
         backupSection.style.display = '';
         backupBody.innerHTML = data.backup_tasks.map(b => `
           <div class="system-row">
-            <span class="system-label">#${b.id} — ${escHtml(b.status_display)}</span>
+            <span class="system-label">#${b.id}  ${escHtml(b.status_display)}</span>
             <span class="system-value">
               ${escHtml(b.current_client || 'Queued')}
               <span style="color:#94a3b8;margin-left:6px;">(${b.progress}/${b.total})</span>
@@ -862,7 +862,7 @@ async function loadMonitoring() {
       const pct = t.progress_pct;
       const progressCell = pct > 0
         ? `<div style="display:flex;align-items:center;gap:6px;"><div style="width:50px;height:4px;background:#e2e8f0;border-radius:999px;overflow:hidden;"><div style="width:${pct}%;height:100%;background:#667eea;"></div></div><span style="font-size:11px;color:#64748b;">${pct}%</span></div>`
-        : `<span style="font-size:11px;color:#94a3b8;">—</span>`;
+        : `<span style="font-size:11px;color:#94a3b8;"></span>`;
 
       const errTip = t.error ? ` title="${escHtml(t.error)}"` : '';
       const errIcon = t.error ? ` <i class="fa-solid fa-circle-info" style="color:#ef4444;cursor:help;" title="${escHtml(t.error)}"></i>` : '';
@@ -874,7 +874,7 @@ async function loadMonitoring() {
         <td><span class="text-xs text-gray-600">${escHtml(t.user)}</span></td>
         <td>${progressCell}</td>
         <td><span class="notif-time">${escHtml(t.created_at)}</span></td>
-        <td><span class="notif-time">${t.completed_at ? escHtml(t.completed_at) : '<span style="color:#94a3b8;">—</span>'}</span></td>
+        <td><span class="notif-time">${t.completed_at ? escHtml(t.completed_at) : '<span style="color:#94a3b8;"></span>'}</span></td>
         <td></td>
       </tr>`;
     }).join('');

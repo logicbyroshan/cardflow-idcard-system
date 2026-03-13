@@ -12,7 +12,7 @@
  *   Toast.error(msg, duration?)
  *   Toast.info(msg, duration?)
  *   Toast.warning(msg, duration?)
- *   Toast.progress(msg, percent?)     // percent = -1 → indeterminate
+ *   Toast.progress(msg, percent?)     // percent = -1  indeterminate
  *   Toast.complete(msg?)
  *   Toast.hide()
  *
@@ -83,7 +83,7 @@
     // Delegates to Alpine when available; falls back to DOM toast
     // ------------------------------------------
     function showToast(message, type, duration) {
-        // Normalise type (boolean → string)
+        // Normalise type (boolean  string)
         if (typeof type === 'boolean') type = type ? 'success' : 'error';
         type = type || 'success';
 

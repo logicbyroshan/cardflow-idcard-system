@@ -1,5 +1,5 @@
 {% comment %}
-HTMX Configuration â€” Include this partial in every page template.
+HTMX Configuration  -  Include this partial in every page template.
 Loads HTMX 2.0 CDN and configures CSRF handling + global event hooks.
 
 Usage:
@@ -7,13 +7,13 @@ Usage:
 {% endcomment %}
 
 {% load static %}
-<!-- HTMX 2.0 â€” Partial-swap engine -->
+<!-- HTMX 2.0  -  Partial-swap engine -->
 <script defer src="{% static 'js/vendor/htmx.min.js' %}"></script>
-<!-- HTMX Filter Bridge â€” server-side search/filter via htmx.ajax() -->
+<!-- HTMX Filter Bridge  -  server-side search/filter via htmx.ajax() -->
 <script defer src="{% static 'js/core/htmx-filters.js' %}"></script>
 
 <script>
-  // â”€â”€ HTMX global CSRF config â”€â”€
+  // -- HTMX global CSRF config --
   document.body.addEventListener('htmx:configRequest', function(evt) {
     var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value
                  || (document.cookie.match(/csrftoken=([^;]+)/) || [])[1];
@@ -22,7 +22,7 @@ Usage:
     }
   });
 
-  // â”€â”€ In-flight dedup guard for declarative hx-get buttons â”€â”€
+  // -- In-flight dedup guard for declarative hx-get buttons --
   // Prevents double-clicks on pagination/filter buttons from firing duplicate requests
   (function() {
     var _activeTargets = {};
@@ -40,7 +40,7 @@ Usage:
     });
   })();
 
-  // â”€â”€ Global error handler â€” show toast on HTMX server errors â”€â”€
+  // -- Global error handler  -  show toast on HTMX server errors --
   document.body.addEventListener('htmx:responseError', function(evt) {
     var status = evt.detail.xhr?.status;
     var msg = 'An error occurred. Please try again.';
@@ -51,13 +51,13 @@ Usage:
     else console.error(msg);
   });
 
-  // â”€â”€ Network failure handler â€” fires when HTMX cannot reach server â”€â”€
+  // -- Network failure handler  -  fires when HTMX cannot reach server --
   document.body.addEventListener('htmx:sendError', function(evt) {
     if (window.showToast) window.showToast('Network error. Check your connection and try again.', 'error');
     if (window.alpineHideLoading) window.alpineHideLoading();
   });
 
-  // â”€â”€ Session-expired handler â€” redirect to login on 401 instead of swapping â”€â”€
+  // -- Session-expired handler  -  redirect to login on 401 instead of swapping --
   document.body.addEventListener('htmx:beforeSwap', function(evt) {
     var status = evt.detail.xhr?.status;
     if (status === 401) {
@@ -70,16 +70,16 @@ Usage:
       }
       return;
     }
-    // â”€â”€ Full-page redirect guard â”€â”€
+    // -- Full-page redirect guard --
     // If HTMX receives a full HTML page (redirect followed to a full page),
-    // don't swap it into a partial container â€” do a full page navigation instead.
+    // don't swap it into a partial container  -  do a full page navigation instead.
     // IMPORTANT: Only redirect if the page hasn't already navigated away.
     // Stale in-flight requests from a previous page must not hijack the current page.
     var responseText = evt.detail.xhr?.responseText || '';
     if (responseText.indexOf('<!DOCTYPE') !== -1 || responseText.indexOf('<!doctype') !== -1) {
       evt.detail.shouldSwap = false;
       // Guard: only redirect if the target element still exists in the current DOM.
-      // If the target is gone, the user navigated away â€” ignore this stale response.
+      // If the target is gone, the user navigated away  -  ignore this stale response.
       var targetEl = evt.detail.target;
       if (targetEl && document.contains(targetEl)) {
         var finalUrl = evt.detail.xhr?.responseURL;
@@ -92,7 +92,7 @@ Usage:
     }
   });
 
-  // â”€â”€ Global loading indicator integration with Alpine â”€â”€
+  // -- Global loading indicator integration with Alpine --
   document.body.addEventListener('htmx:beforeRequest', function(evt) {
     if (!evt.detail.elt.hasAttribute('hx-indicator')) {
       if (window.alpineShowLoading) window.alpineShowLoading();
@@ -104,14 +104,14 @@ Usage:
     }
   });
 
-  // â”€â”€ Handle HX-Trigger: showToast from server â”€â”€
+  // -- Handle HX-Trigger: showToast from server --
   document.body.addEventListener('showToast', function(evt) {
     if (window.showToast && evt.detail) {
       window.showToast(evt.detail.message || 'Done', evt.detail.type || 'success');
     }
   });
 
-  // â”€â”€ Safety net: reinitialize Alpine trees inside swapped elements â”€â”€
+  // -- Safety net: reinitialize Alpine trees inside swapped elements --
   // Currently no Alpine directives live inside swap targets, but if any
   // are added in the future, this ensures they get initialized properly.
   document.body.addEventListener('htmx:afterSettle', function(evt) {

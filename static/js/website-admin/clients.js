@@ -1,5 +1,5 @@
 /**
- * Website Admin — Clients Module
+ * Website Admin  Clients Module
  * CRUD operations for Trusted Clients / Partners
  */
 (function () {

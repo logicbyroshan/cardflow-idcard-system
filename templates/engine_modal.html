@@ -1,5 +1,5 @@
 {% comment %}
-   Adarsh Engine v2.0.0 â€” Intelligent Passport Photo Correction Modal
+   Adarsh Engine v2.0.0  -  Intelligent Passport Photo Correction Modal
    Include this template once on the page. The JS class AdarshEngine
    will manage opening/closing and all canvas operations.
 
@@ -12,12 +12,12 @@
 
 {% load static %}
 
-{# â”€â”€ Backdrop + Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ #}
+{# -- Backdrop + Modal ----------------------------------------------- #}
 <div id="aeBackdrop" class="ae-backdrop" role="dialog" aria-modal="true" aria-label="Photo Correction Editor">
 
   <div class="ae-modal">
 
-    {# â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ #}
+    {# -- Header ------------------------------------------------------- #}
     <div class="ae-header">
       <div class="ae-header-title">
         <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
@@ -30,13 +30,13 @@
       </button>
     </div>
 
-    {# â”€â”€ Body: Controls (left) + Canvas (right) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ #}
+    {# -- Body: Controls (left) + Canvas (right) ---------------------- #}
     <div class="ae-body">
 
-      {# â”€â”€ Controls Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ #}
+      {# -- Controls Panel ---------------------------------------------- #}
       <div class="ae-controls">
 
-        {# â”€â”€ Levels Group with Histogram â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ #}
+        {# -- Levels Group with Histogram -------------------------------- #}
         <div class="ae-group">
           <div class="ae-group-label">Levels</div>
 
@@ -55,13 +55,13 @@
             <span id="aeWhiteVal">255</span>
           </div>
 
-          {# Hidden sliders for compatibility â€” driven by handles #}
+          {# Hidden sliders for compatibility  -  driven by handles #}
           <input id="aeBlack" type="hidden" value="0">
           <input id="aeGamma" type="hidden" value="100">
           <input id="aeWhite" type="hidden" value="255">
         </div>
 
-        {# â”€â”€ Auto Fix Group (v2) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ #}
+        {# -- Auto Fix Group (v2) -------------------------------------- #}
         <div class="ae-group">
           <div class="ae-group-label">Auto Fix</div>
 
@@ -72,7 +72,7 @@
           <p class="ae-autofix-hint">Analyse histogram and auto-set optimal levels</p>
         </div>
 
-        {# â”€â”€ Vibrance Group â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ #}
+        {# -- Vibrance Group --------------------------------------------- #}
         <div class="ae-group">
           <div class="ae-group-label">Vibrance</div>
 
@@ -85,7 +85,7 @@
           </div>
         </div>
 
-        {# â”€â”€ Temperature Group â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ #}
+        {# -- Temperature Group ------------------------------------------ #}
         <div class="ae-group">
           <div class="ae-group-label">Temperature</div>
 
@@ -96,10 +96,10 @@
             </div>
             <input id="aeTemp" class="ae-slider ae-slider-temp" type="range" min="-100" max="100" value="0" step="1">
           </div>
-          <p class="ae-autofix-hint">Cool (blue) â† â†’ Warm (orange)</p>
+          <p class="ae-autofix-hint">Cool (blue)  -> Warm (orange)</p>
         </div>
 
-        {# â”€â”€ Manual Crop Group â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ #}
+        {# -- Manual Crop Group ------------------------------------------ #}
         <div class="ae-group">
           <div class="ae-group-label">Crop</div>
 
@@ -118,13 +118,13 @@
           </div>
         </div>
 
-        {# â”€â”€ Presets Group â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ #}
+        {# -- Presets Group ----------------------------------------------- #}
         <div class="ae-group ae-presets-group">
           <div class="ae-group-label">Adjustment Presets</div>
 
           <div class="ae-preset-controls">
             <select id="aePresetSelect" class="ae-preset-select">
-              <option value="">â€” Select Preset â€”</option>
+              <option value=""> -  Select Preset  - </option>
             </select>
             <button id="aePresetLoad" class="ae-preset-btn ae-preset-load" type="button" title="Load selected preset">
               <i class="fa-solid fa-download" aria-hidden="true"></i>
@@ -148,7 +148,7 @@
           <p class="ae-autofix-hint">Apply current adjustments to all cropped images</p>
         </div>
 
-        {# â”€â”€ Image Navigation Group â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ #}
+        {# -- Image Navigation Group ------------------------------------- #}
         <div class="ae-nav-group">
           <div class="ae-group-label">Navigate</div>
           <div class="ae-nav-btns">
@@ -164,12 +164,12 @@
 
       </div><!-- /.ae-controls -->
 
-      {# â”€â”€ Canvas Area â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ #}
+      {# -- Canvas Area ------------------------------------------------- #}
       <div class="ae-canvas-area">
-        {# Main preview canvas â€” engine renders here #}
+        {# Main preview canvas  -  engine renders here #}
         <canvas id="aeCanvas"></canvas>
 
-        {# Cropper.js container â€” shown only during manual crop #}
+        {# Cropper.js container  -  shown only during manual crop #}
         <div id="aeCropContainer" class="ae-crop-container">
           <img id="aeCropImage" alt="Crop preview">
         </div>
@@ -177,10 +177,10 @@
         {# Loading overlay #}
         <div id="aeLoading" class="ae-loading" style="display:none;">
           <i class="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i>
-          <span>Loading imageâ€¦</span>
+          <span>Loading image...</span>
         </div>
 
-        {# Phase 8: Error overlay â€” shown when image fails to load or save fails #}
+        {# Phase 8: Error overlay  -  shown when image fails to load or save fails #}
         <div id="aeError" class="ae-error-overlay" style="display:none;">
           <i class="fa-solid fa-triangle-exclamation ae-error-icon" aria-hidden="true"></i>
           <span id="aeErrorMsg" class="ae-error-text"></span>
@@ -193,12 +193,12 @@
 
     </div><!-- /.ae-body -->
 
-    {# â”€â”€ Footer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ #}
+    {# -- Footer ------------------------------------------------------- #}
     <div class="ae-footer">
       <div class="ae-footer-left">
         <span id="aeDimensions" class="ae-info-badge">
           <i class="fa-solid fa-expand" aria-hidden="true"></i>
-          <span id="aeDimText">â€”</span>
+          <span id="aeDimText"> - </span>
         </span>
       </div>
       <div class="ae-footer-right">

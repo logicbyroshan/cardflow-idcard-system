@@ -5,21 +5,21 @@
  * Globals injected by the template (before this script loads):
  *   TABLE_ID         {number}
  *   TABLE_NAME       {string}
- *   TEMPLATE_DATA    {object}  — {is_two_sided, font_size, font_family, field_mappings: {front:{},back:{}}}
- *   FRONT_PDF_URL    {string}  — may be ''
- *   BACK_PDF_URL     {string}  — may be ''
- *   TABLE_FIELDS     {Array}   — [{name, type}, ...]
+ *   TEMPLATE_DATA    {object}   {is_two_sided, font_size, font_family, field_mappings: {front:{},back:{}}}
+ *   FRONT_PDF_URL    {string}   may be ''
+ *   BACK_PDF_URL     {string}   may be ''
+ *   TABLE_FIELDS     {Array}    [{name, type}, ...]
  */
 
 (function () {
   'use strict';
 
-  /* ── Constants ─────────────────────────────────────────── */
+  /*  Constants  */
   const SCALE   = 7;          // px per mm
   const CARD_W  = 87 * SCALE; // 609 px
   const CARD_H  = 57 * SCALE; // 399 px
 
-  /* ── State ─────────────────────────────────────────────── */
+  /*  State  */
   let fabric_canvas = null;   // Fabric.js canvas
   let currentSide   = 'front';
   let isTwoSided    = false;
@@ -42,15 +42,22 @@
   // Last generated PDF blob (for the Download PDF footer button)
   let lastPdfBlob = null;
 
-  /* ── PDF.js worker ─────────────────────────────────────── */
+  /*  PDF.js worker  */
   const hasPdfJs = (typeof pdfjsLib !== 'undefined');
   if (hasPdfJs) {
     pdfjsLib.GlobalWorkerOptions.workerSrc =
       'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
   }
 
-  /* ══════════════════════════════════════════ DOM READY ══ */
+  function isCanvasReady() {
+    return !!(fabric_canvas && typeof fabric_canvas.getObjects === 'function');
+  }
+
+  /*  DOM READY  */
   document.addEventListener('DOMContentLoaded', function () {
+    if (!document.getElementById('genCardCanvas')) {
+      return;
+    }
     initFabric();
     populateFieldDropdown();
     loadState();
@@ -59,7 +66,7 @@
     if (FRONT_PDF_URL) renderPdf(FRONT_PDF_URL, true);
   });
 
-  /* ── Expose public API for the modal in print-cards.html ── */
+  /*  Expose public API for the modal in print-cards.html  */
   // Called when the modal opens: refreshes the card list and re-renders the PDF
   window.gcEditorRefresh = function (frontUrl, backUrl) {
     if (frontUrl) FRONT_PDF_URL = frontUrl;
@@ -100,8 +107,16 @@
     URL.revokeObjectURL(url);
   };
 
-  /* ── Fabric.js canvas init ──────────────────────────────── */
+  /*  Fabric.js canvas init  */
   function initFabric() {
+    if (typeof fabric === 'undefined') {
+      showToast('Canvas library failed to load. Please refresh the page.', 'error');
+      return;
+    }
+    if (!document.getElementById('genCardCanvas')) {
+      return;
+    }
+
     fabric_canvas = new fabric.Canvas('genCardCanvas', {
       width:             CARD_W,
       height:            CARD_H,
@@ -115,7 +130,7 @@
     fabric_canvas.on('mouse:up',   onMouseUp);
   }
 
-  /* ── Populate field dropdown from TABLE_FIELDS (filtered by FIELD_CONFIG) ── */
+  /*  Populate field dropdown from TABLE_FIELDS (filtered by FIELD_CONFIG)  */
   function populateFieldDropdown() {
     const sel = document.getElementById('fieldToPlaceSelect');
     // Remove existing options except the first placeholder
@@ -135,12 +150,12 @@
       const opt  = document.createElement('option');
       opt.value  = f.name;
       const isPhoto = f.type && (f.type === 'photo' || f.type.includes('photo'));
-      opt.textContent = f.name + (isPhoto ? ' \uD83D\uDDBC' : '');
+      opt.textContent = f.name + (isPhoto ? ' [IMG]' : '');
       sel.appendChild(opt);
     });
   }
 
-  /* ── Load template state from server-injected TEMPLATE_DATA ── */
+  /*  Load template state from server-injected TEMPLATE_DATA  */
   function loadState() {
     isTwoSided = !!TEMPLATE_DATA.is_two_sided;
 
@@ -165,7 +180,7 @@
     renderPlacedFields();
   }
 
-  /* ── Bind UI events ─────────────────────────────────────── */
+  /*  Bind UI events  */
   function bindEvents() {
     // 1-sided / 2-sided
     document.getElementById('singleSidedBtn').addEventListener('click', () => setTwoSided(false, true));
@@ -175,7 +190,7 @@
     document.getElementById('frontSideBtn').addEventListener('click', () => switchSide('front'));
     document.getElementById('backSideBtn').addEventListener('click',  () => switchSide('back'));
 
-    // Field to place — enable/disable draw btn
+    // Field to place  enable/disable draw btn
     document.getElementById('fieldToPlaceSelect').addEventListener('change', function () {
       const hasField = !!this.value;
       document.getElementById('startDrawBtn').disabled = !hasField;
@@ -237,15 +252,37 @@
     }
 
     // Upload PDFs
-    document.getElementById('uploadFrontInput').addEventListener('change', function () {
-      if (this.files[0]) uploadPdf(this.files[0], 'front');
-    });
-    document.getElementById('uploadBackInput').addEventListener('change', function () {
-      if (this.files[0]) uploadPdf(this.files[0], 'back');
-    });
+    const uploadFrontInput = document.getElementById('uploadFrontInput');
+    const uploadBackInput = document.getElementById('uploadBackInput');
+    const uploadFrontWrapper = document.getElementById('uploadFrontWrapper');
+    const uploadBackWrapper = document.getElementById('uploadBackWrapper');
+
+    if (uploadFrontWrapper && uploadFrontInput) {
+      uploadFrontWrapper.addEventListener('click', function (e) {
+        if (e.target === uploadFrontInput) return;
+        uploadFrontInput.click();
+      });
+    }
+    if (uploadBackWrapper && uploadBackInput) {
+      uploadBackWrapper.addEventListener('click', function (e) {
+        if (e.target === uploadBackInput) return;
+        uploadBackInput.click();
+      });
+    }
+
+    if (uploadFrontInput) {
+      uploadFrontInput.addEventListener('change', function () {
+        if (this.files[0]) uploadPdf(this.files[0], 'front');
+      });
+    }
+    if (uploadBackInput) {
+      uploadBackInput.addEventListener('change', function () {
+        if (this.files[0]) uploadPdf(this.files[0], 'back');
+      });
+    }
   }
 
-  /* ═══════════════════════ SIDE MANAGEMENT ═══════════════ */
+  /*  SIDE MANAGEMENT  */
 
   function setTwoSided(val, withUpdate) {
     isTwoSided = val;
@@ -285,9 +322,10 @@
     exitDrawMode();
   }
 
-  /* ═══════════════════════ DRAW MODE ════════════════════ */
+  /*  DRAW MODE  */
 
   function enterDrawMode(fieldObj) {
+    if (!isCanvasReady()) return;
     drawMode  = true;
     drawField = fieldObj;
     document.getElementById('drawModeIndicator').classList.remove('hidden');
@@ -299,6 +337,7 @@
   }
 
   function exitDrawMode() {
+    if (!isCanvasReady()) return;
     drawMode  = false;
     drawField = null;
     drawStart = null;
@@ -310,8 +349,9 @@
     fabric_canvas.defaultCursor = 'default';
   }
 
-  /* ─ Fabric mouse handlers ─ */
+  /*  Fabric mouse handlers  */
   function onMouseDown(opt) {
+    if (!isCanvasReady()) return;
     if (!drawMode) return;
     isMouseDown = true;
     const p = fabric_canvas.getPointer(opt.e);
@@ -332,6 +372,7 @@
   }
 
   function onMouseMove(opt) {
+    if (!isCanvasReady()) return;
     if (!drawMode || !isMouseDown || !drawRect) return;
     const p = fabric_canvas.getPointer(opt.e);
     const x = Math.min(p.x, drawStart.x);
@@ -343,6 +384,7 @@
   }
 
   function onMouseUp(opt) {
+    if (!isCanvasReady()) return;
     if (!drawMode || !isMouseDown) return;
     isMouseDown = false;
     const p = fabric_canvas.getPointer(opt.e);
@@ -350,7 +392,7 @@
     const rawH = Math.abs(p.y - drawStart.y);
 
     if (rawW < 6 || rawH < 6) {
-      // Too small — ignore
+      // Too small - ignore
       if (drawRect) { fabric_canvas.remove(drawRect); drawRect = null; }
       return;
     }
@@ -373,15 +415,17 @@
     document.getElementById('fieldToPlaceSelect').focus();
   }
 
-  /* ═══════════════════════ CANVAS RENDERING ══════════════ */
+  /*  CANVAS RENDERING  */
 
   function clearCanvasBackground() {
+    if (!isCanvasReady()) return;
     fabric_canvas.backgroundImage = null;
     fabric_canvas.renderAll();
     document.getElementById('noTemplateMsg').classList.remove('hidden');
   }
 
   function renderMappingsOnCanvas() {
+    if (!isCanvasReady()) return;
     // Remove all non-background objects (the mapping rect overlays)
     const toRemove = fabric_canvas.getObjects().filter(o => o.__isMapping);
     toRemove.forEach(o => fabric_canvas.remove(o));
@@ -421,8 +465,13 @@
     fabric_canvas.renderAll();
   }
 
-  /* ── PDF.js rendering ─────────────────────────────────── */
+  /*  PDF.js rendering  */
   function renderPdf(url, autoDetectOnLoad) {
+    if (!isCanvasReady()) {
+      showToast('Editor canvas is not ready yet. Please reopen Generate Card.', 'error');
+      return;
+    }
+
     const overlay = document.getElementById('pdfLoadingOverlay');
     const noTpl   = document.getElementById('noTemplateMsg');
     overlay.classList.remove('hidden');
@@ -437,12 +486,19 @@
     }
 
     try {
-      pdfjsLib.getDocument(url).promise.then(function (pdfDoc) {
+      const sourceUrl = (url || '').trim();
+      if (!sourceUrl) {
+        overlay.classList.add('hidden');
+        noTpl.classList.remove('hidden');
+        return;
+      }
+      const resolvedUrl = sourceUrl ? new URL(sourceUrl, window.location.origin).toString() : '';
+      pdfjsLib.getDocument({ url: resolvedUrl, withCredentials: true }).promise.then(function (pdfDoc) {
         return pdfDoc.getPage(1);
       }).then(function (page) {
         lastPdfPage = page;
 
-        // Scale the PDF page to fit exactly CARD_W × CARD_H
+        // Scale the PDF page to fit exactly CARD_W  CARD_H
         const viewport = page.getViewport({ scale: 1 });
         const scaleX   = CARD_W  / viewport.width;
         const scaleY   = CARD_H / viewport.height;
@@ -484,6 +540,11 @@
             // Recalculate canvas offsets (critical when inside a just-shown modal)
             fabric_canvas.calcOffset();
             fabric_canvas.setBackgroundImage(img, function () {
+              if (!isCanvasReady()) {
+                overlay.classList.add('hidden');
+                noTpl.classList.remove('hidden');
+                return;
+              }
               fabric_canvas.renderAll();
               overlay.classList.add('hidden');
               renderMappingsOnCanvas();
@@ -508,7 +569,7 @@
     }
   }
 
-  /* ═══════════════════════ AUTO-DETECT FIELDS ═══════════ */
+  /*  AUTO-DETECT FIELDS  */
 
   /**
    * Extract text items from the loaded PDF page, match them to table field
@@ -525,7 +586,7 @@
     }
 
     const btn = document.getElementById('autoDetectBtn');
-    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Detecting…'; }
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Detecting...'; }
 
     // Get which fields are allowed for the current side
     const cfg = (typeof FIELD_CONFIG !== 'undefined') ? FIELD_CONFIG : {};
@@ -547,7 +608,7 @@
       const detectedFontSizes = [];
       const detectedFontNames = [];
 
-      // Build a lookup: lowercase field name → field object
+      // Build a lookup: lowercase field name  field object
       const fieldLookup = {};
       fieldsToMatch.forEach(f => {
         fieldLookup[f.name.toLowerCase().trim()] = f;
@@ -582,7 +643,7 @@
         const isImage = isImageFieldType(matchedField.type, matchedField.name);
         let box_w_mm, box_h_mm;
         if (isImage) {
-          // Default image box: ~20mm × 25mm
+          // Default image box: ~20mm  25mm
           box_w_mm = 20;
           box_h_mm = 25;
         } else {
@@ -609,9 +670,9 @@
         };
       });
 
-      // ── Auto-detect font size and family from PDF text ──
+      //  Auto-detect font size and family from PDF text 
       if (detectedFontSizes.length > 0) {
-        // Find the most common font size (rounded to nearest int), clamp to 7–10
+        // Find the most common font size (rounded to nearest int), clamp to 710
         const sizeCounts = {};
         detectedFontSizes.forEach(s => {
           const rounded = Math.round(s);
@@ -686,7 +747,7 @@
       return fieldLookup[clean];
     }
 
-    // 2. Check each field name — if the PDF text contains the field name or vice versa
+    // 2. Check each field name  if the PDF text contains the field name or vice versa
     for (const [lowerName, field] of Object.entries(fieldLookup)) {
       if (alreadyMatched.has(lowerName)) continue;
 
@@ -718,7 +779,7 @@
            n.includes('photo') || n.includes('image') || n.includes('signature');
   }
 
-  /* ══════════════════════════════════ PLACED FIELDS UI ══ */
+  /*  PLACED FIELDS UI  */
 
   function renderPlacedFields() {
     const container = document.getElementById('genPlacedFields');
@@ -749,8 +810,8 @@
       div.innerHTML = `
         <span class="field-side-tag">${side === 'front' ? 'F' : 'B'}</span>
         <span class="field-name">${escHtml(name)}</span>
-        <span class="gen-placed-field-type">${fieldObj.type === 'photo' || fieldObj.type.includes('photo') ? '🖼' : 'T'}</span>
-        <button class="gen-remove-field-btn" data-side="${side}" data-field="${escHtml(name)}" title="Remove placement">✕</button>
+        <span class="gen-placed-field-type">${fieldObj.type === 'photo' || fieldObj.type.includes('photo') ? 'IMG' : 'T'}</span>
+        <button class="gen-remove-field-btn" data-side="${side}" data-field="${escHtml(name)}" title="Remove placement">x</button>
       `;
       div.querySelector('button').addEventListener('click', function () {
         removeFieldMapping(this.dataset.side, this.dataset.field);
@@ -765,7 +826,7 @@
     renderPlacedFields();
   }
 
-  /* ═══════════════════════ CARD LIST ════════════════════ */
+  /*  CARD LIST  */
 
   /** Build a display name from ordered_fields (first 2 text fields) */
   function buildDisplayName(item) {
@@ -778,7 +839,7 @@
       if (t === 'image' || t === 'photo' || t === 'file' || n === 'photo' || n.includes('photo')) continue;
       if (f.value && f.value !== '-') textParts.push(f.value);
     }
-    return textParts.length > 0 ? textParts.join(' — ') : ('Card #' + (item.card_id || item.pr_id));
+    return textParts.length > 0 ? textParts.join(' - ') : ('Card #' + (item.card_id || item.pr_id));
   }
 
   function loadCardList() {
@@ -878,12 +939,12 @@
     document.getElementById('generatePdfBtn').disabled = !(hasCards && hasMappings);
   }
 
-  /* ═══════════════════════ API CALLS ═════════════════════ */
+  /*  API CALLS  */
 
   function saveTemplate() {
     const btn = document.getElementById('saveTemplateBtn');
     btn.disabled = true;
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving…';
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
 
     const payload = {
       is_two_sided:   isTwoSided,
@@ -915,7 +976,7 @@
 
     const btn = document.getElementById('generatePdfBtn');
     btn.disabled = true;
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generating…';
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generating...';
 
     const payload = {
       is_two_sided:   isTwoSided,
@@ -944,7 +1005,7 @@
       return response.blob();
     })
     .then(blob => {
-      // Store the blob — allow download via button
+      // Store the blob  allow download via button
       lastPdfBlob = blob;
 
       // Enable footer Download PDF button if it exists (modal mode)
@@ -994,7 +1055,7 @@
     const formData = new FormData();
     formData.append('pdf', file);
 
-    showToast(`Uploading ${side} template…`, 'info');
+    showToast(`Uploading ${side} template...`, 'info');
 
     fetch(`/print/api/generate-card/table/${TABLE_ID}/template/upload-pdf/${side}/`, {
       method:  'POST',
@@ -1025,7 +1086,7 @@
     });
   }
 
-  /* ═══════════════════════ HELPERS ═══════════════════════ */
+  /*  HELPERS  */
 
   function getCookie(name) {
     const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');

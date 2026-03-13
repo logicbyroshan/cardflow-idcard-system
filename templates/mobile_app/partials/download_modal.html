@@ -1,4 +1,4 @@
-<!-- Download Progress Modal â€” Bottom Sheet -->
+<!-- Download Progress Modal  -  Bottom Sheet -->
 <!-- Blocks all interaction while downloading -->
 
 <div x-show="downloadModal.show"
@@ -90,7 +90,7 @@
 
         <!-- Action Buttons -->
         <div class="download-modal-actions">
-            <!-- Cancel button â€” always visible during processing -->
+            <!-- Cancel button  -  always visible during processing -->
             <button type="button"
                     class="download-btn-cancel"
                     x-show="downloadModal.state !== 'complete'"
@@ -100,7 +100,7 @@
                 <span x-text="downloadModal.cancelling ? 'Cancelling...' : 'Cancel'"></span>
             </button>
 
-            <!-- Done button â€” shown on complete -->
+            <!-- Done button  -  shown on complete -->
             <button type="button"
                     class="download-btn-done"
                     x-show="downloadModal.state === 'complete'"
@@ -109,7 +109,7 @@
                 <span>Done</span>
             </button>
 
-            <!-- Close button â€” shown on error -->
+            <!-- Close button  -  shown on error -->
             <button type="button"
                     class="download-btn-cancel"
                     x-show="downloadModal.state === 'error'"
