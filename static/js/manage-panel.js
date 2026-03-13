@@ -891,7 +891,8 @@ async function loadMonitoring() {
 
 function initServerInfoTab() {
   const rows = document.getElementById('serverInfoPathRows');
-  if (!rows) return;
+  const breakdownRows = document.getElementById('serverInfoBreakdownRows');
+  if (!rows || !breakdownRows) return;
 
   if (serverInfoSnapshot) {
     renderServerInfo(serverInfoSnapshot);
@@ -900,6 +901,7 @@ function initServerInfoTab() {
 
   if (!serverInfoHasFetched) {
     rows.innerHTML = `<div class="empty-state" style="padding:18px 16px;"><i class="fa-solid fa-cloud-arrow-down"></i><p>Snapshot not loaded</p><span>Click "Fetch Snapshot" to load current server usage.</span></div>`;
+    breakdownRows.innerHTML = `<div class="empty-state" style="padding:18px 16px;"><i class="fa-solid fa-chart-pie"></i><p>Breakdown not loaded</p><span>Fetch snapshot to see detailed used-space accounting.</span></div>`;
   }
 }
 
@@ -959,10 +961,13 @@ async function loadServerInfo(forceRefresh) {
 
 function renderServerInfo(snapshot, fromCache) {
   const storage = snapshot.storage || {};
+  const database = snapshot.database || {};
+  const usageBreakdown = Array.isArray(snapshot.usage_breakdown) ? snapshot.usage_breakdown : [];
   const memory = snapshot.memory || {};
   const cpu = snapshot.cpu || {};
   const rows = document.getElementById('serverInfoPathRows');
-  if (!rows) return;
+  const breakdownRows = document.getElementById('serverInfoBreakdownRows');
+  if (!rows || !breakdownRows) return;
 
   const usedPct = Number(storage.used_pct || 0);
   const donut = document.getElementById('serverStorageDonut');
@@ -979,6 +984,9 @@ function renderServerInfo(snapshot, fromCache) {
   setText('serverDiskUsed', storage.used_human || '-');
   setText('serverDiskFree', storage.free_human || '-');
   setText('serverDiskTracked', storage.tracked_total_human || '-');
+  setText('serverProjectTotal', storage.project_total_human || '-');
+  setText('serverDatabaseTotal', storage.database_total_human || '-');
+  setText('serverOtherUsed', storage.other_system_used_human || '-');
   setText('serverCpuCores', cpu.logical_cores || '-');
   setText('serverMemoryUsed', memory.used_human || '-');
   setText('serverMemoryTotal', memory.total_human || '-');
@@ -986,6 +994,10 @@ function renderServerInfo(snapshot, fromCache) {
   setText('serverHostName', snapshot.host || '-');
   setText('serverPythonVersion', snapshot.python_version || '-');
   setText('serverPlatformText', snapshot.platform || '-');
+  setText('serverDbBackend', database.backend || '-');
+  setText('serverDbName', database.name || '-');
+  setText('serverDbSize', database.size_human || '-');
+  setText('serverDbStatus', database.status || '-');
 
   const updatedEl = document.getElementById('serverInfoLastUpdated');
   if (updatedEl) {
@@ -994,6 +1006,22 @@ function renderServerInfo(snapshot, fromCache) {
   }
 
   const pathUsage = Array.isArray(snapshot.path_usage) ? snapshot.path_usage : [];
+  if (!usageBreakdown.length) {
+    breakdownRows.innerHTML = `<div class="empty-state" style="padding:18px 16px;"><i class="fa-solid fa-chart-pie"></i><p>Breakdown unavailable</p><span>Server could not calculate used-space categories.</span></div>`;
+  } else {
+    breakdownRows.innerHTML = usageBreakdown.map(item => {
+      const pctUsed = Number(item.pct_of_used_disk || 0);
+      return `<div class="server-path-row">
+        <div class="server-path-main">
+          <div class="server-path-name">${escHtml(item.name || '')}</div>
+          <div class="server-path-size">${escHtml(item.size_human || '-')}</div>
+        </div>
+        <div class="server-path-bar-bg"><div class="server-path-bar-fill" style="width:${Math.max(0, Math.min(100, pctUsed))}%;"></div></div>
+        <div class="server-path-meta">${pctUsed.toFixed(1)}% of used disk</div>
+      </div>`;
+    }).join('');
+  }
+
   if (!pathUsage.length) {
     rows.innerHTML = `<div class="empty-state" style="padding:18px 16px;"><i class="fa-solid fa-folder-open"></i><p>No tracked folders found</p><span>Tracked folders are missing or empty on this server.</span></div>`;
     return;
@@ -1010,5 +1038,9 @@ function renderServerInfo(snapshot, fromCache) {
       <div class="server-path-meta">${pctTracked.toFixed(1)}% of tracked storage</div>
     </div>`;
   }).join('');
+
+  if (database.status === 'error' && database.error) {
+    window.showToast && showToast(`DB size read failed: ${database.error}`, 'warning');
+  }
 }
 

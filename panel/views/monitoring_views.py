@@ -17,6 +17,7 @@ from pathlib import Path
 
 from django.conf import settings
 from django.core.cache import cache
+from django.db import connection
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods, require_POST
 from django.views.decorators.csrf import csrf_protect
@@ -26,7 +27,7 @@ logger = logging.getLogger('core.views')
 
 _MAX_REPORTS_PER_MIN = 10
 _MAX_LOG_FIELD_LEN = 500
-_SERVER_INFO_CACHE_KEY = 'panel:server-info:snapshot:v1'
+_SERVER_INFO_CACHE_KEY = 'panel:server-info:snapshot:v2'
 _SERVER_INFO_CACHE_TTL = 300
 
 
@@ -131,6 +132,56 @@ def _memory_snapshot():
             'used_human': '0 B',
             'free_human': '0 B',
         }
+
+
+def _database_storage_snapshot(base_dir):
+    backend = settings.DATABASES.get('default', {}).get('ENGINE', '')
+    db_name = settings.DATABASES.get('default', {}).get('NAME', '')
+
+    db_info = {
+        'backend': backend.split('.')[-1] if backend else 'unknown',
+        'name': str(db_name) if db_name else '-',
+        'size_bytes': 0,
+        'size_human': '0 B',
+        'status': 'unknown',
+        'error': '',
+    }
+
+    try:
+        if 'sqlite' in backend:
+            db_file = Path(db_name) if db_name else (base_dir / 'db.sqlite3')
+            if db_file.exists() and db_file.is_file():
+                size_bytes = db_file.stat().st_size
+                db_info.update({
+                    'size_bytes': int(size_bytes),
+                    'size_human': _format_bytes(size_bytes),
+                    'status': 'ok',
+                    'name': db_file.name,
+                })
+            else:
+                db_info.update({'status': 'missing', 'error': 'SQLite file not found'})
+
+        elif 'postgresql' in backend or 'postgres' in backend:
+            with connection.cursor() as cursor:
+                cursor.execute('SELECT pg_database_size(current_database())')
+                row = cursor.fetchone()
+            size_bytes = int(row[0]) if row and row[0] is not None else 0
+            db_info.update({
+                'size_bytes': size_bytes,
+                'size_human': _format_bytes(size_bytes),
+                'status': 'ok',
+            })
+
+        else:
+            db_info.update({'status': 'unsupported', 'error': 'Database engine not supported for size metrics'})
+
+    except Exception as exc:
+        db_info.update({
+            'status': 'error',
+            'error': str(exc)[:160],
+        })
+
+    return db_info
 
 
 @require_POST
@@ -320,30 +371,70 @@ def api_server_info_snapshot(request):
     disk_used_pct = round((disk.used / disk.total) * 100, 1) if disk.total > 0 else 0
 
     tracked_labels = [
+        ('Project Root', base_dir),
+        ('venv', base_dir / 'venv'),
+        ('.git', base_dir / '.git'),
         ('media', base_dir / 'media'),
         ('mediafiles', base_dir / 'mediafiles'),
         ('static', base_dir / 'static'),
         ('staticfiles', base_dir / 'staticfiles'),
         ('logs', base_dir / 'logs'),
+        ('Face Cropper', base_dir / 'Face Cropper'),
+        ('Face Cropper/build', base_dir / 'Face Cropper' / 'build'),
+        ('Face Cropper/installer', base_dir / 'Face Cropper' / 'installer'),
         ('Face Cropper/logs', base_dir / 'Face Cropper' / 'logs'),
     ]
 
-    path_usage = []
+    path_usage_raw = []
     for label, path_obj in tracked_labels:
         if not path_obj.exists() or not path_obj.is_dir():
             continue
         size_bytes = _dir_size_bytes(str(path_obj))
-        path_usage.append({
+        path_usage_raw.append({
             'name': label,
             'size_bytes': size_bytes,
             'size_human': _format_bytes(size_bytes),
         })
 
-    path_usage.sort(key=lambda x: x['size_bytes'], reverse=True)
+    path_usage_raw.sort(key=lambda x: x['size_bytes'], reverse=True)
+    path_usage = [p for p in path_usage_raw if p['name'] != 'Project Root']
+    project_root_size = next((p['size_bytes'] for p in path_usage_raw if p['name'] == 'Project Root'), 0)
+
+    db_info = _database_storage_snapshot(base_dir)
+    db_size_bytes = int(db_info.get('size_bytes') or 0)
+
+    disk_used_nonfree = int(disk.used)
+    known_used_bytes = max(project_root_size + db_size_bytes, 0)
+    other_system_used = max(disk_used_nonfree - known_used_bytes, 0)
+
+    usage_breakdown = [
+        {
+            'name': 'Project Files',
+            'size_bytes': project_root_size,
+            'size_human': _format_bytes(project_root_size),
+        },
+        {
+            'name': 'Database',
+            'size_bytes': db_size_bytes,
+            'size_human': _format_bytes(db_size_bytes),
+        },
+        {
+            'name': 'Other System Usage',
+            'size_bytes': other_system_used,
+            'size_human': _format_bytes(other_system_used),
+        },
+    ]
+
     tracked_total = sum(p['size_bytes'] for p in path_usage)
     for item in path_usage:
         item['pct_of_tracked'] = round((item['size_bytes'] / tracked_total) * 100, 1) if tracked_total > 0 else 0
         item['pct_of_disk'] = round((item['size_bytes'] / disk.total) * 100, 3) if disk.total > 0 else 0
+
+    for item in usage_breakdown:
+        item['pct_of_used_disk'] = round((item['size_bytes'] / disk_used_nonfree) * 100, 1) if disk_used_nonfree > 0 else 0
+        item['pct_of_total_disk'] = round((item['size_bytes'] / disk.total) * 100, 2) if disk.total > 0 else 0
+
+    usage_breakdown.sort(key=lambda x: x['size_bytes'], reverse=True)
 
     now = datetime.now(dt_timezone.utc)
     snapshot = {
@@ -366,7 +457,15 @@ def api_server_info_snapshot(request):
             'free_human': _format_bytes(disk.free),
             'tracked_total_bytes': tracked_total,
             'tracked_total_human': _format_bytes(tracked_total),
+            'project_total_bytes': project_root_size,
+            'project_total_human': _format_bytes(project_root_size),
+            'database_total_bytes': db_size_bytes,
+            'database_total_human': _format_bytes(db_size_bytes),
+            'other_system_used_bytes': other_system_used,
+            'other_system_used_human': _format_bytes(other_system_used),
         },
+        'database': db_info,
+        'usage_breakdown': usage_breakdown,
         'path_usage': path_usage,
     }
 

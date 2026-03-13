@@ -30,7 +30,10 @@
         <div class="server-meta-row"><span>Total</span><strong id="serverDiskTotal">-</strong></div>
         <div class="server-meta-row"><span>Used</span><strong id="serverDiskUsed">-</strong></div>
         <div class="server-meta-row"><span>Free</span><strong id="serverDiskFree">-</strong></div>
-        <div class="server-meta-row"><span>Tracked</span><strong id="serverDiskTracked">-</strong></div>
+        <div class="server-meta-row"><span>Project Total</span><strong id="serverProjectTotal">-</strong></div>
+        <div class="server-meta-row"><span>Database</span><strong id="serverDatabaseTotal">-</strong></div>
+        <div class="server-meta-row"><span>Other System</span><strong id="serverOtherUsed">-</strong></div>
+        <div class="server-meta-row"><span>Tracked Folders</span><strong id="serverDiskTracked">-</strong></div>
       </div>
     </div>
 
@@ -57,12 +60,34 @@
           <div class="system-row"><span class="system-label">Platform</span><span class="system-value" id="serverPlatformText">-</span></div>
         </div>
       </div>
+      <div class="system-card">
+        <div class="system-card-header"><i class="fa-solid fa-database"></i> Database</div>
+        <div class="system-card-body">
+          <div class="system-row"><span class="system-label">Backend</span><span class="system-value" id="serverDbBackend">-</span></div>
+          <div class="system-row"><span class="system-label">Name</span><span class="system-value" id="serverDbName">-</span></div>
+          <div class="system-row"><span class="system-label">Size</span><span class="system-value" id="serverDbSize">-</span></div>
+          <div class="system-row"><span class="system-label">Status</span><span class="system-value" id="serverDbStatus">-</span></div>
+        </div>
+      </div>
     </div>
   </div>
 
   <div class="system-card" style="margin-top:0;padding:0;overflow:hidden;">
     <div class="system-card-header">
-      <i class="fa-solid fa-folder-tree"></i> Storage By Project Folder
+      <i class="fa-solid fa-chart-pie"></i> Used Disk Breakdown
+    </div>
+    <div class="server-path-list" id="serverInfoBreakdownRows">
+      <div class="empty-state" style="padding:18px 16px;">
+        <i class="fa-solid fa-inbox"></i>
+        <p>No breakdown yet</p>
+        <span>Fetch snapshot to see project vs database vs other usage.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="system-card" style="margin-top:0;padding:0;overflow:hidden;">
+    <div class="system-card-header">
+      <i class="fa-solid fa-folder-tree"></i> Project Folder Breakdown
     </div>
     <div class="server-path-list" id="serverInfoPathRows">
       <div class="empty-state" style="padding:18px 16px;">

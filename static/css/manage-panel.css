@@ -816,7 +816,7 @@ textarea.panel-form-input {
 }
 .server-system-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
 }
 .server-system-grid .system-card {
   border-bottom: none;
