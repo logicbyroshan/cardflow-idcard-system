@@ -103,9 +103,25 @@ function initReprintPickerHandlers() {
     }
 
     function resolveFields(items) {
+        var headerFields = [];
+        document.querySelectorAll('#data-table thead th[data-field-name]').forEach(function(th) {
+            var name = (th.getAttribute('data-field-name') || '').trim();
+            if (!name) return;
+            headerFields.push({
+                name: name,
+                type: (th.getAttribute('data-field-type') || 'text').trim(),
+                label: (th.textContent || name).trim().replace(/\s+/g, ' '),
+            });
+        });
+
+        if (headerFields.length > 0) {
+            resolvedFields = headerFields;
+            return;
+        }
+
         if (Array.isArray(tableFields) && tableFields.length > 0) {
             resolvedFields = tableFields.map(function(f) {
-                return { name: f.name, type: f.type || 'text' };
+                return { name: f.name, type: f.type || 'text', label: f.name };
             });
             return;
         }
@@ -114,7 +130,7 @@ function initReprintPickerHandlers() {
         });
         if (first) {
             resolvedFields = first.ordered_fields.map(function(f) {
-                return { name: f.name, type: f.type || 'text' };
+                return { name: f.name, type: f.type || 'text', label: f.name };
             });
         } else {
             resolvedFields = [];
@@ -136,9 +152,9 @@ function initReprintPickerHandlers() {
         resolvedFields.forEach(function(field) {
             var isImg = isImageFieldLocal(field.type, field.name);
             if (isImg) {
-                html += '<th class="center-cell" style="width:52px;">' + esc(field.name) + '</th>';
+                html += '<th class="center-cell" style="width:52px;">' + esc(field.label || field.name) + '</th>';
             } else {
-                html += '<th>' + esc(field.name) + '</th>';
+                html += '<th>' + esc(field.label || field.name) + '</th>';
             }
         });
         html += '<th>Status</th>';

@@ -141,9 +141,9 @@
 
 <style>
   #reprintPickerModal .reprint-picker-card {
-    width: min(1280px, 96vw);
-    height: min(90vh, 860px);
-    max-width: 96vw;
+    width: 90vw;
+    height: 90vh;
+    max-width: 90vw;
     max-height: 90vh;
     border-radius: 14px;
     min-height: 0;
@@ -172,9 +172,10 @@
   }
   #reprintPickerModal .search-box {
     flex: 1 1 auto;
-    width: 100%;
+    width: 100% !important;
+    max-width: none !important;
     min-width: 0;
-    background: #fff;
+    background: #fff !important;
     border: 1px solid #d1d5db;
     border-radius: 8px;
   }
@@ -188,6 +189,13 @@
     padding: 10px 38px 10px 33px;
     font-size: 14px;
     line-height: 1.2;
+    width: 100% !important;
+    background: #ffffff !important;
+    color: #111827 !important;
+    border: none !important;
+  }
+  #reprintPickerModal .search-box .search-input::placeholder {
+    color: #9ca3af !important;
   }
   #reprintPickerModal .search-box .search-clear-btn {
     right: 10px;
