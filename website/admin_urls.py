@@ -22,6 +22,7 @@ urlpatterns = [
     # API — Website Status
     # ==========================================================================
     path('api/status/toggle/', admin_views.api_toggle_website_status, name='api_status_toggle'),
+    path('api/status/not-found/', admin_views.api_set_website_not_found_mode, name='api_status_not_found'),
 
     # ==========================================================================
     # API — Business Details

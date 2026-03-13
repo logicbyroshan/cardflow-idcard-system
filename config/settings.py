@@ -115,6 +115,8 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     # Request timing — logs duration, slow-request warnings (>1.5 s)
     'core.middleware.RequestTimingMiddleware',
+    # Panel entry gate — require website panel-button flow for anonymous panel access
+    'core.middleware.PanelEntryGateMiddleware',
     # Permission Validation Middleware - re-checks permissions on every request
     # CRITICAL: Must come after AuthenticationMiddleware
     'core.middleware.PermissionValidationMiddleware',

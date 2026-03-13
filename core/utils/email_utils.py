@@ -16,23 +16,24 @@ logger = logging.getLogger(__name__)
 def _get_panel_login_url(request=None):
     """
     Build the panel login URL for use in emails.
-
-    Priority:
-      1. PANEL_URL setting  → https://panel.adarshbhopal.in/auth/login/
-      2. request (if given) → build_absolute_uri('/auth/login/')
-      3. SITE_URL fallback  → {SITE_URL}/panel/auth/login/  (local dev)
+    Automatically appends the panel_entry_token to bypass the gate.
     """
+    from django.core.signing import Signer
+    from urllib.parse import urlencode
+
     panel_url = getattr(settings, 'PANEL_URL', '')
     if panel_url:
-        return f'{panel_url}/auth/login/'
+        base_url = f'{panel_url}/auth/login/'
+    elif request:
+        base_url = request.build_absolute_uri('/auth/login/')
+    else:
+        site_url = getattr(settings, 'SITE_URL', 'http://localhost:8000')
+        base_url = f'{site_url}/panel/auth/login/'
 
-    if request:
-        # On subdomain, path is already stripped; build clean URL
-        return request.build_absolute_uri('/auth/login/')
-
-    # Local dev fallback
-    site_url = getattr(settings, 'SITE_URL', 'http://localhost:8000')
-    return f'{site_url}/panel/auth/login/'
+    signer = Signer(salt='panel-entry-gate')
+    token = signer.sign('website-panel-entry')
+    qs = urlencode({'panel_entry_token': token})
+    return f"{base_url}?{qs}"
 
 
 def generate_secure_password(length=12):

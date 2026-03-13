@@ -7,6 +7,9 @@ app_name = 'website'
 urlpatterns = [
     # --- Main Navigation Pages ---
     path('', views.home, name='home'),
+
+    # Panel entry gateway (website button -> panel)
+    path('panel-entry/', views.panel_entry, name='panel_entry'),
     
     path('our-work/', views.our_work, name='our_work'),
     

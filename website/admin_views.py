@@ -23,6 +23,7 @@ from core.services.permission_service import (
     api_require_permission,
 )
 from core.services.activity_service import ActivityService
+from core.models import SystemSettings
 from accounts.rate_limit import rate_limit
 
 from .models import (
@@ -196,6 +197,7 @@ def website_dashboard(request):
     context['new_contacts'] = contact_agg['new']
 
     context['website_status'] = WebsiteStatus.get_status()
+    context['website_not_found_mode'] = SystemSettings.get_value('website_not_found_mode', 'false') == 'true'
 
     hero_agg = HeroImage.objects.aggregate(
         total=Count('id'),
@@ -272,6 +274,32 @@ def api_toggle_website_status(request):
         return JsonResponse({'success': True, 'status': new_status})
     except Exception as e:
         logging.getLogger(__name__).exception("Toggle website status error: %s", e)
+        return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
+
+
+@require_POST
+@website_publish_required
+def api_set_website_not_found_mode(request):
+    """Enable/disable public website Not Found mode."""
+    try:
+        enabled = _parse_bool(request.POST.get('enabled', 'false'))
+
+        SystemSettings.set_value(
+            'website_not_found_mode',
+            'true' if enabled else 'false',
+            'When true, public website routes return 404 Not Found.',
+        )
+
+        from django.core.cache import cache
+        cache.delete('website_not_found_mode_cache')
+
+        ActivityService.log_website_update(
+            request,
+            f"website not found mode {'enabled' if enabled else 'disabled'}",
+        )
+        return JsonResponse({'success': True, 'enabled': enabled})
+    except Exception as e:
+        logging.getLogger(__name__).exception("Toggle website not-found mode error: %s", e)
         return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 
 

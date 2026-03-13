@@ -116,7 +116,7 @@
                     <li><a href="{% url 'website:testimonials' %}">Testimonials</a></li>
                     <li><a href="{% url 'website:home' %}#contact">Contact</a></li>
                     <li class="nav-btn-group">
-                        <a href="{% if PANEL_URL %}{{ PANEL_URL }}/auth/login/{% else %}{% url 'accounts:login' %}{% endif %}" class="btn-cta btn-login"><i class="fas fa-user-shield" aria-hidden="true"></i> Panel</a>
+                        <a href="{% url 'website:panel_entry' %}" class="btn-cta btn-login"><i class="fas fa-user-shield" aria-hidden="true"></i> Panel</a>
                     </li>
                 </ul>
                 <button type="button" class="hamburger" aria-label="Toggle navigation menu" aria-expanded="false">
@@ -166,7 +166,7 @@
                         <li><a href="{% url 'website:why_choose_us' %}">Why Choose Us</a></li>
                         <li><a href="{% url 'website:testimonials' %}">Testimonials</a></li>
                         <li><a href="{% url 'website:home' %}#contact">Get a Quote</a></li>
-                        <li><a href="{% if PANEL_URL %}{{ PANEL_URL }}/auth/login/{% else %}{% url 'accounts:login' %}{% endif %}"><i class="fas fa-user-shield" aria-hidden="true"></i> Panel</a></li>
+                        <li><a href="{% url 'website:panel_entry' %}"><i class="fas fa-user-shield" aria-hidden="true"></i> Panel</a></li>
                     </ul>
                 </div>
 

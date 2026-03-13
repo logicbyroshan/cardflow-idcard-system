@@ -1,6 +1,7 @@
 from collections import defaultdict
+from urllib.parse import urlsplit, parse_qsl, urlencode
 
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.core.validators import validate_email
@@ -238,6 +239,37 @@ def privacy_policy(request):
     """Privacy Policy Page - Static content, only needs base context"""
     context = get_common_context()
     return render(request, 'website/privacy-policy.html', context)
+
+
+def panel_entry(request):
+    """Generate a signed panel-entry token and redirect to panel login/path."""
+    from django.core.signing import TimestampSigner
+
+    raw_next = request.GET.get('next', '/auth/login/')
+    parsed = urlsplit(raw_next)
+
+    next_path = parsed.path or '/auth/login/'
+    if next_path.startswith('/panel/'):
+        next_path = next_path[len('/panel'):]
+    if not next_path.startswith('/'):
+        next_path = '/auth/login/'
+    if next_path == '/':
+        next_path = '/auth/login/'
+
+    params = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    signer = TimestampSigner(salt='panel-entry-gate')
+    params['panel_entry_token'] = signer.sign('website-panel-entry')
+    query = urlencode(params)
+
+    panel_base = (_s.PANEL_URL or '').rstrip('/')
+    if panel_base:
+        destination = f'{panel_base}{next_path}'
+    else:
+        destination = f'/panel{next_path}'
+
+    if query:
+        destination = f'{destination}?{query}'
+    return redirect(destination)
 
 
 # ==========================================

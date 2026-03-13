@@ -10,6 +10,7 @@ Contains middleware for:
 """
 import logging
 import time
+from urllib.parse import quote
 from django.conf import settings as django_settings
 from django.contrib.auth import logout
 from django.shortcuts import redirect
@@ -192,6 +193,79 @@ class RequestTimingMiddleware:
             logger.warning("SLOW REQUEST " + msg, *args)
         else:
             logger.debug(msg, *args)
+
+
+class PanelEntryGateMiddleware:
+    """
+    Restrict direct access to the panel subdomain.
+
+    Anonymous users must enter via the website panel button flow, which
+    provides a short-lived signed token. Once validated, a session flag
+    allows normal panel navigation.
+    """
+
+    EXEMPT_PREFIXES = (
+        '/static/',
+        '/media/',
+        '/favicon.ico',
+        '/robots.txt',
+        '/api/health/',
+    )
+    EXEMPT_PATHS = {
+        '/admin/',
+    }
+    TOKEN_PARAM = 'panel_entry_token'
+    SESSION_KEY = '_panel_entry_ok'
+    TOKEN_SALT = 'panel-entry-gate'
+    TOKEN_VALUE = 'website-panel-entry'
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        if not getattr(request, '_is_panel_subdomain', False):
+            return self.get_response(request)
+
+        if self._is_exempt(request.path):
+            return self.get_response(request)
+
+        from core.models import SystemSettings
+        gate_enabled = SystemSettings.get_value('panel_entry_gate_enabled', 'true') == 'true'
+        if not gate_enabled:
+            return self.get_response(request)
+
+        if request.session.get(self.SESSION_KEY) == '1':
+            return self.get_response(request)
+
+        if getattr(request.user, 'is_authenticated', False):
+            request.session[self.SESSION_KEY] = '1'
+            return self.get_response(request)
+
+        token = request.GET.get(self.TOKEN_PARAM)
+        if token and self._is_valid_token(token):
+            request.session[self.SESSION_KEY] = '1'
+            return self.get_response(request)
+
+        from django.http import Http404
+        raise Http404('Not found')
+
+    def _is_valid_token(self, token):
+        from django.core.signing import Signer, BadSignature
+
+        signer = Signer(salt=self.TOKEN_SALT)
+        try:
+            value = signer.unsign(token)
+            return value == self.TOKEN_VALUE
+        except BadSignature:
+            return False
+
+    def _is_exempt(self, path):
+        if path in self.EXEMPT_PATHS:
+            return True
+        for prefix in self.EXEMPT_PREFIXES:
+            if path.startswith(prefix):
+                return True
+        return False
 
 
 class PermissionValidationMiddleware:
@@ -683,6 +757,7 @@ class WebsiteOfflineMiddleware:
     # Paths that should NEVER be blocked (admin panel, static, media, etc.)
     BYPASS_PREFIXES = (
         '/panel/',
+        '/panel-entry/',
         '/admin/',
         '/static/',
         '/media/',
@@ -706,13 +781,23 @@ class WebsiteOfflineMiddleware:
         # Only intercept public-facing website routes
         if self._is_public_website_route(request.path):
             from website.models import WebsiteStatus
+            from core.models import SystemSettings
             from django.core.cache import cache
+            from django.http import Http404
 
             # Cache status for 10 seconds to avoid DB hit on every request
             status = cache.get('website_status_cache')
             if status is None:
                 status = WebsiteStatus.get_status()
                 cache.set('website_status_cache', status, 10)
+
+            not_found_mode = cache.get('website_not_found_mode_cache')
+            if not_found_mode is None:
+                not_found_mode = SystemSettings.get_value('website_not_found_mode', 'false') == 'true'
+                cache.set('website_not_found_mode_cache', not_found_mode, 10)
+
+            if not_found_mode:
+                raise Http404('Not found')
 
             if status == 'draft':
                 from django.shortcuts import render

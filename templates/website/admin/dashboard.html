@@ -21,6 +21,21 @@
         {% endif %}
     </div>
 
+    <!-- Not Found Mode Banner -->
+    <div class="wa-status-banner {% if website_not_found_mode %}draft{% else %}live{% endif %}" id="notFoundBanner" style="margin-top: 10px;">
+        <span class="wa-status-label">
+            <i class="fa-solid {% if website_not_found_mode %}fa-triangle-exclamation{% else %}fa-link{% endif %}"></i>
+            Domain Not Found Mode is
+            <strong id="notFoundStatusText">{% if website_not_found_mode %}On{% else %}Off{% endif %}</strong>
+        </span>
+        {% if is_super_admin or perm_website_publish %}
+        <button class="btn btn-sm {% if website_not_found_mode %}btn-success{% else %}btn-danger{% endif %}" id="toggleNotFoundBtn">
+            <i class="fa-solid {% if website_not_found_mode %}fa-power-off{% else %}fa-triangle-exclamation{% endif %}"></i>
+            {% if website_not_found_mode %}Disable Not Found Mode{% else %}Enable Not Found Mode{% endif %}
+        </button>
+        {% endif %}
+    </div>
+
     <!-- Overview Section -->
     <div class="wa-dashboard-section">
         <div class="wa-dashboard-section-header">
@@ -129,26 +144,64 @@
 <script>
 (function() {
     const toggleBtn = document.getElementById('toggleStatusBtn');
-    if (!toggleBtn) return;
+    const toggleNotFoundBtn = document.getElementById('toggleNotFoundBtn');
 
-    toggleBtn.addEventListener('click', async function() {
-        const ok = await waConfirm({ title: 'Change Website Status?', text: 'This will toggle your website between live and draft mode.', icon: 'fa-solid fa-globe', confirmLabel: 'Yes, Change', btnClass: 'btn-primary' });
-        if (!ok) return;
-        try {
-            const res = await fetch('{% url "website_admin:api_status_toggle" %}', {
-                method: 'POST',
-                headers: { 'X-CSRFToken': getCSRFToken(), 'X-Requested-With': 'XMLHttpRequest' }
-            });
-            const data = await res.json();
-            if (data.success) {
-                location.reload();
-            } else {
-                showToast(data.message || 'Error', 'error');
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', async function() {
+            const ok = await waConfirm({ title: 'Change Website Status?', text: 'This will toggle your website between live and draft mode.', icon: 'fa-solid fa-globe', confirmLabel: 'Yes, Change', btnClass: 'btn-primary' });
+            if (!ok) return;
+            try {
+                const res = await fetch('{% url "website_admin:api_status_toggle" %}', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': getCSRFToken(), 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    location.reload();
+                } else {
+                    showToast(data.message || 'Error', 'error');
+                }
+            } catch(e) {
+                showToast('Network error', 'error');
             }
-        } catch(e) {
-            showToast('Network error', 'error');
-        }
-    });
+        });
+    }
+
+    if (toggleNotFoundBtn) {
+        toggleNotFoundBtn.addEventListener('click', async function() {
+            const enabledNow = {{ website_not_found_mode|yesno:'true,false' }};
+            const ok = await waConfirm({
+                title: enabledNow ? 'Disable Not Found Mode?' : 'Enable Not Found Mode?',
+                text: enabledNow
+                    ? 'Public domain will become reachable again.'
+                    : 'Public website pages will return 404 Not Found.',
+                icon: 'fa-solid fa-triangle-exclamation',
+                confirmLabel: enabledNow ? 'Disable' : 'Enable',
+                btnClass: enabledNow ? 'btn-success' : 'btn-danger'
+            });
+            if (!ok) return;
+
+            try {
+                const res = await fetch('{% url "website_admin:api_status_not_found" %}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCSRFToken(),
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: new URLSearchParams({ enabled: String(!enabledNow) })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    location.reload();
+                } else {
+                    showToast(data.message || 'Error', 'error');
+                }
+            } catch (e) {
+                showToast('Network error', 'error');
+            }
+        });
+    }
 
 })();
 </script>
