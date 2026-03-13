@@ -165,8 +165,9 @@
   }
   #reprintPickerModal .reprint-picker-search {
     display: flex;
+    flex-direction: column;
     align-items: stretch;
-    gap: 8px;
+    gap: 6px;
     width: 100%;
   }
   #reprintPickerModal .search-box {
@@ -201,10 +202,11 @@
     border: 1px solid #e2e8f0;
     border-radius: 999px;
     padding: 0 12px;
-    height: 40px;
+    height: 28px;
     display: inline-flex;
     align-items: center;
     white-space: nowrap;
+    width: fit-content;
   }
   #reprintPickerModal #reprintPickerPreview {
     display: none;
@@ -293,9 +295,26 @@
   }
   #reprintPickerConfirmModal #reprintPickerEditBtn {
     min-width: 110px;
+    background: #2563eb;
+    color: #fff;
+    border: none;
+  }
+  #reprintPickerConfirmModal #reprintPickerEditBtn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
   }
   #reprintPickerConfirmModal #reprintPickerConfirmBtn {
-    min-width: 110px;
+    min-width: 150px;
+    background: linear-gradient(135deg, #d97706, #f59e0b);
+    color: #fff;
+    border: none;
+  }
+  #reprintPickerConfirmModal #reprintPickerConfirmBtn:hover:not(:disabled) {
+    filter: brightness(0.95);
+  }
+  #reprintPickerConfirmModal #reprintPickerConfirmBtn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
   @media (max-width: 900px) {
     #reprintPickerModal .reprint-picker-search {
@@ -371,8 +390,8 @@
     </div>
     <div class="center-modal-footer-area">
       <button id="reprintPickerConfirmCancel" class="center-modal-btn center-modal-btn-cancel" type="button">Cancel</button>
-      <button id="reprintPickerEditBtn" class="center-modal-btn" type="button" style="background:#2563eb;color:#fff;">Want to Edit</button>
-      <button id="reprintPickerConfirmBtn" class="center-modal-btn center-modal-btn-confirm" type="button">Print As Is</button>
+      <button id="reprintPickerEditBtn" class="center-modal-btn" type="button">Want to Edit</button>
+      <button id="reprintPickerConfirmBtn" class="center-modal-btn" type="button">Next Without Edit</button>
     </div>
   </div>
 </div>

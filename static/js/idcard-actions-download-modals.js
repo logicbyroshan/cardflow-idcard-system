@@ -69,6 +69,7 @@ function initReprintPickerHandlers() {
 
     var rows = [];
     var tableFields = Array.isArray(window.TABLE_FIELDS) ? window.TABLE_FIELDS : [];
+    var resolvedFields = [];
     var selectedIds = new Set();
     var lastQuery = '';
     var pendingEditIds = [];
@@ -101,6 +102,25 @@ function initReprintPickerHandlers() {
         return '';
     }
 
+    function resolveFields(items) {
+        if (Array.isArray(tableFields) && tableFields.length > 0) {
+            resolvedFields = tableFields.map(function(f) {
+                return { name: f.name, type: f.type || 'text' };
+            });
+            return;
+        }
+        var first = (items || []).find(function(it) {
+            return Array.isArray(it.ordered_fields) && it.ordered_fields.length > 0;
+        });
+        if (first) {
+            resolvedFields = first.ordered_fields.map(function(f) {
+                return { name: f.name, type: f.type || 'text' };
+            });
+        } else {
+            resolvedFields = [];
+        }
+    }
+
     function isImageFieldLocal(type, name) {
         var t = String(type || '').toLowerCase();
         var n = String(name || '').toLowerCase();
@@ -113,7 +133,7 @@ function initReprintPickerHandlers() {
         var html = '<tr>';
         html += '<th class="center-cell" style="width:34px;"><input type="checkbox" id="reprintPickerSelectAll" aria-label="Select all"></th>';
         html += '<th class="center-cell" style="width:40px;">Sr</th>';
-        tableFields.forEach(function(field) {
+        resolvedFields.forEach(function(field) {
             var isImg = isImageFieldLocal(field.type, field.name);
             if (isImg) {
                 html += '<th class="center-cell" style="width:52px;">' + esc(field.name) + '</th>';
@@ -164,8 +184,10 @@ function initReprintPickerHandlers() {
 
     function renderRows(items) {
         rows = items || [];
+        resolveFields(rows);
+        buildTableHead();
         var html = '';
-        var colCount = (tableFields.length || 0) + 3;
+        var colCount = (resolvedFields.length || 0) + 3;
         if (!rows.length) {
             html = '<tr><td colspan="' + colCount + '" style="padding:24px;text-align:center;color:#6b7280;">No cards found in download list</td></tr>';
             pickerTableBody.innerHTML = html;
@@ -179,7 +201,7 @@ function initReprintPickerHandlers() {
             html += '<tr data-card-id="' + esc(id) + '">';
             html += '<td class="center-cell"><input type="checkbox" class="reprint-picker-row" data-card-id="' + esc(id) + '"' + checked + '></td>';
             html += '<td class="center-cell">' + (idx + 1) + '</td>';
-            tableFields.forEach(function(field) {
+            resolvedFields.forEach(function(field) {
                 var rawVal = getFieldByName(item, field.name);
                 if (isImageFieldLocal(field.type, field.name)) {
                     var value = String(rawVal || '');
@@ -228,7 +250,6 @@ function initReprintPickerHandlers() {
     }
 
     function openPicker() {
-        buildTableHead();
         pickerModal.style.display = 'flex';
         fetchList(lastQuery);
     }
@@ -242,7 +263,16 @@ function initReprintPickerHandlers() {
         if (!ids.length) return;
         pendingEditIds = ids.slice();
         if (confirmCount) confirmCount.textContent = String(ids.length);
-        if (confirmEditBtn) confirmEditBtn.disabled = ids.length !== 1;
+        if (confirmEditBtn) {
+            confirmEditBtn.disabled = ids.length !== 1;
+            confirmEditBtn.title = ids.length === 1
+                ? 'Edit selected card before requesting reprint'
+                : 'Want to Edit is available for single selection only';
+        }
+        if (confirmSubmitBtn) {
+            confirmSubmitBtn.disabled = false;
+            confirmSubmitBtn.title = 'Continue without editing and request reprint';
+        }
         var previewText = ids.length === 1 ? formatPreviewText(ids[0]) : '';
         if (confirmPreview) {
             if (previewText) {
