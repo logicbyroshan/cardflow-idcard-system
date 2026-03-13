@@ -286,6 +286,21 @@ window.initStaffPage = function (cfg) {
 
     initPagination();
 
+    function refreshTableState() {
+        var tb = getTbody();
+        if (!tb) return;
+        allRows = Array.from(tb.querySelectorAll('tr[data-staff-id]'));
+        performSearch();
+    }
+
+    function selectRowById(staffId) {
+        if (!staffId) return;
+        var tb = getTbody();
+        if (!tb) return;
+        var row = tb.querySelector('tr[data-staff-id="' + String(staffId) + '"]');
+        if (row) selectStaffRow(row);
+    }
+
     // ==================== PUBLIC API ====================
     return {
         openDrawer:          drawerApi.openDrawer,
@@ -295,6 +310,8 @@ window.initStaffPage = function (cfg) {
         getSelectedStaffId:  function () { return ctx.selectedStaffId; },
         getSelectedRow:      function () { return ctx.selectedRow; },
         setDeleteStaffName:  function (n) { if (deleteStaffNameEl) deleteStaffNameEl.textContent = n; },
+        refreshTableState:   refreshTableState,
+        selectRowById:       selectRowById,
     };
 };
 

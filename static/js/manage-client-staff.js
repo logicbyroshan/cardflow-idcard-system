@@ -18,6 +18,69 @@ document.addEventListener('DOMContentLoaded', function () {
         return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
     };
 
+    function formatDateTimeDisplay(dateInput) {
+        var d = dateInput ? new Date(dateInput) : new Date();
+        if (isNaN(d.getTime())) d = new Date();
+        var pad = function (n) { return String(n).padStart(2, '0'); };
+        return pad(d.getDate()) + '-' + pad(d.getMonth() + 1) + '-' + d.getFullYear() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    }
+
+    function upsertStaffRow(detail, mode) {
+        if (!detail || !detail.id) return;
+        var tbody = document.getElementById('staff-table-body');
+        if (!tbody) return;
+
+        var emptyRow = tbody.querySelector('tr:not([data-staff-id])');
+        if (emptyRow) emptyRow.remove();
+
+        var row = tbody.querySelector('tr[data-staff-id="' + String(detail.id) + '"]');
+        var isNew = !row;
+        if (!row) {
+            row = document.createElement('tr');
+            row.setAttribute('data-staff-id', String(detail.id));
+            row.innerHTML = [
+                '<td class="font-medium text-gray-800"></td>',
+                '<td class="email-cell"></td>',
+                '<td class="phone-cell"></td>',
+                '<td class="text-center"></td>',
+                '<td class="text-gray-500"></td>',
+                '<td class="text-gray-500"></td>'
+            ].join('');
+            tbody.insertBefore(row, tbody.firstChild);
+        }
+
+        var isActive = (detail.status === 'active') || detail.is_active === true;
+        row.setAttribute('data-staff-status', isActive ? 'active' : 'inactive');
+
+        var cells = row.children;
+        if (cells[0]) cells[0].textContent = detail.name || '-';
+        if (cells[1]) cells[1].textContent = detail.email || '-';
+        if (cells[2]) cells[2].textContent = detail.phone || '-';
+        if (cells[3]) {
+            cells[3].innerHTML = '<span class="status-badge ' + (isActive ? 'active' : 'inactive') + '">' + (isActive ? 'Active' : 'Inactive') + '</span>';
+        }
+
+        if (cells[4] && (isNew || mode === 'add')) {
+            cells[4].textContent = formatDateTimeDisplay(detail.created_at);
+        }
+        if (cells[5]) {
+            cells[5].textContent = formatDateTimeDisplay(new Date());
+        }
+    }
+
+    async function fetchStaffDetailById(staffId) {
+        if (!staffId) return null;
+        try {
+            var resp = await fetch('/client/api/staff/' + staffId + '/', { credentials: 'same-origin' });
+            if (!resp.ok) return null;
+            var json = await resp.json();
+            if (!json.success) return null;
+            return json.data || null;
+        } catch (_) {
+            return null;
+        }
+    }
+
     function _normalizeGroupIds(groupIds) {
         if (!Array.isArray(groupIds) || groupIds.length === 0) return [];
         return Array.from(new Set(groupIds
@@ -583,9 +646,32 @@ document.addEventListener('DOMContentLoaded', function () {
         },
         closeDeleteModal: closeDeleteModalFn,
 
-        // Form success -> always full reload
-        onFormSuccess: function () {
-            setTimeout(function () { location.reload(); }, 500);
+        // Form success -> update table in-place (no full page reload)
+        onFormSuccess: async function (result, meta) {
+            var mode = meta && meta.mode ? meta.mode : 'edit';
+            var editedId = meta && meta.selectedStaffId ? parseInt(meta.selectedStaffId, 10) : null;
+            var createdId = result && result.data && result.data.staff_id ? parseInt(result.data.staff_id, 10) : null;
+            var targetId = mode === 'add' ? createdId : editedId;
+
+            if (!targetId) {
+                setTimeout(function () { location.reload(); }, 250);
+                return;
+            }
+
+            var detail = await fetchStaffDetailById(targetId);
+            if (!detail) {
+                setTimeout(function () { location.reload(); }, 250);
+                return;
+            }
+
+            upsertStaffRow(detail, mode);
+
+            if (mgr && typeof mgr.refreshTableState === 'function') {
+                mgr.refreshTableState();
+            }
+            if (mgr && typeof mgr.selectRowById === 'function') {
+                mgr.selectRowById(targetId);
+            }
         },
     });
 

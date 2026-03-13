@@ -81,6 +81,9 @@ window._StaffDrawerSetup = function (cfg, ctx) {
                 if (cb.checked) { selectedIds.add(item.id); div.classList.add('selected'); }
                 else            { selectedIds.delete(item.id); div.classList.remove('selected'); }
                 updateSelectionText();
+                if (typeof cfg.onAssignmentSelectionChange === 'function') {
+                    cfg.onAssignmentSelectionChange(Array.from(selectedIds));
+                }
             });
             msList.appendChild(div);
         });
@@ -130,6 +133,9 @@ window._StaffDrawerSetup = function (cfg, ctx) {
         selectedIds = new Set((preselectedIds || []).map(function (id) { return parseInt(id); }));
         updateSelectionText();
         closeMsDropdown();
+        if (typeof cfg.onAssignmentSelectionChange === 'function') {
+            cfg.onAssignmentSelectionChange(Array.from(selectedIds));
+        }
     }
 
     function resetAssignment() {
@@ -358,7 +364,12 @@ window._StaffDrawerSetup = function (cfg, ctx) {
                 if (result.success) {
                     showToast(result.message || 'Operation successful', 'success');
                     closeDrawer();
-                    if (cfg.onFormSuccess) cfg.onFormSuccess();
+                    if (cfg.onFormSuccess) {
+                        cfg.onFormSuccess(result, {
+                            mode: currentMode,
+                            selectedStaffId: ctx.selectedStaffId,
+                        });
+                    }
                     else setTimeout(function () { location.reload(); }, 500);
                 } else {
                     showToast(result[cfg.api.errorKey] || result.message || 'Operation failed', 'error');
