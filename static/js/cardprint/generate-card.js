@@ -41,6 +41,8 @@
 
   // Last generated PDF blob (for the Download PDF footer button)
   let lastPdfBlob = null;
+  let canvasInitInProgress = false;
+  let canvasReadyWarned = false;
 
   /*  PDF.js worker  */
   const hasPdfJs = (typeof pdfjsLib !== 'undefined');
@@ -170,6 +172,7 @@
     // (display:none), so getBoundingClientRect returned zeros and internal
     // offsets are wrong. Recalculate after the modal is visible.
     requestAnimationFrame(function () {
+      if (!isCanvasReady()) initFabric();
       if (fabric_canvas) {
         fabric_canvas.setDimensions({ width: CARD_W, height: CARD_H });
         fabric_canvas.calcOffset();
@@ -177,7 +180,9 @@
       }
       loadCardList();
       var pdfUrl = (currentSide === 'front') ? FRONT_PDF_URL : BACK_PDF_URL;
-      if (pdfUrl) renderPdf(pdfUrl, false);
+      if (pdfUrl) {
+        setTimeout(function () { renderPdf(pdfUrl, false); }, 80);
+      }
     });
   };
 
@@ -196,14 +201,34 @@
 
   /*  Fabric.js canvas init  */
   function initFabric() {
-    if (typeof fabric === 'undefined') {
-      showToast('Canvas library failed to load. Please refresh the page.', 'error');
-      return;
-    }
+    if (isCanvasReady() || canvasInitInProgress) return;
     if (!document.getElementById('genCardCanvas')) {
       return;
     }
 
+    if (typeof fabric === 'undefined') {
+      // CDN script can be late; avoid failing fast and retry a few times.
+      let tries = 0;
+      canvasInitInProgress = true;
+      const waitForFabric = function () {
+        if (typeof fabric !== 'undefined') {
+          canvasInitInProgress = false;
+          initFabric();
+          return;
+        }
+        tries += 1;
+        if (tries >= 30) {
+          canvasInitInProgress = false;
+          showToast('Canvas library failed to load. Please refresh and try again.', 'error');
+          return;
+        }
+        setTimeout(waitForFabric, 120);
+      };
+      waitForFabric();
+      return;
+    }
+
+    canvasInitInProgress = true;
     fabric_canvas = new fabric.Canvas('genCardCanvas', {
       width:             CARD_W,
       height:            CARD_H,
@@ -215,6 +240,9 @@
     fabric_canvas.on('mouse:down', onMouseDown);
     fabric_canvas.on('mouse:move', onMouseMove);
     fabric_canvas.on('mouse:up',   onMouseUp);
+    fabric_canvas.calcOffset();
+    canvasInitInProgress = false;
+    canvasReadyWarned = false;
   }
 
   /*  Populate field dropdown from TABLE_FIELDS (filtered by FIELD_CONFIG)  */
@@ -554,14 +582,28 @@
   }
 
   /*  PDF.js rendering  */
-  function renderPdf(url, autoDetectOnLoad) {
+  function renderPdf(url, autoDetectOnLoad, attempt) {
+    const retry = Number.isFinite(attempt) ? attempt : 0;
     if (!isCanvasReady()) {
-      showToast('Editor canvas is not ready yet. Please reopen Generate Card.', 'error');
+      initFabric();
+      if (retry < 20) {
+        if (!canvasReadyWarned) {
+          canvasReadyWarned = true;
+          showToast('Preparing editor canvas...', 'info');
+        }
+        setTimeout(function () {
+          renderPdf(url, autoDetectOnLoad, retry + 1);
+        }, 120);
+        return;
+      }
+      showToast('Editor canvas is not ready. Please close and reopen Generate Card.', 'error');
       return;
     }
+    canvasReadyWarned = false;
 
     const overlay = document.getElementById('pdfLoadingOverlay');
     const noTpl   = document.getElementById('noTemplateMsg');
+    if (!overlay || !noTpl) return;
     overlay.classList.remove('hidden');
     noTpl.classList.add('hidden');
 
@@ -945,6 +987,10 @@
     .then(r => r.json())
     .then(data => {
       if (loadingEl) loadingEl.classList.add('hidden');
+      if (!data || (data.status && data.status !== 'ok')) {
+        showToast((data && (data.message || data.error)) || 'Failed to load generate list.', 'error');
+        return;
+      }
       if (data.error)  { showToast(data.error, 'error'); return; }
       genCards = data.items || data.cards || [];
       const preselected = Array.isArray(window.GEN_PRESELECT_PR_IDS) ? window.GEN_PRESELECT_PR_IDS : [];
@@ -1163,8 +1209,12 @@
     })
     .then(r => r.json())
     .then(data => {
-      if (data.error) {
-        showToast(data.error, 'error');
+      if (!data || data.status !== 'ok') {
+        showToast((data && (data.message || data.error)) || 'Upload failed.', 'error');
+        return;
+      }
+      if (!data.pdf_url) {
+        showToast('Template uploaded but no preview URL returned.', 'error');
         return;
       }
       showToast(`${side.charAt(0).toUpperCase() + side.slice(1)} template uploaded!`, 'success');

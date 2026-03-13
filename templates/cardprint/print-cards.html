@@ -320,8 +320,8 @@
   <script defer src="{% static 'dist/js/core.min.js' %}"></script>
   <script defer src="{% static 'dist/js/cardprint-shared.min.js' %}"></script>
   <!-- PDF.js + Fabric.js for the generate-card editor modal -->
-  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js" onerror="(function(){var s=document.createElement('script');s.src='https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js';document.head.appendChild(s);}())"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js" onerror="(function(){var s=document.createElement('script');s.src='https://unpkg.com/fabric@5.3.0/dist/fabric.min.js';document.head.appendChild(s);}())"></script>
   <script defer src="{% static 'js/cardprint/generate-card.js' %}"></script>
   <script defer src="{% static 'js/cardprint/print-cards.js' %}"></script>
   {% include 'partials/htmx-config.html' %}
