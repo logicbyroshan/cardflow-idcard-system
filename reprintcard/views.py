@@ -108,9 +108,9 @@ def reprint_cards(request, table_id):
     if not PermissionService.has_permission(user, 'perm_idcard_reprint_list'):
         return redirect('active_clients')
 
-    current_step = request.GET.get('step', 'reprint_list')
-    if current_step not in ('reprint_list', 'request_list', 'confirmed'):
-        current_step = 'reprint_list'
+    current_step = request.GET.get('step', 'request_list')
+    if current_step not in ('request_list', 'confirmed'):
+        current_step = 'request_list'
 
     # Step counts
     source_cards_qs = IDCard.objects.filter(table=table, status='download')

@@ -285,6 +285,30 @@ body[style*="overflow:hidden"] {
   background: var(--teal-dark) !important;
 }
 
+:is(.action-right, .action-bar-right) .btn-reprint-request {
+  background: #2563eb !important;
+  color: var(--text-white) !important;
+}
+:is(.action-right, .action-bar-right) .btn-reprint-request:hover:not(:disabled) {
+  background: #1d4ed8 !important;
+}
+
+:is(.action-right, .action-bar-right) .btn-reprint-confirmed {
+  background: #0f766e !important;
+  color: var(--text-white) !important;
+}
+:is(.action-right, .action-bar-right) .btn-reprint-confirmed:hover:not(:disabled) {
+  background: #0b5e58 !important;
+}
+
+:is(.action-right, .action-bar-right) .btn-reprint-main {
+  background: #d97706 !important;
+  color: var(--text-white) !important;
+}
+:is(.action-right, .action-bar-right) .btn-reprint-main:hover:not(:disabled) {
+  background: #b45309 !important;
+}
+
 /* Disabled states */
 :is(.action-right, .action-bar-right) .btn:disabled {
   opacity: 1;

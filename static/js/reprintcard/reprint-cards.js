@@ -65,8 +65,6 @@ function refreshStepCounts() {
   ApiClient.get(ENDPOINTS.stepCounts)
     .then(function(data) {
       if (data.status !== 'ok') return;
-      var downloadCount = data.download_list || data.reprint_list || 0;
-      updateTabCount('.reprint-requests-tab .tab-count', downloadCount);
       updateTabCount('.reprint-confirm-tab .tab-count', data.request_list || 0);
       updateTabCount('.reprint-pool-tab .tab-count', data.confirmed || 0);
       var requestCount = document.getElementById('downloadRequestCount');
@@ -391,6 +389,7 @@ async function postJsonForBlob(url, body) {
   var closeBtn = document.getElementById('reprintConfirmClose');
   var wantEditBtn = document.getElementById('reprintWantEditBtn');
   var pendingCardIds = [];
+  var wantEditInFlight = false;
 
   function openModal(cardIds) {
     pendingCardIds = cardIds;
@@ -411,6 +410,8 @@ async function postJsonForBlob(url, body) {
   function closeModal() {
     if (modal) modal.classList.remove('show');
     pendingCardIds = [];
+    wantEditInFlight = false;
+    if (wantEditBtn) wantEditBtn.disabled = false;
   }
 
   if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
@@ -442,12 +443,17 @@ async function postJsonForBlob(url, body) {
   }
 
   if (wantEditBtn) {
-    wantEditBtn.addEventListener('click', function() {
+    wantEditBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (wantEditInFlight) return;
       if (pendingCardIds.length !== 1) {
         showToast('Select one card to edit.', 'warning');
         return;
       }
       if (typeof fetchCardAndOpenModal === 'function') {
+        wantEditInFlight = true;
+        wantEditBtn.disabled = true;
         fetchCardAndOpenModal('edit', pendingCardIds[0]);
         closeModal();
       } else {
@@ -571,18 +577,39 @@ async function postJsonForBlob(url, body) {
       .map(function(cb) { return parseInt(cb.closest('tr').dataset.rrId, 10); });
   }
 
+  function getAllVisibleRrIds() {
+    return getCheckboxes().map(function(cb) { return parseInt(cb.closest('tr').dataset.rrId, 10); });
+  }
+
   function getSelectedCardIds() {
     return getCheckboxes().filter(function(cb) { return cb.checked; })
       .map(function(cb) { return parseInt(cb.closest('tr').dataset.cardId, 10); });
   }
 
+  function getAllVisibleCardIds() {
+    return getCheckboxes().map(function(cb) { return parseInt(cb.closest('tr').dataset.cardId, 10); });
+  }
+
+  function getTargetCardIdsForDownload() {
+    var selected = getSelectedCardIds();
+    if (selected.length) return selected;
+    return getAllVisibleCardIds();
+  }
+
+  function getTargetRrIdsForDownload() {
+    var selected = getSelectedRrIds();
+    if (selected.length) return selected;
+    return getAllVisibleRrIds();
+  }
+
   function updateSelectionUI() {
     var count = getSelectedRrIds().length;
+    var totalRows = getCheckboxes().length;
     if (sendToPrintBtn) sendToPrintBtn.disabled = count === 0;
-    if (downloadPdfBtn) downloadPdfBtn.disabled = count === 0;
-    if (downloadDocxBtn) downloadDocxBtn.disabled = count === 0;
-    if (downloadXlsxBtn) downloadXlsxBtn.disabled = count === 0;
-    if (downloadImagesBtn) downloadImagesBtn.disabled = count === 0;
+    if (downloadPdfBtn) downloadPdfBtn.disabled = totalRows === 0;
+    if (downloadDocxBtn) downloadDocxBtn.disabled = totalRows === 0;
+    if (downloadXlsxBtn) downloadXlsxBtn.disabled = totalRows === 0;
+    if (downloadImagesBtn) downloadImagesBtn.disabled = totalRows === 0;
     if (rejectBtn) rejectBtn.disabled = count === 0;
     if (viewBtn) viewBtn.disabled = count !== 1;
     if (paginator) paginator.updateSelectionCount(count);
@@ -713,32 +740,32 @@ async function postJsonForBlob(url, body) {
 
   if (downloadPdfBtn) {
     downloadPdfBtn.addEventListener('click', function() {
-      var rrIds = getSelectedRrIds();
-      var cardIds = getSelectedCardIds();
+      var rrIds = getTargetRrIdsForDownload();
+      var cardIds = getTargetCardIdsForDownload();
       runDownloadAndMove('pdf', rrIds, cardIds);
     });
   }
 
   if (downloadDocxBtn) {
     downloadDocxBtn.addEventListener('click', function() {
-      var rrIds = getSelectedRrIds();
-      var cardIds = getSelectedCardIds();
+      var rrIds = getTargetRrIdsForDownload();
+      var cardIds = getTargetCardIdsForDownload();
       runDownloadAndMove('docx', rrIds, cardIds);
     });
   }
 
   if (downloadXlsxBtn) {
     downloadXlsxBtn.addEventListener('click', function() {
-      var rrIds = getSelectedRrIds();
-      var cardIds = getSelectedCardIds();
+      var rrIds = getTargetRrIdsForDownload();
+      var cardIds = getTargetCardIdsForDownload();
       runDownloadAndMove('xlsx', rrIds, cardIds);
     });
   }
 
   if (downloadImagesBtn) {
     downloadImagesBtn.addEventListener('click', function() {
-      var rrIds = getSelectedRrIds();
-      var cardIds = getSelectedCardIds();
+      var rrIds = getTargetRrIdsForDownload();
+      var cardIds = getTargetCardIdsForDownload();
       runDownloadAndMove('images', rrIds, cardIds);
     });
   }
@@ -882,6 +909,8 @@ async function postJsonForBlob(url, body) {
     updateSelectionUI();
     if (paginator) { paginator.reset(); paginator.paginate(); }
   }
+
+  updateSelectionUI();
 })();
 
 (function confirmedListStep() {
@@ -1124,6 +1153,8 @@ async function postJsonForBlob(url, body) {
     updateSelectionUI();
     if (paginator) { paginator.reset(); paginator.paginate(); }
   }
+
+  updateSelectionUI();
 })();
 
 })();

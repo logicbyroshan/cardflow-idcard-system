@@ -30,10 +30,6 @@
   <!-- Right - 3-Step Workflow Tabs -->
   <div class="nav-right">
     <div class="action-tabs">
-      <a href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table.id %}{% else %}{% url 'reprintcard:reprint_cards' table.id %}{% endif %}?step=reprint_list" class="action-tab reprint-requests-tab {% if current_step == 'reprint_list' %}active{% endif %}">
-        <span class="tab-label">Download List</span>
-        <span class="tab-count">{{ step_counts.download_list|default:step_counts.reprint_list }}</span>
-      </a>
       <a href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table.id %}{% else %}{% url 'reprintcard:reprint_cards' table.id %}{% endif %}?step=request_list" class="action-tab reprint-confirm-tab {% if current_step == 'request_list' %}active{% endif %}">
         <span class="tab-label">Request List</span>
         <span class="tab-count">{{ step_counts.request_list }}</span>

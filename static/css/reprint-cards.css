@@ -419,3 +419,19 @@ tr.reprint-requested:hover {
   background: #fff;
   color: #6366f1;
 }
+
+/* Confirmed step datetime filter inputs should match light download-list controls */
+.reprint-confirmed-date-input {
+  color-scheme: light;
+  background: #ffffff !important;
+  color: #111827 !important;
+  border: 1px solid #d1d5db !important;
+  border-radius: 6px;
+  height: 30px;
+  line-height: 30px;
+}
+
+.reprint-confirmed-date-input:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.12);
+}

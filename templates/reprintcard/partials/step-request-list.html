@@ -36,6 +36,16 @@
             <span class="btn-text">View</span>
         </button>
     </div>
+    <div class="action-buttons-group" style="margin-left:auto;">
+        <a class="btn action-btn btn-blue" href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table.id %}{% else %}{% url 'reprintcard:reprint_cards' table.id %}{% endif %}?step=request_list" title="Open Request List">
+            <i class="fa-solid fa-list-check"></i>
+            <span class="btn-text">Request List ({{ step_counts.request_list }})</span>
+        </a>
+        <a class="btn action-btn btn-blue" href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table.id %}{% else %}{% url 'reprintcard:reprint_cards' table.id %}{% endif %}?step=confirmed" title="Open Confirmed List">
+            <i class="fa-solid fa-clipboard-check"></i>
+            <span class="btn-text">Confirmed List ({{ step_counts.confirmed }})</span>
+        </a>
+    </div>
 </div>
 
 <!-- Search Bar -->
@@ -53,7 +63,7 @@
         <div class="filter-group">
             <span class="text-xs text-gray-500 flex items-center gap-1.5">
                 <i class="fa-solid fa-building text-gray-400"></i>
-                <strong>{{ client.name }}</strong> &mdash; {{ table.name }}
+                <strong>{{ client.name }}</strong>
             </span>
         </div>
     </div>

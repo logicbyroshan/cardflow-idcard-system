@@ -311,11 +311,13 @@
         loadNext();
       }
       loadWithFallback([
+        '{% static "js/vendor/pdf.min.js" %}',
         'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js',
         'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js',
         'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'
       ]);
       loadWithFallback([
+        '{% static "js/vendor/fabric.min.js" %}',
         'https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js',
         'https://unpkg.com/fabric@5.3.0/dist/fabric.min.js',
         'https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js'

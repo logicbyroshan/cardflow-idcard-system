@@ -582,7 +582,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <td>
                                         <a href="/reprint/table/${t.id}/" class="sub-row-name"><i class="fa-solid fa-table"></i> ${esc(t.name)}</a>
                                     </td>
-                                    <td class="text-center"><a href="/reprint/table/${t.id}/?step=reprint_list" class="count-badge approved">${t.download_list || t.reprint_list || 0}</a></td>
+                                    <td class="text-center"><a href="/reprint/table/${t.id}/?step=request_list" class="count-badge approved">${t.download_list || t.reprint_list || 0}</a></td>
                                     <td class="text-center"><a href="/reprint/table/${t.id}/?step=request_list" class="count-badge pending">${t.requested}</a></td>
                                     <td class="text-center"><a href="/reprint/table/${t.id}/?step=confirmed" class="count-badge verified">${t.confirmed}</a></td>
                                 </tr>

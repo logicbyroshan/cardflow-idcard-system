@@ -82,7 +82,13 @@
             {% endif %}
             {% endif %}
             {% if current_status == 'download' and perm_idcard_reprint_list %}
-            <button type="button" class="btn btn-settings" id="openReprintModalBtn" title="Request reprint from download list">
+            <a href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table.id %}{% else %}{% url 'reprintcard:reprint_cards' table.id %}{% endif %}?step=request_list" class="btn btn-settings btn-reprint-request" title="Open Request List">
+                <i class="fa-solid fa-list-check"></i> Request List
+            </a>
+            <a href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table.id %}{% else %}{% url 'reprintcard:reprint_cards' table.id %}{% endif %}?step=confirmed" class="btn btn-settings btn-reprint-confirmed" title="Open Confirmed List">
+                <i class="fa-solid fa-clipboard-check"></i> Confirmed List
+            </a>
+            <button type="button" class="btn btn-settings btn-reprint-main" id="openReprintModalBtn" title="Request reprint from download list">
                 <i class="fa-solid fa-rotate"></i> Reprint
             </button>
             {% endif %}

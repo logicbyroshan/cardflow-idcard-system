@@ -55,6 +55,7 @@
     if (!lib) return false;
     if (pdfWorkerConfigured) return true;
 
+    const workerFromLocal = '/static/js/vendor/pdf.worker.min.js';
     const workerFromCdn = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
     const workerFromUnpkg = 'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
     const workerFromCdnJs = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -62,7 +63,9 @@
       return /pdf(\.min)?\.js/i.test(s.src) && /pdfjs-dist|cdnjs\.cloudflare\.com\/ajax\/libs\/pdf\.js/i.test(s.src);
     });
     const loadedSrc = loadedScript ? loadedScript.src : '';
-    if (/unpkg\.com\/pdfjs-dist/i.test(loadedSrc)) {
+    if (/\/static\/js\/vendor\/pdf\.min\.js/i.test(loadedSrc)) {
+      lib.GlobalWorkerOptions.workerSrc = workerFromLocal;
+    } else if (/unpkg\.com\/pdfjs-dist/i.test(loadedSrc)) {
       lib.GlobalWorkerOptions.workerSrc = workerFromUnpkg;
     } else if (/cdnjs\.cloudflare\.com\/ajax\/libs\/pdf\.js/i.test(loadedSrc)) {
       lib.GlobalWorkerOptions.workerSrc = workerFromCdnJs;
@@ -327,12 +330,12 @@
           return;
         }
         tries += 1;
-        if (tries >= 30) {
+        if (tries >= 150) {
           canvasInitInProgress = false;
           showToast('Canvas library failed to load. Please refresh and try again.', 'error');
           return;
         }
-        setTimeout(waitForFabric, 120);
+        setTimeout(waitForFabric, 200);
       };
       waitForFabric();
       return;
@@ -711,10 +714,10 @@
 
     if (!isCanvasReady()) {
       initFabric();
-      if (retry < 20) {
+      if (retry < 150) {
         setTimeout(function () {
           renderPdf(url, autoDetectOnLoad, retry + 1);
-        }, 120);
+        }, 200);
         return;
       }
       // Avoid noisy background errors; only show in standalone editor page.
@@ -731,10 +734,10 @@
     noTpl.classList.add('hidden');
 
     if (!ensurePdfWorkerConfigured()) {
-      if (retry < 25) {
+      if (retry < 150) {
         setTimeout(function () {
           renderPdf(url, autoDetectOnLoad, retry + 1);
-        }, 120);
+        }, 200);
         return;
       }
       console.error('PDF.js library not loaded (CDN may be unreachable).');
