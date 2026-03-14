@@ -48,8 +48,10 @@
   /*  PDF.js worker  */
   const hasPdfJs = (typeof pdfjsLib !== 'undefined');
   if (hasPdfJs) {
-    pdfjsLib.GlobalWorkerOptions.workerSrc =
-      'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+    const workerFromCdn = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+    const workerFromUnpkg = 'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+    const hasUnpkgPdfScript = !!document.querySelector('script[src*="unpkg.com/pdfjs-dist"]');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = hasUnpkgPdfScript ? workerFromUnpkg : workerFromCdn;
   }
 
   function isCanvasReady() {
@@ -168,6 +170,56 @@
     editorBootstrapped = true;
   }
 
+  function syncTemplateFromServer() {
+    return fetch('/print/api/generate-card/table/' + TABLE_ID + '/template/?_=' + Date.now(), {
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data || data.status !== 'ok' || !data.template) {
+        throw new Error((data && (data.message || data.error)) || 'Template fetch failed');
+      }
+      return data.template;
+    });
+  }
+
+  function applyTemplateState(template) {
+    if (!template) return;
+
+    if (typeof TEMPLATE_DATA === 'object' && TEMPLATE_DATA) {
+      TEMPLATE_DATA.is_two_sided = !!template.is_two_sided;
+      TEMPLATE_DATA.field_mappings = template.field_mappings || { front: {}, back: {} };
+      TEMPLATE_DATA.font_size = template.font_size || TEMPLATE_DATA.font_size;
+      TEMPLATE_DATA.font_family = template.font_family || TEMPLATE_DATA.font_family;
+    }
+
+    if (typeof template.front_pdf_url === 'string') FRONT_PDF_URL = template.front_pdf_url;
+    if (typeof template.back_pdf_url === 'string') BACK_PDF_URL = template.back_pdf_url;
+
+    fieldMappings.front = (template.field_mappings && template.field_mappings.front) || {};
+    fieldMappings.back  = (template.field_mappings && template.field_mappings.back) || {};
+
+    const fs = parseInt(template.font_size, 10);
+    if (!isNaN(fs)) {
+      document.getElementById('fontSizeInput').value = Math.min(10, Math.max(7, fs));
+    }
+    if (template.font_family) {
+      document.getElementById('fontFamilySelect').value = template.font_family;
+    }
+
+    setTwoSided(!!template.is_two_sided, false);
+    if (currentSide === 'back' && (!BACK_PDF_URL || !isTwoSided) && FRONT_PDF_URL) {
+      currentSide = 'front';
+      document.getElementById('frontSideBtn').classList.add('active');
+      document.getElementById('backSideBtn').classList.remove('active');
+      document.getElementById('activeSideLabel').textContent = 'Front';
+    }
+
+    renderPlacedFields();
+    renderMappingsOnCanvas();
+    updateGenerateBtn();
+  }
+
   /*  Expose public API for the modal in print-cards.html  */
   // Called when the modal opens: refreshes the card list and re-renders the PDF
   window.gcEditorRefresh = function (frontUrl, backUrl) {
@@ -176,29 +228,51 @@
     if (frontUrl) FRONT_PDF_URL = frontUrl;
     if (backUrl)  BACK_PDF_URL  = backUrl;
 
-    // Rebuild side-aware field options from latest runtime FIELD_CONFIG.
-    const latestCfg = (typeof FIELD_CONFIG !== 'undefined') ? FIELD_CONFIG : {};
-    if (typeof latestCfg.is_two_sided !== 'undefined') {
-      setTwoSided(!!latestCfg.is_two_sided, true);
-    }
-    populateFieldDropdown();
+    // Pull latest saved template before render so modal always has current PDF/mappings.
+    syncTemplateFromServer()
+      .then(function(template) {
+        applyTemplateState(template);
+      })
+      .catch(function(err) {
+        console.warn('[gcEditorRefresh] Using local template state:', err && err.message ? err.message : err);
+      })
+      .finally(function() {
+        // Rebuild side-aware field options from latest runtime FIELD_CONFIG.
+        const latestCfg = (typeof FIELD_CONFIG !== 'undefined') ? FIELD_CONFIG : {};
+        if (typeof latestCfg.is_two_sided !== 'undefined') {
+          setTwoSided(!!latestCfg.is_two_sided, true);
+        }
+        populateFieldDropdown();
 
-    // The Fabric canvas may have been created while the modal was hidden
-    // (display:none), so getBoundingClientRect returned zeros and internal
-    // offsets are wrong. Recalculate after the modal is visible.
-    requestAnimationFrame(function () {
-      if (!isCanvasReady()) initFabric();
-      if (fabric_canvas) {
-        fabric_canvas.setDimensions({ width: CARD_W, height: CARD_H });
-        fabric_canvas.calcOffset();
-        fabric_canvas.renderAll();
-      }
-      loadCardList();
-      var pdfUrl = (currentSide === 'front') ? FRONT_PDF_URL : BACK_PDF_URL;
-      if (pdfUrl) {
-        setTimeout(function () { renderPdf(pdfUrl, false); }, 80);
-      }
-    });
+        // The Fabric canvas may have been created while the modal was hidden
+        // (display:none), so getBoundingClientRect returned zeros and internal
+        // offsets are wrong. Recalculate after the modal is visible.
+        requestAnimationFrame(function () {
+          if (!isCanvasReady()) initFabric();
+          if (fabric_canvas) {
+            fabric_canvas.setDimensions({ width: CARD_W, height: CARD_H });
+            fabric_canvas.calcOffset();
+            fabric_canvas.renderAll();
+          }
+
+          loadCardList();
+
+          var preferredUrl = (currentSide === 'front') ? FRONT_PDF_URL : BACK_PDF_URL;
+          var fallbackUrl = FRONT_PDF_URL || BACK_PDF_URL || '';
+          var pdfUrl = preferredUrl || fallbackUrl;
+
+          if (!preferredUrl && currentSide === 'back' && FRONT_PDF_URL) {
+            switchSide('front');
+            return;
+          }
+
+          if (pdfUrl) {
+            setTimeout(function () { renderPdf(pdfUrl, false); }, 80);
+          } else {
+            clearCanvasBackground();
+          }
+        });
+      });
   };
 
   // Download the last generated PDF blob (triggered by footer Download PDF button)

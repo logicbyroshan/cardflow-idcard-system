@@ -9,9 +9,9 @@
             <i class="fa-solid fa-arrow-rotate-left"></i>
             <span class="btn-text">Move to Print List</span>
         </button>
-        <button class="btn action-btn btn-green" id="continueGenerateBtn" disabled title="Continue generating selected cards">
+        <button class="btn action-btn btn-green" id="continueGenerateBtn" disabled title="Open generator for selected cards">
             <i class="fa-solid fa-gears"></i>
-            <span class="btn-text">Continue Generate</span>
+            <span class="btn-text">Generate</span>
         </button>
         <button class="btn action-btn btn-gray" id="generateListViewBtn" disabled title="View selected card">
             <i class="fa-solid fa-eye"></i>
@@ -56,7 +56,7 @@
                             <div>NO</div>
                         </div>
                     </th>
-                    {% for field in table.fields|reorder_fields_for_display %}
+                    {% for field in generate_display_fields|reorder_fields_for_display %}
                     {% check_image_field field.type field.name as is_img %}
                     {% if is_img %}
                     <th class="w-[30px] min-w-[30px] px-[1px] py-1 text-center align-middle" data-field-name="{{ field.name }}" data-field-type="image">{{ field.name|wrap_header }}</th>

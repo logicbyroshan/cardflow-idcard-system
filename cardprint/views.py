@@ -73,6 +73,36 @@ def _build_ordered_fields(table, fd=None, fd_upper=None):
     return ordered
 
 
+def _get_selected_generate_field_names(table, template_obj=None):
+    """Return selected field names for generate-list display; fallback to all fields."""
+    if template_obj is None:
+        template_obj = CardTemplate.objects.filter(table=table).first()
+
+    all_field_names = [f.get('name') for f in (table.fields or []) if f.get('name')]
+    if not template_obj:
+        return all_field_names
+
+    cfg = template_obj.field_config or {}
+    front = cfg.get('front_fields') or []
+    back = cfg.get('back_fields') or [] if cfg.get('is_two_sided') else []
+
+    valid = set(all_field_names)
+    selected = []
+    for name in front + back:
+        if name in valid and name not in selected:
+            selected.append(name)
+
+    return selected if selected else all_field_names
+
+
+def _filter_ordered_fields_by_names(ordered_fields, allowed_names):
+    """Filter ordered_fields to the selected names while preserving row order."""
+    if not ordered_fields or not allowed_names:
+        return ordered_fields
+    allowed = set(allowed_names)
+    return [f for f in ordered_fields if f.get('name') in allowed]
+
+
 # ---------------------------------------------------------------------------
 # PAGE VIEW
 # ---------------------------------------------------------------------------
@@ -112,6 +142,10 @@ def print_cards(request, table_id):
     generate_total = 0
     finalized_total = 0
 
+    # Existing field configuration drives which columns are shown in Generate List.
+    template_obj = CardTemplate.objects.filter(table=table).first()
+    selected_generate_field_names = _get_selected_generate_field_names(table, template_obj)
+
     if current_step == 'print_list':
         base_qs = PrintRequest.objects.filter(table=table, status='print_list')
         print_total = base_qs.count()
@@ -142,6 +176,7 @@ def print_cards(request, table_id):
             fd = card.field_data or {}
             fd_upper = {k.upper(): v for k, v in fd.items()}
             ordered_fields = _build_ordered_fields(table, fd, fd_upper)
+            ordered_fields = _filter_ordered_fields_by_names(ordered_fields, selected_generate_field_names)
             req_by = pr.requested_by
             generate_items.append({
                 'pr_id': pr.id,
@@ -176,7 +211,6 @@ def print_cards(request, table_id):
             })
 
     # Load existing field_config for the configure modal
-    template_obj = CardTemplate.objects.filter(table=table).first()
     field_config = template_obj.field_config if template_obj else {}
 
     # Generate-card editor data (for inline modal)
@@ -205,6 +239,10 @@ def print_cards(request, table_id):
         'print_has_more': print_total > len(print_items),
         'generate_total': generate_total,
         'generate_has_more': generate_total > len(generate_items),
+        'generate_display_fields': [
+            f for f in (table.fields or [])
+            if f.get('name') in set(selected_generate_field_names)
+        ],
         'finalized_total': finalized_total,
         'finalized_has_more': finalized_total > len(finalized_items),
         'table_fields_json': _json.dumps(table.fields if table.fields else []),
@@ -509,6 +547,8 @@ def api_print_generate_list(request, table_id):
         table=table, status='generate_list',
     ).select_related('card', 'requested_by').order_by('-updated_at')
 
+    selected_generate_field_names = _get_selected_generate_field_names(table)
+
     if query:
         search_q = Q(card__field_data__icontains=query)
         if query.isdigit():
@@ -527,6 +567,7 @@ def api_print_generate_list(request, table_id):
         fd = card.field_data or {}
         fd_upper = {k.upper(): v for k, v in fd.items()}
         ordered_fields = _build_ordered_fields(table, fd, fd_upper)
+        ordered_fields = _filter_ordered_fields_by_names(ordered_fields, selected_generate_field_names)
         req_by = pr.requested_by
         items.append({
             'pr_id': pr.id,
@@ -1033,6 +1074,8 @@ def api_generate_card_list(request, table_id):
         table=table, status='generate_list',
     ).select_related('card', 'requested_by').order_by('created_at')
 
+    selected_generate_field_names = _get_selected_generate_field_names(table)
+
     if query:
         search_q = Q(card__field_data__icontains=query)
         if query.isdigit():
@@ -1048,6 +1091,7 @@ def api_generate_card_list(request, table_id):
         fd = card.field_data or {}
         fd_upper = {k.upper(): v for k, v in fd.items()}
         ordered_fields = _build_ordered_fields(table, fd, fd_upper)
+        ordered_fields = _filter_ordered_fields_by_names(ordered_fields, selected_generate_field_names)
         items.append({
             'pr_id': pr.id,
             'card_id': card.id,

@@ -229,14 +229,8 @@ function createPaginator(opts) {
   var singleBtn = document.getElementById('cfgSingleBtn');
   var doubleBtn = document.getElementById('cfgDoubleBtn');
   var backSection = document.getElementById('cfgBackSection');
-  var backPdfRow  = document.getElementById('cfgBackPdfRow');
   var frontFieldsDiv = document.getElementById('cfgFrontFields');
   var backFieldsDiv  = document.getElementById('cfgBackFields');
-
-  var frontPdfInput  = document.getElementById('cfgFrontPdfInput');
-  var backPdfInput   = document.getElementById('cfgBackPdfInput');
-  var frontPdfStatus = document.getElementById('cfgFrontPdfStatus');
-  var backPdfStatus  = document.getElementById('cfgBackPdfStatus');
 
   // Build field checkboxes
   function buildFieldCheckboxes(container, side) {
@@ -264,7 +258,6 @@ function createPaginator(opts) {
     singleBtn.classList.toggle('active', !two);
     doubleBtn.classList.toggle('active', two);
     backSection.classList.toggle('hidden', !two);
-    backPdfRow.classList.toggle('hidden', !two);
   }
 
   singleBtn.addEventListener('click', function() { setSides(false); });
@@ -275,9 +268,6 @@ function createPaginator(opts) {
     buildFieldCheckboxes(frontFieldsDiv, 'front');
     buildFieldCheckboxes(backFieldsDiv, 'back');
     setSides(isTwoSided);
-    // Reset file inputs
-    frontPdfInput.value = '';
-    backPdfInput.value = '';
     modal.classList.add('show');
   }
 
@@ -292,47 +282,6 @@ function createPaginator(opts) {
     if (e.target === modal) closeModal();
   });
 
-  // Update label when PDF file selected
-  if (frontPdfInput) {
-    frontPdfInput.addEventListener('change', function() {
-      var label = document.getElementById('cfgFrontPdfLabel');
-      if (label) label.textContent = this.files[0] ? this.files[0].name : 'Upload Front PDF';
-    });
-  }
-  if (backPdfInput) {
-    backPdfInput.addEventListener('change', function() {
-      var label = document.getElementById('cfgBackPdfLabel');
-      if (label) label.textContent = this.files[0] ? this.files[0].name : 'Upload Back PDF';
-    });
-  }
-
-  // Upload PDF helper (sequential, returns Promise)
-  function uploadPdf(file, side) {
-    return new Promise(function(resolve, reject) {
-      var formData = new FormData();
-      formData.append('pdf', file);
-      fetch('/print/api/generate-card/table/' + TABLE_ID + '/template/upload-pdf/' + side + '/', {
-        method: 'POST',
-        headers: {
-          'X-CSRFToken': getCSRFToken(),
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: formData,
-      })
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        if (data.status === 'ok') {
-          // Keep global editor URLs in sync with freshly uploaded template files.
-          if (side === 'front' && data.pdf_url) window.FRONT_PDF_URL = data.pdf_url;
-          if (side === 'back' && data.pdf_url) window.BACK_PDF_URL = data.pdf_url;
-          resolve(data);
-        }
-        else reject(new Error(data.message || 'Upload failed'));
-      })
-      .catch(reject);
-    });
-  }
-
   // Generate button handler
   generateBtn.addEventListener('click', function() {
     var frontFields = getCheckedFields(frontFieldsDiv);
@@ -344,7 +293,7 @@ function createPaginator(opts) {
     }
 
     generateBtn.disabled = true;
-    generateBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing';
+    generateBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Moving';
 
     // Step 1: Save field_config
     ApiClient.post('/print/api/table/' + TABLE_ID + '/field-config/', {
@@ -362,47 +311,21 @@ function createPaginator(opts) {
         back_fields: backFields,
       };
 
-      // Step 2: Upload PDFs if file selected
-      var uploads = [];
-      if (frontPdfInput.files[0]) {
-        uploads.push(uploadPdf(frontPdfInput.files[0], 'front').then(function() {
-          frontPdfStatus.innerHTML = '<i class="fa-solid fa-check" style="color:#10b981;"></i> Uploaded';
-        }));
-      }
-      if (isTwoSided && backPdfInput.files[0]) {
-        uploads.push(uploadPdf(backPdfInput.files[0], 'back').then(function() {
-          backPdfStatus.innerHTML = '<i class="fa-solid fa-check" style="color:#10b981;"></i> Uploaded';
-        }));
-      }
-      return Promise.all(uploads);
-    })
-    .then(function() {
-      // Step 3: Move all print_list  generate_list
+      // Step 2: Move all print_list -> generate_list
       return ApiClient.post('/print/api/table/' + TABLE_ID + '/generate-all/', {});
     })
     .then(function(data) {
       if (data.status !== 'ok') throw new Error(data.message || 'Failed to send to generate');
       showToast(data.message || 'Cards sent to generate list!', 'success');
-      // Step 4: Open the generate-card editor modal (instead of navigating away)
+      // Step 3: Go to Generate List tab; editor opens only when user clicks Generate there.
       closeModal();
-      if (typeof window.openGcEditorModal === 'function') {
-        // Always pass latest known template URLs so editor renders current files.
-        var newFrontUrl = window.FRONT_PDF_URL || undefined;
-        var newBackUrl  = window.BACK_PDF_URL || undefined;
-        window.openGcEditorModal();
-        if (typeof window.gcEditorRefresh === 'function') {
-          window.gcEditorRefresh(newFrontUrl, newBackUrl);
-        }
-      } else {
-        // Fallback: navigate to editor page
-        window.location.href = data.redirect_url || ('/print/generate-card/table/' + TABLE_ID + '/');
-      }
+      window.location.href = '/print/table/' + TABLE_ID + '/?step=generate_list';
     })
     .catch(function(err) {
       showToast(err.message || 'Something went wrong', 'error');
       console.error('[ConfigureModal] Error:', err);
       generateBtn.disabled = false;
-      generateBtn.innerHTML = '<i class="fa-solid fa-print"></i> Generate';
+      generateBtn.innerHTML = '<i class="fa-solid fa-forward"></i> Move to Generate List';
     });
   });
 })();

@@ -111,7 +111,7 @@
   <div class="modal-overlay" id="configureModal">
     <div class="modal-container max-w-[520px]">
       <div class="modal-header">
-        <h3><i class="fa-solid fa-sliders"></i> Configure Card Printing</h3>
+        <h3><i class="fa-solid fa-sliders"></i> Select Fields for Generate List</h3>
         <button class="modal-close-btn" id="configureModalClose" title="Close">
           <i class="fa-solid fa-xmark"></i>
         </button>
@@ -143,36 +143,11 @@
           <div id="cfgBackFields" class="cfg-field-list"></div>
         </div>
 
-        <!-- PDF Upload -->
-        <div class="mb-4">
-          <label class="font-semibold text-[13px] block mb-1.5">
-            <i class="fa-solid fa-file-pdf text-red-500"></i> Template PDFs
-          </label>
-          <div class="flex flex-col gap-2">
-            <div class="flex items-center gap-2">
-              <label class="btn btn-sm btn-outline cursor-pointer flex-1" title="Upload front-side PDF template">
-                <i class="fa-solid fa-upload"></i> <span id="cfgFrontPdfLabel">Upload Front PDF</span>
-                <input type="file" id="cfgFrontPdfInput" accept=".pdf" class="hidden">
-              </label>
-              <span id="cfgFrontPdfStatus" class="text-[11px] text-gray-500">{% if has_template_front_pdf %}<i class="fa-solid fa-check text-emerald-500"></i> Uploaded{% endif %}</span>
-            </div>
-            <div id="cfgBackPdfRow" class="hidden">
-              <div class="flex items-center gap-2">
-                <label class="btn btn-sm btn-outline cursor-pointer flex-1" title="Upload back-side PDF template">
-                  <i class="fa-solid fa-upload"></i> <span id="cfgBackPdfLabel">Upload Back PDF</span>
-                  <input type="file" id="cfgBackPdfInput" accept=".pdf" class="hidden">
-                </label>
-                <span id="cfgBackPdfStatus" class="text-[11px] text-gray-500">{% if has_template_back_pdf %}<i class="fa-solid fa-check text-emerald-500"></i> Uploaded{% endif %}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
       </div>
       <div class="modal-footer flex justify-end gap-2 px-5 py-3 border-t border-gray-200">
         <button class="btn btn-gray btn-sm" id="configureModalCancel">Cancel</button>
         <button class="btn btn-green btn-sm" id="configureModalGenerate">
-          <i class="fa-solid fa-print"></i> Generate
+          <i class="fa-solid fa-forward"></i> Move to Generate List
         </button>
       </div>
     </div>
