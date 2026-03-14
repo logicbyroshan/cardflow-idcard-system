@@ -1,6 +1,6 @@
 /* ====================================================
    Adarsh ID Cards — Mobile PWA Custom CSS
-   Theme: Purple-Indigo Gradient (#667eea → #764ba2)
+    Theme: Website Blue Gradient (#0a92dd -> #0878b5)
 
    IMPORTANT: Tailwind CSS is loaded BEFORE this file.
    This file only contains styles that Tailwind can't
@@ -28,6 +28,70 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
+:root {
+    /* Align mobile palette with website theme */
+    --m-primary: #0a92dd;
+    --m-primary-dark: #0878b5;
+    --m-primary-soft: #e9f5fd;
+    --m-surface: #f6fafe;
+    --m-border: #d7e9f6;
+    --m-text: #1f2d3d;
+    --m-muted: #5b6b7b;
+}
+
+/* Override Tailwind brand tokens only for mobile app pages. */
+body {
+    --primary: var(--m-primary);
+    --primary-dark: var(--m-primary-dark);
+    --primary-rgb: 10, 146, 221;
+    --secondary: var(--m-primary-dark);
+    --color-primary: var(--m-primary);
+    --color-primary-dark: var(--m-primary-dark);
+    --color-brand-light: var(--m-primary);
+    --color-brand-dark: var(--m-primary-dark);
+    background:
+        radial-gradient(120% 60% at 50% -20%, rgba(10, 146, 221, 0.12), transparent 70%),
+        var(--m-surface);
+    color: var(--m-text);
+}
+
+#mobile-app {
+    background: transparent;
+}
+
+/* Accessibility pass: improve readability and tap/focus behavior. */
+.text-\[8px\] {
+    font-size: 9px !important;
+}
+
+.text-\[9px\] {
+    font-size: 10px !important;
+}
+
+.text-\[10px\] {
+    font-size: 11px !important;
+}
+
+button,
+a,
+input,
+select,
+textarea,
+.pwa-drawer-item,
+.pwa-nav-item,
+.mab-nav-item {
+    touch-action: manipulation;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+    outline: 2px solid rgba(10, 146, 221, 0.45);
+    outline-offset: 2px;
+}
+
 
 /* ================================================================
    2. ALPINE.JS SUPPORT
@@ -51,7 +115,7 @@ body {
     border-radius: 10px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, #667eea, #764ba2);
+    background: linear-gradient(180deg, var(--m-primary), var(--m-primary-dark));
     border-radius: 10px;
 }
 
@@ -118,7 +182,7 @@ body {
 }
 
 .pwa-nav-active {
-    color: #667eea;
+    color: var(--m-primary);
 }
 
 .pwa-nav-active .pwa-nav-icon {
@@ -134,13 +198,13 @@ body {
     width: 52px;
     height: 52px;
     border-radius: 16px;
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: linear-gradient(135deg, var(--m-primary), var(--m-primary-dark));
     color: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
     box-shadow:
-        0 4px 15px rgba(102, 126, 234, 0.4),
+        0 4px 15px rgba(10, 146, 221, 0.35),
         0 2px 6px rgba(0, 0, 0, 0.1);
     text-decoration: none;
     transition: transform 0.15s ease, box-shadow 0.15s ease;
@@ -152,9 +216,9 @@ body {
 }
 
 .pwa-nav-search-active {
-    background: linear-gradient(135deg, #5a6fd6, #6a40a0);
+    background: linear-gradient(135deg, #0b84c7, #066ca5);
     box-shadow:
-        0 4px 20px rgba(102, 126, 234, 0.55),
+        0 4px 20px rgba(10, 146, 221, 0.45),
         0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
@@ -376,8 +440,8 @@ body {
 }
 
 .custom-checkbox input:checked ~ .checkmark {
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    border-color: #667eea;
+    background: linear-gradient(135deg, var(--m-primary), var(--m-primary-dark));
+    border-color: var(--m-primary);
 }
 
 .custom-checkbox input:checked ~ .checkmark::after {
@@ -396,7 +460,7 @@ body {
 }
 
 .custom-checkbox input:checked ~ .checkmark-white::after {
-    border-color: #667eea;
+    border-color: var(--m-primary);
 }
 
 
@@ -441,7 +505,7 @@ body {
 }
 
 .toggle-switch-sm input:checked + .toggle-slider-sm {
-    background-color: #667eea;
+    background-color: var(--m-primary);
 }
 
 .toggle-switch-sm input:checked + .toggle-slider-sm::before {
@@ -599,7 +663,7 @@ body {
 }
 
 .download-modal-icon.preparing {
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: linear-gradient(135deg, var(--m-primary), var(--m-primary-dark));
     color: #fff;
 }
 
@@ -645,7 +709,7 @@ body {
 .download-progress-bar {
     height: 100%;
     border-radius: 4px;
-    background: linear-gradient(90deg, #667eea, #764ba2);
+    background: linear-gradient(90deg, var(--m-primary), var(--m-primary-dark));
     transition: width 0.3s ease;
     position: relative;
 }
@@ -670,7 +734,7 @@ body {
 
 .download-progress-percent {
     font-weight: 700;
-    color: #667eea;
+    color: var(--m-primary);
 }
 
 .download-progress-time {
@@ -776,7 +840,7 @@ body {
 }
 
 .download-items-badge i {
-    color: #667eea;
+    color: var(--m-primary);
     font-size: 10px;
 }
 
@@ -863,13 +927,13 @@ body {
     width: 52px;
     height: 52px;
     border-radius: 16px;
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: linear-gradient(135deg, var(--m-primary), var(--m-primary-dark));
     color: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
     box-shadow:
-        0 4px 15px rgba(102, 126, 234, 0.4),
+        0 4px 15px rgba(10, 146, 221, 0.35),
         0 2px 6px rgba(0, 0, 0, 0.1);
     border: none;
     cursor: pointer;
@@ -899,4 +963,28 @@ body {
 .pwa-home input[type="email"],
 .pwa-home select {
     border-radius: 12px;
+}
+
+/* Subtle consistency upgrades for common mobile cards/surfaces. */
+.pwa-topbar,
+.pwa-bottom-nav > .max-w-\[430px\] > div,
+.download-modal-sheet {
+    border-color: var(--m-border) !important;
+}
+
+.bg-white,
+.glass-card,
+.download-modal-sheet {
+    box-shadow: 0 8px 26px rgba(16, 64, 96, 0.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }

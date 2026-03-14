@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#667eea">
+    <meta name="theme-color" content="#0A92DD">
     <!-- PWA Manifest  -  enables 'Add to Home Screen' on Android/Chrome -->
     <link rel="manifest" href="/app/manifest.json">
     <!-- iOS PWA meta tags -->
@@ -57,7 +57,7 @@
         window.addEventListener('resize', checkDevice);
     </script>
 </head>
-<body class="bg-gray-100 font-sans overscroll-none">
+<body class="bg-[#ecf4fb] font-sans overscroll-none">
 
     <!-- Desktop blocking screen -->
     <div id="desktop-block" class="hidden fixed inset-0 z-[9999] bg-gradient-to-br from-brand-light to-brand-dark items-center justify-center">
@@ -93,7 +93,7 @@
     </script>
 
     <!-- Mobile App Container -->
-    <div id="mobile-app" class="max-w-[430px] mx-auto min-h-screen relative bg-gray-50">
+    <div id="mobile-app" class="max-w-[430px] mx-auto min-h-screen relative bg-transparent">
         {% block content %}{% endblock %}
     </div>
 

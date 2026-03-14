@@ -109,6 +109,13 @@
   color: #ef4444;
 }
 
+.form-label .gs-label-required {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+  transform: translateY(-1px);
+}
+
 /* Field count badge in section title */
 .gs-field-badge {
   display: inline-flex;

@@ -125,7 +125,7 @@
                     {% endif %}
                     {% endfor %}
                     <td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center">{{ item.requested_by_name }}</td>
-                    <td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">{{ item.requested_at|date:"d-M-Y H:i" }}</td>
+                    <td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">{{ item.requested_at|default:"-" }}</td>
                 </tr>
                 {% empty %}
                 <tr>

@@ -29,6 +29,10 @@ window.addEventListener('resize', enforceDeviceRestriction);
 // Prevent zoom on double-tap
 let lastTouchEnd = 0;
 document.addEventListener('touchend', function(event) {
+    const target = event.target;
+    if (target && target.closest('input, textarea, select, [contenteditable="true"]')) {
+        return;
+    }
     const now = (new Date()).getTime();
     if (now - lastTouchEnd <= 300) {
         event.preventDefault();
@@ -55,7 +59,8 @@ function hapticFeedback(type = 'light') {
 
 // Add haptic to all buttons
 document.addEventListener('click', function(e) {
-    if (e.target.closest('button, a, .grid-card')) {
+    const actionable = e.target.closest('button, [role="button"], .grid-card');
+    if (actionable && !actionable.disabled && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         hapticFeedback('light');
     }
 });
@@ -71,4 +76,4 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     });
 });
 
-console.log('%c🃏 ID Card Manager Mobile PWA', 'color: #667eea; font-size: 16px; font-weight: bold;');
+console.log('%cID Card Manager Mobile PWA', 'color: #0a92dd; font-size: 16px; font-weight: bold;');

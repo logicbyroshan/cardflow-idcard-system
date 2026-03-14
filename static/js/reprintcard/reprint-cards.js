@@ -65,9 +65,14 @@ function refreshStepCounts() {
   ApiClient.get(ENDPOINTS.stepCounts)
     .then(function(data) {
       if (data.status !== 'ok') return;
-      updateTabCount('.reprint-requests-tab .tab-count', data.reprint_list || 0);
+      var downloadCount = data.download_list || data.reprint_list || 0;
+      updateTabCount('.reprint-requests-tab .tab-count', downloadCount);
       updateTabCount('.reprint-confirm-tab .tab-count', data.request_list || 0);
       updateTabCount('.reprint-pool-tab .tab-count', data.confirmed || 0);
+      var requestCount = document.getElementById('downloadRequestCount');
+      var confirmedCount = document.getElementById('downloadConfirmedCount');
+      if (requestCount) requestCount.textContent = data.request_list || 0;
+      if (confirmedCount) confirmedCount.textContent = data.confirmed || 0;
     })
     .catch(function() {});
 }
@@ -351,6 +356,12 @@ async function postJsonForBlob(url, body) {
       .map(function(cb) { return parseInt(cb.closest('tr').dataset.cardId, 10); });
   }
 
+  function setSingleSelection(targetCb) {
+    getCheckboxes().forEach(function(cb) {
+      cb.checked = (cb === targetCb) ? targetCb.checked : false;
+    });
+  }
+
   function updateSelectionUI() {
     var count = getSelectedCardIds().length;
     if (sendToRequestBtn) sendToRequestBtn.disabled = count === 0;
@@ -366,16 +377,11 @@ async function postJsonForBlob(url, body) {
     }
   }
 
-  if (selectAllCb) {
-    selectAllCb.addEventListener('change', function() {
-      var checked = this.checked;
-      getCheckboxes().forEach(function(cb) { cb.checked = checked; });
-      updateSelectionUI();
-    });
-  }
-
   tableBody.addEventListener('change', function(e) {
-    if (e.target.classList.contains('reprintListRowCheckbox')) updateSelectionUI();
+    if (e.target.classList.contains('reprintListRowCheckbox')) {
+      setSingleSelection(e.target);
+      updateSelectionUI();
+    }
   });
 
   var modal = document.getElementById('reprintConfirmModal');
@@ -461,8 +467,8 @@ async function postJsonForBlob(url, body) {
   if (sendToRequestBtn) {
     sendToRequestBtn.addEventListener('click', function() {
       var ids = getSelectedCardIds();
-      if (!ids.length) return;
-      openModal(ids);
+      if (ids.length !== 1) return;
+      openModal([ids[0]]);
     });
   }
 
@@ -885,9 +891,18 @@ async function postJsonForBlob(url, body) {
   var selectAllCb = document.getElementById('confirmedSelectAll');
   var searchInput = document.getElementById('confirmedSearchInput');
   var searchClearBtn = document.getElementById('confirmedSearchClearBtn');
+  var fromDateInput = document.getElementById('confirmedFromDate');
+  var toDateInput = document.getElementById('confirmedToDate');
+  var applyDateFilterBtn = document.getElementById('confirmedApplyDateFilterBtn');
+  var clearDateFilterBtn = document.getElementById('confirmedClearDateFilterBtn');
+  var downloadPdfBtn = document.getElementById('confirmedDownloadPdfBtn');
+  var downloadDocxBtn = document.getElementById('confirmedDownloadDocxBtn');
+  var downloadXlsxBtn = document.getElementById('confirmedDownloadXlsxBtn');
+  var downloadImagesBtn = document.getElementById('confirmedDownloadImagesBtn');
   var viewBtn = document.getElementById('confirmedViewBtn');
   var showingRange = document.getElementById('confirmedShowingRange');
   var totalCountEl = document.getElementById('confirmedTotalCount');
+  var currentQuery = '';
 
   var paginator = createPaginator({
     barId: 'confirmedPaginationBar',
@@ -905,9 +920,24 @@ async function postJsonForBlob(url, body) {
       .map(function(cb) { return parseInt(cb.closest('tr').dataset.cardId, 10); });
   }
 
+  function getAllVisibleCardIds() {
+    return getCheckboxes().map(function(cb) { return parseInt(cb.closest('tr').dataset.cardId, 10); });
+  }
+
+  function getTargetCardIdsForDownload() {
+    var selected = getSelectedCardIds();
+    if (selected.length) return selected;
+    return getAllVisibleCardIds();
+  }
+
   function updateSelectionUI() {
     var count = getCheckboxes().filter(function(cb) { return cb.checked; }).length;
+    var totalRows = getCheckboxes().length;
     if (viewBtn) viewBtn.disabled = count !== 1;
+    if (downloadPdfBtn) downloadPdfBtn.disabled = totalRows === 0;
+    if (downloadDocxBtn) downloadDocxBtn.disabled = totalRows === 0;
+    if (downloadXlsxBtn) downloadXlsxBtn.disabled = totalRows === 0;
+    if (downloadImagesBtn) downloadImagesBtn.disabled = totalRows === 0;
     if (paginator) paginator.updateSelectionCount(count);
 
     if (selectAllCb) {
@@ -958,8 +988,107 @@ async function postJsonForBlob(url, body) {
     searchClearBtn.style.display = searchInput && searchInput.value ? '' : 'none';
   }
 
+  if (applyDateFilterBtn) {
+    applyDateFilterBtn.addEventListener('click', function() {
+      fetchItems(currentQuery);
+    });
+  }
+
+  if (clearDateFilterBtn) {
+    clearDateFilterBtn.addEventListener('click', function() {
+      if (fromDateInput) fromDateInput.value = '';
+      if (toDateInput) toDateInput.value = '';
+      fetchItems(currentQuery);
+    });
+  }
+
+  function fetchImageZip(body) {
+    return fetch(ENDPOINTS.downloadImages, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken(),
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: JSON.stringify(body)
+    }).then(function(resp) {
+      return resp.json().then(function(data) {
+        if (!resp.ok || !data.success) {
+          throw new Error((data && data.message) || 'Image download failed');
+        }
+        return data;
+      });
+    });
+  }
+
+  function runConfirmedDownload(exportType) {
+    var cardIds = getTargetCardIdsForDownload();
+    if (!cardIds.length) {
+      showToast('No cards available to download', 'warning');
+      return;
+    }
+
+    var body = {
+      card_ids: cardIds,
+      status: 'download'
+    };
+
+    if (exportType === 'pdf') {
+      body.template_id = '';
+      body.font_mode = 'auto';
+      body.shorten_titles = false;
+    }
+    if (exportType === 'docx') {
+      body.format = 'docx';
+      body.template_id = '';
+    }
+
+    var downloadPromise;
+    if (exportType === 'images') {
+      downloadPromise = fetchImageZip(body).then(function(imgData) {
+        var zipFiles = Array.isArray(imgData.zip_files) ? imgData.zip_files : [];
+        if (!zipFiles.length) throw new Error('No image ZIP files returned');
+        zipFiles.forEach(function(zf) {
+          var zipBlob = decodeBase64ToBlob(zf.data, 'application/zip');
+          triggerBlobDownload(zipBlob, zf.filename || 'images.zip');
+        });
+      });
+    } else {
+      var endpointByType = {
+        pdf: ENDPOINTS.downloadPdf,
+        docx: ENDPOINTS.downloadDocx,
+        xlsx: ENDPOINTS.downloadXlsx
+      };
+      downloadPromise = postJsonForBlob(endpointByType[exportType], body).then(function(result) {
+        triggerBlobDownload(result.blob, result.filename || 'export');
+      });
+    }
+
+    downloadPromise
+      .then(function() {
+        showToast((getSelectedCardIds().length ? 'Selected' : 'All visible') + ' confirmed cards downloaded', 'success');
+      })
+      .catch(function(err) {
+        showToast((err && err.message) ? err.message : 'Download failed. Please try again.', 'error');
+        console.error('[ConfirmedList] download failed:', err);
+      });
+  }
+
+  if (downloadPdfBtn) downloadPdfBtn.addEventListener('click', function() { runConfirmedDownload('pdf'); });
+  if (downloadDocxBtn) downloadDocxBtn.addEventListener('click', function() { runConfirmedDownload('docx'); });
+  if (downloadXlsxBtn) downloadXlsxBtn.addEventListener('click', function() { runConfirmedDownload('xlsx'); });
+  if (downloadImagesBtn) downloadImagesBtn.addEventListener('click', function() { runConfirmedDownload('images'); });
+
   function fetchItems(query) {
-    ApiClient.get(ENDPOINTS.confirmedList + '?q=' + encodeURIComponent(query || '') + '&limit=200')
+    currentQuery = query || '';
+    var url = ENDPOINTS.confirmedList + '?q=' + encodeURIComponent(currentQuery) + '&limit=200';
+    if (fromDateInput && fromDateInput.value) {
+      url += '&from=' + encodeURIComponent(fromDateInput.value);
+    }
+    if (toDateInput && toDateInput.value) {
+      url += '&to=' + encodeURIComponent(toDateInput.value);
+    }
+    ApiClient.get(url)
       .then(function(data) {
         if (data.status !== 'ok') return;
         renderItems(data.items || [], data.total || 0);

@@ -5,6 +5,22 @@
 <!-- Action Bar -->
 <div class="action-bar action-buttons-bar" id="confirmedListActionBar">
     <div class="action-buttons-group">
+        <button class="btn action-btn btn-blue" id="confirmedDownloadPdfBtn" title="Download as PDF">
+            <i class="fa-solid fa-file-pdf"></i>
+            <span class="btn-text">Download PDF</span>
+        </button>
+        <button class="btn action-btn btn-blue" id="confirmedDownloadDocxBtn" title="Download as Word">
+            <i class="fa-solid fa-file-word"></i>
+            <span class="btn-text">Download Word</span>
+        </button>
+        <button class="btn action-btn btn-blue" id="confirmedDownloadXlsxBtn" title="Download as Excel">
+            <i class="fa-solid fa-file-excel"></i>
+            <span class="btn-text">Download Excel</span>
+        </button>
+        <button class="btn action-btn btn-blue" id="confirmedDownloadImagesBtn" title="Download images as ZIP">
+            <i class="fa-solid fa-images"></i>
+            <span class="btn-text">Download Images</span>
+        </button>
         <button class="btn action-btn btn-gray" id="confirmedViewBtn" disabled title="View selected card details">
             <i class="fa-solid fa-eye"></i>
             <span class="btn-text">View</span>
@@ -24,6 +40,18 @@
         </div>
     </div>
     <div class="action-right">
+        <div class="filter-group flex items-center gap-2">
+            <input type="datetime-local" id="confirmedFromDate" class="search-input" style="max-width:180px;" title="From date-time">
+            <input type="datetime-local" id="confirmedToDate" class="search-input" style="max-width:180px;" title="To date-time">
+            <button class="btn action-btn btn-blue" id="confirmedApplyDateFilterBtn" type="button" title="Apply date filter">
+                <i class="fa-solid fa-filter"></i>
+                <span class="btn-text">Apply</span>
+            </button>
+            <button class="btn action-btn btn-gray" id="confirmedClearDateFilterBtn" type="button" title="Clear date filter">
+                <i class="fa-solid fa-eraser"></i>
+                <span class="btn-text">Clear</span>
+            </button>
+        </div>
         <div class="filter-group">
             <span class="text-xs text-gray-500 flex items-center gap-1.5">
                 <i class="fa-solid fa-building text-gray-400"></i>

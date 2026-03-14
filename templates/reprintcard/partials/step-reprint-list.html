@@ -1,6 +1,6 @@
 {% load static %}
 {% load custom_filters %}
-<!-- ===== STEP 1: REPRINT LIST (Download Source) ===== -->
+<!-- ===== STEP 1: DOWNLOAD LIST (Reprint Source) ===== -->
 <style>
     #reprintListSearchInput {
         height: 40px;
@@ -34,6 +34,14 @@
             <i class="fa-solid fa-eye"></i>
             <span class="btn-text">View</span>
         </button>
+        <a class="btn action-btn btn-blue" id="goToRequestListBtn" href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table.id %}{% else %}{% url 'reprintcard:reprint_cards' table.id %}{% endif %}?step=request_list" title="Open Request List">
+            <i class="fa-solid fa-list-check"></i>
+            <span class="btn-text">Request List (<span id="downloadRequestCount">{{ step_counts.request_list }}</span>)</span>
+        </a>
+        <a class="btn action-btn btn-blue" id="goToConfirmedListBtn" href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table.id %}{% else %}{% url 'reprintcard:reprint_cards' table.id %}{% endif %}?step=confirmed" title="Open Confirmed List">
+            <i class="fa-solid fa-clipboard-check"></i>
+            <span class="btn-text">Confirmed List (<span id="downloadConfirmedCount">{{ step_counts.confirmed }}</span>)</span>
+        </a>
     </div>
 </div>
 
@@ -42,7 +50,7 @@
     <div class="action-left">
         <div class="search-box">
             <i class="fa-solid fa-magnifying-glass search-icon"></i>
-            <input type="text" id="reprintListSearchInput" placeholder="Search Reprint List..." class="search-input" autocomplete="off">
+            <input type="text" id="reprintListSearchInput" placeholder="Search Download List..." class="search-input" autocomplete="off">
             <button class="search-clear-btn" id="reprintListSearchClearBtn" type="button" title="Clear search" aria-label="Clear search">
                 <i class="fa-solid fa-xmark"></i>
             </button>
@@ -58,14 +66,13 @@
     </div>
 </div>
 
-<!-- Reprint List Table -->
+<!-- Download List Table -->
 <div class="table-wrapper">
     <div class="table-container idcard-table">
         <table id="reprintList-data-table">
             <thead class="sticky top-0 z-20">
                 <tr>
                     <th class="w-[24px] min-w-[24px] text-center px-[1px]">
-                        <input type="checkbox" id="reprintListSelectAll" title="Select all" aria-label="Select all">
                     </th>
                     <th class="w-[36px] min-w-[36px] px-[1px] py-1 text-center align-middle">
                         <div class="leading-tight">
@@ -145,8 +152,8 @@
                     <td colspan="50">
                         <div class="empty-state">
                             <i class="fa-solid fa-id-card"></i>
-                            <h3>No Cards in Reprint List</h3>
-                            <p>No downloaded cards are available for reprint.</p>
+                            <h3>No Cards in Download List</h3>
+                            <p>No downloaded cards are available.</p>
                         </div>
                     </td>
                 </tr>
@@ -165,9 +172,6 @@
     <div class="pagination-left">
         <span class="pagination-info">
             Showing <strong id="reprintListShowingRange">1-{{ reprint_items|length }}</strong> of <strong id="reprintListTotalCount">{{ reprint_total }}</strong> results
-        </span>
-        <span class="pagination-selected" id="reprintListSelectionInfo" style="display: none;">
-            (<strong id="reprintListSelectedCount">0</strong> selected)
         </span>
     </div>
     <div class="pagination-center">

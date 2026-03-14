@@ -50,6 +50,15 @@ _PLACEHOLDER_IMAGE_PATH = os.path.join(
 )
 
 
+_STATUS_LIST_LABELS = {
+    'pending': 'Pending List',
+    'verified': 'Verified List',
+    'approved': 'Approved List',
+    'download': 'Download List',
+    'pool': 'Pool List',
+}
+
+
 def _path_to_file_uri(abs_path: str) -> str:
     """Convert an absolute filesystem path to a file:// URI for WeasyPrint."""
     # Normalise to forward slashes
@@ -241,6 +250,14 @@ class PdfExporter:
     # Compact mode triggers only when DATA columns > 15, i.e. total_cols > 16.
     DENSE_COLUMN_THRESHOLD = 16
 
+    @staticmethod
+    def _build_center_header_title(table_name: str, status: str) -> str:
+        """Return center header title as list label, with table fallback."""
+        label = _STATUS_LIST_LABELS.get((status or '').strip().lower())
+        if label:
+            return f'{table_name} - {label}'
+        return table_name
+
     def export_cards(
         self,
         table,
@@ -428,6 +445,7 @@ class PdfExporter:
                 'total_pages': len(pages),
                 'institution_name': institution_name,
                 'table_name': table.name,
+                'center_list_name': self._build_center_header_title(table.name, status),
                 'current_date': _now.strftime('%d-%m-%Y'),
                 'current_year': _now.strftime('%Y'),
                 'generated_at': _now.strftime('%d-%b-%Y %H:%M'),

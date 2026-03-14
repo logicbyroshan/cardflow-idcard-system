@@ -220,9 +220,12 @@ class WorkflowService:
                 if not PermissionService.has(user, required_perm):
                     return ServiceResult(success=False, message='Permission denied')
 
+            # Super admin can bypass required-field/image forward gates.
+            enforce_required_validations = not (user and PermissionService.is_super_admin(user))
+
             # ── 5. Mandatory field check ────────────────────────────────
             table = card.table
-            if (target_status, current) in cls.MANDATORY_FIELD_TRIGGERS:
+            if enforce_required_validations and (target_status, current) in cls.MANDATORY_FIELD_TRIGGERS:
                 missing = cls._get_missing_mandatory_fields(card, table.fields or [])
                 if missing:
                     return ServiceResult(
@@ -232,7 +235,7 @@ class WorkflowService:
                     )
 
             # ── 6. Image gate (only mandatory image fields) ──────────
-            if target_status in cls.FORWARD_IMAGE_CHECK:
+            if enforce_required_validations and target_status in cls.FORWARD_IMAGE_CHECK:
                 allowed_from = cls.FORWARD_IMAGE_CHECK[target_status]
                 if current in allowed_from:
                     img_names = cls._get_image_field_names(table.fields, mandatory_only=True)
@@ -339,6 +342,9 @@ class WorkflowService:
             if required_perm and not PermissionService.has(user, required_perm):
                 return ServiceResult(success=False, message='Permission denied')
 
+        # Super admin can bypass required-field/image forward gates.
+        enforce_required_validations = not (user and PermissionService.is_super_admin(user))
+
         # ── 3. Filter to cards with valid source status ─────────────
         valid_from = [s for s, targets in cls.ALLOWED_TRANSITIONS.items() if target_status in targets]
 
@@ -358,7 +364,7 @@ class WorkflowService:
         skipped_image_ids: List[int] = []
 
         # ── 4. Mandatory field check (→ verified from pending) ──────
-        if (target_status, 'pending') in cls.MANDATORY_FIELD_TRIGGERS:
+        if enforce_required_validations and (target_status, 'pending') in cls.MANDATORY_FIELD_TRIGGERS:
             pending_cards = list(IDCard.objects.filter(table=table, id__in=eligible_ids, status='pending'))
             valid_ids = []
             for card in pending_cards:
@@ -379,7 +385,7 @@ class WorkflowService:
                 )
 
         # ── 5. Image gate (only mandatory image fields) ──────────
-        if target_status in cls.FORWARD_IMAGE_CHECK:
+        if enforce_required_validations and target_status in cls.FORWARD_IMAGE_CHECK:
             img_names = cls._get_image_field_names(table.fields, mandatory_only=True)
             if img_names:
                 allowed_from_statuses = cls.FORWARD_IMAGE_CHECK[target_status]

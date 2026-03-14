@@ -507,6 +507,9 @@ FIELD_ALIASES: List[Tuple[str, str]] = [
 
     # ── Misc short (BEFORE phone to prevent false matches) ─────
     (r'hostel|room\s*no', 'hostel_room'),
+   # House / Route labels in school sheets (including common typo: RUTE)
+   (r'^house$|house\s*(?:no|num|number)$', 'class_section'),
+   (r'^route$|^rute$|route\s*(?:no|num|number|code|name)$', 'bus_route'),
     (r'bus\s*route|bus\s*stop|\bbus\s*no\b', 'bus_route'),
     (r'stop\s*name|stop\s*no|stop\s*num|route\s*(?:no|num|name)', 'bus_route'),
     (r'library\s*card|library\s*no', 'library_card'),

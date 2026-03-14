@@ -322,18 +322,19 @@ def api_print_reprint_overview(request):
                 'pool': t['pool'],
             })
 
-        # ── Reprint source counts per client (Approved + Download cards) ─
+        # ── Reprint source counts per client (Download cards only) ─
         reprint_source_qs = IDCard.objects.filter(
             table__group__client_id__in=client_ids,
-            status__in=['approved', 'download'],
+            status='download',
         ).values('table__group__client_id').annotate(
-            reprint_list=Count('id')
+            download_list=Count('id')
         )
         reprint_source_map = {r['table__group__client_id']: r for r in reprint_source_qs}
 
         # ── Reprint request/confirmed counts per client ──────────────
         reprint_counts_qs = ReprintRequest.objects.filter(
-            table__group__client_id__in=client_ids
+            table__group__client_id__in=client_ids,
+            card__status='download',
         ).values('table__group__client_id').annotate(
             requested=Count('id', filter=Q(status='requested')),
             confirmed=Count('id', filter=Q(status='confirmed')),
@@ -343,9 +344,9 @@ def api_print_reprint_overview(request):
         # ── Reprint source counts per table ──────────────────────────
         reprint_source_table_qs = IDCard.objects.filter(
             table__group__client_id__in=client_ids,
-            status__in=['approved', 'download'],
+            status='download',
         ).values('table__id', 'table__name', 'table__group__client_id').annotate(
-            reprint_list=Count('id')
+            download_list=Count('id')
         ).order_by('table__id')
         reprint_source_table_map = {}
         for t in reprint_source_table_qs:
@@ -355,14 +356,15 @@ def api_print_reprint_overview(request):
             reprint_source_table_map[cid][t['table__id']] = {
                 'id': t['table__id'],
                 'name': t['table__name'],
-                'reprint_list': t['reprint_list'],
+                'download_list': t['download_list'],
                 'requested': 0,
                 'confirmed': 0,
             }
 
         # ── Reprint request/confirmed counts per table ───────────────
         reprint_table_qs = ReprintRequest.objects.filter(
-            table__group__client_id__in=client_ids
+            table__group__client_id__in=client_ids,
+            card__status='download',
         ).values('table__id', 'table__name', 'table__group__client_id').annotate(
             requested=Count('id', filter=Q(status='requested')),
             confirmed=Count('id', filter=Q(status='confirmed')),
@@ -376,7 +378,7 @@ def api_print_reprint_overview(request):
                 reprint_source_table_map[cid][t['table__id']] = {
                     'id': t['table__id'],
                     'name': t['table__name'],
-                    'reprint_list': 0,
+                    'download_list': 0,
                     'requested': 0,
                     'confirmed': 0,
                 }
@@ -410,7 +412,8 @@ def api_print_reprint_overview(request):
                 'id': c.id,
                 'name': c.name,
                 'status': c.status,
-                'reprint_list': source.get('reprint_list', 0),
+                'download_list': source.get('download_list', 0),
+                'reprint_list': source.get('download_list', 0),
                 'requested': rc.get('requested', 0),
                 'confirmed': rc.get('confirmed', 0),
                 'tables': reprint_tables_map.get(c.id, []),

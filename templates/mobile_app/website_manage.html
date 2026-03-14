@@ -7,7 +7,7 @@
 <div class="flex flex-col" style="height:100vh;height:100dvh;" x-data="websiteManageApp()" x-init="init()">
 
     <!--  TOP NAV + TABS  -->
-    <div class="flex-shrink-0" style="background:linear-gradient(135deg,#667eea,#764ba2);">
+    <div class="flex-shrink-0" style="background:linear-gradient(135deg,var(--color-brand-light),var(--color-brand-dark));">
 
         <!-- Header row -->
         <div class="flex items-center gap-3 px-4 pt-[calc(env(safe-area-inset-top,0px)+10px)] pb-1">
@@ -50,7 +50,7 @@
                                 class="bg-white rounded-2xl p-4 text-left shadow-sm border border-gray-100 {% if perm_website_edit %}active:scale-95{% endif %} transition-transform relative">
                             <!-- icon -->
                             <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white mb-2.5"
-                                 style="background:linear-gradient(135deg,#667eea,#764ba2);">
+                                   style="background:linear-gradient(135deg,var(--color-brand-light),var(--color-brand-dark));">
                                 <i :class="cat.icon + ' text-sm'"></i>
                             </div>
                             <!-- name -->
@@ -131,7 +131,7 @@
     <div x-show="tab==='reels'" x-cloak class="fixed bottom-6 right-5 z-40">
         <button @click="openReelSheet()"
                 class="w-14 h-14 rounded-full flex items-center justify-center text-white shadow-xl active:scale-90 transition-transform"
-                style="background:linear-gradient(135deg,#667eea,#764ba2);">
+            style="background:linear-gradient(135deg,var(--color-brand-light),var(--color-brand-dark));">
             <i class="fa-solid fa-plus text-xl"></i>
         </button>
     </div>
@@ -210,7 +210,7 @@
 
                 <!-- Upload progress bar -->
                 <div x-show="uploading" class="w-full h-1.5 rounded-full bg-gray-100 overflow-hidden">
-                    <div class="h-full rounded-full bg-gradient-to-r from-[#667eea] to-[#764ba2] animate-pulse" style="width:100%;"></div>
+                    <div class="h-full rounded-full bg-gradient-to-r from-brand-light to-brand-dark animate-pulse" style="width:100%;"></div>
                 </div>
 
                 <!-- Upload button -->
@@ -219,7 +219,7 @@
                         :disabled="uploading"
                         :class="uploading ? 'opacity-70 cursor-not-allowed' : 'active:scale-95'"
                         class="w-full py-3.5 rounded-xl text-white font-bold text-sm transition-transform flex items-center justify-center gap-2"
-                        style="background:linear-gradient(135deg,#667eea,#764ba2);">
+                        style="background:linear-gradient(135deg,var(--color-brand-light),var(--color-brand-dark));">
                     <template x-if="uploading">
                         <span class="flex items-center gap-2">
                             <i class="fa-solid fa-spinner fa-spin"></i>Uploading...
@@ -249,7 +249,7 @@
 
             <!-- Gradient top: handle + title -->
             <div class="flex-shrink-0 rounded-t-3xl pb-5"
-                 style="background:linear-gradient(135deg,#667eea,#764ba2);">
+                  style="background:linear-gradient(135deg,var(--color-brand-light),var(--color-brand-dark));">
                 <!-- Handle -->
                 <div class="flex justify-center pt-3 pb-3">
                     <div class="w-10 h-1.5 rounded-full bg-white/30"></div>
@@ -357,7 +357,7 @@
                         :disabled="!reelVideoFile || uploading"
                         :class="(!reelVideoFile || uploading) ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'"
                         class="py-3 px-6 rounded-xl text-white font-bold text-[13px] transition-transform flex items-center justify-center gap-2"
-                        style="background:linear-gradient(135deg,#667eea,#764ba2);flex:2;">
+                        style="background:linear-gradient(135deg,var(--color-brand-light),var(--color-brand-dark));flex:2;">
                     <template x-if="uploading">
                         <span class="flex items-center gap-2">
                             <i class="fa-solid fa-spinner fa-spin"></i>Uploading...

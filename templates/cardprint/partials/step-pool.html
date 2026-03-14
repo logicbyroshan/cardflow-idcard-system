@@ -106,7 +106,7 @@
                     {% endif %}
                     {% endfor %}
                     <td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center">{{ item.requested_by_name }}</td>
-                    <td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">{{ item.pool_at|date:"d-M-Y H:i" }}</td>
+                    <td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">{{ item.pool_at|default:"-" }}</td>
                     <td class="w-[65px] px-[1px] py-1 align-middle text-center">
                         <span class="status-badge status-{{ item.status }}">{{ item.status_display }}</span>
                     </td>

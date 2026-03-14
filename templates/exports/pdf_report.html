@@ -181,7 +181,7 @@ table.data-table thead th {
        is truly longer than the column (e.g. a very long concatenated name). */
     white-space: normal;
     word-break: normal;
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
     hyphens: none;
     -webkit-hyphens: none;
 }
@@ -194,7 +194,7 @@ table.data-table tbody tr {
    If a single word is too long it is allowed to break silently WITHOUT a dash. */
 table.data-table td.text-cell {
     white-space: normal;
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
     word-break: normal;
     hyphens: none;
     -webkit-hyphens: none;
@@ -262,8 +262,8 @@ table.data-table td.img-cell.placeholder-cell img {
 {# -- Running header/footer elements  -  rendered once; WeasyPrint repeats on every page -- #}
 {# LEFT: Institute name  -  large, bold, prominent #}
 <div id="hdr-left">{{ institution_name|upper }}</div>
-{# CENTER: List name + year  -  clearly identifies the document #}
-<div id="hdr-center">{{ table_name|upper }}{% if current_year %} &mdash; {{ current_year }}{% endif %}</div>
+{# CENTER: List name + date (same pattern as DOCX header) #}
+<div id="hdr-center">{{ center_list_name|default:table_name|upper }}{% if current_date %} ({{ current_date }}){% endif %}</div>
 {# RIGHT: Branding #}
 <div id="hdr-right">ADARSH ID CARDS</div>
 {# FOOTER LEFT: Instruction/note text  -  naturally wraps into ~3 lines at 9pt #}
@@ -280,7 +280,7 @@ table.data-table td.img-cell.placeholder-cell img {
         <thead>
             <tr>
                 {% for col in columns %}
-                <th{% if col.header_nowrap %} style="white-space: nowrap;"{% endif %}>{{ col.label }}</th>
+                <th{% if col.header_nowrap and col.width >= 4.5 %} style="white-space: nowrap;"{% endif %}>{{ col.label }}</th>
                 {% endfor %}
             </tr>
         </thead>

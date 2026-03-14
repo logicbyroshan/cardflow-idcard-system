@@ -31,8 +31,13 @@ class WordStylesMixin:
 
         # Keep export width aligned with the actual section metrics so tables
         # respect side margins and avoid hard edge overflow.
-        usable_width_cm = (section.page_width - section.left_margin - section.right_margin).cm
-        self.PAGE_WIDTH_CM = round(float(usable_width_cm), 2)
+        # python-docx subtraction yields raw EMU ints, not Length objects.
+        # Convert EMU -> cm explicitly to avoid `'int' object has no attribute 'cm'`.
+        page_w_emu = int(section.page_width)
+        left_emu = int(section.left_margin)
+        right_emu = int(section.right_margin)
+        usable_width_cm = (page_w_emu - left_emu - right_emu) / 360000.0
+        self.PAGE_WIDTH_CM = round(max(usable_width_cm, 1.0), 2)
     
     def _add_header(self, doc, institution_name, table_name, Cm, Pt, RGBColor,
                     WD_TABLE_ALIGNMENT, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls):

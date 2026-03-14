@@ -86,22 +86,32 @@ function initReprintPickerHandlers() {
         return div.innerHTML;
     }
 
+    function normalizeFieldKey(value) {
+        return String(value || '')
+            .toUpperCase()
+            .replace(/[^A-Z0-9]/g, '');
+    }
+
     function getField(item, keys) {
         var fields = item && item.ordered_fields ? item.ordered_fields : [];
+        var keyMap = {};
+        keys.forEach(function(k) {
+            keyMap[normalizeFieldKey(k)] = true;
+        });
         var i;
         for (i = 0; i < fields.length; i += 1) {
-            var name = String(fields[i].name || '').toUpperCase();
-            if (keys.indexOf(name) !== -1) return fields[i].value || '';
+            var name = normalizeFieldKey(fields[i].name || '');
+            if (keyMap[name]) return fields[i].value || '';
         }
         return '';
     }
 
     function getFieldByName(item, fieldName) {
         var fields = item && item.ordered_fields ? item.ordered_fields : [];
-        var key = String(fieldName || '').toUpperCase();
+        var key = normalizeFieldKey(fieldName || '');
         var i;
         for (i = 0; i < fields.length; i += 1) {
-            var name = String(fields[i].name || '').toUpperCase();
+            var name = normalizeFieldKey(fields[i].name || '');
             if (name === key) return fields[i].value || '';
         }
         return '';
@@ -349,7 +359,7 @@ function initReprintPickerHandlers() {
     function buildTableHead() {
         if (!pickerTableHead) return;
         var html = '<tr>';
-        html += '<th class="center-cell checkbox-col"><input type="checkbox" id="reprintPickerSelectAll" aria-label="Select all"></th>';
+        html += '<th class="center-cell checkbox-col"></th>';
         html += '<th class="center-cell sr-col">Sr</th>';
         resolvedFields.forEach(function(field, idx) {
             var isImg = isImageFieldLocal(field.type, field.name);
@@ -364,17 +374,6 @@ function initReprintPickerHandlers() {
         pickerTableHead.innerHTML = html;
         applyTableColumnWidths();
         pickerSelectAll = document.getElementById('reprintPickerSelectAll');
-        if (pickerSelectAll) {
-            pickerSelectAll.addEventListener('change', function() {
-                var checked = !!pickerSelectAll.checked;
-                rows.forEach(function(item) {
-                    var key = String(item.card_id);
-                    if (checked) selectedIds.add(key);
-                    else selectedIds.delete(key);
-                });
-                renderRows(rows);
-            });
-        }
     }
 
     function getStudentName(item) {
@@ -398,13 +397,13 @@ function initReprintPickerHandlers() {
             { label: 'Name', value: getStudentName(item) },
             { label: 'Class', value: getClassName(item) },
             { label: 'Section', value: getSectionName(item) },
-            { label: 'Roll No', value: getField(item, ['ROLL NO', 'ROLL', 'ROLL NUMBER']) || '-' },
-            { label: 'Admission No', value: getField(item, ['ADMISSION NO', 'ADMISSION NUMBER', 'ADM NO']) || '-' },
+            { label: 'Roll No', value: getField(item, ['ROLL NO', 'ROLL', 'ROLL NUMBER', 'ROLL_NO']) || '-' },
+            { label: 'Admission No', value: getField(item, ['ADMISSION NO', 'ADMISSION NUMBER', 'ADM NO', 'ADMISSION_NO', 'SCH NO', 'SCHOLAR NO']) || '-' },
             { label: 'DOB', value: getField(item, ['DOB', 'DATE OF BIRTH', 'BIRTH DATE']) || '-' },
-            { label: 'Father Name', value: getField(item, ['FATHER NAME', 'FATHER']) || '-' },
-            { label: 'Father Contact', value: getField(item, ['FATHER CONTACT', 'FATHER MOBILE', 'FATHER PHONE']) || '-' },
-            { label: 'Mother Name', value: getField(item, ['MOTHER NAME', 'MOTHER']) || '-' },
-            { label: 'Mother Contact', value: getField(item, ['MOTHER CONTACT', 'MOTHER MOBILE', 'MOTHER PHONE']) || '-' }
+            { label: 'Father Name', value: getField(item, ['FATHER NAME', "FATHER'S NAME", 'FATHER_NAME', 'FATHER']) || '-' },
+            { label: 'Father Contact', value: getField(item, ['FATHER CONTACT', "FATHER'S CONTACT", 'FATHER MOBILE', "FATHER'S MOBILE", 'FATHER PHONE', 'FATHER CONTACT NO', 'FATHER_PHONE']) || '-' },
+            { label: 'Mother Name', value: getField(item, ['MOTHER NAME', "MOTHER'S NAME", 'MOTHER_NAME', 'MOTHER']) || '-' },
+            { label: 'Mother Contact', value: getField(item, ['MOTHER CONTACT', "MOTHER'S CONTACT", 'MOTHER MOBILE', "MOTHER'S MOBILE", 'MOTHER PHONE', 'MOTHER CONTACT NO', 'MOTHER_PHONE']) || '-' }
         ];
     }
 
@@ -475,7 +474,7 @@ function initReprintPickerHandlers() {
     function updateSelectionUi() {
         var count = selectedIds.size;
         if (pickerSelectedInfo) pickerSelectedInfo.textContent = count + ' selected';
-        if (pickerRequestBtn) pickerRequestBtn.disabled = count === 0;
+        if (pickerRequestBtn) pickerRequestBtn.disabled = count !== 1;
         if (pickerSelectAll) {
             var enabledRows = rows.map(function(r) { return String(r.card_id); });
             var checkedCount = enabledRows.filter(function(id) { return selectedIds.has(id); }).length;
@@ -563,22 +562,23 @@ function initReprintPickerHandlers() {
 
     function openConfirm() {
         var ids = selectedCardIdsAsNumbers();
-        if (!ids.length) return;
+        if (ids.length !== 1) {
+            if (typeof showToast === 'function') showToast('Please select exactly one card for reprint', 'warning');
+            return;
+        }
         pendingEditIds = ids.slice();
-        confirmEditingCardId = ids.length === 1 ? ids[0] : null;
+        confirmEditingCardId = ids[0];
         setConfirmEditingState(false);
         if (confirmCount) confirmCount.textContent = String(ids.length);
         if (confirmEditBtn) {
-            confirmEditBtn.disabled = ids.length !== 1;
-            confirmEditBtn.title = ids.length === 1
-                ? 'Edit selected card before requesting reprint'
-                : 'Want to Edit is available for single selection only';
+            confirmEditBtn.disabled = false;
+            confirmEditBtn.title = 'Edit selected card before requesting reprint';
         }
         if (confirmSubmitBtn) {
             confirmSubmitBtn.disabled = false;
             confirmSubmitBtn.title = 'Continue without editing and request reprint';
         }
-        renderConfirmPreview(ids.length === 1 ? getCardById(ids[0]) : null);
+        renderConfirmPreview(getCardById(ids[0]));
         confirmModal.style.display = 'flex';
     }
 
@@ -641,8 +641,15 @@ function initReprintPickerHandlers() {
         if (!cb) return;
         var id = String(cb.getAttribute('data-card-id') || '');
         if (!id) return;
-        if (cb.checked) selectedIds.add(id);
-        else selectedIds.delete(id);
+        if (cb.checked) {
+            selectedIds.clear();
+            selectedIds.add(id);
+            pickerTableBody.querySelectorAll('.reprint-picker-row').forEach(function(rowCb) {
+                rowCb.checked = rowCb === cb;
+            });
+        } else {
+            selectedIds.delete(id);
+        }
         updateSelectionUi();
     });
 

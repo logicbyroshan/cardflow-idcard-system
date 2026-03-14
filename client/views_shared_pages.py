@@ -235,9 +235,18 @@ def client_reprint_cards(request, table_id):
     # Real step counts
     source_cards_qs = IDCard.objects.filter(table=table, status='download')
     source_cards_count = source_cards_qs.count()
-    request_count = ReprintRequest.objects.filter(table=table, status='requested').count()
-    confirmed_count = ReprintRequest.objects.filter(table=table, status='confirmed').count()
+    request_count = ReprintRequest.objects.filter(
+        table=table,
+        status='requested',
+        card__status='download',
+    ).count()
+    confirmed_count = ReprintRequest.objects.filter(
+        table=table,
+        status='confirmed',
+        card__status='download',
+    ).count()
     step_counts = {
+        'download_list': source_cards_count,
         'reprint_list': source_cards_count,
         'request_list': request_count,
         'confirmed': confirmed_count,
@@ -268,7 +277,9 @@ def client_reprint_cards(request, table_id):
     request_total = 0
     if current_step == 'request_list':
         req_qs = ReprintRequest.objects.filter(
-            table=table, status='requested',
+            table=table,
+            status='requested',
+            card__status='download',
         ).select_related('card', 'requested_by').order_by('-created_at')
         request_total = req_qs.count()
         req_batch = req_qs[:INITIAL_LOAD_LIMIT]
@@ -292,7 +303,9 @@ def client_reprint_cards(request, table_id):
     confirmed_total = 0
     if current_step == 'confirmed':
         cf_qs = ReprintRequest.objects.filter(
-            table=table, status='confirmed',
+            table=table,
+            status='confirmed',
+            card__status='download',
         ).select_related('card', 'requested_by').order_by('-updated_at')
         confirmed_total = cf_qs.count()
         cf_batch = cf_qs[:INITIAL_LOAD_LIMIT]

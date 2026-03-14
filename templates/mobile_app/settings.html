@@ -10,8 +10,7 @@
     <div class="flex-shrink-0">
 
         <!-- Title row -->
-        <div class="flex items-center gap-3 px-4 pt-[calc(env(safe-area-inset-top,0px)+10px)] pb-3.5
-                    bg-gradient-to-r from-[#667eea] to-[#764ba2]">
+        <div class="flex items-center gap-3 px-4 pt-[calc(env(safe-area-inset-top,0px)+10px)] pb-3.5 bg-gradient-to-r from-brand-light to-brand-dark">
             <a href="{% url 'mobile_app:home' %}"
                class="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center text-white active:bg-white/30 transition-colors flex-shrink-0">
                 <i class="fa-solid fa-arrow-left text-sm"></i>
@@ -25,7 +24,7 @@
         <!-- Tab bar -->
         <div class="flex bg-white border-b border-gray-100 shadow-sm">
             <button @click="tab='notifications'"
-                    :class="tab==='notifications' ? 'border-b-2 border-[#667eea] text-[#667eea]' : 'text-gray-400'"
+                    :class="tab==='notifications' ? 'border-b-2 border-brand-light text-brand-light' : 'text-gray-400'"
                     class="flex-1 flex flex-col items-center gap-1 px-1 py-2.5 text-[9px] font-semibold transition-colors relative">
                 <i class="fa-solid fa-bell text-[14px]"></i>
                 <span>Notify</span>
@@ -34,19 +33,19 @@
                 {% endif %}
             </button>
             <button @click="tab='logs'"
-                    :class="tab==='logs' ? 'border-b-2 border-[#667eea] text-[#667eea]' : 'text-gray-400'"
+                    :class="tab==='logs' ? 'border-b-2 border-brand-light text-brand-light' : 'text-gray-400'"
                     class="flex-1 flex flex-col items-center gap-1 px-1 py-2.5 text-[9px] font-semibold transition-colors">
                 <i class="fa-solid fa-clock-rotate-left text-[14px]"></i>
                 <span>Logs</span>
             </button>
             <button @click="tab='email'"
-                    :class="tab==='email' ? 'border-b-2 border-[#667eea] text-[#667eea]' : 'text-gray-400'"
+                    :class="tab==='email' ? 'border-b-2 border-brand-light text-brand-light' : 'text-gray-400'"
                     class="flex-1 flex flex-col items-center gap-1 px-1 py-2.5 text-[9px] font-semibold transition-colors">
                 <i class="fa-solid fa-envelope text-[14px]"></i>
                 <span>Email</span>
             </button>
             <button @click="tab='system'"
-                    :class="tab==='system' ? 'border-b-2 border-[#667eea] text-[#667eea]' : 'text-gray-400'"
+                    :class="tab==='system' ? 'border-b-2 border-brand-light text-brand-light' : 'text-gray-400'"
                     class="flex-1 flex flex-col items-center gap-1 px-1 py-2.5 text-[9px] font-semibold transition-colors">
                 <i class="fa-solid fa-circle-info text-[14px]"></i>
                 <span>System</span>
@@ -62,7 +61,7 @@
             <div class="px-4 pt-4 pb-2 flex items-center justify-between">
                 <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">System Notifications</p>
                 {% if unread_system_count > 0 %}
-                <span class="text-[10px] font-semibold text-[#667eea]">{{ unread_system_count }} unread</span>
+                <span class="text-[10px] font-semibold text-brand-light">{{ unread_system_count }} unread</span>
                 {% else %}
                 <span class="text-[10px] text-gray-400">All caught up</span>
                 {% endif %}
@@ -72,7 +71,7 @@
             <div class="px-4 flex flex-col gap-2 pb-4">
                 {% for notif in system_notifications %}
                 <div class="bg-white rounded-2xl border shadow-sm overflow-hidden
-                            {% if not notif.is_read %}border-l-4 border-l-[#667eea]{% else %}border-gray-100{% endif %}">
+                            {% if not notif.is_read %}border-l-4 border-l-brand-light{% else %}border-gray-100{% endif %}">
                     <div class="flex items-start gap-3 p-4">
                         <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
                              style="background-color:{{ notif.priority_color }}20;">
@@ -83,7 +82,7 @@
                             <div class="flex items-start justify-between gap-2">
                                 <p class="text-[12px] font-bold text-gray-800 leading-snug">{{ notif.title }}</p>
                                 {% if not notif.is_read %}
-                                <span class="w-2 h-2 rounded-full bg-[#667eea] flex-shrink-0 mt-1"></span>
+                                <span class="w-2 h-2 rounded-full bg-brand-light flex-shrink-0 mt-1"></span>
                                 {% endif %}
                             </div>
                             <p class="text-[11px] text-gray-500 mt-0.5 leading-snug">{{ notif.message }}</p>
@@ -112,7 +111,7 @@
 
             <div class="px-4 pb-4">
                 <a href="{% url 'mobile_app:notifications' %}"
-                   class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-[12px] font-semibold border border-[#667eea]/30 text-[#667eea] active:bg-indigo-50 transition-colors">
+                   class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-[12px] font-semibold border border-brand-light/30 text-brand-light active:bg-indigo-50 transition-colors">
                     <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
                     View Activity Notifications
                 </a>
@@ -307,8 +306,8 @@
             <div class="px-4 pt-4 flex flex-col gap-3 pb-4">
 
                 <!-- App version card -->
-                <div class="rounded-2xl overflow-hidden shadow-md"
-                     style="background:linear-gradient(135deg,#667eea,#764ba2);">
+                 <div class="rounded-2xl overflow-hidden shadow-md"
+                     style="background:linear-gradient(135deg,var(--color-brand-light),var(--color-brand-dark));">
                     <div class="px-5 py-4 flex items-center gap-4">
                         <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center border border-white/30 flex-shrink-0">
                             <i class="fa-solid fa-id-card text-white text-xl"></i>

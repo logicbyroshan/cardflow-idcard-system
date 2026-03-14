@@ -240,6 +240,46 @@ function listApp() {
             if (cb) cb.checked = sel;
         },
 
+        _reindexSerialNumbers() {
+            // Keep in-memory serial numbers contiguous after in-place deletions.
+            this.studentsData.forEach((s, i) => {
+                s.sr_no = i + 1;
+            });
+
+            // If any legacy table rows exist, update their visible Sr No column.
+            const rows = Array.from(document.querySelectorAll('tr[data-sid]'));
+            rows.forEach((row, idx) => {
+                const srCell = row.querySelector('td:nth-child(2)');
+                if (srCell) srCell.textContent = String(idx + 1);
+            });
+        },
+
+        _removeCardsFromCurrentList(idsToRemove) {
+            const removeSet = new Set((idsToRemove || []).map(Number));
+            if (!removeSet.size) return;
+
+            // Remove from backing list state.
+            this.studentsData = this.studentsData.filter(s => !removeSet.has(Number(s.id)));
+
+            // Remove rendered nodes for both static and dynamically loaded cards/rows.
+            document.querySelectorAll('[data-sid]').forEach(el => {
+                const sid = Number(el.getAttribute('data-sid'));
+                if (removeSet.has(sid)) el.remove();
+            });
+
+            // Clear selection for removed items and recompute selection flags.
+            this.selectedIds = this.selectedIds.filter(id => !removeSet.has(Number(id)));
+            this.selectAll = false;
+
+            // Keep pagination/load counters and visible count in sync.
+            this.loadMoreOffset = this.studentsData.length;
+            this.visibleCount = this.studentsData.length;
+
+            // Re-run filters to maintain visibility rules and counts.
+            this._reindexSerialNumbers();
+            this._applyAllFilters();
+        },
+
         // Build a <div> card element for a dynamically loaded card (loadMore)
         _buildCardDiv(card) {
             const fd = card.field_data || {};
@@ -443,6 +483,7 @@ function listApp() {
         // --------- API helpers ---------
         async apiAction(status, label) {
             if (!this.selectedIds.length) { this.showToast('Select items first', 'error'); return; }
+            const actedIds = [...this.selectedIds];
             this.loading = true;
             var _ac = new AbortController();
             setTimeout(function() { _ac.abort(); }, 120000);
@@ -460,8 +501,12 @@ function listApp() {
                 }
                 const data = await res.json();
                 if (data.success) {
-                    this.showToast(data.message || (this.selectedIds.length + ' ' + label), 'success');
-                    setTimeout(() => { window.location.href = window.location.pathname + '?t=' + Date.now(); }, 800);
+                    this.showToast(data.message || (actedIds.length + ' ' + label), 'success');
+
+                    // If status changed away from the current list, remove rows in-place.
+                    if (status !== LIST_TYPE) {
+                        this._removeCardsFromCurrentList(actedIds);
+                    }
                 } else {
                     this.showToast(data.message || 'Action failed', 'error');
                 }
@@ -732,9 +777,11 @@ function listApp() {
             if (!this.selectedIds.length) { this.showToast('Select items first', 'error'); return; }
             var ok = await showConfirm({ title: 'Permanently Delete?', text: 'Permanently delete ' + this.selectedIds.length + ' card(s)? This cannot be undone!', icon: 'fa-solid fa-trash', confirmLabel: 'Delete', hideWarning: true });
             if (!ok) return;
+            const requestedIds = [...this.selectedIds];
+            const deletedIds = [];
             this.loading = true;
             let success = 0, failed = 0;
-            for (const id of this.selectedIds) {
+            for (const id of requestedIds) {
                 try {
                     const res = await fetch('/app/api/card/' + id + '/delete/', {
                         method: 'POST',
@@ -742,13 +789,18 @@ function listApp() {
                         body: JSON.stringify({ permanent: true }),
                     });
                     const data = await res.json();
-                    if (data.success) success++; else failed++;
+                    if (data.success) {
+                        success++;
+                        deletedIds.push(id);
+                    } else failed++;
                 } catch (e) { failed++; }
             }
             this.loading = false;
             if (success > 0) {
                 this.showToast(success + ' card(s) deleted', 'success');
-                setTimeout(() => { window.location.href = window.location.pathname + '?t=' + Date.now(); }, 800);
+
+                // Remove deleted rows immediately without page reload.
+                this._removeCardsFromCurrentList(deletedIds);
             } else { this.showToast('Failed to delete cards', 'error'); }
             this.selectedIds = [];
         },

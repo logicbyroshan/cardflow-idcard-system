@@ -17,6 +17,8 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 from django.db.models import Count, Q
 from django.utils.timezone import localtime
+from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 
 from idcards.models import IDCard, IDCardTable
 from core.services.permission_service import PermissionService, api_require_permission
@@ -77,6 +79,18 @@ def _require_admin_role(user):
     )
 
 
+def _parse_local_datetime_filter(value):
+    """Parse datetime-local input safely into an aware datetime."""
+    if not value:
+        return None
+    dt = parse_datetime(value)
+    if not dt:
+        return None
+    if timezone.is_naive(dt):
+        dt = timezone.make_aware(dt, timezone.get_current_timezone())
+    return dt
+
+
 # ---------------------------------------------------------------------------
 # PAGE VIEW
 # ---------------------------------------------------------------------------
@@ -101,9 +115,18 @@ def reprint_cards(request, table_id):
     # Step counts
     source_cards_qs = IDCard.objects.filter(table=table, status='download')
     source_cards_count = source_cards_qs.count()
-    request_count = ReprintRequest.objects.filter(table=table, status='requested').count()
-    confirmed_count = ReprintRequest.objects.filter(table=table, status='confirmed').count()
+    request_count = ReprintRequest.objects.filter(
+        table=table,
+        status='requested',
+        card__status='download',
+    ).count()
+    confirmed_count = ReprintRequest.objects.filter(
+        table=table,
+        status='confirmed',
+        card__status='download',
+    ).count()
     step_counts = {
+        'download_list': source_cards_count,
         'reprint_list': source_cards_count,
         'request_list': request_count,
         'confirmed': confirmed_count,
@@ -133,7 +156,9 @@ def reprint_cards(request, table_id):
     request_total = 0
     if current_step == 'request_list':
         req_qs = ReprintRequest.objects.filter(
-            table=table, status='requested',
+            table=table,
+            status='requested',
+            card__status='download',
         ).select_related('card', 'requested_by').order_by('-created_at')
         request_total = req_qs.count()
         req_batch = req_qs[:INITIAL_LOAD_LIMIT]
@@ -157,7 +182,9 @@ def reprint_cards(request, table_id):
     confirmed_total = 0
     if current_step == 'confirmed':
         cf_qs = ReprintRequest.objects.filter(
-            table=table, status='confirmed',
+            table=table,
+            status='confirmed',
+            card__status='download',
         ).select_related('card', 'requested_by').order_by('-updated_at')
         confirmed_total = cf_qs.count()
         cf_batch = cf_qs[:INITIAL_LOAD_LIMIT]
@@ -212,10 +239,19 @@ def api_reprint_step_counts(request, table_id):
         return err
 
     source_cards_count = IDCard.objects.filter(table=table, status='download').count()
-    request_count = ReprintRequest.objects.filter(table=table, status='requested').count()
-    confirmed_count = ReprintRequest.objects.filter(table=table, status='confirmed').count()
+    request_count = ReprintRequest.objects.filter(
+        table=table,
+        status='requested',
+        card__status='download',
+    ).count()
+    confirmed_count = ReprintRequest.objects.filter(
+        table=table,
+        status='confirmed',
+        card__status='download',
+    ).count()
     return JsonResponse({
         'status': 'ok',
+        'download_list': source_cards_count,
         'reprint_list': source_cards_count,
         'request_list': request_count,
         'confirmed': confirmed_count,
@@ -359,7 +395,9 @@ def api_request_list(request, table_id):
         offset, limit = 0, 100
 
     rr_qs = ReprintRequest.objects.filter(
-        table=table, status='requested',
+        table=table,
+        status='requested',
+        card__status='download',
     ).select_related('card', 'requested_by').order_by('-created_at')
 
     if query:
@@ -447,8 +485,17 @@ def api_confirmed_list(request, table_id):
         offset, limit = 0, 100
 
     rr_qs = ReprintRequest.objects.filter(
-        table=table, status='confirmed',
+        table=table,
+        status='confirmed',
+        card__status='download',
     ).select_related('card', 'requested_by').order_by('-updated_at')
+
+    from_dt = _parse_local_datetime_filter(request.GET.get('from'))
+    to_dt = _parse_local_datetime_filter(request.GET.get('to'))
+    if from_dt:
+        rr_qs = rr_qs.filter(updated_at__gte=from_dt)
+    if to_dt:
+        rr_qs = rr_qs.filter(updated_at__lte=to_dt)
 
     if query:
         rr_qs = rr_qs.filter(
@@ -613,6 +660,7 @@ def api_reprint_send_to_print(request, table_id):
         id__in=rr_ids,
         table=table,
         status='requested',
+        card__status='download',
     ).values_list('card_id', flat=True)
 
     card_ids = list(requested_rrs)
@@ -636,6 +684,7 @@ def api_reprint_send_to_print(request, table_id):
             id__in=rr_ids,
             table=table,
             status='requested',
+            card__status='download',
         ).update(status='confirmed')
 
     return JsonResponse({

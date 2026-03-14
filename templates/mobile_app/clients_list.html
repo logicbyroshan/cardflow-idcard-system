@@ -63,7 +63,7 @@
                      @click="toggleExpand(c.id)">
                     <!-- Avatar with gradient -->
                     <div class="w-11 h-11 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 rounded-2xl shadow-sm"
-                         :style="c.status === 'active' ? 'background: linear-gradient(135deg, #667eea, #764ba2)' : 'background: #d1d5db'">
+                         :style="c.status === 'active' ? 'background: linear-gradient(135deg, var(--color-brand-light), var(--color-brand-dark))' : 'background: #d1d5db'">
                         <span x-text="(c.name || 'C').substring(0,1).toUpperCase()"></span>
                     </div>
                     <!-- Name + meta -->

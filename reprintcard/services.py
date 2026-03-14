@@ -121,7 +121,7 @@ class ReprintWorkflowService:
             return ServiceResult(success=False, message='No card IDs provided')
 
         valid_ids = set(
-            IDCard.objects.filter(table=table, id__in=card_ids)
+            IDCard.objects.filter(table=table, id__in=card_ids, status='download')
             .values_list('id', flat=True)
         )
 
@@ -129,7 +129,7 @@ class ReprintWorkflowService:
             ReprintRequest.objects.filter(
                 table=table,
                 card_id__in=valid_ids,
-                status__in=['requested', 'confirmed'],
+                status__in=['requested', 'confirmed', 'downloaded'],
             ).values_list('card_id', flat=True)
         )
 
