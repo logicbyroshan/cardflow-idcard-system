@@ -222,6 +222,75 @@ function updateEmptyTable(tableBody, iconClass, text, totalCountEl, showingRange
   if (totalCountEl) totalCountEl.textContent = '0';
 }
 
+function getCsrfToken() {
+  var match = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : '';
+}
+
+function parseFilenameFromDisposition(disposition, fallbackExt) {
+  if (disposition) {
+    var utfMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+    if (utfMatch && utfMatch[1]) return decodeURIComponent(utfMatch[1]);
+    var plainMatch = disposition.match(/filename="?([^";]+)"?/i);
+    if (plainMatch && plainMatch[1]) return plainMatch[1];
+  }
+  var parts = [window.CLIENT_NAME || '', window.TABLE_NAME || '', 'Reprint'].filter(Boolean).map(function(v) {
+    return String(v).replace(/\s+/g, '');
+  });
+  return (parts.length ? parts.join('_') : 'export') + '.' + fallbackExt;
+}
+
+function triggerBlobDownload(blob, filename) {
+  var url = window.URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.style.display = 'none';
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function() {
+    window.URL.revokeObjectURL(url);
+    if (a.parentNode) a.parentNode.removeChild(a);
+  }, 0);
+}
+
+function decodeBase64ToBlob(base64Str, mimeType) {
+  var bytes = atob(base64Str || '');
+  var len = bytes.length;
+  var arr = new Uint8Array(len);
+  for (var i = 0; i < len; i += 1) arr[i] = bytes.charCodeAt(i);
+  return new Blob([arr], { type: mimeType || 'application/octet-stream' });
+}
+
+async function postJsonForBlob(url, body) {
+  var resp = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCsrfToken(),
+      'X-Requested-With': 'XMLHttpRequest'
+    },
+    body: JSON.stringify(body || {})
+  });
+
+  if (!resp.ok) {
+    var errText = 'Download failed';
+    try {
+      var errJson = await resp.json();
+      errText = errJson.message || errText;
+    } catch (_e) {
+      try {
+        errText = await resp.text();
+      } catch (_e2) {}
+    }
+    throw new Error(errText);
+  }
+
+  var blob = await resp.blob();
+  var filename = parseFilenameFromDisposition(resp.headers.get('Content-Disposition'), 'bin');
+  return { blob: blob, filename: filename };
+}
+
 (function reprintListStep() {
   var tableBody = document.getElementById('reprintListTableBody');
   if (!tableBody) return;
@@ -439,6 +508,10 @@ function updateEmptyTable(tableBody, iconClass, text, totalCountEl, showingRange
   var searchInput = document.getElementById('requestSearchInput');
   var searchClearBtn = document.getElementById('requestSearchClearBtn');
   var sendToPrintBtn = document.getElementById('requestSendToPrintBtn');
+  var downloadPdfBtn = document.getElementById('requestDownloadPdfBtn');
+  var downloadDocxBtn = document.getElementById('requestDownloadDocxBtn');
+  var downloadXlsxBtn = document.getElementById('requestDownloadXlsxBtn');
+  var downloadImagesBtn = document.getElementById('requestDownloadImagesBtn');
   var rejectBtn = document.getElementById('requestRejectBtn');
   var viewBtn = document.getElementById('requestViewBtn');
   var showingRange = document.getElementById('requestShowingRange');
@@ -468,6 +541,10 @@ function updateEmptyTable(tableBody, iconClass, text, totalCountEl, showingRange
   function updateSelectionUI() {
     var count = getSelectedRrIds().length;
     if (sendToPrintBtn) sendToPrintBtn.disabled = count === 0;
+    if (downloadPdfBtn) downloadPdfBtn.disabled = count === 0;
+    if (downloadDocxBtn) downloadDocxBtn.disabled = count === 0;
+    if (downloadXlsxBtn) downloadXlsxBtn.disabled = count === 0;
+    if (downloadImagesBtn) downloadImagesBtn.disabled = count === 0;
     if (rejectBtn) rejectBtn.disabled = count === 0;
     if (viewBtn) viewBtn.disabled = count !== 1;
     if (paginator) paginator.updateSelectionCount(count);
@@ -533,6 +610,101 @@ function updateEmptyTable(tableBody, iconClass, text, totalCountEl, showingRange
     });
   }
 
+  async function runDownloadAndMove(exportType, rrIds, cardIds) {
+    if (!rrIds.length || !cardIds.length) return;
+
+    var body = {
+      card_ids: cardIds,
+      status: 'download'
+    };
+
+    if (exportType === 'pdf') {
+      body.template_id = '';
+      body.font_mode = 'auto';
+      body.shorten_titles = false;
+    }
+    if (exportType === 'docx') {
+      body.format = 'docx';
+      body.template_id = '';
+    }
+
+    try {
+      if (exportType === 'images') {
+        var imgResp = await fetch(ENDPOINTS.downloadImages, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken(),
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: JSON.stringify(body)
+        });
+        var imgData = await imgResp.json();
+        if (!imgResp.ok || !imgData.success) {
+          throw new Error((imgData && imgData.message) || 'Image download failed');
+        }
+
+        var zipFiles = Array.isArray(imgData.zip_files) ? imgData.zip_files : [];
+        if (!zipFiles.length) {
+          throw new Error('No image ZIP files returned');
+        }
+        zipFiles.forEach(function(zf) {
+          var zipBlob = decodeBase64ToBlob(zf.data, 'application/zip');
+          triggerBlobDownload(zipBlob, zf.filename || 'images.zip');
+        });
+      } else {
+        var endpointByType = {
+          pdf: ENDPOINTS.downloadPdf,
+          docx: ENDPOINTS.downloadDocx,
+          xlsx: ENDPOINTS.downloadXlsx
+        };
+        var extByType = { pdf: 'pdf', docx: 'docx', xlsx: 'xlsx' };
+        var result = await postJsonForBlob(endpointByType[exportType], body);
+        var fallbackName = parseFilenameFromDisposition('', extByType[exportType]);
+        triggerBlobDownload(result.blob, result.filename || fallbackName);
+      }
+
+      performSendToPrint(rrIds, {
+        successMessage: 'Downloaded and moved to Confirmed List'
+      });
+    } catch (err) {
+      showToast((err && err.message) ? err.message : 'Download failed. Please try again.', 'error');
+      console.error('[RequestList] download failed:', err);
+    }
+  }
+
+  if (downloadPdfBtn) {
+    downloadPdfBtn.addEventListener('click', function() {
+      var rrIds = getSelectedRrIds();
+      var cardIds = getSelectedCardIds();
+      runDownloadAndMove('pdf', rrIds, cardIds);
+    });
+  }
+
+  if (downloadDocxBtn) {
+    downloadDocxBtn.addEventListener('click', function() {
+      var rrIds = getSelectedRrIds();
+      var cardIds = getSelectedCardIds();
+      runDownloadAndMove('docx', rrIds, cardIds);
+    });
+  }
+
+  if (downloadXlsxBtn) {
+    downloadXlsxBtn.addEventListener('click', function() {
+      var rrIds = getSelectedRrIds();
+      var cardIds = getSelectedCardIds();
+      runDownloadAndMove('xlsx', rrIds, cardIds);
+    });
+  }
+
+  if (downloadImagesBtn) {
+    downloadImagesBtn.addEventListener('click', function() {
+      var rrIds = getSelectedRrIds();
+      var cardIds = getSelectedCardIds();
+      runDownloadAndMove('images', rrIds, cardIds);
+    });
+  }
+
   if (rejectBtn) {
     rejectBtn.addEventListener('click', async function() {
       var ids = getSelectedRrIds();
@@ -574,14 +746,16 @@ function updateEmptyTable(tableBody, iconClass, text, totalCountEl, showingRange
     updateSelectionUI();
   }
 
-  function performSendToPrint(rrIds) {
+  function performSendToPrint(rrIds, opts) {
+    opts = opts || {};
     ApiClient.post(ENDPOINTS.sendToPrint, { rr_ids: rrIds })
       .then(function(data) {
         if (data.status !== 'ok') {
           showToast(data.message || 'Could not print selected requests', 'error');
           return;
         }
-        showToast(data.message || 'Printed and moved to Confirmed List', 'success');
+        var successMsg = opts.successMessage || data.message || 'Printed and moved to Confirmed List';
+        if (!opts.silentToast) showToast(successMsg, 'success');
         removeRowsByIds(rrIds);
         refreshStepCounts();
       })

@@ -68,7 +68,7 @@ class WordExporter(WordStylesMixin, WordTablesMixin, WordImagesMixin):
     IMAGE_HEIGHT_CM = 2.5
     IMAGE_DEFAULT_WIDTH_CM = 1.9  # 3:4 portrait default
     ROW_HEIGHT_CM = 2.5
-    PAGE_WIDTH_CM = 27.8  # Safe usable width budget to prevent Word overflow at page edges
+    PAGE_WIDTH_CM = 28.7  # A4 landscape usable width with 0.5 cm side margins
     # Page height budget (landscape A4 = 21cm)
     PAGE_HEIGHT_CM = 21.0
     TOP_MARGIN_CM = 0.5

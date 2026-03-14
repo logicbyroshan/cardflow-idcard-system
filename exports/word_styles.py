@@ -28,6 +28,11 @@ class WordStylesMixin:
         section.bottom_margin = Cm(0.5)
         section.header_distance = Cm(0.5)
         section.footer_distance = Cm(0.5)
+
+        # Keep export width aligned with the actual section metrics so tables
+        # respect side margins and avoid hard edge overflow.
+        usable_width_cm = (section.page_width - section.left_margin - section.right_margin).cm
+        self.PAGE_WIDTH_CM = round(float(usable_width_cm), 2)
     
     def _add_header(self, doc, institution_name, table_name, Cm, Pt, RGBColor,
                     WD_TABLE_ALIGNMENT, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls):

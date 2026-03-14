@@ -783,7 +783,7 @@ class PdfExporter:
             'spouse_name': 9.0,
             'reporting_manager': 7.0,
             'email': 8.0,
-            'address': 5.5,
+            'address': 6.8,
             'allergies': 6.0,
             'medical_condition': 6.0,
             'department': 7.0,

@@ -171,9 +171,9 @@ function initReprintPickerHandlers() {
 
     function computeColumnSizes(items) {
         var size = {
-            checkbox: 34,
-            sr: 40,
-            status: 88,
+            checkbox: { preferred: 34, min: 34, max: 34 },
+            sr: { preferred: 40, min: 38, max: 42 },
+            status: { preferred: 88, min: 78, max: 110 },
             fields: []
         };
         var sample = Array.isArray(items) ? items.slice(0, 160) : [];
@@ -181,7 +181,7 @@ function initReprintPickerHandlers() {
         resolvedFields.forEach(function(field) {
             var isImg = isImageFieldLocal(field.type, field.name);
             if (isImg) {
-                size.fields.push({ width: 50, isImage: true });
+                size.fields.push({ preferred: 50, min: 44, max: 56, isImage: true });
                 return;
             }
 
@@ -199,45 +199,151 @@ function initReprintPickerHandlers() {
             var isPhoneLike = /phone|mobile|contact|whatsapp|tel|mob/.test(nameLower);
             var sourceWidth = sourceHeaderWidths[String(field.name || '').toUpperCase()] || 0;
 
-            var width = Math.min(320, Math.max(70, Math.round(best * 7.1) + 20));
+            var width = Math.min(320, Math.max(78, Math.round(best * 7.1) + 20));
             if (sourceWidth > 0) {
                 width = Math.max(60, Math.min(360, sourceWidth));
             }
-            if (isAddressLike) width = Math.min(360, Math.max(130, width));
-            if (isNameLike) width = Math.min(250, Math.max(120, width));
-            if (isPhoneLike) width = Math.min(180, Math.max(110, width));
+            var minWidth = 68;
+            var maxWidth = 320;
+            if (isAddressLike) {
+                minWidth = 110;
+                maxWidth = 360;
+                width = Math.min(maxWidth, Math.max(140, width));
+            }
+            if (isNameLike) {
+                minWidth = Math.max(minWidth, 95);
+                maxWidth = Math.min(maxWidth, 260);
+                width = Math.min(260, Math.max(120, width));
+            }
+            if (isPhoneLike) {
+                minWidth = Math.max(minWidth, 94);
+                maxWidth = Math.min(maxWidth, 190);
+                width = Math.min(190, Math.max(112, width));
+            }
 
-            size.fields.push({ width: width, isImage: false });
+            size.fields.push({ preferred: width, min: minWidth, max: maxWidth, isImage: false });
         });
 
-        size.status = Math.max(88, Math.min(110, Math.round(size.status)));
         return size;
+    }
+
+    function _fitColumnWidthsToContainer(containerWidth) {
+        var cols = [];
+
+        cols.push({ key: 'checkbox', min: columnSizes.checkbox.min, max: columnSizes.checkbox.max, preferred: columnSizes.checkbox.preferred, growWeight: 0, shrinkWeight: 0 });
+        cols.push({ key: 'sr', min: columnSizes.sr.min, max: columnSizes.sr.max, preferred: columnSizes.sr.preferred, growWeight: 0, shrinkWeight: 0 });
+
+        columnSizes.fields.forEach(function(meta, index) {
+            cols.push({
+                key: 'field-' + index,
+                min: meta.min,
+                max: meta.max,
+                preferred: meta.preferred,
+                growWeight: meta.isImage ? 0 : Math.max(meta.preferred, 70),
+                shrinkWeight: meta.isImage ? 0.3 : 1
+            });
+        });
+
+        cols.push({ key: 'status', min: columnSizes.status.min, max: columnSizes.status.max, preferred: columnSizes.status.preferred, growWeight: 0.25, shrinkWeight: 0.5 });
+
+        var minTotal = cols.reduce(function(sum, c) { return sum + c.min; }, 0);
+        var prefTotal = cols.reduce(function(sum, c) { return sum + c.preferred; }, 0);
+        var target = Math.max(0, Math.floor(containerWidth || 0));
+
+        var widths = cols.map(function(c) { return c.preferred; });
+
+        if (target <= 0) {
+            return { widths: widths, overflow: true, minTotal: minTotal, finalTotal: prefTotal };
+        }
+
+        if (prefTotal < target) {
+            var extra = target - prefTotal;
+            var growTotal = cols.reduce(function(sum, c) {
+                return sum + ((c.max > c.preferred) ? c.growWeight : 0);
+            }, 0);
+            if (growTotal > 0) {
+                cols.forEach(function(c, i) {
+                    if (c.max <= c.preferred || c.growWeight <= 0) return;
+                    var inc = (extra * c.growWeight) / growTotal;
+                    widths[i] = Math.min(c.max, c.preferred + inc);
+                });
+            }
+        } else if (prefTotal > target) {
+            var deficit = prefTotal - target;
+            var shrinkTotal = cols.reduce(function(sum, c) {
+                return sum + ((c.preferred > c.min) ? c.shrinkWeight : 0);
+            }, 0);
+            if (shrinkTotal > 0) {
+                cols.forEach(function(c, i) {
+                    if (c.preferred <= c.min || c.shrinkWeight <= 0) return;
+                    var dec = (deficit * c.shrinkWeight) / shrinkTotal;
+                    widths[i] = Math.max(c.min, c.preferred - dec);
+                });
+            }
+        }
+
+        widths = widths.map(function(v) { return Math.round(v); });
+        var finalTotal = widths.reduce(function(sum, w) { return sum + w; }, 0);
+
+        // If we still overflow and we are above minima, shrink from widest columns first.
+        if (finalTotal > target && target >= minTotal) {
+            var over = finalTotal - target;
+            var order = cols.map(function(c, i) { return { i: i, flex: widths[i] - c.min }; })
+                .filter(function(it) { return it.flex > 0; })
+                .sort(function(a, b) { return b.flex - a.flex; });
+
+            for (var oi = 0; oi < order.length && over > 0; oi += 1) {
+                var idx = order[oi].i;
+                var reducible = widths[idx] - cols[idx].min;
+                var cut = Math.min(reducible, over);
+                widths[idx] -= cut;
+                over -= cut;
+            }
+            finalTotal = widths.reduce(function(sum, w) { return sum + w; }, 0);
+        }
+
+        return {
+            widths: widths,
+            overflow: finalTotal > target && minTotal > target,
+            minTotal: minTotal,
+            finalTotal: finalTotal
+        };
     }
 
     function applyTableColumnWidths() {
         if (!pickerTable || !columnSizes) return;
+        var wrap = pickerTable.closest('.reprint-picker-table-wrap') || pickerTable.parentElement;
+        var wrapWidth = wrap ? Math.floor(wrap.clientWidth || 0) : 0;
+        var fit = _fitColumnWidthsToContainer(wrapWidth);
+        var widths = fit.widths;
+
         var colgroupHtml = '<colgroup>';
         var totalWidth = 0;
+        var cursor = 0;
 
-        colgroupHtml += '<col style="width:' + columnSizes.checkbox + 'px">';
-        totalWidth += columnSizes.checkbox;
+        colgroupHtml += '<col style="width:' + widths[cursor] + 'px">';
+        totalWidth += widths[cursor];
+        cursor += 1;
 
-        colgroupHtml += '<col style="width:' + columnSizes.sr + 'px">';
-        totalWidth += columnSizes.sr;
+        colgroupHtml += '<col style="width:' + widths[cursor] + 'px">';
+        totalWidth += widths[cursor];
+        cursor += 1;
 
-        columnSizes.fields.forEach(function(meta) {
-            colgroupHtml += '<col style="width:' + meta.width + 'px">';
-            totalWidth += meta.width;
+        columnSizes.fields.forEach(function() {
+            colgroupHtml += '<col style="width:' + widths[cursor] + 'px">';
+            totalWidth += widths[cursor];
+            cursor += 1;
         });
 
-        colgroupHtml += '<col style="width:' + columnSizes.status + 'px">';
-        totalWidth += columnSizes.status;
+        colgroupHtml += '<col style="width:' + widths[cursor] + 'px">';
+        totalWidth += widths[cursor];
         colgroupHtml += '</colgroup>';
 
         var oldColgroup = pickerTable.querySelector('colgroup');
         if (oldColgroup) oldColgroup.remove();
         pickerTable.insertAdjacentHTML('afterbegin', colgroupHtml);
-        pickerTable.style.minWidth = Math.max(760, totalWidth) + 'px';
+        pickerTable.style.minWidth = fit.overflow ? Math.max(fit.minTotal, totalWidth) + 'px' : '100%';
+        pickerTable.style.width = fit.overflow ? Math.max(fit.minTotal, totalWidth) + 'px' : '100%';
     }
 
     function buildTableHead() {
@@ -250,11 +356,10 @@ function initReprintPickerHandlers() {
             if (isImg) {
                 html += '<th class="center-cell image-col">' + esc(field.label || field.name) + '</th>';
             } else {
-                var textWidth = (columnSizes && columnSizes.fields[idx]) ? columnSizes.fields[idx].width : 90;
-                html += '<th class="dynamic-col" style="min-width:' + textWidth + 'px;">' + esc(field.label || field.name) + '</th>';
+                html += '<th class="dynamic-col">' + esc(field.label || field.name) + '</th>';
             }
         });
-        html += '<th class="center-cell" style="min-width:' + ((columnSizes && columnSizes.status) ? columnSizes.status : 88) + 'px;">Status</th>';
+        html += '<th class="center-cell">Status</th>';
         html += '</tr>';
         pickerTableHead.innerHTML = html;
         applyTableColumnWidths();
@@ -608,6 +713,11 @@ function initReprintPickerHandlers() {
         setConfirmEditingState(false);
         confirmEditingCardId = null;
         confirmModal.style.display = 'flex';
+    });
+
+    window.addEventListener('resize', function() {
+        if (!pickerModal || pickerModal.style.display !== 'flex') return;
+        applyTableColumnWidths();
     });
 }
 

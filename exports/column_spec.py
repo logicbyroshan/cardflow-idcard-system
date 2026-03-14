@@ -231,8 +231,8 @@ _s('email', 10, 22, 40, True, 'left',
 # ── Address ──────────────────────────────────────────────────────────
 # Address columns get a wider min-width so they don't become too narrow on
 # small screens.  Vertical wrapping handles long values.
-_s('address', 8, 16, 22, True, 'left',
-   4.0, 8.0, 1.8, 4.0,
+_s('address', 8, 20, 30, True, 'left',
+   5.0, 11.5, 2.2, 5.2,
    'min-w-[130px] max-w-[220px]',
    'min-w-[130px] max-w-[220px] text-left whitespace-normal break-words address-col')
 

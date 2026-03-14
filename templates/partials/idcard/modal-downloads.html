@@ -234,7 +234,7 @@
     background: #fff;
   }
   #reprintPickerModal .reprint-picker-table {
-    width: max-content;
+    width: 100%;
     min-width: 100%;
     border-collapse: collapse;
     table-layout: auto;
@@ -454,6 +454,9 @@
     filter: blur(2px);
     opacity: 0.75;
     pointer-events: none;
+  }
+  #reprintPickerConfirmModal.is-editing {
+    z-index: 1090 !important;
   }
   #sideModalOverlay.reprint-edit-layer {
     z-index: 1250 !important;
