@@ -11,6 +11,7 @@
  *   Period  .
  *   Plus    +
  *   Apostrophe ' (common in Indian surnames: D'Souza, O'Brien)
+ *   Parentheses ( )
  *   Slash   /  (common in Indian addresses: Plot 1/2)
  *
  * ALWAYS REMOVED (from ALL fields, including email):
@@ -18,7 +19,7 @@
  *   Double quote "
  *
  * NOT ALLOWED in plain text fields (but kept for email/url fields):
- *   @, _, #, $, %, ^, &, *, (, ), [, ], {, }, |, \, :, ;, <, >, ?, ~, `
+ *   @, _, #, $, %, ^, &, *, [, ], {, }, |, \, :, ;, <, >, ?, ~, `
  * ALLOWED (hyphen and slash are permitted):
  *   - (hyphen), / (slash)
  *
@@ -64,7 +65,7 @@
         // But \w includes _ which we don't want  replace \w with explicit chars
         // Allow: letters (a-z, A-Z, Unicode via \p if supported), digits 0-9, space
         // Use a permissive "remove known bad" approach for broad Unicode support
-        var badCharsRe = /[_@#$%^&*()\[\]{}<>\|\\:;"~`!?=]/g;
+        var badCharsRe = /[_@#$%^&*\[\]{}<>\|\\:;"~`!?=]/g;
         var stripped = result.replace(badCharsRe, '');
         if (stripped !== result) {
             removed.push('special characters (_ - @ # etc.)');

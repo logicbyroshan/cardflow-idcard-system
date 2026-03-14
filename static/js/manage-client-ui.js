@@ -88,6 +88,14 @@ document.addEventListener('DOMContentLoaded', function() {
       var clientPasswordOptionInput = document.getElementById('clientPasswordOption');
       var clientCustomPasswordGroup = document.getElementById('clientCustomPasswordGroup');
       var clientPasswordInput = document.getElementById('clientPassword');
+      var clientPasswordToggleBtn = document.getElementById('clientPasswordToggleBtn');
+      var clientPasswordEyeIcon = document.getElementById('clientPasswordEyeIcon');
+
+      function setClientPasswordHidden() {
+        if (!clientPasswordInput) return;
+        clientPasswordInput.type = 'password';
+        if (clientPasswordEyeIcon) clientPasswordEyeIcon.className = 'fa-solid fa-eye';
+      }
 
       NS.setClientPasswordOption = function(val) {
         if (!clientPasswordOptionInput) return;
@@ -109,8 +117,20 @@ document.addEventListener('DOMContentLoaded', function() {
         if (clientPasswordInput) {
           clientPasswordInput.required = val === 'custom';
           if (val !== 'custom') clientPasswordInput.value = '';
+          setClientPasswordHidden();
         }
       };
+
+      if (clientPasswordToggleBtn && clientPasswordInput) {
+        clientPasswordToggleBtn.addEventListener('click', function() {
+          if (clientPasswordInput.type === 'password') {
+            clientPasswordInput.type = 'text';
+            if (clientPasswordEyeIcon) clientPasswordEyeIcon.className = 'fa-solid fa-eye-slash';
+          } else {
+            setClientPasswordHidden();
+          }
+        });
+      }
 
       if (clientPasswordOptionDropdown && clientPasswordOptionInput) {
         var pwToggleBtn = clientPasswordOptionDropdown.querySelector('.dropdown-toggle');
@@ -235,6 +255,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (submitBtn) { submitBtn.disabled = false; }
         NS.setClientStatusDropdown('false'); // Default Inactive for new clients
         NS.setClientPasswordOption('phone'); // Reset password option to phone
+        setClientPasswordHidden();
         
         // Phase 1: Photo upload removed - using avatar placeholder
         

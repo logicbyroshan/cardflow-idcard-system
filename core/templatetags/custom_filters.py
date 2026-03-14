@@ -276,27 +276,11 @@ def cache_bust():
 @register.filter
 def reorder_fields_for_display(fields):
     """
-    Reorder fields for table display: text fields first, then image fields in canonical order.
-    Image column order: Photo → Father Photo → Mother Photo → Signature → Barcode → QR Code
+    Preserve configured field order for table display.
     
     Usage: {% for field in table.fields|reorder_fields_for_display %}
     """
-    if not fields:
-        return fields
-    
-    text_fields = []
-    image_fields = []
-    
-    for field in fields:
-        if _is_image_field(field):
-            image_fields.append(field)
-        else:
-            text_fields.append(field)
-    
-    # Sort image fields by canonical order
-    image_fields.sort(key=lambda f: _get_image_sort_key(f.get('name', '')))
-    
-    return text_fields + image_fields
+    return fields
 
 
 @register.filter
@@ -327,27 +311,11 @@ def get_image_icon_name(field_name):
 @register.filter
 def reorder_card_fields_for_display(ordered_fields):
     """
-    Reorder card's ordered_fields for table display: text fields first, then image fields.
-    Image column order: Photo → Father Photo → Mother Photo → Signature → Barcode → QR Code
+    Preserve card field order as provided by the table configuration.
     
     Usage: {% for field in card.ordered_fields|reorder_card_fields_for_display %}
     """
-    if not ordered_fields:
-        return ordered_fields
-    
-    text_fields = []
-    image_fields = []
-    
-    for field in ordered_fields:
-        if _is_image_field(field):
-            image_fields.append(field)
-        else:
-            text_fields.append(field)
-    
-    # Sort image fields by canonical order
-    image_fields.sort(key=lambda f: _get_image_sort_key(f.get('name', '')))
-    
-    return text_fields + image_fields
+    return ordered_fields
 
 @register.filter
 def getattr_filter(obj, attr):

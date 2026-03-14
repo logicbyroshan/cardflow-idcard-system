@@ -300,27 +300,11 @@ class BaseService:
     @classmethod
     def reorder_fields_for_display(cls, table_fields: List[dict]) -> List[dict]:
         """
-        Reorder fields for display: text fields first, then image fields
-        sorted by canonical order (Photo → Father Photo → Mother Photo →
-        Signature → Barcode → QR Code).
+        Preserve configured table field order for display/serialization.
         
         Must mirror reorder_fields_for_display in core/templatetags/custom_filters.py.
         """
-        if not table_fields:
-            return table_fields
-        
-        text_fields = []
-        image_fields = []
-        
-        for field in table_fields:
-            if cls.is_image_field(field):
-                image_fields.append(field)
-            else:
-                text_fields.append(field)
-        
-        image_fields.sort(key=lambda f: cls._get_image_sort_key(f.get('name', '')))
-        
-        return text_fields + image_fields
+        return table_fields
     
     @classmethod
     def is_image_field_name_for_table(cls, field_name: str, table_fields: List[dict]) -> bool:
