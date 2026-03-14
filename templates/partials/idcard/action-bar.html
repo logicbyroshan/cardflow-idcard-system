@@ -249,6 +249,17 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
                 <span class="btn-text">Download PDF</span>
             </button>
             {% endif %}
+            {% if perm_idcard_reprint_list %}
+            <div class="action-divider"></div>
+            <a class="btn action-btn btn-blue" href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table.id %}{% else %}{% url 'reprintcard:reprint_cards' table.id %}{% endif %}?step=request_list" title="Open Request List">
+                <i class="fa-solid fa-list-check"></i>
+                <span class="btn-text">Request List</span>
+            </a>
+            <a class="btn action-btn btn-blue" href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table.id %}{% else %}{% url 'reprintcard:reprint_cards' table.id %}{% endif %}?step=confirmed" title="Open Confirmed List">
+                <i class="fa-solid fa-clipboard-check"></i>
+                <span class="btn-text">Confirmed List</span>
+            </a>
+            {% endif %}
             {% endif %}
             {% if is_client or is_client_staff %}
             {% if perm_idcard_bulk_download %}
@@ -257,6 +268,17 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
                 <i class="fa-solid fa-file-pdf"></i>
                 <span class="btn-text">Download PDF</span>
             </button>
+            {% endif %}
+            {% if perm_idcard_reprint_list %}
+            <div class="action-divider"></div>
+            <a class="btn action-btn btn-blue" href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table.id %}{% else %}{% url 'reprintcard:reprint_cards' table.id %}{% endif %}?step=request_list" title="Open Request List">
+                <i class="fa-solid fa-list-check"></i>
+                <span class="btn-text">Request List</span>
+            </a>
+            <a class="btn action-btn btn-blue" href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table.id %}{% else %}{% url 'reprintcard:reprint_cards' table.id %}{% endif %}?step=confirmed" title="Open Confirmed List">
+                <i class="fa-solid fa-clipboard-check"></i>
+                <span class="btn-text">Confirmed List</span>
+            </a>
             {% endif %}
             {% endif %}
         {% elif current_status == 'pool' %}
