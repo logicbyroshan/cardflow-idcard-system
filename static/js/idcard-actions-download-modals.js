@@ -608,7 +608,9 @@ function initReprintPickerHandlers() {
             });
     }
 
-    triggerBtn.addEventListener('click', function() {
+    triggerBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
         openPicker();
     });
 
@@ -644,7 +646,11 @@ function initReprintPickerHandlers() {
         updateSelectionUi();
     });
 
-    if (pickerRequestBtn) pickerRequestBtn.addEventListener('click', openConfirm);
+    if (pickerRequestBtn) pickerRequestBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        openConfirm();
+    });
 
     confirmClose.addEventListener('click', closeConfirm);
     confirmCancel.addEventListener('click', closeConfirm);
@@ -653,13 +659,17 @@ function initReprintPickerHandlers() {
     });
 
     if (confirmSubmitBtn) {
-        confirmSubmitBtn.addEventListener('click', function() {
+        confirmSubmitBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
             submitReprintRequest();
         });
     }
 
     if (confirmEditBtn) {
-        confirmEditBtn.addEventListener('click', function() {
+        confirmEditBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
             if (pendingEditIds.length !== 1) {
                 if (typeof showToast === 'function') showToast('Select one card to edit', 'warning');
                 return;

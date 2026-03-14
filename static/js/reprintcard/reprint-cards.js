@@ -222,6 +222,36 @@ function updateEmptyTable(tableBody, iconClass, text, totalCountEl, showingRange
   if (totalCountEl) totalCountEl.textContent = '0';
 }
 
+function wireBackButton(buttonId, fallbackUrl) {
+  var btn = document.getElementById(buttonId);
+  if (!btn) return;
+
+  function goBack() {
+    var referrer = document.referrer;
+    try {
+      if (referrer && new URL(referrer).origin === window.location.origin && referrer !== window.location.href) {
+        window.location.href = referrer;
+        return;
+      }
+    } catch (_e) {}
+    if (fallbackUrl) window.location.href = fallbackUrl;
+  }
+
+  btn.addEventListener('click', function(e) {
+    e.preventDefault();
+    goBack();
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && String(e.key || '').toLowerCase() === 'b') {
+      var tag = (e.target && e.target.tagName ? e.target.tagName : '').toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || (e.target && e.target.isContentEditable)) return;
+      e.preventDefault();
+      goBack();
+    }
+  });
+}
+
 function getCsrfToken() {
   var match = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/);
   return match ? decodeURIComponent(match[1]) : '';
@@ -294,6 +324,8 @@ async function postJsonForBlob(url, body) {
 (function reprintListStep() {
   var tableBody = document.getElementById('reprintListTableBody');
   if (!tableBody) return;
+
+  wireBackButton('reprintListBackBtn', '/active-clients/');
 
   var selectAllCb = document.getElementById('reprintListSelectAll');
   var searchInput = document.getElementById('reprintListSearchInput');

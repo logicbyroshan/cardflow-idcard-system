@@ -41,6 +41,36 @@ function refreshStepCounts() {
     }).catch(function() {});
 }
 
+function wireBackButton(buttonId, fallbackUrl) {
+  var btn = document.getElementById(buttonId);
+  if (!btn) return;
+
+  function goBack() {
+    var referrer = document.referrer;
+    try {
+      if (referrer && new URL(referrer).origin === window.location.origin && referrer !== window.location.href) {
+        window.location.href = referrer;
+        return;
+      }
+    } catch (_e) {}
+    if (fallbackUrl) window.location.href = fallbackUrl;
+  }
+
+  btn.addEventListener('click', function(e) {
+    e.preventDefault();
+    goBack();
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && String(e.key || '').toLowerCase() === 'b') {
+      var tag = (e.target && e.target.tagName ? e.target.tagName : '').toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || (e.target && e.target.isContentEditable)) return;
+      e.preventDefault();
+      goBack();
+    }
+  });
+}
+
 /** Render a single image cell as HTML */
 function renderImageCell(f) {
   var html = '<td class="w-[28px] px-[1px] py-1 text-center align-middle image-field image-cell" data-field="' + escapeHtml(f.name) + '" data-field-name="' + escapeHtml(f.name) + '" data-field-type="image" data-original-value="' + escapeHtml(f.value || '') + '">';
@@ -346,6 +376,8 @@ function createPaginator(opts) {
 
   if (!tableBody) return;
 
+  wireBackButton('printListBackBtn', '/print/generate-card/');
+
   var paginator = createPaginator({
     barId: 'printListPaginationBar',
     prefix: 'printList',
@@ -541,6 +573,9 @@ function createPaginator(opts) {
     if (viewBtn) viewBtn.disabled = count === 0;
     if (paginator) paginator.updateSelectionCount(0);
   }
+
+  // Initialize action states from current full-list rows (no checkbox dependency).
+  updateSelectionUI();
 
   function openGeneratorWithSelection(prIds) {
     window.GEN_PRESELECT_PR_IDS = Array.isArray(prIds) ? prIds.slice() : [];

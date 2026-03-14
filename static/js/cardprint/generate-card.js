@@ -496,11 +496,18 @@
     }
 
     if (uploadFrontInput) {
+      uploadFrontInput.addEventListener('click', function () {
+        // Allow re-selecting the same file repeatedly.
+        this.value = '';
+      });
       uploadFrontInput.addEventListener('change', function () {
         if (this.files[0]) uploadPdf(this.files[0], 'front');
       });
     }
     if (uploadBackInput) {
+      uploadBackInput.addEventListener('click', function () {
+        this.value = '';
+      });
       uploadBackInput.addEventListener('change', function () {
         if (this.files[0]) uploadPdf(this.files[0], 'back');
       });
@@ -1135,6 +1142,10 @@
             genCards.forEach(c => {
               if (preselected.indexOf(c.pr_id) >= 0) selectedPrIds.add(c.pr_id);
             });
+            // If stale preselection no longer matches current rows, fall back to full list.
+            if (selectedPrIds.size === 0) {
+              genCards.forEach(c => selectedPrIds.add(c.pr_id));
+            }
           }
           renderCardList(genCards);
         }
@@ -1145,10 +1156,15 @@
           genCards.forEach(c => {
             if (preselected.indexOf(c.pr_id) >= 0) selectedPrIds.add(c.pr_id);
           });
+          if (selectedPrIds.size === 0) {
+            genCards.forEach(c => selectedPrIds.add(c.pr_id));
+          }
         } else {
           genCards.forEach(c => selectedPrIds.add(c.pr_id));
         }
       }
+      // Use preselection only for the current open session.
+      window.GEN_PRESELECT_PR_IDS = [];
       updateGenerateBtn();
     }).catch(err => {
       if (loadingEl) loadingEl.classList.add('hidden');
@@ -1329,6 +1345,11 @@
 
     showToast(`Uploading ${side} template...`, 'info');
 
+    const inputEl = side === 'front'
+      ? document.getElementById('uploadFrontInput')
+      : document.getElementById('uploadBackInput');
+    if (inputEl) inputEl.disabled = true;
+
     fetch(`/print/api/generate-card/table/${TABLE_ID}/template/upload-pdf/${side}/`, {
       method:  'POST',
       headers: {
@@ -1348,17 +1369,24 @@
         return;
       }
       showToast(`${side.charAt(0).toUpperCase() + side.slice(1)} template uploaded!`, 'success');
+      var freshUrl = data.pdf_url + (data.pdf_url.indexOf('?') >= 0 ? '&' : '?') + '_=' + Date.now();
       if (side === 'front') {
-        FRONT_PDF_URL = data.pdf_url;
-        if (currentSide === 'front') renderPdf(data.pdf_url, true);
+        FRONT_PDF_URL = freshUrl;
+        if (currentSide === 'front') renderPdf(freshUrl, true);
       } else {
-        BACK_PDF_URL = data.pdf_url;
-        if (currentSide === 'back') renderPdf(data.pdf_url, true);
+        BACK_PDF_URL = freshUrl;
+        if (currentSide === 'back') renderPdf(freshUrl, true);
       }
     })
     .catch(err => {
       console.error(err);
       showToast('Upload failed.', 'error');
+    })
+    .finally(() => {
+      if (inputEl) {
+        inputEl.disabled = false;
+        inputEl.value = '';
+      }
     });
   }
 
