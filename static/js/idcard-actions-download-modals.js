@@ -71,6 +71,7 @@ function initReprintPickerHandlers() {
     var rows = [];
     var tableFields = Array.isArray(window.TABLE_FIELDS) ? window.TABLE_FIELDS : [];
     var resolvedFields = [];
+    var sourceHeaderWidths = {};
     var selectedIds = new Set();
     var lastQuery = '';
     var pendingEditIds = [];
@@ -116,10 +117,15 @@ function initReprintPickerHandlers() {
         var headerFields = [];
         var cardsBody = document.getElementById('cardsTableBody');
         var sourceTable = cardsBody ? cardsBody.closest('table') : document.getElementById('data-table');
+        sourceHeaderWidths = {};
         if (sourceTable) {
             sourceTable.querySelectorAll('thead th[data-field-name]').forEach(function(th) {
             var name = (th.getAttribute('data-field-name') || '').trim();
             if (!name) return;
+            var measured = Math.round(th.getBoundingClientRect().width || th.offsetWidth || 0);
+            if (measured > 0) {
+                sourceHeaderWidths[String(name).toUpperCase()] = measured;
+            }
             headerFields.push({
                 name: name,
                 type: (th.getAttribute('data-field-type') || 'text').trim(),
@@ -191,8 +197,12 @@ function initReprintPickerHandlers() {
             var isAddressLike = /address|addr|location/.test(nameLower);
             var isNameLike = /name/.test(nameLower);
             var isPhoneLike = /phone|mobile|contact|whatsapp|tel|mob/.test(nameLower);
+            var sourceWidth = sourceHeaderWidths[String(field.name || '').toUpperCase()] || 0;
 
             var width = Math.min(320, Math.max(70, Math.round(best * 7.1) + 20));
+            if (sourceWidth > 0) {
+                width = Math.max(60, Math.min(360, sourceWidth));
+            }
             if (isAddressLike) width = Math.min(360, Math.max(130, width));
             if (isNameLike) width = Math.min(250, Math.max(120, width));
             if (isPhoneLike) width = Math.min(180, Math.max(110, width));

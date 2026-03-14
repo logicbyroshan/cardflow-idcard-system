@@ -337,7 +337,6 @@ function createPaginator(opts) {
     */
 (function printListStep() {
   var tableBody     = document.getElementById('printListTableBody');
-  var selectAllCb   = document.getElementById('printListSelectAll');
   var searchInput   = document.getElementById('printListSearchInput');
   var searchClearBtn = document.getElementById('printListSearchClearBtn');
   var removeBtn     = document.getElementById('removeFromPrintBtn');
@@ -354,44 +353,23 @@ function createPaginator(opts) {
   });
   if (paginator) paginator.paginate();
 
-  function getCheckboxes() {
-    return Array.from(tableBody.querySelectorAll('.printListRowCheckbox:not(:disabled)'));
+  function getRows() {
+    return Array.from(tableBody.querySelectorAll('tr[data-pr-id]'));
   }
-  function getSelectedPrIds() {
-    return getCheckboxes().filter(function(cb) { return cb.checked; })
-      .map(function(cb) { return parseInt(cb.closest('tr').dataset.prId); });
+  function getAllPrIds() {
+    return getRows().map(function(row) { return parseInt(row.dataset.prId, 10); })
+      .filter(function(v) { return Number.isFinite(v); });
   }
-  function getSelectedCardIds() {
-    return getCheckboxes().filter(function(cb) { return cb.checked; })
-      .map(function(cb) { return parseInt(cb.closest('tr').dataset.cardId); });
+  function getAllCardIds() {
+    return getRows().map(function(row) { return parseInt(row.dataset.cardId, 10); })
+      .filter(function(v) { return Number.isFinite(v); });
   }
 
   function updateSelectionUI() {
-    var ids = getSelectedPrIds();
-    var count = ids.length;
+    var count = getAllPrIds().length;
     if (removeBtn)   removeBtn.disabled   = count === 0;
-    if (viewBtn)     viewBtn.disabled     = count !== 1;
-    if (paginator) paginator.updateSelectionCount(count);
-    if (selectAllCb) {
-      var allCbs = getCheckboxes();
-      var allChecked = allCbs.length > 0 && allCbs.every(function(cb) { return cb.checked; });
-      var someChecked = allCbs.some(function(cb) { return cb.checked; });
-      selectAllCb.checked = allChecked;
-      selectAllCb.indeterminate = someChecked && !allChecked;
-    }
-  }
-
-  if (selectAllCb) {
-    selectAllCb.addEventListener('change', function() {
-      var checked = this.checked;
-      getCheckboxes().forEach(function(cb) { cb.checked = checked; });
-      updateSelectionUI();
-    });
-  }
-  if (tableBody) {
-    tableBody.addEventListener('change', function(e) {
-      if (e.target.classList.contains('printListRowCheckbox')) updateSelectionUI();
-    });
+    if (viewBtn)     viewBtn.disabled     = count === 0;
+    if (paginator) paginator.updateSelectionCount(0);
   }
 
   // Single-row remove
@@ -411,9 +389,9 @@ function createPaginator(opts) {
   // Bulk Remove
   if (removeBtn) {
     removeBtn.addEventListener('click', async function() {
-      var ids = getSelectedPrIds();
+      var ids = getAllPrIds();
       if (ids.length === 0) return;
-      var ok = await showConfirm({ title: 'Remove Items?', text: 'Remove ' + ids.length + ' item(s) from the print list?', icon: 'fa-solid fa-xmark', confirmLabel: 'Remove', hideWarning: true });
+      var ok = await showConfirm({ title: 'Remove All Items?', text: 'Remove all ' + ids.length + ' item(s) from the print list?', icon: 'fa-solid fa-xmark', confirmLabel: 'Remove All', hideWarning: true });
       if (!ok) return;
       performRemove(ids);
     });
@@ -422,8 +400,8 @@ function createPaginator(opts) {
   // View
   if (viewBtn) {
     viewBtn.addEventListener('click', function() {
-      var cardIds = getSelectedCardIds();
-      if (cardIds.length !== 1) return;
+      var cardIds = getAllCardIds();
+      if (cardIds.length === 0) return;
       if (typeof fetchCardAndOpenModal === 'function') fetchCardAndOpenModal('view', cardIds[0]);
     });
   }
@@ -489,7 +467,6 @@ function createPaginator(opts) {
     var html = '';
     items.forEach(function(item, idx) {
       html += '<tr data-pr-id="' + item.pr_id + '" data-card-id="' + item.card_id + '" data-sr-no="' + (idx + 1) + '">';
-      html += '<td class="w-[24px] px-[1px] py-1 text-center align-middle checkbox-cell"><input type="checkbox" class="printListRowCheckbox"></td>';
       html += '<td class="w-[36px] px-[1px] py-1 text-center align-middle sr-no-cell">' + (idx + 1) + '</td>';
       html += renderOrderedFields(item.ordered_fields);
       html += '<td class="w-[65px] px-[1px] py-1 align-middle user-cell text-center">' + escapeHtml(item.requested_by_name || '-') + '</td>';
@@ -528,7 +505,6 @@ function createPaginator(opts) {
     */
 (function generateListStep() {
   var tableBody      = document.getElementById('generateListTableBody');
-  var selectAllCb    = document.getElementById('generateListSelectAll');
   var searchInput    = document.getElementById('generateListSearchInput');
   var searchClearBtn = document.getElementById('generateListSearchClearBtn');
   var moveToPrintBtn = document.getElementById('generateListMoveToPrintBtn');
@@ -546,36 +522,28 @@ function createPaginator(opts) {
   });
   if (paginator) paginator.paginate();
 
-  function getCheckboxes() {
-    return Array.from(tableBody.querySelectorAll('.generateListRowCheckbox:not(:disabled)'));
+  function getRows() {
+    return Array.from(tableBody.querySelectorAll('tr[data-pr-id]'));
   }
-  function getSelectedPrIds() {
-    return getCheckboxes().filter(function(cb) { return cb.checked; })
-      .map(function(cb) { return parseInt(cb.closest('tr').dataset.prId); });
+  function getAllPrIds() {
+    return getRows().map(function(row) { return parseInt(row.dataset.prId, 10); })
+      .filter(function(v) { return Number.isFinite(v); });
   }
-  function getSelectedCardIds() {
-    return getCheckboxes().filter(function(cb) { return cb.checked; })
-      .map(function(cb) { return parseInt(cb.closest('tr').dataset.cardId); });
+  function getAllCardIds() {
+    return getRows().map(function(row) { return parseInt(row.dataset.cardId, 10); })
+      .filter(function(v) { return Number.isFinite(v); });
   }
 
   function updateSelectionUI() {
-    var ids = getSelectedPrIds();
-    var count = ids.length;
+    var count = getAllPrIds().length;
     if (moveToPrintBtn) moveToPrintBtn.disabled = count === 0;
     if (continueBtn) continueBtn.disabled = count === 0;
-    if (viewBtn) viewBtn.disabled = count !== 1;
-    if (paginator) paginator.updateSelectionCount(count);
-    if (selectAllCb) {
-      var allCbs = getCheckboxes();
-      var allChecked = allCbs.length > 0 && allCbs.every(function(cb) { return cb.checked; });
-      var someChecked = allCbs.some(function(cb) { return cb.checked; });
-      selectAllCb.checked = allChecked;
-      selectAllCb.indeterminate = someChecked && !allChecked;
-    }
+    if (viewBtn) viewBtn.disabled = count === 0;
+    if (paginator) paginator.updateSelectionCount(0);
   }
 
   function openGeneratorWithSelection(prIds) {
-    window.GEN_PRESELECT_PR_IDS = prIds.slice();
+    window.GEN_PRESELECT_PR_IDS = Array.isArray(prIds) ? prIds.slice() : [];
     if (typeof window.openGcEditorModal === 'function') {
       window.openGcEditorModal();
       if (typeof window.gcEditorRefresh === 'function') {
@@ -586,22 +554,9 @@ function createPaginator(opts) {
     }
   }
 
-  if (selectAllCb) {
-    selectAllCb.addEventListener('change', function() {
-      var checked = this.checked;
-      getCheckboxes().forEach(function(cb) { cb.checked = checked; });
-      updateSelectionUI();
-    });
-  }
-  if (tableBody) {
-    tableBody.addEventListener('change', function(e) {
-      if (e.target.classList.contains('generateListRowCheckbox')) updateSelectionUI();
-    });
-  }
-
   if (continueBtn) {
     continueBtn.addEventListener('click', function() {
-      var ids = getSelectedPrIds();
+      var ids = getAllPrIds();
       if (ids.length === 0) return;
       openGeneratorWithSelection(ids);
     });
@@ -609,9 +564,9 @@ function createPaginator(opts) {
 
   if (moveToPrintBtn) {
     moveToPrintBtn.addEventListener('click', async function() {
-      var ids = getSelectedPrIds();
+      var ids = getAllPrIds();
       if (ids.length === 0) return;
-      var ok = await showConfirm({ title: 'Move to Print List?', text: 'Move ' + ids.length + ' item(s) back to print list?', icon: 'fa-solid fa-arrow-rotate-left', confirmLabel: 'Move', btnClass: 'btn-primary', hideWarning: true });
+      var ok = await showConfirm({ title: 'Move All to Print List?', text: 'Move all ' + ids.length + ' item(s) back to print list?', icon: 'fa-solid fa-arrow-rotate-left', confirmLabel: 'Move All', btnClass: 'btn-primary', hideWarning: true });
       if (!ok) return;
       ApiClient.post('/print/api/table/' + TABLE_ID + '/generate-to-print/', { request_ids: ids })
       .then(function(data) {
@@ -635,8 +590,8 @@ function createPaginator(opts) {
 
   if (viewBtn) {
     viewBtn.addEventListener('click', function() {
-      var cardIds = getSelectedCardIds();
-      if (cardIds.length !== 1) return;
+      var cardIds = getAllCardIds();
+      if (cardIds.length === 0) return;
       if (typeof fetchCardAndOpenModal === 'function') fetchCardAndOpenModal('view', cardIds[0]);
     });
   }
@@ -679,7 +634,6 @@ function createPaginator(opts) {
     var html = '';
     items.forEach(function(item, idx) {
       html += '<tr data-pr-id="' + item.pr_id + '" data-card-id="' + item.card_id + '" data-sr-no="' + (idx + 1) + '">';
-      html += '<td class="w-[24px] px-[1px] py-1 text-center align-middle checkbox-cell"><input type="checkbox" class="generateListRowCheckbox"></td>';
       html += '<td class="w-[36px] px-[1px] py-1 text-center align-middle sr-no-cell">' + (idx + 1) + '</td>';
       html += renderOrderedFields(item.ordered_fields);
       html += '<td class="w-[65px] px-[1px] py-1 align-middle user-cell text-center">' + escapeHtml(item.requested_by_name || '-') + '</td>';

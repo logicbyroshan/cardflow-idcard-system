@@ -46,13 +46,34 @@
   const isInlineModalEditor = !!document.getElementById('gcEditorModal');
 
   /*  PDF.js worker  */
-  const hasPdfJs = (typeof pdfjsLib !== 'undefined');
-  if (hasPdfJs) {
+  let pdfWorkerConfigured = false;
+  function getPdfJsLib() {
+    return (typeof window.pdfjsLib !== 'undefined') ? window.pdfjsLib : null;
+  }
+  function ensurePdfWorkerConfigured() {
+    const lib = getPdfJsLib();
+    if (!lib) return false;
+    if (pdfWorkerConfigured) return true;
+
     const workerFromCdn = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
     const workerFromUnpkg = 'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
-    const hasUnpkgPdfScript = !!document.querySelector('script[src*="unpkg.com/pdfjs-dist"]');
-    pdfjsLib.GlobalWorkerOptions.workerSrc = hasUnpkgPdfScript ? workerFromUnpkg : workerFromCdn;
+    const workerFromCdnJs = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const loadedScript = Array.from(document.querySelectorAll('script[src]')).find(function(s) {
+      return /pdf(\.min)?\.js/i.test(s.src) && /pdfjs-dist|cdnjs\.cloudflare\.com\/ajax\/libs\/pdf\.js/i.test(s.src);
+    });
+    const loadedSrc = loadedScript ? loadedScript.src : '';
+    if (/unpkg\.com\/pdfjs-dist/i.test(loadedSrc)) {
+      lib.GlobalWorkerOptions.workerSrc = workerFromUnpkg;
+    } else if (/cdnjs\.cloudflare\.com\/ajax\/libs\/pdf\.js/i.test(loadedSrc)) {
+      lib.GlobalWorkerOptions.workerSrc = workerFromCdnJs;
+    } else {
+      lib.GlobalWorkerOptions.workerSrc = workerFromCdn;
+    }
+    pdfWorkerConfigured = true;
+    return true;
   }
+
+  ensurePdfWorkerConfigured();
 
   function isCanvasReady() {
     return !!(fabric_canvas && typeof fabric_canvas.getObjects === 'function');
@@ -702,8 +723,22 @@
     overlay.classList.remove('hidden');
     noTpl.classList.add('hidden');
 
-    if (!hasPdfJs) {
+    if (!ensurePdfWorkerConfigured()) {
+      if (retry < 25) {
+        setTimeout(function () {
+          renderPdf(url, autoDetectOnLoad, retry + 1);
+        }, 120);
+        return;
+      }
       console.error('PDF.js library not loaded (CDN may be unreachable).');
+      overlay.classList.add('hidden');
+      noTpl.classList.remove('hidden');
+      showToast('PDF viewer library failed to load. Please refresh the page or check your internet connection.', 'error');
+      return;
+    }
+
+    const pdfLib = getPdfJsLib();
+    if (!pdfLib) {
       overlay.classList.add('hidden');
       noTpl.classList.remove('hidden');
       showToast('PDF viewer library failed to load. Please refresh the page or check your internet connection.', 'error');
@@ -718,7 +753,7 @@
         return;
       }
       const resolvedUrl = sourceUrl ? new URL(sourceUrl, window.location.origin).toString() : '';
-      pdfjsLib.getDocument({ url: resolvedUrl, withCredentials: true }).promise.then(function (pdfDoc) {
+      pdfLib.getDocument({ url: resolvedUrl, withCredentials: true }).promise.then(function (pdfDoc) {
         return pdfDoc.getPage(1);
       }).then(function (page) {
         lastPdfPage = page;
@@ -801,7 +836,7 @@
    * names, and auto-populate fieldMappings for the current side.
    */
   function autoDetectFields() {
-    if (!hasPdfJs) {
+    if (!ensurePdfWorkerConfigured()) {
       showToast('PDF viewer library not available. Auto-detect requires PDF.js.', 'warning');
       return;
     }

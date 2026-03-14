@@ -188,9 +188,34 @@
   {% include 'partials/components/toast.html' %}
   <script defer src="{% static 'dist/js/core.min.js' %}"></script>
   <!-- PDF.js (for rendering template PDF onto canvas) -->
-  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+  <script>
+    (function () {
+      function loadWithFallback(urls) {
+        if (!urls || urls.length === 0) return;
+        var idx = 0;
+        function loadNext() {
+          if (idx >= urls.length) return;
+          var s = document.createElement('script');
+          s.src = urls[idx++];
+          s.async = false;
+          s.onerror = loadNext;
+          document.head.appendChild(s);
+        }
+        loadNext();
+      }
+      loadWithFallback([
+        'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js',
+        'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'
+      ]);
+      loadWithFallback([
+        'https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js',
+        'https://unpkg.com/fabric@5.3.0/dist/fabric.min.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js'
+      ]);
+    })();
+  </script>
   <!-- Fabric.js (for interactive rectangle drawing overlay) -->
-  <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
   <script defer src="{% static 'js/cardprint/generate-card.js' %}"></script>
   {% include 'partials/htmx-config.html' %}
 </body>

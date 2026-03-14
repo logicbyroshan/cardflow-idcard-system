@@ -5,15 +5,15 @@
 <!-- Action Bar -->
 <div class="action-bar action-buttons-bar" id="generateListActionBar">
     <div class="action-buttons-group">
-        <button class="btn action-btn btn-blue" id="generateListMoveToPrintBtn" disabled title="Move selected cards back to print list">
+        <button class="btn action-btn btn-blue" id="generateListMoveToPrintBtn" disabled title="Move all cards back to print list">
             <i class="fa-solid fa-arrow-rotate-left"></i>
             <span class="btn-text">Move to Print List</span>
         </button>
-        <button class="btn action-btn btn-green" id="continueGenerateBtn" disabled title="Open generator for selected cards">
+        <button class="btn action-btn btn-green" id="continueGenerateBtn" disabled title="Open generator for all cards">
             <i class="fa-solid fa-gears"></i>
             <span class="btn-text">Generate</span>
         </button>
-        <button class="btn action-btn btn-gray" id="generateListViewBtn" disabled title="View selected card">
+        <button class="btn action-btn btn-gray" id="generateListViewBtn" disabled title="View first card">
             <i class="fa-solid fa-eye"></i>
             <span class="btn-text">View</span>
         </button>
@@ -47,9 +47,6 @@
         <table id="generateList-data-table">
             <thead class="sticky top-0 z-20">
                 <tr>
-                    <th class="w-[24px] min-w-[24px] text-center px-[1px]">
-                        <input type="checkbox" id="generateListSelectAll" title="Select all" aria-label="Select all">
-                    </th>
                     <th class="w-[36px] min-w-[36px] px-[1px] py-1 text-center align-middle">
                         <div class="leading-tight">
                             <div>SR</div>
@@ -71,9 +68,6 @@
             <tbody id="generateListTableBody" class="divide-y divide-gray-200">
                 {% for item in generate_items %}
                 <tr data-pr-id="{{ item.pr_id }}" data-card-id="{{ item.card_id }}" data-sr-no="{{ item.sr_no }}">
-                    <td class="w-[24px] px-[1px] py-1 text-center align-middle checkbox-cell">
-                        <input type="checkbox" class="generateListRowCheckbox">
-                    </td>
                     <td class="w-[36px] px-[1px] py-1 text-center align-middle sr-no-cell">{{ item.sr_no }}</td>
                     {% for field in item.ordered_fields|reorder_card_fields_for_display %}
                     {% check_image_field field.type field.name as is_img %}
@@ -140,9 +134,6 @@
     <div class="pagination-left">
         <span class="pagination-info">
             Showing <strong id="generateListShowingRange">1-{{ generate_items|length }}</strong> of <strong id="generateListTotalCount">{{ generate_total }}</strong> results
-        </span>
-        <span class="pagination-selected" id="generateListSelectionInfo" style="display: none;">
-            (<strong id="generateListSelectedCount">0</strong> selected)
         </span>
     </div>
     <div class="pagination-center">
