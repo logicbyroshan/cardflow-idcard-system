@@ -410,8 +410,8 @@ class WordTablesMixin:
             run.font.size = Pt(font_pt)
             run.font.color.rgb = RGBColor(0, 0, 0)
         para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        # Adequate padding so header text never touches cell borders
-        self._set_cell_margins(cell, parse_xml, nsdecls, 28, 28, 42, 42)
+        # 1px-equivalent inner padding for compact header layout
+        self._set_cell_margins(cell, parse_xml, nsdecls, 15, 15, 15, 15)
         self._set_cell_vertical_align(cell, parse_xml, nsdecls)
         self._set_para_spacing(para, parse_xml, nsdecls)
         cell.width = Cm(width)

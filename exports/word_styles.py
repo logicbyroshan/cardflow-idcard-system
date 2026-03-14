@@ -219,9 +219,8 @@ class WordStylesMixin:
         if is_image:
             self._set_cell_margins(cell, parse_xml, nsdecls, 0, 0, 0, 0)
         else:
-            # Adequate padding so text never touches cell borders
-            # top=28, bottom=28, left=42, right=42 twips (~0.5mm vert, ~0.75mm horiz)
-            self._set_cell_margins(cell, parse_xml, nsdecls, 28, 28, 42, 42)
+            # 1px-equivalent inner padding for denser exports (15 twips ~ 1px at 96dpi)
+            self._set_cell_margins(cell, parse_xml, nsdecls, 15, 15, 15, 15)
         
         self._set_cell_vertical_align(cell, parse_xml, nsdecls)
         
@@ -325,7 +324,7 @@ class WordStylesMixin:
         )
         pPr.append(spacing)
     
-    def _set_cell_margins(self, cell, parse_xml, nsdecls, top=0, bottom=0, left=28, right=28):
+    def _set_cell_margins(self, cell, parse_xml, nsdecls, top=0, bottom=0, left=15, right=15):
         """Set cell margins in twips."""
         tc = cell._tc
         tcPr = tc.get_or_add_tcPr()

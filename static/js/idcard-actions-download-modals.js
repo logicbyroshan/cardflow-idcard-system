@@ -48,6 +48,7 @@ function initReprintPickerHandlers() {
     var pickerSearchClear = document.getElementById('reprintPickerSearchClearBtn');
     var pickerTableBody = document.getElementById('reprintPickerTableBody');
     var pickerTableHead = document.getElementById('reprintPickerTableHead');
+    var pickerTable = pickerTableHead ? pickerTableHead.closest('table') : null;
     var pickerSelectAll = document.getElementById('reprintPickerSelectAll');
     var pickerRequestBtn = document.getElementById('reprintPickerRequestBtn');
     var pickerSelectedInfo = document.getElementById('reprintPickerSelectedInfo');
@@ -73,7 +74,10 @@ function initReprintPickerHandlers() {
     var selectedIds = new Set();
     var lastQuery = '';
     var pendingEditIds = [];
+    var confirmEditing = false;
+    var confirmEditingCardId = null;
     var searchTimer = null;
+    var columnSizes = null;
 
     function esc(text) {
         var div = document.createElement('div');
@@ -100,6 +104,12 @@ function initReprintPickerHandlers() {
             if (name === key) return fields[i].value || '';
         }
         return '';
+    }
+
+    function getCardById(cardId) {
+        return rows.find(function(r) {
+            return String(r.card_id) === String(cardId);
+        }) || null;
     }
 
     function resolveFields(items) {
@@ -148,22 +158,96 @@ function initReprintPickerHandlers() {
                n === 'photo' || n === 'image' || n === 'picture' || n === 'pic' || n === 'img';
     }
 
-    function buildTableHead() {
-        if (!pickerTableHead) return;
-        var html = '<tr>';
-        html += '<th class="center-cell" style="width:34px;"><input type="checkbox" id="reprintPickerSelectAll" aria-label="Select all"></th>';
-        html += '<th class="center-cell" style="width:40px;">Sr</th>';
+    function toCellText(value) {
+        if (value === null || value === undefined) return '';
+        return String(value).replace(/\s+/g, ' ').trim();
+    }
+
+    function computeColumnSizes(items) {
+        var size = {
+            checkbox: 34,
+            sr: 40,
+            status: 88,
+            fields: []
+        };
+        var sample = Array.isArray(items) ? items.slice(0, 160) : [];
+
         resolvedFields.forEach(function(field) {
             var isImg = isImageFieldLocal(field.type, field.name);
             if (isImg) {
-                html += '<th class="center-cell" style="width:52px;">' + esc(field.label || field.name) + '</th>';
+                size.fields.push({ width: 50, isImage: true });
+                return;
+            }
+
+            var label = toCellText(field.label || field.name);
+            var best = label.length;
+            sample.forEach(function(item) {
+                var text = toCellText(getFieldByName(item, field.name));
+                if (!text) return;
+                if (text.length > best) best = text.length;
+            });
+
+            var nameLower = String(field.name || '').toLowerCase();
+            var isAddressLike = /address|addr|location/.test(nameLower);
+            var isNameLike = /name/.test(nameLower);
+            var isPhoneLike = /phone|mobile|contact|whatsapp|tel|mob/.test(nameLower);
+
+            var width = Math.min(320, Math.max(70, Math.round(best * 7.1) + 20));
+            if (isAddressLike) width = Math.min(360, Math.max(130, width));
+            if (isNameLike) width = Math.min(250, Math.max(120, width));
+            if (isPhoneLike) width = Math.min(180, Math.max(110, width));
+
+            size.fields.push({ width: width, isImage: false });
+        });
+
+        size.status = Math.max(88, Math.min(110, Math.round(size.status)));
+        return size;
+    }
+
+    function applyTableColumnWidths() {
+        if (!pickerTable || !columnSizes) return;
+        var colgroupHtml = '<colgroup>';
+        var totalWidth = 0;
+
+        colgroupHtml += '<col style="width:' + columnSizes.checkbox + 'px">';
+        totalWidth += columnSizes.checkbox;
+
+        colgroupHtml += '<col style="width:' + columnSizes.sr + 'px">';
+        totalWidth += columnSizes.sr;
+
+        columnSizes.fields.forEach(function(meta) {
+            colgroupHtml += '<col style="width:' + meta.width + 'px">';
+            totalWidth += meta.width;
+        });
+
+        colgroupHtml += '<col style="width:' + columnSizes.status + 'px">';
+        totalWidth += columnSizes.status;
+        colgroupHtml += '</colgroup>';
+
+        var oldColgroup = pickerTable.querySelector('colgroup');
+        if (oldColgroup) oldColgroup.remove();
+        pickerTable.insertAdjacentHTML('afterbegin', colgroupHtml);
+        pickerTable.style.minWidth = Math.max(760, totalWidth) + 'px';
+    }
+
+    function buildTableHead() {
+        if (!pickerTableHead) return;
+        var html = '<tr>';
+        html += '<th class="center-cell checkbox-col"><input type="checkbox" id="reprintPickerSelectAll" aria-label="Select all"></th>';
+        html += '<th class="center-cell sr-col">Sr</th>';
+        resolvedFields.forEach(function(field, idx) {
+            var isImg = isImageFieldLocal(field.type, field.name);
+            if (isImg) {
+                html += '<th class="center-cell image-col">' + esc(field.label || field.name) + '</th>';
             } else {
-                html += '<th>' + esc(field.label || field.name) + '</th>';
+                var textWidth = (columnSizes && columnSizes.fields[idx]) ? columnSizes.fields[idx].width : 90;
+                html += '<th class="dynamic-col" style="min-width:' + textWidth + 'px;">' + esc(field.label || field.name) + '</th>';
             }
         });
-        html += '<th>Status</th>';
+        html += '<th class="center-cell" style="min-width:' + ((columnSizes && columnSizes.status) ? columnSizes.status : 88) + 'px;">Status</th>';
         html += '</tr>';
         pickerTableHead.innerHTML = html;
+        applyTableColumnWidths();
         pickerSelectAll = document.getElementById('reprintPickerSelectAll');
         if (pickerSelectAll) {
             pickerSelectAll.addEventListener('change', function() {
@@ -190,6 +274,89 @@ function initReprintPickerHandlers() {
         return getField(item, ['SECTION', 'SEC', 'DIVISION', 'DIV']) || '-';
     }
 
+    function getPhotoPath(item) {
+        return getField(item, ['PHOTO', 'IMAGE', 'PICTURE', 'PIC', 'STUDENT PHOTO']) || '';
+    }
+
+    function getPreviewRows(item) {
+        return [
+            { label: 'Name', value: getStudentName(item) },
+            { label: 'Class', value: getClassName(item) },
+            { label: 'Section', value: getSectionName(item) },
+            { label: 'Roll No', value: getField(item, ['ROLL NO', 'ROLL', 'ROLL NUMBER']) || '-' },
+            { label: 'Admission No', value: getField(item, ['ADMISSION NO', 'ADMISSION NUMBER', 'ADM NO']) || '-' },
+            { label: 'DOB', value: getField(item, ['DOB', 'DATE OF BIRTH', 'BIRTH DATE']) || '-' },
+            { label: 'Father Name', value: getField(item, ['FATHER NAME', 'FATHER']) || '-' },
+            { label: 'Father Contact', value: getField(item, ['FATHER CONTACT', 'FATHER MOBILE', 'FATHER PHONE']) || '-' },
+            { label: 'Mother Name', value: getField(item, ['MOTHER NAME', 'MOTHER']) || '-' },
+            { label: 'Mother Contact', value: getField(item, ['MOTHER CONTACT', 'MOTHER MOBILE', 'MOTHER PHONE']) || '-' }
+        ];
+    }
+
+    function buildPreviewHtml(item) {
+        if (!item) return '';
+        var photoPath = String(getPhotoPath(item) || '');
+        var photoHtml = '';
+        if (photoPath && photoPath !== 'NOT_FOUND' && photoPath.indexOf('PENDING:') !== 0) {
+            photoHtml = '<img src="/media/' + esc(photoPath) + '" alt="Student photo" loading="lazy">';
+        } else {
+            photoHtml = '<div class="reprint-preview-photo-placeholder"><i class="fa-solid fa-user"></i></div>';
+        }
+
+        var metaRows = getPreviewRows(item);
+        var metaHtml = '';
+        metaRows.forEach(function(row) {
+            metaHtml += '<div class="reprint-preview-meta-item">'
+                + '<span class="reprint-preview-meta-label">' + esc(row.label) + '</span>'
+                + '<span class="reprint-preview-meta-value">' + esc(row.value || '-') + '</span>'
+                + '</div>';
+        });
+
+        return '<div class="reprint-preview-card">'
+            + '<div class="reprint-preview-photo">' + photoHtml + '</div>'
+            + '<div class="reprint-preview-meta">' + metaHtml + '</div>'
+            + '</div>';
+    }
+
+    function renderConfirmPreview(item) {
+        if (!confirmPreview) return;
+        if (!item) {
+            confirmPreview.style.display = 'none';
+            confirmPreview.innerHTML = '';
+            return;
+        }
+        confirmPreview.style.display = 'block';
+        confirmPreview.innerHTML = buildPreviewHtml(item);
+    }
+
+    function setConfirmEditingState(isEditing) {
+        var sideModalOverlay = document.getElementById('sideModalOverlay');
+        confirmEditing = !!isEditing;
+        if (confirmEditing) {
+            confirmModal.classList.add('is-editing');
+            if (confirmClose) confirmClose.disabled = true;
+            if (confirmCancel) confirmCancel.disabled = true;
+            if (confirmEditBtn) confirmEditBtn.disabled = true;
+            if (confirmSubmitBtn) confirmSubmitBtn.disabled = true;
+            if (sideModalOverlay) sideModalOverlay.classList.add('reprint-edit-layer');
+        } else {
+            confirmModal.classList.remove('is-editing');
+            if (confirmClose) confirmClose.disabled = false;
+            if (confirmCancel) confirmCancel.disabled = false;
+            if (confirmEditBtn) {
+                confirmEditBtn.disabled = pendingEditIds.length !== 1;
+                confirmEditBtn.title = pendingEditIds.length === 1
+                    ? 'Edit selected card before requesting reprint'
+                    : 'Want to Edit is available for single selection only';
+            }
+            if (confirmSubmitBtn) {
+                confirmSubmitBtn.disabled = false;
+                confirmSubmitBtn.title = 'Continue without editing and request reprint';
+            }
+            if (sideModalOverlay) sideModalOverlay.classList.remove('reprint-edit-layer');
+        }
+    }
+
     function updateSelectionUi() {
         var count = selectedIds.size;
         if (pickerSelectedInfo) pickerSelectedInfo.textContent = count + ' selected';
@@ -205,6 +372,7 @@ function initReprintPickerHandlers() {
     function renderRows(items) {
         rows = items || [];
         resolveFields(rows);
+        columnSizes = computeColumnSizes(rows);
         buildTableHead();
         var html = '';
         var colCount = (resolvedFields.length || 0) + 3;
@@ -219,23 +387,23 @@ function initReprintPickerHandlers() {
             var id = String(item.card_id);
             var checked = selectedIds.has(id) ? ' checked' : '';
             html += '<tr data-card-id="' + esc(id) + '">';
-            html += '<td class="center-cell"><input type="checkbox" class="reprint-picker-row" data-card-id="' + esc(id) + '"' + checked + '></td>';
-            html += '<td class="center-cell">' + (idx + 1) + '</td>';
+            html += '<td class="center-cell checkbox-col"><input type="checkbox" class="reprint-picker-row" data-card-id="' + esc(id) + '"' + checked + '></td>';
+            html += '<td class="center-cell sr-col">' + (idx + 1) + '</td>';
             resolvedFields.forEach(function(field) {
                 var rawVal = getFieldByName(item, field.name);
                 if (isImageFieldLocal(field.type, field.name)) {
                     var value = String(rawVal || '');
                     if (value && value !== 'NOT_FOUND' && value.indexOf('PENDING:') !== 0) {
                         var thumbPath = value.replace(/\/([^\/]+)$/, '/thumbnails/$1');
-                        html += '<td class="center-cell photo-cell"><img src="/media/' + esc(thumbPath) + '" alt="' + esc(field.name) + '" loading="lazy" onerror="this.onerror=null;this.src=\'/media/' + esc(value) + '\'" /></td>';
+                        html += '<td class="center-cell photo-cell image-cell"><img class="table-image" src="/media/' + esc(thumbPath) + '" alt="' + esc(field.name) + '" loading="lazy" onerror="this.onerror=null;this.src=\'/media/' + esc(value) + '\'" /></td>';
                     } else {
-                        html += '<td class="center-cell">-</td>';
+                        html += '<td class="center-cell photo-cell image-cell">-</td>';
                     }
                 } else {
-                    html += '<td>' + esc(rawVal || '-') + '</td>';
+                    html += '<td class="dynamic-field">' + esc(rawVal || '-') + '</td>';
                 }
             });
-            html += '<td><span class="status-badge status-' + esc(item.status || 'download') + '">' + esc(item.status_display || 'Download') + '</span></td>';
+            html += '<td class="center-cell"><span class="status-badge status-' + esc(item.status || 'download') + '">' + esc(item.status_display || 'Download') + '</span></td>';
             html += '</tr>';
         });
         pickerTableBody.innerHTML = html;
@@ -264,7 +432,7 @@ function initReprintPickerHandlers() {
     }
 
     function formatPreviewText(cardId) {
-        var item = rows.find(function(r) { return String(r.card_id) === String(cardId); });
+        var item = getCardById(cardId);
         if (!item) return '';
         return 'Preview: ' + getStudentName(item) + ' | Class ' + getClassName(item) + ' | Section ' + getSectionName(item);
     }
@@ -282,6 +450,8 @@ function initReprintPickerHandlers() {
         var ids = selectedCardIdsAsNumbers();
         if (!ids.length) return;
         pendingEditIds = ids.slice();
+        confirmEditingCardId = ids.length === 1 ? ids[0] : null;
+        setConfirmEditingState(false);
         if (confirmCount) confirmCount.textContent = String(ids.length);
         if (confirmEditBtn) {
             confirmEditBtn.disabled = ids.length !== 1;
@@ -293,20 +463,14 @@ function initReprintPickerHandlers() {
             confirmSubmitBtn.disabled = false;
             confirmSubmitBtn.title = 'Continue without editing and request reprint';
         }
-        var previewText = ids.length === 1 ? formatPreviewText(ids[0]) : '';
-        if (confirmPreview) {
-            if (previewText) {
-                confirmPreview.textContent = previewText;
-                confirmPreview.style.display = 'block';
-            } else {
-                confirmPreview.style.display = 'none';
-                confirmPreview.textContent = '';
-            }
-        }
+        renderConfirmPreview(ids.length === 1 ? getCardById(ids[0]) : null);
         confirmModal.style.display = 'flex';
     }
 
     function closeConfirm() {
+        if (confirmEditing) return;
+        setConfirmEditingState(false);
+        confirmEditingCardId = null;
         confirmModal.style.display = 'none';
     }
 
@@ -370,7 +534,7 @@ function initReprintPickerHandlers() {
     confirmClose.addEventListener('click', closeConfirm);
     confirmCancel.addEventListener('click', closeConfirm);
     confirmModal.addEventListener('click', function(e) {
-        if (e.target === confirmModal) closeConfirm();
+        if (e.target === confirmModal && !confirmEditing) closeConfirm();
     });
 
     if (confirmSubmitBtn) {
@@ -386,11 +550,27 @@ function initReprintPickerHandlers() {
                 return;
             }
             var cardId = pendingEditIds[0];
-            closeConfirm();
+            confirmEditingCardId = cardId;
+            setConfirmEditingState(true);
             if (typeof window.IDCardApp.fetchCardAndOpenModal === 'function') {
                 window.IDCardApp.fetchCardAndOpenModal('edit', cardId);
+            } else {
+                setConfirmEditingState(false);
             }
         });
+    }
+
+    var sideModalOverlay = document.getElementById('sideModalOverlay');
+    if (sideModalOverlay) {
+        var sideModalObserver = new MutationObserver(function() {
+            if (!confirmEditing) return;
+            var stillOpen = sideModalOverlay.classList.contains('active');
+            if (!stillOpen) {
+                setConfirmEditingState(false);
+                if (confirmModal) confirmModal.style.display = 'flex';
+            }
+        });
+        sideModalObserver.observe(sideModalOverlay, { attributes: true, attributeFilter: ['class'] });
     }
 
     document.addEventListener('idcard:card-updated', function(e) {
@@ -401,20 +581,22 @@ function initReprintPickerHandlers() {
 
         fetchList(lastQuery);
         var updatedCard = detail.card || null;
+        var previewItem = null;
         var previewText = '';
         if (updatedCard && Array.isArray(updatedCard.ordered_fields)) {
             previewText = 'Preview: ' + getStudentName(updatedCard) + ' | Class ' + getClassName(updatedCard) + ' | Section ' + getSectionName(updatedCard);
+            previewItem = updatedCard;
         } else {
             previewText = formatPreviewText(updatedId);
+            previewItem = getCardById(updatedId);
         }
         if (pickerPreview) {
             pickerPreview.textContent = previewText || 'Card updated successfully. Please confirm reprint.';
             pickerPreview.style.display = 'block';
         }
-        if (confirmPreview) {
-            confirmPreview.textContent = previewText || 'Card updated successfully. You can now confirm reprint.';
-            confirmPreview.style.display = 'block';
-        }
+        renderConfirmPreview(previewItem);
+        setConfirmEditingState(false);
+        confirmEditingCardId = null;
         confirmModal.style.display = 'flex';
     });
 }

@@ -82,7 +82,7 @@ _FONT_MODES = {
         'header_line_cm': 0.28,
         'header_base_cm': 0.10,
         'is_compact': False,
-        'cell_padding': '2pt 3pt',
+        'cell_padding': '1px',
     },
     'compact': {
         'font_family': 'Arial, Helvetica, sans-serif',
@@ -92,7 +92,7 @@ _FONT_MODES = {
         'header_line_cm': 0.28,
         'header_base_cm': 0.10,
         'is_compact': True,
-        'cell_padding': '1.5pt 2pt',
+        'cell_padding': '1px',
     },
     'condensed': {
         'font_family': 'SairaSemiCondensed, Arial, Helvetica, sans-serif',
@@ -102,7 +102,7 @@ _FONT_MODES = {
         'header_line_cm': 0.24,
         'header_base_cm': 0.10,
         'is_compact': True,
-        'cell_padding': '1.5pt 2pt',
+        'cell_padding': '1px',
     },
 }
 
@@ -877,7 +877,7 @@ class PdfExporter:
                     'align': spec.align,
                     'is_image': is_image,
                     'is_placeholder': False,
-                    'nowrap': is_nowrap and not is_phone_cell,
+                    'nowrap': is_nowrap,
                     'is_phone_cell': is_phone_cell,
                     'is_email_cell': is_email_cell,
                     'content': '',

@@ -108,8 +108,8 @@ _s('spouse_name', 8, 18, 30, True, 'left',
    'min-w-[90px] max-w-[150px] text-left whitespace-normal break-words')
 
 # ── Date fields ──────────────────────────────────────────────────────
-_s('date', 8, 10, 12, False, 'center',
-   4.5, 8.0, 1.8, 2.8,
+_s('date', 10, 10, 12, False, 'center',
+   6.0, 9.0, 2.4, 3.2,
    'w-[85px] min-w-[85px]',
    'w-[85px] text-center whitespace-nowrap')
 
@@ -217,10 +217,10 @@ _s('health_id', 8, 14, 20, False, 'center',
 # ── Phone / Mobile ───────────────────────────────────────────────────
 # wrap=True so slash-joined double numbers (e.g. 98765/98766) can flow to
 # two lines; break-words ensures a single long token breaks as last resort.
-_s('mobile', 10, 13, 22, True, 'center',
-   5.0, 11.0, 1.8, 4.5,
+_s('mobile', 10, 10, 22, False, 'center',
+   6.5, 12.5, 2.4, 4.8,
    'min-w-[95px] max-w-[135px]',
-   'min-w-[95px] max-w-[135px] text-center whitespace-normal break-words')
+   'min-w-[95px] max-w-[135px] text-center whitespace-nowrap')
 
 # ── Email ────────────────────────────────────────────────────────────
 _s('email', 10, 22, 40, True, 'left',
