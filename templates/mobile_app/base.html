@@ -130,6 +130,33 @@
 
     <!-- Custom JS -->
     <script src="{% static 'mobile/js/app.js' %}"></script>
+    <script>
+    window.mobileLogout = function mobileLogout(event) {
+        if (event) event.preventDefault();
+        var csrf = '';
+        var m = (document.cookie || '').match(/(?:^|;\s*)csrftoken=([^;]+)/);
+        if (m && m[1]) csrf = decodeURIComponent(m[1]);
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/panel/auth/logout/';
+
+        var csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = csrf;
+        form.appendChild(csrfInput);
+
+        var nextInput = document.createElement('input');
+        nextInput.type = 'hidden';
+        nextInput.name = 'next';
+        nextInput.value = '/app/';
+        form.appendChild(nextInput);
+
+        document.body.appendChild(form);
+        form.submit();
+        return false;
+    };
+    </script>
 
     <!-- Register PWA Service Worker (required for Chrome install prompt) -->
     <script>
@@ -149,7 +176,8 @@
     {% if request.user.is_authenticated %}
     <script>
     (function () {
-        var STORAGE_KEY = 'pwa_install_sheet_dismissed';
+        var STORAGE_KEY = 'pwa_install_sheet_dismissed_at';
+        var DISMISS_TTL_MS = 24 * 60 * 60 * 1000;
         var installEvent = null;
         var overlay = document.getElementById('pwa-install-overlay');
         var sheet = document.getElementById('pwa-install-sheet');
@@ -164,11 +192,15 @@
         }
 
         function wasDismissed() {
-            return localStorage.getItem(STORAGE_KEY) === '1';
+            var raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) return false;
+            var ts = parseInt(raw, 10);
+            if (!ts) return false;
+            return (Date.now() - ts) < DISMISS_TTL_MS;
         }
 
         function setDismissed() {
-            localStorage.setItem(STORAGE_KEY, '1');
+            localStorage.setItem(STORAGE_KEY, String(Date.now()));
         }
 
         function openSheet() {
@@ -225,10 +257,10 @@
             subtitle.textContent = 'Install prompt is not available right now. Continue using the app in browser.';
         });
 
-        // Fallback: if beforeinstallprompt did not fire quickly, show iOS instructions only.
+        // Fallback: show sheet for any non-installed mobile browser.
         window.addEventListener('load', function () {
             setTimeout(function () {
-                if (!installEvent && isIosSafariInstallPath() && !wasDismissed()) {
+                if (!wasDismissed() && !isStandalone()) {
                     openSheet();
                 }
             }, 1200);

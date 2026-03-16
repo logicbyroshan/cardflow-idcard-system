@@ -696,7 +696,14 @@ async function postJsonForBlob(url, body) {
   }
 
   async function runDownloadAndMove(exportType, rrIds, cardIds) {
-    if (!rrIds.length || !cardIds.length) return;
+    if (!rrIds.length || !cardIds.length) {
+      showToast('No requests available to download', 'warning');
+      return;
+    }
+
+    var selectedRrCount = getSelectedRrIds().length;
+    var modeLabel = selectedRrCount > 0 ? 'Selected' : 'All visible';
+    var moveCount = rrIds.length;
 
     var body = {
       card_ids: cardIds,
@@ -750,7 +757,8 @@ async function postJsonForBlob(url, body) {
       }
 
       await performSendToPrint(rrIds, {
-        successMessage: 'Downloaded and moved to Confirmed List'
+        successMessage: modeLabel + ' request item(s) downloaded and moved to Confirmed List (' + moveCount + ')',
+        silentErrorToast: true,
       });
     } catch (err) {
       showToast((err && err.message) ? err.message : 'Download failed. Please try again.', 'error');
@@ -845,7 +853,6 @@ async function postJsonForBlob(url, body) {
     return ApiClient.post(ENDPOINTS.sendToPrint, { rr_ids: rrIds })
       .then(function(data) {
         if (data.status !== 'ok') {
-          showToast(data.message || 'Could not print selected requests', 'error');
           throw new Error(data.message || 'Could not print selected requests');
         }
         var successMsg = opts.successMessage || data.message || 'Printed and moved to Confirmed List';
@@ -855,7 +862,9 @@ async function postJsonForBlob(url, body) {
         return data;
       })
       .catch(function(err) {
-        showToast('Request failed. Please try again.', 'error');
+        if (!opts.silentErrorToast) {
+          showToast((err && err.message) ? err.message : 'Request failed. Please try again.', 'error');
+        }
         console.error('[RequestList] send-to-print failed:', err);
         throw err;
       });

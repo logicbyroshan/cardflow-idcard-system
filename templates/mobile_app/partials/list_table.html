@@ -84,7 +84,7 @@
 
                     <!-- View Details Link -->
                     <div class="mt-2.5 flex items-center gap-2">
-                        <a href="{% url 'mobile_app:card_detail' card_id=student.id %}" @click.stop
+                        <a href="{% url 'mobile_app:card_detail' card_id=student.id %}" @click.stop.prevent="openViewById({{ student.id }})"
                            class="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-500 bg-indigo-50 border border-indigo-100 rounded-lg px-2.5 py-1 active:opacity-70 transition-all">
                             View Details <i class="fa-solid fa-arrow-right text-[9px]"></i>
                         </a>

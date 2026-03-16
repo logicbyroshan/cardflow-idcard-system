@@ -33,6 +33,7 @@ function listApp() {
         cropSourceUrl: null,
         cropSourceFile: null,
         cropperInstance: null,
+        viewMode: false,
         editMode: false,
         editingId: null,
         studentsData: typeof STUDENTS_DATA !== 'undefined' ? STUDENTS_DATA : [],
@@ -411,7 +412,16 @@ function listApp() {
             const div = document.createElement('div');
             div.setAttribute('data-sid', String(card.id));
             div.className = 'bg-white rounded-2xl border border-gray-100 overflow-hidden transition-all shadow-sm hover:shadow-md' + (!IS_VIEW_ONLY ? ' cursor-pointer' : '');
-            div.innerHTML = `<div class="flex gap-3 p-3"><div class="flex flex-col items-center gap-1.5 flex-shrink-0" style="width:56px;">${cbHtml}${photoHtml}</div><div class="flex-1 min-w-0 flex flex-col">${nameHtml}${classPill}<div class="mt-2"><div class="grid text-[11px] leading-snug" style="grid-template-columns:40% 1fr;">${fieldRows}</div></div><div class="mt-2.5"><a href="/app/card/${card.id}/" class="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-500 bg-indigo-50 border border-indigo-100 rounded-lg px-2.5 py-1 active:opacity-70 transition-all">View Details <i class="fa-solid fa-arrow-right text-[9px]"></i></a></div></div></div>`;
+            div.innerHTML = `<div class="flex gap-3 p-3"><div class="flex flex-col items-center gap-1.5 flex-shrink-0" style="width:56px;">${cbHtml}${photoHtml}</div><div class="flex-1 min-w-0 flex flex-col">${nameHtml}${classPill}<div class="mt-2"><div class="grid text-[11px] leading-snug" style="grid-template-columns:40% 1fr;">${fieldRows}</div></div><div class="mt-2.5"><a href="/app/card/${card.id}/" class="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-500 bg-indigo-50 border border-indigo-100 rounded-lg px-2.5 py-1 active:opacity-70 transition-all js-view-details" data-view-id="${card.id}">View Details <i class="fa-solid fa-arrow-right text-[9px]"></i></a></div></div></div>`;
+
+            const viewLink = div.querySelector('.js-view-details');
+            if (viewLink) {
+                viewLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.openViewById(card.id);
+                });
+            }
 
             if (!IS_VIEW_ONLY) {
                 div.addEventListener('click', (e) => {
@@ -619,9 +629,40 @@ function listApp() {
 
         // Add/Edit form methods
         addNew() {
+            this.viewMode = false;
             this.editMode = false;
             this.editingId = null;
             this.resetForm();
+            this.showAddForm = true;
+            document.body.style.overflow = 'hidden';
+        },
+        populateFormFromStudent(student) {
+            const fd = (student && student.field_data) || {};
+            this.form = {
+                name: (student && student.name) || '',
+                fatherName: fd['FATHER NAME'] || fd["FATHER'S NAME"] || fd['FATHER_NAME'] || fd['father_name'] || student.father_name || '',
+                motherName: fd['MOTHER NAME'] || fd["MOTHER'S NAME"] || fd['MOTHER_NAME'] || fd['mother_name'] || '',
+                rollNo: (student && student.roll_no) || '',
+                dob: (student && student.dob) || '',
+                className: (student && student.class_name) || '',
+                section: (student && student.section) || '',
+                phone: fd['PHONE'] || fd['MOBILE'] || fd['MOBILE NO'] || fd['phone'] || '',
+                address: fd['ADDRESS'] || fd['PERMANENT ADDRESS'] || fd['address'] || '',
+                bloodGroup: fd['BLOOD GROUP'] || fd['blood_group'] || '',
+                aadhar: fd['AADHAR'] || fd['AADHAAR'] || fd['AADHAR NO'] || fd['aadhar'] || '',
+                photoFile: null,
+                photoPreview: (student && student.photo_url) || null,
+            };
+        },
+        openViewById(cardId) {
+            const viewId = Number(cardId);
+            const student = this.studentsData.find(s => Number(s.id) === viewId);
+            if (!student) { this.showToast('Card not found in current list', 'error'); return; }
+            this.selectedIds = [viewId];
+            this.viewMode = true;
+            this.editMode = false;
+            this.editingId = null;
+            this.populateFormFromStudent(student);
             this.showAddForm = true;
             document.body.style.overflow = 'hidden';
         },
@@ -630,30 +671,17 @@ function listApp() {
             const editId = this.selectedIds[0];
             const student = this.studentsData.find(s => s.id === editId);
             if (!student) { this.showToast('Card not found', 'error'); return; }
-            const fd = student.field_data || {};
+            this.viewMode = false;
             this.editMode = true;
             this.editingId = editId;
-            this.form = {
-                name: student.name || '',
-                fatherName: fd['FATHER NAME'] || fd["FATHER'S NAME"] || fd['FATHER_NAME'] || fd['father_name'] || student.father_name || '',
-                motherName: fd['MOTHER NAME'] || fd["MOTHER'S NAME"] || fd['MOTHER_NAME'] || fd['mother_name'] || '',
-                rollNo: student.roll_no || '',
-                dob: student.dob || '',
-                className: student.class_name || '',
-                section: student.section || '',
-                phone: fd['PHONE'] || fd['MOBILE'] || fd['MOBILE NO'] || fd['phone'] || '',
-                address: fd['ADDRESS'] || fd['PERMANENT ADDRESS'] || fd['address'] || '',
-                bloodGroup: fd['BLOOD GROUP'] || fd['blood_group'] || '',
-                aadhar: fd['AADHAR'] || fd['AADHAAR'] || fd['AADHAR NO'] || fd['aadhar'] || '',
-                photoFile: null,
-                photoPreview: student.photo_url || null,
-            };
+            this.populateFormFromStudent(student);
             this.showAddForm = true;
             document.body.style.overflow = 'hidden';
         },
         closeAddForm() {
             this.showAddForm = false;
             this.showImagePicker = false;
+            this.viewMode = false;
             this.editMode = false;
             this.editingId = null;
             document.body.style.overflow = '';
@@ -666,8 +694,12 @@ function listApp() {
             };
             this.showImagePicker = false;
         },
-        openImagePicker() { this.showImagePicker = !this.showImagePicker; },
+        openImagePicker() {
+            if (this.viewMode) return;
+            this.showImagePicker = !this.showImagePicker;
+        },
         takePhoto() {
+            if (this.viewMode) return;
             if (this.editMode && this.editingId) {
                 // Redirect to full camera.html  same as top-bar camera button
                 sessionStorage.setItem('cam_return_edit', String(this.editingId));
@@ -680,6 +712,7 @@ function listApp() {
             }
         },
         pickFromGallery() {
+            if (this.viewMode) return;
             if (this.$refs.galleryInput) this.$refs.galleryInput.click();
             this.showImagePicker = false;
         },
@@ -743,6 +776,10 @@ function listApp() {
             this.cropSourceFile = null;
         },
         async submitAddForm() {
+            if (this.viewMode) {
+                this.closeAddForm();
+                return;
+            }
             if (!this.form.name.trim()) { this.showToast('Name is required', 'error'); return; }
             this.loading = true;
             const url = this.editMode
@@ -787,7 +824,7 @@ function listApp() {
         viewSelected() {
             if (!this.selectedIds.length) { this.showToast('Select an item first', 'error'); return; }
             if (this.selectedIds.length > 1) { this.showToast('Select only 1 item to view', 'error'); return; }
-            window.location.href = '/app/card/' + this.selectedIds[0] + '/';
+            this.openViewById(this.selectedIds[0]);
         },
         deleteSelected() { this.permanentlyDelete(); },
         verifySelected() { this.apiAction('verified', 'verified'); },

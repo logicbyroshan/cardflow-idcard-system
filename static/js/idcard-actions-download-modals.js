@@ -415,6 +415,24 @@ function initReprintPickerHandlers() {
     }
 
     function getPreviewRows(item) {
+        var ordered = Array.isArray(item && item.ordered_fields) ? item.ordered_fields : [];
+        if (ordered.length) {
+            return ordered
+                .filter(function(field) {
+                    return !isImageFieldLocal(field && field.type, field && field.name);
+                })
+                .map(function(field) {
+                    return {
+                        label: field.label || field.name || '-',
+                        key: field.name || '',
+                        value: field.value || ''
+                    };
+                })
+                .filter(function(row) {
+                    return String(row.key || '').trim().length > 0;
+                });
+        }
+
         var detailRows = [];
         resolvedFields.forEach(function(field) {
             if (isImageFieldLocal(field.type, field.name)) return;
@@ -520,6 +538,16 @@ function initReprintPickerHandlers() {
 
     function setInlineEditMode(enabled) {
         inlineEditMode = !!enabled;
+        // Keep confirm modal as the only active editor layer.
+        if (inlineEditMode) {
+            try {
+                if (typeof window.IDCardApp !== 'undefined' && typeof window.IDCardApp.closeCardSideModal === 'function') {
+                    window.IDCardApp.closeCardSideModal();
+                }
+                var sideModalOverlay = document.getElementById('sideModalOverlay');
+                if (sideModalOverlay) sideModalOverlay.classList.remove('active');
+            } catch (_e) {}
+        }
         if (confirmModal) {
             confirmModal.classList.toggle('edit-mode', inlineEditMode);
         }
@@ -683,6 +711,13 @@ function initReprintPickerHandlers() {
             confirmSubmitBtn.disabled = false;
             confirmSubmitBtn.title = 'Continue without editing and request reprint';
         }
+        try {
+            if (typeof window.IDCardApp !== 'undefined' && typeof window.IDCardApp.closeCardSideModal === 'function') {
+                window.IDCardApp.closeCardSideModal();
+            }
+            var sideModalOverlay = document.getElementById('sideModalOverlay');
+            if (sideModalOverlay) sideModalOverlay.classList.remove('active');
+        } catch (_e) {}
         renderConfirmPreview(getCardById(ids[0]));
         confirmModal.style.display = 'flex';
     }
@@ -722,6 +757,7 @@ function initReprintPickerHandlers() {
                     selectedIds.clear();
                     closeConfirm();
                     fetchList(lastQuery);
+                    document.body.dispatchEvent(new CustomEvent('refreshTable', { bubbles: true }));
                     refreshReprintStepCounts();
                 } else {
                     if (typeof showToast === 'function') showToast((data && data.message) || 'Could not create reprint request', 'error');

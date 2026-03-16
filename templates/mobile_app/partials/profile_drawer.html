@@ -118,8 +118,8 @@
 
             <!-- Logout -->
             <div class="px-3 mt-2 mb-2">
-                <a href="/panel/auth/logout/"
-                   @click="close()"
+                     <a href="/panel/auth/logout/"
+                         @click="close(); window.mobileLogout($event)"
                    class="pwa-drawer-item pwa-drawer-item--danger">
                     <span class="pwa-drawer-icon-wrap bg-red-50 text-red-500">
                         <i class="fa-solid fa-right-from-bracket"></i>

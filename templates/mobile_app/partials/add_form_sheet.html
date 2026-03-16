@@ -38,12 +38,12 @@
         <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100 flex-shrink-0">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-2xl flex items-center justify-center shadow-sm"
-                    :class="editMode ? 'bg-gradient-to-br from-amber-400 to-orange-500' : 'bg-gradient-to-br from-brand-light to-brand-dark'">
-                    <i class="text-white text-sm" :class="editMode ? 'fa-solid fa-pen' : 'fa-solid fa-user-plus'"></i>
+                    :class="viewMode ? 'bg-gradient-to-br from-teal-400 to-cyan-500' : (editMode ? 'bg-gradient-to-br from-amber-400 to-orange-500' : 'bg-gradient-to-br from-brand-light to-brand-dark')">
+                    <i class="text-white text-sm" :class="viewMode ? 'fa-solid fa-eye' : (editMode ? 'fa-solid fa-pen' : 'fa-solid fa-user-plus')"></i>
                 </div>
                 <div>
-                    <h3 class="text-[15px] font-bold text-gray-800" x-text="editMode ? 'Edit Student' : 'Add New Card'"></h3>
-                    <p class="text-[11px] text-gray-400" x-text="editMode ? 'Update student details below' : 'Fill in the student details below'"></p>
+                    <h3 class="text-[15px] font-bold text-gray-800" x-text="viewMode ? 'View Card Details' : (editMode ? 'Edit Student' : 'Add New Card')"></h3>
+                    <p class="text-[11px] text-gray-400" x-text="viewMode ? 'Read-only details from selected card' : (editMode ? 'Update student details below' : 'Fill in the student details below')"></p>
                 </div>
             </div>
             <button @click="closeAddForm()" class="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 active:scale-95 transition-all">
@@ -58,7 +58,7 @@
             <div class="bg-gray-50 rounded-2xl p-4 border border-gray-100 flex flex-col items-center gap-3">
                 <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest self-start">Student Photo</p>
                 <div class="relative w-24 h-32 rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:border-brand-light hover:bg-brand-light/5 transition-all group overflow-hidden shadow-sm"
-                     @click="openImagePicker()">
+                     @click="if(!viewMode) openImagePicker()">
                     <template x-if="form.photoPreview">
                         <img :src="form.photoPreview" class="absolute inset-0 w-full h-full object-cover rounded-2xl">
                     </template>
@@ -70,25 +70,25 @@
                             <span class="text-[9px] text-gray-400 font-semibold">Tap to add photo</span>
                         </div>
                     </template>
-                    <template x-if="form.photoPreview">
+                    <template x-if="form.photoPreview && !viewMode">
                         <div class="absolute bottom-1.5 right-1.5 w-7 h-7 rounded-xl bg-brand-light text-white flex items-center justify-center text-[11px] shadow">
                             <i class="fa-solid fa-camera"></i>
                         </div>
                     </template>
                 </div>
                 <!-- Re-crop button (visible when photo is set) -->
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2" x-show="!viewMode">
                     <button x-show="form.photoPreview" @click="cropSourceUrl = form.photoPreview; cropSourceFile = null; showCropModal = true; $nextTick(() => initCropper())"
                             class="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-semibold text-brand-light bg-brand-light/10 border border-brand-light/20 rounded-xl hover:bg-brand-light/20 active:scale-95 transition-all">
                         <i class="fa-solid fa-crop-simple"></i>
                         Crop / Adjust
                     </button>
                 </div>
-                <p class="text-[10px] text-gray-400 text-center">Tap photo to change  Crop to adjust</p>
+                <p class="text-[10px] text-gray-400 text-center" x-text="viewMode ? 'Photo preview' : 'Tap photo to change  Crop to adjust'"></p>
             </div>
 
             <!-- Image Picker -->
-            <div x-show="showImagePicker" x-transition class="bg-indigo-50/50 rounded-2xl p-3 border border-indigo-100">
+            <div x-show="showImagePicker && !viewMode" x-transition class="bg-indigo-50/50 rounded-2xl p-3 border border-indigo-100">
                 <p class="text-[10px] font-bold text-indigo-400 uppercase tracking-wider mb-2.5">Choose Photo Source</p>
                 <div class="grid grid-cols-2 gap-2">
                     <button @click="takePhoto()" class="flex flex-col items-center gap-1.5 py-3.5 px-2 bg-white rounded-xl border border-gray-100 shadow-sm hover:border-blue-200 hover:bg-blue-50 active:scale-95 transition-all">
@@ -120,6 +120,7 @@
                 <div class="relative">
                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-300 text-[12px]"><i class="fa-solid fa-id-card"></i></span>
                     <input type="text" x-model="form.name" placeholder="Enter student name"
+                        :readonly="viewMode"
                         class="w-full pl-8 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
                 </div>
             </div>
@@ -130,6 +131,7 @@
                 <div class="relative">
                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-300 text-[12px]"><i class="fa-solid fa-user"></i></span>
                     <input type="text" x-model="form.fatherName" placeholder="Enter father's name"
+                        :readonly="viewMode"
                         class="w-full pl-8 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
                 </div>
             </div>
@@ -140,6 +142,7 @@
                 <div class="relative">
                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-pink-300 text-[12px]"><i class="fa-solid fa-user"></i></span>
                     <input type="text" x-model="form.motherName" placeholder="Enter mother's name"
+                        :readonly="viewMode"
                         class="w-full pl-8 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
                 </div>
             </div>
@@ -151,12 +154,14 @@
                     <div class="relative">
                         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-[12px]"><i class="fa-solid fa-id-badge"></i></span>
                         <input type="text" x-model="form.rollNo" placeholder="e.g. R2345"
+                            :readonly="viewMode"
                             class="w-full pl-8 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
                     </div>
                 </div>
                 <div class="space-y-1.5">
                     <label class="text-[11px] font-semibold text-gray-500">Date of Birth <span class="text-red-400">*</span></label>
                     <input type="date" x-model="form.dob"
+                        :readonly="viewMode"
                         class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
                 </div>
             </div>
@@ -175,6 +180,7 @@
                 <div class="space-y-1.5">
                     <label class="text-[11px] font-semibold text-gray-500">Class <span class="text-red-400">*</span></label>
                     <input type="text" x-model="form.className" list="class-options" placeholder="e.g. 5A"
+                        :readonly="viewMode"
                         class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
                     <datalist id="class-options">
                         {% for cls in classes %}<option value="{{ cls }}">{% endfor %}
@@ -183,6 +189,7 @@
                 <div class="space-y-1.5">
                     <label class="text-[11px] font-semibold text-gray-500">Section <span class="text-red-400">*</span></label>
                     <input type="text" x-model="form.section" list="section-options" placeholder="e.g. A"
+                        :readonly="viewMode"
                         class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
                     <datalist id="section-options">
                         {% for sec in sections %}<option value="{{ sec }}">{% endfor %}
@@ -205,6 +212,7 @@
                 <div class="relative">
                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-green-300 text-[12px]"><i class="fa-solid fa-phone"></i></span>
                     <input type="tel" x-model="form.phone" placeholder="e.g. 9876543210"
+                        :readonly="viewMode"
                         class="w-full pl-8 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
                 </div>
             </div>
@@ -215,6 +223,7 @@
                 <div class="relative">
                     <span class="absolute left-3 top-3.5 text-orange-300 text-[12px]"><i class="fa-solid fa-location-dot"></i></span>
                     <textarea x-model="form.address" rows="2" placeholder="Enter full address"
+                        :readonly="viewMode"
                         class="w-full pl-8 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition resize-none"></textarea>
                 </div>
             </div>
@@ -226,6 +235,7 @@
                     <div class="relative">
                         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-red-300 text-[12px]"><i class="fa-solid fa-droplet"></i></span>
                         <select x-model="form.bloodGroup"
+                            :disabled="viewMode"
                             class="w-full pl-8 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition appearance-none">
                             <option value="">Select</option>
                             <option value="A+">A+</option><option value="A-">A-</option>
@@ -238,12 +248,13 @@
                 <div class="space-y-1.5">
                     <label class="text-[11px] font-semibold text-gray-500">Aadhar No</label>
                     <input type="text" x-model="form.aadhar" placeholder="xxxx-xxxx-xxxx" maxlength="14"
+                        :readonly="viewMode"
                         class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
                 </div>
             </div>
 
             <!-- Submit Buttons (INSIDE scroll so keyboard can never hide them) -->
-            <div class="flex gap-3 pt-4 pb-10">
+            <div class="flex gap-3 pt-4 pb-10" x-show="!viewMode">
                 <button @click="closeAddForm()"
                     class="flex-1 py-3.5 text-[13px] font-semibold text-gray-500 bg-gray-100 border border-gray-150 rounded-2xl hover:bg-gray-200 active:scale-[0.98] transition-all">
                     Cancel
@@ -253,6 +264,13 @@
                     :class="editMode ? 'bg-gradient-to-r from-amber-400 to-orange-500' : 'bg-gradient-to-r from-brand-light to-brand-dark'">
                     <i class="text-[11px]" :class="editMode ? 'fa-solid fa-pen' : 'fa-solid fa-user-plus'"></i>
                     <span x-text="editMode ? 'Update Student' : 'Add Student'"></span>
+                </button>
+            </div>
+
+            <div class="flex gap-3 pt-4 pb-10" x-show="viewMode">
+                <button @click="closeAddForm()"
+                    class="w-full py-3.5 text-[13px] font-semibold text-white rounded-2xl bg-gradient-to-r from-brand-light to-brand-dark shadow-lg active:scale-[0.98] transition-all">
+                    Close
                 </button>
             </div>
 
