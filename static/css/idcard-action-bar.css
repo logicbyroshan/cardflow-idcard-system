@@ -39,6 +39,35 @@
     text-decoration: none;
 }
 
+.action-nav-group.reprint-links {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.action-nav-group.reprint-links .reprint-nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding-right: 7px;
+}
+
+.action-nav-group.reprint-links .reprint-nav-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.24);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+}
+
 /* When both nav group and danger zone exist (pool list) */
 .pool-danger-zone ~ .action-nav-group,
 .action-nav-group + .pool-danger-zone {
@@ -529,4 +558,110 @@
 .print-finalized-tab.active .tab-count {
     background: #fff;
     color: #10b981;
+}
+
+/* Print Generate Tab - Amber */
+.print-generate-tab {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fcd34d;
+}
+
+.print-generate-tab:hover {
+    background: #fde68a;
+}
+
+.print-generate-tab .tab-count {
+    background: #f59e0b;
+    color: #fff;
+}
+
+.print-generate-tab.active {
+    background: #f59e0b;
+    color: #fff;
+    border-color: #d97706;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+}
+
+.print-generate-tab.active .tab-count {
+    background: #fff;
+    color: #d97706;
+}
+
+/* Reprint Request/Confirmed tabs */
+.reprint-confirm-tab {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fcd34d;
+}
+
+.reprint-confirm-tab:hover {
+    background: #fde68a;
+}
+
+.reprint-confirm-tab .tab-count {
+    background: #f59e0b;
+    color: #fff;
+}
+
+.reprint-confirm-tab.active {
+    background: #f59e0b;
+    color: #fff;
+    border-color: #d97706;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+}
+
+.reprint-confirm-tab.active .tab-count {
+    background: #fff;
+    color: #f59e0b;
+}
+
+.reprint-pool-tab {
+    background: #e0e7ff;
+    color: #3730a3;
+    border: 1px solid #a5b4fc;
+}
+
+.reprint-pool-tab:hover {
+    background: #c7d2fe;
+}
+
+.reprint-pool-tab .tab-count {
+    background: #6366f1;
+    color: #fff;
+}
+
+.reprint-pool-tab.active {
+    background: #6366f1;
+    color: #fff;
+    border-color: #4f46e5;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+}
+
+.reprint-pool-tab.active .tab-count {
+    background: #fff;
+    color: #6366f1;
+}
+
+/* Compact datetime filter controls (shared across print/reprint lists) */
+.reprint-datetime-filter-group {
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 6px;
+}
+
+.reprint-datetime-filter-group .datetime-label {
+    font-size: 12px;
+}
+
+.reprint-datetime-filter-group .datetime-input {
+    height: 28px !important;
+    line-height: 28px;
+    font-size: 12px;
+}
+
+.reprint-datetime-filter-group .btn.btn-sm {
+    height: 28px;
+    min-height: 28px;
+    font-size: 12px;
 }

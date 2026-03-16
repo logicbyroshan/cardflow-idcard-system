@@ -526,6 +526,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function loadPrintReprintOverview() {
         const printBody = document.getElementById('printOverviewBody');
         const reprintBody = document.getElementById('reprintOverviewBody');
+        const reprintTotalBadge = document.getElementById('reprintOverviewTotalRequested');
         if (!printBody && !reprintBody) return;
 
         const esc = typeof escapeHtml === 'function' ? escapeHtml : (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -571,6 +572,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 //  Render Reprint table 
                 if (reprintBody) {
                     const clients = data.reprint_clients || [];
+                    if (reprintTotalBadge) {
+                        reprintTotalBadge.textContent = String(data.reprint_total_requested || 0);
+                    }
                     if (clients.length > 0) {
                         reprintBody.innerHTML = clients.map((client, i) => {
                             const tables = client.tables || [];

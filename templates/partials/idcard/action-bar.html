@@ -250,15 +250,6 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
             </button>
             {% endif %}
             {% if perm_idcard_reprint_list %}
-            <div class="action-divider"></div>
-            <a class="btn action-btn btn-blue" href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table.id %}{% else %}{% url 'reprintcard:reprint_cards' table.id %}{% endif %}?step=request_list" title="Open Request List">
-                <i class="fa-solid fa-list-check"></i>
-                <span class="btn-text">Request List</span>
-            </a>
-            <a class="btn action-btn btn-blue" href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table.id %}{% else %}{% url 'reprintcard:reprint_cards' table.id %}{% endif %}?step=confirmed" title="Open Confirmed List">
-                <i class="fa-solid fa-clipboard-check"></i>
-                <span class="btn-text">Confirmed List</span>
-            </a>
             {% endif %}
             {% endif %}
             {% if is_client or is_client_staff %}
@@ -270,15 +261,6 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
             </button>
             {% endif %}
             {% if perm_idcard_reprint_list %}
-            <div class="action-divider"></div>
-            <a class="btn action-btn btn-blue" href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table.id %}{% else %}{% url 'reprintcard:reprint_cards' table.id %}{% endif %}?step=request_list" title="Open Request List">
-                <i class="fa-solid fa-list-check"></i>
-                <span class="btn-text">Request List</span>
-            </a>
-            <a class="btn action-btn btn-blue" href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table.id %}{% else %}{% url 'reprintcard:reprint_cards' table.id %}{% endif %}?step=confirmed" title="Open Confirmed List">
-                <i class="fa-solid fa-clipboard-check"></i>
-                <span class="btn-text">Confirmed List</span>
-            </a>
             {% endif %}
             {% endif %}
         {% elif current_status == 'pool' %}
@@ -327,6 +309,18 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
 
     <!-- Right Buttons (Pool Danger Zone only) -->
     <div class="flex items-center gap-[2px]">
+        {% if current_status == 'download' and perm_idcard_reprint_list %}
+        <div class="action-nav-group reprint-links">
+            <a class="btn action-btn btn-blue reprint-nav-link" href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table.id %}{% else %}{% url 'reprintcard:reprint_cards' table.id %}{% endif %}?step=request_list" title="Open Request List">
+                <span class="btn-text">Request List</span>
+                <span class="reprint-nav-count" id="downloadRequestCount">{{ reprint_counts.request_list|default:0 }}</span>
+            </a>
+            <a class="btn action-btn btn-blue reprint-nav-link" href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table.id %}{% else %}{% url 'reprintcard:reprint_cards' table.id %}{% endif %}?step=confirmed" title="Open Confirmed List">
+                <span class="btn-text">Confirmed List</span>
+                <span class="reprint-nav-count" id="downloadConfirmedCount">{{ reprint_counts.confirmed|default:0 }}</span>
+            </a>
+        </div>
+        {% endif %}
         {% if current_status == 'pool' and perm_idcard_delete_from_pool %}
         <div class="pool-danger-zone">
             <button class="btn action-btn btn-danger-zone" id="deletePermanentBtnP" disabled title="DANGER: Permanently delete - Cannot be undone!">

@@ -425,6 +425,12 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px 10px;
+    max-height: 44vh;
+    overflow: auto;
+    padding-right: 2px;
+  }
+  #reprintPickerConfirmModal.edit-mode .reprint-preview-meta {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   #reprintPickerConfirmModal .reprint-preview-meta-item {
     background: #ffffff;
@@ -432,6 +438,12 @@
     border-radius: 6px;
     padding: 5px 7px;
     min-width: 0;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  }
+  #reprintPickerConfirmModal .reprint-preview-meta-item.is-dirty {
+    border-color: #60a5fa;
+    background: #eff6ff;
+    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.16);
   }
   #reprintPickerConfirmModal .reprint-preview-meta-label {
     display: block;
@@ -450,22 +462,72 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  #reprintPickerConfirmModal.is-editing .center-modal-card {
-    filter: blur(2px);
-    opacity: 0.75;
-    pointer-events: none;
+  #reprintPickerConfirmModal .reprint-preview-meta-value.is-empty {
+    color: #9ca3af;
+    font-style: italic;
+    font-weight: 500;
   }
-  #reprintPickerConfirmModal.is-editing {
-    z-index: 1090 !important;
+  #reprintPickerConfirmModal .reprint-edit-toolbar {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1d4ed8;
+    font-size: 12px;
+    font-weight: 600;
   }
-  #sideModalOverlay.reprint-edit-layer {
-    z-index: 1250 !important;
+  #reprintPickerConfirmModal .reprint-edit-toolbar .reprint-edit-left {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
   }
-  #sideModalOverlay.reprint-edit-layer::before {
-    background: transparent !important;
+  #reprintPickerConfirmModal .reprint-edit-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: #2563eb;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
   }
-  #sideModalOverlay.reprint-edit-layer #sideModal {
-    z-index: 1251 !important;
+  #reprintPickerConfirmModal.edit-mode .reprint-edit-toolbar {
+    display: flex;
+  }
+  #reprintPickerConfirmModal .reprint-preview-input {
+    width: 100%;
+    height: 28px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 4px 8px;
+    background: #fff;
+    color: #0f172a;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  #reprintPickerConfirmModal .reprint-preview-input::placeholder {
+    color: #9ca3af;
+    font-style: italic;
+    font-weight: 500;
+  }
+  #reprintPickerConfirmModal .reprint-preview-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.12);
+  }
+  #reprintPickerConfirmModal .reprint-preview-input[readonly] {
+    border-style: dashed;
+    background: #f8fafc;
+    color: #64748b;
   }
   @media (max-width: 760px) {
     #reprintPickerConfirmModal .reprint-preview-card {
@@ -477,6 +539,12 @@
     }
     #reprintPickerConfirmModal .reprint-preview-meta {
       grid-template-columns: 1fr;
+      max-height: 38vh;
+    }
+  }
+  @media (max-width: 1160px) {
+    #reprintPickerConfirmModal.edit-mode .reprint-preview-meta {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
 </style>
@@ -524,8 +592,12 @@
     </div>
     <div class="center-modal-body-area">
       <p class="center-modal-subtitle">Selected card: <strong id="reprintPickerConfirmCount">0</strong></p>
-      <p class="center-modal-note" style="margin-top:6px;">Do you want to edit selected card data first, or print as it is?</p>
+      <p class="center-modal-note" id="reprintPickerConfirmNote" style="margin-top:6px;">Do you want to edit selected card data first, or print as it is?</p>
       <div id="reprintPickerConfirmPreview" class="reprint-confirm-preview"></div>
+      <div class="reprint-edit-toolbar" id="reprintPickerEditToolbar">
+        <span class="reprint-edit-left"><i class="fa-solid fa-pen-to-square"></i> Edit mode active</span>
+        <span><span class="reprint-edit-count" id="reprintPickerDirtyCount">0</span> field(s) changed</span>
+      </div>
     </div>
     <div class="center-modal-footer-area">
       <button id="reprintPickerConfirmCancel" class="center-modal-btn center-modal-btn-cancel" type="button">Cancel</button>
