@@ -400,6 +400,13 @@ def api_request_list(request, table_id):
         card__status='download',
     ).select_related('card', 'requested_by').order_by('-created_at')
 
+    from_dt = _parse_local_datetime_filter(request.GET.get('from'))
+    to_dt = _parse_local_datetime_filter(request.GET.get('to'))
+    if from_dt:
+        rr_qs = rr_qs.filter(created_at__gte=from_dt)
+    if to_dt:
+        rr_qs = rr_qs.filter(created_at__lte=to_dt)
+
     if query:
         rr_qs = rr_qs.filter(
             Q(card__field_data__icontains=query) |

@@ -101,15 +101,30 @@ def _get_notification_count(user):
 def _client_ctx(user):
     """Return (client, permissions_dict) for the current user.
     For admin roles (super_admin/admin_staff) that have no client profile,
-    returns the first active client so PWA views can function.
+    returns a scoped fallback client so PWA views can function.
     """
     client = ClientAccessService.get_client_for_user(user)
-    if client is None and PermissionService.is_any_admin(user):
-        # Admins can access all clients — pick the first active one
+    if client is None and PermissionService.is_super_admin(user):
+        # Super admin can access all clients — pick the first active one
         from client.models import Client
         client = Client.objects.filter(status='active').first()
+    elif client is None and PermissionService.is_admin_staff(user):
+        # Admin staff fallback must stay within assigned-client scope
+        from client.models import Client
+        accessible_ids = PermissionService.get_accessible_client_ids(user)
+        if accessible_ids:
+            client = Client.objects.filter(id__in=accessible_ids, status='active').first()
     perms = PermissionService.get_permission_context(user)
     return client, perms
+
+
+def _admin_accessible_client_ids(user):
+    """Return admin-scoped client IDs, or None for super_admin (all clients)."""
+    if PermissionService.is_super_admin(user):
+        return None
+    if PermissionService.is_admin_staff(user):
+        return PermissionService.get_accessible_client_ids(user)
+    return []
 
 
 # ── Image upload validation ──────────────────────────────────────────────────
@@ -282,15 +297,25 @@ def home(request):
     if PermissionService.is_any_admin(user):
         from client.models import Client
         from staff.models import Staff
-        _admin_counts = cache.get('mob_admin_home_counts')
+        accessible_ids = _admin_accessible_client_ids(user)
+        scoped_clients = Client.objects.filter(status='active')
+        scoped_tables = IDCardTable.objects.filter(is_active=True)
+        scoped_cards = IDCard.objects.all()
+        if accessible_ids is not None:
+            scoped_clients = scoped_clients.filter(id__in=accessible_ids)
+            scoped_tables = scoped_tables.filter(group__client_id__in=accessible_ids)
+            scoped_cards = scoped_cards.filter(table__group__client_id__in=accessible_ids)
+
+        cache_key = 'mob_admin_home_counts' if accessible_ids is None else f'mob_admin_home_counts:{user.id}'
+        _admin_counts = cache.get(cache_key)
         if _admin_counts is None:
             _admin_counts = {
-                'admin_client_count': Client.objects.filter(status='active').count(),
+                'admin_client_count': scoped_clients.count(),
                 'admin_staff_count': Staff.objects.count(),
-                'admin_table_count': IDCardTable.objects.filter(is_active=True).count(),
-                'admin_total_cards': IDCard.objects.count(),
+                'admin_table_count': scoped_tables.count(),
+                'admin_total_cards': scoped_cards.count(),
             }
-            cache.set('mob_admin_home_counts', _admin_counts, 300)
+            cache.set(cache_key, _admin_counts, 300)
         ctx.update(_admin_counts)
 
     if result.success:
@@ -311,9 +336,13 @@ def home(request):
             'pool_count': 0, 'total_cards': 0,
         })
 
-    # Admins: override with global aggregate card counts across ALL clients
+    # Admins: override with aggregate card counts across accessible scope
     if PermissionService.is_any_admin(user):
-        _gcounts = {r['status']: r['n'] for r in IDCard.objects.values('status').annotate(n=Count('id'))}
+        _gcards = IDCard.objects.all()
+        if PermissionService.is_admin_staff(user):
+            accessible_ids = _admin_accessible_client_ids(user)
+            _gcards = _gcards.filter(table__group__client_id__in=accessible_ids)
+        _gcounts = {r['status']: r['n'] for r in _gcards.values('status').annotate(n=Count('id'))}
         ctx.update({
             'pending_count': _gcounts.get('pending', 0),
             'verified_count': _gcounts.get('verified', 0),
@@ -332,6 +361,9 @@ def home(request):
         IDCard.objects.all() if PermissionService.is_any_admin(user)
         else IDCard.objects.filter(table__group__client=client)
     )
+    if PermissionService.is_admin_staff(user):
+        accessible_ids = _admin_accessible_client_ids(user)
+        _cards_scope = _cards_scope.filter(table__group__client_id__in=accessible_ids)
     # For client_staff: restrict activity to their assigned groups only
     if PermissionService.is_client_staff(user):
         _staff = getattr(user, 'staff_profile', None)
@@ -366,9 +398,12 @@ def home(request):
                 .filter(status='active')
                 .annotate(last_update=Max('id_card_groups__tables__id_cards__updated_at'))
                 .filter(last_update__isnull=False)
-                .order_by('-last_update')[:10]
+                .order_by('-last_update')
             )
-            client_list = list(clients_qs)
+            if PermissionService.is_admin_staff(user):
+                accessible_ids = _admin_accessible_client_ids(user)
+                clients_qs = clients_qs.filter(id__in=accessible_ids)
+            client_list = list(clients_qs[:10])
             client_ids = [c.id for c in client_list]
 
             # 1 query: card counts by (client, status) for all visible clients
@@ -476,12 +511,14 @@ def clients_list(request):
 
     from client.models import Client
     base_qs = Client.objects.all()
-    # Admin staff: restrict to their assigned clients only
+
+    # Admin staff: restrict to assigned clients only
     if PermissionService.is_admin_staff(user):
         staff = getattr(user, 'staff_profile', None)
         if staff:
             assigned_ids = list(staff.assigned_clients.values_list('id', flat=True))
             base_qs = base_qs.filter(id__in=assigned_ids)
+
     clients = base_qs.annotate(
         tables_count=Count(
             'id_card_groups__tables',
@@ -524,6 +561,8 @@ def client_groups(request, client_id):
     user = request.user
     _, perms = _client_ctx(user)
     if not PermissionService.is_any_admin(user):
+        return redirect('mobile_app:home')
+    if not PermissionService.can_access_client(user, client_id):
         return redirect('mobile_app:home')
 
     from client.models import Client
@@ -629,8 +668,7 @@ def card_list(request, table_id, status):
         return redirect('/app/login/')
 
     table = get_object_or_404(IDCardTable.objects.select_related('group__client'), id=table_id)
-    # Admin roles can access any table; client roles only their own
-    if not PermissionService.is_any_admin(user) and not ClientAccessService.can_access_table(user, table):
+    if not PermissionService.can_access_client(user, table.group.client_id):
         return redirect('mobile_app:home')
 
     status_perm = PermissionService.STATUS_LIST_PERM_MAP.get(status)
@@ -769,7 +807,7 @@ def camera_capture(request, table_id, card_id=None):
         return redirect('/app/login/')
 
     table = get_object_or_404(IDCardTable.objects.select_related('group__client'), id=table_id)
-    if not PermissionService.is_any_admin(user) and not ClientAccessService.can_access_table(user, table):
+    if not PermissionService.can_access_client(user, table.group.client_id):
         return redirect('mobile_app:home')
 
     # If no specific card_id provided, show card picker with all cards for name-based search
@@ -912,7 +950,7 @@ def api_upload_photo(request, table_id):
         return JsonResponse({'success': False, 'message': _err}, status=400)
     try:
         card = IDCard.objects.select_related('table__group').get(id=card_id)
-        if not PermissionService.is_any_admin(request.user) and not ClientAccessService.can_access_card(request.user, card):
+        if not ClientAccessService.can_access_card(request.user, card):
             return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
         import os, uuid
         ext = os.path.splitext(photo.name.lower())[1] or '.jpg'
@@ -967,7 +1005,7 @@ def api_card_add(request, table_id):
     """Add a new card to a table."""
     try:
         table = get_object_or_404(IDCardTable, id=table_id, is_active=True)
-        if not PermissionService.is_any_admin(request.user) and not ClientAccessService.can_access_table(request.user, table):
+        if not ClientAccessService.can_access_table(request.user, table):
             return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
         if not PermissionService.has(request.user, 'perm_idcard_add'):
             return JsonResponse({'success': False, 'message': 'No permission to add cards'}, status=403)
@@ -1006,7 +1044,7 @@ def api_card_update(request, table_id, card_id):
     """Update an existing card."""
     try:
         card = get_object_or_404(IDCard.objects.select_related('table__group'), id=card_id, table_id=table_id)
-        if not PermissionService.is_any_admin(request.user) and not ClientAccessService.can_access_card(request.user, card):
+        if not ClientAccessService.can_access_card(request.user, card):
             return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
         if not PermissionService.has(request.user, 'perm_idcard_edit'):
             return JsonResponse({'success': False, 'message': 'No permission to edit cards'}, status=403)
@@ -1047,7 +1085,7 @@ def api_table_update_fields(request, table_id):
     """
     try:
         table = get_object_or_404(IDCardTable, id=table_id)
-        if not PermissionService.is_any_admin(request.user) and not ClientAccessService.can_access_table(request.user, table):
+        if not ClientAccessService.can_access_table(request.user, table):
             return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
         # Require edit permission to modify table fields
         if not PermissionService.has(request.user, 'perm_idcard_edit'):
@@ -1125,17 +1163,17 @@ def staff_manage(request):
     if not client:
         return redirect('/app/login/')
 
-    # Only client role can manage staff
-    if not PermissionService.is_client(user) and not PermissionService.is_any_admin(user):
+    # Only client and super_admin can manage staff from mobile.
+    if not PermissionService.is_client(user) and not PermissionService.is_super_admin(user):
         return redirect('mobile_app:home')
 
-    # For client role, use the service; for admins, show all staff
+    # For client role, use the service; super_admin can see all staff.
     staff_list = []
     if PermissionService.is_client(user):
         result = ClientStaffService.list_staff(user)
         if result.success:
             staff_list = result.data.get('staff', [])
-    elif PermissionService.is_any_admin(user):
+    elif PermissionService.is_super_admin(user):
         # Admin can see all staff
         all_staff = Staff.objects.select_related('user').order_by('-created_at')[:200]
         for s in all_staff:
@@ -1222,10 +1260,18 @@ def settings_page(request):
     # Admin-specific counts
     if PermissionService.is_any_admin(user):
         from client.models import Client
-        ctx['admin_client_count'] = Client.objects.filter(status='active').count()
+        accessible_ids = _admin_accessible_client_ids(user)
+        scoped_clients = Client.objects.filter(status='active')
+        scoped_tables = IDCardTable.objects.filter(is_active=True)
+        scoped_cards = IDCard.objects.all()
+        if accessible_ids is not None:
+            scoped_clients = scoped_clients.filter(id__in=accessible_ids)
+            scoped_tables = scoped_tables.filter(group__client_id__in=accessible_ids)
+            scoped_cards = scoped_cards.filter(table__group__client_id__in=accessible_ids)
+        ctx['admin_client_count'] = scoped_clients.count()
         ctx['admin_staff_count'] = Staff.objects.count()
-        ctx['admin_table_count'] = IDCardTable.objects.filter(is_active=True).count()
-        ctx['admin_total_cards'] = IDCard.objects.count()
+        ctx['admin_table_count'] = scoped_tables.count()
+        ctx['admin_total_cards'] = scoped_cards.count()
 
     # ── TAB: Notifications ───────────────────────────────────────────────
     from core.models import Notification, NotificationRead
@@ -1263,6 +1309,9 @@ def settings_page(request):
         IDCard.objects.all() if PermissionService.is_any_admin(user)
         else IDCard.objects.filter(table__group__client=client)
     )
+    if PermissionService.is_admin_staff(user):
+        accessible_ids = _admin_accessible_client_ids(user)
+        _cards_scope = _cards_scope.filter(table__group__client_id__in=accessible_ids)
     _log_acts = []
     for _card in _cards_scope.select_related('table', 'table__group').order_by('-updated_at')[:30]:
         _fd = _card.field_data or {}
@@ -1309,9 +1358,14 @@ def search_page(request):
         from django.db.models.functions import Cast
         from django.db.models import TextField as TF
 
-        # Admins search all cards; clients search their own client only
-        if PermissionService.is_any_admin(user):
+        # Super admin searches all cards; admin_staff is assignment-scoped.
+        if PermissionService.is_super_admin(user):
             base_qs = IDCard.objects.select_related('table', 'table__group', 'table__group__client').order_by('-updated_at')
+        elif PermissionService.is_admin_staff(user):
+            accessible_ids = _admin_accessible_client_ids(user)
+            base_qs = IDCard.objects.filter(
+                table__group__client_id__in=accessible_ids,
+            ).select_related('table', 'table__group', 'table__group__client').order_by('-updated_at')
         else:
             base_qs = IDCard.objects.filter(
                 table__group__client=client,
@@ -1366,7 +1420,7 @@ def api_card_delete(request, card_id):
     try:
         card = get_object_or_404(IDCard.objects.select_related('table__group'), id=card_id)
         user = request.user
-        if not PermissionService.is_any_admin(user) and not ClientAccessService.can_access_card(user, card):
+        if not ClientAccessService.can_access_card(user, card):
             return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
         if not PermissionService.has(user, 'perm_idcard_delete'):
             return JsonResponse({'success': False, 'message': 'No delete permission'}, status=403)
@@ -1396,7 +1450,7 @@ def api_staff_list(request):
         if result.success:
             return JsonResponse({'success': True, 'data': result.data})
         return JsonResponse({'success': False, 'message': result.message}, status=400)
-    elif PermissionService.is_any_admin(user):
+    elif PermissionService.is_super_admin(user):
         all_staff = Staff.objects.select_related('user').order_by('-created_at')[:200]
         staff_data = []
         for s in all_staff:
@@ -1419,7 +1473,7 @@ def api_staff_list(request):
 def api_staff_create(request):
     """Create a new staff member."""
     user = request.user
-    if not (PermissionService.is_client(user) or PermissionService.is_any_admin(user)):
+    if not (PermissionService.is_client(user) or PermissionService.is_super_admin(user)):
         return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
     try:
         data = json.loads(request.body)
@@ -1427,7 +1481,7 @@ def api_staff_create(request):
         return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
 
     # For admin users, delegate via the client attached to their current context
-    if PermissionService.is_any_admin(user):
+    if PermissionService.is_super_admin(user):
         client, _ = _client_ctx(user)
         if not client:
             return JsonResponse({'success': False, 'message': 'No client context found for admin'}, status=400)
@@ -1449,14 +1503,14 @@ def api_staff_create(request):
 def api_staff_update(request, staff_id):
     """Update a staff member."""
     user = request.user
-    if not (PermissionService.is_client(user) or PermissionService.is_any_admin(user)):
+    if not (PermissionService.is_client(user) or PermissionService.is_super_admin(user)):
         return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
 
-    if PermissionService.is_any_admin(user):
+    if PermissionService.is_super_admin(user):
         client, _ = _client_ctx(user)
         acting_user = getattr(client, 'user', None) if client else None
         if acting_user is None:
@@ -1475,7 +1529,7 @@ def api_staff_update(request, staff_id):
 def api_staff_toggle(request, staff_id):
     """Toggle staff active/inactive."""
     user = request.user
-    if not (PermissionService.is_client(user) or PermissionService.is_any_admin(user)):
+    if not (PermissionService.is_client(user) or PermissionService.is_super_admin(user)):
         return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
 
     if PermissionService.is_client(user):
@@ -1503,7 +1557,7 @@ def api_staff_toggle(request, staff_id):
 def api_staff_delete(request, staff_id):
     """Delete a staff member."""
     user = request.user
-    if not (PermissionService.is_client(user) or PermissionService.is_any_admin(user)):
+    if not (PermissionService.is_client(user) or PermissionService.is_super_admin(user)):
         return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
 
     if PermissionService.is_client(user):
@@ -1576,11 +1630,16 @@ def api_search(request):
     from django.db.models.functions import Cast
     from django.db.models import TextField as TF
 
-    # Admins search all cards; clients search their own client only
-    if PermissionService.is_any_admin(user):
+    # Super admin searches all cards; admin_staff is assignment-scoped.
+    if PermissionService.is_super_admin(user):
         base_qs = IDCard.objects.select_related(
             'table', 'table__group', 'table__group__client'
         ).order_by('-updated_at')
+    elif PermissionService.is_admin_staff(user):
+        accessible_ids = _admin_accessible_client_ids(user)
+        base_qs = IDCard.objects.filter(
+            table__group__client_id__in=accessible_ids,
+        ).select_related('table', 'table__group', 'table__group__client').order_by('-updated_at')
     else:
         base_qs = IDCard.objects.filter(
             table__group__client=client,
@@ -1619,8 +1678,8 @@ def api_search(request):
 def api_client_toggle(request, client_id):
     """Toggle a client between active / inactive."""
     from client.models import Client
-    if not PermissionService.is_any_admin(request.user):
-        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
+    if not PermissionService.is_super_admin(request.user):
+        return JsonResponse({'success': False, 'message': 'Only super admin can change client status'}, status=403)
     try:
         client = get_object_or_404(Client, id=client_id)
         if client.status == 'active':
@@ -1658,6 +1717,8 @@ def api_client_delete(request, client_id):
 def api_client_tables(request, client_id):
     """Return active tables with pending/verified counts for a client (admin only, lazy-loaded)."""
     if not PermissionService.is_any_admin(request.user):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+    if not PermissionService.can_access_client(request.user, client_id):
         return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
     from client.models import Client
     get_object_or_404(Client, id=client_id)

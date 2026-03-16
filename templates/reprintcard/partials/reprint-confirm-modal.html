@@ -1,26 +1,26 @@
 <!-- Reprint Confirmation Modal -->
 <div class="center-modal-overlay" id="reprintConfirmModal">
-  <div class="center-modal reprint-confirm-modal" style="width:min(760px,94vw);max-height:85vh;overflow:auto;">
-    <div class="modal-header" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+  <div class="center-modal reprint-confirm-modal">
+    <div class="modal-header">
       <h3><i class="fa-solid fa-rotate"></i> Confirm Reprint Request</h3>
       <button class="modal-close" id="reprintConfirmClose" type="button" aria-label="Close">
         <i class="fa-solid fa-xmark"></i>
       </button>
     </div>
     <div class="modal-body">
-      <div class="modal-body-centered" style="text-align: center;">
-        <div class="modal-icon-circle" style="width:56px;height:56px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:rgba(245,158,11,0.12);margin-bottom:16px;">
-          <i class="fa-solid fa-rotate" style="font-size:24px;color:#d97706;"></i>
+      <div class="modal-body-centered reprint-confirm-centered">
+        <div class="modal-icon-circle reprint-confirm-icon">
+          <i class="fa-solid fa-rotate"></i>
         </div>
-        <p style="font-size:16px;font-weight:600;color:var(--gray-900,#111827);margin:0 0 6px;">
+        <p class="reprint-confirm-title">
           Reprint <strong id="reprintConfirmCount">0</strong> card(s)?
         </p>
-        <p style="font-size:13px;color:var(--gray-500,#6b7280);margin:0 0 16px;">
+        <p class="reprint-confirm-subtitle">
           Selected cards will be added to Request List for print processing.
         </p>
 
-        <div style="text-align:left;margin-top:12px;padding-top:10px;border-top:1px dashed #e5e7eb;display:flex;align-items:center;justify-content:space-between;gap:12px;">
-          <span style="font-size:12px;color:#6b7280;">Do you want to edit selected data first, or continue without edit?</span>
+        <div class="reprint-confirm-edit-row">
+          <span class="reprint-confirm-edit-note">Do you want to edit selected data first, or continue without edit?</span>
           <button class="btn btn-secondary" id="reprintWantEditBtn" type="button">
             <i class="fa-solid fa-pen-to-square"></i> Want to Edit
           </button>
@@ -29,8 +29,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" id="reprintConfirmCancel" type="button">Cancel</button>
-      <button class="btn" id="reprintConfirmSubmit" type="button"
-        style="background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);color:#fff;border:none;box-shadow:0 4px 12px rgba(245,158,11,0.35);">
+      <button class="btn reprint-confirm-submit" id="reprintConfirmSubmit" type="button">
         <i class="fa-solid fa-check"></i> Next Without Edit
       </button>
     </div>

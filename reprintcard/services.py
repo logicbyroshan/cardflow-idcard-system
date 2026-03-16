@@ -13,6 +13,7 @@ from django.db import transaction
 
 from idcards.models import IDCard, IDCardTable
 from core.services.base import ServiceResult
+from core.services.activity_service import ActivityService
 from .models import ReprintRequest
 
 
@@ -144,6 +145,23 @@ class ReprintWorkflowService:
                 requested_by=requested_by,
             )
             created += 1
+
+        if created > 0:
+            client_name = ''
+            try:
+                client_name = table.group.client.name
+            except Exception:
+                client_name = ''
+            suffix = f' for {client_name}' if client_name else ''
+            table_suffix = f' (Table: {table.name})' if getattr(table, 'name', '') else ''
+            ActivityService.log(
+                'reprint_request',
+                f'{created} reprint request(s) created{suffix}{table_suffix}',
+                user=requested_by,
+                target_model='ReprintRequest',
+                target_id=table.id,
+                target_name=getattr(table, 'name', ''),
+            )
 
         return ServiceResult(
             success=True,

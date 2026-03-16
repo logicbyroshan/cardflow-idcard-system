@@ -1,28 +1,4 @@
 {% load static %}
-<style>
-  .action-tab.print-generate-tab {
-    background: #fef3c7;
-    color: #92400e;
-    border: 1px solid #fcd34d;
-  }
-  .action-tab.print-generate-tab:hover {
-    background: #fde68a;
-  }
-  .action-tab.print-generate-tab .tab-count {
-    background: #f59e0b;
-    color: #fff;
-  }
-  .action-tab.print-generate-tab.active {
-    background: #f59e0b;
-    color: #fff;
-    border-color: #d97706;
-    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
-  }
-  .action-tab.print-generate-tab.active .tab-count {
-    background: #fff;
-    color: #d97706;
-  }
-</style>
 <header class="topbar">
   <div class="nav-left">
     <button class="sidebar-toggle" id="sidebarToggle" @click="toggleSidebar()" aria-label="Toggle sidebar">

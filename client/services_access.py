@@ -39,10 +39,16 @@ class ClientAccessService:
     @staticmethod
     def can_access_client(user, client_id: int) -> bool:
         """Check if user can access a specific client's data.
-        Admin roles (super_admin / admin_staff) have unrestricted access.
+        super_admin has unrestricted access.
+        admin_staff is restricted to assigned clients.
         """
-        if PermissionService.is_any_admin(user):
+        if PermissionService.is_super_admin(user):
             return True
+        if PermissionService.is_admin_staff(user):
+            staff = getattr(user, 'staff_profile', None)
+            if not staff:
+                return False
+            return staff.assigned_clients.filter(id=client_id).exists()
         client = ClientAccessService.get_client_for_user(user)
         if client is None:
             return False
@@ -51,11 +57,17 @@ class ClientAccessService:
     @staticmethod
     def can_access_group(user, group: IDCardGroup) -> bool:
         """Check if user can access a specific group.
-        Admin roles have unrestricted access.
+        super_admin has unrestricted access.
+        admin_staff is restricted to assigned clients.
         client_staff: must have group in assigned_groups (empty = all groups).
         """
-        if PermissionService.is_any_admin(user):
+        if PermissionService.is_super_admin(user):
             return True
+        if PermissionService.is_admin_staff(user):
+            staff = getattr(user, 'staff_profile', None)
+            if not staff:
+                return False
+            return staff.assigned_clients.filter(id=group.client_id).exists()
         client = ClientAccessService.get_client_for_user(user)
         if client is None:
             return False
@@ -73,11 +85,17 @@ class ClientAccessService:
     @staticmethod
     def can_access_table(user, table: IDCardTable) -> bool:
         """Check if user can access a specific table.
-        Admin roles have unrestricted access.
+        super_admin has unrestricted access.
+        admin_staff is restricted to assigned clients.
         client_staff: limited to assigned groups (empty assigned_groups = all groups).
         """
-        if PermissionService.is_any_admin(user):
+        if PermissionService.is_super_admin(user):
             return True
+        if PermissionService.is_admin_staff(user):
+            staff = getattr(user, 'staff_profile', None)
+            if not staff:
+                return False
+            return staff.assigned_clients.filter(id=table.group.client_id).exists()
         client = ClientAccessService.get_client_for_user(user)
         if client is None:
             return False
@@ -115,13 +133,19 @@ class ClientAccessService:
     @staticmethod
     def can_access_card(user, card: IDCard) -> bool:
         """Check if user can access a specific card.
-        Admin roles have unrestricted access.
+        super_admin has unrestricted access.
+        admin_staff is restricted to assigned clients.
 
         NOTE: ``card`` should be fetched with
         ``.select_related('table__group')`` to avoid extra queries.
         """
-        if PermissionService.is_any_admin(user):
+        if PermissionService.is_super_admin(user):
             return True
+        if PermissionService.is_admin_staff(user):
+            staff = getattr(user, 'staff_profile', None)
+            if not staff:
+                return False
+            return staff.assigned_clients.filter(id=card.table.group.client_id).exists()
         client = ClientAccessService.get_client_for_user(user)
         if client is None:
             return False

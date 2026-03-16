@@ -4,7 +4,24 @@
 
 <!-- Action Bar -->
 <div class="action-bar action-buttons-bar" id="confirmedListActionBar">
-    <div class="action-buttons-group">
+    <div class="flex items-center gap-[2px] flex-wrap">
+        <!-- Back Button -->
+        <button class="btn action-btn btn-back" id="confirmedListBackBtn" title="Go back (Ctrl+B)">
+            <i class="fa-solid fa-arrow-left"></i>
+            <span class="btn-text">Back</span>
+        </button>
+        <div class="action-divider"></div>
+        {% if not is_client and not is_client_staff %}
+        <button class="btn action-btn btn-blue" id="confirmedEditBtn" disabled title="Edit selected card details">
+            <i class="fa-solid fa-pen"></i>
+            <span class="btn-text">Edit</span>
+        </button>
+        {% endif %}
+        <button class="btn action-btn btn-gray" id="confirmedViewBtn" disabled title="View selected card details">
+            <i class="fa-solid fa-eye"></i>
+            <span class="btn-text">View</span>
+        </button>
+        <div class="action-divider"></div>
         <button class="btn action-btn btn-blue" id="confirmedDownloadPdfBtn" title="Download as PDF">
             <i class="fa-solid fa-file-pdf"></i>
             <span class="btn-text">Download PDF</span>
@@ -21,10 +38,6 @@
             <i class="fa-solid fa-images"></i>
             <span class="btn-text">Download Images</span>
         </button>
-        <button class="btn action-btn btn-gray" id="confirmedViewBtn" disabled title="View selected card details">
-            <i class="fa-solid fa-eye"></i>
-            <span class="btn-text">View</span>
-        </button>
     </div>
 </div>
 
@@ -40,16 +53,13 @@
         </div>
     </div>
     <div class="action-right">
-        <div class="filter-group flex items-center gap-2">
-            <input type="datetime-local" id="confirmedFromDate" class="search-input reprint-confirmed-date-input" style="max-width:180px;" title="From date-time">
-            <input type="datetime-local" id="confirmedToDate" class="search-input reprint-confirmed-date-input" style="max-width:180px;" title="To date-time">
-            <button class="btn action-btn btn-blue" id="confirmedApplyDateFilterBtn" type="button" title="Apply date filter">
-                <i class="fa-solid fa-filter"></i>
-                <span class="btn-text">Apply</span>
-            </button>
-            <button class="btn action-btn btn-gray" id="confirmedClearDateFilterBtn" type="button" title="Clear date filter">
-                <i class="fa-solid fa-eraser"></i>
-                <span class="btn-text">Clear</span>
+        <div class="filter-group datetime-filter-group reprint-datetime-filter-group">
+            <label class="datetime-label">From</label>
+            <input type="text" id="confirmedFromDate" class="datetime-input" title="Filter from date" placeholder="Select date & time" aria-label="From date" readonly>
+            <label class="datetime-label">To</label>
+            <input type="text" id="confirmedToDate" class="datetime-input" title="Filter to date" placeholder="Select date & time" aria-label="To date" readonly>
+            <button class="btn btn-danger btn-sm" id="confirmedClearDateFilterBtn" type="button" title="Clear date filter">
+                <i class="fa-solid fa-xmark"></i>
             </button>
         </div>
     </div>
@@ -81,6 +91,9 @@
                     <th class="min-w-[80px] px-[1px] py-1 text-center align-middle">Reason</th>
                     <th class="w-[65px] min-w-[65px] px-[1px] py-1 text-center align-middle">Requested By</th>
                     <th class="w-[90px] min-w-[90px] px-[1px] py-1 text-center align-middle">Confirmed At</th>
+                    {% if not is_client and not is_client_staff %}
+                    <th class="w-[60px] min-w-[60px] px-[1px] py-1 text-center align-middle">Action</th>
+                    {% endif %}
                     <th class="w-[65px] min-w-[65px] px-[1px] py-1 text-center align-middle">Status</th>
                 </tr>
             </thead>
@@ -131,6 +144,13 @@
                     <td class="min-w-[80px] px-[1px] py-1 align-middle reason-cell whitespace-normal break-words text-left" title="{{ item.reason }}">{{ item.reason|truncatewords:8 }}</td>
                     <td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center">{{ item.requested_by_name }}</td>
                     <td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">{{ item.confirmed_at|date:"d-M-Y H:i" }}</td>
+                    {% if not is_client and not is_client_staff %}
+                    <td class="w-[60px] px-[1px] py-1 text-center align-middle action-cell">
+                        <button class="btn-confirmed-edit-single" data-card-id="{{ item.card_id }}" title="Edit card" aria-label="Edit card">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                    </td>
+                    {% endif %}
                     <td class="w-[65px] px-[1px] py-1 align-middle text-center">
                         <span class="status-badge status-{{ item.status }}">{{ item.get_status_display }}</span>
                     </td>

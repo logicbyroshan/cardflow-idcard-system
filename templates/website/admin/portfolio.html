@@ -104,7 +104,7 @@
                         <td><input type="checkbox" class="portfolio-row-check" value="{{ p.id }}" onchange="updatePortfolioSelection()"></td>
                         <td>
                             {% if p.image %}
-                            <img src="{{ p.image.url }}" class="wa-thumb xl" alt="{{ p.title|default:'Item' }}" style="cursor:zoom-in;" onclick="previewImage(this.src, this.alt)">
+                            <img src="{{ p.image.url }}" class="wa-thumb xl wa-thumb-clickable" alt="{{ p.title|default:'Item' }}" onclick="previewImage(this.src, this.alt)">
                             {% elif p.item_type == 'video' or p.item_type == 'reel' %}
                             <span class="wa-thumb-icon"></span>
                             {% else %}
@@ -114,7 +114,7 @@
                         <td>
                             <div class="wa-cell-info">
                                 <span class="wa-cell-title">{{ p.title|default:"Untitled" }}</span>
-                                {% if p.is_featured %}<span class="wa-cell-sub"><i class="fa-solid fa-star" style="color:#f59e0b;"></i> Featured</span>{% endif %}
+                                {% if p.is_featured %}<span class="wa-cell-sub"><i class="fa-solid fa-star wa-featured-note"></i> Featured</span>{% endif %}
                             </div>
                         </td>
                         <td>
@@ -123,7 +123,7 @@
                                 <i class="{{ p.category.icon }}"></i> {{ p.category.name }}
                             </span>
                             {% else %}
-                            <span style="color:var(--wa-gray-400);font-size:12px;"> - </span>
+                            <span class="wa-cell-dash"> - </span>
                             {% endif %}
                         </td>
                         <td>

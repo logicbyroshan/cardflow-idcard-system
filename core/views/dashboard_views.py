@@ -285,11 +285,20 @@ def api_print_reprint_overview(request):
         # Admin staff: show all assigned clients (including inactive).
         # Super admin: show only active clients.
         base_qs = Client.objects.all() if is_scoped else Client.objects.filter(status='active')
-        clients = PermissionService.get_accessible_clients(
-            user, base_qs
-        ).order_by('name')[:limit]
+        accessible_clients = PermissionService.get_accessible_clients(user, base_qs)
 
-        client_ids = list(clients.values_list('id', flat=True))
+        # Keep print list alphabetical, but order reprint by latest update first.
+        print_clients_qs = accessible_clients.order_by('name')[:limit]
+        reprint_clients_qs = accessible_clients.annotate(
+            latest_reprint_update=Max(
+                'id_card_groups__tables__reprint_requests__updated_at',
+                filter=Q(id_card_groups__tables__reprint_requests__status__in=['requested', 'confirmed'])
+            )
+        ).order_by(F('latest_reprint_update').desc(nulls_last=True), 'name')[:limit]
+
+        print_clients_list = list(print_clients_qs)
+        reprint_clients_list = list(reprint_clients_qs)
+        client_ids = list({c.id for c in (print_clients_list + reprint_clients_list)})
 
         # ── Print counts per client ──────────────────────────────────
         print_counts_qs = PrintRequest.objects.filter(
@@ -368,6 +377,7 @@ def api_print_reprint_overview(request):
         ).values('table__id', 'table__name', 'table__group__client_id').annotate(
             requested=Count('id', filter=Q(status='requested')),
             confirmed=Count('id', filter=Q(status='confirmed')),
+            latest_update=Max('updated_at', filter=Q(status__in=['requested', 'confirmed'])),
         ).order_by('table__id')
 
         for t in reprint_table_qs:
@@ -384,17 +394,26 @@ def api_print_reprint_overview(request):
                 }
             reprint_source_table_map[cid][t['table__id']]['requested'] = t['requested']
             reprint_source_table_map[cid][t['table__id']]['confirmed'] = t['confirmed']
+            reprint_source_table_map[cid][t['table__id']]['latest_update'] = t['latest_update']
 
-        reprint_tables_map = {
-            cid: list(table_map.values())
-            for cid, table_map in reprint_source_table_map.items()
-        }
+        reprint_tables_map = {}
+        for cid, table_map in reprint_source_table_map.items():
+            tables = list(table_map.values())
+            tables.sort(key=lambda x: (x.get('latest_update') is not None, x.get('latest_update')), reverse=True)
+            reprint_tables_map[cid] = tables
+
+        # Total requested should represent all accessible clients, not just the limited list.
+        reprint_total_requested = ReprintRequest.objects.filter(
+            table__group__client__in=accessible_clients,
+            card__status='download',
+            status='requested',
+        ).count()
 
         # ── Build per-client results ─────────────────────────────────
         print_clients = []
         reprint_clients = []
 
-        for c in clients:
+        for c in print_clients_list:
             pc = print_map.get(c.id, {})
             print_clients.append({
                 'id': c.id,
@@ -406,6 +425,8 @@ def api_print_reprint_overview(request):
                 'tables': print_tables_map.get(c.id, []),
             })
 
+
+        for c in reprint_clients_list:
             rc = reprint_map.get(c.id, {})
             source = reprint_source_map.get(c.id, {})
             reprint_clients.append({
@@ -422,12 +443,14 @@ def api_print_reprint_overview(request):
         payload = {
             'print_clients': print_clients,
             'reprint_clients': reprint_clients,
+            'reprint_total_requested': reprint_total_requested,
         }
         cache.set(cache_key, payload, 20)
         return JsonResponse({
             'success': True,
             'print_clients': print_clients,
             'reprint_clients': reprint_clients,
+            'reprint_total_requested': reprint_total_requested,
         })
     except Exception as e:
         logger.exception('api_print_reprint_overview error: %s', e)

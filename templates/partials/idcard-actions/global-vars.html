@@ -26,6 +26,6 @@
   var REPRINT_MODAL_ENDPOINTS = {
     list: '{% url "reprintcard:api_reprint_list" table.id %}',
     requestCreate: '{% url "reprintcard:api_reprint_request_create" table.id %}',
-    requestListPage: '{% if is_client or is_client_staff %}{% url "client:reprint_cards" table.id %}{% else %}{% url "reprintcard:reprint_cards" table.id %}{% endif %}?step=request_list'
+    stepCounts: '{% url "reprintcard:api_reprint_step_counts" table.id %}'
   };
 </script>

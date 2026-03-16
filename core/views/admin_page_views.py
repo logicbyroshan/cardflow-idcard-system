@@ -16,6 +16,7 @@ from django.utils import timezone
 from client.models import Client
 from staff.models import Staff
 from idcards.models import IDCardGroup, IDCard, IDCardTable
+from reprintcard.models import ReprintRequest
 from ..models import User, SystemSettings, Notification, EmailLog
 from ..services import IDCardService
 from ..utils.htmx import is_htmx, render_partial
@@ -339,6 +340,18 @@ def build_idcard_actions_context(request, table, *, default_per_page=100,
 
     total_count = id_cards_query.count()
     status_counts = IDCardService.get_status_counts(table)
+    reprint_counts = {
+        'request_list': ReprintRequest.objects.filter(
+            table=table,
+            status='requested',
+            card__status='download',
+        ).count(),
+        'confirmed': ReprintRequest.objects.filter(
+            table=table,
+            status='confirmed',
+            card__status='download',
+        ).count(),
+    }
 
     return {
         'active_page': active_page,
@@ -349,6 +362,7 @@ def build_idcard_actions_context(request, table, *, default_per_page=100,
         'id_cards': [],
         'current_status': status_filter,
         'status_counts': status_counts,
+        'reprint_counts': reprint_counts,
         'total_count': total_count,
         'has_more': True,
         'initial_load_limit': per_page,

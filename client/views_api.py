@@ -287,7 +287,8 @@ def api_client_groups_list(request):
     if not client:
         return JsonResponse({'success': False, 'message': 'Client not found'}, status=400)
     
-    groups = IDCardGroup.objects.filter(client=client, is_active=True).order_by('name')
+    # Show all client groups so assignment is not limited to only active/default group.
+    groups = IDCardGroup.objects.filter(client=client).order_by('name')
     groups_data = [{'id': g.id, 'name': g.name} for g in groups]
     
     return JsonResponse({
@@ -338,6 +339,9 @@ def api_class_section_options(request):
     branches = set()
     class_sections = {}
     table_field_map = {}
+    has_class_field = False
+    has_section_field = False
+    has_branch_field = False
 
     for table in tables:
         # Determine which field names are class/section/branch type
@@ -353,6 +357,13 @@ def api_class_section_options(request):
                 section_field = fn
             elif ft == 'branch' or fn.lower() == 'branch':
                 branch_field = fn
+
+        if class_field:
+            has_class_field = True
+        if section_field:
+            has_section_field = True
+        if branch_field:
+            has_branch_field = True
 
         if class_field or section_field or branch_field:
             table_field_map[table['id']] = (class_field, section_field, branch_field)
@@ -400,6 +411,9 @@ def api_class_section_options(request):
         'classes': sorted(classes),
         'sections': sorted(sections),
         'branches': sorted(branches),
+        'has_class_field': has_class_field,
+        'has_section_field': has_section_field,
+        'has_branch_field': has_branch_field,
         'class_sections': {
             cls_name: sorted(sec_values)
             for cls_name, sec_values in sorted(class_sections.items(), key=lambda x: x[0])
