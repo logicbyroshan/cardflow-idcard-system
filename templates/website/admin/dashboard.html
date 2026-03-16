@@ -22,7 +22,7 @@
     </div>
 
     <!-- Not Found Mode Banner -->
-    <div class="wa-status-banner {% if website_not_found_mode %}draft{% else %}live{% endif %}" id="notFoundBanner">
+    <div class="wa-status-banner {% if website_not_found_mode %}draft{% else %}live{% endif %}" id="notFoundBanner" style="margin-top: 10px;">
         <span class="wa-status-label">
             <i class="fa-solid {% if website_not_found_mode %}fa-triangle-exclamation{% else %}fa-link{% endif %}"></i>
             Domain Not Found Mode is
@@ -37,7 +37,7 @@
     </div>
 
     {% if is_pro_user %}
-    <div class="wa-status-banner live has-controls" id="proAccessBanner">
+    <div class="wa-status-banner live" id="proAccessBanner" style="margin-top: 10px; gap: 10px; flex-wrap: wrap;">
         <span class="wa-status-label">
             <i class="fa-solid fa-user-shield"></i>
             Pro Emergency Access Link
@@ -46,7 +46,7 @@
             type="email"
             id="proAccessEmailInput"
             placeholder="Enter account email"
-            class="wa-inline-email-input"
+            style="min-width:260px;flex:1;max-width:380px;padding:8px 10px;border:1px solid #d1d5db;border-radius:8px;"
         >
         <button
             class="btn btn-sm btn-primary"

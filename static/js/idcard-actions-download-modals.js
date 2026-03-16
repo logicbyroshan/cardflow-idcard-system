@@ -75,25 +75,10 @@ function initReprintPickerHandlers() {
     var selectedIds = new Set();
     var lastQuery = '';
     var pendingEditIds = [];
-    var inlineEditMode = false;
-    var inlineOriginalFieldData = {};
-    var inlineDirtyCount = 0;
-    var inlineSaveInFlight = false;
+    var confirmEditing = false;
+    var confirmEditingCardId = null;
     var searchTimer = null;
     var columnSizes = null;
-
-    function refreshReprintStepCounts() {
-        if (!endpoints.stepCounts) return;
-        ApiClient.get(endpoints.stepCounts)
-            .then(function(data) {
-                if (!data || data.status !== 'ok') return;
-                var reqCount = document.getElementById('downloadRequestCount');
-                var confCount = document.getElementById('downloadConfirmedCount');
-                if (reqCount) reqCount.textContent = String(data.request_list || 0);
-                if (confCount) confCount.textContent = String(data.confirmed || 0);
-            })
-            .catch(function() {});
-    }
 
     function esc(text) {
         var div = document.createElement('div');
@@ -404,36 +389,25 @@ function initReprintPickerHandlers() {
     }
 
     function getPhotoPath(item) {
-        var imageField = resolvedFields.find(function(field) {
-            return isImageFieldLocal(field.type, field.name);
-        });
-        if (imageField) {
-            var imageVal = getFieldByName(item, imageField.name);
-            if (imageVal) return imageVal;
-        }
         return getField(item, ['PHOTO', 'IMAGE', 'PICTURE', 'PIC', 'STUDENT PHOTO']) || '';
     }
 
     function getPreviewRows(item) {
-        var detailRows = [];
-        resolvedFields.forEach(function(field) {
-            if (isImageFieldLocal(field.type, field.name)) return;
-            detailRows.push({
-                label: field.label || field.name,
-                key: field.name,
-                value: getFieldByName(item, field.name) || ''
-            });
-        });
-
-        if (!detailRows.length) {
-            detailRows.push({ label: 'Name', key: 'NAME', value: getStudentName(item) || '' });
-            detailRows.push({ label: 'Class', key: 'CLASS', value: getClassName(item) || '' });
-            detailRows.push({ label: 'Section', key: 'SECTION', value: getSectionName(item) || '' });
-        }
-        return detailRows;
+        return [
+            { label: 'Name', value: getStudentName(item) },
+            { label: 'Class', value: getClassName(item) },
+            { label: 'Section', value: getSectionName(item) },
+            { label: 'Roll No', value: getField(item, ['ROLL NO', 'ROLL', 'ROLL NUMBER', 'ROLL_NO']) || '-' },
+            { label: 'Admission No', value: getField(item, ['ADMISSION NO', 'ADMISSION NUMBER', 'ADM NO', 'ADMISSION_NO', 'SCH NO', 'SCHOLAR NO']) || '-' },
+            { label: 'DOB', value: getField(item, ['DOB', 'DATE OF BIRTH', 'BIRTH DATE']) || '-' },
+            { label: 'Father Name', value: getField(item, ['FATHER NAME', "FATHER'S NAME", 'FATHER_NAME', 'FATHER']) || '-' },
+            { label: 'Father Contact', value: getField(item, ['FATHER CONTACT', "FATHER'S CONTACT", 'FATHER MOBILE', "FATHER'S MOBILE", 'FATHER PHONE', 'FATHER CONTACT NO', 'FATHER_PHONE']) || '-' },
+            { label: 'Mother Name', value: getField(item, ['MOTHER NAME', "MOTHER'S NAME", 'MOTHER_NAME', 'MOTHER']) || '-' },
+            { label: 'Mother Contact', value: getField(item, ['MOTHER CONTACT', "MOTHER'S CONTACT", 'MOTHER MOBILE', "MOTHER'S MOBILE", 'MOTHER PHONE', 'MOTHER CONTACT NO', 'MOTHER_PHONE']) || '-' }
+        ];
     }
 
-    function buildPreviewHtml(item, isEditing) {
+    function buildPreviewHtml(item) {
         if (!item) return '';
         var photoPath = String(getPhotoPath(item) || '');
         var photoHtml = '';
@@ -446,25 +420,15 @@ function initReprintPickerHandlers() {
         var metaRows = getPreviewRows(item);
         var metaHtml = '';
         metaRows.forEach(function(row) {
-            var valueText = String(row.value || '').trim();
-            var displayValue = valueText || 'Not provided';
-            var valueNode;
-            if (isEditing) {
-                valueNode = '<input class="reprint-preview-input" type="text" data-field-name="' + esc(row.key || '') + '" data-original-value="' + esc(valueText) + '" value="' + esc(valueText) + '" placeholder="Not provided">';
-            } else {
-                var emptyClass = valueText ? '' : ' is-empty';
-                valueNode = '<span class="reprint-preview-meta-value' + emptyClass + '">' + esc(displayValue) + '</span>';
-            }
             metaHtml += '<div class="reprint-preview-meta-item">'
                 + '<span class="reprint-preview-meta-label">' + esc(row.label) + '</span>'
-                + valueNode
+                + '<span class="reprint-preview-meta-value">' + esc(row.value || '-') + '</span>'
                 + '</div>';
         });
 
-        var metaClass = isEditing ? 'reprint-preview-meta edit-grid' : 'reprint-preview-meta';
         return '<div class="reprint-preview-card">'
             + '<div class="reprint-preview-photo">' + photoHtml + '</div>'
-            + '<div class="' + metaClass + '">' + metaHtml + '</div>'
+            + '<div class="reprint-preview-meta">' + metaHtml + '</div>'
             + '</div>';
     }
 
@@ -476,99 +440,35 @@ function initReprintPickerHandlers() {
             return;
         }
         confirmPreview.style.display = 'block';
-        confirmPreview.innerHTML = buildPreviewHtml(item, inlineEditMode);
+        confirmPreview.innerHTML = buildPreviewHtml(item);
     }
 
-    function updateDirtyCountLabel() {
-        var dirtyCountEl = document.getElementById('reprintPickerDirtyCount');
-        if (dirtyCountEl) dirtyCountEl.textContent = String(inlineDirtyCount);
-    }
-
-    function resetInlineDirtyState() {
-        inlineOriginalFieldData = {};
-        inlineDirtyCount = 0;
-        updateDirtyCountLabel();
-    }
-
-    function initializeInlineOriginalsFromDom() {
-        resetInlineDirtyState();
-        var inputs = confirmPreview ? confirmPreview.querySelectorAll('.reprint-preview-input[data-field-name]') : [];
-        inputs.forEach(function(inputEl) {
-            var key = String(inputEl.getAttribute('data-field-name') || '').trim();
-            if (!key) return;
-            var originalValue = String(inputEl.getAttribute('data-original-value') || '').trim();
-            inlineOriginalFieldData[key] = originalValue;
-        });
-    }
-
-    function recomputeInlineDirtyState() {
-        var count = 0;
-        var inputs = confirmPreview ? confirmPreview.querySelectorAll('.reprint-preview-input[data-field-name]') : [];
-        inputs.forEach(function(inputEl) {
-            var key = String(inputEl.getAttribute('data-field-name') || '').trim();
-            if (!key) return;
-            var currentVal = String(inputEl.value || '').trim();
-            var originalVal = String(inlineOriginalFieldData[key] || '').trim();
-            var isDirty = currentVal !== originalVal;
-            var wrap = inputEl.closest('.reprint-preview-meta-item');
-            if (wrap) wrap.classList.toggle('is-dirty', isDirty);
-            if (isDirty) count += 1;
-        });
-        inlineDirtyCount = count;
-        updateDirtyCountLabel();
-    }
-
-    function setInlineEditMode(enabled) {
-        inlineEditMode = !!enabled;
-        if (confirmModal) {
-            confirmModal.classList.toggle('edit-mode', inlineEditMode);
-        }
-        if (confirmEditBtn) {
-            confirmEditBtn.textContent = inlineEditMode ? 'Cancel Edit' : 'Want to Edit';
-            confirmEditBtn.title = inlineEditMode
-                ? 'Discard inline edits and return to preview'
-                : 'Edit selected card inside this modal';
-        }
-        if (confirmSubmitBtn) {
-            confirmSubmitBtn.textContent = inlineEditMode ? 'Save and Request' : 'Next Without Edit';
-            confirmSubmitBtn.title = inlineEditMode
-                ? 'Save changes and create reprint request'
-                : 'Continue without editing and request reprint';
-        }
-        var noteEl = document.getElementById('reprintPickerConfirmNote');
-        if (noteEl) {
-            noteEl.textContent = inlineEditMode
-                ? 'Edit details below in this modal, then click Save and Request.'
-                : 'Do you want to edit selected card data first, or print as it is?';
-        }
-        renderConfirmPreview(getCardById(pendingEditIds[0]));
-        if (inlineEditMode) {
-            initializeInlineOriginalsFromDom();
-            recomputeInlineDirtyState();
+    function setConfirmEditingState(isEditing) {
+        var sideModalOverlay = document.getElementById('sideModalOverlay');
+        confirmEditing = !!isEditing;
+        if (confirmEditing) {
+            confirmModal.classList.add('is-editing');
+            if (confirmClose) confirmClose.disabled = true;
+            if (confirmCancel) confirmCancel.disabled = true;
+            if (confirmEditBtn) confirmEditBtn.disabled = true;
+            if (confirmSubmitBtn) confirmSubmitBtn.disabled = true;
+            if (sideModalOverlay) sideModalOverlay.classList.add('reprint-edit-layer');
         } else {
-            resetInlineDirtyState();
+            confirmModal.classList.remove('is-editing');
+            if (confirmClose) confirmClose.disabled = false;
+            if (confirmCancel) confirmCancel.disabled = false;
+            if (confirmEditBtn) {
+                confirmEditBtn.disabled = pendingEditIds.length !== 1;
+                confirmEditBtn.title = pendingEditIds.length === 1
+                    ? 'Edit selected card before requesting reprint'
+                    : 'Want to Edit is available for single selection only';
+            }
+            if (confirmSubmitBtn) {
+                confirmSubmitBtn.disabled = false;
+                confirmSubmitBtn.title = 'Continue without editing and request reprint';
+            }
+            if (sideModalOverlay) sideModalOverlay.classList.remove('reprint-edit-layer');
         }
-    }
-
-    function collectInlineFieldData() {
-        var fieldData = {};
-        var inputs = confirmPreview ? confirmPreview.querySelectorAll('.reprint-preview-input[data-field-name]') : [];
-        inputs.forEach(function(inputEl) {
-            var key = String(inputEl.getAttribute('data-field-name') || '').trim();
-            if (!key) return;
-            fieldData[key] = String(inputEl.value || '').trim();
-        });
-        return fieldData;
-    }
-
-    function updateCardInline(cardId, fieldData) {
-        var formData = new FormData();
-        formData.append('field_data', JSON.stringify(fieldData || {}));
-        return ApiClient.upload('/api/card/' + cardId + '/update/', formData)
-            .then(function(data) {
-                if (data && data.success) return data.card || null;
-                throw new Error((data && data.message) || 'Could not save card changes');
-            });
     }
 
     function updateSelectionUi() {
@@ -645,21 +545,15 @@ function initReprintPickerHandlers() {
         return Array.from(selectedIds).map(function(id) { return parseInt(id, 10); }).filter(function(n) { return Number.isFinite(n); });
     }
 
+    function formatPreviewText(cardId) {
+        var item = getCardById(cardId);
+        if (!item) return '';
+        return 'Preview: ' + getStudentName(item) + ' | Class ' + getClassName(item) + ' | Section ' + getSectionName(item);
+    }
+
     function openPicker() {
         pickerModal.style.display = 'flex';
         fetchList(lastQuery);
-    }
-
-    function maybeAutoOpenFromQuery() {
-        try {
-            var params = new URLSearchParams(window.location.search || '');
-            if (params.get('open_reprint_modal') !== '1') return;
-            openPicker();
-            params.delete('open_reprint_modal');
-            var nextQuery = params.toString();
-            var nextUrl = window.location.pathname + (nextQuery ? ('?' + nextQuery) : '');
-            window.history.replaceState({}, '', nextUrl);
-        } catch (_e) {}
     }
 
     function closePicker() {
@@ -673,7 +567,8 @@ function initReprintPickerHandlers() {
             return;
         }
         pendingEditIds = ids.slice();
-        setInlineEditMode(false);
+        confirmEditingCardId = ids[0];
+        setConfirmEditingState(false);
         if (confirmCount) confirmCount.textContent = String(ids.length);
         if (confirmEditBtn) {
             confirmEditBtn.disabled = false;
@@ -688,54 +583,28 @@ function initReprintPickerHandlers() {
     }
 
     function closeConfirm() {
-        setInlineEditMode(false);
+        if (confirmEditing) return;
+        setConfirmEditingState(false);
+        confirmEditingCardId = null;
         confirmModal.style.display = 'none';
     }
 
     function submitReprintRequest() {
-        if (inlineSaveInFlight) return;
         var ids = pendingEditIds.length ? pendingEditIds.slice() : selectedCardIdsAsNumbers();
         if (!ids.length) return;
-        var cardId = ids[0];
-        var submitPromise;
-        if (inlineEditMode) {
-            if (inlineDirtyCount > 0) {
-                submitPromise = updateCardInline(cardId, collectInlineFieldData())
-                    .then(function() { return ApiClient.post(endpoints.requestCreate, { card_ids: ids }); });
-            } else {
-                submitPromise = ApiClient.post(endpoints.requestCreate, { card_ids: ids });
-            }
-        } else {
-            submitPromise = ApiClient.post(endpoints.requestCreate, { card_ids: ids });
-        }
-
-        inlineSaveInFlight = true;
-        if (confirmSubmitBtn) {
-            confirmSubmitBtn.disabled = true;
-            confirmSubmitBtn.textContent = 'Saving...';
-        }
-
-        submitPromise
+        ApiClient.post(endpoints.requestCreate, { card_ids: ids })
             .then(function(data) {
                 if (data && data.status === 'ok') {
                     if (typeof showToast === 'function') showToast(data.message || 'Successfully sent for reprint', 'success');
                     selectedIds.clear();
                     closeConfirm();
                     fetchList(lastQuery);
-                    refreshReprintStepCounts();
                 } else {
                     if (typeof showToast === 'function') showToast((data && data.message) || 'Could not create reprint request', 'error');
                 }
             })
             .catch(function() {
                 if (typeof showToast === 'function') showToast('Could not create reprint request', 'error');
-            })
-            .finally(function() {
-                inlineSaveInFlight = false;
-                if (confirmSubmitBtn) {
-                    confirmSubmitBtn.disabled = false;
-                    confirmSubmitBtn.textContent = inlineEditMode ? 'Save and Request' : 'Next Without Edit';
-                }
             });
     }
 
@@ -793,10 +662,8 @@ function initReprintPickerHandlers() {
     confirmClose.addEventListener('click', closeConfirm);
     confirmCancel.addEventListener('click', closeConfirm);
     confirmModal.addEventListener('click', function(e) {
-        if (e.target === confirmModal) closeConfirm();
+        if (e.target === confirmModal && !confirmEditing) closeConfirm();
     });
-
-    maybeAutoOpenFromQuery();
 
     if (confirmSubmitBtn) {
         confirmSubmitBtn.addEventListener('click', function(e) {
@@ -814,19 +681,56 @@ function initReprintPickerHandlers() {
                 if (typeof showToast === 'function') showToast('Select one card to edit', 'warning');
                 return;
             }
-            setInlineEditMode(!inlineEditMode);
+            var cardId = pendingEditIds[0];
+            confirmEditingCardId = cardId;
+            setConfirmEditingState(true);
+            if (typeof window.IDCardApp.fetchCardAndOpenModal === 'function') {
+                window.IDCardApp.fetchCardAndOpenModal('edit', cardId);
+            } else {
+                setConfirmEditingState(false);
+            }
         });
     }
 
-    if (confirmPreview) {
-        confirmPreview.addEventListener('input', function(e) {
-            if (!inlineEditMode) return;
-            if (!e.target.classList.contains('reprint-preview-input')) return;
-            recomputeInlineDirtyState();
+    var sideModalOverlay = document.getElementById('sideModalOverlay');
+    if (sideModalOverlay) {
+        var sideModalObserver = new MutationObserver(function() {
+            if (!confirmEditing) return;
+            var stillOpen = sideModalOverlay.classList.contains('active');
+            if (!stillOpen) {
+                setConfirmEditingState(false);
+                if (confirmModal) confirmModal.style.display = 'flex';
+            }
         });
+        sideModalObserver.observe(sideModalOverlay, { attributes: true, attributeFilter: ['class'] });
     }
 
-    refreshReprintStepCounts();
+    document.addEventListener('idcard:card-updated', function(e) {
+        var detail = e && e.detail ? e.detail : {};
+        var updatedId = Number(detail.cardId);
+        if (!Number.isFinite(updatedId)) return;
+        if (pendingEditIds.length !== 1 || pendingEditIds[0] !== updatedId) return;
+
+        fetchList(lastQuery);
+        var updatedCard = detail.card || null;
+        var previewItem = null;
+        var previewText = '';
+        if (updatedCard && Array.isArray(updatedCard.ordered_fields)) {
+            previewText = 'Preview: ' + getStudentName(updatedCard) + ' | Class ' + getClassName(updatedCard) + ' | Section ' + getSectionName(updatedCard);
+            previewItem = updatedCard;
+        } else {
+            previewText = formatPreviewText(updatedId);
+            previewItem = getCardById(updatedId);
+        }
+        if (pickerPreview) {
+            pickerPreview.textContent = previewText || 'Card updated successfully. Please confirm reprint.';
+            pickerPreview.style.display = 'block';
+        }
+        renderConfirmPreview(previewItem);
+        setConfirmEditingState(false);
+        confirmEditingCardId = null;
+        confirmModal.style.display = 'flex';
+    });
 
     window.addEventListener('resize', function() {
         if (!pickerModal || pickerModal.style.display !== 'flex') return;

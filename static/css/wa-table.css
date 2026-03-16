@@ -80,10 +80,10 @@
 }
 .wa-table tbody tr {
     border-bottom: 1px solid var(--wa-gray-100);
-    transition: background 0.12s ease;
+    transition: background 0.12s ease, box-shadow 0.12s ease;
 }
 .wa-table tbody tr:last-child { border-bottom: none; }
-.wa-table tbody tr:hover { background: rgba(102,126,234,0.035); }
+.wa-table tbody tr:hover { background: rgba(102,126,234,0.035); box-shadow: inset 3px 0 0 var(--wa-primary); }
 .wa-table tbody td {
     padding: 13px 16px;
     color: var(--wa-gray-700);
@@ -176,19 +176,6 @@
     flex-wrap: wrap;
     gap: 4px;
     margin-top: 2px;
-}
-.wa-cell-icon-note {
-    color: var(--wa-blue);
-}
-.wa-cell-dash {
-    color: var(--wa-gray-400);
-    font-size: 12px;
-}
-.wa-thumb-clickable {
-    cursor: zoom-in;
-}
-.wa-featured-note {
-    color: var(--wa-yellow);
 }
 
 /* ===== AVATAR CELL ===== */
@@ -319,11 +306,15 @@
     background: #eff6ff;
     border-color: var(--wa-blue);
     color: var(--wa-blue);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(59,130,246,0.18);
 }
 .btn-icon.danger:hover {
     background: var(--wa-red-bg);
     border-color: var(--wa-red);
     color: var(--wa-red);
+    box-shadow: 0 2px 8px rgba(239,68,68,0.18);
+    transform: translateY(-1px);
 }
 
 /* ===== REVIEW STARS ===== */

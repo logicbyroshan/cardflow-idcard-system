@@ -544,10 +544,7 @@ async function postJsonForBlob(url, body) {
   }
 })();
 
-
 (function requestListStep() {
-  // Back button logic
-  wireBackButton('requestListBackBtn', '/active-clients/');
   var tableBody = document.getElementById('requestTableBody');
   if (!tableBody) return;
 
@@ -560,16 +557,9 @@ async function postJsonForBlob(url, body) {
   var downloadXlsxBtn = document.getElementById('requestDownloadXlsxBtn');
   var downloadImagesBtn = document.getElementById('requestDownloadImagesBtn');
   var rejectBtn = document.getElementById('requestRejectBtn');
-  var editBtn = document.getElementById('requestEditBtn');
   var viewBtn = document.getElementById('requestViewBtn');
-  var fromDateInput = document.getElementById('requestFromDate');
-  var toDateInput = document.getElementById('requestToDate');
-  var clearDateFilterBtn = document.getElementById('requestClearDateFilterBtn');
   var showingRange = document.getElementById('requestShowingRange');
   var totalCountEl = document.getElementById('requestTotalCount');
-  var currentQuery = '';
-  var requestFromFlatpickr = null;
-  var requestToFlatpickr = null;
 
   var paginator = createPaginator({
     barId: 'requestPaginationBar',
@@ -621,7 +611,6 @@ async function postJsonForBlob(url, body) {
     if (downloadXlsxBtn) downloadXlsxBtn.disabled = totalRows === 0;
     if (downloadImagesBtn) downloadImagesBtn.disabled = totalRows === 0;
     if (rejectBtn) rejectBtn.disabled = count === 0;
-    if (editBtn) editBtn.disabled = count !== 1;
     if (viewBtn) viewBtn.disabled = count !== 1;
     if (paginator) paginator.updateSelectionCount(count);
 
@@ -647,15 +636,6 @@ async function postJsonForBlob(url, body) {
   });
 
   tableBody.addEventListener('click', async function(e) {
-    var editSingle = e.target.closest('.btn-request-edit-single');
-    if (editSingle && IS_ADMIN_CONTEXT) {
-      var editCardId = parseInt(editSingle.dataset.cardId, 10);
-      if (editCardId && typeof fetchCardAndOpenModal === 'function') {
-        fetchCardAndOpenModal('edit', editCardId);
-      }
-      return;
-    }
-
     var printBtn = e.target.closest('.btn-request-print-single');
     if (printBtn && IS_ADMIN_CONTEXT) {
       var rrId = parseInt(printBtn.dataset.rrId, 10);
@@ -749,7 +729,7 @@ async function postJsonForBlob(url, body) {
         triggerBlobDownload(result.blob, result.filename || fallbackName);
       }
 
-      await performSendToPrint(rrIds, {
+      performSendToPrint(rrIds, {
         successMessage: 'Downloaded and moved to Confirmed List'
       });
     } catch (err) {
@@ -814,15 +794,6 @@ async function postJsonForBlob(url, body) {
     });
   }
 
-  if (editBtn) {
-    editBtn.addEventListener('click', function() {
-      if (!IS_ADMIN_CONTEXT) return;
-      var ids = getSelectedCardIds();
-      if (ids.length !== 1) return;
-      if (typeof fetchCardAndOpenModal === 'function') fetchCardAndOpenModal('edit', ids[0]);
-    });
-  }
-
   function removeRowsByIds(rrIds) {
     rrIds.forEach(function(id) {
       var row = tableBody.querySelector('tr[data-rr-id="' + id + '"]');
@@ -842,22 +813,20 @@ async function postJsonForBlob(url, body) {
 
   function performSendToPrint(rrIds, opts) {
     opts = opts || {};
-    return ApiClient.post(ENDPOINTS.sendToPrint, { rr_ids: rrIds })
+    ApiClient.post(ENDPOINTS.sendToPrint, { rr_ids: rrIds })
       .then(function(data) {
         if (data.status !== 'ok') {
           showToast(data.message || 'Could not print selected requests', 'error');
-          throw new Error(data.message || 'Could not print selected requests');
+          return;
         }
         var successMsg = opts.successMessage || data.message || 'Printed and moved to Confirmed List';
         if (!opts.silentToast) showToast(successMsg, 'success');
         removeRowsByIds(rrIds);
         refreshStepCounts();
-        return data;
       })
       .catch(function(err) {
         showToast('Request failed. Please try again.', 'error');
         console.error('[RequestList] send-to-print failed:', err);
-        throw err;
       });
   }
 
@@ -897,58 +866,8 @@ async function postJsonForBlob(url, body) {
     searchClearBtn.style.display = searchInput && searchInput.value ? '' : 'none';
   }
 
-
-  function initRequestDateFilter() {
-    if (!fromDateInput || !toDateInput || typeof flatpickr === 'undefined') return;
-    var fpConfig = {
-      enableTime: true,
-      dateFormat: 'Y-m-d H:i',
-      time_24hr: true,
-      minuteIncrement: 1,
-      allowInput: false,
-      onChange: function() {
-        setTimeout(function() { fetchItems(currentQuery); }, 40);
-      },
-      onClose: function(_selected, _dateStr, instance) {
-        if (!instance || !instance.calendarContainer) return;
-        var timeInputs = instance.calendarContainer.querySelectorAll('.flatpickr-time input');
-        timeInputs.forEach(function(inp) {
-          inp.addEventListener('change', function() {
-            setTimeout(function() { fetchItems(currentQuery); }, 40);
-          }, { once: true });
-        });
-      }
-    };
-    requestFromFlatpickr = flatpickr(fromDateInput, fpConfig);
-    requestToFlatpickr = flatpickr(toDateInput, fpConfig);
-    // Always show date filter
-    fromDateInput.parentElement.style.display = '';
-    toDateInput.parentElement.style.display = '';
-  }
-
-  initRequestDateFilter();
-
-  if (clearDateFilterBtn) {
-    clearDateFilterBtn.addEventListener('click', function() {
-      if (requestFromFlatpickr) requestFromFlatpickr.clear();
-      if (requestToFlatpickr) requestToFlatpickr.clear();
-      if (fromDateInput) fromDateInput.value = '';
-      if (toDateInput) toDateInput.value = '';
-      fetchItems(currentQuery);
-    });
-  }
-
   function fetchItems(query) {
-    currentQuery = query || '';
-    var url = ENDPOINTS.requestList + '?q=' + encodeURIComponent(currentQuery) + '&limit=200';
-    if (fromDateInput && fromDateInput.value) {
-      url += '&from=' + encodeURIComponent(fromDateInput.value);
-    }
-    if (toDateInput && toDateInput.value) {
-      url += '&to=' + encodeURIComponent(toDateInput.value);
-    }
-
-    ApiClient.get(url)
+    ApiClient.get(ENDPOINTS.requestList + '?q=' + encodeURIComponent(query || '') + '&limit=200')
       .then(function(data) {
         if (data.status !== 'ok') return;
         renderItems(data.items || [], data.total || 0);
@@ -976,7 +895,6 @@ async function postJsonForBlob(url, body) {
       html += '<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">' + escapeHtml(item.requested_at || '-') + '</td>';
       html += '<td class="w-[100px] px-[1px] py-1 text-center align-middle action-cell"><div class="confirm-action-btns">';
       if (IS_ADMIN_CONTEXT) {
-        html += '<button class="btn-request-edit-single" data-card-id="' + item.card_id + '" title="Edit"><i class="fa-solid fa-pen"></i></button>';
         html += '<button class="btn-request-print-single" data-rr-id="' + item.rr_id + '" title="Send to Print List"><i class="fa-solid fa-print"></i> <span>Print</span></button>';
         html += '<button class="btn-request-reject-single" data-rr-id="' + item.rr_id + '" title="Reject"><i class="fa-solid fa-xmark"></i></button>';
       }
@@ -995,10 +913,7 @@ async function postJsonForBlob(url, body) {
   updateSelectionUI();
 })();
 
-
 (function confirmedListStep() {
-  // Back button logic
-  wireBackButton('confirmedListBackBtn', '/active-clients/');
   var tableBody = document.getElementById('confirmedTableBody');
   if (!tableBody) return;
 
@@ -1007,18 +922,16 @@ async function postJsonForBlob(url, body) {
   var searchClearBtn = document.getElementById('confirmedSearchClearBtn');
   var fromDateInput = document.getElementById('confirmedFromDate');
   var toDateInput = document.getElementById('confirmedToDate');
+  var applyDateFilterBtn = document.getElementById('confirmedApplyDateFilterBtn');
   var clearDateFilterBtn = document.getElementById('confirmedClearDateFilterBtn');
   var downloadPdfBtn = document.getElementById('confirmedDownloadPdfBtn');
   var downloadDocxBtn = document.getElementById('confirmedDownloadDocxBtn');
   var downloadXlsxBtn = document.getElementById('confirmedDownloadXlsxBtn');
   var downloadImagesBtn = document.getElementById('confirmedDownloadImagesBtn');
-  var editBtn = document.getElementById('confirmedEditBtn');
   var viewBtn = document.getElementById('confirmedViewBtn');
   var showingRange = document.getElementById('confirmedShowingRange');
   var totalCountEl = document.getElementById('confirmedTotalCount');
   var currentQuery = '';
-  var confirmedFromFlatpickr = null;
-  var confirmedToFlatpickr = null;
 
   var paginator = createPaginator({
     barId: 'confirmedPaginationBar',
@@ -1054,7 +967,6 @@ async function postJsonForBlob(url, body) {
     if (downloadDocxBtn) downloadDocxBtn.disabled = totalRows === 0;
     if (downloadXlsxBtn) downloadXlsxBtn.disabled = totalRows === 0;
     if (downloadImagesBtn) downloadImagesBtn.disabled = totalRows === 0;
-    if (editBtn) editBtn.disabled = count !== 1;
     if (paginator) paginator.updateSelectionCount(count);
 
     if (selectAllCb) {
@@ -1078,29 +990,11 @@ async function postJsonForBlob(url, body) {
     if (e.target.classList.contains('confirmedRowCheckbox')) updateSelectionUI();
   });
 
-  tableBody.addEventListener('click', function(e) {
-    var editSingle = e.target.closest('.btn-confirmed-edit-single');
-    if (!editSingle || !IS_ADMIN_CONTEXT) return;
-    var cardId = parseInt(editSingle.dataset.cardId, 10);
-    if (cardId && typeof fetchCardAndOpenModal === 'function') {
-      fetchCardAndOpenModal('edit', cardId);
-    }
-  });
-
   if (viewBtn) {
     viewBtn.addEventListener('click', function() {
       var ids = getSelectedCardIds();
       if (ids.length !== 1) return;
       if (typeof fetchCardAndOpenModal === 'function') fetchCardAndOpenModal('view', ids[0]);
-    });
-  }
-
-  if (editBtn) {
-    editBtn.addEventListener('click', function() {
-      if (!IS_ADMIN_CONTEXT) return;
-      var ids = getSelectedCardIds();
-      if (ids.length !== 1) return;
-      if (typeof fetchCardAndOpenModal === 'function') fetchCardAndOpenModal('edit', ids[0]);
     });
   }
 
@@ -1123,37 +1017,14 @@ async function postJsonForBlob(url, body) {
     searchClearBtn.style.display = searchInput && searchInput.value ? '' : 'none';
   }
 
-  function initConfirmedDateFilter() {
-    if (!fromDateInput || !toDateInput || typeof flatpickr === 'undefined') return;
-    var fpConfig = {
-      enableTime: true,
-      dateFormat: 'Y-m-d H:i',
-      time_24hr: true,
-      minuteIncrement: 1,
-      allowInput: false,
-      onChange: function() {
-        setTimeout(function() { fetchItems(currentQuery); }, 40);
-      },
-      onClose: function(_selected, _dateStr, instance) {
-        if (!instance || !instance.calendarContainer) return;
-        var timeInputs = instance.calendarContainer.querySelectorAll('.flatpickr-time input');
-        timeInputs.forEach(function(inp) {
-          inp.addEventListener('change', function() {
-            setTimeout(function() { fetchItems(currentQuery); }, 40);
-          }, { once: true });
-        });
-      }
-    };
-    confirmedFromFlatpickr = flatpickr(fromDateInput, fpConfig);
-    confirmedToFlatpickr = flatpickr(toDateInput, fpConfig);
+  if (applyDateFilterBtn) {
+    applyDateFilterBtn.addEventListener('click', function() {
+      fetchItems(currentQuery);
+    });
   }
-
-  initConfirmedDateFilter();
 
   if (clearDateFilterBtn) {
     clearDateFilterBtn.addEventListener('click', function() {
-      if (confirmedFromFlatpickr) confirmedFromFlatpickr.clear();
-      if (confirmedToFlatpickr) confirmedToFlatpickr.clear();
       if (fromDateInput) fromDateInput.value = '';
       if (toDateInput) toDateInput.value = '';
       fetchItems(currentQuery);
@@ -1272,9 +1143,6 @@ async function postJsonForBlob(url, body) {
       html += '<td class="min-w-[80px] px-[1px] py-1 align-middle reason-cell whitespace-normal break-words text-left">' + escapeHtml(item.reason || '-') + '</td>';
       html += '<td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center">' + escapeHtml(item.requested_by_name || '-') + '</td>';
       html += '<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">' + escapeHtml(item.confirmed_at || '-') + '</td>';
-      if (IS_ADMIN_CONTEXT) {
-        html += '<td class="w-[60px] px-[1px] py-1 text-center align-middle action-cell"><button class="btn-confirmed-edit-single" data-card-id="' + item.card_id + '" title="Edit"><i class="fa-solid fa-pen"></i></button></td>';
-      }
       html += '<td class="w-[65px] px-[1px] py-1 align-middle text-center"><span class="status-badge status-' + (item.status || 'pending') + '">' + escapeHtml(item.status_display || '-') + '</span></td>';
       html += '</tr>';
     });

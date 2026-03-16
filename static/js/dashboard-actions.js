@@ -526,7 +526,6 @@ document.addEventListener('DOMContentLoaded', function() {
     function loadPrintReprintOverview() {
         const printBody = document.getElementById('printOverviewBody');
         const reprintBody = document.getElementById('reprintOverviewBody');
-        const reprintTotalBadge = document.getElementById('reprintOverviewTotalRequested');
         if (!printBody && !reprintBody) return;
 
         const esc = typeof escapeHtml === 'function' ? escapeHtml : (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -572,9 +571,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 //  Render Reprint table 
                 if (reprintBody) {
                     const clients = data.reprint_clients || [];
-                    if (reprintTotalBadge) {
-                        reprintTotalBadge.textContent = String(data.reprint_total_requested || 0);
-                    }
                     if (clients.length > 0) {
                         reprintBody.innerHTML = clients.map((client, i) => {
                             const tables = client.tables || [];
@@ -588,7 +584,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                     </td>
                                     <td class="text-center"><a href="/reprint/table/${t.id}/?step=request_list" class="count-badge pending">${t.requested}</a></td>
                                     <td class="text-center"><a href="/reprint/table/${t.id}/?step=confirmed" class="count-badge verified">${t.confirmed}</a></td>
-                                    <td class="text-center"><a href="/table/${t.id}/cards/?status=download&open_reprint_modal=1" class="count-badge" style="background:#dbeafe;color:#1d4ed8;">Request Modal</a></td>
                                 </tr>
                             `).join('');
                             return `
@@ -598,13 +593,12 @@ document.addEventListener('DOMContentLoaded', function() {
                                     </td>
                                     <td class="text-center"><span class="count-badge pending">${client.requested}</span></td>
                                     <td class="text-center"><span class="count-badge verified">${client.confirmed}</span></td>
-                                    <td class="text-center">-</td>
                                 </tr>
                                 ${subRows}
                             `;
                         }).join('');
                     } else {
-                        reprintBody.innerHTML = `<tr><td colspan="4" class="text-center" style="padding:40px;color:#888;"><i class="fa-solid fa-inbox"></i> No reprint records</td></tr>`;
+                        reprintBody.innerHTML = `<tr><td colspan="3" class="text-center" style="padding:40px;color:#888;"><i class="fa-solid fa-inbox"></i> No reprint records</td></tr>`;
                     }
                 }
             })
@@ -612,7 +606,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Error loading print/reprint overview:', err);
                 const errHtml = (cols) => `<tr><td colspan="${cols}" class="text-center" style="padding:40px;color:#dc2626;"><i class="fa-solid fa-exclamation-triangle"></i> Error loading data</td></tr>`;
                 if (printBody)   printBody.innerHTML = errHtml(3);
-                if (reprintBody) reprintBody.innerHTML = errHtml(4);
+                if (reprintBody) reprintBody.innerHTML = errHtml(3);
             });
     }
 

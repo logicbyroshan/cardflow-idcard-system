@@ -9,11 +9,6 @@ document.addEventListener('DOMContentLoaded', function () {
     var allSections = [];
     var allBranches = [];
     var classSectionMap = {};
-    var fieldCapabilities = {
-        hasClass: false,
-        hasSection: false,
-        hasBranch: false,
-    };
     var selectedClasses = new Set();
     var selectedSections = new Set();
     var selectedBranches = new Set();
@@ -105,9 +100,6 @@ document.addEventListener('DOMContentLoaded', function () {
         allSections = data.sections || [];
         allBranches = data.branches || [];
         classSectionMap = data.class_sections || {};
-        fieldCapabilities.hasClass = data.has_class_field === true || allClasses.length > 0;
-        fieldCapabilities.hasSection = data.has_section_field === true || allSections.length > 0;
-        fieldCapabilities.hasBranch = data.has_branch_field === true || allBranches.length > 0;
     }
 
     async function fetchClassSectionOptions(groupIds) {
@@ -148,51 +140,11 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function _pruneSectionsBySelectedClasses(sectionSet, classSet) {
-        if (!fieldCapabilities.hasClass) return;
         if (!sectionSet || !classSet || classSet.size === 0) return;
         var allowed = new Set(_getSectionsForSelectedClasses(classSet));
         Array.from(sectionSet).forEach(function (sec) {
             if (!allowed.has(sec)) sectionSet.delete(sec);
         });
-    }
-
-    function updateDrawerFilterVisibility() {
-        var filterSection = document.getElementById('class-section-filter-section');
-        var classGroup = document.getElementById('class-filter-group');
-        var sectionGroup = document.getElementById('section-filter-group');
-        var branchRow = document.getElementById('branch-filter-row');
-
-        var showClass = fieldCapabilities.hasClass;
-        var showSection = fieldCapabilities.hasSection;
-        var showBranch = fieldCapabilities.hasBranch;
-        var showAny = showClass || showSection || showBranch;
-
-        if (!showClass) selectedClasses.clear();
-        if (!showSection) selectedSections.clear();
-        if (!showBranch) selectedBranches.clear();
-
-        if (filterSection) filterSection.style.display = showAny ? '' : 'none';
-        if (classGroup) classGroup.style.display = showClass ? '' : 'none';
-        if (sectionGroup) sectionGroup.style.display = showSection ? '' : 'none';
-        if (branchRow) branchRow.style.display = showBranch ? '' : 'none';
-    }
-
-    function updateAssignFilterVisibility() {
-        var classBlock = document.getElementById('assign-class-block');
-        var sectionBlock = document.getElementById('assign-section-block');
-        var branchBlock = document.getElementById('assign-branch-block');
-
-        var showClass = fieldCapabilities.hasClass;
-        var showSection = fieldCapabilities.hasSection;
-        var showBranch = fieldCapabilities.hasBranch;
-
-        if (!showClass) assignSelectedClasses.clear();
-        if (!showSection) assignSelectedSections.clear();
-        if (!showBranch) assignSelectedBranches.clear();
-
-        if (classBlock) classBlock.style.display = showClass ? '' : 'none';
-        if (sectionBlock) sectionBlock.style.display = showSection ? '' : 'none';
-        if (branchBlock) branchBlock.style.display = showBranch ? '' : 'none';
     }
 
     function buildCsMultiselect(prefix, allItems, selectedSet, getItemsFn, onSelectionChange) {
@@ -274,8 +226,6 @@ document.addEventListener('DOMContentLoaded', function () {
         selectedSections = new Set(preSections || []);
         selectedBranches = new Set(preBranches || []);
 
-        updateDrawerFilterVisibility();
-
         _pruneSectionsBySelectedClasses(selectedSections, selectedClasses);
 
         if (!classMs) {
@@ -295,31 +245,32 @@ document.addEventListener('DOMContentLoaded', function () {
         if (classMs) { classMs.render(); classMs.updateText(); }
         if (sectionMs) { sectionMs.render(); sectionMs.updateText(); }
 
-        if (fieldCapabilities.hasBranch) {
+        // Branch: auto-show if branches exist
+        var branchRow = document.getElementById('branch-filter-row');
+        if (allBranches.length > 0) {
+            if (branchRow) branchRow.style.display = '';
             if (!branchMs) branchMs = buildCsMultiselect('branch', allBranches, selectedBranches);
             if (branchMs) { branchMs.render(); branchMs.updateText(); }
         } else {
-            selectedBranches.clear();
-            var bt = document.getElementById('branch-multiselect-text');
-            if (bt) { bt.textContent = 'All branches'; bt.classList.remove('has-selection'); }
+            if (branchRow) branchRow.style.display = 'none';
         }
     }
 
     async function refreshDrawerClassSectionByGroups(groupIds) {
         await fetchClassSectionOptions(groupIds || []);
-        updateDrawerFilterVisibility();
         _pruneSectionsBySelectedClasses(selectedSections, selectedClasses);
 
         if (classMs) { classMs.render(''); classMs.updateText(); }
         if (sectionMs) { sectionMs.render(''); sectionMs.updateText(); }
 
-        if (fieldCapabilities.hasBranch) {
+        var branchRow = document.getElementById('branch-filter-row');
+        if (allBranches.length > 0) {
+            if (branchRow) branchRow.style.display = '';
             if (!branchMs) branchMs = buildCsMultiselect('branch', allBranches, selectedBranches);
             if (branchMs) { branchMs.render(''); branchMs.updateText(); }
         } else {
+            if (branchRow) branchRow.style.display = 'none';
             selectedBranches.clear();
-            var bt = document.getElementById('branch-multiselect-text');
-            if (bt) { bt.textContent = 'All branches'; bt.classList.remove('has-selection'); }
         }
     }
 
@@ -466,19 +417,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
     async function refreshAssignClassSectionByGroups(groupIds) {
         await fetchClassSectionOptions(groupIds || []);
-        updateAssignFilterVisibility();
         _pruneSectionsBySelectedClasses(assignSelectedSections, assignSelectedClasses);
 
         if (assignClassMs) { assignClassMs.render(''); assignClassMs.updateText(); }
         if (assignSectionMs) { assignSectionMs.render(''); assignSectionMs.updateText(); }
 
-        if (fieldCapabilities.hasBranch) {
+        var branchBlock = document.getElementById('assign-branch-block');
+        if (allBranches.length > 0) {
+            if (branchBlock) branchBlock.style.display = '';
             if (!assignBranchMs) assignBranchMs = buildAssignMultiselect('branch', allBranches, assignSelectedBranches);
             if (assignBranchMs) { assignBranchMs.render(''); assignBranchMs.updateText(); }
         } else {
+            if (branchBlock) branchBlock.style.display = 'none';
             assignSelectedBranches.clear();
-            var bt = document.getElementById('assign-branch-text');
-            if (bt) { bt.textContent = 'All branches'; bt.classList.remove('has-selection'); }
         }
     }
 
@@ -520,7 +471,6 @@ document.addEventListener('DOMContentLoaded', function () {
             (data.allowed_branches || []).forEach(function (v) { assignSelectedBranches.add(v); });
 
             await fetchClassSectionOptions(Array.from(assignSelectedGroups).map(function (id) { return parseInt(id, 10); }));
-            updateAssignFilterVisibility();
 
             _pruneSectionsBySelectedClasses(assignSelectedSections, assignSelectedClasses);
 
@@ -545,14 +495,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
             }
 
-            // Branch multi-select: show only when selected group scope has branch field.
-            if (fieldCapabilities.hasBranch) {
+            // Branch multi-select: only show if branches exist (auto-detect college)
+            var branchBlock = document.getElementById('assign-branch-block');
+            if (allBranches.length > 0) {
+                if (branchBlock) branchBlock.style.display = '';
                 if (!assignBranchMs) assignBranchMs = buildAssignMultiselect('branch', allBranches, assignSelectedBranches);
                 if (assignBranchMs) { assignBranchMs.render(); assignBranchMs.updateText(); }
             } else {
-                assignSelectedBranches.clear();
-                var bt = document.getElementById('assign-branch-text');
-                if (bt) { bt.textContent = 'All branches'; bt.classList.remove('has-selection'); }
+                if (branchBlock) branchBlock.style.display = 'none';
             }
 
             // Render with current selections
