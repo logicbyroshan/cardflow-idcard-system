@@ -81,7 +81,7 @@
             <p class="text-[13px] font-semibold text-gray-500" x-text="searchQuery ? 'No staff matching your search' : 'No staff members yet'"></p>
             {% if is_client or is_super_admin or is_admin_staff %}
             <button @click="openAddForm()" class="mt-4 px-4 py-2.5 text-xs font-semibold text-white bg-gradient-to-r from-brand-light to-brand-dark rounded-xl shadow active:scale-95 transition-all">
-                <i class="fa-solid fa-plus mr-1"></i>Add Staff
+                <i class="fa-solid fa-plus mr-1"></i>Manage Staff
             </button>
             {% endif %}
         </div>
@@ -101,7 +101,7 @@
                          :class="editMode ? 'bg-amber-500' : 'bg-gradient-to-br from-brand-light to-brand-dark'">
                         <i class="text-white text-xs" :class="editMode ? 'fa-solid fa-pen' : 'fa-solid fa-plus'"></i>
                     </div>
-                    <h3 class="text-sm font-bold text-gray-800" x-text="editMode ? 'Edit Staff' : 'Add New Staff'"></h3>
+                    <h3 class="text-sm font-bold text-gray-800" x-text="editMode ? 'Edit Staff' : 'Manage Staff'"></h3>
                 </div>
                 <button @click="closeForm()" class="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 active:bg-gray-200 transition-colors">
                     <i class="fa-solid fa-xmark text-sm"></i>
@@ -166,7 +166,7 @@
                         class="flex-[2] py-3 text-xs font-semibold text-white rounded-xl shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
                         :class="editMode ? 'bg-amber-500' : 'bg-gradient-to-r from-brand-light to-brand-dark'">
                         <i class="fa-solid fa-spinner fa-spin text-[10px]" x-show="formLoading"></i>
-                        <span x-text="editMode ? 'Update Staff' : 'Create Staff'"></span>
+                        <span x-text="editMode ? 'Update Staff' : 'Manage Staff'"></span>
                     </button>
                 </div>
             </div>

@@ -34,7 +34,7 @@
                class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl transition-all active:scale-95 flex-shrink-0
                {% if list_type == 'pending' %}bg-amber-400/90 shadow-sm{% else %}bg-white/20 hover:bg-white/30{% endif %} text-white">
                 <i class="fa-solid fa-clock text-[9px]"></i>
-                <span class="font-extrabold text-[10px]">{{ tab_counts.pending }}</span>
+                <span class="font-extrabold text-[10px]" x-text="tabCounts.pending"></span>
             </a>
             {% endif %}
             {% if perm_idcard_verified_list %}
@@ -42,7 +42,7 @@
                class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl transition-all active:scale-95 flex-shrink-0
                {% if list_type == 'verified' %}bg-green-500/80 shadow-sm{% else %}bg-white/20 hover:bg-white/30{% endif %} text-white">
                 <i class="fa-solid fa-check-circle text-[9px]"></i>
-                <span class="font-extrabold text-[10px]">{{ tab_counts.verified }}</span>
+                <span class="font-extrabold text-[10px]" x-text="tabCounts.verified"></span>
             </a>
             {% endif %}
         </div>

@@ -182,7 +182,7 @@
 
         setLoading(true);
         try {
-            var resp = await fetch('/panel/auth/api/auth/login/', {
+            var resp = await fetch('/app/api/auth/login/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -196,6 +196,10 @@
                 // Always land in the mobile app after login
                 window.location.href = '/app/';
             } else {
+                if (data.no_mobile_access) {
+                    window.location.href = '/app/no-access/';
+                    return;
+                }
                 showError(data.message || 'Invalid email or password.');
                 setLoading(false);
             }

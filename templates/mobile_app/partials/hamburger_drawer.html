@@ -122,28 +122,28 @@
                 <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Quick Actions</p>
                 <div class="flex flex-col gap-2.5">
 
-                    {% if is_super_admin or is_admin_staff %}
-                    <!-- Add Client  -  opens desktop panel in new tab to keep PWA shell intact (H4 fix) -->
-                    <a href="/panel/manage-clients/"
-                       target="_blank" rel="noopener noreferrer"
+                      {% if is_super_admin or is_admin_staff %}
+                          <!-- Manage Client -->
+                          <a href="{% url 'mobile_app:clients_list' %}?action=add"
                        @click="close()"
                        class="flex items-center gap-3 px-4 py-3.5 rounded-xl font-semibold text-[13px] text-white shadow-md active:opacity-90 transition-opacity"
                        style="background:linear-gradient(135deg,#3b82f6,#2563eb);">
                         <i class="fa-solid fa-building-circle-arrow-right text-base flex-shrink-0"></i>
-                        <span>Add Client</span>
+                        <span>Manage Client</span>
                         <i class="fa-solid fa-chevron-right text-white/60 text-xs ml-auto"></i>
                     </a>
                     {% endif %}
 
-                    <!-- Add Staff -->
+                    {% if is_client %}
                     <a href="{% url 'mobile_app:staff_manage' %}"
                        @click="close()"
                        class="flex items-center gap-3 px-4 py-3.5 rounded-xl font-semibold text-[13px] text-white shadow-md active:opacity-90 transition-opacity"
                        style="background:linear-gradient(135deg,#10b981,#059669);">
-                        <i class="fa-solid fa-user-plus text-base flex-shrink-0"></i>
-                        <span>Add Staff</span>
+                        <i class="fa-solid fa-user-gear text-base flex-shrink-0"></i>
+                        <span>Manage Staff</span>
                         <i class="fa-solid fa-chevron-right text-white/60 text-xs ml-auto"></i>
                     </a>
+                    {% endif %}
 
                 </div>
             </div>

@@ -11,6 +11,7 @@ No new backend logic — delegates entirely to existing services.
 import json
 import re
 import logging
+import time
 from functools import wraps
 
 from django.shortcuts import render, redirect, get_object_or_404
@@ -30,13 +31,17 @@ from client.services import (
     ClientImageService,
     ClientStaffService,
 )
+from client.services_client_core import ClientService
 from core.services.permission_service import PermissionService
 from idcards.models import IDCardTable, IDCard, IDCardGroup
 from mediafiles.utils import get_card_photo_url
 from staff.models import Staff
 from accounts.rate_limit import rate_limit
+from accounts.services import AuthService
+from core.services.activity_service import ActivityService
 
 logger = logging.getLogger(__name__)
+APP_BOOT_TS = time.time()
 
 
 # ---------------------------------------------------------------------------
@@ -168,8 +173,76 @@ def mobile_login(request):
     the existing /panel/auth/api/auth/login/ endpoint.
     """
     if request.user.is_authenticated:
+        user = request.user
+        valid_roles = ('pro_user', 'super_admin', 'admin_staff', 'client', 'client_staff')
+        if not hasattr(user, 'role') or user.role not in valid_roles:
+            return redirect('/panel/auth/logout/?next=/app/login/')
+        if not PermissionService.has(user, 'perm_mobile_app'):
+            return render(request, 'mobile_app/no_access.html', {
+                'user_name': user.get_full_name() or user.username,
+            }, status=403)
         return redirect('/app/')
     return render(request, 'mobile_app/login.html')
+
+
+@ensure_csrf_cookie
+def mobile_no_access(request):
+    """Show explicit mobile permission-required page."""
+    user = request.user if request.user.is_authenticated else None
+    return render(request, 'mobile_app/no_access.html', {
+        'user_name': (user.get_full_name() or user.username) if user else '',
+    }, status=403)
+
+
+@require_mobile_client
+def desktop_required(request):
+    """Inform users that this action/list is only available on desktop panel."""
+    status = (request.GET.get('status') or '').strip().lower()
+    return render(request, 'mobile_app/desktop_required.html', {
+        'status': status,
+        'status_display': status.replace('_', ' ').title() if status else 'This List',
+    })
+
+
+@require_http_methods(["POST"])
+@rate_limit(max_requests=6, window_seconds=60, key_prefix='mob_login')
+def api_mobile_login(request):
+    """Mobile-only login: authenticate + enforce perm_mobile_app before session login."""
+    identifier = None
+    try:
+        data = json.loads(request.body or '{}')
+        identifier = (data.get('email') or '').strip()
+        password = data.get('password', '')
+        role = data.get('role')
+
+        if not identifier or not password:
+            return JsonResponse({'success': False, 'message': 'Email and password are required.'}, status=400)
+
+        result = AuthService.authenticate_user(identifier, password, role)
+        if not result.get('success'):
+            return JsonResponse({'success': False, 'message': result.get('message', 'Invalid credentials.')}, status=400)
+
+        user = result.get('user')
+        valid_roles = ('pro_user', 'super_admin', 'admin_staff', 'client', 'client_staff')
+        if not user or getattr(user, 'role', '') not in valid_roles:
+            return JsonResponse({'success': False, 'message': 'This account cannot access the mobile app.'}, status=403)
+
+        if not PermissionService.has(user, 'perm_mobile_app'):
+            return JsonResponse({
+                'success': False,
+                'no_mobile_access': True,
+                'message': 'Mobile app access is disabled for your account. Please contact admin/owner.',
+            }, status=403)
+
+        auth_login(request, user)
+        request.session['selected_role'] = role
+        ActivityService.log_login(request, user)
+        return JsonResponse({'success': True, 'redirect_url': '/app/', 'message': 'Login successful'})
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)
+    except Exception:
+        logger.exception('Mobile login error for user=%s', identifier or 'unknown')
+        return JsonResponse({'success': False, 'message': 'An unexpected error occurred. Please try again.'}, status=500)
 
 
 def pwa_manifest(request):
@@ -311,7 +384,7 @@ def home(request):
         if _admin_counts is None:
             _admin_counts = {
                 'admin_client_count': scoped_clients.count(),
-                'admin_staff_count': Staff.objects.count(),
+                'admin_staff_count': Staff.objects.filter(staff_type='admin_staff').count(),
                 'admin_table_count': scoped_tables.count(),
                 'admin_total_cards': scoped_cards.count(),
             }
@@ -549,6 +622,7 @@ def clients_list(request):
         'clients': client_data,
         'clients_json': client_data,
         'client_count': len(client_data),
+        'can_manage_clients': PermissionService.is_super_admin(user),
         **perms,
     })
 
@@ -690,6 +764,54 @@ def card_list(request, table_id, status):
             allowed_classes = staff.allowed_classes or []
             allowed_sections = staff.allowed_sections or []
 
+    table_fields = table.fields if hasattr(table, 'fields') and table.fields else []
+
+    def _build_display_fields(fd, table_field_defs):
+        """Build ordered key/value pairs for mobile card view based on table field order."""
+        excluded = {'name', 'class', 'section', 'designation'}
+        by_lower = {}
+        for key, val in (fd or {}).items():
+            if key is None:
+                continue
+            key_str = str(key)
+            lower = key_str.strip().lower()
+            if lower not in by_lower:
+                by_lower[lower] = (key_str, val)
+
+        ordered = []
+        used = set()
+        for f in table_field_defs or []:
+            name = str(f.get('name', '')).strip()
+            if not name:
+                continue
+            lower = name.lower()
+            if lower in used:
+                continue
+            item = by_lower.get(lower)
+            if not item:
+                continue
+            key_str, val = item
+            if not val:
+                continue
+            if lower in excluded or 'photo' in lower or 'image' in lower:
+                continue
+            ordered.append({'key': key_str, 'value': val})
+            used.add(lower)
+
+        for key, val in (fd or {}).items():
+            if not val:
+                continue
+            key_str = str(key)
+            lower = key_str.strip().lower()
+            if lower in used:
+                continue
+            if lower in excluded or 'photo' in lower or 'image' in lower:
+                continue
+            ordered.append({'key': key_str, 'value': val})
+            used.add(lower)
+
+        return ordered
+
     cards = []
     for idx, card in enumerate(cards_batch):
         fd = card.field_data or {}
@@ -745,6 +867,7 @@ def card_list(request, table_id, status):
             'has_photo': bool(photo_urls),
             'status': card.status,
             'field_data': fd,
+            'display_fields': _build_display_fields(fd, table_fields),
         })
 
     # Apply class/section filters for client_staff if restrictions are set
@@ -764,8 +887,6 @@ def card_list(request, table_id, status):
 
     all_classes = sorted(set(c['class_name'] for c in cards if c['class_name']))
     all_sections = sorted(set(c['section'] for c in cards if c['section']))
-    table_fields = table.fields if hasattr(table, 'fields') and table.fields else []
-
     # Count badges — single aggregate query replaces 4 separate COUNTs
     tab_counts = {'pending': 0, 'verified': 0, 'approved': 0, 'download': 0}
     for _row in IDCard.objects.filter(table=table).values('status').annotate(n=Count('id')):
@@ -1157,7 +1278,10 @@ def card_detail(request, card_id):
 
 @require_mobile_client
 def staff_manage(request):
-    """Staff management page (client role only — manages client_staff)."""
+    """Staff management page.
+
+    Client role manages client_staff; super_admin manages admin_staff.
+    """
     user = request.user
     client, perms = _client_ctx(user)
     if not client:
@@ -1167,15 +1291,20 @@ def staff_manage(request):
     if not PermissionService.is_client(user) and not PermissionService.is_super_admin(user):
         return redirect('mobile_app:home')
 
-    # For client role, use the service; super_admin can see all staff.
+    # For client role, use the service; super_admin sees admin staff only.
     staff_list = []
     if PermissionService.is_client(user):
         result = ClientStaffService.list_staff(user)
         if result.success:
             staff_list = result.data.get('staff', [])
     elif PermissionService.is_super_admin(user):
-        # Admin can see all staff
-        all_staff = Staff.objects.select_related('user').order_by('-created_at')[:200]
+        # Admin management view should only include admin_staff.
+        all_staff = (
+            Staff.objects
+            .filter(staff_type='admin_staff')
+            .select_related('user')
+            .order_by('-created_at')[:200]
+        )
         for s in all_staff:
             staff_list.append({
                 'id': s.id,
@@ -1269,7 +1398,7 @@ def settings_page(request):
             scoped_tables = scoped_tables.filter(group__client_id__in=accessible_ids)
             scoped_cards = scoped_cards.filter(table__group__client_id__in=accessible_ids)
         ctx['admin_client_count'] = scoped_clients.count()
-        ctx['admin_staff_count'] = Staff.objects.count()
+        ctx['admin_staff_count'] = Staff.objects.filter(staff_type='admin_staff').count()
         ctx['admin_table_count'] = scoped_tables.count()
         ctx['admin_total_cards'] = scoped_cards.count()
 
@@ -1451,7 +1580,12 @@ def api_staff_list(request):
             return JsonResponse({'success': True, 'data': result.data})
         return JsonResponse({'success': False, 'message': result.message}, status=400)
     elif PermissionService.is_super_admin(user):
-        all_staff = Staff.objects.select_related('user').order_by('-created_at')[:200]
+        all_staff = (
+            Staff.objects
+            .filter(staff_type='admin_staff')
+            .select_related('user')
+            .order_by('-created_at')[:200]
+        )
         staff_data = []
         for s in all_staff:
             staff_data.append({
@@ -1671,6 +1805,32 @@ def api_search(request):
     return JsonResponse({'success': True, 'data': {'results': results, 'count': len(results)}})
 
 
+@require_mobile_client
+@require_http_methods(["GET"])
+def api_server_info(request):
+    """Return lightweight server diagnostics for admin users only."""
+    user = request.user
+    if not PermissionService.is_any_admin(user):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+
+    import os
+    import platform
+    import socket
+    process_uptime_seconds = max(0, int(time.time() - APP_BOOT_TS))
+
+    data = {
+        'hostname': socket.gethostname(),
+        'platform': platform.platform(),
+        'python_version': platform.python_version(),
+        'django_version': __import__('django').get_version(),
+        'environment': 'Development' if settings.DEBUG else 'Production',
+        'process_id': os.getpid(),
+        'cwd': os.getcwd(),
+        'process_uptime_seconds': process_uptime_seconds,
+    }
+    return JsonResponse({'success': True, 'data': data})
+
+
 # ─── Client Management APIs ────────────────────────────────────────────────────
 
 @require_mobile_client
@@ -1743,6 +1903,65 @@ def api_client_tables(request, client_id):
         for t in tables_qs
     ]
     return JsonResponse({'success': True, 'tables': tables})
+
+
+@require_mobile_client
+@require_http_methods(['GET'])
+def api_client_detail(request, client_id):
+    """Fetch client details for edit form (super_admin only)."""
+    if not PermissionService.is_super_admin(request.user):
+        return JsonResponse({'success': False, 'message': 'Only super admin can edit clients'}, status=403)
+
+    result = ClientService.get(client_id, include_permissions=True)
+    if not result.success:
+        return JsonResponse({'success': False, 'message': result.message or 'Client not found'}, status=404)
+    return JsonResponse({'success': True, 'client': result.data.get('client', {})})
+
+
+@require_mobile_client
+@require_http_methods(['POST'])
+def api_client_create(request):
+    """Create a client from mobile app (super_admin only)."""
+    if not PermissionService.is_super_admin(request.user):
+        return JsonResponse({'success': False, 'message': 'Only super admin can create clients'}, status=403)
+    try:
+        data = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
+
+    result = ClientService.create(data, request=request)
+    if not result.success:
+        return JsonResponse({'success': False, 'message': result.message or 'Failed to create client'}, status=400)
+
+    client_payload = result.data.get('client', {}) if result.data else {}
+    return JsonResponse({
+        'success': True,
+        'message': result.message or 'Client created successfully',
+        'client': client_payload,
+    })
+
+
+@require_mobile_client
+@require_http_methods(['POST'])
+def api_client_update(request, client_id):
+    """Update client from mobile app (super_admin only)."""
+    if not PermissionService.is_super_admin(request.user):
+        return JsonResponse({'success': False, 'message': 'Only super admin can update clients'}, status=403)
+    try:
+        data = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
+
+    result = ClientService.update(client_id, data)
+    if not result.success:
+        return JsonResponse({'success': False, 'message': result.message or 'Failed to update client'}, status=400)
+
+    client_payload = result.data.get('client', {}) if result.data else {}
+    return JsonResponse({
+        'success': True,
+        'message': result.message or 'Client updated successfully',
+        'client': client_payload,
+    })
 
 
 # ---------------------------------------------------------------------------

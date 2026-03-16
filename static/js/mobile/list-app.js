@@ -39,6 +39,8 @@ function listApp() {
         hasMore: typeof HAS_MORE !== 'undefined' ? HAS_MORE : false,
         loadMoreOffset: typeof STUDENTS_DATA !== 'undefined' ? STUDENTS_DATA.length : 0,
         visibleCount: typeof STUDENTS_DATA !== 'undefined' ? STUDENTS_DATA.length : 0,
+        tableFields: Array.isArray(TABLE_FIELDS) ? TABLE_FIELDS : [],
+        tabCounts: TAB_COUNTS || { pending: 0, verified: 0, approved: 0, download: 0 },
         form: {
             name: '', fatherName: '', motherName: '', rollNo: '', dob: '',
             className: '', section: '', phone: '', address: '',
@@ -59,6 +61,42 @@ function listApp() {
                     });
                 }
             }
+
+            // Deep-link support from search page: ?focus_card=<id>
+            const params = new URLSearchParams(window.location.search || '');
+            const focusCardId = parseInt(params.get('focus_card') || '', 10);
+            if (focusCardId) {
+                this.$nextTick(() => {
+                    this.focusCardById(focusCardId);
+                });
+            }
+        },
+
+        async focusCardById(cardId) {
+            const maxBatches = 25;
+            let attempts = 0;
+
+            const findCardEl = () => document.querySelector('[data-sid="' + cardId + '"]');
+
+            let target = findCardEl();
+            while (!target && this.hasMore && attempts < maxBatches) {
+                // Keep fetching more rows until target card is rendered.
+                await this.loadMore();
+                attempts += 1;
+                target = findCardEl();
+            }
+
+            if (!target) {
+                this.showToast('Searched card not found in this list', 'error');
+                return;
+            }
+
+            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            target.classList.add('ring-2', 'ring-brand-light', 'ring-offset-2', 'bg-amber-50');
+            setTimeout(() => {
+                target.classList.remove('ring-2', 'ring-brand-light', 'ring-offset-2', 'bg-amber-50');
+            }, 3500);
         },
 
         toggleSelectAll() {
@@ -227,6 +265,67 @@ function listApp() {
             return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
         },
 
+        _normalizeFieldName(name) {
+            return String(name || '').trim().toLowerCase();
+        },
+
+        _isExcludedField(name) {
+            const n = this._normalizeFieldName(name);
+            if (!n) return true;
+            if (n.includes('photo') || n.includes('image')) return true;
+            return ['name', 'class', 'section', 'designation'].includes(n);
+        },
+
+        _buildDisplayFieldsFromData(fd) {
+            const source = fd || {};
+            const byLower = {};
+            Object.entries(source).forEach(([k, v]) => {
+                const lower = this._normalizeFieldName(k);
+                if (!lower || byLower[lower]) return;
+                byLower[lower] = { key: k, value: v };
+            });
+
+            const ordered = [];
+            const used = new Set();
+
+            (this.tableFields || []).forEach((f) => {
+                const lower = this._normalizeFieldName(f?.name);
+                if (!lower || used.has(lower) || this._isExcludedField(lower)) return;
+                const item = byLower[lower];
+                if (!item || !item.value) return;
+                ordered.push(item);
+                used.add(lower);
+            });
+
+            Object.entries(source).forEach(([k, v]) => {
+                const lower = this._normalizeFieldName(k);
+                if (!lower || used.has(lower) || this._isExcludedField(lower) || !v) return;
+                ordered.push({ key: k, value: v });
+                used.add(lower);
+            });
+
+            return ordered;
+        },
+
+        _statusPhotoBorderClasses(status) {
+            if (status === 'pending') return 'border border-gray-200 border-t-4 border-b-4 border-t-amber-400 border-b-amber-400';
+            if (status === 'verified') return 'border border-gray-200 border-t-4 border-b-4 border-t-green-400 border-b-green-400';
+            if (status === 'approved') return 'border border-gray-200 border-t-4 border-b-4 border-t-blue-400 border-b-blue-400';
+            if (status === 'download') return 'border border-gray-200 border-t-4 border-b-4 border-t-purple-400 border-b-purple-400';
+            return 'border border-gray-200';
+        },
+
+        _bumpTabCounts(fromStatus, toStatus, n) {
+            const count = Number(n || 0);
+            if (!count || count < 1) return;
+            if (fromStatus && this.tabCounts[fromStatus] !== undefined) {
+                this.tabCounts[fromStatus] = Math.max(0, Number(this.tabCounts[fromStatus] || 0) - count);
+            }
+            if (toStatus && this.tabCounts[toStatus] !== undefined) {
+                this.tabCounts[toStatus] = Number(this.tabCounts[toStatus] || 0) + count;
+            }
+        },
+
         // Update class on a dynamically-added row (no Alpine :class binding)
         _updateRowClass(id) {
             const el = document.querySelector(`[data-sid="${id}"]`);
@@ -283,22 +382,19 @@ function listApp() {
         // Build a <div> card element for a dynamically loaded card (loadMore)
         _buildCardDiv(card) {
             const fd = card.field_data || {};
-            const borderColor = card.status === 'pending' ? 'border-amber-300' : card.status === 'verified' ? 'border-green-300' : 'border-gray-200';
-            const statusBg = card.status === 'pending' ? 'bg-amber-100 text-amber-600' : card.status === 'verified' ? 'bg-green-100 text-green-600' : card.status === 'approved' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500';
-            const statusLabel = card.status.charAt(0).toUpperCase() + card.status.slice(1);
+            const photoBorderClass = this._statusPhotoBorderClasses(card.status);
 
             const photoUrls = (card.photo_urls && card.photo_urls.length) ? card.photo_urls : (card.photo_url ? [card.photo_url] : []);
             const photoHtml = photoUrls.length
-                ? photoUrls.map(url => `<div class="rounded-xl overflow-hidden border-2 ${borderColor} w-full" style="height:68px;"><img src="${this._escHtml(url)}" class="w-full h-full object-cover object-top" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="w-full h-full bg-amber-50 flex items-center justify-center text-amber-400" style="font-size:16px;display:none;"><i class="fa-solid fa-user-astronaut"></i></div></div>`).join('')
-                : `<div class="rounded-xl overflow-hidden border-2 border-gray-200 w-full" style="height:68px;"><div class="w-full h-full bg-gray-100 flex items-center justify-center text-gray-300" style="font-size:16px;"><i class="fa-solid fa-user-slash"></i></div></div>`;
+                ? photoUrls.map(url => `<div class="rounded-xl overflow-hidden ${photoBorderClass} w-full" style="height:68px;"><img src="${this._escHtml(url)}" class="w-full h-full object-cover object-top" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="w-full h-full bg-amber-50 flex items-center justify-center text-amber-400" style="font-size:16px;display:none;"><i class="fa-solid fa-user-astronaut"></i></div></div>`).join('')
+                : `<div class="rounded-xl overflow-hidden ${photoBorderClass} w-full" style="height:68px;"><div class="w-full h-full bg-gray-100 flex items-center justify-center text-gray-300" style="font-size:16px;"><i class="fa-solid fa-user-slash"></i></div></div>`;
 
-            let fieldRows = '';
-            for (const [key, val] of Object.entries(fd)) {
-                if (!val) continue;
-                const kl = key.toLowerCase();
-                if (kl.includes('photo') || kl.includes('image') || kl === 'name' || kl === 'class' || kl === 'section' || kl === 'designation') continue;
-                fieldRows += `<span class="text-gray-400 font-semibold pr-1.5 whitespace-nowrap py-0.5" style="font-size:11px;">${this._escHtml(String(key))}</span><span class="text-gray-700 py-0.5" style="font-size:11px;">${this._escHtml(String(val))}</span>`;
-            }
+            const displayFields = Array.isArray(card.display_fields) && card.display_fields.length
+                ? card.display_fields
+                : this._buildDisplayFieldsFromData(fd);
+            const fieldRows = displayFields
+                .map(item => `<span class="text-gray-400 font-semibold pr-1.5 whitespace-nowrap py-0.5" style="font-size:11px;">${this._escHtml(String(item.key))}</span><span class="text-gray-700 py-0.5" style="font-size:11px;">${this._escHtml(String(item.value))}</span>`)
+                .join('');
 
             const classPill = (card.class_name || card.section)
                 ? `<span class="inline-flex items-center gap-1 mt-1 text-[11px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-lg px-2 py-0.5 w-fit"><i class="fa-solid fa-graduation-cap text-[8px]"></i>${this._escHtml(card.class_name || '')}${card.class_name && card.section ? ' &bull; ' : ''}${this._escHtml(card.section || '')}</span>`
@@ -315,7 +411,7 @@ function listApp() {
             const div = document.createElement('div');
             div.setAttribute('data-sid', String(card.id));
             div.className = 'bg-white rounded-2xl border border-gray-100 overflow-hidden transition-all shadow-sm hover:shadow-md' + (!IS_VIEW_ONLY ? ' cursor-pointer' : '');
-            div.innerHTML = `<div class="flex gap-3 p-3"><div class="flex flex-col items-center gap-1.5 flex-shrink-0" style="width:56px;">${cbHtml}${photoHtml}<span class="text-[8px] font-bold px-1.5 py-0.5 rounded-full leading-none ${statusBg}">${statusLabel}</span></div><div class="flex-1 min-w-0 flex flex-col">${nameHtml}${classPill}<div class="mt-2"><div class="grid text-[11px] leading-snug" style="grid-template-columns:40% 1fr;">${fieldRows}</div></div><div class="mt-2.5"><a href="/app/card/${card.id}/" class="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-500 bg-indigo-50 border border-indigo-100 rounded-lg px-2.5 py-1 active:opacity-70 transition-all">View Details <i class="fa-solid fa-arrow-right text-[9px]"></i></a></div></div></div>`;
+            div.innerHTML = `<div class="flex gap-3 p-3"><div class="flex flex-col items-center gap-1.5 flex-shrink-0" style="width:56px;">${cbHtml}${photoHtml}</div><div class="flex-1 min-w-0 flex flex-col">${nameHtml}${classPill}<div class="mt-2"><div class="grid text-[11px] leading-snug" style="grid-template-columns:40% 1fr;">${fieldRows}</div></div><div class="mt-2.5"><a href="/app/card/${card.id}/" class="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-500 bg-indigo-50 border border-indigo-100 rounded-lg px-2.5 py-1 active:opacity-70 transition-all">View Details <i class="fa-solid fa-arrow-right text-[9px]"></i></a></div></div></div>`;
 
             if (!IS_VIEW_ONLY) {
                 div.addEventListener('click', (e) => {
@@ -458,6 +554,7 @@ function listApp() {
                             has_photo: !!c.photo_url,
                             status: c.status,
                             field_data: f,
+                            display_fields: this._buildDisplayFieldsFromData(f),
                         };
                     });
                 if (!newCards.length) {
@@ -502,6 +599,11 @@ function listApp() {
                 const data = await res.json();
                 if (data.success) {
                     this.showToast(data.message || (actedIds.length + ' ' + label), 'success');
+
+                    // Update top badge counts immediately without waiting for reload.
+                    if (status !== LIST_TYPE) {
+                        this._bumpTabCounts(LIST_TYPE, status, actedIds.length);
+                    }
 
                     // If status changed away from the current list, remove rows in-place.
                     if (status !== LIST_TYPE) {
@@ -798,6 +900,8 @@ function listApp() {
             this.loading = false;
             if (success > 0) {
                 this.showToast(success + ' card(s) deleted', 'success');
+
+                this._bumpTabCounts(LIST_TYPE, null, success);
 
                 // Remove deleted rows immediately without page reload.
                 this._removeCardsFromCurrentList(deletedIds);

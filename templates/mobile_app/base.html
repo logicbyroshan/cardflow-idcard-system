@@ -97,6 +97,37 @@
         {% block content %}{% endblock %}
     </div>
 
+    {% if request.user.is_authenticated %}
+    <!-- PWA Install Bottom Sheet (shown only after login) -->
+    <div id="pwa-install-overlay"
+         class="hidden fixed inset-0 z-[500] bg-black/35 backdrop-blur-[1px]"
+         aria-hidden="true"></div>
+
+    <div id="pwa-install-sheet"
+         class="hidden fixed left-1/2 -translate-x-1/2 bottom-0 w-full max-w-[430px] z-[501] px-4 pb-[calc(env(safe-area-inset-bottom,0px)+14px)]">
+        <div class="rounded-t-3xl rounded-b-2xl bg-white shadow-2xl border border-gray-100 overflow-hidden">
+            <div class="px-5 pt-4 pb-3 flex items-start gap-3">
+                <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+                    <i class="fa-solid fa-mobile-screen-button"></i>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <p class="text-[14px] font-bold text-gray-800 leading-tight">Install Adarsh Mobile App</p>
+                    <p id="pwa-install-subtitle" class="text-[11px] text-gray-500 mt-0.5">Get faster access from your home screen.</p>
+                </div>
+                <button id="pwa-install-close" type="button" class="w-8 h-8 rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200 active:scale-95 transition-all">
+                    <i class="fa-solid fa-xmark text-xs"></i>
+                </button>
+            </div>
+            <div class="px-5 pb-4">
+                <button id="pwa-install-cta" type="button"
+                        class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-brand-light to-brand-dark text-white text-[13px] font-bold shadow active:scale-[0.99] transition-transform">
+                    Download App
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Custom JS -->
     <script src="{% static 'mobile/js/app.js' %}"></script>
 
@@ -114,6 +145,97 @@
         });
     }
     </script>
+
+    {% if request.user.is_authenticated %}
+    <script>
+    (function () {
+        var STORAGE_KEY = 'pwa_install_sheet_dismissed';
+        var installEvent = null;
+        var overlay = document.getElementById('pwa-install-overlay');
+        var sheet = document.getElementById('pwa-install-sheet');
+        var cta = document.getElementById('pwa-install-cta');
+        var closeBtn = document.getElementById('pwa-install-close');
+        var subtitle = document.getElementById('pwa-install-subtitle');
+
+        if (!overlay || !sheet || !cta || !closeBtn) return;
+
+        function isStandalone() {
+            return window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+        }
+
+        function wasDismissed() {
+            return localStorage.getItem(STORAGE_KEY) === '1';
+        }
+
+        function setDismissed() {
+            localStorage.setItem(STORAGE_KEY, '1');
+        }
+
+        function openSheet() {
+            if (isStandalone() || wasDismissed()) return;
+            overlay.classList.remove('hidden');
+            sheet.classList.remove('hidden');
+        }
+
+        function closeSheet(remember) {
+            overlay.classList.add('hidden');
+            sheet.classList.add('hidden');
+            if (remember) setDismissed();
+        }
+
+        function isIosSafariInstallPath() {
+            var ua = navigator.userAgent || '';
+            var isIOS = /iPhone|iPad|iPod/i.test(ua);
+            var isSafari = /Safari/i.test(ua) && !/CriOS|FxiOS|EdgiOS/i.test(ua);
+            return isIOS && isSafari && !isStandalone();
+        }
+
+        window.addEventListener('beforeinstallprompt', function (e) {
+            e.preventDefault();
+            installEvent = e;
+            openSheet();
+        });
+
+        window.addEventListener('appinstalled', function () {
+            installEvent = null;
+            closeSheet(true);
+        });
+
+        closeBtn.addEventListener('click', function () { closeSheet(true); });
+        overlay.addEventListener('click', function () { closeSheet(true); });
+
+        cta.addEventListener('click', async function () {
+            if (installEvent) {
+                installEvent.prompt();
+                try {
+                    await installEvent.userChoice;
+                } catch (err) {
+                    console.warn('Install choice handling failed:', err);
+                }
+                installEvent = null;
+                closeSheet(true);
+                return;
+            }
+
+            if (isIosSafariInstallPath()) {
+                subtitle.textContent = 'Tap Share, then Add to Home Screen in Safari.';
+                return;
+            }
+
+            subtitle.textContent = 'Install prompt is not available right now. Continue using the app in browser.';
+        });
+
+        // Fallback: if beforeinstallprompt did not fire quickly, show iOS instructions only.
+        window.addEventListener('load', function () {
+            setTimeout(function () {
+                if (!installEvent && isIosSafariInstallPath() && !wasDismissed()) {
+                    openSheet();
+                }
+            }, 1200);
+        });
+    })();
+    </script>
+    {% endif %}
 
     {% block extra_js %}{% endblock %}
 </body>

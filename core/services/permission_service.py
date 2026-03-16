@@ -163,10 +163,11 @@ class PermissionService:
 
     @staticmethod
     def is_any_admin(user) -> bool:
-        """Check if user is super_admin or admin_staff."""
+        """Check if user is super_admin/pro_user or admin_staff."""
         if not user.is_authenticated:
             return False
-        return user.is_superuser or user.role in ('super_admin', 'admin_staff')
+        # Keep this aligned with is_super_admin() so pro_user is never excluded.
+        return PermissionService.is_super_admin(user) or user.role == 'admin_staff'
 
     @staticmethod
     def is_client_role(user) -> bool:

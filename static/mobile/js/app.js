@@ -77,3 +77,12 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
 });
 
 console.log('%cID Card Manager Mobile PWA', 'color: #0a92dd; font-size: 16px; font-weight: bold;');
+
+// Lightweight confirm helper used across mobile templates.
+// Returns Promise<boolean> so existing `await showConfirm(...)` calls keep working.
+window.showConfirm = function showConfirm(options) {
+    var text = (options && options.text) || 'Are you sure?';
+    var title = (options && options.title) || '';
+    var message = title ? (title + '\n\n' + text) : text;
+    return Promise.resolve(window.confirm(message));
+};

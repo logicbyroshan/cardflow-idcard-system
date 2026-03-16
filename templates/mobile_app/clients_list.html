@@ -20,6 +20,14 @@
                 <h1 class="text-white font-bold text-sm leading-tight">{% if is_admin_staff %}Assigned Clients{% else %}Clients{% endif %}</h1>
                 <p class="text-white/60 text-[10px]" x-text="filteredClients.length + ' client(s) found'"></p>
             </div>
+            {% if can_manage_clients %}
+            <button type="button"
+                    @click="openAddForm()"
+                    class="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all flex-shrink-0"
+                    aria-label="Manage client">
+                <i class="fa-solid fa-plus text-xs"></i>
+            </button>
+            {% endif %}
             <!-- Filter dropdown -->
             <div class="relative flex-shrink-0">
                 <select x-model="filterStatus"
@@ -59,7 +67,7 @@
                  :class="expandedId === c.id ? 'shadow-md ring-2 ring-indigo-100 border border-indigo-200' : 'border border-gray-100'">
 
                 <!-- Client Row (tap to expand) -->
-                <div class="flex items-center gap-3 px-4 py-4 cursor-pointer select-none active:bg-gray-50 transition-colors"
+                 <div class="flex items-center gap-3 px-4 py-4 cursor-pointer select-none active:bg-gray-50 transition-colors"
                      @click="toggleExpand(c.id)">
                     <!-- Avatar with gradient -->
                     <div class="w-11 h-11 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 rounded-2xl shadow-sm"
@@ -85,6 +93,26 @@
                         <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200"
                            :class="expandedId === c.id ? 'rotate-180 text-indigo-500' : 'text-gray-400'"></i>
                     </div>
+                    {% if can_manage_clients %}
+                    <div class="flex items-center gap-1.5 ml-1" @click.stop>
+                        <button type="button" @click="openEditForm(c.id)"
+                                class="w-8 h-8 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center active:scale-95 transition-all"
+                                title="Edit client">
+                            <i class="fa-solid fa-pen text-[10px]"></i>
+                        </button>
+                        <button type="button" @click="toggleClientStatus(c)"
+                                class="w-8 h-8 rounded-xl flex items-center justify-center active:scale-95 transition-all"
+                                :class="c.status === 'active' ? 'bg-yellow-50 text-yellow-500' : 'bg-green-50 text-green-500'"
+                                :title="c.status === 'active' ? 'Deactivate client' : 'Activate client'">
+                            <i class="text-[10px]" :class="c.status === 'active' ? 'fa-solid fa-pause' : 'fa-solid fa-play'"></i>
+                        </button>
+                        <button type="button" @click="deleteClient(c)"
+                                class="w-8 h-8 rounded-xl bg-red-50 text-red-500 flex items-center justify-center active:scale-95 transition-all"
+                                title="Delete client">
+                            <i class="fa-solid fa-trash text-[10px]"></i>
+                        </button>
+                    </div>
+                    {% endif %}
                 </div>
 
                 <!-- Expanded: Tables with Pending/Verified counts -->
@@ -161,13 +189,126 @@
         </div>
     </div>
 
+    {% if can_manage_clients %}
+    <div x-show="showForm" x-cloak class="fixed inset-0 z-[120]">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="closeForm()" x-transition></div>
+        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl flex flex-col max-w-[430px] mx-auto"
+             style="height: 88vh; height: 88dvh;"
+             x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+             x-transition:leave="transition ease-in duration-250" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full">
+            <div class="flex justify-center pt-3 pb-1 flex-shrink-0"><div class="w-10 h-1.5 rounded-full bg-gray-300"></div></div>
+            <div class="flex items-center justify-between px-4 py-2 border-b border-gray-100 flex-shrink-0">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl flex items-center justify-center"
+                         :class="editMode ? 'bg-amber-500' : 'bg-gradient-to-br from-brand-light to-brand-dark'">
+                        <i class="text-white text-xs" :class="editMode ? 'fa-solid fa-pen' : 'fa-solid fa-plus'"></i>
+                    </div>
+                    <h3 class="text-sm font-bold text-gray-800" x-text="editMode ? 'Edit Client' : 'Manage Client'"></h3>
+                </div>
+                <button type="button" @click="closeForm()" class="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 active:bg-gray-200 transition-colors">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+                <div class="space-y-1">
+                    <label class="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Client Name <span class="text-red-400">*</span></label>
+                    <input type="text" x-model="form.name" placeholder="Client name"
+                           class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Email <span class="text-red-400">*</span></label>
+                    <input type="email" x-model="form.email" placeholder="client@example.com" :disabled="editMode"
+                           class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition disabled:opacity-60">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Phone</label>
+                    <input type="tel" x-model="form.phone" placeholder="9876543210"
+                           class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="space-y-1">
+                        <label class="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">City</label>
+                        <input type="text" x-model="form.city" placeholder="City"
+                               class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">State</label>
+                        <input type="text" x-model="form.state" placeholder="State"
+                               class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
+                    </div>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Address</label>
+                    <textarea x-model="form.address" rows="2" placeholder="Address"
+                              class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition"></textarea>
+                </div>
+                <label class="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl border border-gray-200 cursor-pointer">
+                    <span class="text-xs font-semibold text-gray-700">Active Status</span>
+                    <div class="toggle-switch-sm">
+                        <input type="checkbox" x-model="form.is_active">
+                        <span class="toggle-slider-sm"></span>
+                    </div>
+                </label>
+
+                <div class="pt-2">
+                    <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Permissions</p>
+                    <div class="space-y-1.5">
+                        <template x-for="perm in permissionsList" :key="perm.key">
+                            <label class="flex items-center justify-between p-2 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition border border-gray-100">
+                                <span class="text-xs text-gray-700" x-text="perm.label"></span>
+                                <div class="toggle-switch-sm">
+                                    <input type="checkbox" x-model="form.permissions[perm.key]">
+                                    <span class="toggle-slider-sm"></span>
+                                </div>
+                            </label>
+                        </template>
+                    </div>
+                </div>
+
+                <div class="flex gap-2 pt-2 pb-8">
+                    <button type="button" @click="closeForm()" class="flex-1 py-3 text-xs font-semibold text-gray-600 bg-gray-100 border border-gray-200 rounded-xl active:scale-[0.98] transition-all">Cancel</button>
+                    <button type="button" @click="submitClientForm()" :disabled="formLoading"
+                            class="flex-[2] py-3 text-xs font-semibold text-white rounded-xl shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
+                            :class="editMode ? 'bg-amber-500' : 'bg-gradient-to-r from-brand-light to-brand-dark'">
+                        <i class="fa-solid fa-spinner fa-spin text-[10px]" x-show="formLoading"></i>
+                        <span x-text="editMode ? 'Update Client' : 'Manage Client'"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     {% include "mobile_app/partials/bottom_nav.html" %}
     {% include "mobile_app/partials/hamburger_drawer.html" %}
     {% include "mobile_app/partials/notification_drawer.html" %}
 </div>
 
+{% csrf_token %}
 {{ clients_json|json_script:"clients-json-data" }}
 <script>
+function getCookie(name) {
+    let v = null;
+    document.cookie.split(';').forEach(c => {
+        c = c.trim();
+        if (c.startsWith(name + '=')) v = decodeURIComponent(c.substring(name.length + 1));
+    });
+    return v;
+}
+
+const CSRF = getCookie('csrftoken') || document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+const CAN_MANAGE_CLIENTS = {{ can_manage_clients|yesno:"true,false" }};
+const CLIENT_PERMISSION_KEYS = [
+    'perm_idcard_client_list',
+    'perm_idcard_setting_list', 'perm_idcard_setting_add', 'perm_idcard_setting_edit', 'perm_idcard_setting_delete', 'perm_idcard_setting_status',
+    'perm_idcard_pending_list', 'perm_idcard_verified_list', 'perm_idcard_pool_list', 'perm_idcard_approved_list', 'perm_idcard_download_list', 'perm_idcard_reprint_list',
+    'perm_idcard_add', 'perm_idcard_edit', 'perm_idcard_delete', 'perm_idcard_info', 'perm_idcard_approve', 'perm_idcard_verify',
+    'perm_idcard_created_at', 'perm_idcard_updated_at', 'perm_idcard_delete_from_pool', 'perm_idcard_retrieve',
+    'perm_idcard_bulk_upload', 'perm_idcard_bulk_download', 'perm_idcard_bulk_reupload', 'perm_delete_all_idcard', 'perm_idcard_upgrade_all',
+    'perm_mobile_app',
+];
+
 const CLIENTS_DATA = JSON.parse(document.getElementById('clients-json-data').textContent);
 function clientsApp() {
     return {
@@ -177,6 +318,49 @@ function clientsApp() {
         expandedId: null,
         loadingTables: {},
         toast: { show: false, message: '', type: 'success' },
+        canManageClients: CAN_MANAGE_CLIENTS,
+        showForm: false,
+        editMode: false,
+        editingClientId: null,
+        formLoading: false,
+        form: {
+            name: '',
+            email: '',
+            phone: '',
+            address: '',
+            city: '',
+            state: '',
+            pincode: '',
+            is_active: true,
+            permissions: {},
+        },
+        permissionsList: [
+            { key: 'perm_mobile_app', label: 'Mobile App Access' },
+            { key: 'perm_idcard_client_list', label: 'Client List Access' },
+            { key: 'perm_idcard_pending_list', label: 'Pending List' },
+            { key: 'perm_idcard_verified_list', label: 'Verified List' },
+            { key: 'perm_idcard_approved_list', label: 'Approved List' },
+            { key: 'perm_idcard_download_list', label: 'Download List' },
+            { key: 'perm_idcard_reprint_list', label: 'Reprint List' },
+            { key: 'perm_idcard_pool_list', label: 'Pool List' },
+            { key: 'perm_idcard_add', label: 'Add Card' },
+            { key: 'perm_idcard_edit', label: 'Edit Card' },
+            { key: 'perm_idcard_delete', label: 'Delete Card' },
+            { key: 'perm_idcard_verify', label: 'Verify Card' },
+            { key: 'perm_idcard_approve', label: 'Approve Card' },
+            { key: 'perm_idcard_info', label: 'Card Info' },
+            { key: 'perm_idcard_bulk_upload', label: 'Bulk Upload' },
+            { key: 'perm_idcard_bulk_download', label: 'Bulk Download' },
+            { key: 'perm_idcard_bulk_reupload', label: 'Bulk Reupload' },
+            { key: 'perm_idcard_upgrade_all', label: 'Upgrade All' },
+        ],
+        init() {
+            this.resetForm();
+            const params = new URLSearchParams(window.location.search);
+            if (this.canManageClients && params.get('action') === 'add') {
+                this.openAddForm();
+            }
+        },
         get filteredClients() {
             let list = this.clients;
             if (this.filterStatus === 'active') list = list.filter(c => c.status === 'active');
@@ -184,6 +368,21 @@ function clientsApp() {
             const q = this.searchQuery.trim().toLowerCase();
             if (q) list = list.filter(c => c.name.toLowerCase().includes(q));
             return list;
+        },
+        resetForm() {
+            const perms = {};
+            CLIENT_PERMISSION_KEYS.forEach((key) => { perms[key] = false; });
+            this.form = {
+                name: '',
+                email: '',
+                phone: '',
+                address: '',
+                city: '',
+                state: '',
+                pincode: '',
+                is_active: true,
+                permissions: perms,
+            };
         },
         async toggleExpand(id) {
             if (this.expandedId === id) { this.expandedId = null; return; }
@@ -205,6 +404,160 @@ function clientsApp() {
                     this.showToast('Network error', 'error');
                 }
                 this.loadingTables = { ...this.loadingTables, [id]: false };
+            }
+        },
+        openAddForm() {
+            if (!this.canManageClients) return;
+            this.editMode = false;
+            this.editingClientId = null;
+            this.resetForm();
+            this.showForm = true;
+        },
+        async openEditForm(clientId) {
+            if (!this.canManageClients) return;
+            this.editMode = true;
+            this.editingClientId = clientId;
+            this.resetForm();
+            this.showForm = true;
+            this.formLoading = true;
+            try {
+                const res = await fetch(`/app/api/client/${clientId}/`);
+                const data = await res.json();
+                if (!data.success || !data.client) {
+                    this.showToast(data.message || 'Failed to load client details', 'error');
+                    this.closeForm();
+                    return;
+                }
+                const c = data.client;
+                this.form.name = c.name || '';
+                this.form.email = c.email || '';
+                this.form.phone = c.phone || '';
+                this.form.address = c.address || '';
+                this.form.city = c.city || '';
+                this.form.state = c.state || '';
+                this.form.pincode = c.pincode || '';
+                this.form.is_active = c.status === 'active';
+                CLIENT_PERMISSION_KEYS.forEach((key) => {
+                    this.form.permissions[key] = !!c[key];
+                });
+            } catch (e) {
+                this.showToast('Network error while loading client', 'error');
+                this.closeForm();
+            } finally {
+                this.formLoading = false;
+            }
+        },
+        closeForm() {
+            this.showForm = false;
+            this.editMode = false;
+            this.editingClientId = null;
+            this.formLoading = false;
+        },
+        buildPayload() {
+            const payload = {
+                name: this.form.name.trim(),
+                email: this.form.email.trim(),
+                phone: this.form.phone.trim(),
+                address: this.form.address.trim(),
+                city: this.form.city.trim(),
+                state: this.form.state.trim(),
+                pincode: this.form.pincode.trim(),
+                is_active: !!this.form.is_active,
+            };
+            CLIENT_PERMISSION_KEYS.forEach((key) => {
+                payload[key] = !!this.form.permissions[key];
+            });
+            return payload;
+        },
+        normalizeClient(clientPayload) {
+            return {
+                id: clientPayload.id,
+                name: clientPayload.name,
+                tables_count: clientPayload.tables_count || 0,
+                cards_count: clientPayload.cards_count || 0,
+                status: clientPayload.status || 'inactive',
+                tables: null,
+            };
+        },
+        upsertClient(clientPayload) {
+            const next = this.normalizeClient(clientPayload);
+            const idx = this.clients.findIndex((c) => c.id === next.id);
+            if (idx >= 0) {
+                this.clients.splice(idx, 1, { ...this.clients[idx], ...next });
+            } else {
+                this.clients.unshift(next);
+            }
+        },
+        async submitClientForm() {
+            if (!this.canManageClients) return;
+            if (!this.form.name.trim()) { this.showToast('Client name is required', 'error'); return; }
+            if (!this.editMode && !this.form.email.trim()) { this.showToast('Email is required', 'error'); return; }
+
+            this.formLoading = true;
+            const url = this.editMode
+                ? `/app/api/client/${this.editingClientId}/update/`
+                : '/app/api/client/create/';
+
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+                    body: JSON.stringify(this.buildPayload()),
+                });
+                const data = await res.json();
+                if (!data.success) {
+                    this.showToast(data.message || 'Failed to save client', 'error');
+                    return;
+                }
+                if (data.client) {
+                    this.upsertClient(data.client);
+                }
+                this.showToast(data.message || 'Client saved successfully', 'success');
+                this.closeForm();
+            } catch (e) {
+                this.showToast('Network error', 'error');
+            } finally {
+                this.formLoading = false;
+            }
+        },
+        async toggleClientStatus(client) {
+            if (!this.canManageClients) return;
+            try {
+                const res = await fetch(`/app/api/client/${client.id}/toggle/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+                    body: '{}',
+                });
+                const data = await res.json();
+                if (!data.success) {
+                    this.showToast(data.message || 'Failed to update status', 'error');
+                    return;
+                }
+                client.status = data.new_status || (client.status === 'active' ? 'inactive' : 'active');
+                this.showToast(data.message || 'Status updated', 'success');
+            } catch (e) {
+                this.showToast('Network error', 'error');
+            }
+        },
+        async deleteClient(client) {
+            if (!this.canManageClients) return;
+            if (!confirm(`Delete ${client.name}? This cannot be undone.`)) return;
+            try {
+                const res = await fetch(`/app/api/client/${client.id}/delete/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+                    body: '{}',
+                });
+                const data = await res.json();
+                if (!data.success) {
+                    this.showToast(data.message || 'Failed to delete client', 'error');
+                    return;
+                }
+                this.clients = this.clients.filter(c => c.id !== client.id);
+                if (this.expandedId === client.id) this.expandedId = null;
+                this.showToast(data.message || 'Client deleted', 'success');
+            } catch (e) {
+                this.showToast('Network error', 'error');
             }
         },
         showToast(msg, type = 'success') {

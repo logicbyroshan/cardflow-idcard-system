@@ -82,6 +82,40 @@
             <!-- Divider -->
             <div class="mx-4 mt-4 border-t border-gray-100"></div>
 
+            <!-- Account -->
+            <div class="px-4 pt-4 pb-1">
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Account</p>
+            </div>
+            <div class="px-3 space-y-1">
+                <a href="{% url 'mobile_app:profile' %}"
+                   @click="close()"
+                   class="pwa-drawer-item">
+                    <span class="pwa-drawer-icon-wrap bg-indigo-50 text-indigo-600">
+                        <i class="fa-solid fa-user-pen"></i>
+                    </span>
+                    <div class="pwa-drawer-item-text">
+                        <span class="pwa-drawer-item-title">Profile Details</span>
+                        <span class="pwa-drawer-item-sub">Update name and contact info</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right pwa-drawer-chevron"></i>
+                </a>
+                <a href="/panel/auth/change-password/"
+                   @click="close()"
+                   class="pwa-drawer-item">
+                    <span class="pwa-drawer-icon-wrap bg-amber-50 text-amber-600">
+                        <i class="fa-solid fa-key"></i>
+                    </span>
+                    <div class="pwa-drawer-item-text">
+                        <span class="pwa-drawer-item-title">Change Password</span>
+                        <span class="pwa-drawer-item-sub">Keep your account secure</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right pwa-drawer-chevron"></i>
+                </a>
+            </div>
+
+            <!-- Divider -->
+            <div class="mx-4 mt-4 border-t border-gray-100"></div>
+
             <!-- Logout -->
             <div class="px-3 mt-2 mb-2">
                 <a href="/panel/auth/logout/"

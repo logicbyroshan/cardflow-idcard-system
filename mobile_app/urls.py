@@ -12,6 +12,8 @@ urlpatterns = [
 
     # Mobile login (dedicated PWA login screen)
     path('login/', views.mobile_login, name='mobile_login'),
+    path('no-access/', views.mobile_no_access, name='mobile_no_access'),
+    path('desktop-required/', views.desktop_required, name='desktop_required'),
 
     # Page views
     path('', views.home, name='home'),
@@ -30,6 +32,7 @@ urlpatterns = [
     path('search/', views.search_page, name='search_page'),
 
     # API endpoints (thin proxies to existing services)
+    path('api/auth/login/', views.api_mobile_login, name='api_mobile_login'),
     path('api/card/<int:card_id>/status/', views.api_card_status, name='api_card_status'),
     path('api/card/<int:card_id>/detail/', views.api_card_detail, name='api_card_detail'),
     path('api/card/<int:card_id>/delete/', views.api_card_delete, name='api_card_delete'),
@@ -50,8 +53,12 @@ urlpatterns = [
     # Profile & Search APIs
     path('api/profile/update/', views.api_profile_update, name='api_profile_update'),
     path('api/search/', views.api_search, name='api_search'),
+    path('api/server-info/', views.api_server_info, name='api_server_info'),
 
     # Client Management APIs
+    path('api/client/create/', views.api_client_create, name='api_client_create'),
+    path('api/client/<int:client_id>/', views.api_client_detail, name='api_client_detail'),
+    path('api/client/<int:client_id>/update/', views.api_client_update, name='api_client_update'),
     path('api/client/<int:client_id>/toggle/', views.api_client_toggle, name='api_client_toggle'),
     path('api/client/<int:client_id>/delete/', views.api_client_delete, name='api_client_delete'),
     path('api/client/<int:client_id>/tables/', views.api_client_tables, name='api_client_tables'),
