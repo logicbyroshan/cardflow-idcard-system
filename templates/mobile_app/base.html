@@ -100,12 +100,14 @@
     {% if request.user.is_authenticated %}
     <!-- PWA Install Bottom Sheet (shown only after login) -->
     <div id="pwa-install-overlay"
-         class="hidden fixed inset-0 z-[500] bg-black/35 backdrop-blur-[1px]"
+         class="hidden fixed inset-0 bg-black/35 backdrop-blur-[1px]"
+         style="z-index: 10040;"
          aria-hidden="true"></div>
 
     <div id="pwa-install-sheet"
-         class="hidden fixed left-1/2 -translate-x-1/2 bottom-0 w-full max-w-[430px] z-[501] px-4 pb-[calc(env(safe-area-inset-bottom,0px)+14px)]">
-        <div class="rounded-t-3xl rounded-b-2xl bg-white shadow-2xl border border-gray-100 overflow-hidden">
+         class="hidden fixed inset-0 flex items-center justify-center px-4 pointer-events-none"
+         style="z-index: 10041;">
+        <div class="w-full max-w-[390px] rounded-2xl bg-white shadow-2xl border border-gray-100 overflow-hidden pointer-events-auto">
             <div class="px-5 pt-4 pb-3 flex items-start gap-3">
                 <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
                     <i class="fa-solid fa-mobile-screen-button"></i>
@@ -113,6 +115,7 @@
                 <div class="min-w-0 flex-1">
                     <p class="text-[14px] font-bold text-gray-800 leading-tight">Install Adarsh Mobile App</p>
                     <p id="pwa-install-subtitle" class="text-[11px] text-gray-500 mt-0.5">Get faster access from your home screen.</p>
+                    <p id="pwa-install-hint" class="hidden text-[11px] text-gray-500 mt-1 leading-relaxed"></p>
                 </div>
                 <button id="pwa-install-close" type="button" class="w-8 h-8 rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200 active:scale-95 transition-all">
                     <i class="fa-solid fa-xmark text-xs"></i>
@@ -184,6 +187,7 @@
         var cta = document.getElementById('pwa-install-cta');
         var closeBtn = document.getElementById('pwa-install-close');
         var subtitle = document.getElementById('pwa-install-subtitle');
+        var hint = document.getElementById('pwa-install-hint');
         var isHomePage = '{{ request.resolver_match.url_name|default:"" }}' === 'home';
 
         if (!overlay || !sheet || !cta || !closeBtn) return;
@@ -213,7 +217,32 @@
         function refreshCtaState() {
             cta.classList.remove('hidden');
             cta.disabled = false;
-            cta.textContent = installEvent ? 'Download App' : 'Download App';
+            if (installEvent) {
+                cta.textContent = 'Download App';
+                subtitle.textContent = 'Get faster access from your home screen.';
+                if (hint) {
+                    hint.classList.add('hidden');
+                    hint.textContent = '';
+                }
+                return;
+            }
+
+            if (isIosSafariInstallPath()) {
+                cta.textContent = 'Show iPhone Steps';
+                subtitle.textContent = 'Install from Safari using Add to Home Screen.';
+                if (hint) {
+                    hint.textContent = 'Tap Share icon, then Add to Home Screen, then Add.';
+                    hint.classList.remove('hidden');
+                }
+                return;
+            }
+
+            cta.textContent = 'Show Install Steps';
+            subtitle.textContent = 'Use browser menu to install this app.';
+            if (hint) {
+                hint.textContent = 'Tap menu (three dots), then Install app or Add to Home screen.';
+                hint.classList.remove('hidden');
+            }
         }
 
         function openSheet() {
@@ -271,11 +300,11 @@
             }
 
             if (isIosSafariInstallPath()) {
-                subtitle.textContent = 'Tap Share, then Add to Home Screen in Safari.';
+                refreshCtaState();
                 return;
             }
 
-            subtitle.textContent = 'Install prompt is not available right now. Open browser menu and tap Add to Home screen.';
+            refreshCtaState();
         });
 
         // Fallback: show sheet on mobile browser home dashboard when prompt is unavailable.

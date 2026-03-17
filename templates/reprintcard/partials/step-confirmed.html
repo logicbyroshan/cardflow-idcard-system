@@ -38,6 +38,10 @@
             <i class="fa-solid fa-images"></i>
             <span class="btn-text">Download Images</span>
         </button>
+        <a class="btn action-btn btn-blue" id="confirmedGoToDownloadListBtn" href="{% if is_client or is_client_staff %}{% url 'client:idcard_actions' table.id %}{% else %}{% url 'idcard_actions' table.id %}{% endif %}?status=download" title="Open Download List">
+            <i class="fa-solid fa-download"></i>
+            <span class="btn-text">Download List (<span id="confirmedDownloadCount">{{ step_counts.download_list }}</span>)</span>
+        </a>
     </div>
 </div>
 

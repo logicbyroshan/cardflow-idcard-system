@@ -244,6 +244,16 @@ function initQrCode() {
     qrImg.src = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&color=100F57&data=' + encodeURIComponent(appUrl);
 }
 
+// ===== 7. Landing CTA App Link =====
+function initAppCtaLink() {
+    const cta = document.getElementById('openAppCta');
+    if (!cta) return;
+
+    const panelUrl = (window.__panelUrl || '').trim();
+    const appUrl = panelUrl ? (panelUrl.replace(/\/$/, '') + '/app/') : (window.location.origin + '/app/');
+    cta.setAttribute('href', appUrl);
+}
+
 // ===== 7. Logo Spin Animation (repeat every 10 seconds) =====
 function initLogoSpin() {
     const logoImg = document.querySelector('.logo-img');
@@ -292,6 +302,7 @@ document.addEventListener('DOMContentLoaded', () => {
     createScrollTopButton();
     initPhoneSlideshow();
     initQrCode();
+    initAppCtaLink();
     initLogoSpin();
     initGlowBorder();
 });

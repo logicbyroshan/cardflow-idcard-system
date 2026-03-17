@@ -69,8 +69,12 @@ function refreshStepCounts() {
       updateTabCount('.reprint-pool-tab .tab-count', data.confirmed || 0);
       var requestCount = document.getElementById('downloadRequestCount');
       var confirmedCount = document.getElementById('downloadConfirmedCount');
+      var requestDownloadCount = document.getElementById('requestDownloadCount');
+      var confirmedDownloadCount = document.getElementById('confirmedDownloadCount');
       if (requestCount) requestCount.textContent = data.request_list || 0;
       if (confirmedCount) confirmedCount.textContent = data.confirmed || 0;
+      if (requestDownloadCount) requestDownloadCount.textContent = data.download_list || 0;
+      if (confirmedDownloadCount) confirmedDownloadCount.textContent = data.download_list || 0;
     })
     .catch(function() {});
 }
