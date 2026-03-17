@@ -252,32 +252,48 @@ def pwa_manifest(request):
     manifest = {
         'name': 'Adarsh ID Cards',
         'short_name': 'Adarsh IDs',
+        'id': '/app/',
         'description': 'Manage ID cards on the go — fast, secure, and mobile-first.',
         'start_url': '/app/',
         'scope': '/app/',
         'display': 'standalone',
+        'display_override': ['standalone', 'minimal-ui', 'browser'],
         'orientation': 'portrait',
         'background_color': '#667eea',
         'theme_color': '#667eea',
         'lang': 'en',
+        'prefer_related_applications': False,
         'icons': [
             {
                 'src': '/static/mobile/images/icon-192.png',
                 'sizes': '192x192',
                 'type': 'image/png',
-                'purpose': 'any maskable',
+                'purpose': 'any',
+            },
+            {
+                'src': '/static/mobile/images/icon-192.png',
+                'sizes': '192x192',
+                'type': 'image/png',
+                'purpose': 'maskable',
             },
             {
                 'src': '/static/mobile/images/icon-512.png',
                 'sizes': '512x512',
                 'type': 'image/png',
-                'purpose': 'any maskable',
+                'purpose': 'any',
+            },
+            {
+                'src': '/static/mobile/images/icon-512.png',
+                'sizes': '512x512',
+                'type': 'image/png',
+                'purpose': 'maskable',
             },
         ],
         'categories': ['business', 'productivity'],
     }
     response = JsonResponse(manifest)
     response['Content-Type'] = 'application/manifest+json'
+    response['Cache-Control'] = 'public, max-age=3600'
     return response
 
 
@@ -289,12 +305,18 @@ def pwa_service_worker(request):
     from django.http import HttpResponse
     sw_content = """\
 /* Adarsh ID Cards — PWA Service Worker */
-const CACHE = 'adarsh-app-v1';
-const SHELL = ['/app/', '/app/login/'];
+const CACHE = 'adarsh-app-v2';
+const SHELL = ['/app/', '/app/login/', '/app/manifest.json'];
 
 self.addEventListener('install', function(e) {
     e.waitUntil(
-        caches.open(CACHE).then(function(c) { return c.addAll(SHELL); })
+        caches.open(CACHE).then(async function(c) {
+            await Promise.allSettled(
+                SHELL.map(function(url) {
+                    return c.add(url);
+                })
+            );
+        })
     );
     self.skipWaiting();
 });

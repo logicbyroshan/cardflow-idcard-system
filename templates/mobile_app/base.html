@@ -35,6 +35,20 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{% static 'mobile/css/mobile.css' %}">
 
+    <script>
+        // Capture install prompt early so it is not missed before UI script initializes.
+        window.__deferredInstallPrompt = null;
+        window.addEventListener('beforeinstallprompt', function(e) {
+            e.preventDefault();
+            window.__deferredInstallPrompt = e;
+            window.dispatchEvent(new CustomEvent('adarsh:beforeinstallprompt'));
+        });
+        window.addEventListener('appinstalled', function() {
+            window.__deferredInstallPrompt = null;
+            window.dispatchEvent(new CustomEvent('adarsh:appinstalled'));
+        });
+    </script>
+
 
     {% block extra_head %}{% endblock %}
 
@@ -192,6 +206,14 @@
 
         if (!overlay || !sheet || !cta || !closeBtn) return;
 
+        function syncDeferredPrompt() {
+            if (!window.__deferredInstallPrompt) return;
+            installEvent = window.__deferredInstallPrompt;
+            subtitle.textContent = 'Get faster access from your home screen.';
+            refreshCtaState();
+            openSheet();
+        }
+
         function isMobileBrowser() {
             var ua = navigator.userAgent || '';
             var mobileUa = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
@@ -265,19 +287,15 @@
             return isIOS && isSafari && !isStandalone();
         }
 
-        window.addEventListener('beforeinstallprompt', function (e) {
-            // Keep deferred prompt for CTA so user can trigger install on demand.
-            e.preventDefault();
-            installEvent = e;
-            subtitle.textContent = 'Get faster access from your home screen.';
-            refreshCtaState();
-            openSheet();
-        });
+        window.addEventListener('adarsh:beforeinstallprompt', syncDeferredPrompt);
 
-        window.addEventListener('appinstalled', function () {
+        window.addEventListener('adarsh:appinstalled', function () {
             installEvent = null;
             closeSheet(true);
         });
+
+        // Fallback in case deferred prompt was already captured before this block ran.
+        syncDeferredPrompt();
 
         closeBtn.addEventListener('click', function () { closeSheet(true); });
         overlay.addEventListener('click', function () { closeSheet(true); });
