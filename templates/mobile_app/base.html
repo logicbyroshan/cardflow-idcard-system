@@ -237,31 +237,11 @@
         function refreshCtaState() {
             cta.classList.remove('hidden');
             cta.disabled = false;
-            if (installEvent) {
-                cta.textContent = 'Download App';
-                subtitle.textContent = 'Get faster access from your home screen.';
-                if (hint) {
-                    hint.classList.add('hidden');
-                    hint.textContent = '';
-                }
-                return;
-            }
-
-            if (isIosSafariInstallPath()) {
-                cta.textContent = 'Show iPhone Steps';
-                subtitle.textContent = 'Install from Safari using Add to Home Screen.';
-                if (hint) {
-                    hint.textContent = 'Tap Share icon, then Add to Home Screen, then Add.';
-                    hint.classList.remove('hidden');
-                }
-                return;
-            }
-
-            cta.textContent = 'Show Install Steps';
-            subtitle.textContent = 'Use browser menu to install this app.';
+            cta.textContent = 'Download App';
+            subtitle.textContent = 'Get faster access from your home screen.';
             if (hint) {
-                hint.textContent = 'Tap menu (three dots), then Install app or Add to Home screen.';
-                hint.classList.remove('hidden');
+                hint.classList.add('hidden');
+                hint.textContent = '';
             }
         }
 
@@ -316,11 +296,11 @@
             }
 
             if (isIosSafariInstallPath()) {
-                refreshCtaState();
+                window.location.href = '/app/?install=1';
                 return;
             }
 
-            refreshCtaState();
+            window.location.href = '/app/?install=1';
         });
 
         // Fallback: show sheet on mobile browser home dashboard when prompt is unavailable.

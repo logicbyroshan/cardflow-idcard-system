@@ -179,15 +179,13 @@
     }
 
     function refreshInstallBtnState() {
-        if (deferredInstallPrompt) {
-            installBtnText.textContent = 'Download App';
-            return;
-        }
-        if (isIosSafariInstallPath()) {
-            installBtnText.textContent = 'Show iPhone Install Steps';
-            return;
-        }
-        installBtnText.textContent = 'Show Install Steps';
+        installBtnText.textContent = 'Download App';
+    }
+
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+            navigator.serviceWorker.register('/app/sw.js', { scope: '/app/' }).catch(function () {});
+        });
     }
 
     window.addEventListener('beforeinstallprompt', function (e) {
@@ -210,12 +208,9 @@
             return;
         }
 
-        if (isIosSafariInstallPath()) {
-            showError('Tap Share, then Add to Home Screen in Safari.');
-            return;
-        }
-
-        showError('Open browser menu, then tap Install app or Add to Home screen.');
+        // If browser cannot show install prompt yet, move user to app root.
+        // This lets the browser fulfill install eligibility and show native prompt later.
+        window.location.href = '/app/?install=1';
     });
 
     refreshInstallBtnState();

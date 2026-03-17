@@ -6,6 +6,7 @@ API views and page views for authentication flow.
 import json
 import logging
 import os
+import re
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views import View
@@ -50,6 +51,11 @@ class LoginPageView(View):
                 return redirect(next_url)
             redirect_url = AuthService.get_dashboard_url(request.user)
             return redirect(redirect_url)
+
+        ua = request.META.get('HTTP_USER_AGENT', '')
+        is_mobile_ua = bool(re.search(r'Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini', ua, re.I))
+        if is_mobile_ua:
+            return redirect('/app/login/?install=1')
         
         return render(request, self.template_name)
 
