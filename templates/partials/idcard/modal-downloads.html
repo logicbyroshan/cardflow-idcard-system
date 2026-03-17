@@ -401,6 +401,7 @@
     align-items: start;
   }
   #reprintPickerConfirmModal .reprint-preview-photo {
+    position: relative;
     width: 84px;
     height: 106px;
     border-radius: 6px;
@@ -418,15 +419,15 @@
     width: 84px;
   }
   #reprintPickerConfirmModal .reprint-preview-extra-images {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
     width: 84px;
   }
   #reprintPickerConfirmModal .reprint-preview-extra-image {
     position: relative;
-    width: 39px;
-    height: 50px;
+    width: 84px;
+    height: 106px;
     border-radius: 6px;
     border: 1px solid #bfdbfe;
     overflow: hidden;
@@ -593,6 +594,14 @@
     }
     #reprintPickerConfirmModal .reprint-preview-photo {
       width: 72px;
+      height: 92px;
+    }
+    #reprintPickerConfirmModal .reprint-preview-photo-stack,
+    #reprintPickerConfirmModal .reprint-preview-extra-images,
+    #reprintPickerConfirmModal .reprint-preview-extra-image {
+      width: 72px;
+    }
+    #reprintPickerConfirmModal .reprint-preview-extra-image {
       height: 92px;
     }
     #reprintPickerConfirmModal .reprint-preview-meta {
