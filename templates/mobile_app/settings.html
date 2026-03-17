@@ -45,13 +45,13 @@
                 <i class="fa-solid fa-envelope text-[14px]"></i>
                 <span>Email</span>
             </button>
+            {% if is_super_admin %}
             <button @click="setTab('system')"
                     :class="tab==='system' ? 'border-b-2 border-brand-light text-brand-light' : 'text-gray-400'"
                     class="flex-1 flex flex-col items-center gap-1 px-1 py-2.5 text-[9px] font-semibold transition-colors">
                 <i class="fa-solid fa-circle-info text-[14px]"></i>
                 <span>System</span>
             </button>
-            {% if is_super_admin or is_admin_staff %}
             <button @click="setTab('server')"
                     :class="tab==='server' ? 'border-b-2 border-brand-light text-brand-light' : 'text-gray-400'"
                     class="flex-1 flex flex-col items-center gap-1 px-1 py-2.5 text-[9px] font-semibold transition-colors">
@@ -310,6 +310,7 @@
         </div>
 
 
+        {% if is_super_admin %}
         <!-- ======== TAB: SYSTEM INFO ======== -->
         <div x-show="tab==='system'" style="display:none;">
             <div class="px-4 pt-4 flex flex-col gap-3 pb-4">
@@ -405,8 +406,9 @@
 
             </div>
         </div>
+        {% endif %}
 
-        {% if is_super_admin or is_admin_staff %}
+        {% if is_super_admin %}
         <div x-show="tab==='server'" style="display:none;">
             <div class="px-4 pt-4 flex flex-col gap-3 pb-4">
                 <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -492,7 +494,7 @@
 function settingsApp() {
     return {
         tab: 'notifications',
-        isAdmin: {{ is_super_admin|yesno:'true,false' }} || {{ is_admin_staff|yesno:'true,false' }},
+        isAdmin: {{ is_super_admin|yesno:'true,false' }},
         serverLoading: false,
         serverInfo: null,
         serverError: '',

@@ -63,6 +63,12 @@
                                 <i class="fa-solid fa-plus text-indigo-400 text-[9px]"></i>
                             </div>
                             {% endif %}
+
+                            <div class="absolute bottom-3 right-3">
+                                <span @click.stop="openCategoryPreview(cat)" class="inline-flex items-center gap-1 rounded-lg bg-gray-100 px-2 py-1 text-[9px] font-semibold text-gray-600">
+                                    <i class="fa-solid fa-eye text-[8px]"></i>Preview
+                                </span>
+                            </div>
                         </button>
                     </template>
                 </div>
@@ -93,7 +99,7 @@
                 </template>
                 <div class="grid grid-cols-2 gap-2.5">
                     <template x-for="reel in reels" :key="reel.id">
-                        <div class="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100">
+                        <button @click="openReelPreview(reel)" class="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 text-left w-full active:scale-[0.99] transition-transform">
                             <!-- Thumbnail -->
                             <div class="relative" style="padding-top:56.25%;">
                                 <template x-if="reel.thumbnail_url">
@@ -120,7 +126,7 @@
                             <div class="px-3 py-2">
                                 <p class="text-[11px] font-semibold text-gray-800 leading-snug line-clamp-2" x-text="reel.title"></p>
                             </div>
-                        </div>
+                        </button>
                     </template>
                 </div>
             </div>
@@ -128,7 +134,7 @@
     </div>
 
     <!--  FAB: Add Reel (visible on reels tab)  -->
-    <div x-show="tab==='reels'" x-cloak class="fixed bottom-6 right-5 z-40">
+    <div x-show="tab==='reels'" x-cloak class="fixed right-5 z-[60]" style="bottom: calc(env(safe-area-inset-bottom, 0px) + var(--pwa-bottom-nav-height) + 12px);">
         <button @click="openReelSheet()"
                 class="w-14 h-14 rounded-full flex items-center justify-center text-white shadow-xl active:scale-90 transition-transform"
             style="background:linear-gradient(135deg,var(--color-brand-light),var(--color-brand-dark));">
@@ -389,6 +395,48 @@
         <span x-text="toast.msg" class="flex-1"></span>
     </div>
 
+    <!-- Portfolio category images preview -->
+    <div x-show="categoryPreview.open" x-cloak class="fixed inset-0 z-[95] flex flex-col justify-end" @keydown.escape.window="closeCategoryPreview()">
+        <div class="absolute inset-0 bg-black/55 backdrop-blur-[2px]" @click="closeCategoryPreview()"></div>
+        <div class="relative bg-white rounded-t-3xl max-h-[88vh] flex flex-col">
+            <div class="flex justify-center pt-3 pb-1"><div class="w-10 h-1.5 rounded-full bg-gray-300"></div></div>
+            <div class="px-4 pb-3 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                    <p class="text-[14px] font-bold text-gray-800" x-text="categoryPreview.name || 'Photos'"></p>
+                    <p class="text-[10px] text-gray-400" x-text="(categoryPreview.items ? categoryPreview.items.length : 0) + ' image(s)'"></p>
+                </div>
+                <button @click="closeCategoryPreview()" class="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500"><i class="fa-solid fa-xmark text-xs"></i></button>
+            </div>
+            <div class="overflow-y-auto p-3 pb-6">
+                <template x-if="categoryPreview.loading">
+                    <div class="py-12 text-center text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i><span class="text-xs">Loading photos...</span></div>
+                </template>
+                <template x-if="!categoryPreview.loading && (!categoryPreview.items || categoryPreview.items.length === 0)">
+                    <div class="py-12 text-center text-gray-400 text-xs">No uploaded photos found.</div>
+                </template>
+                <div class="grid grid-cols-3 gap-2" x-show="!categoryPreview.loading && categoryPreview.items && categoryPreview.items.length > 0">
+                    <template x-for="img in categoryPreview.items" :key="img.id">
+                        <img :src="img.url" :alt="img.title" class="w-full aspect-square object-cover rounded-xl border border-gray-100" loading="lazy" decoding="async">
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reel video preview -->
+    <div x-show="reelPreview.open" x-cloak class="fixed inset-0 z-[96] bg-black/90 flex items-center justify-center p-4" @click.self="closeReelPreview()">
+        <button @click="closeReelPreview()" class="absolute top-5 right-5 w-9 h-9 rounded-full bg-white/15 text-white"><i class="fa-solid fa-xmark"></i></button>
+        <div class="w-full max-w-[430px]">
+            <p class="text-white text-sm font-semibold mb-2 truncate" x-text="reelPreview.title"></p>
+            <template x-if="reelPreview.video_url">
+                <video :src="reelPreview.video_url" controls playsinline autoplay class="w-full max-h-[70vh] rounded-2xl bg-black object-contain"></video>
+            </template>
+            <template x-if="!reelPreview.video_url && reelPreview.thumbnail_url">
+                <img :src="reelPreview.thumbnail_url" :alt="reelPreview.title" class="w-full rounded-2xl">
+            </template>
+        </div>
+    </div>
+
     {% include "mobile_app/partials/bottom_nav.html" %}
 
 </div><!-- /x-data -->
@@ -423,6 +471,8 @@ function websiteManageApp() {
         reelVideoSize: '',
         reelThumbnailFile: null,
         reelThumbnailName: '',
+        categoryPreview: { open: false, loading: false, id: null, name: '', items: [] },
+        reelPreview: { open: false, title: '', thumbnail_url: '', video_url: '' },
         toast: { show: false, ok: true, msg: '' },
 
         init() {
@@ -471,6 +521,26 @@ function websiteManageApp() {
         removeFile(idx) {
             this.pendingFiles.splice(idx, 1);
         },
+        async openCategoryPreview(cat) {
+            this.categoryPreview = { open: true, loading: true, id: cat.id, name: cat.name, items: [] };
+            try {
+                const res = await fetch('/app/api/website/portfolio/category/' + cat.id + '/items/?limit=60');
+                const data = await res.json();
+                if (!data.success) {
+                    this.showToast(data.message || 'Failed to load photos', false);
+                    this.categoryPreview.loading = false;
+                    return;
+                }
+                this.categoryPreview.items = data.items || [];
+            } catch (err) {
+                this.showToast('Could not load photos', false);
+            } finally {
+                this.categoryPreview.loading = false;
+            }
+        },
+        closeCategoryPreview() {
+            this.categoryPreview.open = false;
+        },
         async uploadPortfolioFiles() {
             if (!this.pendingFiles.length || !this.activeCategory || this.uploading) return;
             this.uploading = true;
@@ -513,6 +583,17 @@ function websiteManageApp() {
         closeReelSheet() {
             if (this.reelVideoPreview) { URL.revokeObjectURL(this.reelVideoPreview); this.reelVideoPreview = null; }
             this.reelSheetOpen = false;
+        },
+        openReelPreview(reel) {
+            this.reelPreview = {
+                open: true,
+                title: reel.title || 'Reel',
+                thumbnail_url: reel.thumbnail_url || '',
+                video_url: reel.video_url || '',
+            };
+        },
+        closeReelPreview() {
+            this.reelPreview.open = false;
         },
         handleReelVideo(e) {
             const file = e.target.files[0];

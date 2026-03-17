@@ -1853,9 +1853,9 @@ def api_search(request):
 @require_mobile_client
 @require_http_methods(["GET"])
 def api_server_info(request):
-    """Return lightweight server diagnostics for admin users only."""
+    """Return lightweight server diagnostics for super/pro users only."""
     user = request.user
-    if not PermissionService.is_any_admin(user):
+    if not PermissionService.is_super_admin(user):
         return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
 
     import os
@@ -2052,6 +2052,7 @@ def website_manage(request):
             'id': r.id,
             'title': r.title,
             'thumbnail_url': r.thumbnail.url if r.thumbnail else '',
+            'video_url': (r.video_file.url if r.video_file else r.video_url),
         }
         for r in reels
     ]
@@ -2105,6 +2106,42 @@ def api_portfolio_upload(request):
 
 
 @require_mobile_client
+@require_http_methods(['GET'])
+def api_portfolio_category_items(request, category_id):
+    """List recent uploaded images for a portfolio category (preview in mobile website manager)."""
+    user = request.user
+    if not PermissionService.has(user, 'perm_website_view'):
+        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
+
+    from website.models import PortfolioCategory, PortfolioItem
+
+    category = get_object_or_404(PortfolioCategory, id=category_id, is_active=True)
+    try:
+        limit = int(request.GET.get('limit', 30) or 30)
+    except (TypeError, ValueError):
+        limit = 30
+    limit = min(max(limit, 1), 100)
+
+    items_qs = (
+        PortfolioItem.objects
+        .filter(category=category, is_active=True, image__isnull=False)
+        .exclude(image='')
+        .order_by('-created_at')[:limit]
+    )
+
+    items = [
+        {
+            'id': it.id,
+            'title': it.title or category.name,
+            'url': it.image.url if it.image else '',
+        }
+        for it in items_qs
+    ]
+
+    return JsonResponse({'success': True, 'category': {'id': category.id, 'name': category.name}, 'items': items})
+
+
+@require_mobile_client
 @require_http_methods(['POST'])
 def api_reel_upload(request):
     """Create a new reel with a video file (and optional thumbnail)."""
@@ -2145,6 +2182,7 @@ def api_reel_upload(request):
                 'id': reel.id,
                 'title': reel.title,
                 'thumbnail_url': reel.thumbnail.url if reel.thumbnail else '',
+                'video_url': (reel.video_file.url if reel.video_file else reel.video_url),
             },
         })
     except Exception as exc:

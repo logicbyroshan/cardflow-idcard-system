@@ -196,6 +196,36 @@
         window.location.href = fallback;
         return false;
     };
+
+    // Lightweight haptic feedback for mobile interactions across the app.
+    (function setupMobileHaptics() {
+        var hapticCooldownMs = 70;
+        var lastHapticAt = 0;
+
+        function shouldSkipTarget(target) {
+            if (!target) return true;
+            if (target.closest('[data-no-haptic]')) return true;
+            if (target.closest('input[type="file"]')) return true;
+            return false;
+        }
+
+        function triggerHaptic() {
+            if (!navigator.vibrate) return;
+            var now = Date.now();
+            if (now - lastHapticAt < hapticCooldownMs) return;
+            lastHapticAt = now;
+            navigator.vibrate(10);
+        }
+
+        function handleTap(event) {
+            var target = event.target;
+            if (shouldSkipTarget(target)) return;
+            if (!target.closest('a,button,[role="button"],.pwa-nav-item,.pwa-nav-search-btn,.mab-nav-item,.mab-center-btn,label')) return;
+            triggerHaptic();
+        }
+
+        document.addEventListener('click', handleTap, true);
+    })();
     </script>
 
     <!-- Register PWA Service Worker (required for Chrome install prompt) -->
