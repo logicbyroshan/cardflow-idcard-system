@@ -177,15 +177,22 @@
     <script>
     (function () {
         var STORAGE_KEY = 'pwa_install_sheet_dismissed_at';
-        var DISMISS_TTL_MS = 24 * 60 * 60 * 1000;
+        var DISMISS_TTL_MS = 60 * 60 * 1000; // remind again after 1 hour
         var installEvent = null;
         var overlay = document.getElementById('pwa-install-overlay');
         var sheet = document.getElementById('pwa-install-sheet');
         var cta = document.getElementById('pwa-install-cta');
         var closeBtn = document.getElementById('pwa-install-close');
         var subtitle = document.getElementById('pwa-install-subtitle');
+        var isHomePage = '{{ request.resolver_match.url_name|default:"" }}' === 'home';
 
         if (!overlay || !sheet || !cta || !closeBtn) return;
+
+        function isMobileBrowser() {
+            var ua = navigator.userAgent || '';
+            var mobileUa = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+            return mobileUa || window.innerWidth <= 768;
+        }
 
         function isStandalone() {
             return window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
@@ -203,8 +210,15 @@
             localStorage.setItem(STORAGE_KEY, String(Date.now()));
         }
 
+        function refreshCtaState() {
+            cta.classList.remove('hidden');
+            cta.disabled = false;
+            cta.textContent = installEvent ? 'Download App' : 'Download App';
+        }
+
         function openSheet() {
-            if (isStandalone() || wasDismissed()) return;
+            if (!isHomePage || !isMobileBrowser() || isStandalone() || wasDismissed()) return;
+            refreshCtaState();
             overlay.classList.remove('hidden');
             sheet.classList.remove('hidden');
         }
@@ -223,8 +237,11 @@
         }
 
         window.addEventListener('beforeinstallprompt', function (e) {
+            // Keep deferred prompt for CTA so user can trigger install on demand.
             e.preventDefault();
             installEvent = e;
+            subtitle.textContent = 'Get faster access from your home screen.';
+            refreshCtaState();
             openSheet();
         });
 
@@ -240,7 +257,11 @@
             if (installEvent) {
                 installEvent.prompt();
                 try {
-                    await installEvent.userChoice;
+                    var choice = await installEvent.userChoice;
+                    if (choice && choice.outcome === 'dismissed') {
+                        // Keep hourly reminder when user dismisses browser install prompt.
+                        setDismissed();
+                    }
                 } catch (err) {
                     console.warn('Install choice handling failed:', err);
                 }
@@ -254,16 +275,31 @@
                 return;
             }
 
-            subtitle.textContent = 'Install prompt is not available right now. Continue using the app in browser.';
+            subtitle.textContent = 'Install prompt is not available right now. Open browser menu and tap Add to Home screen.';
         });
 
-        // Fallback: show sheet for any non-installed mobile browser.
+        // Fallback: show sheet on mobile browser home dashboard when prompt is unavailable.
         window.addEventListener('load', function () {
             setTimeout(function () {
-                if (!wasDismissed() && !isStandalone()) {
+                if (isHomePage && isMobileBrowser() && !wasDismissed() && !isStandalone()) {
+                    refreshCtaState();
                     openSheet();
                 }
             }, 1200);
+
+            // Long-open sessions: check every minute so reminder appears again
+            // after the 1-hour cooldown without requiring a page reload.
+            setInterval(function () {
+                if (isHomePage && isMobileBrowser() && !isStandalone() && wasDismissed()) {
+                    var raw = localStorage.getItem(STORAGE_KEY);
+                    var ts = parseInt(raw || '0', 10);
+                    if (ts && (Date.now() - ts) >= DISMISS_TTL_MS) {
+                        localStorage.removeItem(STORAGE_KEY);
+                        refreshCtaState();
+                        openSheet();
+                    }
+                }
+            }, 60 * 1000);
         });
     })();
     </script>

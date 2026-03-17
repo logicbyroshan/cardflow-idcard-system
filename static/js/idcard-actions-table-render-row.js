@@ -176,12 +176,7 @@ function createRowFromCard(card, index) {
     // Status-dependent last column(s)
     const status = _ts.lazyLoadState.currentStatus;
     var isClientUser = (typeof IS_CLIENT_USER !== 'undefined' && IS_CLIENT_USER);
-    if (status === 'download') {
-        // Downloaded list: show downloaded_at for admins only (client/client_staff don't see admin download info)
-        if (!isClientUser) {
-            html += `<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">${card.downloaded_at || '-'}</td>`;
-        }
-    } else if (status === 'pool') {
+    if (status === 'pool') {
         // Pool list: show deleted_at for admins only (client/client_staff don't see admin delete info)
         if (!isClientUser) {
             html += `<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">${card.deleted_at || '-'}</td>`;

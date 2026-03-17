@@ -22,10 +22,7 @@
                 <th class="{{ field|get_column_width_class }} {{ field|get_column_align_class }}" data-field-name="{{ field.name }}" data-field-type="{{ field.type }}">{{ field.name|humanize_header }}</th>
                 {% endif %}
                 {% endfor %}
-                {% if current_status == 'download' and not is_client and not is_client_staff %}
-                <!-- Downloaded At  -  admin only -->
-                <th class="w-[90px] min-w-[90px] text-center">Downloaded At</th>
-                {% elif current_status == 'pool' and not is_client and not is_client_staff %}
+                {% if current_status == 'pool' and not is_client and not is_client_staff %}
                 <!-- Deleted At  -  admin only -->
                 <th class="w-[90px] min-w-[90px] text-center">Deleted At</th>
                 {% elif current_status != 'download' and current_status != 'pool' and current_status != 'approved' %}

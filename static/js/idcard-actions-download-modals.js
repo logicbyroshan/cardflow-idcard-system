@@ -61,6 +61,7 @@ function initReprintPickerHandlers() {
     var confirmEditBtn = document.getElementById('reprintPickerEditBtn');
     var confirmSubmitBtn = document.getElementById('reprintPickerConfirmBtn');
     var confirmPreview = document.getElementById('reprintPickerConfirmPreview');
+    var imageUploadInput = document.getElementById('reprintPickerImageUploadInput');
 
     if (!triggerBtn || !pickerModal || !confirmModal) return;
     if (typeof CURRENT_STATUS !== 'undefined' && CURRENT_STATUS !== 'download') return;
@@ -185,8 +186,16 @@ function initReprintPickerHandlers() {
     function isImageFieldLocal(type, name) {
         var t = String(type || '').toLowerCase();
         var n = String(name || '').toLowerCase();
-        return t === 'image' || t === 'photo' || t === 'file' ||
-               n === 'photo' || n === 'image' || n === 'picture' || n === 'pic' || n === 'img';
+        if (t === 'image' || t === 'photo' || t === 'file') return true;
+        if (n.indexOf('designation') !== -1) return false;
+        return n.indexOf('photo') !== -1 ||
+               n.indexOf('image') !== -1 ||
+               n.indexOf('picture') !== -1 ||
+               n.indexOf('pic') !== -1 ||
+               n.indexOf('img') !== -1 ||
+               n.indexOf('signature') !== -1 ||
+               n.indexOf('barcode') !== -1 ||
+               n.indexOf('qr') !== -1;
     }
 
     function toCellText(value) {
@@ -403,15 +412,55 @@ function initReprintPickerHandlers() {
         return getField(item, ['SECTION', 'SEC', 'DIVISION', 'DIV']) || '-';
     }
 
+    function getImageRows(item) {
+        var ordered = Array.isArray(item && item.ordered_fields) ? item.ordered_fields : [];
+        if (!ordered.length) return [];
+        return ordered
+            .filter(function(field) {
+                return isImageFieldLocal(field && field.type, field && field.name);
+            })
+            .map(function(field) {
+                return {
+                    key: field.name || '',
+                    label: field.label || field.name || 'Image',
+                    value: field.value || ''
+                };
+            })
+            .filter(function(row) {
+                return String(row.key || '').trim().length > 0;
+            });
+    }
+
     function getPhotoPath(item) {
-        var imageField = resolvedFields.find(function(field) {
-            return isImageFieldLocal(field.type, field.name);
-        });
-        if (imageField) {
-            var imageVal = getFieldByName(item, imageField.name);
-            if (imageVal) return imageVal;
+        var imageRows = getImageRows(item);
+        if (!imageRows.length) {
+            return getField(item, ['PHOTO', 'IMAGE', 'PICTURE', 'PIC', 'STUDENT PHOTO']) || '';
         }
-        return getField(item, ['PHOTO', 'IMAGE', 'PICTURE', 'PIC', 'STUDENT PHOTO']) || '';
+        var preferred = imageRows.find(function(row) {
+            var k = normalizeFieldKey(row.key);
+            return k === 'PHOTO' || k === 'STUDENTPHOTO' || k === 'IMAGE' || k === 'PICTURE' || k === 'PIC';
+        }) || imageRows[0];
+        return preferred ? (preferred.value || '') : '';
+    }
+
+    function buildImageCell(fieldName, fieldLabel, value, isEditing, isMain) {
+        var val = String(value || '');
+        var canShow = !!(val && val !== 'NOT_FOUND' && val.indexOf('PENDING:') !== 0);
+        var cls = isMain ? 'reprint-preview-photo' : 'reprint-preview-extra-image';
+        var html = '<div class="' + cls + '" data-image-field="' + esc(fieldName) + '">';
+        if (canShow) {
+            html += '<img src="/media/' + esc(val) + '" alt="' + esc(fieldLabel || fieldName) + '" loading="lazy">';
+        } else {
+            html += '<div class="reprint-preview-photo-placeholder"><i class="fa-solid fa-image"></i></div>';
+        }
+        if (isEditing) {
+            html += '<div class="reprint-preview-image-actions">'
+                + '<button type="button" class="reprint-preview-image-btn upload" data-img-action="upload" data-field-name="' + esc(fieldName) + '" title="Upload image"><i class="fa-solid fa-upload"></i></button>'
+                + '<button type="button" class="reprint-preview-image-btn remove" data-img-action="remove" data-field-name="' + esc(fieldName) + '" title="Remove image"><i class="fa-solid fa-trash"></i></button>'
+                + '</div>';
+        }
+        html += '</div>';
+        return html;
     }
 
     function getPreviewRows(item) {
@@ -454,11 +503,22 @@ function initReprintPickerHandlers() {
     function buildPreviewHtml(item, isEditing) {
         if (!item) return '';
         var photoPath = String(getPhotoPath(item) || '');
-        var photoHtml = '';
-        if (photoPath && photoPath !== 'NOT_FOUND' && photoPath.indexOf('PENDING:') !== 0) {
-            photoHtml = '<img src="/media/' + esc(photoPath) + '" alt="Student photo" loading="lazy">';
-        } else {
-            photoHtml = '<div class="reprint-preview-photo-placeholder"><i class="fa-solid fa-user"></i></div>';
+        var imageRows = getImageRows(item);
+        var mainImageField = imageRows.find(function(row) {
+            return String(row.value || '') === photoPath;
+        }) || imageRows[0] || { key: 'PHOTO', label: 'Photo', value: photoPath };
+        var extraImages = imageRows.filter(function(row) {
+            return normalizeFieldKey(row.key) !== normalizeFieldKey(mainImageField.key);
+        });
+
+        var photoHtml = buildImageCell(mainImageField.key, mainImageField.label, mainImageField.value, isEditing, true);
+        var extraHtml = '';
+        if (extraImages.length) {
+            extraHtml = '<div class="reprint-preview-extra-images">';
+            extraImages.forEach(function(img) {
+                extraHtml += buildImageCell(img.key, img.label, img.value, isEditing, false);
+            });
+            extraHtml += '</div>';
         }
 
         var metaRows = getPreviewRows(item);
@@ -481,9 +541,24 @@ function initReprintPickerHandlers() {
 
         var metaClass = isEditing ? 'reprint-preview-meta edit-grid' : 'reprint-preview-meta';
         return '<div class="reprint-preview-card">'
-            + '<div class="reprint-preview-photo">' + photoHtml + '</div>'
+            + '<div class="reprint-preview-photo-stack">' + photoHtml + extraHtml + '</div>'
             + '<div class="' + metaClass + '">' + metaHtml + '</div>'
             + '</div>';
+    }
+
+    function syncCardFromApi(cardId, apiCard) {
+        if (!apiCard || !apiCard.field_data) return;
+        var card = getCardById(cardId);
+        if (!card || !Array.isArray(card.ordered_fields)) return;
+        var fd = apiCard.field_data || {};
+        var upper = {};
+        Object.keys(fd).forEach(function(k) { upper[normalizeFieldKey(k)] = fd[k]; });
+        card.ordered_fields.forEach(function(f) {
+            var key = normalizeFieldKey(f.name || '');
+            if (upper.hasOwnProperty(key)) {
+                f.value = upper[key] || '';
+            }
+        });
     }
 
     function renderConfirmPreview(item) {
@@ -596,6 +671,17 @@ function initReprintPickerHandlers() {
             .then(function(data) {
                 if (data && data.success) return data.card || null;
                 throw new Error((data && data.message) || 'Could not save card changes');
+            });
+    }
+
+    function uploadImageInline(cardId, fieldName, file) {
+        var formData = new FormData();
+        formData.append('field_data', JSON.stringify({}));
+        formData.append(fieldName, file);
+        return ApiClient.upload('/api/card/' + cardId + '/update/', formData)
+            .then(function(data) {
+                if (data && data.success) return data.card || null;
+                throw new Error((data && data.message) || 'Could not upload image');
             });
     }
 
@@ -855,10 +941,69 @@ function initReprintPickerHandlers() {
     }
 
     if (confirmPreview) {
+        confirmPreview.addEventListener('click', function(e) {
+            if (!inlineEditMode || !pendingEditIds.length) return;
+            var btn = e.target.closest('[data-img-action]');
+            if (!btn) return;
+            var action = btn.getAttribute('data-img-action');
+            var fieldName = btn.getAttribute('data-field-name');
+            var cardId = pendingEditIds[0];
+            if (!fieldName || !cardId) return;
+
+            if (action === 'upload') {
+                if (!imageUploadInput) return;
+                imageUploadInput.value = '';
+                imageUploadInput.dataset.targetField = fieldName;
+                imageUploadInput.click();
+                return;
+            }
+
+            if (action === 'remove') {
+                updateCardInline(cardId, (function() {
+                    var payload = {};
+                    payload[fieldName] = '';
+                    return payload;
+                })())
+                    .then(function(cardData) {
+                        syncCardFromApi(cardId, cardData);
+                        renderConfirmPreview(getCardById(cardId));
+                        if (typeof showToast === 'function') showToast('Image removed', 'success');
+                    })
+                    .catch(function(err) {
+                        if (typeof showToast === 'function') showToast((err && err.message) ? err.message : 'Could not remove image', 'error');
+                    });
+            }
+        });
+
         confirmPreview.addEventListener('input', function(e) {
             if (!inlineEditMode) return;
             if (!e.target.classList.contains('reprint-preview-input')) return;
             recomputeInlineDirtyState();
+        });
+    }
+
+    if (imageUploadInput) {
+        imageUploadInput.addEventListener('change', function() {
+            if (!inlineEditMode || !pendingEditIds.length) return;
+            var file = imageUploadInput.files && imageUploadInput.files[0];
+            if (!file) return;
+            var fieldName = imageUploadInput.dataset.targetField || '';
+            var cardId = pendingEditIds[0];
+            if (!fieldName || !cardId) return;
+
+            uploadImageInline(cardId, fieldName, file)
+                .then(function(cardData) {
+                    syncCardFromApi(cardId, cardData);
+                    renderConfirmPreview(getCardById(cardId));
+                    if (typeof showToast === 'function') showToast('Image uploaded', 'success');
+                })
+                .catch(function(err) {
+                    if (typeof showToast === 'function') showToast((err && err.message) ? err.message : 'Could not upload image', 'error');
+                })
+                .finally(function() {
+                    imageUploadInput.value = '';
+                    imageUploadInput.dataset.targetField = '';
+                });
         });
     }
 

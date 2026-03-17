@@ -168,9 +168,6 @@ def reprint_cards(request, table_id):
                 'rr_id': rr.id,
                 'card_id': rr.card_id,
                 'sr_no': idx + 1,
-                'status': rr.card.status,
-                'get_status_display': rr.card.get_status_display(),
-                'reason': rr.reason,
                 'requested_by_name': (req_by.get_full_name() or req_by.username) if req_by else 'System',
                 'requested_at': rr.created_at,
                 'ordered_fields': _build_ordered_fields(rr.card, table),
@@ -194,9 +191,6 @@ def reprint_cards(request, table_id):
                 'rr_id': rr.id,
                 'card_id': rr.card_id,
                 'sr_no': idx + 1,
-                'status': rr.card.status,
-                'get_status_display': rr.card.get_status_display(),
-                'reason': rr.reason,
                 'requested_by_name': (req_by.get_full_name() or req_by.username) if req_by else 'System',
                 'confirmed_at': rr.updated_at,
                 'ordered_fields': _build_ordered_fields(rr.card, table),
@@ -410,7 +404,6 @@ def api_request_list(request, table_id):
     if query:
         rr_qs = rr_qs.filter(
             Q(card__field_data__icontains=query) |
-            Q(reason__icontains=query) |
             Q(card__id__icontains=query)
         )
 
@@ -427,9 +420,6 @@ def api_request_list(request, table_id):
             'rr_id': rr.id,
             'card_id': rr.card_id,
             'sr_no': offset + idx + 1,
-            'status': rr.card.status,
-            'status_display': rr.card.get_status_display(),
-            'reason': rr.reason,
             'requested_by_name': (req_by.get_full_name() or req_by.username) if req_by else 'System',
             'requested_at': localtime(rr.created_at).strftime('%d-%b-%Y %H:%M'),
             'ordered_fields': _build_ordered_fields(rr.card, table),
@@ -507,7 +497,6 @@ def api_confirmed_list(request, table_id):
     if query:
         rr_qs = rr_qs.filter(
             Q(card__field_data__icontains=query) |
-            Q(reason__icontains=query) |
             Q(card__id__icontains=query)
         )
 
@@ -524,9 +513,6 @@ def api_confirmed_list(request, table_id):
             'rr_id': rr.id,
             'card_id': rr.card_id,
             'sr_no': offset + idx + 1,
-            'status': rr.card.status,
-            'status_display': rr.card.get_status_display(),
-            'reason': rr.reason,
             'requested_by_name': (req_by.get_full_name() or req_by.username) if req_by else 'System',
             'confirmed_at': localtime(rr.updated_at).strftime('%d-%b-%Y %H:%M'),
             'ordered_fields': _build_ordered_fields(rr.card, table),
@@ -685,19 +671,20 @@ def api_reprint_send_to_print(request, table_id):
     if not result.success:
         return JsonResponse({'status': 'error', 'message': result.message}, status=400)
 
-    # Move the reprint requests from requested → confirmed
-    if result.data['created'] > 0:
-        ReprintRequest.objects.filter(
-            id__in=rr_ids,
-            table=table,
-            status='requested',
-            card__status='download',
-        ).update(status='confirmed')
+    # Always move eligible rows from requested -> confirmed, even when
+    # print rows were skipped because they already existed in print_list.
+    moved_count = ReprintRequest.objects.filter(
+        id__in=rr_ids,
+        table=table,
+        status='requested',
+        card__status='download',
+    ).update(status='confirmed')
 
     return JsonResponse({
         'status': 'ok',
-        'message': f"{result.data['created']} card(s) sent to print list and moved to confirmed"
-                   + (f" ({result.data['skipped']} already in list)" if result.data['skipped'] else ''),
+        'message': f"{moved_count} request(s) moved to Confirmed List"
+                   + (f" ({result.data['created']} added to print list" + (f", {result.data['skipped']} already in print list" if result.data['skipped'] else '') + ")" if (result.data['created'] or result.data['skipped']) else ''),
         'created': result.data['created'],
         'skipped': result.data['skipped'],
+        'moved': moved_count,
     })

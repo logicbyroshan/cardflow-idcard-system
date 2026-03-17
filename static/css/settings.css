@@ -418,6 +418,25 @@
     font-size: 12px;
 }
 
+/* Prevent global compact .btn rules from clipping text on this page */
+.settings-page .settings-section .btn.btn-save {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    height: auto !important;
+    line-height: 1.2;
+    padding: 10px 20px !important;
+    white-space: nowrap;
+}
+
+.settings-page .settings-section .form-actions {
+    display: flex;
+    align-items: center;
+    min-height: 42px;
+    padding-top: 8px;
+}
+
 /* ===== Export Settings / Templates (de-inline Phase 2) ===== */
 .settings-export-actions {
     display: flex;

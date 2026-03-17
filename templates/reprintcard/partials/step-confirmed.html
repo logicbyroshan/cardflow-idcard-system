@@ -88,13 +88,8 @@
                     <th class="{{ field|get_column_width_class }} px-[1px] py-1 {{ field|get_column_align_class }} align-middle" data-field-name="{{ field.name }}" data-field-type="{{ field.type }}">{{ field.name|humanize_header }}</th>
                     {% endif %}
                     {% endfor %}
-                    <th class="min-w-[80px] px-[1px] py-1 text-center align-middle">Reason</th>
                     <th class="w-[65px] min-w-[65px] px-[1px] py-1 text-center align-middle">Requested By</th>
                     <th class="w-[90px] min-w-[90px] px-[1px] py-1 text-center align-middle">Confirmed At</th>
-                    {% if not is_client and not is_client_staff %}
-                    <th class="w-[60px] min-w-[60px] px-[1px] py-1 text-center align-middle">Action</th>
-                    {% endif %}
-                    <th class="w-[65px] min-w-[65px] px-[1px] py-1 text-center align-middle">Status</th>
                 </tr>
             </thead>
             <tbody id="confirmedTableBody" class="divide-y divide-gray-200">
@@ -141,19 +136,8 @@
                     </td>
                     {% endif %}
                     {% endfor %}
-                    <td class="min-w-[80px] px-[1px] py-1 align-middle reason-cell whitespace-normal break-words text-left" title="{{ item.reason }}">{{ item.reason|truncatewords:8 }}</td>
                     <td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center">{{ item.requested_by_name }}</td>
                     <td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">{{ item.confirmed_at|date:"d-M-Y H:i" }}</td>
-                    {% if not is_client and not is_client_staff %}
-                    <td class="w-[60px] px-[1px] py-1 text-center align-middle action-cell">
-                        <button class="btn-confirmed-edit-single" data-card-id="{{ item.card_id }}" title="Edit card" aria-label="Edit card">
-                            <i class="fa-solid fa-pen"></i>
-                        </button>
-                    </td>
-                    {% endif %}
-                    <td class="w-[65px] px-[1px] py-1 align-middle text-center">
-                        <span class="status-badge status-{{ item.status }}">{{ item.get_status_display }}</span>
-                    </td>
                 </tr>
                 {% empty %}
                 <tr>

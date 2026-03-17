@@ -411,6 +411,64 @@
     align-items: center;
     justify-content: center;
   }
+  #reprintPickerConfirmModal .reprint-preview-photo-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 84px;
+  }
+  #reprintPickerConfirmModal .reprint-preview-extra-images {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    width: 84px;
+  }
+  #reprintPickerConfirmModal .reprint-preview-extra-image {
+    position: relative;
+    width: 39px;
+    height: 50px;
+    border-radius: 6px;
+    border: 1px solid #bfdbfe;
+    overflow: hidden;
+    background: #eff6ff;
+  }
+  #reprintPickerConfirmModal .reprint-preview-extra-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  #reprintPickerConfirmModal .reprint-preview-image-actions {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background: rgba(15, 23, 42, 0.62);
+  }
+  #reprintPickerConfirmModal.edit-mode .reprint-preview-photo:hover .reprint-preview-image-actions,
+  #reprintPickerConfirmModal.edit-mode .reprint-preview-extra-image:hover .reprint-preview-image-actions {
+    display: flex;
+  }
+  #reprintPickerConfirmModal .reprint-preview-image-btn {
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #fff;
+    font-size: 10px;
+  }
+  #reprintPickerConfirmModal .reprint-preview-image-btn.upload {
+    background: #2563eb;
+  }
+  #reprintPickerConfirmModal .reprint-preview-image-btn.remove {
+    background: #dc2626;
+  }
   #reprintPickerConfirmModal .reprint-preview-photo img {
     width: 100%;
     height: 100%;
@@ -594,6 +652,7 @@
       <p class="center-modal-subtitle">Selected card: <strong id="reprintPickerConfirmCount">0</strong></p>
       <p class="center-modal-note" id="reprintPickerConfirmNote" style="margin-top:6px;">Do you want to edit selected card data first, or print as it is?</p>
       <div id="reprintPickerConfirmPreview" class="reprint-confirm-preview"></div>
+      <input type="file" id="reprintPickerImageUploadInput" accept="image/*" style="display:none;">
       <div class="reprint-edit-toolbar" id="reprintPickerEditToolbar">
         <span class="reprint-edit-left"><i class="fa-solid fa-pen-to-square"></i> Edit mode active</span>
         <span><span class="reprint-edit-count" id="reprintPickerDirtyCount">0</span> field(s) changed</span>

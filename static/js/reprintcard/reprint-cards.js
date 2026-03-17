@@ -646,39 +646,6 @@ async function postJsonForBlob(url, body) {
     if (e.target.classList.contains('requestRowCheckbox')) updateSelectionUI();
   });
 
-  tableBody.addEventListener('click', async function(e) {
-    var editSingle = e.target.closest('.btn-request-edit-single');
-    if (editSingle && IS_ADMIN_CONTEXT) {
-      var editCardId = parseInt(editSingle.dataset.cardId, 10);
-      if (editCardId && typeof fetchCardAndOpenModal === 'function') {
-        fetchCardAndOpenModal('edit', editCardId);
-      }
-      return;
-    }
-
-    var printBtn = e.target.closest('.btn-request-print-single');
-    if (printBtn && IS_ADMIN_CONTEXT) {
-      var rrId = parseInt(printBtn.dataset.rrId, 10);
-      if (rrId) performSendToPrint([rrId]);
-      return;
-    }
-
-    var rejectSingle = e.target.closest('.btn-request-reject-single');
-    if (rejectSingle && IS_ADMIN_CONTEXT) {
-      var rrId2 = parseInt(rejectSingle.dataset.rrId, 10);
-      if (rrId2) {
-        var ok = await showConfirm({
-          title: 'Reject Request?',
-          text: 'Reject this reprint request? Card will move to pool.',
-          icon: 'fa-solid fa-ban',
-          confirmLabel: 'Reject',
-          hideWarning: true,
-        });
-        if (ok) performReject([rrId2]);
-      }
-    }
-  });
-
   if (sendToPrintBtn) {
     sendToPrintBtn.addEventListener('click', async function() {
       var ids = getSelectedRrIds();
@@ -980,17 +947,8 @@ async function postJsonForBlob(url, body) {
       html += '<td class="w-[24px] px-[1px] py-1 text-center align-middle checkbox-cell"><input type="checkbox" class="requestRowCheckbox"></td>';
       html += '<td class="w-[36px] px-[1px] py-1 text-center align-middle sr-no-cell">' + (idx + 1) + '</td>';
       html += renderOrderedFields(item.ordered_fields);
-      html += '<td class="min-w-[80px] px-[1px] py-1 align-middle reason-cell whitespace-normal break-words text-left">' + escapeHtml(item.reason || '-') + '</td>';
       html += '<td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center">' + escapeHtml(item.requested_by_name || '-') + '</td>';
       html += '<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">' + escapeHtml(item.requested_at || '-') + '</td>';
-      html += '<td class="w-[100px] px-[1px] py-1 text-center align-middle action-cell"><div class="confirm-action-btns">';
-      if (IS_ADMIN_CONTEXT) {
-        html += '<button class="btn-request-edit-single" data-card-id="' + item.card_id + '" title="Edit"><i class="fa-solid fa-pen"></i></button>';
-        html += '<button class="btn-request-print-single" data-rr-id="' + item.rr_id + '" title="Send to Print List"><i class="fa-solid fa-print"></i> <span>Print</span></button>';
-        html += '<button class="btn-request-reject-single" data-rr-id="' + item.rr_id + '" title="Reject"><i class="fa-solid fa-xmark"></i></button>';
-      }
-      html += '</div></td>';
-      html += '<td class="w-[65px] px-[1px] py-1 align-middle text-center"><span class="status-badge status-' + (item.status || 'pending') + '">' + escapeHtml(item.status_display || '-') + '</span></td>';
       html += '</tr>';
     });
 
@@ -1085,15 +1043,6 @@ async function postJsonForBlob(url, body) {
 
   tableBody.addEventListener('change', function(e) {
     if (e.target.classList.contains('confirmedRowCheckbox')) updateSelectionUI();
-  });
-
-  tableBody.addEventListener('click', function(e) {
-    var editSingle = e.target.closest('.btn-confirmed-edit-single');
-    if (!editSingle || !IS_ADMIN_CONTEXT) return;
-    var cardId = parseInt(editSingle.dataset.cardId, 10);
-    if (cardId && typeof fetchCardAndOpenModal === 'function') {
-      fetchCardAndOpenModal('edit', cardId);
-    }
   });
 
   if (viewBtn) {
@@ -1278,13 +1227,8 @@ async function postJsonForBlob(url, body) {
       html += '<td class="w-[24px] px-[1px] py-1 text-center align-middle checkbox-cell"><input type="checkbox" class="confirmedRowCheckbox"></td>';
       html += '<td class="w-[36px] px-[1px] py-1 text-center align-middle sr-no-cell">' + (idx + 1) + '</td>';
       html += renderOrderedFields(item.ordered_fields);
-      html += '<td class="min-w-[80px] px-[1px] py-1 align-middle reason-cell whitespace-normal break-words text-left">' + escapeHtml(item.reason || '-') + '</td>';
       html += '<td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center">' + escapeHtml(item.requested_by_name || '-') + '</td>';
       html += '<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">' + escapeHtml(item.confirmed_at || '-') + '</td>';
-      if (IS_ADMIN_CONTEXT) {
-        html += '<td class="w-[60px] px-[1px] py-1 text-center align-middle action-cell"><button class="btn-confirmed-edit-single" data-card-id="' + item.card_id + '" title="Edit"><i class="fa-solid fa-pen"></i></button></td>';
-      }
-      html += '<td class="w-[65px] px-[1px] py-1 align-middle text-center"><span class="status-badge status-' + (item.status || 'pending') + '">' + escapeHtml(item.status_display || '-') + '</span></td>';
       html += '</tr>';
     });
 

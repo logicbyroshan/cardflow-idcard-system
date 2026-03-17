@@ -98,6 +98,29 @@ body:has(.idcard-actions-page) {
     flex-wrap: nowrap;
 }
 
+/* Download date-time filter: remove extra vertical padding/min-height feel */
+.idcard-actions-page .search-filter-bar #dateTimeFilterGroup {
+    gap: 4px;
+}
+
+.idcard-actions-page .search-filter-bar #dateTimeFilterGroup .datetime-label {
+    margin: 0;
+    line-height: 1;
+}
+
+.idcard-actions-page .search-filter-bar #dateTimeFilterGroup .datetime-input {
+    min-height: 0 !important;
+    height: 26px !important;
+    line-height: 26px;
+    padding: 0 6px !important;
+}
+
+.idcard-actions-page .search-filter-bar #dateTimeFilterGroup .btn.btn-sm {
+    min-height: 0 !important;
+    height: 26px !important;
+    padding: 0 8px !important;
+}
+
 /* Card table container fills remaining space */
 .idcard-actions-page #card-table-container {
     display: flex;

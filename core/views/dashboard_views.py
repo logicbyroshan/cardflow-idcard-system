@@ -179,7 +179,7 @@ def api_recent_client_updates(request):
         # Get recent clients - scoped by PermissionService
         # Admin staff see ALL assigned clients (including inactive) since they're
         # specifically assigned; super admin sees only active clients by default.
-        # Order by most-recently-approved card data (latest approved card update first)
+        # Order by most-recently-approved card data (latest approved update first)
         base_qs = Client.objects.all() if is_scoped else Client.objects.filter(status='active')
         clients = PermissionService.get_accessible_clients(
             user, base_qs

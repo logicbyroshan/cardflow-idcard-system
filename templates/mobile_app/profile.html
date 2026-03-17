@@ -91,7 +91,7 @@
     <div class="px-4 pb-3">
         <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Quick Links</p>
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-50">
-            {% if is_client %}
+            {% if is_client or is_super_admin %}
             <a href="{% url 'mobile_app:staff_manage' %}" class="flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 active:bg-gray-50 transition">
                 <div class="flex items-center gap-3">
                     <div class="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0">
