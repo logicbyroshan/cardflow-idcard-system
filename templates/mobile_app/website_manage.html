@@ -141,7 +141,7 @@
          PORTFOLIO UPLOAD SHEET
      -->
     <div x-show="uploadSheetOpen" x-cloak
-         class="fixed inset-0 z-50 flex flex-col justify-end"
+            class="fixed inset-0 z-[80] flex flex-col justify-end"
          @keydown.escape.window="closeUploadSheet()">
         <!-- Backdrop -->
         <div class="absolute inset-0 bg-black/50 backdrop-blur-[2px]" @click="closeUploadSheet()"></div>
@@ -241,7 +241,7 @@
          ADD REEL SHEET
      -->
     <div x-show="reelSheetOpen" x-cloak
-         class="fixed inset-0 z-50 flex flex-col justify-end"
+            class="fixed inset-0 z-[80] flex flex-col justify-end"
          @keydown.escape.window="closeReelSheet()">
         <div class="absolute inset-0 bg-black/50 backdrop-blur-[2px]" @click="closeReelSheet()"></div>
 
