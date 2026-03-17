@@ -17,9 +17,9 @@
 
         {% for student in students %}
         <div data-sid="{{ student.id }}"
-             class="bg-white rounded-2xl border overflow-hidden transition-all {% if not view_only_list %}cursor-pointer{% endif %} shadow-sm hover:shadow-md"
+               class="bg-white rounded-2xl border overflow-hidden transition-all shadow-sm hover:shadow-md"
              :class="{% if not view_only_list %}selectedIds.includes({{ student.id }}) ? 'border-indigo-300 ring-2 ring-indigo-100 bg-indigo-50/30' : 'border-gray-100'{% else %}'border-gray-100'{% endif %}"
-             {% if not view_only_list %}@click="toggleSelect({{ student.id }})"{% endif %}>
+               >
 
             <div class="flex gap-3 p-3">
                 <!-- Photo + Checkbox Column -->

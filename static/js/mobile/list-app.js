@@ -288,6 +288,33 @@ function listApp() {
             return String(name || '').trim().toLowerCase();
         },
 
+        _normalizeLookupKey(name) {
+            return String(name || '')
+                .toLowerCase()
+                .replace(/[^a-z0-9]/g, '');
+        },
+
+        _getFieldValue(fd, aliases, fallbackValue = '') {
+            const source = fd || {};
+            const keys = Object.keys(source);
+            const lookup = {};
+            keys.forEach((k) => {
+                lookup[this._normalizeLookupKey(k)] = source[k];
+            });
+
+            for (const alias of aliases || []) {
+                const exact = source[alias];
+                if (exact !== undefined && exact !== null && String(exact).trim() !== '') {
+                    return String(exact);
+                }
+                const normalized = lookup[this._normalizeLookupKey(alias)];
+                if (normalized !== undefined && normalized !== null && String(normalized).trim() !== '') {
+                    return String(normalized);
+                }
+            }
+            return String(fallbackValue || '');
+        },
+
         _isExcludedField(name) {
             const n = this._normalizeFieldName(name);
             if (!n) return true;
@@ -429,7 +456,7 @@ function listApp() {
 
             const div = document.createElement('div');
             div.setAttribute('data-sid', String(card.id));
-            div.className = 'bg-white rounded-2xl border border-gray-100 overflow-hidden transition-all shadow-sm hover:shadow-md' + (!IS_VIEW_ONLY ? ' cursor-pointer' : '');
+            div.className = 'bg-white rounded-2xl border border-gray-100 overflow-hidden transition-all shadow-sm hover:shadow-md';
             div.innerHTML = `<div class="flex gap-3 p-3"><div class="flex flex-col items-center gap-1.5 flex-shrink-0" style="width:56px;">${cbHtml}${photoHtml}</div><div class="flex-1 min-w-0 flex flex-col">${nameHtml}${classPill}<div class="mt-2"><div class="grid text-[11px] leading-snug" style="grid-template-columns:40% 1fr;">${fieldRows}</div></div><div class="mt-2.5"><a href="/app/card/${card.id}/" class="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-500 bg-indigo-50 border border-indigo-100 rounded-lg px-2.5 py-1 active:opacity-70 transition-all js-view-details" data-view-id="${card.id}">View Details <i class="fa-solid fa-arrow-right text-[9px]"></i></a></div></div></div>`;
 
             const viewLink = div.querySelector('.js-view-details');
@@ -442,10 +469,6 @@ function listApp() {
             }
 
             if (!IS_VIEW_ONLY) {
-                div.addEventListener('click', (e) => {
-                    if (e.target.closest('label, input, a')) return;
-                    this.toggleSelect(card.id);
-                });
                 const cb = div.querySelector('input[type=checkbox]');
                 if (cb) {
                     cb.addEventListener('change', (e) => { e.stopPropagation(); this.toggleSelect(card.id); });
@@ -656,18 +679,29 @@ function listApp() {
         },
         populateFormFromStudent(student) {
             const fd = (student && student.field_data) || {};
+            const nameValue = this._getFieldValue(fd, ['NAME', 'name', 'full name'], (student && student.name) || '');
+            const fatherValue = this._getFieldValue(fd, ['FATHER NAME', "FATHER'S NAME", 'FATHER_NAME', 'father_name']);
+            const motherValue = this._getFieldValue(fd, ['MOTHER NAME', "MOTHER'S NAME", 'MOTHER_NAME', 'mother_name']);
+            const rollNoValue = this._getFieldValue(fd, ['ROLL NO', 'ROLL_NO', 'roll_no', 'ID NUMBER', 'ID_NUMBER', 'id_number'], (student && (student.roll_no || student.id_number)) || '');
+            const dobValue = this._getFieldValue(fd, ['DOB', 'DATE OF BIRTH', 'DATE_OF_BIRTH', 'dob'], (student && student.dob) || '');
+            const classValue = this._getFieldValue(fd, ['CLASS', 'class', 'DESIGNATION', 'designation'], (student && student.class_name) || '');
+            const sectionValue = this._getFieldValue(fd, ['SECTION', 'section'], (student && student.section) || '');
+            const phoneValue = this._getFieldValue(fd, ['PHONE', 'MOBILE', 'MOBILE NO', 'MOBILE_NUMBER', 'phone']);
+            const addressValue = this._getFieldValue(fd, ['ADDRESS', 'PERMANENT ADDRESS', 'address']);
+            const bloodGroupValue = this._getFieldValue(fd, ['BLOOD GROUP', 'blood_group']);
+            const aadharValue = this._getFieldValue(fd, ['AADHAR', 'AADHAAR', 'AADHAR NO', 'aadhar']);
             this.form = {
-                name: (student && student.name) || '',
-                fatherName: fd['FATHER NAME'] || fd["FATHER'S NAME"] || fd['FATHER_NAME'] || fd['father_name'] || student.father_name || '',
-                motherName: fd['MOTHER NAME'] || fd["MOTHER'S NAME"] || fd['MOTHER_NAME'] || fd['mother_name'] || '',
-                rollNo: (student && student.roll_no) || '',
-                dob: (student && student.dob) || '',
-                className: (student && student.class_name) || '',
-                section: (student && student.section) || '',
-                phone: fd['PHONE'] || fd['MOBILE'] || fd['MOBILE NO'] || fd['phone'] || '',
-                address: fd['ADDRESS'] || fd['PERMANENT ADDRESS'] || fd['address'] || '',
-                bloodGroup: fd['BLOOD GROUP'] || fd['blood_group'] || '',
-                aadhar: fd['AADHAR'] || fd['AADHAAR'] || fd['AADHAR NO'] || fd['aadhar'] || '',
+                name: nameValue,
+                fatherName: fatherValue,
+                motherName: motherValue,
+                rollNo: rollNoValue,
+                dob: dobValue,
+                className: classValue,
+                section: sectionValue,
+                phone: phoneValue,
+                address: addressValue,
+                bloodGroup: bloodGroupValue,
+                aadhar: aadharValue,
                 photoFile: null,
                 photoPreview: (student && student.photo_url) || null,
             };
