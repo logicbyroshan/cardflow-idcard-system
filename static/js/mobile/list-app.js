@@ -25,6 +25,9 @@ function listApp() {
         },
         filters: { photo: 'all', selectedClass: '', selectedSection: '', dateFrom: '', dateTo: '' },
         filtersActive: false,
+        supportsInfiniteObserver: typeof window !== 'undefined' && 'IntersectionObserver' in window,
+        infiniteObserver: null,
+        scrollFallbackHandler: null,
 
         // Add/Edit Form state
         showAddForm: false,
@@ -49,6 +52,10 @@ function listApp() {
         },
 
         init() {
+            this.$nextTick(() => {
+                this.initInfiniteLoader();
+            });
+
             // Re-open edit form if we just returned from camera.html
             const camReturnEdit = sessionStorage.getItem('cam_return_edit');
             if (camReturnEdit) {
@@ -71,6 +78,42 @@ function listApp() {
                     this.focusCardById(focusCardId);
                 });
             }
+        },
+
+        initInfiniteLoader() {
+            const sentinel = document.getElementById('list-infinite-sentinel');
+            const scrollRoot = document.getElementById('students-scroll');
+            if (!sentinel || !scrollRoot) return;
+
+            if (this.supportsInfiniteObserver) {
+                if (this.infiniteObserver) this.infiniteObserver.disconnect();
+                this.infiniteObserver = new IntersectionObserver((entries) => {
+                    entries.forEach((entry) => {
+                        if (entry.isIntersecting && this.hasMore && !this.loading) {
+                            this.loadMore();
+                        }
+                    });
+                }, {
+                    root: scrollRoot,
+                    rootMargin: '320px 0px 320px 0px',
+                    threshold: 0.01,
+                });
+                this.infiniteObserver.observe(sentinel);
+                return;
+            }
+
+            if (this.scrollFallbackHandler) {
+                scrollRoot.removeEventListener('scroll', this.scrollFallbackHandler);
+            }
+
+            this.scrollFallbackHandler = () => {
+                if (!this.hasMore || this.loading) return;
+                const remaining = scrollRoot.scrollHeight - (scrollRoot.scrollTop + scrollRoot.clientHeight);
+                if (remaining < 260) {
+                    this.loadMore();
+                }
+            };
+            scrollRoot.addEventListener('scroll', this.scrollFallbackHandler, { passive: true });
         },
 
         async focusCardById(cardId) {
