@@ -11,7 +11,7 @@
 
         <!-- Header row -->
         <div class="flex items-center gap-3 px-4 pt-[calc(env(safe-area-inset-top,0px)+10px)] pb-1">
-            <a href="{% url 'mobile_app:home' %}" class="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center text-white active:bg-white/30 transition-colors flex-shrink-0">
+            <a href="{% url 'mobile_app:home' %}" onclick="return mobileGoBack(event, this.getAttribute('href'));" class="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center text-white active:bg-white/30 transition-colors flex-shrink-0">
                 <i class="fa-solid fa-arrow-left text-sm"></i>
             </a>
             <div class="flex-1 min-w-0">

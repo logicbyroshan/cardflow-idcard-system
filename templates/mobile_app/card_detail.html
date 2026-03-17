@@ -9,7 +9,7 @@
 
     <!-- Header -->
     <div class="pwa-page-topbar sticky top-0 z-40 flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-brand-light to-brand-dark">
-        <button onclick="history.back()"
+        <button onclick="mobileGoBack(event, '/app/');"
                 class="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all flex-shrink-0">
             <i class="fa-solid fa-arrow-left text-sm"></i>
         </button>
@@ -331,7 +331,7 @@ function cardDetailApp() {
                 const data = await res.json();
                 if (data.success) {
                     this.showToast(data.message || 'Card deleted', 'success');
-                    setTimeout(() => history.back(), 800);
+                    setTimeout(() => mobileGoBack(null, '/app/'), 800);
                 } else {
                     this.showToast(data.message || 'Delete failed', 'error');
                 }

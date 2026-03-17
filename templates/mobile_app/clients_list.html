@@ -13,6 +13,7 @@
         <div class="flex items-center gap-2 px-4 bg-gradient-to-r from-brand-light to-brand-dark"
              style="padding-top: 12px; padding-bottom: 12px;">
             <a href="{% url 'mobile_app:home' %}"
+                    onclick="return mobileGoBack(event, this.getAttribute('href'));"
                class="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all flex-shrink-0">
                 <i class="fa-solid fa-arrow-left text-sm"></i>
             </a>

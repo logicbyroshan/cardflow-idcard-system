@@ -171,6 +171,31 @@
         form.submit();
         return false;
     };
+
+    window.mobileGoBack = function mobileGoBack(event, fallbackUrl) {
+        if (event) event.preventDefault();
+        var fallback = fallbackUrl || '/app/';
+
+        try {
+            if (window.history.length > 1) {
+                window.history.back();
+                return false;
+            }
+        } catch (e) {}
+
+        if (document.referrer) {
+            try {
+                var ref = new URL(document.referrer, window.location.origin);
+                if (ref.origin === window.location.origin) {
+                    window.location.href = ref.pathname + ref.search + ref.hash;
+                    return false;
+                }
+            } catch (e) {}
+        }
+
+        window.location.href = fallback;
+        return false;
+    };
     </script>
 
     <!-- Register PWA Service Worker (required for Chrome install prompt) -->

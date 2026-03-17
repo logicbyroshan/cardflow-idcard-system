@@ -7,7 +7,7 @@
 <div class="min-h-screen bg-gray-50 pb-20" x-data="profileApp()">
     <!-- Header -->
     <div class="pwa-page-topbar sticky top-0 z-40 flex items-center gap-3 px-4 pb-3 bg-gradient-to-r from-brand-light to-brand-dark">
-        <a href="{% url 'mobile_app:home' %}" class="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center text-white active:bg-white/30 transition-colors">
+        <a href="{% url 'mobile_app:home' %}" onclick="return mobileGoBack(event, this.getAttribute('href'));" class="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center text-white active:bg-white/30 transition-colors">
             <i class="fa-solid fa-arrow-left text-sm"></i>
         </a>
         <h1 class="text-white font-bold text-[14px] flex-1">My Profile</h1>
