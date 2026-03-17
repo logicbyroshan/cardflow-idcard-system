@@ -141,6 +141,7 @@ def api_email_resend(request, log_id):
     import secrets
     import string
     from django.utils import timezone
+    from accounts.services import OTPService
     from core.utils.email_utils import send_welcome_email
 
     try:
@@ -148,8 +149,33 @@ def api_email_resend(request, log_id):
     except EmailLog.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'Log entry not found.'}, status=404)
 
-    if log.status not in [EmailLog.STATUS_ON_HOLD, EmailLog.STATUS_FAILED]:
-        return JsonResponse({'success': False, 'message': 'Only on_hold or failed emails can be resent.'})
+    is_otp_log = log.email_type == EmailLog.EMAIL_TYPE_OTP_RESET
+    if (not is_otp_log) and log.status not in [EmailLog.STATUS_ON_HOLD, EmailLog.STATUS_FAILED]:
+        return JsonResponse({'success': False, 'message': 'Only on_hold or failed emails can be resent for this type.'})
+
+    if is_otp_log:
+        result = OTPService.send_otp(log.recipient_email)
+        if result.get('success'):
+            log.status = EmailLog.STATUS_PENDING
+            log.error_message = ''
+            log.sent_at = None
+            log.save(update_fields=['status', 'error_message', 'sent_at'])
+            return JsonResponse({
+                'success': True,
+                'message': 'OTP resend request queued successfully.',
+                'new_status': log.status,
+                'new_status_display': log.get_status_display(),
+            })
+
+        log.status = EmailLog.STATUS_FAILED
+        log.error_message = result.get('message', 'Failed to resend OTP email.')
+        log.save(update_fields=['status', 'error_message'])
+        return JsonResponse({
+            'success': False,
+            'message': result.get('message', 'Failed to resend OTP email.'),
+            'new_status': log.status,
+            'new_status_display': log.get_status_display(),
+        }, status=500)
 
     try:
         user = User.objects.get(email=log.recipient_email, is_active=True)

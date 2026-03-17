@@ -707,10 +707,12 @@ window.loadEmailLogs = function (page) {
             ? '<span title="' + escAttr(log.error_message) + '" style="cursor:help;">' +
               '<i class="fa-solid fa-circle-info" style="color:#dc2626;"></i></span>'
             : '<span style="color:#9ca3af;"></span>';
-          const canResend = log.status === 'on_hold' || log.status === 'failed';
+          const isOtpType = log.email_type === 'otp_reset';
+          const canResend = isOtpType || log.status === 'on_hold' || log.status === 'failed';
+          const actionTitle = isOtpType ? 'Resend OTP email' : 'Resend email';
           const actionHtml = canResend
             ? '<button class="btn btn-icon" style="width:28px;height:28px;padding:0;" ' +
-              'onclick="resendEmail(' + log.id + ')" title="Resend email">' +
+              'onclick="resendEmail(' + log.id + ',\'' + escAttr(log.email_type || '') + '\')" title="' + actionTitle + '">' +
               '<i class="fa-solid fa-paper-plane" style="font-size:11px;"></i></button>'
             : '<span style="color:#9ca3af;"></span>';
           return '<tr id="email-log-row-' + log.id + '">' +
@@ -744,8 +746,18 @@ window.emailLogPage = function (delta) {
   loadEmailLogs();
 };
 
-window.resendEmail = async function (logId) {
-  var ok = await showConfirm({ title: 'Resend Welcome Email?', text: 'Resend welcome email for this log entry? A new temporary password will be generated for the user.', icon: 'fa-solid fa-paper-plane', confirmLabel: 'Resend', btnClass: 'btn-primary', hideWarning: true });
+window.resendEmail = async function (logId, emailType) {
+  var isOtpType = emailType === 'otp_reset';
+  var ok = await showConfirm({
+    title: isOtpType ? 'Resend OTP Email?' : 'Resend Welcome Email?',
+    text: isOtpType
+      ? 'Send a fresh password reset OTP email for this entry?'
+      : 'Resend welcome email for this log entry? A new temporary password will be generated for the user.',
+    icon: 'fa-solid fa-paper-plane',
+    confirmLabel: 'Resend',
+    btnClass: 'btn-primary',
+    hideWarning: true
+  });
   if (!ok) return;
   const actionCell = document.getElementById('email-log-action-' + logId);
   if (actionCell) actionCell.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="color:#667eea;"></i>';
@@ -758,15 +770,25 @@ window.resendEmail = async function (logId) {
       if (data.success) {
         const statusEl = document.getElementById('email-log-status-' + logId);
         if (statusEl) {
-          statusEl.className = 'email-status-badge sent';
+          var st = (data.new_status || '').toLowerCase();
+          var cls = st === 'failed' ? 'failed' : (st === 'on_hold' ? 'on-hold' : (st === 'pending' ? 'pending' : 'sent'));
+          statusEl.className = 'email-status-badge ' + cls;
           statusEl.textContent = data.new_status_display || 'Sent';
         }
-        if (actionCell) actionCell.innerHTML = '<span style="color:#9ca3af;">\u2014</span>';
+        if (actionCell) {
+          if (isOtpType) {
+            actionCell.innerHTML = '<button class="btn btn-icon" style="width:28px;height:28px;padding:0;" ' +
+              'onclick="resendEmail(' + logId + ',\'otp_reset\')" title="Resend OTP email">' +
+              '<i class="fa-solid fa-paper-plane" style="font-size:11px;"></i></button>';
+          } else {
+            actionCell.innerHTML = '<span style="color:#9ca3af;">\u2014</span>';
+          }
+        }
         if (typeof showToast === 'function') showToast('Email resent successfully.', 'success');
       } else {
         if (actionCell) actionCell.innerHTML =
           '<button class="btn btn-icon" style="width:28px;height:28px;padding:0;" ' +
-          'onclick="resendEmail(' + logId + ')" title="Retry resend">' +
+          'onclick="resendEmail(' + logId + ',\'' + (isOtpType ? 'otp_reset' : '') + '\')" title="Retry resend">' +
           '<i class="fa-solid fa-paper-plane" style="font-size:11px;"></i></button>';
         if (typeof showToast === 'function') showToast(data.message || 'Resend failed.', 'error');
         else showToast(data.message || 'Resend failed.', 'error');
@@ -775,7 +797,7 @@ window.resendEmail = async function (logId) {
     .catch(function (err) {
       if (actionCell) actionCell.innerHTML =
         '<button class="btn btn-icon" style="width:28px;height:28px;padding:0;" ' +
-        'onclick="resendEmail(' + logId + ')" title="Retry resend">' +
+        'onclick="resendEmail(' + logId + ',\'' + (isOtpType ? 'otp_reset' : '') + '\')" title="Retry resend">' +
         '<i class="fa-solid fa-paper-plane" style="font-size:11px;"></i></button>';
       console.error('resendEmail error:', err);
     });

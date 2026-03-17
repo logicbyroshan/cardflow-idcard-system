@@ -233,6 +233,8 @@ class OTPService:
             dict: {success: bool, message: str, dev_otp: str (only in DEBUG)}
         """
         try:
+            from core.models import EmailLog
+
             # Check if user exists
             user = User.objects.filter(email__iexact=email).first()
             if not user:
@@ -256,10 +258,22 @@ class OTPService:
             # Reset attempts counter
             attempts_key = cls._get_otp_attempts_key(email)
             cache.set(attempts_key, 0, timeout=OTP_EXPIRY_MINUTES * 60)
+
+            log = EmailLog.objects.create(
+                recipient_name=user.get_full_name() or user.username or email,
+                recipient_email=email,
+                subject='Password Reset OTP',
+                email_type=EmailLog.EMAIL_TYPE_OTP_RESET,
+                status=EmailLog.STATUS_PENDING,
+            )
             
             # Send email (or just log in development)
             if settings.DEBUG:
                 logger.info("[DEV] OTP for %s: %s", email, otp)
+                log.status = EmailLog.STATUS_SENT
+                log.sent_at = timezone.now()
+                log.error_message = ''
+                log.save(update_fields=['status', 'sent_at', 'error_message'])
                 return {
                     'success': True,
                     'message': f'If an account exists with this email, an OTP has been sent to {email}',
@@ -339,6 +353,7 @@ Adarsh Admin Team'''
                     from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[email],
                 )
+                # Queued for send in thread — keep as pending for accurate state.
                 return {
                     'success': True,
                     'message': f'If an account exists with this email, an OTP has been sent to {email}'
@@ -346,6 +361,18 @@ Adarsh Admin Team'''
                     
         except Exception as e:
             logger.error("Error generating OTP for %s: %s", email, e)
+            try:
+                from core.models import EmailLog
+                EmailLog.objects.create(
+                    recipient_name=email,
+                    recipient_email=email,
+                    subject='Password Reset OTP',
+                    email_type=EmailLog.EMAIL_TYPE_OTP_RESET,
+                    status=EmailLog.STATUS_FAILED,
+                    error_message=str(e),
+                )
+            except Exception:
+                pass
             return {
                 'success': False,
                 'message': 'An error occurred. Please try again.'
