@@ -433,6 +433,8 @@ def api_idcard_filter_options(request, table_id):
 
     class_values = []
     section_values = []
+    class_to_sections = {}
+    section_to_classes = {}
 
     if class_field_name:
         # Get distinct raw values WITH counts
@@ -477,10 +479,46 @@ def api_idcard_filter_options(request, table_id):
             ],
         )
 
+    if class_field_name and section_field_name:
+        pair_rows = (
+            qs.annotate(
+                _cv=Cast(KeyTextTransform(class_field_name, 'field_data'), CharField()),
+                _sv=Cast(KeyTextTransform(section_field_name, 'field_data'), CharField()),
+            )
+            .exclude(_cv__isnull=True).exclude(_cv='')
+            .exclude(_sv__isnull=True).exclude(_sv='')
+            .order_by()
+            .values_list('_cv', '_sv')
+            .distinct()
+        )
+
+        class_section_sets = defaultdict(set)
+        section_class_sets = defaultdict(set)
+        for raw_class, raw_section in pair_rows:
+            canonical_class = normalize_class_value(str(raw_class).strip())
+            section_text = str(raw_section).strip()
+            if not canonical_class or not section_text:
+                continue
+            class_section_sets[canonical_class].add(section_text)
+            section_class_sets[section_text].add(canonical_class)
+
+        class_to_sections = {
+            cls: sorted(list(sections)) for cls, sections in class_section_sets.items()
+        }
+        section_to_classes = {
+            sec: sorted(
+                list(classes),
+                key=lambda c: (CLASS_ORDER.get(c, CLASS_ORDER_UNKNOWN), c),
+            )
+            for sec, classes in section_class_sets.items()
+        }
+
     result = {
         'success': True,
         'class_values': class_values,
         'section_values': list(section_values),
+        'class_to_sections': class_to_sections,
+        'section_to_classes': section_to_classes,
         'class_field': class_field_name,
         'section_field': section_field_name,
     }

@@ -4,7 +4,7 @@
 
 <!-- Action Bar -->
 <div class="action-bar action-buttons-bar" id="confirmedListActionBar">
-    <div class="flex items-center gap-[2px] flex-wrap">
+    <div class="action-buttons-group flex items-center gap-[2px] flex-wrap">
         <!-- Back Button -->
         <button class="btn action-btn btn-back" id="confirmedListBackBtn" title="Go back (Ctrl+B)">
             <i class="fa-solid fa-arrow-left"></i>
@@ -38,6 +38,8 @@
             <i class="fa-solid fa-images"></i>
             <span class="btn-text">Download Images</span>
         </button>
+    </div>
+    <div class="action-nav-group reprint-links">
         <a class="btn action-btn btn-blue" id="confirmedGoToDownloadListBtn" href="{% if is_client or is_client_staff %}{% url 'client:idcard_actions' table.id %}{% else %}{% url 'idcard_actions' table.id %}{% endif %}?status=download" title="Open Download List">
             <i class="fa-solid fa-download"></i>
             <span class="btn-text">Download List (<span id="confirmedDownloadCount">{{ step_counts.download_list }}</span>)</span>
@@ -57,7 +59,36 @@
         </div>
     </div>
     <div class="action-right">
-        <div class="filter-group datetime-filter-group reprint-datetime-filter-group">
+        <div class="filter-group" id="confirmedClassSectionFilterGroup">
+            {% if table.has_class_field %}
+            <div class="custom-dropdown filter-dropdown" id="confirmedClassFilterDropdown">
+                <button class="dropdown-toggle filter-toggle" id="confirmedClassFilterToggle" type="button">
+                    <span id="confirmedClassFilterText">All Classes</span>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <div class="dropdown-options filter-options" id="confirmedClassFilterOptions">
+                    <div class="dropdown-option selected" data-value="">All Classes</div>
+                </div>
+            </div>
+            {% endif %}
+            {% if table.has_section_field %}
+            <div class="custom-dropdown filter-dropdown" id="confirmedSectionFilterDropdown">
+                <button class="dropdown-toggle filter-toggle" id="confirmedSectionFilterToggle" type="button">
+                    <span id="confirmedSectionFilterText">All Sections</span>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <div class="dropdown-options filter-options" id="confirmedSectionFilterOptions">
+                    <div class="dropdown-option selected" data-value="">All Sections</div>
+                </div>
+            </div>
+            {% endif %}
+            {% if table.has_class_field or table.has_section_field %}
+            <button class="clear-filters-btn" id="confirmedClearFiltersBtn" type="button" title="Clear class/section filters" aria-label="Clear class and section filters">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            {% endif %}
+        </div>
+        <div class="filter-group datetime-filter-group reprint-datetime-filter-group confirmed-datetime-filter-group">
             <label class="datetime-label">From</label>
             <input type="text" id="confirmedFromDate" class="datetime-input" title="Filter from date" placeholder="Select date & time" aria-label="From date" readonly>
             <label class="datetime-label">To</label>

@@ -187,6 +187,8 @@ class ReprintWorkflowService:
             id__in=rr_ids, table=table, status__in=['requested', 'confirmed']
         )
 
+        rejected_ids = list(rr_qs.values_list('id', flat=True))
+
         if move_card_to_pool:
             card_ids = list(rr_qs.values_list('card_id', flat=True))
             if card_ids:
@@ -197,7 +199,7 @@ class ReprintWorkflowService:
         return ServiceResult(
             success=True,
             message=f'{deleted} reprint(s) rejected and moved to pool',
-            data={'rejected_count': deleted},
+            data={'rejected_count': deleted, 'rejected_ids': rejected_ids},
         )
 
     # ── Debug / introspection ───────────────────────────────────────

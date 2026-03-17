@@ -61,6 +61,197 @@ function updateTabCount(sel, count) {
   if (el) el.textContent = count;
 }
 
+function openCardDrawer(mode, cardId) {
+  var fn = (typeof window.fetchCardAndOpenModal === 'function')
+    ? window.fetchCardAndOpenModal
+    : (window.IDCardApp && typeof window.IDCardApp.fetchCardAndOpenModal === 'function'
+      ? window.IDCardApp.fetchCardAndOpenModal
+      : null);
+
+  if (!fn) {
+    showToast('Edit/View drawer is unavailable right now.', 'warning');
+    return false;
+  }
+
+  fn(mode, cardId);
+  return true;
+}
+
+function initClassSectionFilters(cfg) {
+  cfg = cfg || {};
+  var prefix = cfg.prefix || '';
+  var onChange = (typeof cfg.onChange === 'function') ? cfg.onChange : function() {};
+
+  function byId(id) { return document.getElementById(prefix + id); }
+
+  var classDropdown = byId('ClassFilterDropdown');
+  var classToggle = byId('ClassFilterToggle');
+  var classText = byId('ClassFilterText');
+  var classOptions = byId('ClassFilterOptions');
+
+  var sectionDropdown = byId('SectionFilterDropdown');
+  var sectionToggle = byId('SectionFilterToggle');
+  var sectionText = byId('SectionFilterText');
+  var sectionOptions = byId('SectionFilterOptions');
+
+  var clearBtn = byId('ClearFiltersBtn');
+
+  if (!classOptions && !sectionOptions) {
+    return {
+      getClassFilter: function() { return ''; },
+      getSectionFilter: function() { return ''; }
+    };
+  }
+
+  var currentClass = '';
+  var currentSection = '';
+  var allClassOptions = [];
+  var allSectionOptions = [];
+  var classToSections = {};
+  var sectionToClasses = {};
+
+  function classOptionValue(opt) {
+    if (opt && typeof opt === 'object') return String(opt.value || '').trim();
+    return String(opt || '').trim();
+  }
+
+  function classOptionLabel(opt) {
+    if (opt && typeof opt === 'object') return String(opt.display || opt.value || '').trim();
+    return String(opt || '').trim();
+  }
+
+  function updateClearButton() {
+    if (!clearBtn) return;
+    if (currentClass || currentSection) clearBtn.classList.add('visible');
+    else clearBtn.classList.remove('visible');
+  }
+
+  function markSelected(optionsEl, value) {
+    if (!optionsEl) return;
+    var opts = optionsEl.querySelectorAll('.dropdown-option');
+    var found = null;
+    opts.forEach(function(o) {
+      var isMatch = (o.getAttribute('data-value') || '') === value;
+      o.classList.toggle('selected', isMatch);
+      if (isMatch) found = o;
+    });
+    if (!found && opts.length) opts[0].classList.add('selected');
+  }
+
+  function renderDependentOptions() {
+    var allowedClassValues = allClassOptions.map(classOptionValue);
+    var allowedSectionValues = allSectionOptions.slice();
+
+    if (currentSection) {
+      var bySection = sectionToClasses[currentSection] || [];
+      if (bySection.length) allowedClassValues = bySection.slice();
+    }
+    if (currentClass) {
+      var byClass = classToSections[currentClass] || [];
+      if (byClass.length) allowedSectionValues = byClass.slice();
+    }
+
+    var classAllowed = new Set(allowedClassValues.map(function(v) { return String(v); }));
+    var sectionAllowed = new Set(allowedSectionValues.map(function(v) { return String(v); }));
+
+    var filteredClass = allClassOptions.filter(function(o) { return classAllowed.has(classOptionValue(o)); });
+    var filteredSection = allSectionOptions.filter(function(v) { return sectionAllowed.has(String(v)); });
+
+    if (classOptions) {
+      classOptions.innerHTML = '<div class="dropdown-option" data-value="">All Classes</div>' +
+        filteredClass.map(function(opt) {
+          var value = classOptionValue(opt);
+          var label = classOptionLabel(opt);
+          return '<div class="dropdown-option" data-value="' + escapeHtml(value) + '">' + escapeHtml(label) + '</div>';
+        }).join('');
+    }
+
+    if (sectionOptions) {
+      sectionOptions.innerHTML = '<div class="dropdown-option" data-value="">All Sections</div>' +
+        filteredSection.map(function(v) {
+          var s = String(v);
+          return '<div class="dropdown-option" data-value="' + escapeHtml(s) + '">' + escapeHtml(s) + '</div>';
+        }).join('');
+    }
+
+    var classValid = !currentClass || filteredClass.some(function(o) { return classOptionValue(o) === currentClass; });
+    var sectionValid = !currentSection || filteredSection.some(function(v) { return String(v) === currentSection; });
+    if (!classValid) currentClass = '';
+    if (!sectionValid) currentSection = '';
+
+    if (classText) {
+      if (currentClass) {
+        var lbl = filteredClass.find(function(o) { return classOptionValue(o) === currentClass; });
+        classText.textContent = lbl ? classOptionLabel(lbl) : 'All Classes';
+      } else {
+        classText.textContent = 'All Classes';
+      }
+    }
+    if (sectionText) {
+      sectionText.textContent = currentSection || 'All Sections';
+    }
+
+    markSelected(classOptions, currentClass);
+    markSelected(sectionOptions, currentSection);
+    updateClearButton();
+  }
+
+  function bindDropdown(dropdown, toggle, optionsEl, onPick, closeOther) {
+    if (!dropdown || !toggle || !optionsEl) return;
+    toggle.addEventListener('click', function(e) {
+      e.stopPropagation();
+      if (closeOther) closeOther.classList.remove('open');
+      dropdown.classList.toggle('open');
+    });
+
+    optionsEl.addEventListener('click', function(e) {
+      var opt = e.target.closest('.dropdown-option');
+      if (!opt) return;
+      onPick(opt.getAttribute('data-value') || '');
+      dropdown.classList.remove('open');
+      renderDependentOptions();
+      onChange(currentClass, currentSection);
+    });
+
+    document.addEventListener('click', function(e) {
+      if (!dropdown.contains(e.target)) dropdown.classList.remove('open');
+    });
+  }
+
+  bindDropdown(classDropdown, classToggle, classOptions, function(value) {
+    currentClass = value;
+  }, sectionDropdown);
+
+  bindDropdown(sectionDropdown, sectionToggle, sectionOptions, function(value) {
+    currentSection = value;
+  }, classDropdown);
+
+  if (clearBtn) {
+    clearBtn.addEventListener('click', function() {
+      currentClass = '';
+      currentSection = '';
+      renderDependentOptions();
+      onChange(currentClass, currentSection);
+    });
+  }
+
+  ApiClient.get('/api/table/' + TABLE_ID + '/filter-options/')
+    .then(function(data) {
+      if (!data || !data.success) return;
+      allClassOptions = Array.isArray(data.class_values) ? data.class_values.slice() : [];
+      allSectionOptions = Array.isArray(data.section_values) ? data.section_values.slice() : [];
+      classToSections = data.class_to_sections || {};
+      sectionToClasses = data.section_to_classes || {};
+      renderDependentOptions();
+    })
+    .catch(function() {});
+
+  return {
+    getClassFilter: function() { return currentClass; },
+    getSectionFilter: function() { return currentSection; }
+  };
+}
+
 function refreshStepCounts() {
   ApiClient.get(ENDPOINTS.stepCounts)
     .then(function(data) {
@@ -455,13 +646,10 @@ async function postJsonForBlob(url, body) {
         showToast('Select one card to edit.', 'warning');
         return;
       }
-      if (typeof fetchCardAndOpenModal === 'function') {
+      if (openCardDrawer('edit', pendingCardIds[0])) {
         wantEditInFlight = true;
         wantEditBtn.disabled = true;
-        fetchCardAndOpenModal('edit', pendingCardIds[0]);
         closeModal();
-      } else {
-        showToast('Edit drawer is unavailable right now.', 'warning');
       }
     });
   }
@@ -486,7 +674,7 @@ async function postJsonForBlob(url, body) {
     viewBtn.addEventListener('click', function() {
       var ids = getSelectedCardIds();
       if (ids.length !== 1) return;
-      if (typeof fetchCardAndOpenModal === 'function') fetchCardAndOpenModal('view', ids[0]);
+      openCardDrawer('view', ids[0]);
     });
   }
 
@@ -574,6 +762,10 @@ async function postJsonForBlob(url, body) {
   var currentQuery = '';
   var requestFromFlatpickr = null;
   var requestToFlatpickr = null;
+  var classSectionFilters = initClassSectionFilters({
+    prefix: 'request',
+    onChange: function() { fetchItems(currentQuery); }
+  });
 
   var paginator = createPaginator({
     barId: 'requestPaginationBar',
@@ -789,7 +981,7 @@ async function postJsonForBlob(url, body) {
     viewBtn.addEventListener('click', function() {
       var ids = getSelectedCardIds();
       if (ids.length !== 1) return;
-      if (typeof fetchCardAndOpenModal === 'function') fetchCardAndOpenModal('view', ids[0]);
+      openCardDrawer('view', ids[0]);
     });
   }
 
@@ -798,7 +990,7 @@ async function postJsonForBlob(url, body) {
       if (!IS_ADMIN_CONTEXT) return;
       var ids = getSelectedCardIds();
       if (ids.length !== 1) return;
-      if (typeof fetchCardAndOpenModal === 'function') fetchCardAndOpenModal('edit', ids[0]);
+      openCardDrawer('edit', ids[0]);
     });
   }
 
@@ -828,7 +1020,8 @@ async function postJsonForBlob(url, body) {
         }
         var successMsg = opts.successMessage || data.message || 'Printed and moved to Confirmed List';
         if (!opts.silentToast) showToast(successMsg, 'success');
-        removeRowsByIds(rrIds);
+        var movedIds = Array.isArray(data.moved_ids) && data.moved_ids.length ? data.moved_ids : rrIds;
+        removeRowsByIds(movedIds);
         refreshStepCounts();
         return data;
       })
@@ -849,7 +1042,8 @@ async function postJsonForBlob(url, body) {
           return;
         }
         showToast(data.message || 'Rejected', 'success');
-        removeRowsByIds(rrIds);
+        var rejectedIds = Array.isArray(data.rejected_ids) && data.rejected_ids.length ? data.rejected_ids : rrIds;
+        removeRowsByIds(rejectedIds);
         refreshStepCounts();
       })
       .catch(function(err) {
@@ -921,6 +1115,14 @@ async function postJsonForBlob(url, body) {
   function fetchItems(query) {
     currentQuery = query || '';
     var url = ENDPOINTS.requestList + '?q=' + encodeURIComponent(currentQuery) + '&limit=200';
+    var classFilter = classSectionFilters.getClassFilter();
+    var sectionFilter = classSectionFilters.getSectionFilter();
+    if (classFilter) {
+      url += '&class=' + encodeURIComponent(classFilter);
+    }
+    if (sectionFilter) {
+      url += '&section=' + encodeURIComponent(sectionFilter);
+    }
     if (fromDateInput && fromDateInput.value) {
       url += '&from=' + encodeURIComponent(fromDateInput.value);
     }
@@ -990,6 +1192,10 @@ async function postJsonForBlob(url, body) {
   var currentQuery = '';
   var confirmedFromFlatpickr = null;
   var confirmedToFlatpickr = null;
+  var classSectionFilters = initClassSectionFilters({
+    prefix: 'confirmed',
+    onChange: function() { fetchItems(currentQuery); }
+  });
 
   var paginator = createPaginator({
     barId: 'confirmedPaginationBar',
@@ -1053,7 +1259,7 @@ async function postJsonForBlob(url, body) {
     viewBtn.addEventListener('click', function() {
       var ids = getSelectedCardIds();
       if (ids.length !== 1) return;
-      if (typeof fetchCardAndOpenModal === 'function') fetchCardAndOpenModal('view', ids[0]);
+      openCardDrawer('view', ids[0]);
     });
   }
 
@@ -1062,7 +1268,7 @@ async function postJsonForBlob(url, body) {
       if (!IS_ADMIN_CONTEXT) return;
       var ids = getSelectedCardIds();
       if (ids.length !== 1) return;
-      if (typeof fetchCardAndOpenModal === 'function') fetchCardAndOpenModal('edit', ids[0]);
+      openCardDrawer('edit', ids[0]);
     });
   }
 
@@ -1202,6 +1408,14 @@ async function postJsonForBlob(url, body) {
   function fetchItems(query) {
     currentQuery = query || '';
     var url = ENDPOINTS.confirmedList + '?q=' + encodeURIComponent(currentQuery) + '&limit=200';
+    var classFilter = classSectionFilters.getClassFilter();
+    var sectionFilter = classSectionFilters.getSectionFilter();
+    if (classFilter) {
+      url += '&class=' + encodeURIComponent(classFilter);
+    }
+    if (sectionFilter) {
+      url += '&section=' + encodeURIComponent(sectionFilter);
+    }
     if (fromDateInput && fromDateInput.value) {
       url += '&from=' + encodeURIComponent(fromDateInput.value);
     }

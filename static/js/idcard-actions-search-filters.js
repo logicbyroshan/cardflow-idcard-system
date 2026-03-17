@@ -17,6 +17,11 @@ let currentSectionFilter = '';
 IDCardApp.currentClassFilter = '';
 IDCardApp.currentSectionFilter = '';
 
+let _allClassOptions = [];
+let _allSectionOptions = [];
+let _classToSections = {};
+let _sectionToClasses = {};
+
 // HTML-escape helper to prevent XSS in filter dropdown values
 function _escFilterHtml(s) {
     return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
@@ -28,6 +33,88 @@ function initFilterHandlers() {
     initClearFiltersButton();
     // Populate options from table data after a short delay to let table render
     setTimeout(populateFilterOptions, 500);
+}
+
+function _classOptionValue(opt) {
+    if (opt && typeof opt === 'object') return String(opt.value || '').trim();
+    return String(opt || '').trim();
+}
+
+function _classOptionLabel(opt) {
+    if (opt && typeof opt === 'object') {
+        return String(opt.display || opt.value || '').trim();
+    }
+    return String(opt || '').trim();
+}
+
+function _renderDependentFilterOptions() {
+    const classOptionsEl = document.getElementById('classFilterOptions');
+    const sectionOptionsEl = document.getElementById('sectionFilterOptions');
+    const classTextEl = document.getElementById('classFilterText');
+    const sectionTextEl = document.getElementById('sectionFilterText');
+
+    if (!classOptionsEl || !sectionOptionsEl) return;
+
+    let allowedClassValues = _allClassOptions.map(_classOptionValue);
+    let allowedSectionValues = _allSectionOptions.slice();
+
+    if (currentSectionFilter) {
+        const bySection = _sectionToClasses[currentSectionFilter] || [];
+        if (bySection.length) allowedClassValues = bySection.slice();
+    }
+    if (currentClassFilter) {
+        const byClass = _classToSections[currentClassFilter] || [];
+        if (byClass.length) allowedSectionValues = byClass.slice();
+    }
+
+    const allowedClassSet = new Set(allowedClassValues.map(v => String(v)));
+    const allowedSectionSet = new Set(allowedSectionValues.map(v => String(v)));
+
+    const filteredClassOptions = _allClassOptions.filter(opt => allowedClassSet.has(_classOptionValue(opt)));
+    const filteredSectionOptions = _allSectionOptions.filter(v => allowedSectionSet.has(String(v)));
+
+    classOptionsEl.innerHTML = '<div class="dropdown-option" data-value="">All Classes</div>' +
+        filteredClassOptions.map(function(opt) {
+            const value = _classOptionValue(opt);
+            const label = _classOptionLabel(opt);
+            return '<div class="dropdown-option" data-value="' + _escFilterHtml(value) + '">' + _escFilterHtml(label) + '</div>';
+        }).join('');
+
+    sectionOptionsEl.innerHTML = '<div class="dropdown-option" data-value="">All Sections</div>' +
+        filteredSectionOptions.map(function(v) {
+            var s = String(v);
+            return '<div class="dropdown-option" data-value="' + _escFilterHtml(s) + '">' + _escFilterHtml(s) + '</div>';
+        }).join('');
+
+    const classStillValid = !currentClassFilter || filteredClassOptions.some(opt => _classOptionValue(opt) === currentClassFilter);
+    const sectionStillValid = !currentSectionFilter || filteredSectionOptions.some(v => String(v) === currentSectionFilter);
+
+    if (!classStillValid) {
+        currentClassFilter = '';
+        IDCardApp.currentClassFilter = '';
+    }
+    if (!sectionStillValid) {
+        currentSectionFilter = '';
+        IDCardApp.currentSectionFilter = '';
+    }
+
+    classOptionsEl.querySelectorAll('.dropdown-option').forEach(function(o) { o.classList.remove('selected'); });
+    sectionOptionsEl.querySelectorAll('.dropdown-option').forEach(function(o) { o.classList.remove('selected'); });
+
+    var classSel = classOptionsEl.querySelector('[data-value="' + CSS.escape(currentClassFilter) + '"]') || classOptionsEl.querySelector('[data-value=""]');
+    var sectionSel = sectionOptionsEl.querySelector('[data-value="' + CSS.escape(currentSectionFilter) + '"]') || sectionOptionsEl.querySelector('[data-value=""]');
+
+    if (classSel) classSel.classList.add('selected');
+    if (sectionSel) sectionSel.classList.add('selected');
+
+    if (classTextEl) {
+        if (currentClassFilter && classSel) classTextEl.textContent = classSel.textContent.trim();
+        else classTextEl.textContent = 'All Classes';
+    }
+    if (sectionTextEl) {
+        if (currentSectionFilter && sectionSel) sectionTextEl.textContent = sectionSel.textContent.trim();
+        else sectionTextEl.textContent = 'All Sections';
+    }
 }
 
 /** Show/hide the clear-filters button based on whether any filter is active */
@@ -72,6 +159,7 @@ function initClearFiltersButton() {
         // Reset image sort filter
         clearImageSortFilter();
         // Hide clear button
+        _renderDependentFilterOptions();
         updateClearFiltersVisibility();
         // Refresh table
         applyClassSectionFilters();
@@ -103,6 +191,7 @@ function initClassFilterDropdown() {
         IDCardApp.currentClassFilter = val;
         text.textContent = opt.textContent.trim();
         dropdown.classList.remove('open');
+        _renderDependentFilterOptions();
         updateClearFiltersVisibility();
         applyClassSectionFilters();
     });
@@ -141,6 +230,7 @@ function initSectionFilterDropdown() {
         IDCardApp.currentSectionFilter = val;
         text.textContent = opt.textContent.trim();
         dropdown.classList.remove('open');
+        _renderDependentFilterOptions();
         updateClearFiltersVisibility();
         applyClassSectionFilters();
     });
@@ -198,51 +288,12 @@ function _doPopulateFilterOptions() {
             _populateFilterOptionsInFlight = false;
             if (!data || !data.success) return;
 
-            var classValues = data.class_values || [];
-            var sectionValues = data.section_values || [];
+            _allClassOptions = Array.isArray(data.class_values) ? data.class_values.slice() : [];
+            _allSectionOptions = Array.isArray(data.section_values) ? data.section_values.slice() : [];
+            _classToSections = data.class_to_sections || {};
+            _sectionToClasses = data.section_to_classes || {};
 
-            // Populate class dropdown
-            var classOptions = document.getElementById('classFilterOptions');
-            if (classOptions) {
-                var sorted = classValues; // Already sorted by server
-                classOptions.innerHTML = '<div class="dropdown-option selected" data-value="">All Classes</div>' +
-                    sorted.map(function(v) { var s = (typeof v === 'object' && v !== null) ? (v.name || v.value || v.text || JSON.stringify(v)) : String(v); return '<div class="dropdown-option" data-value="' + _escFilterHtml(s) + '">' + _escFilterHtml(s) + '</div>'; }).join('');
-                if (currentClassFilter) {
-                    // Safe querySelector: use attribute selector with CSS.escape
-                    var escapedVal = CSS.escape(currentClassFilter);
-                    var match = classOptions.querySelector('[data-value="' + escapedVal + '"]');
-                    if (match) {
-                        classOptions.querySelectorAll('.dropdown-option').forEach(function(o) { o.classList.remove('selected'); });
-                        match.classList.add('selected');
-                    } else {
-                        currentClassFilter = '';
-                        IDCardApp.currentClassFilter = '';
-                        var text = document.getElementById('classFilterText');
-                        if (text) text.textContent = 'All Classes';
-                    }
-                }
-            }
-
-            // Populate section dropdown
-            var sectionOptions = document.getElementById('sectionFilterOptions');
-            if (sectionOptions) {
-                var sortedS = sectionValues;
-                sectionOptions.innerHTML = '<div class="dropdown-option selected" data-value="">All Sections</div>' +
-                    sortedS.map(function(v) { var s = (typeof v === 'object' && v !== null) ? (v.name || v.value || v.text || JSON.stringify(v)) : String(v); return '<div class="dropdown-option" data-value="' + _escFilterHtml(s) + '">' + _escFilterHtml(s) + '</div>'; }).join('');
-                if (currentSectionFilter) {
-                    var escapedValS = CSS.escape(currentSectionFilter);
-                    var matchS = sectionOptions.querySelector('[data-value="' + escapedValS + '"]');
-                    if (matchS) {
-                        sectionOptions.querySelectorAll('.dropdown-option').forEach(function(o) { o.classList.remove('selected'); });
-                        matchS.classList.add('selected');
-                    } else {
-                        currentSectionFilter = '';
-                        IDCardApp.currentSectionFilter = '';
-                        var textS = document.getElementById('sectionFilterText');
-                        if (textS) textS.textContent = 'All Sections';
-                    }
-                }
-            }
+            _renderDependentFilterOptions();
         })
         .catch(function(err) {
             _populateFilterOptionsInFlight = false;

@@ -665,3 +665,14 @@
     min-height: 28px;
     font-size: 12px;
 }
+
+/* Confirmed list datetime filter: remove extra padding/min-height density */
+.confirmed-datetime-filter-group {
+    padding: 0;
+    min-height: 0;
+}
+
+.confirmed-datetime-filter-group .btn.btn-sm {
+    min-height: 0;
+    padding: 0 6px;
+}

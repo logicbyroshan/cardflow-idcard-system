@@ -23,7 +23,9 @@ from django.contrib.auth import logout as auth_logout
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
-from django.db.models import Count, Q, Max
+from django.db.models import Count, Q, Max, CharField
+from django.db.models.functions import Cast
+from django.db.models.fields.json import KeyTextTransform
 
 from client.services import (
     ClientAccessService,
@@ -930,8 +932,78 @@ def card_list(request, table_id, status):
     # has_more: only meaningful when no client-side class/section filtering is applied
     has_more = _has_more_raw and not (allowed_classes or allowed_sections)
 
-    all_classes = sorted(set(c['class_name'] for c in cards if c['class_name']))
-    all_sections = sorted(set(c['section'] for c in cards if c['section']))
+    # Build filter options from full table data (desktop-style), not just loaded batch.
+    # This ensures class/section filters always show all available values.
+    class_field_name = None
+    section_field_name = None
+    for _f in table_fields:
+        _fname = str(_f.get('name', '')).strip()
+        _ftype = str(_f.get('type', '')).strip().lower()
+        if not _fname:
+            continue
+        if class_field_name is None and (_ftype == 'class' or _fname.lower() == 'class'):
+            class_field_name = _fname
+        if section_field_name is None and (_ftype == 'section' or _fname.lower() == 'section'):
+            section_field_name = _fname
+
+    options_qs = IDCard.objects.filter(table=table)
+
+    all_classes = []
+    if class_field_name:
+        all_classes = sorted(
+            [
+                str(v) for v in options_qs
+                .annotate(_cv=Cast(KeyTextTransform(class_field_name, 'field_data'), CharField()))
+                .exclude(_cv__isnull=True)
+                .exclude(_cv='')
+                .order_by()
+                .values_list('_cv', flat=True)
+                .distinct()
+                if v is not None
+            ],
+        )
+
+    all_sections = []
+    if section_field_name:
+        all_sections = sorted(
+            [
+                str(v) for v in options_qs
+                .annotate(_sv=Cast(KeyTextTransform(section_field_name, 'field_data'), CharField()))
+                .exclude(_sv__isnull=True)
+                .exclude(_sv='')
+                .order_by()
+                .values_list('_sv', flat=True)
+                .distinct()
+                if v is not None
+            ],
+        )
+
+    # Fallback for older/custom tables where class/section types are not configured.
+    if not all_classes or not all_sections:
+        _fallback_classes = set(all_classes)
+        _fallback_sections = set(all_sections)
+        for _card in options_qs.only('field_data').iterator(chunk_size=500):
+            _fd = _card.field_data or {}
+            if not all_classes:
+                _cls = _fd.get('CLASS') or _fd.get('class') or _fd.get('DESIGNATION') or ''
+                if _cls:
+                    _fallback_classes.add(str(_cls))
+            if not all_sections:
+                _sec = _fd.get('SECTION') or _fd.get('section') or ''
+                if _sec:
+                    _fallback_sections.add(str(_sec))
+        if not all_classes:
+            all_classes = sorted(_fallback_classes)
+        if not all_sections:
+            all_sections = sorted(_fallback_sections)
+
+    # Respect explicit client_staff restrictions in filter options.
+    if allowed_classes:
+        _allowed_set = set(allowed_classes)
+        all_classes = [c for c in all_classes if c in _allowed_set]
+    if allowed_sections:
+        _allowed_set = set(allowed_sections)
+        all_sections = [s for s in all_sections if s in _allowed_set]
     # Count badges — single aggregate query replaces 4 separate COUNTs
     tab_counts = {'pending': 0, 'verified': 0, 'approved': 0, 'download': 0}
     for _row in IDCard.objects.filter(table=table).values('status').annotate(n=Count('id')):

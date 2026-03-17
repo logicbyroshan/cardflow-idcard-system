@@ -53,7 +53,7 @@ def process_bulk_upload(task):
     from idcards.models import IDCardTable, IDCard
     from core.services.base import BaseService
     from mediafiles.services import ImageService
-    from core.utils.field_utils import validate_image_bytes, convert_class_value, convert_section_value
+    from core.utils.field_utils import validate_image_bytes
     
     metadata = task.metadata or {}
     table_id = metadata.get('table_id')
@@ -396,7 +396,6 @@ def _parse_row_fields(row, header_to_field, field_type_lookup):
     """
     Parse field values from a row.
     """
-    from core.utils.field_utils import convert_class_value, convert_section_value
     from datetime import datetime, timedelta
     
     field_data = {}
@@ -415,18 +414,18 @@ def _parse_row_fields(row, header_to_field, field_type_lookup):
                         actual_date = excel_epoch + timedelta(days=int(value))
                         value = actual_date.strftime('%d-%m-%Y')
                     elif value == int(value):
-                        value = str(int(value)).upper()
+                        value = str(int(value))
                     else:
-                        value = str(value).upper()
+                        value = str(value)
                 elif isinstance(value, int):
                     if 1 < value < 60000 and any(x in field_name.lower() for x in ['date', 'dob', 'birth']):
                         excel_epoch = datetime(1899, 12, 30)
                         actual_date = excel_epoch + timedelta(days=value)
                         value = actual_date.strftime('%d-%m-%Y')
                     else:
-                        value = str(value).upper()
+                        value = str(value)
                 else:
-                    value = str(value).strip().upper()
+                    value = str(value)
                 
                 # Clean openpyxl carriage-return artifacts (_x000D_ / _X000D_)
                 # Excel cells with Alt+Enter line breaks produce these when
@@ -439,14 +438,6 @@ def _parse_row_fields(row, header_to_field, field_type_lookup):
                 field_data[field_name] = ''
         else:
             field_data[field_name] = ''
-    
-    # Apply class/section conversions
-    for fname in list(field_data.keys()):
-        ftype = field_type_lookup.get(fname, 'text')
-        if ftype == 'class' and field_data[fname]:
-            field_data[fname] = convert_class_value(field_data[fname])
-        elif ftype == 'section' and field_data[fname]:
-            field_data[fname] = convert_section_value(field_data[fname])
     
     return field_data
 

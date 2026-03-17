@@ -468,6 +468,86 @@ function listApp() {
             this._applyAllFilters();
         },
 
+        _findStudentIndex(cardId) {
+            return this.studentsData.findIndex(s => Number(s.id) === Number(cardId));
+        },
+
+        _mapCardDetailToStudent(detail, fallbackId = null) {
+            const data = detail || {};
+            const fd = data.field_data || {};
+            const photoUrl = data.photo_url || null;
+            return {
+                id: Number(data.id || fallbackId || 0),
+                sr_no: 0,
+                name: String(data.name || ''),
+                roll_no: String(data.id_number || this._getFieldValue(fd, ['ROLL NO', 'ROLL_NO', 'roll_no', 'ID NUMBER', 'ID_NUMBER', 'id_number'])),
+                father_name: String(data.father_name || this._getFieldValue(fd, ['FATHER NAME', "FATHER'S NAME", 'FATHER_NAME', 'father_name'])),
+                mother_name: String(data.mother_name || this._getFieldValue(fd, ['MOTHER NAME', "MOTHER'S NAME", 'MOTHER_NAME', 'mother_name'])),
+                class_name: String(data.class_designation || this._getFieldValue(fd, ['CLASS', 'class', 'DESIGNATION', 'designation'])),
+                section: String(this._getFieldValue(fd, ['SECTION', 'section'])),
+                dob: String(data.dob || this._getFieldValue(fd, ['DOB', 'DATE OF BIRTH', 'DATE_OF_BIRTH', 'dob'])),
+                photo_url: photoUrl,
+                photo_urls: photoUrl ? [photoUrl] : [],
+                has_photo: !!photoUrl,
+                status: String(data.status || LIST_TYPE),
+                field_data: fd,
+                display_fields: this._buildDisplayFieldsFromData(fd),
+            };
+        },
+
+        async _fetchCardSnapshot(cardId) {
+            const res = await fetch('/app/api/card/' + cardId + '/detail/', {
+                method: 'GET',
+                headers: { 'X-CSRFToken': CSRF },
+            });
+            const json = await res.json();
+            if (!json.success || !json.data) {
+                throw new Error(json.message || 'Unable to fetch latest card data');
+            }
+            return this._mapCardDetailToStudent(json.data, cardId);
+        },
+
+        _replaceRenderedCard(card) {
+            if (!card || !card.id) return;
+            const current = document.querySelector('[data-sid="' + card.id + '"]');
+            if (!current) return;
+            const replacement = this._buildCardDiv(card);
+            current.parentNode.replaceChild(replacement, current);
+            this._updateRowClass(card.id);
+        },
+
+        _appendRenderedCard(card) {
+            if (!card || !card.id) return;
+            const mountEl = document.getElementById('dynamic-cards-mount');
+            if (mountEl) {
+                mountEl.appendChild(this._buildCardDiv(card));
+                return;
+            }
+            const existing = document.querySelector('[data-sid]');
+            if (existing && existing.parentNode) {
+                existing.parentNode.appendChild(this._buildCardDiv(card));
+            }
+        },
+
+        _upsertStudentCard(card, mode) {
+            if (!card || !card.id) return;
+            const idx = this._findStudentIndex(card.id);
+            if (idx > -1) {
+                card.sr_no = this.studentsData[idx].sr_no || idx + 1;
+                this.studentsData[idx] = card;
+                this._replaceRenderedCard(card);
+                this._applyAllFilters();
+                return;
+            }
+            if (mode !== 'add') return;
+            card.sr_no = this.studentsData.length + 1;
+            this.studentsData.push(card);
+            this.loadMoreOffset = this.studentsData.length;
+            this.visibleCount = this.studentsData.length;
+            this._appendRenderedCard(card);
+            this._applyAllFilters();
+        },
+
         // Build a <div> card element for a dynamically loaded card (loadMore)
         _buildCardDiv(card) {
             const fd = card.field_data || {};
@@ -675,6 +755,7 @@ function listApp() {
         async apiAction(status, label) {
             if (!this.selectedIds.length) { this.showToast('Select items first', 'error'); return; }
             const actedIds = [...this.selectedIds];
+            let keepSelected = [];
             this.loading = true;
             var _ac = new AbortController();
             setTimeout(function() { _ac.abort(); }, 120000);
@@ -694,21 +775,29 @@ function listApp() {
                 if (data.success) {
                     this.showToast(data.message || (actedIds.length + ' ' + label), 'success');
 
+                    const skippedSet = new Set((data.skipped_ids || []).map(Number));
+                    const movedIds = actedIds.filter(id => !skippedSet.has(Number(id)));
+                    keepSelected = actedIds.filter(id => skippedSet.has(Number(id)));
+                    const movedCount = movedIds.length;
+
                     // Update top badge counts immediately without waiting for reload.
-                    if (status !== LIST_TYPE) {
-                        this._bumpTabCounts(LIST_TYPE, status, actedIds.length);
+                    if (status !== LIST_TYPE && movedCount > 0) {
+                        this._bumpTabCounts(LIST_TYPE, status, movedCount);
                     }
 
                     // If status changed away from the current list, remove rows in-place.
-                    if (status !== LIST_TYPE) {
-                        this._removeCardsFromCurrentList(actedIds);
+                    if (status !== LIST_TYPE && movedCount > 0) {
+                        this._removeCardsFromCurrentList(movedIds);
                     }
                 } else {
                     this.showToast(data.message || 'Action failed', 'error');
                 }
             } catch (e) { this.showToast(e.name === 'AbortError' ? 'Request timed out' : 'Network error', 'error'); }
             this.loading = false;
-            this.selectedIds = [];
+            this.selectedIds = keepSelected;
+            document.querySelectorAll('[data-sid]').forEach(el => {
+                this._updateRowClass(Number(el.getAttribute('data-sid')));
+            });
         },
 
         // Add/Edit form methods
@@ -908,8 +997,64 @@ function listApp() {
                 const data = await res.json();
                 if (data.success) {
                     this.showToast(data.message || (this.editMode ? 'Updated!' : 'Added!'), 'success');
+                    const cardId = this.editMode ? this.editingId : data.card_id;
+
+                    if (cardId) {
+                        try {
+                            const latestCard = await this._fetchCardSnapshot(cardId);
+                            if (latestCard.status === LIST_TYPE) {
+                                this._upsertStudentCard(latestCard, this.editMode ? 'edit' : 'add');
+                            } else if (this.editMode) {
+                                // If edited card moved to a different status, remove from current list.
+                                this._removeCardsFromCurrentList([cardId]);
+                            }
+                        } catch (snapshotErr) {
+                            if (this.editMode) {
+                                // Fall back to in-memory update when snapshot endpoint fails.
+                                const idx = this._findStudentIndex(cardId);
+                                if (idx > -1) {
+                                    const existing = this.studentsData[idx];
+                                    const mergedFieldData = Object.assign({}, existing.field_data || {}, fieldData);
+                                    const fallbackCard = Object.assign({}, existing, {
+                                        name: this.form.name.trim(),
+                                        roll_no: this.form.rollNo.trim(),
+                                        class_name: this.form.className,
+                                        section: this.form.section,
+                                        dob: this.form.dob,
+                                        field_data: mergedFieldData,
+                                        display_fields: this._buildDisplayFieldsFromData(mergedFieldData),
+                                    });
+                                    this._upsertStudentCard(fallbackCard, 'edit');
+                                }
+                            } else if (LIST_TYPE === 'pending' && cardId) {
+                                const fallbackFieldData = Object.assign({}, fieldData);
+                                const fallbackCard = {
+                                    id: Number(cardId),
+                                    sr_no: this.studentsData.length + 1,
+                                    name: this.form.name.trim(),
+                                    roll_no: this.form.rollNo.trim(),
+                                    father_name: this.form.fatherName.trim(),
+                                    mother_name: this.form.motherName.trim(),
+                                    class_name: this.form.className,
+                                    section: this.form.section,
+                                    dob: this.form.dob,
+                                    photo_url: this.form.photoPreview || null,
+                                    photo_urls: this.form.photoPreview ? [this.form.photoPreview] : [],
+                                    has_photo: !!this.form.photoPreview,
+                                    status: 'pending',
+                                    field_data: fallbackFieldData,
+                                    display_fields: this._buildDisplayFieldsFromData(fallbackFieldData),
+                                };
+                                this._upsertStudentCard(fallbackCard, 'add');
+                            }
+                        }
+
+                        if (!this.editMode) {
+                            this.tabCounts.pending = Number(this.tabCounts.pending || 0) + 1;
+                        }
+                    }
+
                     this.closeAddForm();
-                    setTimeout(() => { window.location.href = window.location.pathname + '?t=' + Date.now(); }, 800);
                 } else { this.showToast(data.message || 'Failed', 'error'); }
             } catch (e) { this.showToast('Network error', 'error'); }
             this.loading = false;
@@ -921,7 +1066,18 @@ function listApp() {
             if (this.selectedIds.length > 1) { this.showToast('Select only 1 item to view', 'error'); return; }
             this.openViewById(this.selectedIds[0]);
         },
-        deleteSelected() { this.permanentlyDelete(); },
+        async deleteSelected() {
+            if (!this.selectedIds.length) { this.showToast('Select items first', 'error'); return; }
+            var ok = await showConfirm({
+                title: 'Move To Pool?',
+                text: 'Move ' + this.selectedIds.length + ' card(s) to pool? You can retrieve them later.',
+                icon: 'fa-solid fa-box-archive',
+                confirmLabel: 'Move To Pool',
+                hideWarning: true,
+            });
+            if (!ok) return;
+            this.apiAction('pool', 'moved to pool');
+        },
         verifySelected() { this.apiAction('verified', 'verified'); },
         approveSelected() { this.apiAction('approved', 'approved'); },
         unapproveSelected() { this.apiAction('verified', 'unapproved'); },
@@ -1008,6 +1164,10 @@ function listApp() {
         },
         downloadAgain() { this.apiAction('download', 're-downloaded'); },
         async permanentlyDelete() {
+            if (LIST_TYPE !== 'pool') {
+                this.deleteSelected();
+                return;
+            }
             if (!this.selectedIds.length) { this.showToast('Select items first', 'error'); return; }
             var ok = await showConfirm({ title: 'Permanently Delete?', text: 'Permanently delete ' + this.selectedIds.length + ' card(s)? This cannot be undone!', icon: 'fa-solid fa-trash', confirmLabel: 'Delete', hideWarning: true });
             if (!ok) return;

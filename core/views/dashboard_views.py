@@ -164,7 +164,7 @@ def dashboard(request):
 def api_recent_client_updates(request):
     """API endpoint to get recent clients with their ID card status counts"""
     try:
-        limit = int(request.GET.get('limit', 500))  # default: show all active clients
+        limit = int(request.GET.get('limit', 500))  # default: show all clients
         user = request.user
 
         # Cache per-user with 20-second TTL — tolerable staleness for a dashboard poll.
@@ -177,10 +177,9 @@ def api_recent_client_updates(request):
             return JsonResponse({'success': True, 'clients': cached})
 
         # Get recent clients - scoped by PermissionService
-        # Admin staff see ALL assigned clients (including inactive) since they're
-        # specifically assigned; super admin sees only active clients by default.
+        # Show all accessible clients (including inactive) for dashboard recents.
         # Order by most-recently-approved card data (latest approved update first)
-        base_qs = Client.objects.all() if is_scoped else Client.objects.filter(status='active')
+        base_qs = Client.objects.all()
         clients = PermissionService.get_accessible_clients(
             user, base_qs
         ).annotate(
@@ -282,9 +281,8 @@ def api_print_reprint_overview(request):
         if cached is not None:
             return JsonResponse({'success': True, **cached})
 
-        # Admin staff: show all assigned clients (including inactive).
-        # Super admin: show only active clients.
-        base_qs = Client.objects.all() if is_scoped else Client.objects.filter(status='active')
+        # Show all accessible clients (including inactive) for both admin roles.
+        base_qs = Client.objects.all()
         accessible_clients = PermissionService.get_accessible_clients(user, base_qs)
 
         # Keep print list alphabetical, but order reprint by latest update first.

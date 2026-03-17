@@ -17,9 +17,37 @@ function _isSectionLikeField(fieldName) {
     return f === 'SECTION' || f === 'SEC' || f === 'DIV' || f === 'DIVISION';
 }
 
-function _shouldRefetchAfterInlineEdit(fieldName) {
-    return (_isClassLikeField(fieldName) && !!IDCardApp.currentClassFilter) ||
-           (_isSectionLikeField(fieldName) && !!IDCardApp.currentSectionFilter);
+function _normalizeFilterText(value) {
+    return String(value || '').trim().toUpperCase();
+}
+
+function _getRowFieldValueByKind(row, kind) {
+    if (!row) return '';
+    var cells = row.querySelectorAll('td[data-field]');
+    for (var i = 0; i < cells.length; i++) {
+        var field = String(cells[i].getAttribute('data-field') || '');
+        var isMatch = (kind === 'class') ? _isClassLikeField(field) : _isSectionLikeField(field);
+        if (!isMatch) continue;
+        var valNode = cells[i].querySelector('.cell-value');
+        var raw = valNode ? valNode.textContent : cells[i].textContent;
+        return String(raw || '').trim();
+    }
+    return '';
+}
+
+function _rowMatchesActiveClassSectionFilters(row, editedField, editedValue) {
+    var classValue = _isClassLikeField(editedField)
+        ? String(editedValue || '')
+        : _getRowFieldValueByKind(row, 'class');
+    var sectionValue = _isSectionLikeField(editedField)
+        ? String(editedValue || '')
+        : _getRowFieldValueByKind(row, 'section');
+
+    var classFilter = _normalizeFilterText(IDCardApp.currentClassFilter);
+    var sectionFilter = _normalizeFilterText(IDCardApp.currentSectionFilter);
+    var classMatches = !classFilter || _normalizeFilterText(classValue) === classFilter;
+    var sectionMatches = !sectionFilter || _normalizeFilterText(sectionValue) === sectionFilter;
+    return classMatches && sectionMatches;
 }
 
 // ==========================================
@@ -117,27 +145,17 @@ function saveCellEdit(cell, newValue, cardId, field) {
         // the row may no longer match the filter  animate it out.
         const fieldUpper = field.toUpperCase();
         const row = cell.closest('tr');
-        var shouldRefetch = _shouldRefetchAfterInlineEdit(fieldUpper);
-        let shouldRemoveRow = false;
-        
-        // Check class filter
-        if (_isClassLikeField(fieldUpper) && IDCardApp.currentClassFilter) {
-            // User changed class while a class filter is active
-            // The new value may not match the filter  remove row to avoid stale view
-            shouldRemoveRow = true;
-        }
-        // Check section filter
-        if (_isSectionLikeField(fieldUpper) && IDCardApp.currentSectionFilter) {
-            // User changed section while a section filter is active
-            shouldRemoveRow = true;
-        }
-        
-        if (shouldRefetch && typeof IDCardApp.resetAndReload === 'function') {
-            IDCardApp.resetAndReload();
-        } else if (shouldRemoveRow && row && cardId) {
-            // Use removeCardRow for smooth animation (same as verify/approve)
-            if (typeof IDCardApp.removeCardRow === 'function') {
+        var changedClassOrSection = _isClassLikeField(fieldUpper) || _isSectionLikeField(fieldUpper);
+        var hasClassOrSectionFilter = !!IDCardApp.currentClassFilter || !!IDCardApp.currentSectionFilter;
+
+        if (changedClassOrSection && hasClassOrSectionFilter && row && cardId) {
+            var stillMatches = _rowMatchesActiveClassSectionFilters(row, fieldUpper, finalValue);
+            if (!stillMatches && typeof IDCardApp.removeCardRow === 'function') {
                 IDCardApp.removeCardRow(cardId);
+            } else if (typeof IDCardApp.applyFiltersAndSort === 'function') {
+                IDCardApp.applyFiltersAndSort();
+            } else if (typeof applyFiltersAndSort === 'function') {
+                applyFiltersAndSort();
             }
         } else {
             // No filter active for this field, just re-apply date filter
@@ -250,8 +268,18 @@ window.saveInlineEdit = async function (cardId, fieldName, value) {
             value: finalValue
         });
 
-        if (_shouldRefetchAfterInlineEdit(fieldName) && typeof IDCardApp.resetAndReload === 'function') {
-            IDCardApp.resetAndReload();
+        var row = document.querySelector('tr[data-card-id="' + cardId + '"]');
+        var fieldUpper = String(fieldName || '').toUpperCase();
+        var changedClassOrSection = _isClassLikeField(fieldUpper) || _isSectionLikeField(fieldUpper);
+        var hasClassOrSectionFilter = !!IDCardApp.currentClassFilter || !!IDCardApp.currentSectionFilter;
+
+        if (changedClassOrSection && hasClassOrSectionFilter && row && cardId) {
+            var stillMatches = _rowMatchesActiveClassSectionFilters(row, fieldUpper, finalValue);
+            if (!stillMatches && typeof IDCardApp.removeCardRow === 'function') {
+                IDCardApp.removeCardRow(cardId);
+            } else if (typeof IDCardApp.applyFiltersAndSort === 'function') {
+                IDCardApp.applyFiltersAndSort();
+            }
         } else if (typeof IDCardApp.applyFiltersAndSort === 'function') {
             IDCardApp.applyFiltersAndSort();
         }

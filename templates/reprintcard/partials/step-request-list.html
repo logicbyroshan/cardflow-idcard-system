@@ -4,7 +4,7 @@
 
 <!-- Action Bar -->
 <div class="action-bar action-buttons-bar" id="requestListActionBar">
-    <div class="flex items-center gap-[2px] flex-wrap">
+    <div class="action-buttons-group flex items-center gap-[2px] flex-wrap">
         <!-- Back Button -->
         <button class="btn action-btn btn-back" id="requestListBackBtn" title="Go back (Ctrl+B)">
             <i class="fa-solid fa-arrow-left"></i>
@@ -46,6 +46,8 @@
             <i class="fa-solid fa-images"></i>
             <span class="btn-text">Download Images</span>
         </button>
+    </div>
+    <div class="action-nav-group reprint-links">
         <a class="btn action-btn btn-blue" id="requestGoToDownloadListBtn" href="{% if is_client or is_client_staff %}{% url 'client:idcard_actions' table.id %}{% else %}{% url 'idcard_actions' table.id %}{% endif %}?status=download" title="Open Download List">
             <i class="fa-solid fa-download"></i>
             <span class="btn-text">Download List (<span id="requestDownloadCount">{{ step_counts.download_list }}</span>)</span>
@@ -65,6 +67,35 @@
         </div>
     </div>
     <div class="action-right">
+        <div class="filter-group" id="requestClassSectionFilterGroup">
+            {% if table.has_class_field %}
+            <div class="custom-dropdown filter-dropdown" id="requestClassFilterDropdown">
+                <button class="dropdown-toggle filter-toggle" id="requestClassFilterToggle" type="button">
+                    <span id="requestClassFilterText">All Classes</span>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <div class="dropdown-options filter-options" id="requestClassFilterOptions">
+                    <div class="dropdown-option selected" data-value="">All Classes</div>
+                </div>
+            </div>
+            {% endif %}
+            {% if table.has_section_field %}
+            <div class="custom-dropdown filter-dropdown" id="requestSectionFilterDropdown">
+                <button class="dropdown-toggle filter-toggle" id="requestSectionFilterToggle" type="button">
+                    <span id="requestSectionFilterText">All Sections</span>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <div class="dropdown-options filter-options" id="requestSectionFilterOptions">
+                    <div class="dropdown-option selected" data-value="">All Sections</div>
+                </div>
+            </div>
+            {% endif %}
+            {% if table.has_class_field or table.has_section_field %}
+            <button class="clear-filters-btn" id="requestClearFiltersBtn" type="button" title="Clear class/section filters" aria-label="Clear class and section filters">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            {% endif %}
+        </div>
         <div class="filter-group datetime-filter-group reprint-datetime-filter-group">
             <label class="datetime-label">From</label>
             <input type="text" id="requestFromDate" class="datetime-input" title="Filter from date" placeholder="Select date & time" aria-label="From date" readonly>

@@ -23,6 +23,7 @@ from django.utils.dateparse import parse_datetime
 from idcards.models import IDCard, IDCardTable
 from core.services.permission_service import PermissionService, api_require_permission
 from core.views.base import get_user_role, require_any_admin
+from core.views.idcard_helpers import _get_class_section_field_names, _build_class_filter_q
 
 from .models import ReprintRequest
 from .services import ReprintWorkflowService
@@ -377,11 +378,17 @@ def api_reprint_confirm(request, table_id):
 @api_require_permission('perm_idcard_reprint_list')
 def api_request_list(request, table_id):
     """List requested reprint requests (status='requested')."""
+    from django.db.models.functions import Cast
+    from django.db.models import CharField
+    from django.db.models.fields.json import KeyTextTransform
+
     table, err = _check_reprint_table_scope(request.user, table_id)
     if err:
         return err
 
     query = request.GET.get('q', '').strip()
+    class_filter = request.GET.get('class', '').strip()
+    section_filter = request.GET.get('section', '').strip()
     try:
         offset = int(request.GET.get('offset', 0))
         limit = int(request.GET.get('limit', 100))
@@ -396,6 +403,18 @@ def api_request_list(request, table_id):
 
     from_dt = _parse_local_datetime_filter(request.GET.get('from'))
     to_dt = _parse_local_datetime_filter(request.GET.get('to'))
+
+    class_field_name, section_field_name = _get_class_section_field_names(table)
+    if class_filter or section_filter:
+        card_scope = IDCard.objects.filter(table=table, status='download')
+        if class_filter and class_field_name:
+            card_scope = _build_class_filter_q(card_scope, class_filter, class_field_name)
+        if section_filter and section_field_name:
+            card_scope = card_scope.annotate(
+                _reprint_section=Cast(KeyTextTransform(section_field_name, 'field_data'), CharField()),
+            ).filter(_reprint_section=section_filter)
+        rr_qs = rr_qs.filter(card_id__in=card_scope.values('id'))
+
     if from_dt:
         rr_qs = rr_qs.filter(created_at__gte=from_dt)
     if to_dt:
@@ -462,6 +481,7 @@ def api_reprint_reject(request, table_id):
             'status': 'ok',
             'message': result.message,
             'rejected_count': result.data['rejected_count'],
+            'rejected_ids': result.data.get('rejected_ids', []),
         })
     return JsonResponse({'status': 'error', 'message': result.message}, status=400)
 
@@ -470,11 +490,17 @@ def api_reprint_reject(request, table_id):
 @api_require_permission('perm_idcard_reprint_list')
 def api_confirmed_list(request, table_id):
     """List confirmed reprint requests (status='confirmed')."""
+    from django.db.models.functions import Cast
+    from django.db.models import CharField
+    from django.db.models.fields.json import KeyTextTransform
+
     table, err = _check_reprint_table_scope(request.user, table_id)
     if err:
         return err
 
     query = request.GET.get('q', '').strip()
+    class_filter = request.GET.get('class', '').strip()
+    section_filter = request.GET.get('section', '').strip()
     try:
         offset = int(request.GET.get('offset', 0))
         limit = int(request.GET.get('limit', 100))
@@ -489,6 +515,18 @@ def api_confirmed_list(request, table_id):
 
     from_dt = _parse_local_datetime_filter(request.GET.get('from'))
     to_dt = _parse_local_datetime_filter(request.GET.get('to'))
+
+    class_field_name, section_field_name = _get_class_section_field_names(table)
+    if class_filter or section_filter:
+        card_scope = IDCard.objects.filter(table=table, status='download')
+        if class_filter and class_field_name:
+            card_scope = _build_class_filter_q(card_scope, class_filter, class_field_name)
+        if section_filter and section_field_name:
+            card_scope = card_scope.annotate(
+                _reprint_section=Cast(KeyTextTransform(section_field_name, 'field_data'), CharField()),
+            ).filter(_reprint_section=section_filter)
+        rr_qs = rr_qs.filter(card_id__in=card_scope.values('id'))
+
     if from_dt:
         rr_qs = rr_qs.filter(updated_at__gte=from_dt)
     if to_dt:
@@ -649,12 +687,15 @@ def api_reprint_send_to_print(request, table_id):
         return JsonResponse({'status': 'error', 'message': 'No items selected'}, status=400)
 
     # Only allow requested reprint requests
-    requested_rrs = ReprintRequest.objects.filter(
+    requested_qs = ReprintRequest.objects.filter(
         id__in=rr_ids,
         table=table,
         status='requested',
         card__status='download',
-    ).values_list('card_id', flat=True)
+    )
+
+    eligible_rr_ids = list(requested_qs.values_list('id', flat=True))
+    requested_rrs = requested_qs.values_list('card_id', flat=True)
 
     card_ids = list(requested_rrs)
     if not card_ids:
@@ -674,7 +715,7 @@ def api_reprint_send_to_print(request, table_id):
     # Always move eligible rows from requested -> confirmed, even when
     # print rows were skipped because they already existed in print_list.
     moved_count = ReprintRequest.objects.filter(
-        id__in=rr_ids,
+        id__in=eligible_rr_ids,
         table=table,
         status='requested',
         card__status='download',
@@ -687,4 +728,5 @@ def api_reprint_send_to_print(request, table_id):
         'created': result.data['created'],
         'skipped': result.data['skipped'],
         'moved': moved_count,
+        'moved_ids': eligible_rr_ids,
     })

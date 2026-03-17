@@ -28,8 +28,6 @@ from ..services.base import BaseService
 from idcards.services_workflow import WorkflowService
 from core.utils.field_utils import (
     validate_image_bytes,
-    convert_class_value,
-    convert_section_value,
 )
 
 logger = logging.getLogger(__name__)
@@ -512,7 +510,7 @@ def _build_field_data(row, header_to_field, field_type_lookup, all_table_fields,
         # CSV: header_to_field = { csv_header: field_name }
         for csv_header, field_name in header_to_field.items():
             value = row.get(csv_header, '')
-            field_data[field_name] = str(value).strip().upper() if value else ''
+            field_data[field_name] = str(value) if value is not None else ''
     else:
         # XLSX: header_to_field = { col_index: field_name }
         for col_idx, field_name in header_to_field.items():
@@ -529,9 +527,9 @@ def _build_field_data(row, header_to_field, field_type_lookup, all_table_fields,
                             actual_date = excel_epoch + timedelta(days=int(value))
                             value = actual_date.strftime('%d-%m-%Y')
                         elif value == int(value):
-                            value = str(int(value)).upper()
+                            value = str(int(value))
                         else:
-                            value = str(value).upper()
+                            value = str(value)
                     elif isinstance(value, int):
                         if 1 < value < 60000 and _is_date_field(field_name):
                             from datetime import datetime, timedelta
@@ -539,36 +537,19 @@ def _build_field_data(row, header_to_field, field_type_lookup, all_table_fields,
                             actual_date = excel_epoch + timedelta(days=value)
                             value = actual_date.strftime('%d-%m-%Y')
                         else:
-                            value = str(value).upper()
+                            value = str(value)
                     else:
-                        value = str(value).strip().upper()
+                        value = str(value)
                     if isinstance(value, str):
                         value = (value
                                  .replace('_X000D_', '').replace('_x000D_', '')
                                  .replace('_x000d_', '')
                                  .replace('\r\n', ' ').replace('\r', '').replace('\n', ' '))
-                        while '  ' in value:
-                            value = value.replace('  ', ' ')
-                        value = value.strip()
                     field_data[field_name] = value
                 else:
                     field_data[field_name] = ''
             else:
                 field_data[field_name] = ''
-    
-    # Apply class/section value conversions
-    for fname in list(field_data.keys()):
-        ftype = field_type_lookup.get(fname, 'text')
-        if ftype == 'class' and field_data[fname]:
-            field_data[fname] = convert_class_value(field_data[fname])
-        elif ftype == 'section' and field_data[fname]:
-            field_data[fname] = convert_section_value(field_data[fname])
-
-    # Sanitize plain-text fields (strip forbidden special characters)
-    for fname in list(field_data.keys()):
-        ftype = field_type_lookup.get(fname, 'text')
-        if ftype not in ('date', 'class', 'section', 'image') and field_data.get(fname):
-            field_data[fname] = _sanitize_text_cell(str(field_data[fname]))
 
     return field_data
 

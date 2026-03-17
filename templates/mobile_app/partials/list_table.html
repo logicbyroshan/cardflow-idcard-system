@@ -105,9 +105,17 @@
         <!-- Mount point for dynamically loaded cards (via loadMore) -->
         <div id="dynamic-cards-mount"></div>
 
-        <!-- Load More -->
+        <div id="list-infinite-sentinel" class="h-2"></div>
+
+        <!-- Infinite loading indicator / fallback button -->
         <div x-show="hasMore" class="flex justify-center py-4">
-            <button @click="loadMore()" :disabled="loading"
+            <div x-show="supportsInfiniteObserver" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-100 text-[11px] font-semibold text-gray-500 shadow-sm">
+                <i class="fa-solid fa-spinner fa-spin text-[11px]" x-show="loading"></i>
+                <i class="fa-solid fa-arrow-down text-[11px]" x-show="!loading"></i>
+                <span x-text="loading ? 'Loading more...' : 'Scroll down to load more'"></span>
+            </div>
+
+            <button x-show="!supportsInfiniteObserver" @click="loadMore()" :disabled="loading"
                     class="flex items-center gap-2 px-6 py-3 rounded-xl text-[13px] font-semibold text-white shadow-md active:scale-95 transition-all"
                     style="background:linear-gradient(135deg,var(--color-brand-light),var(--color-brand-dark));"
                     :class="loading ? 'opacity-60 cursor-not-allowed' : ''">
