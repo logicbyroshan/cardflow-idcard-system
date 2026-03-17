@@ -103,6 +103,8 @@ urlpatterns = [
     path('manage-panel/', views.manage_panel, name='manage_panel'),
     path('api/email-logs/', views.api_email_logs, name='api_email_logs'),
     path('api/email-resend/<int:log_id>/', views.api_email_resend, name='api_email_resend'),
+    path('api/email-send/', views.api_email_send_new, name='api_email_send_new'),
+    path('api/email-compose-defaults/', views.api_email_compose_defaults, name='api_email_compose_defaults'),
     
     # ==================== BACKUP ====================
     path('backup/select-clients/', views.backup_select_clients, name='backup_select_clients'),

@@ -1014,17 +1014,21 @@ class EmailLog(models.Model):
     EMAIL_TYPE_TEMP_PASSWORD = 'temp_password'
     EMAIL_TYPE_PASSWORD_CHANGE = 'password_change'
     EMAIL_TYPE_OTP_RESET = 'otp_reset'
+    EMAIL_TYPE_SYSTEM = 'system'
 
     TYPE_CHOICES = [
         (EMAIL_TYPE_WELCOME, 'Welcome / Activation'),
         (EMAIL_TYPE_TEMP_PASSWORD, 'Temp Password'),
         (EMAIL_TYPE_PASSWORD_CHANGE, 'Password Change Notice'),
         (EMAIL_TYPE_OTP_RESET, 'Password Reset OTP'),
+        (EMAIL_TYPE_SYSTEM, 'System / Custom'),
     ]
 
     recipient_name = models.CharField(max_length=200)
     recipient_email = models.EmailField(db_index=True)
     subject = models.CharField(max_length=300)
+    body_text = models.TextField(blank=True, default='')
+    body_html = models.TextField(blank=True, default='')
     email_type = models.CharField(max_length=30, choices=TYPE_CHOICES, db_index=True)
     status = models.CharField(
         max_length=20, choices=STATUS_CHOICES,

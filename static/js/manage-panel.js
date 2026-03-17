@@ -653,6 +653,7 @@ function renderLogTable() {
     proper file-based caching, linting and CSP compliance)
    ================================================================ */
 let _emailPage = 1;
+let _emailLogsById = {};
 
 window.loadEmailLogs = function (page) {
   if (page !== undefined) _emailPage = page;
@@ -675,6 +676,8 @@ window.loadEmailLogs = function (page) {
     .then(r => r.json())
     .then(function (data) {
       if (!data.success) return;
+      _emailLogsById = {};
+      (data.logs || []).forEach(function (log) { _emailLogsById[log.id] = log; });
 
       // Update count badges
       const counts = data.status_counts || {};
@@ -708,13 +711,17 @@ window.loadEmailLogs = function (page) {
               '<i class="fa-solid fa-circle-info" style="color:#dc2626;"></i></span>'
             : '<span style="color:#9ca3af;"></span>';
           const isOtpType = log.email_type === 'otp_reset';
-          const canResend = isOtpType || log.status === 'on_hold' || log.status === 'failed';
+          const canResend = true;
           const actionTitle = isOtpType ? 'Resend OTP email' : 'Resend email';
-          const actionHtml = canResend
-            ? '<button class="btn btn-icon" style="width:28px;height:28px;padding:0;" ' +
+          const quickResendHtml = canResend
+            ? '<button class="btn btn-icon" style="width:28px;height:28px;padding:0;margin-left:4px;" ' +
               'onclick="resendEmail(' + log.id + ',\'' + escAttr(log.email_type || '') + '\')" title="' + actionTitle + '">' +
               '<i class="fa-solid fa-paper-plane" style="font-size:11px;"></i></button>'
             : '<span style="color:#9ca3af;"></span>';
+          const editHtml = '<button class="btn btn-icon" style="width:28px;height:28px;padding:0;" ' +
+            'onclick="openEditEmailModal(' + log.id + ')" title="Edit / resend with custom content">' +
+            '<i class="fa-solid fa-pen-to-square" style="font-size:11px;"></i></button>';
+          const actionHtml = editHtml + quickResendHtml;
           return '<tr id="email-log-row-' + log.id + '">' +
             '<td class="text-center text-xs text-gray-400">' + (((_emailPage - 1) * 50) + i + 1) + '</td>' +
             '<td><strong style="font-size:12.5px;color:#1e293b;">' + escHtml(log.recipient_name || '') + '</strong></td>' +
@@ -802,6 +809,150 @@ window.resendEmail = async function (logId, emailType) {
       console.error('resendEmail error:', err);
     });
 };
+
+window.openNewEmailModal = async function () {
+  const titleEl = document.getElementById('emailComposeTitle');
+  const logIdEl = document.getElementById('emailComposeLogId');
+  const nameEl = document.getElementById('emailComposeRecipientName');
+  const emailEl = document.getElementById('emailComposeRecipientEmail');
+  const typeEl = document.getElementById('emailComposeType');
+  const subjectEl = document.getElementById('emailComposeSubject');
+  const bodyTextEl = document.getElementById('emailComposeBodyText');
+  const bodyHtmlEl = document.getElementById('emailComposeBodyHtml');
+  if (!titleEl || !logIdEl || !nameEl || !emailEl || !subjectEl || !bodyTextEl || !bodyHtmlEl || !typeEl) return;
+
+  titleEl.innerHTML = '<i class="fa-solid fa-envelope-open-text"></i> Add New Email';
+  logIdEl.value = '';
+  nameEl.value = '';
+  emailEl.value = '';
+  typeEl.value = 'system';
+  subjectEl.value = 'Message from Adarsh Admin';
+  bodyTextEl.value = 'Hello User,\n\nThis is a message from Adarsh Admin.\n\nRegards,\nAdarsh Admin Team';
+  bodyHtmlEl.value = '';
+
+  try {
+    const r = await fetch(window.EMAIL_COMPOSE_DEFAULTS_URL || '/api/email-compose-defaults/');
+    const d = await r.json();
+    if (d && d.success) {
+      subjectEl.value = d.default_subject || subjectEl.value;
+      bodyTextEl.value = d.default_body_text || bodyTextEl.value;
+    }
+  } catch (e) {
+    console.warn('Compose defaults load failed:', e);
+  }
+
+  const modal = document.getElementById('emailComposeModal');
+  if (modal) {
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+};
+
+window.openEditEmailModal = function (logId) {
+  const log = _emailLogsById[logId];
+  if (!log) {
+    if (typeof showToast === 'function') showToast('Email record not found. Please refresh.', 'error');
+    return;
+  }
+
+  const titleEl = document.getElementById('emailComposeTitle');
+  const logIdEl = document.getElementById('emailComposeLogId');
+  const nameEl = document.getElementById('emailComposeRecipientName');
+  const emailEl = document.getElementById('emailComposeRecipientEmail');
+  const typeEl = document.getElementById('emailComposeType');
+  const subjectEl = document.getElementById('emailComposeSubject');
+  const bodyTextEl = document.getElementById('emailComposeBodyText');
+  const bodyHtmlEl = document.getElementById('emailComposeBodyHtml');
+  if (!titleEl || !logIdEl || !nameEl || !emailEl || !subjectEl || !bodyTextEl || !bodyHtmlEl || !typeEl) return;
+
+  titleEl.innerHTML = '<i class="fa-solid fa-pen-to-square"></i> Edit & Resend Email';
+  logIdEl.value = String(logId);
+  nameEl.value = log.recipient_name || '';
+  emailEl.value = log.recipient_email || '';
+  typeEl.value = log.email_type || 'system';
+  subjectEl.value = log.subject || '';
+  bodyTextEl.value = (log.body_text && log.body_text.trim())
+    ? log.body_text
+    : ('Hello ' + (log.recipient_name || 'User') + ',\n\nThis is a follow-up message from Adarsh Admin.\n\nRegards,\nAdarsh Admin Team');
+  bodyHtmlEl.value = log.body_html || '';
+
+  const modal = document.getElementById('emailComposeModal');
+  if (modal) {
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+};
+
+window.closeEmailComposeModal = function () {
+  const modal = document.getElementById('emailComposeModal');
+  if (modal) modal.style.display = 'none';
+  document.body.style.overflow = '';
+};
+
+window.submitEmailCompose = async function (event) {
+  if (event && typeof event.preventDefault === 'function') event.preventDefault();
+  const logId = (document.getElementById('emailComposeLogId')?.value || '').trim();
+  const payload = {
+    recipient_name: (document.getElementById('emailComposeRecipientName')?.value || '').trim(),
+    recipient_email: (document.getElementById('emailComposeRecipientEmail')?.value || '').trim(),
+    email_type: (document.getElementById('emailComposeType')?.value || 'system').trim(),
+    subject: (document.getElementById('emailComposeSubject')?.value || '').trim(),
+    body_text: (document.getElementById('emailComposeBodyText')?.value || '').trim(),
+    body_html: (document.getElementById('emailComposeBodyHtml')?.value || '').trim(),
+  };
+
+  if (!payload.recipient_email || !payload.subject || !payload.body_text) {
+    if (typeof showToast === 'function') showToast('Recipient email, subject, and message are required.', 'error');
+    return false;
+  }
+
+  const sendBtn = document.getElementById('emailComposeSendBtn');
+  if (sendBtn) {
+    sendBtn.disabled = true;
+    sendBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending...';
+  }
+
+  try {
+    const isEdit = !!logId;
+    const endpoint = isEdit
+      ? ((window.EMAIL_RESEND_BASE_URL || '/api/email-resend/') + logId + '/')
+      : (window.EMAIL_SEND_NEW_URL || '/api/email-send/');
+    const r = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCSRFToken(),
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      body: JSON.stringify(payload),
+    });
+    const data = await r.json();
+    if (data.success) {
+      if (typeof showToast === 'function') showToast(data.message || 'Email sent successfully.', 'success');
+      closeEmailComposeModal();
+      loadEmailLogs(1);
+    } else {
+      if (typeof showToast === 'function') showToast(data.message || 'Failed to send email.', 'error');
+    }
+  } catch (err) {
+    console.error('submitEmailCompose error:', err);
+    if (typeof showToast === 'function') showToast('Network error while sending email.', 'error');
+  } finally {
+    if (sendBtn) {
+      sendBtn.disabled = false;
+      sendBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send Email';
+    }
+  }
+  return false;
+};
+
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Escape') return;
+  const modal = document.getElementById('emailComposeModal');
+  if (modal && modal.style.display !== 'none' && modal.style.display !== '') {
+    closeEmailComposeModal();
+  }
+});
 
 /* ============ Tab switch hook  lazy-load data ============ */
 const _origSwitchTab = switchTab;

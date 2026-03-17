@@ -281,7 +281,7 @@ class OTPService:
                 }
             else:
                 # Production: Send branded HTML OTP email
-                from core.utils.threaded_email import send_html_email_async
+                from core.utils.threaded_email import send_html_email_with_callback
                 user_name = user.get_full_name() or user.username
 
                 html_content = f'''<!DOCTYPE html>
@@ -346,12 +346,34 @@ If you did not request this, please ignore this email.
 Thanks,
 Adarsh Admin Team'''
 
-                send_html_email_async(
+                def _mark_sent():
+                    EmailLog.objects.filter(pk=log.pk).update(
+                        status=EmailLog.STATUS_SENT,
+                        sent_at=timezone.now(),
+                        error_message='',
+                        subject='🔐 Password Reset OTP — Adarsh Admin',
+                        body_text=plain_content,
+                        body_html=html_content,
+                    )
+
+                def _mark_failed(error_msg):
+                    EmailLog.objects.filter(pk=log.pk).update(
+                        status=EmailLog.STATUS_FAILED,
+                        error_message=error_msg or 'Failed to send OTP email.',
+                        subject='🔐 Password Reset OTP — Adarsh Admin',
+                        body_text=plain_content,
+                        body_html=html_content,
+                    )
+
+                send_html_email_with_callback(
                     subject='🔐 Password Reset OTP — Adarsh Admin',
                     plain_content=plain_content,
                     html_content=html_content,
                     from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[email],
+                    on_success=_mark_sent,
+                    on_failure=_mark_failed,
+                    skip_logging=True,
                 )
                 # Queued for send in thread — keep as pending for accurate state.
                 return {

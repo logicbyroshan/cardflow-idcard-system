@@ -294,6 +294,7 @@ def send_welcome_email(name, email, password, role, request=None, phone='', **kw
                 from_email, to_email,
                 on_success=on_success,
                 on_failure=on_failure,
+                skip_logging=True,
             )
             logger.info("Welcome email queued (async) for %s", email)
             return True, 'Welcome email queued for delivery.'

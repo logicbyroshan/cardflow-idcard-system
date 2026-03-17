@@ -130,6 +130,8 @@
   <script>
     window.EMAIL_LOGS_API_URL    = "{% url 'api_email_logs' %}";
     window.EMAIL_RESEND_BASE_URL = "{% url 'api_email_resend' log_id=1 %}".replace('/1/', '/');
+    window.EMAIL_SEND_NEW_URL    = "{% url 'api_email_send_new' %}";
+    window.EMAIL_COMPOSE_DEFAULTS_URL = "{% url 'api_email_compose_defaults' %}";
   </script>
   <script defer src="{% static 'js/manage-panel.js' %}"></script>
   <script defer src="{% static 'js/backup-panel.js' %}"></script>

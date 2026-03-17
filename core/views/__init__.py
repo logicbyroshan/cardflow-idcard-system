@@ -26,6 +26,8 @@ from .base import (
     manage_panel,
     api_email_logs,
     api_email_resend,
+    api_email_send_new,
+    api_email_compose_defaults,
     settings,
     api_export_settings_get,
     api_export_settings_update,

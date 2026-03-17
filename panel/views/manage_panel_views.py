@@ -6,13 +6,16 @@ Moved from core/views/admin_page_views.py.
 """
 
 import logging
+import json
 
 from django.conf import settings as django_settings
 from django.contrib.auth.decorators import login_required
+from django.core.mail import EmailMultiAlternatives, get_connection
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
 from django.http import JsonResponse
 from django.shortcuts import render
+from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from core.models import User, Notification, EmailLog
@@ -21,6 +24,28 @@ from client.models import Client
 from core.services.permission_service import require_super_admin
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_EMAIL_TEMPLATE = (
+    'Hello {name},\n\n'
+    'This is a message from Adarsh Admin.\n\n'
+    'Regards,\n'
+    'Adarsh Admin Team'
+)
+
+
+def _send_email_now(subject, body_text, body_html, recipient_email):
+    """Send email synchronously with bounded timeout and explicit HTML fallback."""
+    connection = get_connection(timeout=30)
+    msg = EmailMultiAlternatives(
+        subject=subject,
+        body=body_text,
+        from_email=getattr(django_settings, 'DEFAULT_FROM_EMAIL', ''),
+        to=[recipient_email],
+        connection=connection,
+    )
+    if body_html:
+        msg.attach_alternative(body_html, 'text/html')
+    msg.send(fail_silently=False)
 
 
 # ── Notifications page (all authenticated users) ─────────────────────────
@@ -101,6 +126,8 @@ def api_email_logs(request):
             'recipient_name': log.recipient_name,
             'recipient_email': log.recipient_email,
             'subject': log.subject,
+            'body_text': log.body_text,
+            'body_html': log.body_html,
             'email_type': log.email_type,
             'email_type_display': log.get_email_type_display(),
             'status': log.status,
@@ -140,14 +167,56 @@ def api_email_resend(request, log_id):
     Generates a new temporary password for the user and resends the welcome email."""
     import secrets
     import string
-    from django.utils import timezone
     from accounts.services import OTPService
     from core.utils.email_utils import send_welcome_email
+
+    payload = {}
+    if request.body:
+        try:
+            payload = json.loads(request.body)
+        except Exception:
+            payload = {}
 
     try:
         log = EmailLog.objects.get(id=log_id)
     except EmailLog.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'Log entry not found.'}, status=404)
+
+    is_custom_send = any(k in payload for k in ['subject', 'body_text', 'body_html', 'recipient_email', 'recipient_name'])
+    if is_custom_send:
+        recipient_email = (payload.get('recipient_email') or log.recipient_email or '').strip()
+        recipient_name = (payload.get('recipient_name') or log.recipient_name or '').strip()
+        subject = (payload.get('subject') or log.subject or '').strip()
+        body_text = (payload.get('body_text') or log.body_text or '').strip()
+        body_html = (payload.get('body_html') or log.body_html or '').strip()
+        email_type = (payload.get('email_type') or log.email_type or EmailLog.EMAIL_TYPE_SYSTEM).strip()
+
+        if not recipient_email or not subject or not body_text:
+            return JsonResponse({'success': False, 'message': 'Recipient email, subject, and message are required.'}, status=400)
+
+        try:
+            _send_email_now(subject, body_text, body_html, recipient_email)
+            log.recipient_name = recipient_name or recipient_email
+            log.recipient_email = recipient_email
+            log.subject = subject
+            log.body_text = body_text
+            log.body_html = body_html
+            log.email_type = email_type
+            log.status = EmailLog.STATUS_SENT
+            log.error_message = ''
+            log.sent_at = timezone.now()
+            log.save(update_fields=['recipient_name', 'recipient_email', 'subject', 'body_text', 'body_html', 'email_type', 'status', 'error_message', 'sent_at'])
+            return JsonResponse({
+                'success': True,
+                'message': 'Email resent successfully.',
+                'new_status': log.status,
+                'new_status_display': log.get_status_display(),
+            })
+        except Exception as e:
+            log.status = EmailLog.STATUS_FAILED
+            log.error_message = str(e)
+            log.save(update_fields=['status', 'error_message'])
+            return JsonResponse({'success': False, 'message': f'Failed to send email: {e}'}, status=500)
 
     is_otp_log = log.email_type == EmailLog.EMAIL_TYPE_OTP_RESET
     if (not is_otp_log) and log.status not in [EmailLog.STATUS_ON_HOLD, EmailLog.STATUS_FAILED]:
@@ -222,5 +291,61 @@ def api_email_resend(request, log_id):
         'message': message if success else f'Failed: {message}',
         'new_status': log.status,
         'new_status_display': log.get_status_display(),
+    })
+
+
+@require_super_admin
+@require_http_methods(['POST'])
+def api_email_send_new(request):
+    """Create and send a new email from Email Management compose modal."""
+    try:
+        payload = json.loads(request.body or '{}')
+    except Exception:
+        payload = {}
+
+    recipient_email = (payload.get('recipient_email') or '').strip()
+    recipient_name = (payload.get('recipient_name') or recipient_email).strip()
+    subject = (payload.get('subject') or '').strip()
+    body_text = (payload.get('body_text') or '').strip()
+    body_html = (payload.get('body_html') or '').strip()
+    email_type = (payload.get('email_type') or EmailLog.EMAIL_TYPE_SYSTEM).strip()
+
+    if not recipient_email or not subject or not body_text:
+        return JsonResponse({'success': False, 'message': 'Recipient email, subject, and message are required.'}, status=400)
+
+    log = EmailLog.objects.create(
+        recipient_name=recipient_name,
+        recipient_email=recipient_email,
+        subject=subject,
+        body_text=body_text,
+        body_html=body_html,
+        email_type=email_type,
+        status=EmailLog.STATUS_PENDING,
+    )
+
+    try:
+        _send_email_now(subject, body_text, body_html, recipient_email)
+        log.status = EmailLog.STATUS_SENT
+        log.sent_at = timezone.now()
+        log.error_message = ''
+        log.save(update_fields=['status', 'sent_at', 'error_message'])
+        return JsonResponse({'success': True, 'message': 'Email sent successfully.', 'log_id': log.id})
+    except Exception as e:
+        log.status = EmailLog.STATUS_FAILED
+        log.error_message = str(e)
+        log.save(update_fields=['status', 'error_message'])
+        return JsonResponse({'success': False, 'message': f'Failed to send email: {e}'}, status=500)
+
+
+@require_super_admin
+@require_http_methods(['GET'])
+def api_email_compose_defaults(request):
+    """Provide default prefilled template for Add New Email compose modal."""
+    recipient_name = (request.GET.get('name') or 'User').strip() or 'User'
+    body_text = DEFAULT_EMAIL_TEMPLATE.replace('{name}', recipient_name)
+    return JsonResponse({
+        'success': True,
+        'default_subject': 'Message from Adarsh Admin',
+        'default_body_text': body_text,
     })
 

@@ -23,8 +23,54 @@ negligible for the low email volume this app produces.
 import logging
 import threading
 from django.core.mail import send_mail, EmailMultiAlternatives
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
+
+
+def _create_logs(recipient_list, subject, body_text, body_html, email_type, recipient_name):
+    try:
+        from core.models import EmailLog
+    except Exception:
+        return []
+
+    logs = []
+    for recipient in recipient_list or []:
+        try:
+            logs.append(
+                EmailLog.objects.create(
+                    recipient_name=recipient_name or recipient,
+                    recipient_email=recipient,
+                    subject=subject or '',
+                    body_text=body_text or '',
+                    body_html=body_html or '',
+                    email_type=email_type or EmailLog.EMAIL_TYPE_SYSTEM,
+                    status=EmailLog.STATUS_PENDING,
+                )
+            )
+        except Exception:
+            continue
+    return logs
+
+
+def _mark_logs(logs, success, error_message=''):
+    if not logs:
+        return
+    try:
+        from core.models import EmailLog
+    except Exception:
+        return
+
+    status = EmailLog.STATUS_SENT if success else EmailLog.STATUS_FAILED
+    sent_at = timezone.now() if success else None
+    for log in logs:
+        try:
+            log.status = status
+            log.error_message = '' if success else (error_message or 'Email send failed')
+            log.sent_at = sent_at
+            log.save(update_fields=['status', 'error_message', 'sent_at'])
+        except Exception:
+            continue
 
 
 def send_mail_async(subject, message, from_email, recipient_list,
@@ -33,6 +79,18 @@ def send_mail_async(subject, message, from_email, recipient_list,
     Drop-in replacement for ``django.core.mail.send_mail`` that runs
     in a daemon thread.  Keyword arguments are forwarded to ``send_mail``.
     """
+    email_type = kwargs.pop('email_type', 'system')
+    recipient_name = kwargs.pop('recipient_name', '')
+    skip_logging = kwargs.pop('skip_logging', False)
+    logs = [] if skip_logging else _create_logs(
+        recipient_list=recipient_list,
+        subject=subject,
+        body_text=message,
+        body_html='',
+        email_type=email_type,
+        recipient_name=recipient_name,
+    )
+
     def _send():
         try:
             send_mail(
@@ -44,18 +102,32 @@ def send_mail_async(subject, message, from_email, recipient_list,
                 **kwargs,
             )
             logger.info("Threaded email sent to %s", recipient_list)
+            _mark_logs(logs, True)
         except Exception as exc:
             logger.error("Threaded email to %s failed: %s", recipient_list, exc)
+            _mark_logs(logs, False, str(exc))
 
     t = threading.Thread(target=_send, daemon=False, name='email-send')
     t.start()
 
 
 def send_html_email_async(subject, plain_content, html_content,
-                          from_email, recipient_list):
+                          from_email, recipient_list, **kwargs):
     """
     Send an HTML email with plain-text fallback in a background thread.
     """
+    email_type = kwargs.pop('email_type', 'system')
+    recipient_name = kwargs.pop('recipient_name', '')
+    skip_logging = kwargs.pop('skip_logging', False)
+    logs = [] if skip_logging else _create_logs(
+        recipient_list=recipient_list,
+        subject=subject,
+        body_text=plain_content,
+        body_html=html_content,
+        email_type=email_type,
+        recipient_name=recipient_name,
+    )
+
     def _send():
         try:
             msg = EmailMultiAlternatives(
@@ -64,9 +136,11 @@ def send_html_email_async(subject, plain_content, html_content,
             msg.attach_alternative(html_content, "text/html")
             msg.send(fail_silently=False)
             logger.info("Threaded HTML email sent to %s", recipient_list)
+            _mark_logs(logs, True)
         except Exception as exc:
             logger.error("Threaded HTML email to %s failed: %s",
                          recipient_list, exc)
+            _mark_logs(logs, False, str(exc))
 
     t = threading.Thread(target=_send, daemon=False, name='html-email-send')
     t.start()
@@ -74,7 +148,7 @@ def send_html_email_async(subject, plain_content, html_content,
 
 def send_html_email_with_callback(subject, plain_content, html_content,
                                    from_email, recipient_list,
-                                   on_success=None, on_failure=None):
+                                   on_success=None, on_failure=None, **kwargs):
     """
     Send an HTML email in a background thread with success/failure callbacks.
 
@@ -85,6 +159,18 @@ def send_html_email_with_callback(subject, plain_content, html_content,
         on_success: callable()  — called after successful send
         on_failure: callable(error_message: str) — called on SMTP failure
     """
+    email_type = kwargs.pop('email_type', 'system')
+    recipient_name = kwargs.pop('recipient_name', '')
+    skip_logging = kwargs.pop('skip_logging', False)
+    logs = [] if skip_logging else _create_logs(
+        recipient_list=recipient_list,
+        subject=subject,
+        body_text=plain_content,
+        body_html=html_content,
+        email_type=email_type,
+        recipient_name=recipient_name,
+    )
+
     def _send():
         try:
             msg = EmailMultiAlternatives(
@@ -93,6 +179,7 @@ def send_html_email_with_callback(subject, plain_content, html_content,
             msg.attach_alternative(html_content, "text/html")
             msg.send(fail_silently=False)
             logger.info("Threaded welcome email sent to %s", recipient_list)
+            _mark_logs(logs, True)
             if on_success:
                 try:
                     on_success()
@@ -101,6 +188,7 @@ def send_html_email_with_callback(subject, plain_content, html_content,
         except Exception as exc:
             logger.error("Threaded welcome email to %s failed: %s",
                          recipient_list, exc)
+            _mark_logs(logs, False, str(exc))
             if on_failure:
                 try:
                     on_failure(str(exc))
