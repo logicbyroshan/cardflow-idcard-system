@@ -245,7 +245,11 @@ def panel_entry(request):
     """Generate a signed panel-entry token and redirect to panel login/path."""
     from django.core.signing import TimestampSigner
 
-    raw_next = request.GET.get('next', '/auth/login/')
+    ua = request.META.get('HTTP_USER_AGENT', '')
+    is_mobile_ua = any(k in ua for k in ['Android', 'iPhone', 'iPad', 'iPod', 'webOS', 'BlackBerry', 'IEMobile', 'Opera Mini'])
+
+    default_next = '/app/login/?install=1' if is_mobile_ua else '/auth/login/'
+    raw_next = request.GET.get('next', default_next)
     parsed = urlsplit(raw_next)
 
     next_path = parsed.path or '/auth/login/'

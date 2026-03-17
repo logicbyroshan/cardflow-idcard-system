@@ -9,7 +9,7 @@
      x-init="activeTab = new URLSearchParams(location.search).get('tab') || 'groups'">
     {% csrf_token %}
     <!-- Header -->
-    <div class="sticky top-0 z-40 flex items-center gap-3 px-4 pt-[calc(env(safe-area-inset-top,0px)+10px)] pb-3 bg-gradient-to-r from-brand-light to-brand-dark">
+    <div class="pwa-page-topbar sticky top-0 z-40 flex items-center gap-3 px-4 pb-3 bg-gradient-to-r from-brand-light to-brand-dark">
         {% if back_to_clients %}
         <a href="{% url 'mobile_app:clients_list' %}" class="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all">
             <i class="fa-solid fa-arrow-left text-sm"></i>

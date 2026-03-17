@@ -37,6 +37,8 @@ body {
     --m-border: #d7e9f6;
     --m-text: #1f2d3d;
     --m-muted: #5b6b7b;
+    --pwa-topbar-height: 52px;
+    --pwa-bottom-nav-height: 58px;
 }
 
 /* Override Tailwind brand tokens only for mobile app pages. */
@@ -165,6 +167,19 @@ textarea:focus-visible {
     user-select: none;
 }
 
+.pwa-page-topbar {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 8px);
+    min-height: calc(var(--pwa-topbar-height) + env(safe-area-inset-top, 0px));
+}
+
+.pwa-topbar-inner {
+    height: var(--pwa-topbar-height);
+}
+
+.pwa-bottom-nav-spacer {
+    height: calc(var(--pwa-bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 16px);
+}
+
 .pwa-nav-item:active {
     opacity: 0.7;
 }
@@ -232,11 +247,12 @@ textarea:focus-visible {
 .pwa-home-snap {
     scroll-snap-type: y mandatory;
     -webkit-overflow-scrolling: touch;
+    padding-bottom: 6px;
 }
 
 .pwa-snap-section {
     scroll-snap-align: start;
-    min-height: calc(100dvh - 56px - 58px - env(safe-area-inset-bottom, 0px));
+    min-height: calc(100dvh - var(--pwa-topbar-height) - var(--pwa-bottom-nav-height) - env(safe-area-inset-bottom, 0px));
     flex-shrink: 0;
 }
 

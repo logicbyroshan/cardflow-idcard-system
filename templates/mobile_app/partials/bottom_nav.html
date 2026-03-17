@@ -1,10 +1,11 @@
 <!-- Bottom Navigation Bar  -  5 items, Search center prominent -->
+<div class="pwa-bottom-nav-spacer" aria-hidden="true"></div>
 <nav class="pwa-bottom-nav fixed bottom-0 left-0 right-0 z-40">
     <div class="max-w-[430px] mx-auto relative">
 
         <!-- Nav bar background with notch cutout above center -->
         <div class="bg-white border-t border-gray-200 shadow-[0_-2px_12px_rgba(0,0,0,0.07)] relative">
-            <div class="flex items-end px-1" style="height:58px;">
+            <div class="flex items-end px-1" style="height:var(--pwa-bottom-nav-height);">
 
                 <!-- Home -->
                 <a href="{% url 'mobile_app:home' %}"

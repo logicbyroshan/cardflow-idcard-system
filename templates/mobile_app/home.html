@@ -4,7 +4,7 @@
 {% block title %}Dashboard - Adarsh ID Cards{% endblock %}
 
 {% block content %}
-<div x-data="homeApp()" class="pwa-home flex flex-col" style="height:100dvh; overflow:hidden;">
+<div x-data="homeApp()" class="pwa-home flex flex-col" style="min-height:100dvh; overflow:hidden;">
 
     <!-- === TOP NAV === -->
     {% include "mobile_app/partials/navbar.html" %}
@@ -20,14 +20,14 @@
                 .home-stats-grid {
                     display: grid;
                     grid-template-columns: 1fr 1fr;
-                    grid-template-rows: repeat(3, minmax(82px, auto));
-                    gap: 10px;
+                    grid-template-rows: repeat(3, minmax(74px, auto));
+                    gap: 8px;
                 }
                 .home-stat-card {
                     position: relative;
                     overflow: hidden;
-                    border-radius: 18px;
-                    box-shadow: 0 8px 18px rgba(13, 24, 48, 0.14);
+                    border-radius: 16px;
+                    box-shadow: 0 6px 14px rgba(13, 24, 48, 0.12);
                     isolation: isolate;
                 }
                 .home-stat-card::before {
@@ -40,25 +40,20 @@
                 .home-stat-inner {
                     position: relative;
                     display: flex;
-                    flex-direction: column;
-                    align-items: flex-start;
+                    align-items: center;
                     justify-content: space-between;
                     gap: 10px;
                     min-height: 100%;
-                    padding: 14px;
-                }
-                .home-stat-text-bottom {
-                    margin-top: auto;
+                    padding: 12px;
                 }
                 .home-stat-text-right {
-                    margin-left: auto;
+                    margin-left: 0;
                     text-align: right;
-                    align-self: center;
                 }
                 .home-stat-icon {
-                    width: 36px;
-                    height: 36px;
-                    border-radius: 11px;
+                    width: 30px;
+                    height: 30px;
+                    border-radius: 10px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -67,28 +62,27 @@
                     flex-shrink: 0;
                 }
                 .home-stat-label {
-                    font-size: 10px;
+                    font-size: 9px;
                     font-weight: 700;
                     text-transform: uppercase;
-                    letter-spacing: 0.08em;
+                    letter-spacing: 0.06em;
                     color: rgba(255, 255, 255, 0.82);
                 }
                 .home-stat-value {
-                    font-size: 28px;
+                    font-size: 18px;
                     line-height: 1;
                     font-weight: 900;
                     color: #fff;
-                    margin-top: 3px;
+                    margin-top: 2px;
                 }
                 .home-stat-total {
-                    grid-column: 1;
-                    grid-row: 1 / span 2;
-                    min-height: 174px;
+                    grid-column: 1 / span 2;
+                    grid-row: 1;
                     background: linear-gradient(145deg, #4338ca, #312e81);
                 }
                 .home-stat-pending {
-                    grid-column: 2;
-                    grid-row: 1;
+                    grid-column: 1;
+                    grid-row: 2;
                     background: linear-gradient(145deg, #f97316, #ea580c);
                 }
                 .home-stat-verified {
@@ -112,13 +106,13 @@
             <div class="px-3 pt-3 pb-2 flex-shrink-0">
                 <div class="home-stats-grid">
                     <div class="home-stat-card home-stat-total">
-                        <div class="home-stat-inner" style="align-items: flex-start; flex-direction: column; justify-content: space-between;">
+                        <div class="home-stat-inner">
                             <div class="home-stat-icon">
                                 <i class="fa-solid fa-id-card"></i>
                             </div>
-                            <div>
+                            <div class="home-stat-text-right">
                                 <p class="home-stat-label">Total ID Cards</p>
-                                <p class="home-stat-value" style="font-size: 40px;">{{ total_cards|default:0 }}</p>
+                                <p class="home-stat-value">{{ total_cards|default:0 }}</p>
                             </div>
                         </div>
                     </div>
