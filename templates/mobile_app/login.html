@@ -74,6 +74,12 @@
         <h2 class="text-gray-800 text-xl font-bold mb-1">Welcome back</h2>
         <p class="text-gray-400 text-sm mb-6">Sign in to continue</p>
 
+        <button type="button" id="install-app-btn"
+                class="w-full mb-4 py-3 rounded-xl border border-blue-100 bg-blue-50 text-blue-700 text-sm font-bold flex items-center justify-center gap-2">
+            <i class="fa-solid fa-mobile-screen-button"></i>
+            <span id="install-app-btn-text">Download App</span>
+        </button>
+
         <!-- Error bar -->
         <div id="error-bar" class="hidden error-bar bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl mb-4 flex items-center gap-2">
             <i class="fa-solid fa-circle-exclamation flex-shrink-0"></i>
@@ -160,6 +166,60 @@
         else     { sp.classList.add('hidden');    txt.textContent = 'Sign In'; }
     }
 
+    var deferredInstallPrompt = null;
+    var installBtn = document.getElementById('install-app-btn');
+    var installBtnText = document.getElementById('install-app-btn-text');
+
+    function isIosSafariInstallPath() {
+        var ua = navigator.userAgent || '';
+        var isIOS = /iPhone|iPad|iPod/i.test(ua);
+        var isSafari = /Safari/i.test(ua) && !/CriOS|FxiOS|EdgiOS/i.test(ua);
+        var isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+        return isIOS && isSafari && !isStandalone;
+    }
+
+    function refreshInstallBtnState() {
+        if (deferredInstallPrompt) {
+            installBtnText.textContent = 'Download App';
+            return;
+        }
+        if (isIosSafariInstallPath()) {
+            installBtnText.textContent = 'Show iPhone Install Steps';
+            return;
+        }
+        installBtnText.textContent = 'Show Install Steps';
+    }
+
+    window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault();
+        deferredInstallPrompt = e;
+        refreshInstallBtnState();
+    });
+
+    window.addEventListener('appinstalled', function () {
+        deferredInstallPrompt = null;
+        refreshInstallBtnState();
+    });
+
+    installBtn.addEventListener('click', async function () {
+        if (deferredInstallPrompt) {
+            deferredInstallPrompt.prompt();
+            try { await deferredInstallPrompt.userChoice; } catch (e) {}
+            deferredInstallPrompt = null;
+            refreshInstallBtnState();
+            return;
+        }
+
+        if (isIosSafariInstallPath()) {
+            showError('Tap Share, then Add to Home Screen in Safari.');
+            return;
+        }
+
+        showError('Open browser menu, then tap Install app or Add to Home screen.');
+    });
+
+    refreshInstallBtnState();
+
     // Get CSRF token from cookie
     function getCsrf() {
         var name = 'csrftoken';
@@ -213,6 +273,11 @@
     document.getElementById('email').addEventListener('keydown', function (e) {
         if (e.key === 'Enter') { e.preventDefault(); document.getElementById('password').focus(); }
     });
+
+    var qs = new URLSearchParams(window.location.search || '');
+    if (qs.get('revoked') === '1') {
+        showError('Mobile app access was removed. Please contact admin.');
+    }
 })();
 </script>
 

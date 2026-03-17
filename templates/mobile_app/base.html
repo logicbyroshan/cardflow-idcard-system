@@ -111,7 +111,6 @@
         {% block content %}{% endblock %}
     </div>
 
-    {% if request.user.is_authenticated %}
     <!-- PWA Install Bottom Sheet (shown only after login) -->
     <div id="pwa-install-overlay"
          class="hidden fixed inset-0 bg-black/35 backdrop-blur-[1px]"
@@ -143,7 +142,6 @@
             </div>
         </div>
     </div>
-    {% endif %}
 
     <!-- Custom JS -->
     <script src="{% static 'mobile/js/app.js' %}"></script>
@@ -190,7 +188,6 @@
     }
     </script>
 
-    {% if request.user.is_authenticated %}
     <script>
     (function () {
         var STORAGE_KEY = 'pwa_install_sheet_dismissed_at';
@@ -202,7 +199,8 @@
         var closeBtn = document.getElementById('pwa-install-close');
         var subtitle = document.getElementById('pwa-install-subtitle');
         var hint = document.getElementById('pwa-install-hint');
-        var isHomePage = '{{ request.resolver_match.url_name|default:"" }}' === 'home';
+        var currentPage = '{{ request.resolver_match.url_name|default:"" }}';
+        var isInstallPage = currentPage === 'home' || currentPage === 'mobile_login';
 
         if (!overlay || !sheet || !cta || !closeBtn) return;
 
@@ -268,7 +266,7 @@
         }
 
         function openSheet() {
-            if (!isHomePage || !isMobileBrowser() || isStandalone() || wasDismissed()) return;
+            if (!isInstallPage || !isMobileBrowser() || isStandalone() || wasDismissed()) return;
             refreshCtaState();
             overlay.classList.remove('hidden');
             sheet.classList.remove('hidden');
@@ -328,7 +326,7 @@
         // Fallback: show sheet on mobile browser home dashboard when prompt is unavailable.
         window.addEventListener('load', function () {
             setTimeout(function () {
-                if (isHomePage && isMobileBrowser() && !wasDismissed() && !isStandalone()) {
+                if (isInstallPage && isMobileBrowser() && !wasDismissed() && !isStandalone()) {
                     refreshCtaState();
                     openSheet();
                 }
@@ -337,7 +335,7 @@
             // Long-open sessions: check every minute so reminder appears again
             // after the 1-hour cooldown without requiring a page reload.
             setInterval(function () {
-                if (isHomePage && isMobileBrowser() && !isStandalone() && wasDismissed()) {
+                if (isInstallPage && isMobileBrowser() && !isStandalone() && wasDismissed()) {
                     var raw = localStorage.getItem(STORAGE_KEY);
                     var ts = parseInt(raw || '0', 10);
                     if (ts && (Date.now() - ts) >= DISMISS_TTL_MS) {
@@ -350,7 +348,6 @@
         });
     })();
     </script>
-    {% endif %}
 
     {% block extra_js %}{% endblock %}
 </body>

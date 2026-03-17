@@ -19,6 +19,7 @@ from django.http import JsonResponse
 from django.conf import settings
 from django.core.cache import cache
 from django.contrib.auth import login as auth_login
+from django.contrib.auth import logout as auth_logout
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
@@ -65,16 +66,39 @@ def require_mobile_client(view_func):
     @wraps(view_func)
     @login_required(login_url='/app/login/')
     def wrapper(request, *args, **kwargs):
+        is_api_request = request.path.startswith('/app/api/')
         user = request.user
+
+        # Mobile app uses its own auth checkpoint inside the same Django session.
+        if not request.session.get('mobile_auth_ok'):
+            if is_api_request:
+                return JsonResponse({
+                    'success': False,
+                    'mobile_auth_required': True,
+                    'message': 'Please sign in from the mobile app login screen.',
+                }, status=401)
+            return redirect('/app/login/')
+
         # Allow all 4 valid roles; reject unknown/empty roles
         valid_roles = ('pro_user', 'super_admin', 'admin_staff', 'client', 'client_staff')
         if not hasattr(user, 'role') or user.role not in valid_roles:
+            auth_logout(request)
+            request.session.pop('mobile_auth_ok', None)
+            if is_api_request:
+                return JsonResponse({'success': False, 'message': 'Invalid account role for mobile app.'}, status=403)
             return redirect('/app/login/')
+
         # Enforce perm_mobile_app (super_admin always passes)
         if not PermissionService.has(user, 'perm_mobile_app'):
-            return render(request, 'mobile_app/no_access.html', {
-                'user_name': user.get_full_name() or user.username,
-            }, status=403)
+            auth_logout(request)
+            request.session.pop('mobile_auth_ok', None)
+            if is_api_request:
+                return JsonResponse({
+                    'success': False,
+                    'mobile_access_revoked': True,
+                    'message': 'Mobile app access was revoked. Please contact admin.',
+                }, status=403)
+            return redirect('/app/login/?revoked=1')
         # Desktop users see a block page (rendered client-side in base.html)
         return view_func(request, *args, **kwargs)
     return wrapper
@@ -177,11 +201,9 @@ def mobile_login(request):
         valid_roles = ('pro_user', 'super_admin', 'admin_staff', 'client', 'client_staff')
         if not hasattr(user, 'role') or user.role not in valid_roles:
             return redirect('/panel/auth/logout/?next=/app/login/')
-        if not PermissionService.has(user, 'perm_mobile_app'):
-            return render(request, 'mobile_app/no_access.html', {
-                'user_name': user.get_full_name() or user.username,
-            }, status=403)
-        return redirect('/app/')
+        # Separate mobile auth flow: do not auto-enter app unless mobile auth checkpoint passed.
+        if request.session.get('mobile_auth_ok') and PermissionService.has(user, 'perm_mobile_app'):
+            return redirect('/app/')
     return render(request, 'mobile_app/login.html')
 
 
@@ -236,6 +258,7 @@ def api_mobile_login(request):
 
         auth_login(request, user)
         request.session['selected_role'] = role
+        request.session['mobile_auth_ok'] = True
         ActivityService.log_login(request, user)
         return JsonResponse({'success': True, 'redirect_url': '/app/', 'message': 'Login successful'})
     except json.JSONDecodeError:
