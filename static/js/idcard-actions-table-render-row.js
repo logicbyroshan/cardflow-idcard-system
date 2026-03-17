@@ -181,7 +181,7 @@ function createRowFromCard(card, index) {
         if (!isClientUser) {
             html += `<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">${card.deleted_at || '-'}</td>`;
         }
-    } else if (status !== 'approved') {
+    } else if (status !== 'download' && status !== 'pool' && status !== 'approved') {
         // Pending/Verified: show action buttons
         html += `<td class="w-[60px] px-[1px] py-1 text-center align-middle action-cell">
             <div class="action-buttons inline-flex flex-col gap-[2px]">
