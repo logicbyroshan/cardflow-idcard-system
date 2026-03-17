@@ -7,57 +7,86 @@
 <!-- Dashboard Container -->
 <div class="wa-dashboard">
 
-    <!-- Website Status Banner -->
-    <div class="wa-status-banner {% if website_status == 'live' %}live{% else %}draft{% endif %}" id="statusBanner">
-        <span class="wa-status-label">
-            <i class="fa-solid {% if website_status == 'live' %}fa-globe{% else %}fa-eye-slash{% endif %}"></i>
-            Website is <strong id="statusText">{{ website_status|title }}</strong>
-        </span>
-        {% if is_super_admin or perm_website_publish %}
-        <button class="btn btn-sm {% if website_status == 'live' %}btn-warning{% else %}btn-success{% endif %}" id="toggleStatusBtn">
-            <i class="fa-solid {% if website_status == 'live' %}fa-pause{% else %}fa-play{% endif %}"></i>
-            {% if website_status == 'live' %}Set Draft{% else %}Go Live{% endif %}
-        </button>
-        {% endif %}
-    </div>
+    <!-- Control Center Section -->
+    <div class="wa-dashboard-section wa-control-section">
+        <div class="wa-dashboard-section-header">
+            <h3 class="wa-dashboard-section-title"><i class="fa-solid fa-sliders"></i> Site Control Center</h3>
+        </div>
 
-    <!-- Not Found Mode Banner -->
-    <div class="wa-status-banner {% if website_not_found_mode %}draft{% else %}live{% endif %}" id="notFoundBanner">
-        <span class="wa-status-label">
-            <i class="fa-solid {% if website_not_found_mode %}fa-triangle-exclamation{% else %}fa-link{% endif %}"></i>
-            Domain Not Found Mode is
-            <strong id="notFoundStatusText">{% if website_not_found_mode %}On{% else %}Off{% endif %}</strong>
-        </span>
-        {% if is_super_admin or perm_website_publish %}
-        <button class="btn btn-sm {% if website_not_found_mode %}btn-success{% else %}btn-danger{% endif %}" id="toggleNotFoundBtn">
-            <i class="fa-solid {% if website_not_found_mode %}fa-power-off{% else %}fa-triangle-exclamation{% endif %}"></i>
-            {% if website_not_found_mode %}Disable Not Found Mode{% else %}Enable Not Found Mode{% endif %}
-        </button>
-        {% endif %}
-    </div>
+        <div class="wa-control-grid">
+            <div class="wa-control-card {% if website_status == 'live' %}is-live{% else %}is-draft{% endif %}" id="statusBanner">
+                <div class="wa-control-head">
+                    <span class="wa-control-icon">
+                        <i class="fa-solid {% if website_status == 'live' %}fa-globe{% else %}fa-eye-slash{% endif %}"></i>
+                    </span>
+                    <div>
+                        <p class="wa-control-title">Website Status</p>
+                        <p class="wa-control-meta">Public visibility of your site</p>
+                    </div>
+                </div>
+                <div class="wa-control-body">
+                    <span class="wa-control-badge">Now: <strong id="statusText">{{ website_status|title }}</strong></span>
+                    {% if is_super_admin or perm_website_publish %}
+                    <button class="btn btn-sm {% if website_status == 'live' %}btn-warning{% else %}btn-success{% endif %}" id="toggleStatusBtn">
+                        <i class="fa-solid {% if website_status == 'live' %}fa-pause{% else %}fa-play{% endif %}"></i>
+                        {% if website_status == 'live' %}Set Draft{% else %}Go Live{% endif %}
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
 
-    {% if is_pro_user %}
-    <div class="wa-status-banner live has-controls" id="proAccessBanner">
-        <span class="wa-status-label">
-            <i class="fa-solid fa-user-shield"></i>
-            Pro Emergency Access Link
-        </span>
-        <input
-            type="email"
-            id="proAccessEmailInput"
-            placeholder="Enter account email"
-            class="wa-inline-email-input"
-        >
-        <button
-            class="btn btn-sm btn-primary"
-            id="sendProAccessBtn"
-            {% if not website_not_found_mode %}disabled title="Enable Domain Not Found Mode first"{% endif %}
-        >
-            <i class="fa-solid fa-paper-plane"></i>
-            Send Access Link
-        </button>
+            <div class="wa-control-card {% if website_not_found_mode %}is-draft{% else %}is-live{% endif %}" id="notFoundBanner">
+                <div class="wa-control-head">
+                    <span class="wa-control-icon">
+                        <i class="fa-solid {% if website_not_found_mode %}fa-triangle-exclamation{% else %}fa-link{% endif %}"></i>
+                    </span>
+                    <div>
+                        <p class="wa-control-title">Domain Not Found Mode</p>
+                        <p class="wa-control-meta">Hide public pages and allow panel recovery</p>
+                    </div>
+                </div>
+                <div class="wa-control-body">
+                    <span class="wa-control-badge">Mode: <strong id="notFoundStatusText">{% if website_not_found_mode %}On{% else %}Off{% endif %}</strong></span>
+                    {% if is_super_admin or perm_website_publish %}
+                    <button class="btn btn-sm {% if website_not_found_mode %}btn-success{% else %}btn-danger{% endif %}" id="toggleNotFoundBtn">
+                        <i class="fa-solid {% if website_not_found_mode %}fa-power-off{% else %}fa-triangle-exclamation{% endif %}"></i>
+                        {% if website_not_found_mode %}Disable Not Found Mode{% else %}Enable Not Found Mode{% endif %}
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if is_pro_user %}
+            <div class="wa-control-card is-live" id="proAccessBanner">
+                <div class="wa-control-head">
+                    <span class="wa-control-icon">
+                        <i class="fa-solid fa-user-shield"></i>
+                    </span>
+                    <div>
+                        <p class="wa-control-title">Pro Emergency Access Link</p>
+                        <p class="wa-control-meta">Send secure panel access when domain mode is enabled</p>
+                    </div>
+                </div>
+                <div class="wa-control-body wa-control-body-wrap">
+                    <input
+                        type="email"
+                        id="proAccessEmailInput"
+                        placeholder="Enter account email"
+                        class="wa-inline-email-input"
+                    >
+                    <button
+                        class="btn btn-sm btn-primary"
+                        id="sendProAccessBtn"
+                        {% if not website_not_found_mode %}disabled title="Enable Domain Not Found Mode first"{% endif %}
+                    >
+                        <i class="fa-solid fa-paper-plane"></i>
+                        Send Access Link
+                    </button>
+                </div>
+            </div>
+            {% endif %}
+        </div>
     </div>
-    {% endif %}
 
     <!-- Overview Section -->
     <div class="wa-dashboard-section">
