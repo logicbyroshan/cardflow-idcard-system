@@ -150,7 +150,25 @@ function listApp() {
             let filtered = this.studentsData.filter(s => {
                 // Text search
                 if (q) {
-                    const text = ((s.name||'') + ' ' + (s.roll_no||'') + ' ' + (s.father_name||'') + ' ' + (s.class_name||'') + ' ' + (s.section||'')).toLowerCase();
+                    const fieldDataText = Object.values(s.field_data || {})
+                        .map(v => String(v || ''))
+                        .join(' ')
+                        .toLowerCase();
+                    const text = [
+                        s.name,
+                        s.roll_no,
+                        s.father_name,
+                        s.mother_name,
+                        s.class_name,
+                        s.section,
+                        s.dob,
+                        s.id,
+                        s.id_number,
+                        fieldDataText,
+                    ]
+                        .map(v => String(v || ''))
+                        .join(' ')
+                        .toLowerCase();
                     if (!text.includes(q)) return false;
                 }
                 // Photo filter
