@@ -50,6 +50,11 @@
                 .home-stat-text-bottom {
                     margin-top: auto;
                 }
+                .home-stat-text-right {
+                    margin-left: auto;
+                    text-align: right;
+                    align-self: center;
+                }
                 .home-stat-icon {
                     width: 36px;
                     height: 36px;
@@ -114,7 +119,6 @@
                             <div>
                                 <p class="home-stat-label">Total ID Cards</p>
                                 <p class="home-stat-value" style="font-size: 40px;">{{ total_cards|default:0 }}</p>
-                                <p class="text-[10px] text-white/70 font-semibold mt-1">Pending + Verified + Approved + Download</p>
                             </div>
                         </div>
                     </div>
@@ -123,7 +127,7 @@
                        class="home-stat-card home-stat-pending active:scale-[0.98] transition-transform">
                         <div class="home-stat-inner">
                             <div class="home-stat-icon"><i class="fa-solid fa-clock"></i></div>
-                            <div class="home-stat-text-bottom">
+                            <div class="home-stat-text-right">
                                 <p class="home-stat-label">Pending</p>
                                 <p class="home-stat-value">{{ pending_count|default:0 }}</p>
                             </div>
@@ -134,7 +138,7 @@
                        class="home-stat-card home-stat-verified active:scale-[0.98] transition-transform">
                         <div class="home-stat-inner">
                             <div class="home-stat-icon"><i class="fa-solid fa-circle-check"></i></div>
-                            <div class="home-stat-text-bottom">
+                            <div class="home-stat-text-right">
                                 <p class="home-stat-label">Verified</p>
                                 <p class="home-stat-value">{{ verified_count|default:0 }}</p>
                             </div>
@@ -145,7 +149,7 @@
                        class="home-stat-card home-stat-approved active:scale-[0.98] transition-transform">
                         <div class="home-stat-inner">
                             <div class="home-stat-icon"><i class="fa-solid fa-check-double"></i></div>
-                            <div class="home-stat-text-bottom">
+                            <div class="home-stat-text-right">
                                 <p class="home-stat-label">Approved</p>
                                 <p class="home-stat-value">{{ approved_count|default:0 }}</p>
                             </div>
@@ -156,7 +160,7 @@
                        class="home-stat-card home-stat-download active:scale-[0.98] transition-transform">
                         <div class="home-stat-inner">
                             <div class="home-stat-icon"><i class="fa-solid fa-download"></i></div>
-                            <div class="home-stat-text-bottom">
+                            <div class="home-stat-text-right">
                                 <p class="home-stat-label">Download</p>
                                 <p class="home-stat-value">{{ download_count|default:0 }}</p>
                             </div>
