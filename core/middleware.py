@@ -298,6 +298,11 @@ class PermissionValidationMiddleware:
         'auth/logout/',
         'auth/password-reset/',
         'api/auth/',
+        'app/login/',
+        'app/no-access/',
+        'app/manifest.json',
+        'app/sw.js',
+        'app/api/auth/',
         'inactive/',
         'maintenance/',
     ]
