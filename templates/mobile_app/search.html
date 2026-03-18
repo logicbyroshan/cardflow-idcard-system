@@ -43,12 +43,18 @@
             </span>
         </div>
 
-        <!-- Spinner -->
-        <div class="text-center py-10" x-show="loading" x-cloak>
-            <div class="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center mx-auto mb-3">
-                <i class="fa-solid fa-spinner fa-spin text-xl text-brand-light"></i>
-            </div>
-            <p class="text-[12px] text-gray-400 font-medium">Searching&hellip;</p>
+        <!-- Search skeleton -->
+        <div class="space-y-2.5" x-show="loading" x-cloak>
+            <template x-for="i in 4" :key="'search-skeleton-' + i">
+                <div class="flex items-center gap-3 bg-white rounded-2xl p-3.5 shadow-sm border border-gray-100">
+                    <div class="w-12 h-12 rounded-xl skeleton-line flex-shrink-0"></div>
+                    <div class="flex-1 min-w-0 space-y-2">
+                        <div class="h-3.5 w-2/3 rounded-lg skeleton-line"></div>
+                        <div class="h-2.5 w-1/2 rounded-lg skeleton-line"></div>
+                    </div>
+                    <div class="h-6 w-14 rounded-xl skeleton-line flex-shrink-0"></div>
+                </div>
+            </template>
         </div>
 
         <!-- Results list -->

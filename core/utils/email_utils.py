@@ -69,137 +69,115 @@ def get_welcome_email_template(name, email, password, role, login_url, phone='')
         'client_staff': 'Client Staff',
     }.get(role, role.replace('_', ' ').title())
     
-    # Determine password display: if password equals phone, show "Your Mobile Number"
+    # Determine password display: if password equals phone, show mobile-number hint
     if phone and password == phone:
-        password_display = '📱 Your Mobile Number'
+        password_display = 'Your Mobile Number'
         password_hint = '(Use your 10-digit mobile number as password)'
     else:
         password_display = password
         password_hint = '(Please save this password securely)'
-    
-    html_content = f'''
-<!DOCTYPE html>
+
+    html_content = f'''<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <style>
+    * {{ box-sizing: border-box; }}
+    body {{ margin: 0; padding: 0; background: #eef2f7; font-family: 'Segoe UI', Arial, sans-serif; color: #0f172a; }}
+    .mail-shell {{ width: 100%; padding: 24px 12px; background: #eef2f7; }}
+    .mail-card {{ width: 100%; max-width: 1200px; min-width: 300px; margin: 0 auto; background: #fff; border: 1px solid #dbe3ef; border-radius: 18px; overflow: hidden; }}
+    .mail-header {{ padding: 30px 30px 24px; background: linear-gradient(135deg, #1d4ed8 0%, #4f46e5 100%); color: #fff; }}
+    .mail-kicker {{ margin: 0 0 10px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; opacity: .9; }}
+    .mail-title {{ margin: 0; font-size: 28px; line-height: 1.2; font-weight: 700; }}
+    .mail-sub {{ margin: 8px 0 0; font-size: 15px; opacity: .95; }}
+    .mail-body {{ padding: 28px 30px 24px; }}
+    .mail-paragraph {{ margin: 0 0 16px; font-size: 15px; line-height: 1.7; color: #334155; }}
+    .cred-box {{ border: 1px solid #dbe4f2; border-left: 4px solid #1d4ed8; border-radius: 14px; background: #f8fbff; padding: 18px; margin: 20px 0; }}
+    .cred-title {{ margin: 0 0 14px; font-size: 14px; font-weight: 700; color: #0f172a; text-transform: uppercase; letter-spacing: .05em; }}
+    .cred-row {{ padding: 10px 0; border-top: 1px dashed #cbd5e1; }}
+    .cred-row:first-of-type {{ border-top: none; padding-top: 0; }}
+    .cred-label {{ margin: 0 0 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #64748b; }}
+    .cred-value {{ margin: 0; font-size: 14px; color: #0f172a; font-weight: 600; word-break: break-word; }}
+    .cred-password {{ display: inline-block; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; font-family: 'Courier New', monospace; font-size: 14px; }}
+    .cred-hint {{ margin: 8px 0 0; font-size: 12px; color: #64748b; }}
+    .role-pill {{ display: inline-block; padding: 6px 12px; border-radius: 999px; background: #dbeafe; color: #1e40af; font-size: 12px; font-weight: 700; }}
+    .cta-wrap {{ margin: 24px 0; }}
+    .cta-btn {{ display: inline-block; padding: 12px 24px; border-radius: 10px; background: #1d4ed8; color: #fff !important; text-decoration: none; font-size: 14px; font-weight: 700; }}
+    .help-box {{ margin: 20px 0 0; border: 1px solid #d1fae5; border-left: 4px solid #059669; border-radius: 12px; background: #ecfdf5; padding: 14px 16px; }}
+    .help-box h4 {{ margin: 0 0 10px; font-size: 14px; color: #065f46; }}
+    .help-box ol {{ margin: 0; padding-left: 18px; color: #065f46; font-size: 13px; line-height: 1.7; }}
+    .warn-box {{ margin: 14px 0 0; border: 1px solid #fde68a; border-left: 4px solid #d97706; border-radius: 12px; background: #fffbeb; padding: 12px 14px; font-size: 13px; line-height: 1.6; color: #92400e; }}
+    .mail-footer {{ padding: 16px 30px 22px; border-top: 1px solid #e5e7eb; background: #f8fafc; font-size: 12px; color: #64748b; }}
+    .mail-footer p {{ margin: 0 0 4px; }}
+    @media (max-width: 760px) {{
+      .mail-shell {{ padding: 10px 8px; }}
+      .mail-card {{ min-width: 300px; border-radius: 14px; }}
+      .mail-header {{ padding: 22px 16px 18px; }}
+      .mail-title {{ font-size: 22px; }}
+      .mail-sub {{ font-size: 13px; }}
+      .mail-body {{ padding: 18px 16px 16px; }}
+      .mail-footer {{ padding: 14px 16px 18px; }}
+    }}
+  </style>
 </head>
-<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7fa;">
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f4f7fa; padding: 40px 20px;">
-        <tr>
-            <td align="center">
-                <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08); overflow: hidden;">
-                    
-                    <!-- Header -->
-                    <tr>
-                        <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 40px 30px; text-align: center;">
-                            <div style="width: 70px; height: 70px; background-color: rgba(255,255,255,0.2); border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
-                                <span style="font-size: 32px; color: #fff;">🎉</span>
-                            </div>
-                            <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 600;">Welcome Aboard!</h1>
-                            <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0; font-size: 16px;">Your account has been created successfully</p>
-                        </td>
-                    </tr>
-                    
-                    <!-- Body -->
-                    <tr>
-                        <td style="padding: 40px;">
-                            <p style="color: #333; font-size: 16px; margin: 0 0 20px; line-height: 1.6;">
-                                Hello <strong style="color: #667eea;">{name}</strong>,
-                            </p>
-                            
-                            <p style="color: #555; font-size: 15px; margin: 0 0 25px; line-height: 1.6;">
-                                Your account has been created as <strong style="color: #764ba2;">{role_display}</strong>. 
-                                Below are your login credentials. Please keep them secure.
-                            </p>
-                            
-                            <!-- Credentials Box -->
-                            <div style="background: linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 100%); border-radius: 12px; padding: 25px; margin: 25px 0; border-left: 4px solid #667eea;">
-                                <h3 style="color: #333; margin: 0 0 20px; font-size: 16px; font-weight: 600;">
-                                    🔐 Your Login Credentials
-                                </h3>
-                                
-                                <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-                                    <tr>
-                                        <td style="padding: 10px 0;">
-                                            <span style="color: #666; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Email</span>
-                                            <div style="color: #333; font-size: 16px; font-weight: 500; margin-top: 5px; word-break: break-all;">
-                                                {email}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td style="padding: 10px 0; border-top: 1px dashed #ddd;">
-                                            <span style="color: #666; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Password</span>
-                                            <div style="color: #333; font-size: 16px; font-weight: 600; margin-top: 5px; font-family: 'Courier New', monospace; background: #fff; padding: 10px 15px; border-radius: 8px; border: 1px solid #e0e5ff;">
-                                                {password_display}
-                                            </div>
-                                            <p style="color: #888; font-size: 13px; margin: 8px 0 0; font-style: italic;">
-                                                {password_hint}
-                                            </p>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td style="padding: 10px 0; border-top: 1px dashed #ddd;">
-                                            <span style="color: #666; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Role</span>
-                                            <div style="margin-top: 5px;">
-                                                <span style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; font-size: 13px; font-weight: 500; padding: 5px 15px; border-radius: 20px;">
-                                                    {role_display}
-                                                </span>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </table>
-                            </div>
-                            
-                            <!-- Login Button -->
-                            <div style="text-align: center; margin: 30px 0;">
-                                <a href="{login_url}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; text-decoration: none; padding: 15px 40px; border-radius: 30px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);">
-                                    🚀 Login Now
-                                </a>
-                            </div>
-                            
-                            <!-- How to Reset Password -->
-                            <div style="background: #f0fff4; border-radius: 10px; padding: 20px; margin-top: 25px; border-left: 4px solid #48bb78;">
-                                <h4 style="color: #276749; margin: 0 0 15px; font-size: 15px; font-weight: 600;">
-                                    🔄 How to Reset Your Password
-                                </h4>
-                                <ol style="color: #2f855a; font-size: 14px; margin: 0; padding-left: 20px; line-height: 1.8;">
-                                    <li>Go to the login page and click on <strong>"Forgot Password?"</strong></li>
-                                    <li>Enter your email address and submit</li>
-                                    <li>You will receive an OTP on your email</li>
-                                    <li>Enter the OTP and set your new password</li>
-                                </ol>
-                            </div>
-                            
-                            <!-- Security Notice -->
-                            <div style="background: #fff8e6; border-radius: 10px; padding: 15px 20px; margin-top: 20px; border-left: 4px solid #f5a623;">
-                                <p style="color: #856404; font-size: 14px; margin: 0; line-height: 1.5;">
-                                    <strong>⚠️ Security Tip:</strong> We recommend changing your password after first login for better security. Never share your credentials with anyone.
-                                </p>
-                            </div>
-                        </td>
-                    </tr>
-                    
-                    <!-- Footer -->
-                    <tr>
-                        <td style="background-color: #f8f9fa; padding: 25px 40px; text-align: center; border-top: 1px solid #eee;">
-                            <p style="color: #999; font-size: 13px; margin: 0 0 10px;">
-                                This is an automated message. Please do not reply to this email.
-                            </p>
-                            <p style="color: #999; font-size: 12px; margin: 0;">
-                                © 2026 Adarsh Admin. All rights reserved.
-                            </p>
-                        </td>
-                    </tr>
-                    
-                </table>
-            </td>
-        </tr>
-    </table>
+<body>
+  <div class="mail-shell">
+    <div class="mail-card">
+      <div class="mail-header">
+        <p class="mail-kicker">Account Activation</p>
+        <h1 class="mail-title">Welcome to Adarsh Admin</h1>
+        <p class="mail-sub">Your account is ready and credentials are below.</p>
+      </div>
+
+      <div class="mail-body">
+        <p class="mail-paragraph">Hello <strong>{name}</strong>,</p>
+        <p class="mail-paragraph">Your account has been created as <strong>{role_display}</strong>. Please use these credentials to log in and then update your password.</p>
+
+        <div class="cred-box">
+          <p class="cred-title">Login Credentials</p>
+          <div class="cred-row">
+            <p class="cred-label">Email</p>
+            <p class="cred-value">{email}</p>
+          </div>
+          <div class="cred-row">
+            <p class="cred-label">Password</p>
+            <p class="cred-value"><span class="cred-password">{password_display}</span></p>
+            <p class="cred-hint">{password_hint}</p>
+          </div>
+          <div class="cred-row">
+            <p class="cred-label">Role</p>
+            <p class="cred-value"><span class="role-pill">{role_display}</span></p>
+          </div>
+        </div>
+
+        <div class="cta-wrap">
+          <a href="{login_url}" class="cta-btn">Login to Panel</a>
+        </div>
+
+        <div class="help-box">
+          <h4>Password Reset Steps</h4>
+          <ol>
+            <li>Open the login page and click Forgot Password.</li>
+            <li>Enter your email and submit.</li>
+            <li>Use the OTP received on email.</li>
+            <li>Set a new password and log in again.</li>
+          </ol>
+        </div>
+
+        <div class="warn-box">
+          Security tip: change your password after first login and never share credentials.
+        </div>
+      </div>
+
+      <div class="mail-footer">
+        <p>This is an automated message. Please do not reply.</p>
+        <p>Copyright 2026 Adarsh Admin. All rights reserved.</p>
+      </div>
+    </div>
+  </div>
 </body>
-</html>
-'''
+</html>'''
     
     # Plain text fallback
     plain_content = f'''
@@ -338,40 +316,57 @@ def send_password_changed_notification(name, email, request=None):
         # Build clean login URL (prefers PANEL_URL from settings)
         login_url = _get_panel_login_url(request)
 
-        html_content = f'''<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background-color:#f4f4f7;font-family:Arial,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f7;padding:40px 0;">
-<tr><td align="center">
-<table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.1);">
-  <tr><td style="background:linear-gradient(135deg,#4f46e5,#7c3aed);padding:30px 40px;text-align:center;">
-    <h1 style="color:#ffffff;margin:0;font-size:22px;">Password Updated</h1>
-  </td></tr>
-  <tr><td style="padding:32px 40px;">
-    <p style="font-size:16px;color:#333;">Hello <strong>{name}</strong>,</p>
-    <p style="font-size:15px;color:#555;line-height:1.6;">
-      Your account password has been updated by an administrator. If you did not request this change,
-      please contact your admin immediately.
-    </p>
-    <p style="font-size:15px;color:#555;line-height:1.6;">
-      You can log in using your new temporary password. We recommend changing it after you log in.
-    </p>
-    <table width="100%" cellpadding="0" cellspacing="0" style="margin:25px 0;">
-      <tr><td align="center">
-        <a href="{login_url}" style="display:inline-block;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:15px;font-weight:600;">
-          Log In Now
-        </a>
-      </td></tr>
-    </table>
-    <p style="font-size:13px;color:#999;margin-top:24px;border-top:1px solid #eee;padding-top:16px;text-align:center;">
-      This is an automated message. Please do not reply to this email.<br>
-      &copy; 2026 Adarsh Admin. All rights reserved.
-    </p>
-  </td></tr>
-</table>
-</td></tr></table>
-</body></html>'''
+                html_content = f'''<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <style>
+        * {{ box-sizing: border-box; }}
+        body {{ margin: 0; padding: 0; background: #eef2f7; font-family: 'Segoe UI', Arial, sans-serif; color: #0f172a; }}
+        .mail-shell {{ width: 100%; padding: 24px 12px; background: #eef2f7; }}
+        .mail-card {{ width: 100%; max-width: 1200px; min-width: 300px; margin: 0 auto; background: #fff; border: 1px solid #dbe3ef; border-radius: 18px; overflow: hidden; }}
+        .mail-header {{ padding: 28px 30px 22px; background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%); color: #fff; }}
+        .mail-kicker {{ margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; opacity: .9; }}
+        .mail-title {{ margin: 0; font-size: 26px; line-height: 1.2; font-weight: 700; }}
+        .mail-body {{ padding: 26px 30px 22px; }}
+        .mail-text {{ margin: 0 0 14px; font-size: 15px; color: #334155; line-height: 1.7; }}
+        .notice {{ margin: 18px 0; padding: 14px 16px; border: 1px solid #fecaca; border-left: 4px solid #dc2626; border-radius: 12px; background: #fff1f2; color: #9f1239; font-size: 13px; line-height: 1.6; }}
+        .cta-btn {{ display: inline-block; margin-top: 8px; padding: 12px 24px; border-radius: 10px; background: #4f46e5; color: #fff !important; text-decoration: none; font-size: 14px; font-weight: 700; }}
+        .mail-footer {{ padding: 16px 30px 22px; border-top: 1px solid #e5e7eb; background: #f8fafc; font-size: 12px; color: #64748b; }}
+        .mail-footer p {{ margin: 0 0 4px; }}
+        @media (max-width: 760px) {{
+            .mail-shell {{ padding: 10px 8px; }}
+            .mail-card {{ min-width: 300px; border-radius: 14px; }}
+            .mail-header {{ padding: 20px 16px 16px; }}
+            .mail-title {{ font-size: 21px; }}
+            .mail-body {{ padding: 18px 16px 14px; }}
+            .mail-footer {{ padding: 14px 16px 18px; }}
+        }}
+    </style>
+</head>
+<body>
+    <div class="mail-shell">
+        <div class="mail-card">
+            <div class="mail-header">
+                <p class="mail-kicker">Security Notice</p>
+                <h1 class="mail-title">Password Updated</h1>
+            </div>
+            <div class="mail-body">
+                <p class="mail-text">Hello <strong>{name}</strong>,</p>
+                <p class="mail-text">Your account password was updated by an administrator.</p>
+                <p class="mail-text">If this was not requested by you, contact your administrator immediately.</p>
+                <div class="notice">For safety, we recommend changing your password after login and keeping it private.</div>
+                <a href="{login_url}" class="cta-btn">Login to Panel</a>
+            </div>
+            <div class="mail-footer">
+                <p>This is an automated message. Please do not reply.</p>
+                <p>Copyright 2026 Adarsh Admin. All rights reserved.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>'''
 
         plain_content = (
             f'Hello {name},\n\n'

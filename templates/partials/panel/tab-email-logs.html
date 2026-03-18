@@ -53,13 +53,12 @@
           <th scope="col" style="width:15%">Type</th>
           <th scope="col" style="width:11%">Status</th>
           <th scope="col" style="width:13%">Created</th>
-          <th scope="col" style="width:9%">Note</th>
-          <th scope="col" style="width:7%">Action</th>
+          <th scope="col" style="width:16%">Action</th>
         </tr>
       </thead>
       <tbody id="emailLogsBody">
         <tr class="notif-table-empty">
-          <td colspan="8">
+          <td colspan="7">
             <div class="empty-state">
               <i class="fa-solid fa-envelope"></i>
               <p>No email logs yet</p>
@@ -90,8 +89,8 @@
 </div>
 
 <!-- Compose / Edit Email Modal -->
-<div class="center-modal-overlay center-modal-theme-blue" id="emailComposeModal" style="display:none;">
-  <div class="center-modal-card" style="max-width:760px;" @click.stop>
+<div class="center-modal-overlay center-modal-theme-blue email-compose-modal" id="emailComposeModal" style="display:none;">
+  <div class="center-modal-card" @click.stop>
     <div class="center-modal-header">
       <h3 id="emailComposeTitle"><i class="fa-solid fa-envelope-open-text"></i> Compose Email</h3>
       <button type="button" class="center-modal-header-close" onclick="closeEmailComposeModal()" title="Close">
@@ -102,6 +101,17 @@
     <div class="center-modal-body-area">
       <form id="emailComposeForm" onsubmit="return submitEmailCompose(event)">
         <input type="hidden" id="emailComposeLogId" value="">
+        <input type="hidden" id="emailComposeBodyHtml" value="">
+
+        <div class="email-template-preview-wrap">
+          <div class="email-template-preview-head">
+            <span class="email-template-preview-title">Live Email Preview</span>
+            <span class="email-template-preview-subtitle">This is exactly how the receiver will see the email design</span>
+          </div>
+          <div class="email-template-preview-frame">
+            <div id="emailComposePreview" class="email-template-preview-content"></div>
+          </div>
+        </div>
 
         <div class="panel-form-row">
           <div>
@@ -117,7 +127,7 @@
         <div class="panel-form-row">
           <div>
             <label class="panel-form-label">Email Type</label>
-            <select class="panel-form-select" id="emailComposeType">
+            <select class="panel-form-select form-select-sm" id="emailComposeType">
               <option value="system">System / Custom</option>
               <option value="welcome">Welcome / Activation</option>
               <option value="temp_password">Temp Password</option>
@@ -133,9 +143,6 @@
 
         <label class="panel-form-label">Message Body *</label>
         <textarea class="panel-form-input" id="emailComposeBodyText" rows="10" required placeholder="Write your email here..."></textarea>
-
-        <label class="panel-form-label">Optional HTML Body (advanced)</label>
-        <textarea class="panel-form-input" id="emailComposeBodyHtml" rows="5" placeholder="Optional HTML version for rich email"></textarea>
       </form>
     </div>
 

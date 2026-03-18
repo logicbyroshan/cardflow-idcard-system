@@ -165,6 +165,75 @@
             overlay.addEventListener('click', onBackdrop);
         });
     };
+
+    (function() {
+        const KEY = 'websiteAdmin:lastTabHref';
+        const tabs = Array.from(document.querySelectorAll('.wa-tabs .wa-tab[href]'));
+        if (!tabs.length) return;
+
+        const normalize = (url) => {
+            try {
+                const u = new URL(url, window.location.origin);
+                return u.pathname + u.search;
+            } catch (e) {
+                return '';
+            }
+        };
+
+        const isReload = (() => {
+            try {
+                const entries = (performance && performance.getEntriesByType)
+                    ? performance.getEntriesByType('navigation')
+                    : [];
+                if (entries && entries.length) return entries[0].type === 'reload';
+                if (performance && performance.navigation) return performance.navigation.type === 1;
+            } catch (e) {
+                return false;
+            }
+            return false;
+        })();
+
+        tabs.forEach((tab) => {
+            tab.addEventListener('click', function() {
+                try {
+                    localStorage.setItem(KEY, tab.href);
+                } catch (e) {
+                    // Ignore localStorage failures
+                }
+            });
+        });
+
+        const activeTab = document.querySelector('.wa-tabs .wa-tab.active[href]');
+        if (activeTab) {
+            try {
+                localStorage.setItem(KEY, activeTab.href);
+            } catch (e) {
+                // Ignore localStorage failures
+            }
+        }
+
+        if (!isReload) return;
+
+        let savedHref = '';
+        try {
+            savedHref = localStorage.getItem(KEY) || '';
+        } catch (e) {
+            savedHref = '';
+        }
+        if (!savedHref) return;
+
+        const current = normalize(window.location.href);
+        const firstTab = tabs[0];
+        const firstPath = firstTab ? normalize(firstTab.href) : '';
+        const savedPath = normalize(savedHref);
+        const allowed = tabs.some((t) => normalize(t.href) === savedPath);
+        if (!allowed || !savedPath || savedPath === current) return;
+
+        // Redirect only when currently on the first tab page and user refreshed.
+        if (firstPath && current === firstPath) {
+            window.location.replace(savedHref);
+        }
+    })();
     </script>
 
     {% block extra_js %}{% endblock %}

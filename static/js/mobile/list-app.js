@@ -25,6 +25,10 @@ function listApp() {
         },
         filters: { photo: 'all', selectedClass: '', selectedSection: '', dateFrom: '', dateTo: '' },
         filtersActive: false,
+        classOptions: [],
+        sectionOptions: [],
+        classToSections: {},
+        loadingAllForFilters: false,
         supportsInfiniteObserver: typeof window !== 'undefined' && 'IntersectionObserver' in window,
         infiniteObserver: null,
         scrollFallbackHandler: null,
@@ -52,6 +56,8 @@ function listApp() {
         },
 
         init() {
+            this.rebuildClassSectionOptions();
+
             this.$nextTick(() => {
                 this.initInfiniteLoader();
             });
@@ -171,13 +177,87 @@ function listApp() {
             // Debounced text search  also applies active filters
             this._applyAllFilters();
         },
+        setClassFilter(classValue) {
+            this.filters.selectedClass = classValue || '';
+            const sectionOptions = this.getSectionOptions();
+            if (this.filters.selectedSection && !sectionOptions.includes(this.filters.selectedSection)) {
+                this.filters.selectedSection = '';
+            }
+        },
+        getSectionOptions() {
+            if (!this.filters.selectedClass) return this.sectionOptions || [];
+            return this.classToSections[this.filters.selectedClass] || [];
+        },
+        _normalizeClassValue(value) {
+            const raw = String(value || '').trim();
+            if (!raw) return '';
+
+            const upper = raw.toUpperCase().replace(/\./g, '').replace(/\s+/g, '').replace(/_/g, '').replace(/-/g, '');
+            const aliasMap = {
+                'LKG': 'KG1',
+                'KG1': 'KG1',
+                'KGI': 'KG1',
+                'KGI1': 'KG1',
+                'UKG': 'KG2',
+                'KG2': 'KG2',
+                'KGII': 'KG2',
+                'KGI2': 'KG2',
+            };
+
+            if (aliasMap[upper]) return aliasMap[upper];
+            return raw.toUpperCase();
+        },
+        _formatClassDisplay(canonical) {
+            if (canonical === 'KG1') return 'KG-I';
+            if (canonical === 'KG2') return 'KG-II';
+            return canonical;
+        },
+        rebuildClassSectionOptions() {
+            const classSet = new Set();
+            const sectionSet = new Set();
+            const classToSections = {};
+
+            (this.studentsData || []).forEach((s) => {
+                const cls = this._normalizeClassValue(s.class_name);
+                const sec = String(s.section || '').trim();
+
+                if (cls) {
+                    classSet.add(cls);
+                    if (!classToSections[cls]) classToSections[cls] = new Set();
+                    if (sec) classToSections[cls].add(sec);
+                }
+                if (sec) sectionSet.add(sec);
+            });
+
+            this.classOptions = Array.from(classSet)
+                .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+                .map((v) => ({ value: v, label: this._formatClassDisplay(v) }));
+
+            this.sectionOptions = Array.from(sectionSet)
+                .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+            this.classToSections = {};
+            Object.keys(classToSections).forEach((k) => {
+                this.classToSections[k] = Array.from(classToSections[k])
+                    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+            });
+
+            if (this.filters.selectedClass && !classSet.has(this.filters.selectedClass)) {
+                this.filters.selectedClass = '';
+            }
+
+            const sectionOptions = this.getSectionOptions();
+            if (this.filters.selectedSection && !sectionOptions.includes(this.filters.selectedSection)) {
+                this.filters.selectedSection = '';
+            }
+        },
         resetFilters() {
             this.filters = { photo: 'all', selectedClass: '', selectedSection: '', dateFrom: '', dateTo: '' };
             this.filtersActive = false;
             this.searchQuery = '';
             this._applyAllFilters();
         },
-        applyFilters() {
+        async applyFilters() {
             this.filtersActive = (
                 this.filters.photo !== 'all' ||
                 this.filters.selectedClass !== '' ||
@@ -185,8 +265,23 @@ function listApp() {
                 this.filters.dateFrom !== '' ||
                 this.filters.dateTo !== ''
             );
+
+            if ((this.filtersActive || (this.searchQuery || '').trim()) && this.hasMore) {
+                this.loadingAllForFilters = true;
+                this.showToast('Loading all records for accurate filtering...', 'info');
+                await this.loadAllDataForFiltering();
+                this.loadingAllForFilters = false;
+            }
+
             this._applyAllFilters();
             this.showFilters = false;
+        },
+        async loadAllDataForFiltering() {
+            let safety = 0;
+            while (this.hasMore && safety < 80) {
+                await this.loadMore(true);
+                safety += 1;
+            }
         },
         _applyAllFilters() {
             const q = (this.searchQuery || '').toLowerCase().trim();
@@ -218,7 +313,7 @@ function listApp() {
                 if (this.filters.photo === 'with' && !s.has_photo) return false;
                 if (this.filters.photo === 'without' && s.has_photo) return false;
                 // Class filter
-                if (this.filters.selectedClass && s.class_name !== this.filters.selectedClass) return false;
+                if (this.filters.selectedClass && this._normalizeClassValue(s.class_name) !== this.filters.selectedClass) return false;
                 // Section filter
                 if (this.filters.selectedSection && s.section !== this.filters.selectedSection) return false;
                 // Date range (DOB)  only active for download list
@@ -464,6 +559,7 @@ function listApp() {
             this.visibleCount = this.studentsData.length;
 
             // Re-run filters to maintain visibility rules and counts.
+            this.rebuildClassSectionOptions();
             this._reindexSerialNumbers();
             this._applyAllFilters();
         },
@@ -536,6 +632,7 @@ function listApp() {
                 card.sr_no = this.studentsData[idx].sr_no || idx + 1;
                 this.studentsData[idx] = card;
                 this._replaceRenderedCard(card);
+                this.rebuildClassSectionOptions();
                 this._applyAllFilters();
                 return;
             }
@@ -545,6 +642,7 @@ function listApp() {
             this.loadMoreOffset = this.studentsData.length;
             this.visibleCount = this.studentsData.length;
             this._appendRenderedCard(card);
+            this.rebuildClassSectionOptions();
             this._applyAllFilters();
         },
 
@@ -696,7 +794,7 @@ function listApp() {
             return tr;
         },
 
-        async loadMore() {
+        async loadMore(silent) {
             if (this.loading || !this.hasMore) return;
             this.loading = true;
             try {
@@ -733,7 +831,7 @@ function listApp() {
                     });
                 if (!newCards.length) {
                     this.hasMore = false;
-                    this.showToast('All records loaded', 'info');
+                    if (!silent) this.showToast('All records loaded', 'info');
                     this.loading = false;
                     return;
                 }
@@ -744,8 +842,12 @@ function listApp() {
                     newCards.forEach(card => mountEl.appendChild(this._buildCardDiv(card)));
                 }
                 this.hasMore = apiData.has_more;
-                if (!this.hasMore) this.showToast('All ' + this.studentsData.length + ' records loaded', 'info');
-                else this.showToast('+' + newCards.length + ' loaded', 'success');
+                if (!this.hasMore) {
+                    if (!silent) this.showToast('All ' + this.studentsData.length + ' records loaded', 'info');
+                } else if (!silent) {
+                    this.showToast('+' + newCards.length + ' loaded', 'success');
+                }
+                this.rebuildClassSectionOptions();
                 this._applyAllFilters();
             } catch (e) { this.showToast('Load failed', 'error'); }
             this.loading = false;

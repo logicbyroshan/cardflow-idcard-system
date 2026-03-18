@@ -177,9 +177,9 @@
                         <h2 class="text-[12px] font-bold text-gray-700 uppercase tracking-wide">Recent Clients</h2>
                     </div>
                     <a href="{% url 'mobile_app:clients_list' %}"
-                       class="text-[11px] font-bold text-white px-3 py-1.5 rounded-xl shadow-sm active:scale-95 transition-all flex items-center gap-1"
+                       class="text-[13px] font-bold text-white px-3.5 py-2 rounded-xl shadow-sm active:scale-95 transition-all flex items-center gap-1.5"
                               style="background:linear-gradient(135deg,var(--color-brand-light),var(--color-brand-dark));">
-                        <i class="fa-solid fa-arrow-right text-[8px]"></i>View All
+                        <i class="fa-solid fa-arrow-right text-[10px]"></i>View All
                     </a>
                     {% else %}
                     <div class="flex items-center gap-2">
@@ -189,9 +189,9 @@
                         <h2 class="text-[12px] font-bold text-gray-700 uppercase tracking-wide">My Groups</h2>
                     </div>
                     <a href="{% url 'mobile_app:groups_overview' %}"
-                       class="text-[11px] font-bold text-white px-3 py-1.5 rounded-xl shadow-sm active:scale-95 transition-all flex items-center gap-1"
+                       class="text-[13px] font-bold text-white px-3.5 py-2 rounded-xl shadow-sm active:scale-95 transition-all flex items-center gap-1.5"
                               style="background:linear-gradient(135deg,var(--color-brand-light),var(--color-brand-dark));">
-                        <i class="fa-solid fa-arrow-right text-[8px]"></i>View All
+                        <i class="fa-solid fa-arrow-right text-[10px]"></i>View All
                     </a>
                     {% endif %}
                 </div>
@@ -199,6 +199,22 @@
                 {% if recent_client_updates %}
                 <div class="flex-1 min-h-0 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col"
                      x-data="recentClientsTable()">
+
+                    <div x-show="loading" class="p-3 space-y-2.5" x-cloak>
+                        <template x-for="i in 6" :key="'recent-sk-' + i">
+                            <div class="flex items-center gap-2.5">
+                                <div class="skeleton-line w-7 h-7 rounded-lg"></div>
+                                <div class="flex-1 space-y-1.5">
+                                    <div class="skeleton-line h-3.5 w-3/4 rounded-md"></div>
+                                    <div class="skeleton-line h-2.5 w-1/2 rounded-md"></div>
+                                </div>
+                                <div class="skeleton-line w-9 h-5 rounded-lg"></div>
+                                <div class="skeleton-line w-9 h-5 rounded-lg"></div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <div x-show="!loading" class="flex-1 min-h-0 flex flex-col" x-cloak>
 
                     <!-- Table header -->
                     <div class="flex items-center border-b border-gray-100 bg-gray-50 flex-shrink-0" style="min-height:36px;">
@@ -282,6 +298,7 @@
 
                         {% endfor %}
                     </div>
+                    </div>
                 </div>
 
                 {% else %}
@@ -321,7 +338,13 @@ function homeApp() {
 
 function recentClientsTable() {
     return {
+        loading: true,
         expanded: null,
+        init() {
+            setTimeout(() => {
+                this.loading = false;
+            }, 450);
+        },
         toggle(id) {
             this.expanded = this.expanded === id ? null : id;
         }

@@ -759,6 +759,111 @@ textarea.panel-form-input {
 /* Empty cell for loading states */
 .notif-table-empty-cell { padding: 30px 20px; }
 
+.email-actions-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 120px;
+}
+
+.email-action-btn {
+  width: 100%;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.email-error-meta {
+  margin-top: 5px;
+  font-size: 11px;
+  color: #dc2626;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: help;
+}
+
+.email-compose-modal .center-modal-card {
+  width: min(96vw, 1200px);
+  min-width: 300px;
+  max-height: 90vh;
+}
+
+.email-compose-modal .center-modal-body-area {
+  overflow-y: auto;
+  max-height: calc(90vh - 118px);
+}
+
+.email-compose-modal .panel-form-row {
+  grid-template-columns: 1fr 1fr;
+}
+
+.email-compose-modal .panel-form-select.form-select-sm {
+  height: 40px;
+  margin-bottom: 10px;
+  padding: 8px 32px 8px 12px;
+  font-size: 13px;
+  border-radius: 6px;
+}
+
+.email-template-preview-wrap {
+  border: 1px solid #dbe4f2;
+  border-radius: 10px;
+  background: #f8fbff;
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+
+.email-template-preview-head {
+  padding: 10px 12px;
+  border-bottom: 1px solid #dbe4f2;
+  background: #eef4ff;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.email-template-preview-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.email-template-preview-subtitle {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.email-template-preview-frame {
+  padding: 10px;
+  max-height: 340px;
+  overflow: auto;
+  background: #e7edf6;
+}
+
+.email-template-preview-content {
+  width: 100%;
+}
+
+@media (max-width: 980px) {
+  .email-compose-modal .center-modal-card {
+    width: 98vw;
+  }
+}
+
+@media (max-width: 760px) {
+  .email-compose-modal .panel-form-row {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .email-template-preview-frame {
+    max-height: 260px;
+    padding: 6px;
+  }
+}
+
 /* ================================
    MONITORING STAT CARDS — Size Variants
    ================================ */

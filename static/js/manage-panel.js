@@ -14,10 +14,62 @@ let searchTimer = null;
 let serverInfoSnapshot = null;
 let serverInfoHasFetched = false;
 let serverInfoLoading = false;
+const MANAGE_PANEL_TAB_KEY = 'managePanel:lastTab';
+
+function _isPageReloadNavigation() {
+  try {
+    const navEntries = (performance && performance.getEntriesByType)
+      ? performance.getEntriesByType('navigation')
+      : [];
+    if (navEntries && navEntries.length) return navEntries[0].type === 'reload';
+    if (performance && performance.navigation) return performance.navigation.type === 1;
+  } catch (e) {
+    // Ignore and fall back to default false
+  }
+  return false;
+}
+
+function _saveManagePanelTab(tabName) {
+  if (!tabName) return;
+  try {
+    localStorage.setItem(MANAGE_PANEL_TAB_KEY, tabName);
+  } catch (e) {
+    // localStorage may be unavailable in strict privacy mode
+  }
+}
+
+function _restoreManagePanelTabOnReload() {
+  if (!_isPageReloadNavigation()) return '';
+  let saved = '';
+  try {
+    saved = localStorage.getItem(MANAGE_PANEL_TAB_KEY) || '';
+  } catch (e) {
+    saved = '';
+  }
+  if (!saved) return '';
+  if (!document.querySelector(`.panel-tab[data-tab="${saved}"]`)) return '';
+  switchTab(saved);
+  return saved;
+}
 
 /* ============ Init ============ */
 document.addEventListener('DOMContentLoaded', function() {
-  loadNotifications();
+  const restoredTab = _restoreManagePanelTabOnReload();
+  if (!restoredTab || restoredTab === 'notifications') {
+    loadNotifications();
+  } else if (restoredTab === 'download-templates') {
+    loadTemplates();
+  } else if (restoredTab === 'log-history') {
+    loadLogs(false);
+  } else if (restoredTab === 'email-logs') {
+    loadEmailLogs(1);
+  } else if (restoredTab === 'monitoring') {
+    loadMonitoring();
+  } else if (restoredTab === 'server-info') {
+    initServerInfoTab();
+  } else if (restoredTab === 'maintenance' && typeof loadMaintenanceStatus === 'function') {
+    loadMaintenanceStatus();
+  }
 });
 
 /* ============ Tabs ============ */
@@ -32,6 +84,7 @@ function switchTab(tabName) {
   const tabPane = document.getElementById(`tab-${tabName}`);
   if (tabBtn) tabBtn.classList.add('active');
   if (tabPane) tabPane.classList.add('active');
+  _saveManagePanelTab(tabName);
 }
 
 /* ============ Load Notifications ============ */
@@ -654,6 +707,195 @@ function renderLogTable() {
    ================================================================ */
 let _emailPage = 1;
 let _emailLogsById = {};
+let _emailComposePreviewBound = false;
+
+const EMAIL_TEMPLATE_CONFIG = {
+  system: {
+    label: 'System / Custom',
+    subject: 'Message from Adarsh Admin',
+    body: 'Hello User,\n\nThis is a message from Adarsh Admin.\n\nRegards,\nAdarsh Admin Team',
+    icon: 'fa-paper-plane',
+    badge: '#0f766e',
+    accent: '#0d9488',
+    gradient: 'linear-gradient(135deg, #0d9488 0%, #0f766e 100%)',
+  },
+  welcome: {
+    label: 'Welcome / Activation',
+    subject: 'Welcome to Adarsh Admin - Your Account is Ready',
+    body: 'Hello User,\n\nWelcome to Adarsh Admin. Your account has been created successfully.\n\nPlease login and update your password after first sign in.\n\nRegards,\nAdarsh Admin Team',
+    icon: 'fa-hand-sparkles',
+    badge: '#1d4ed8',
+    accent: '#2563eb',
+    gradient: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+  },
+  temp_password: {
+    label: 'Temp Password',
+    subject: 'Temporary Password for Your Account',
+    body: 'Hello User,\n\nA temporary password has been issued for your account.\n\nPlease login immediately and change your password for security.\n\nRegards,\nAdarsh Admin Team',
+    icon: 'fa-key',
+    badge: '#7c3aed',
+    accent: '#8b5cf6',
+    gradient: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+  },
+  password_change: {
+    label: 'Password Change Notice',
+    subject: 'Your Password Was Changed',
+    body: 'Hello User,\n\nYour account password has been changed by an administrator.\n\nIf you did not request this, please contact support immediately.\n\nRegards,\nAdarsh Admin Team',
+    icon: 'fa-shield-halved',
+    badge: '#b45309',
+    accent: '#d97706',
+    gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+  },
+  otp_reset: {
+    label: 'Password Reset OTP',
+    subject: 'Password Reset OTP',
+    body: 'Hello User,\n\nUse your OTP to reset your password. The OTP is valid for a limited time only.\n\nIf you did not request this, ignore this email.\n\nRegards,\nAdarsh Admin Team',
+    icon: 'fa-lock',
+    badge: '#be123c',
+    accent: '#e11d48',
+    gradient: 'linear-gradient(135deg, #e11d48 0%, #be123c 100%)',
+  },
+};
+
+function _normalizeEmailType(type) {
+  return EMAIL_TEMPLATE_CONFIG[type] ? type : 'system';
+}
+
+function _defaultEmailSubject(emailType) {
+  const t = EMAIL_TEMPLATE_CONFIG[_normalizeEmailType(emailType)];
+  return t.subject;
+}
+
+function _defaultEmailBody(emailType, recipientName) {
+  const t = EMAIL_TEMPLATE_CONFIG[_normalizeEmailType(emailType)];
+  const name = (recipientName || 'User').trim() || 'User';
+  return (t.body || '').replace(/\bUser\b/g, name);
+}
+
+function _messageTextToBlocks(text) {
+  const raw = (text || '').trim();
+  if (!raw) return '<p style="margin:0;">No message provided.</p>';
+  return escHtml(raw)
+    .split(/\n\s*\n/g)
+    .map(function (chunk) {
+      const lineHtml = chunk.replace(/\n/g, '<br>');
+      return '<p style="margin:0 0 14px;line-height:1.68;">' + lineHtml + '</p>';
+    })
+    .join('');
+}
+
+function _buildEmailTemplateHtml(payload, asDocument) {
+  const emailType = _normalizeEmailType(payload.email_type);
+  const cfg = EMAIL_TEMPLATE_CONFIG[emailType];
+  const name = (payload.recipient_name || 'User').trim() || 'User';
+  const email = (payload.recipient_email || '').trim();
+  const subject = (payload.subject || _defaultEmailSubject(emailType)).trim() || _defaultEmailSubject(emailType);
+  const messageHtml = _messageTextToBlocks(payload.body_text || _defaultEmailBody(emailType, name));
+  const year = new Date().getFullYear();
+
+  const css = '<style>' +
+    '*{box-sizing:border-box}' +
+    'body{margin:0;padding:0;background:#eef2f7;font-family:Segoe UI,Arial,sans-serif;color:#0f172a}' +
+    '.mail-shell{width:100%;padding:24px 12px;background:#eef2f7}' +
+    '.mail-card{width:100%;max-width:1200px;min-width:300px;margin:0 auto;background:#ffffff;border:1px solid #dbe3ef;border-radius:18px;overflow:hidden}' +
+    '.mail-header{padding:26px 26px 22px;background:' + cfg.gradient + ';color:#fff}' +
+    '.mail-badge{display:inline-block;padding:6px 12px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:rgba(255,255,255,.2);margin-bottom:14px}' +
+    '.mail-title{margin:0;font-size:26px;line-height:1.2;font-weight:700}' +
+    '.mail-sub{margin:8px 0 0;font-size:14px;opacity:.95}' +
+    '.mail-body{padding:28px 26px 24px}' +
+    '.mail-meta{border:1px solid #e5e7eb;border-radius:12px;background:#f8fafc;padding:14px 16px;margin:0 0 18px}' +
+    '.mail-meta-label{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#64748b;margin:0 0 5px;font-weight:700}' +
+    '.mail-meta-value{font-size:14px;color:#0f172a;font-weight:600;word-break:break-word;margin:0}' +
+    '.mail-message{border:1px solid #e2e8f0;border-left:4px solid ' + cfg.accent + ';background:#ffffff;border-radius:12px;padding:16px 16px 2px;font-size:15px;color:#334155}' +
+    '.mail-footer{padding:16px 26px 22px;border-top:1px solid #e5e7eb;background:#f8fafc;font-size:12px;color:#64748b}' +
+    '.mail-footer p{margin:0 0 4px}' +
+    '@media (max-width:760px){.mail-shell{padding:12px 8px}.mail-card{min-width:300px;border-radius:14px}.mail-header{padding:18px 16px}.mail-title{font-size:21px}.mail-body{padding:18px 16px}.mail-footer{padding:14px 16px}}' +
+    '</style>';
+
+  const body = '<div class="mail-shell">' +
+    '<div class="mail-card">' +
+      '<div class="mail-header">' +
+        '<div class="mail-badge"><i class="fa-solid ' + cfg.icon + '"></i> ' + escHtml(cfg.label) + '</div>' +
+        '<h1 class="mail-title">' + escHtml(subject) + '</h1>' +
+        '<p class="mail-sub">Prepared by Adarsh Admin Mail Center</p>' +
+      '</div>' +
+      '<div class="mail-body">' +
+        '<div class="mail-meta">' +
+          '<p class="mail-meta-label">Recipient</p>' +
+          '<p class="mail-meta-value">' + escHtml(name) + (email ? '  (' + escHtml(email) + ')' : '') + '</p>' +
+        '</div>' +
+        '<div class="mail-message">' + messageHtml + '</div>' +
+      '</div>' +
+      '<div class="mail-footer">' +
+        '<p>This is an automated email from Adarsh Admin.</p>' +
+        '<p>Copyright ' + year + ' Adarsh Admin. All rights reserved.</p>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+
+  if (!asDocument) return css + body;
+  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">' + css + '</head><body>' + body + '</body></html>';
+}
+
+function _renderEmailComposePreview() {
+  const previewEl = document.getElementById('emailComposePreview');
+  const htmlEl = document.getElementById('emailComposeBodyHtml');
+  if (!previewEl || !htmlEl) return;
+
+  const payload = {
+    recipient_name: (document.getElementById('emailComposeRecipientName')?.value || '').trim(),
+    recipient_email: (document.getElementById('emailComposeRecipientEmail')?.value || '').trim(),
+    email_type: (document.getElementById('emailComposeType')?.value || 'system').trim(),
+    subject: (document.getElementById('emailComposeSubject')?.value || '').trim(),
+    body_text: (document.getElementById('emailComposeBodyText')?.value || '').trim(),
+  };
+
+  previewEl.innerHTML = _buildEmailTemplateHtml(payload, false);
+  htmlEl.value = _buildEmailTemplateHtml(payload, true);
+}
+
+function _bindEmailComposePreview() {
+  if (_emailComposePreviewBound) return;
+
+  const bind = function (id, handler) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('input', handler);
+    el.addEventListener('change', handler);
+  };
+
+  bind('emailComposeRecipientName', _renderEmailComposePreview);
+  bind('emailComposeRecipientEmail', _renderEmailComposePreview);
+  bind('emailComposeSubject', _renderEmailComposePreview);
+  bind('emailComposeBodyText', _renderEmailComposePreview);
+  bind('emailComposeType', function () {
+    const type = _normalizeEmailType(document.getElementById('emailComposeType')?.value || 'system');
+    const isEdit = !!(document.getElementById('emailComposeLogId')?.value || '').trim();
+    if (!isEdit) {
+      const name = (document.getElementById('emailComposeRecipientName')?.value || '').trim();
+      const subjectEl = document.getElementById('emailComposeSubject');
+      const bodyEl = document.getElementById('emailComposeBodyText');
+      if (subjectEl) subjectEl.value = _defaultEmailSubject(type);
+      if (bodyEl) bodyEl.value = _defaultEmailBody(type, name || 'User');
+    }
+    _renderEmailComposePreview();
+  });
+
+  _emailComposePreviewBound = true;
+}
+
+function _buildEmailActionButtons(log) {
+  const id = Number(log.id || 0);
+  const type = escAttr(log.email_type || 'system');
+  return '<div class="email-actions-stack">' +
+    '<button class="btn btn-sm btn-outline-primary email-action-btn" onclick="openEditEmailModal(' + id + ')" title="Edit and resend with custom content">' +
+      '<i class="fa-solid fa-pen-to-square"></i> Edit' +
+    '</button>' +
+    '<button class="btn btn-sm btn-primary email-action-btn" onclick="resendEmail(' + id + ',\'' + type + '\')" title="Resend email">' +
+      '<i class="fa-solid fa-paper-plane"></i> Resend' +
+    '</button>' +
+  '</div>';
+}
 
 window.loadEmailLogs = function (page) {
   if (page !== undefined) _emailPage = page;
@@ -667,7 +909,7 @@ window.loadEmailLogs = function (page) {
   const tbody = document.getElementById('emailLogsBody');
   if (tbody) {
     tbody.innerHTML =
-      '<tr><td colspan="8" class="notif-table-empty-cell">' +
+      '<tr><td colspan="7" class="notif-table-empty-cell">' +
       '<div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i>' +
       '<p>Loading</p></div></td></tr>';
   }
@@ -698,7 +940,7 @@ window.loadEmailLogs = function (page) {
 
       if (!data.logs.length) {
         tBody.innerHTML =
-          '<tr class="notif-table-empty"><td colspan="8">' +
+          '<tr class="notif-table-empty"><td colspan="7">' +
           '<div class="empty-state"><i class="fa-solid fa-envelope-open"></i>' +
           '<p>No email logs found</p>' +
           '<span>Logs appear here after emails are sent</span></div></td></tr>';
@@ -706,31 +948,18 @@ window.loadEmailLogs = function (page) {
         const statusClassMap = { on_hold: 'on-hold', pending: 'pending', sent: 'sent', failed: 'failed' };
         tBody.innerHTML = data.logs.map(function (log, i) {
           const statusCls = statusClassMap[log.status] || '';
-          const noteHtml  = log.error_message
-            ? '<span title="' + escAttr(log.error_message) + '" style="cursor:help;">' +
-              '<i class="fa-solid fa-circle-info" style="color:#dc2626;"></i></span>'
-            : '<span style="color:#9ca3af;"></span>';
-          const isOtpType = log.email_type === 'otp_reset';
-          const canResend = true;
-          const actionTitle = isOtpType ? 'Resend OTP email' : 'Resend email';
-          const quickResendHtml = canResend
-            ? '<button class="btn btn-icon" style="width:28px;height:28px;padding:0;margin-left:4px;" ' +
-              'onclick="resendEmail(' + log.id + ',\'' + escAttr(log.email_type || '') + '\')" title="' + actionTitle + '">' +
-              '<i class="fa-solid fa-paper-plane" style="font-size:11px;"></i></button>'
-            : '<span style="color:#9ca3af;"></span>';
-          const editHtml = '<button class="btn btn-icon" style="width:28px;height:28px;padding:0;" ' +
-            'onclick="openEditEmailModal(' + log.id + ')" title="Edit / resend with custom content">' +
-            '<i class="fa-solid fa-pen-to-square" style="font-size:11px;"></i></button>';
-          const actionHtml = editHtml + quickResendHtml;
+          const errorMeta = log.error_message
+            ? '<div class="email-error-meta" title="' + escAttr(log.error_message) + '"><i class="fa-solid fa-circle-info"></i> Failed details</div>'
+            : '';
+          const actionHtml = _buildEmailActionButtons(log);
           return '<tr id="email-log-row-' + log.id + '">' +
             '<td class="text-center text-xs text-gray-400">' + (((_emailPage - 1) * 50) + i + 1) + '</td>' +
             '<td><strong style="font-size:12.5px;color:#1e293b;">' + escHtml(log.recipient_name || '') + '</strong></td>' +
             '<td class="notif-time">' + escHtml(log.recipient_email) + '</td>' +
             '<td><span class="notif-badge-cat">' + escHtml(log.email_type_display) + '</span></td>' +
             '<td><span class="email-status-badge ' + statusCls + '" id="email-log-status-' + log.id + '">' + escHtml(log.status_display) + '</span></td>' +
-            '<td class="notif-time">' + escHtml(log.created_at) + '</td>' +
-            '<td style="text-align:center;">' + noteHtml + '</td>' +
-            '<td style="text-align:center;" id="email-log-action-' + log.id + '">' + actionHtml + '</td>' +
+            '<td class="notif-time">' + escHtml(log.created_at) + errorMeta + '</td>' +
+            '<td id="email-log-action-' + log.id + '">' + actionHtml + '</td>' +
             '</tr>';
         }).join('');
       }
@@ -767,7 +996,7 @@ window.resendEmail = async function (logId, emailType) {
   });
   if (!ok) return;
   const actionCell = document.getElementById('email-log-action-' + logId);
-  if (actionCell) actionCell.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="color:#667eea;"></i>';
+  if (actionCell) actionCell.innerHTML = '<div class="email-actions-stack"><button class="btn btn-sm btn-primary email-action-btn" disabled><i class="fa-solid fa-spinner fa-spin"></i> Sending</button></div>';
   fetch((window.EMAIL_RESEND_BASE_URL || '/api/email-resend/') + logId + '/', {
     method: 'POST',
     headers: { 'X-CSRFToken': getCSRFToken(), 'X-Requested-With': 'XMLHttpRequest' }
@@ -782,30 +1011,17 @@ window.resendEmail = async function (logId, emailType) {
           statusEl.className = 'email-status-badge ' + cls;
           statusEl.textContent = data.new_status_display || 'Sent';
         }
-        if (actionCell) {
-          if (isOtpType) {
-            actionCell.innerHTML = '<button class="btn btn-icon" style="width:28px;height:28px;padding:0;" ' +
-              'onclick="resendEmail(' + logId + ',\'otp_reset\')" title="Resend OTP email">' +
-              '<i class="fa-solid fa-paper-plane" style="font-size:11px;"></i></button>';
-          } else {
-            actionCell.innerHTML = '<span style="color:#9ca3af;">\u2014</span>';
-          }
-        }
+        if (_emailLogsById[logId]) _emailLogsById[logId].status = (data.new_status || _emailLogsById[logId].status);
+        if (actionCell) actionCell.innerHTML = _buildEmailActionButtons(_emailLogsById[logId] || { id: logId, email_type: emailType || 'system' });
         if (typeof showToast === 'function') showToast('Email resent successfully.', 'success');
       } else {
-        if (actionCell) actionCell.innerHTML =
-          '<button class="btn btn-icon" style="width:28px;height:28px;padding:0;" ' +
-          'onclick="resendEmail(' + logId + ',\'' + (isOtpType ? 'otp_reset' : '') + '\')" title="Retry resend">' +
-          '<i class="fa-solid fa-paper-plane" style="font-size:11px;"></i></button>';
+        if (actionCell) actionCell.innerHTML = _buildEmailActionButtons(_emailLogsById[logId] || { id: logId, email_type: emailType || (isOtpType ? 'otp_reset' : 'system') });
         if (typeof showToast === 'function') showToast(data.message || 'Resend failed.', 'error');
         else showToast(data.message || 'Resend failed.', 'error');
       }
     })
     .catch(function (err) {
-      if (actionCell) actionCell.innerHTML =
-        '<button class="btn btn-icon" style="width:28px;height:28px;padding:0;" ' +
-        'onclick="resendEmail(' + logId + ',\'' + (isOtpType ? 'otp_reset' : '') + '\')" title="Retry resend">' +
-        '<i class="fa-solid fa-paper-plane" style="font-size:11px;"></i></button>';
+      if (actionCell) actionCell.innerHTML = _buildEmailActionButtons(_emailLogsById[logId] || { id: logId, email_type: emailType || (isOtpType ? 'otp_reset' : 'system') });
       console.error('resendEmail error:', err);
     });
 };
@@ -821,25 +1037,18 @@ window.openNewEmailModal = async function () {
   const bodyHtmlEl = document.getElementById('emailComposeBodyHtml');
   if (!titleEl || !logIdEl || !nameEl || !emailEl || !subjectEl || !bodyTextEl || !bodyHtmlEl || !typeEl) return;
 
+  _bindEmailComposePreview();
+
   titleEl.innerHTML = '<i class="fa-solid fa-envelope-open-text"></i> Add New Email';
   logIdEl.value = '';
   nameEl.value = '';
   emailEl.value = '';
   typeEl.value = 'system';
-  subjectEl.value = 'Message from Adarsh Admin';
-  bodyTextEl.value = 'Hello User,\n\nThis is a message from Adarsh Admin.\n\nRegards,\nAdarsh Admin Team';
+  subjectEl.value = _defaultEmailSubject('system');
+  bodyTextEl.value = _defaultEmailBody('system', 'User');
   bodyHtmlEl.value = '';
 
-  try {
-    const r = await fetch(window.EMAIL_COMPOSE_DEFAULTS_URL || '/api/email-compose-defaults/');
-    const d = await r.json();
-    if (d && d.success) {
-      subjectEl.value = d.default_subject || subjectEl.value;
-      bodyTextEl.value = d.default_body_text || bodyTextEl.value;
-    }
-  } catch (e) {
-    console.warn('Compose defaults load failed:', e);
-  }
+  _renderEmailComposePreview();
 
   const modal = document.getElementById('emailComposeModal');
   if (modal) {
@@ -865,6 +1074,8 @@ window.openEditEmailModal = function (logId) {
   const bodyHtmlEl = document.getElementById('emailComposeBodyHtml');
   if (!titleEl || !logIdEl || !nameEl || !emailEl || !subjectEl || !bodyTextEl || !bodyHtmlEl || !typeEl) return;
 
+  _bindEmailComposePreview();
+
   titleEl.innerHTML = '<i class="fa-solid fa-pen-to-square"></i> Edit & Resend Email';
   logIdEl.value = String(logId);
   nameEl.value = log.recipient_name || '';
@@ -875,6 +1086,8 @@ window.openEditEmailModal = function (logId) {
     ? log.body_text
     : ('Hello ' + (log.recipient_name || 'User') + ',\n\nThis is a follow-up message from Adarsh Admin.\n\nRegards,\nAdarsh Admin Team');
   bodyHtmlEl.value = log.body_html || '';
+
+  _renderEmailComposePreview();
 
   const modal = document.getElementById('emailComposeModal');
   if (modal) {
@@ -895,16 +1108,20 @@ window.submitEmailCompose = async function (event) {
   const payload = {
     recipient_name: (document.getElementById('emailComposeRecipientName')?.value || '').trim(),
     recipient_email: (document.getElementById('emailComposeRecipientEmail')?.value || '').trim(),
-    email_type: (document.getElementById('emailComposeType')?.value || 'system').trim(),
+    email_type: _normalizeEmailType((document.getElementById('emailComposeType')?.value || 'system').trim()),
     subject: (document.getElementById('emailComposeSubject')?.value || '').trim(),
     body_text: (document.getElementById('emailComposeBodyText')?.value || '').trim(),
-    body_html: (document.getElementById('emailComposeBodyHtml')?.value || '').trim(),
+    body_html: '',
   };
 
   if (!payload.recipient_email || !payload.subject || !payload.body_text) {
     if (typeof showToast === 'function') showToast('Recipient email, subject, and message are required.', 'error');
     return false;
   }
+
+  payload.body_html = _buildEmailTemplateHtml(payload, true);
+  const bodyHtmlEl = document.getElementById('emailComposeBodyHtml');
+  if (bodyHtmlEl) bodyHtmlEl.value = payload.body_html;
 
   const sendBtn = document.getElementById('emailComposeSendBtn');
   if (sendBtn) {

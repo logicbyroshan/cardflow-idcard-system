@@ -132,9 +132,18 @@
 
                     <!-- Loading state -->
                     <template x-if="loadingTables[c.id]">
-                        <div class="flex items-center justify-center py-6 gap-2 text-indigo-400">
-                            <i class="fa-solid fa-spinner fa-spin text-sm"></i>
-                            <span class="text-xs font-medium">Loading tables</span>
+                        <div class="px-4 py-3 space-y-2.5">
+                            <template x-for="idx in 3" :key="'table-skeleton-' + c.id + '-' + idx">
+                                <div class="flex items-center gap-2 py-1">
+                                    <div class="w-7 h-7 rounded-lg skeleton-line flex-shrink-0"></div>
+                                    <div class="flex-1 min-w-0 space-y-1.5">
+                                        <div class="h-2.5 w-2/3 rounded-lg skeleton-line"></div>
+                                        <div class="h-2 w-1/2 rounded-lg skeleton-line"></div>
+                                    </div>
+                                    <div class="h-7 w-[60px] rounded-xl skeleton-line flex-shrink-0"></div>
+                                    <div class="h-7 w-[60px] rounded-xl skeleton-line flex-shrink-0"></div>
+                                </div>
+                            </template>
                         </div>
                     </template>
 

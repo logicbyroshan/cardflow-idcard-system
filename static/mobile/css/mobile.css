@@ -105,6 +105,25 @@ textarea:focus-visible {
 
 
 /* ================================================================
+   2A. SKELETON LOADING
+   Reusable shimmer placeholders for mobile tables/cards.
+   ================================================================ */
+
+.skeleton-line {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(90deg, #eef3f9 0%, #e6edf6 50%, #eef3f9 100%);
+    background-size: 220% 100%;
+    animation: skeleton-shimmer 1.25s linear infinite;
+}
+
+@keyframes skeleton-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -20% 0; }
+}
+
+
+/* ================================================================
    3. CUSTOM SCROLLBAR
    ================================================================ */
 

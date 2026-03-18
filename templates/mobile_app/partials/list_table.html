@@ -107,21 +107,40 @@
 
         <div id="list-infinite-sentinel" class="h-2"></div>
 
-        <!-- Infinite loading indicator / fallback button -->
-        <div x-show="hasMore" class="flex justify-center py-4">
-            <div x-show="supportsInfiniteObserver" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-100 text-[11px] font-semibold text-gray-500 shadow-sm">
-                <i class="fa-solid fa-spinner fa-spin text-[11px]" x-show="loading"></i>
-                <i class="fa-solid fa-arrow-down text-[11px]" x-show="!loading"></i>
-                <span x-text="loading ? 'Loading more...' : 'Scroll down to load more'"></span>
+        <!-- Skeleton loading for infinite list -->
+        <div x-show="loading" class="space-y-2.5 py-1" x-cloak>
+            <template x-for="idx in 3" :key="'card-skeleton-' + idx">
+                <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm p-3">
+                    <div class="flex gap-3">
+                        <div class="w-[56px] flex-shrink-0">
+                            <div class="skeleton-line h-[68px] w-full rounded-xl"></div>
+                        </div>
+                        <div class="flex-1 min-w-0 space-y-2">
+                            <div class="skeleton-line h-4 w-2/3 rounded-lg"></div>
+                            <div class="skeleton-line h-3 w-1/3 rounded-lg"></div>
+                            <div class="space-y-1">
+                                <div class="skeleton-line h-3 w-full rounded-md"></div>
+                                <div class="skeleton-line h-3 w-5/6 rounded-md"></div>
+                                <div class="skeleton-line h-3 w-2/3 rounded-md"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <!-- Infinite loading helper text -->
+        <div x-show="hasMore && !loading" class="flex justify-center py-4" x-cloak>
+            <div x-show="supportsInfiniteObserver" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-100 text-[12px] font-semibold text-gray-500 shadow-sm">
+                <i class="fa-solid fa-arrow-down text-[11px]"></i>
+                <span x-text="loadingAllForFilters ? 'Preparing filters across all records...' : 'Scroll down to load more'"></span>
             </div>
 
             <button x-show="!supportsInfiniteObserver" @click="loadMore()" :disabled="loading"
                     class="flex items-center gap-2 px-6 py-3 rounded-xl text-[13px] font-semibold text-white shadow-md active:scale-95 transition-all"
-                    style="background:linear-gradient(135deg,var(--color-brand-light),var(--color-brand-dark));"
-                    :class="loading ? 'opacity-60 cursor-not-allowed' : ''">
-                <i class="fa-solid fa-spinner fa-spin text-[12px]" x-show="loading"></i>
-                <i class="fa-solid fa-rotate-down text-[12px]" x-show="!loading"></i>
-                <span x-text="loading ? 'Loading...' : 'Load More'"></span>
+                    style="background:linear-gradient(135deg,var(--color-brand-light),var(--color-brand-dark));">
+                <i class="fa-solid fa-rotate-down text-[12px]"></i>
+                <span>Load More</span>
             </button>
         </div>
     </div>
