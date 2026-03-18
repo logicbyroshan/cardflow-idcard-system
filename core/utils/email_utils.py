@@ -316,7 +316,7 @@ def send_password_changed_notification(name, email, request=None):
         # Build clean login URL (prefers PANEL_URL from settings)
         login_url = _get_panel_login_url(request)
 
-                html_content = f'''<!DOCTYPE html>
+        html_content = f'''<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
