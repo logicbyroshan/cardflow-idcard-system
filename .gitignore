@@ -237,6 +237,9 @@ CODE_REVIEW_REPORT.md
 FRONTEND_PERFORMANCE_REPORT.md
 REDIS.md
 
+# Local/dev dependency manifest
+requirements-dev.txt
+
 # ── Face Cropper / Adarsh Cropper ──
 # Entire Face Cropper directory (separate repo / local-only)
 Face Cropper/
