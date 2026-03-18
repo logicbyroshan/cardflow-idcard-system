@@ -184,7 +184,7 @@ def api_idcard_cards_json(request, table_id):
     class_filter = request.GET.get('class', '').strip()
     section_filter = request.GET.get('section', '').strip()
     if search:
-        qs = qs.filter(field_data__icontains=search)
+        qs = IDCardService._apply_search_filter(qs, search, table=table)
 
     # Class/section filter with canonical normalization
     if class_filter or section_filter:

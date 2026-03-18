@@ -170,6 +170,60 @@ class IDCardCardService(BaseService):
                 return field.get('name', '')
         return None
 
+    @classmethod
+    def _apply_search_filter(
+        cls,
+        queryset,
+        search: str,
+        table: IDCardTable = None,
+        json_field: str = 'field_data',
+        id_lookup: str = 'id',
+    ):
+        """Apply a faster, field-aware search filter with safe fallback.
+
+        Behavior is preserved for edge cases by falling back to JSON text
+        contains when table metadata is unavailable.
+        """
+        search = (search or '').strip()
+        if not search:
+            return queryset
+
+        # Fallback path when we cannot infer searchable keys.
+        if not table or not table.fields:
+            return queryset.filter(**{f'{json_field}__icontains': search})
+
+        # Use only non-image fields for search to avoid scanning path-like values.
+        text_fields = []
+        for field in (table.fields or []):
+            fname = (field or {}).get('name', '')
+            if not fname or fname.startswith('__'):
+                continue
+            if cls.is_image_field(field):
+                continue
+            text_fields.append(fname)
+
+        if not text_fields:
+            return queryset.filter(**{f'{json_field}__icontains': search})
+
+        q = Q()
+
+        # Fast exact PK match for numeric search terms.
+        if search.isdigit():
+            try:
+                q |= Q(**{id_lookup: int(search)})
+            except (TypeError, ValueError):
+                pass
+
+        annotations = {}
+        for idx, field_name in enumerate(text_fields):
+            alias = f'_s{idx}'
+            annotations[alias] = Cast(KeyTextTransform(field_name, json_field), CharField())
+            q |= Q(**{f'{alias}__icontains': search})
+
+        if annotations:
+            queryset = queryset.annotate(**annotations)
+        return queryset.filter(q)
+
     # ==================== Serialization ====================
 
     @classmethod
@@ -266,7 +320,7 @@ class IDCardCardService(BaseService):
 
             # --- Server-side search ---
             if search:
-                cards_query = cards_query.filter(field_data__icontains=search)
+                cards_query = cls._apply_search_filter(cards_query, search, table=table)
 
             # --- Class / Section filters (with canonical normalization) ---
             if class_filter or section_filter:
@@ -413,7 +467,7 @@ class IDCardCardService(BaseService):
 
             # Apply search filter
             if search:
-                cards_query = cards_query.filter(field_data__icontains=search)
+                cards_query = cls._apply_search_filter(cards_query, search, table=table)
 
             # Apply class/section with canonical normalization
             if class_filter or section_filter:

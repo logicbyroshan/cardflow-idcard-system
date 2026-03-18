@@ -97,6 +97,7 @@ def _get_card_ids_from_request(request, table_id: int = None) -> Optional[List[i
     # respecting any active search/class/section filters.
     if not card_ids and table_id:
         from idcards.models import IDCard, IDCardTable
+        from core.services import IDCardService
         status = _get_status_from_request(request)
         # Extract optional filters from JSON body
         search_q = ''
@@ -121,11 +122,11 @@ def _get_card_ids_from_request(request, table_id: int = None) -> Optional[List[i
             qs = IDCard.objects.filter(table_id=table_id)
             if status:
                 qs = qs.filter(status=status)
+            table = IDCardTable.objects.filter(id=table_id).first()
             if search_q:
-                qs = qs.filter(field_data__icontains=search_q)
+                qs = IDCardService._apply_search_filter(qs, search_q, table=table)
             # Use proper JSON field extraction for exact class/section matching
             if class_f or section_f:
-                table = IDCardTable.objects.filter(id=table_id).first()
                 if table:
                     class_field_name, section_field_name = _get_class_section_field_names(table)
                     if class_f and class_field_name:

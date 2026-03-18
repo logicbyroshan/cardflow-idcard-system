@@ -2,7 +2,8 @@
 Background Worker Service
 
 Lightweight background task processing using ThreadPoolExecutor.
-CRITICAL: max_workers=1 to prevent memory exhaustion on 1GB RAM servers.
+Configurable worker pool with a heavy-task concurrency guard to prevent
+memory exhaustion on low-RAM servers.
 
 This service handles:
 - Bulk uploads (XLSX + ZIP)
@@ -35,11 +36,11 @@ TASK_TIMEOUT_SECONDS = 30 * 60  # 30 minutes
 
 class BackgroundWorker:
     """
-    Singleton background worker using ThreadPoolExecutor with max_workers=1.
+    Singleton background worker using ThreadPoolExecutor.
     
     CRITICAL DESIGN DECISIONS:
-    - Single worker thread prevents RAM exhaustion
-    - Tasks are queued, not parallel
+    - Worker count is configurable (defaults from Django settings)
+    - Heavy tasks are throttled via semaphore
     - Files are processed from disk, never loaded into memory
     - Progress is updated incrementally
     """
@@ -59,10 +60,27 @@ class BackgroundWorker:
         if self._initialized:
             return
         
-        # CRITICAL: Only 1 worker for 1GB RAM server
-        self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="bg_worker")
+        self.max_workers = max(1, int(getattr(settings, 'BACKGROUND_WORKER_MAX_WORKERS', 2) or 2))
+        self.heavy_task_concurrency = max(
+            1,
+            min(self.max_workers, int(getattr(settings, 'BACKGROUND_HEAVY_TASK_CONCURRENCY', 1) or 1))
+        )
+        self._heavy_task_semaphore = threading.BoundedSemaphore(self.heavy_task_concurrency)
+        self._heavy_task_types = {
+            'bulk_upload',
+            'reupload_images',
+            'export_zip',
+            'export_pdf',
+            'export_docx',
+        }
+
+        self.executor = ThreadPoolExecutor(max_workers=self.max_workers, thread_name_prefix="bg_worker")
         self._initialized = True
-        logger.info("BackgroundWorker initialized with max_workers=1")
+        logger.info(
+            "BackgroundWorker initialized with max_workers=%d heavy_task_concurrency=%d",
+            self.max_workers,
+            self.heavy_task_concurrency,
+        )
     
     def submit_task(self, task_id: int):
         """
@@ -115,7 +133,12 @@ class BackgroundWorker:
             return
         
         task_start = time.monotonic()
+        heavy_slot_acquired = False
         try:
+            if task.task_type in self._heavy_task_types:
+                self._heavy_task_semaphore.acquire()
+                heavy_slot_acquired = True
+
             task.mark_started()
             logger.info(
                 "TASK_START task_id=%d type=%s user=%s",
@@ -176,6 +199,9 @@ class BackgroundWorker:
             except Exception as mark_err:
                 logger.warning('Failed to mark task %d as failed: %s', task_id, mark_err)
         finally:
+            if heavy_slot_acquired:
+                self._heavy_task_semaphore.release()
+
             # ── Close DB connections after task completes ──
             # Prevents the background thread from holding an idle
             # PostgreSQL connection open until the next task arrives.

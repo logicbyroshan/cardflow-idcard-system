@@ -7,11 +7,13 @@ Thin facade over the DB-backed BackgroundTask + BackgroundWorker system.
 Previously this module kept task state in an in-memory dict with raw threads,
 which meant task state was lost on server restart and broken with multiple
 gunicorn workers.  It now delegates entirely to BackgroundTask (DB-backed) and
-the singleton BackgroundWorker (ThreadPoolExecutor max_workers=1), so:
+the singleton BackgroundWorker (ThreadPoolExecutor with configurable worker
+count + heavy-task throttling), so:
 
   - Task state survives server restarts (stored in DB)
   - Multiple gunicorn workers are safe (DB is the shared source of truth)
-  - Only one export runs at a time (single-worker queue prevents RAM overload)
+    - Multiple tasks can progress concurrently without losing DB-backed state
+    - Heavy exports remain guarded by worker-side concurrency limits
 
 The public API (start_pdf_export / get_status) is unchanged so no JS or view
 code needs modification.

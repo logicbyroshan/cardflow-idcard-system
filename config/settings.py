@@ -376,6 +376,25 @@ DATA_UPLOAD_MAX_NUMBER_FILES = 60
 
 
 # =============================================================================
+# BACKGROUND TASK WORKER
+# =============================================================================
+
+# ThreadPool size for DB-backed background tasks.
+# Default 2 improves queue throughput while keeping memory bounded.
+BACKGROUND_WORKER_MAX_WORKERS = max(
+    1,
+    min(4, int(os.getenv('BACKGROUND_WORKER_MAX_WORKERS', '2')))
+)
+
+# Heavy task concurrency cap (PDF/DOCX/ZIP generation, bulk uploads).
+# Keep lower than worker count on low-memory hosts.
+BACKGROUND_HEAVY_TASK_CONCURRENCY = max(
+    1,
+    min(BACKGROUND_WORKER_MAX_WORKERS, int(os.getenv('BACKGROUND_HEAVY_TASK_CONCURRENCY', '1')))
+)
+
+
+# =============================================================================
 # CACHING
 # =============================================================================
 

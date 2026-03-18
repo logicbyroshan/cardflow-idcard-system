@@ -25,6 +25,7 @@ from django.utils.timezone import localtime
 from idcards.models import IDCard, IDCardTable
 from core.services.permission_service import PermissionService, api_require_permission
 from core.views.base import get_user_role, require_any_admin
+from core.services import IDCardService
 
 from .models import PrintRequest, CardTemplate, validate_field_mappings
 from .services import PrintWorkflowService, GenerateCardService
@@ -337,10 +338,13 @@ def api_print_list(request, table_id):
     ).select_related('card', 'requested_by').order_by('-created_at')
 
     if query:
-        search_q = Q(card__field_data__icontains=query)
-        if query.isdigit():
-            search_q |= Q(card__id=int(query))
-        pr_qs = pr_qs.filter(search_q)
+        pr_qs = IDCardService._apply_search_filter(
+            pr_qs,
+            query,
+            table=table,
+            json_field='card__field_data',
+            id_lookup='card__id',
+        )
 
     total = pr_qs.count()
     batch = list(pr_qs[offset:offset + limit + 1])
@@ -550,10 +554,13 @@ def api_print_generate_list(request, table_id):
     selected_generate_field_names = _get_selected_generate_field_names(table)
 
     if query:
-        search_q = Q(card__field_data__icontains=query)
-        if query.isdigit():
-            search_q |= Q(card__id=int(query))
-        pr_qs = pr_qs.filter(search_q)
+        pr_qs = IDCardService._apply_search_filter(
+            pr_qs,
+            query,
+            table=table,
+            json_field='card__field_data',
+            id_lookup='card__id',
+        )
 
     total = pr_qs.count()
     batch = list(pr_qs[offset:offset + limit + 1])
@@ -692,10 +699,13 @@ def api_print_finalized_list(request, table_id):
     ).select_related('card', 'requested_by').order_by('-updated_at')
 
     if query:
-        search_q = Q(card__field_data__icontains=query)
-        if query.isdigit():
-            search_q |= Q(card__id=int(query))
-        pr_qs = pr_qs.filter(search_q)
+        pr_qs = IDCardService._apply_search_filter(
+            pr_qs,
+            query,
+            table=table,
+            json_field='card__field_data',
+            id_lookup='card__id',
+        )
 
     total = pr_qs.count()
     batch = list(pr_qs[offset:offset + limit + 1])
@@ -838,10 +848,13 @@ def api_print_pool_list(request, table_id):
     ).select_related('card', 'requested_by').order_by('-updated_at')
 
     if query:
-        search_q = Q(card__field_data__icontains=query)
-        if query.isdigit():
-            search_q |= Q(card__id=int(query))
-        pr_qs = pr_qs.filter(search_q)
+        pr_qs = IDCardService._apply_search_filter(
+            pr_qs,
+            query,
+            table=table,
+            json_field='card__field_data',
+            id_lookup='card__id',
+        )
 
     total = pr_qs.count()
     batch = list(pr_qs[offset:offset + limit + 1])
@@ -1077,10 +1090,13 @@ def api_generate_card_list(request, table_id):
     selected_generate_field_names = _get_selected_generate_field_names(table)
 
     if query:
-        search_q = Q(card__field_data__icontains=query)
-        if query.isdigit():
-            search_q |= Q(card__id=int(query))
-        pr_qs = pr_qs.filter(search_q)
+        pr_qs = IDCardService._apply_search_filter(
+            pr_qs,
+            query,
+            table=table,
+            json_field='card__field_data',
+            id_lookup='card__id',
+        )
 
     total = pr_qs.count()
     batch = list(pr_qs[offset:offset + limit])
