@@ -475,7 +475,8 @@ class WordTablesMixin:
                     cell, image_path or '',
                     Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls,
                     Image, ImageOps, fixed_width_cm=img_fixed_w,
-                    fixed_height_cm=img_fixed_h
+                    fixed_height_cm=img_fixed_h,
+                    image_subtype=field.get('image_subtype')
                 )
             else:
                 value = format_field_value(field_data.get(field['name'], ''), uppercase=True)

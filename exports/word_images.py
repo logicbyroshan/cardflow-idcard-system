@@ -17,9 +17,13 @@ logger = logging.getLogger(__name__)
 class WordImagesMixin:
     """Mixin providing image handling methods for Word exports."""
 
+    # Border is intentionally limited to portrait photos only.
+    BORDERED_IMAGE_SUBTYPES = {'photo', 'mother_photo', 'father_photo'}
+
     def _add_image_to_cell(self, cell, img_path, Cm, Pt, RGBColor,
                            WD_ALIGN_PARAGRAPH, parse_xml, nsdecls, Image, ImageOps,
-                           fixed_width_cm=None, fixed_height_cm=None):
+                           fixed_width_cm=None, fixed_height_cm=None,
+                           image_subtype=None):
         """Add an image to a cell using VML for Word 97-2003 compatibility.
         
         Uses VML (Vector Markup Language) instead of DrawingML to ensure
@@ -54,11 +58,13 @@ class WordImagesMixin:
                                     pil_img.close()
                                     pil_img = converted
                                 
-                                # Add 0.5pt border INSIDE the image (no layout shift)
-                                from PIL import ImageDraw
-                                draw = ImageDraw.Draw(pil_img)
-                                iw, ih = pil_img.size
-                                draw.rectangle([0, 0, iw - 1, ih - 1], outline='black', width=1)
+                                # Add 0.5pt border only for photo-like images.
+                                # Signature/QR/barcode must remain borderless.
+                                if image_subtype in self.BORDERED_IMAGE_SUBTYPES:
+                                    from PIL import ImageDraw
+                                    draw = ImageDraw.Draw(pil_img)
+                                    iw, ih = pil_img.size
+                                    draw.rectangle([0, 0, iw - 1, ih - 1], outline='black', width=1)
                                 
                                 img_stream = BytesIO()
                                 pil_img.save(img_stream, format='JPEG', quality=90)
