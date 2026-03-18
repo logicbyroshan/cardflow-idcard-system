@@ -219,10 +219,6 @@ class ZipExporter:
                     os.unlink(zip_tmp_path)
                 except OSError:
                     pass
-                return ZipExportResult(
-                    success=False,
-                    message='No images found for selected cards!'
-                )
             
             return ZipExportResult(
                 success=True,
