@@ -240,3 +240,6 @@ REDIS.md
 # ── Face Cropper / Adarsh Cropper ──
 # Entire Face Cropper directory (separate repo / local-only)
 Face Cropper/
+
+# Deployment examples/configs are local-only
+deployment/
