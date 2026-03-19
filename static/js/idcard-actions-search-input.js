@@ -265,7 +265,17 @@ function displaySearchResults(results, query, container, closeModalFn) {
                 const currentUrl = new URL(window.location.href);
                 currentUrl.searchParams.set('status', status);
                 currentUrl.searchParams.set('highlight', cardId);
-                window.location.href = currentUrl.toString();
+                currentUrl.searchParams.set('_shell', '1');
+                if (window.IDCardPage && typeof window.IDCardPage.swapMainShellNoReload === 'function') {
+                    window.IDCardPage.swapMainShellNoReload(currentUrl).catch(function(err) {
+                        console.warn('search-result no-reload fallback failed:', err);
+                        if (typeof showToast === 'function') {
+                            showToast('Unable to open result without reload right now. Please retry.', 'warning');
+                        }
+                    });
+                } else {
+                    console.warn('search-result no-reload fallback unavailable');
+                }
             }
         });
     });

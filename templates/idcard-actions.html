@@ -174,6 +174,29 @@
         });
       }
 
+      function swapMainShellNoReload(urlLike) {
+        var url = (urlLike instanceof URL) ? urlLike : new URL(String(urlLike || BASE_URL), window.location.origin);
+        var currentMain = document.querySelector('main.idcard-actions-page');
+        if (!currentMain) return Promise.reject(new Error('Current ID Card Actions shell not found'));
+
+        return fetch(url.toString(), {
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        }).then(function(resp) {
+          if (!resp.ok) throw new Error('Shell fetch failed (' + resp.status + ')');
+          return resp.text();
+        }).then(function(html) {
+          var doc = new DOMParser().parseFromString(html, 'text/html');
+          var nextMain = doc.querySelector('main.idcard-actions-page');
+          if (!nextMain) throw new Error('Fetched response missing idcard-actions shell');
+
+          currentMain.replaceWith(nextMain);
+          window.history.replaceState({}, '', url.toString());
+          reinitAfterMainSwap();
+        });
+      }
+
       function navigateStatusNoReload(status, highlightId) {
         var normalizedStatus = status || 'pending';
         var url = new URL(BASE_URL, window.location.origin);
@@ -186,7 +209,12 @@
         updateCurrentStatus(normalizedStatus);
 
         if (typeof htmx === 'undefined') {
-          window.location.href = url.toString();
+          swapMainShellNoReload(url).catch(function(err) {
+            console.warn('navigateStatusNoReload fallback failed:', err);
+            if (window.showToast) {
+              window.showToast('Unable to switch list without reload right now. Please retry.', 'warning');
+            }
+          });
           return;
         }
 
@@ -198,11 +226,17 @@
         }).then(function() {
           window.history.replaceState({}, '', url.toString());
         }).catch(function() {
-          window.location.href = url.toString();
+          swapMainShellNoReload(url).catch(function(err) {
+            console.warn('navigateStatusNoReload HTMX recovery failed:', err);
+            if (window.showToast) {
+              window.showToast('Unable to switch list without reload right now. Please retry.', 'warning');
+            }
+          });
         });
       }
 
       NS.navigateStatusNoReload = navigateStatusNoReload;
+      NS.swapMainShellNoReload = swapMainShellNoReload;
 
       function setupNoReloadStatusTabs() {
         if (NS._statusTabsInit) return;
