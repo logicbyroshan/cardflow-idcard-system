@@ -62,6 +62,16 @@ def _build_ordered_fields(card, table):
     fd = card.field_data or {}
     fd_upper = {k.upper(): v for k, v in fd.items()}
 
+    def _is_missing_image_value(value):
+        v = str(value or '').strip()
+        if not v:
+            return True
+        if v == 'NOT_FOUND':
+            return True
+        if v.startswith('PENDING:'):
+            return True
+        return False
+
     def _norm_key(value):
         return ''.join(ch for ch in str(value or '').upper() if ch.isalnum())
 
@@ -133,8 +143,8 @@ def _build_ordered_fields(card, table):
         ftype = field.get('type', 'text')
         fval = fd.get(fname, '') or fd_upper.get(fname.upper(), '')
 
-        # Image fallback: if field_data is empty but CardMedia exists, use that path.
-        if (not fval) and _is_image_field(ftype, fname):
+        # Image fallback: if field_data is empty/stale but CardMedia exists, use that path.
+        if _is_image_field(ftype, fname) and _is_missing_image_value(fval):
             norm_name = _norm_key(fname)
             fval = media_by_field.get(norm_name, '')
             if not fval:
