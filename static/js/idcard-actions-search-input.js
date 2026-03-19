@@ -259,10 +259,14 @@ function displaySearchResults(results, query, container, closeModalFn) {
             
             if (closeModalFn) closeModalFn();
             
-            const currentUrl = new URL(window.location.href);
-            currentUrl.searchParams.set('status', status);
-            currentUrl.searchParams.set('highlight', cardId);
-            window.location.href = currentUrl.toString();
+            if (window.IDCardPage && typeof window.IDCardPage.navigateStatusNoReload === 'function') {
+                window.IDCardPage.navigateStatusNoReload(status, cardId);
+            } else {
+                const currentUrl = new URL(window.location.href);
+                currentUrl.searchParams.set('status', status);
+                currentUrl.searchParams.set('highlight', cardId);
+                window.location.href = currentUrl.toString();
+            }
         });
     });
 }

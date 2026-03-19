@@ -318,8 +318,10 @@ function initReuploadHandlers() {
                                             closeReuploadActionsModal();
                                             if (window.IDCardApp && typeof window.IDCardApp.refreshCardTable === 'function') {
                                                 window.IDCardApp.refreshCardTable();
+                                            } else if (window.IDCardPage && typeof window.IDCardPage.navigateStatusNoReload === 'function') {
+                                                window.IDCardPage.navigateStatusNoReload((typeof CURRENT_STATUS !== 'undefined' && CURRENT_STATUS) ? CURRENT_STATUS : 'pending');
                                             } else {
-                                                window.location.reload();
+                                                console.warn('reupload completion fallback skipped: no refresh bridge available');
                                             }
                                         }, 1500);
                                     } else if (t.status === 'failed' || t.status === 'cancelled') {

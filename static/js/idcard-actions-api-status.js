@@ -43,7 +43,12 @@ function refreshCardTable() {
         // Clear selection after table swap
         if (typeof window.alpineClearSelection === 'function') window.alpineClearSelection();
     } else {
-        location.reload();
+        var status = (typeof CURRENT_STATUS !== 'undefined' && CURRENT_STATUS) ? CURRENT_STATUS : 'pending';
+        if (window.IDCardPage && typeof window.IDCardPage.navigateStatusNoReload === 'function') {
+            window.IDCardPage.navigateStatusNoReload(status);
+        } else {
+            console.warn('refreshCardTable fallback skipped: no refresh bridge available');
+        }
     }
 
     // Update navbar status counts in real-time

@@ -186,8 +186,10 @@ function initDeleteModal() {
                     // Use HTMX refresh instead of full page reload
                     if (window.IDCardApp && typeof window.IDCardApp.refreshCardTable === 'function') {
                         window.IDCardApp.refreshCardTable();
+                    } else if (window.IDCardPage && typeof window.IDCardPage.navigateStatusNoReload === 'function') {
+                        window.IDCardPage.navigateStatusNoReload((typeof CURRENT_STATUS !== 'undefined' && CURRENT_STATUS) ? CURRENT_STATUS : 'pending');
                     } else {
-                        location.reload();
+                        console.warn('permanent delete fallback skipped: no refresh bridge available');
                     }
                 } else {
                     if (typeof showToast === 'function') showToast(data.message || 'Error deleting cards', false);
@@ -279,8 +281,10 @@ function initSimpleDeleteModal() {
                     // Use HTMX refresh instead of full page reload to preserve context
                     if (window.IDCardApp && typeof window.IDCardApp.refreshCardTable === 'function') {
                         window.IDCardApp.refreshCardTable();
+                    } else if (window.IDCardPage && typeof window.IDCardPage.navigateStatusNoReload === 'function') {
+                        window.IDCardPage.navigateStatusNoReload((typeof CURRENT_STATUS !== 'undefined' && CURRENT_STATUS) ? CURRENT_STATUS : 'pending');
                     } else {
-                        location.reload();
+                        console.warn('simple delete fallback skipped: no refresh bridge available');
                     }
                 } else {
                     if (typeof showToast === 'function') showToast(data.message || 'Error deleting cards', false);

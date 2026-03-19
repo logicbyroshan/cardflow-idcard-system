@@ -238,7 +238,13 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.success) {
                 showToast(data.message || 'Table saved successfully!', 'success');
                 GSP.closeDrawerModal();
-                setTimeout(() => window.location.reload(), 500);
+                setTimeout(function() {
+                    if (typeof htmx !== 'undefined' && document.getElementById('gs-table-container')) {
+                        htmx.trigger(document.body, 'refreshTable');
+                    } else {
+                        console.warn('group-setting save refresh skipped: HTMX target missing');
+                    }
+                }, 300);
             } else {
                 showToast(data.message || 'Error saving table', 'error');
                 // Re-enable button on error
@@ -272,7 +278,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (data.success) {
                 showToast(data.message || 'Status updated!', 'success');
-                setTimeout(() => window.location.reload(), 500);
+                setTimeout(function() {
+                    if (typeof htmx !== 'undefined' && document.getElementById('gs-table-container')) {
+                        htmx.trigger(document.body, 'refreshTable');
+                    } else {
+                        console.warn('group-setting status refresh skipped: HTMX target missing');
+                    }
+                }, 300);
             } else {
                 showToast(data.message || 'Error updating status', 'error');
                 if (GSP.modalConfirm) GSP.modalConfirm.disabled = false;

@@ -73,7 +73,12 @@ function _doBulkMoveToDownload(tableId, cardIds) {
                 htmx.trigger(document.body, 'refreshTable');
                 if (typeof window.alpineClearSelection === 'function') window.alpineClearSelection();
             } else {
-                location.reload();
+                var status = (typeof CURRENT_STATUS !== 'undefined' && CURRENT_STATUS) ? CURRENT_STATUS : 'pending';
+                if (window.IDCardPage && typeof window.IDCardPage.navigateStatusNoReload === 'function') {
+                    window.IDCardPage.navigateStatusNoReload(status);
+                } else {
+                    console.warn('bulk-status fallback skipped: no refresh bridge available');
+                }
             }
         })
         .catch(function(err) {

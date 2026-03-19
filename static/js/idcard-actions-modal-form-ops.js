@@ -52,8 +52,10 @@ function createNewCard(fieldData, imageFiles, mainPhoto) {
             // Refresh table in-place instead of full page reload
             if (window.IDCardApp && typeof window.IDCardApp.refreshCardTable === 'function') {
                 window.IDCardApp.refreshCardTable();
+            } else if (window.IDCardPage && typeof window.IDCardPage.navigateStatusNoReload === 'function') {
+                window.IDCardPage.navigateStatusNoReload('pending');
             } else {
-                window.location.href = `?status=pending`;
+                console.warn('create card fallback skipped: no refresh bridge available');
             }
         } else {
             if (typeof showToast === 'function') showToast(data.message || 'Error adding card', false);
