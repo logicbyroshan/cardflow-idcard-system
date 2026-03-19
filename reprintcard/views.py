@@ -58,14 +58,97 @@ def _check_reprint_table_scope(user, table_id):
 
 
 def _build_ordered_fields(card, table):
-    """Build ordered field list from card field_data and table field config."""
+    """Build ordered field list from card field_data with CardMedia fallback for images."""
     fd = card.field_data or {}
     fd_upper = {k.upper(): v for k, v in fd.items()}
+
+    def _norm_key(value):
+        return ''.join(ch for ch in str(value or '').upper() if ch.isalnum())
+
+    def _is_image_field(ftype, fname):
+        t = str(ftype or '').lower()
+        n = str(fname or '').lower()
+        if t in ('image', 'photo', 'file'):
+            return True
+        if 'designation' in n:
+            return False
+        return (
+            ('image' in t) or ('photo' in t) or ('file' in t) or ('upload' in t) or
+            ('photo' in n) or ('image' in n) or ('picture' in n) or ('pic' in n) or ('img' in n) or
+            ('signature' in n) or ('barcode' in n) or ('qr' in n)
+        )
+
+    def _infer_media_type(fname):
+        n = str(fname or '').lower()
+        if 'father' in n and 'photo' in n:
+            return 'father_photo'
+        if 'mother' in n and 'photo' in n:
+            return 'mother_photo'
+        if 'signature' in n or n.strip() == 'sign':
+            return 'signature'
+        if 'barcode' in n:
+            return 'barcode'
+        if 'qr' in n:
+            return 'qr_code'
+        if 'photo' in n or 'image' in n or 'picture' in n or 'pic' in n or n.strip() == 'img':
+            return 'photo'
+        return ''
+
+    # Build a per-card media lookup once (prefetched relation when available).
+    media_by_field = getattr(card, '_reprint_media_by_field', None)
+    if media_by_field is None:
+        media_by_field = {}
+        media_by_type = {}
+        media_items = []
+        try:
+            media_items = list(card.media_files.all())
+        except Exception:
+            media_items = []
+
+        for media in media_items:
+            path = ''
+            try:
+                path = media.file.name or ''
+            except Exception:
+                path = ''
+            if not path:
+                continue
+
+            mf = _norm_key(getattr(media, 'field_name', '') or '')
+            if mf and mf not in media_by_field:
+                media_by_field[mf] = path
+
+            mt = str(getattr(media, 'media_type', '') or '').lower().strip()
+            if mt and mt not in media_by_type:
+                media_by_type[mt] = path
+
+        card._reprint_media_by_field = media_by_field
+        card._reprint_media_by_type = media_by_type
+    else:
+        media_by_type = getattr(card, '_reprint_media_by_type', {}) or {}
+
     ordered_fields = []
     for field in table.fields:
         fname = field['name']
         ftype = field.get('type', 'text')
         fval = fd.get(fname, '') or fd_upper.get(fname.upper(), '')
+
+        # Image fallback: if field_data is empty but CardMedia exists, use that path.
+        if (not fval) and _is_image_field(ftype, fname):
+            norm_name = _norm_key(fname)
+            fval = media_by_field.get(norm_name, '')
+            if not fval:
+                inferred = _infer_media_type(fname)
+                if inferred:
+                    fval = media_by_type.get(inferred, '')
+
+            # Final legacy fallback for PHOTO from deprecated ImageField
+            if not fval and norm_name == 'PHOTO' and getattr(card, 'photo', None):
+                try:
+                    fval = card.photo.name or card.photo.url
+                except Exception:
+                    pass
+
         ordered_fields.append({'name': fname, 'type': ftype, 'value': fval})
     return ordered_fields
 
@@ -139,7 +222,7 @@ def reprint_cards(request, table_id):
     reprint_items = []
     reprint_total = 0
     if current_step == 'reprint_list':
-        card_qs = source_cards_qs.order_by('-updated_at')
+        card_qs = source_cards_qs.prefetch_related('media_files').order_by('-updated_at')
         reprint_total = card_qs.count()
         card_batch = card_qs[:INITIAL_LOAD_LIMIT]
         for idx, card in enumerate(card_batch):
@@ -160,7 +243,7 @@ def reprint_cards(request, table_id):
             table=table,
             status='requested',
             card__status='download',
-        ).select_related('card', 'requested_by').order_by('-created_at')
+        ).select_related('card', 'requested_by').prefetch_related('card__media_files').order_by('-created_at')
         request_total = req_qs.count()
         req_batch = req_qs[:INITIAL_LOAD_LIMIT]
         for idx, rr in enumerate(req_batch):
@@ -183,7 +266,7 @@ def reprint_cards(request, table_id):
             table=table,
             status='confirmed',
             card__status='download',
-        ).select_related('card', 'requested_by').order_by('-updated_at')
+        ).select_related('card', 'requested_by').prefetch_related('card__media_files').order_by('-updated_at')
         confirmed_total = cf_qs.count()
         cf_batch = cf_qs[:INITIAL_LOAD_LIMIT]
         for idx, rr in enumerate(cf_batch):
@@ -272,7 +355,7 @@ def api_reprint_list(request, table_id):
     card_qs = IDCard.objects.filter(
         table=table,
         status='download',
-    ).order_by('-updated_at')
+    ).prefetch_related('media_files').order_by('-updated_at')
 
     if available_only:
         busy_card_ids = ReprintRequest.objects.filter(
@@ -407,7 +490,7 @@ def api_request_list(request, table_id):
         table=table,
         status='requested',
         card__status='download',
-    ).select_related('card', 'requested_by').order_by('-created_at')
+    ).select_related('card', 'requested_by').prefetch_related('card__media_files').order_by('-created_at')
 
     from_dt = _parse_local_datetime_filter(request.GET.get('from'))
     to_dt = _parse_local_datetime_filter(request.GET.get('to'))
@@ -519,7 +602,7 @@ def api_confirmed_list(request, table_id):
         table=table,
         status='confirmed',
         card__status='download',
-    ).select_related('card', 'requested_by').order_by('-updated_at')
+    ).select_related('card', 'requested_by').prefetch_related('card__media_files').order_by('-updated_at')
 
     from_dt = _parse_local_datetime_filter(request.GET.get('from'))
     to_dt = _parse_local_datetime_filter(request.GET.get('to'))
@@ -624,7 +707,7 @@ def api_download_list(request, table_id):
 
     rr_qs = ReprintRequest.objects.filter(
         table=table, status='downloaded',
-    ).select_related('card', 'requested_by').order_by('-updated_at')
+    ).select_related('card', 'requested_by').prefetch_related('card__media_files').order_by('-updated_at')
 
     if query:
         rr_qs = rr_qs.filter(
