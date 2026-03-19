@@ -792,7 +792,7 @@ function initReprintPickerHandlers() {
     function fetchList(query) {
         var q = query || '';
         lastQuery = q;
-        ApiClient.get(endpoints.list + '?q=' + encodeURIComponent(q) + '&limit=500')
+        ApiClient.get(endpoints.list + '?available_only=1&q=' + encodeURIComponent(q) + '&limit=500')
             .then(function(data) {
                 if (!data || data.status !== 'ok') {
                     renderRows([]);

@@ -20,6 +20,41 @@ var escapeHtml = window.escapeHtml || function(s) {
   return d.innerHTML;
 };
 
+function normalizeFieldKey(value) {
+  return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+function getFieldSchemaFromHeader(tableBody) {
+  if (!tableBody) return [];
+  var table = tableBody.closest('table');
+  if (!table) return [];
+  return Array.from(table.querySelectorAll('thead th[data-field-name]')).map(function(th) {
+    return {
+      name: String(th.getAttribute('data-field-name') || '').trim(),
+      type: String(th.getAttribute('data-field-type') || 'text').trim()
+    };
+  }).filter(function(f) { return !!f.name; });
+}
+
+function alignOrderedFieldsToSchema(fields, schema) {
+  var source = Array.isArray(fields) ? fields : [];
+  if (!Array.isArray(schema) || !schema.length) return source;
+
+  var byKey = {};
+  source.forEach(function(f) {
+    var k = normalizeFieldKey(f && f.name);
+    if (!k) return;
+    byKey[k] = f;
+  });
+
+  return schema.map(function(s) {
+    var k = normalizeFieldKey(s && s.name);
+    var match = byKey[k];
+    if (match) return match;
+    return { name: s.name, type: s.type || 'text', value: '' };
+  });
+}
+
 function normalizeMediaPath(rawPath) {
   var value = String(rawPath || '').trim();
   if (!value) return '';
@@ -84,11 +119,12 @@ function renderTextCell(f) {
   return '<td class="dynamic-field ' + widthClass + ' px-[1px] py-1 align-middle" data-field="' + escapeHtml(f.name) + '" data-field-name="' + escapeHtml(f.name) + '" data-field-type="' + escapeHtml(f.type || 'text') + '" data-original-value="' + escapeHtml(f.value || '') + '"><span class="cell-value">' + escapeHtml(f.value || '-') + '</span></td>';
 }
 
-function renderOrderedFields(fields) {
+function renderOrderedFields(fields, schema) {
   if (!fields) return '';
+  var aligned = alignOrderedFieldsToSchema(fields, schema);
   var html = '';
   // Preserve API field order so table cells always align with header columns.
-  fields.forEach(function(f) {
+  aligned.forEach(function(f) {
     html += isImageField(f.type, f.name) ? renderImageCell(f) : renderTextCell(f);
   });
   return html;
@@ -848,6 +884,9 @@ function requestListStep() {
   var showingRange = document.getElementById('requestShowingRange');
   var totalCountEl = document.getElementById('requestTotalCount');
   var currentQuery = '';
+  var fetchSeq = 0;
+  var suppressDateFetch = false;
+  var requestFieldSchema = getFieldSchemaFromHeader(tableBody);
   var requestFromFlatpickr = null;
   var requestToFlatpickr = null;
   var classSectionFilters = initClassSectionFilters({
@@ -1179,6 +1218,7 @@ function requestListStep() {
       minuteIncrement: 1,
       allowInput: false,
       onChange: function() {
+        if (suppressDateFetch) return;
         setTimeout(function() { fetchItems(currentQuery); }, 40);
       },
       onClose: function(_selected, _dateStr, instance) {
@@ -1202,16 +1242,19 @@ function requestListStep() {
 
   if (clearDateFilterBtn) {
     clearDateFilterBtn.addEventListener('click', function() {
+      suppressDateFetch = true;
       if (requestFromFlatpickr) requestFromFlatpickr.clear();
       if (requestToFlatpickr) requestToFlatpickr.clear();
       if (fromDateInput) fromDateInput.value = '';
       if (toDateInput) toDateInput.value = '';
       fetchItems(currentQuery);
+      setTimeout(function() { suppressDateFetch = false; }, 0);
     });
   }
 
   function fetchItems(query) {
     currentQuery = query || '';
+    var mySeq = ++fetchSeq;
     var url = ENDPOINTS.requestList + '?q=' + encodeURIComponent(currentQuery) + '&limit=200';
     var classFilter = classSectionFilters.getClassFilter();
     var sectionFilter = classSectionFilters.getSectionFilter();
@@ -1230,10 +1273,12 @@ function requestListStep() {
 
     ApiClient.get(url)
       .then(function(data) {
+        if (mySeq !== fetchSeq) return;
         if (data.status !== 'ok') return;
         renderItems(data.items || [], data.total || 0);
       })
       .catch(function(err) {
+        if (mySeq !== fetchSeq) return;
         console.error('[RequestList] fetch failed:', err);
       });
   }
@@ -1250,7 +1295,7 @@ function requestListStep() {
       html += '<tr data-rr-id="' + item.rr_id + '" data-card-id="' + item.card_id + '" data-sr-no="' + (idx + 1) + '">';
       html += '<td class="w-[24px] px-[1px] py-1 text-center align-middle checkbox-cell"><input type="checkbox" class="requestRowCheckbox"></td>';
       html += '<td class="w-[36px] px-[1px] py-1 text-center align-middle sr-no-cell">' + (idx + 1) + '</td>';
-      html += renderOrderedFields(item.ordered_fields);
+      html += renderOrderedFields(item.ordered_fields, requestFieldSchema);
       html += '<td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center">' + escapeHtml(item.requested_by_name || '-') + '</td>';
       html += '<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">' + escapeHtml(item.requested_at || '-') + '</td>';
       html += '</tr>';
@@ -1288,6 +1333,9 @@ function confirmedListStep() {
   var showingRange = document.getElementById('confirmedShowingRange');
   var totalCountEl = document.getElementById('confirmedTotalCount');
   var currentQuery = '';
+  var fetchSeq = 0;
+  var suppressDateFetch = false;
+  var confirmedFieldSchema = getFieldSchemaFromHeader(tableBody);
   var confirmedFromFlatpickr = null;
   var confirmedToFlatpickr = null;
   var classSectionFilters = initClassSectionFilters({
@@ -1398,6 +1446,7 @@ function confirmedListStep() {
       minuteIncrement: 1,
       allowInput: false,
       onChange: function() {
+        if (suppressDateFetch) return;
         setTimeout(function() { fetchItems(currentQuery); }, 40);
       },
       onClose: function(_selected, _dateStr, instance) {
@@ -1418,11 +1467,13 @@ function confirmedListStep() {
 
   if (clearDateFilterBtn) {
     clearDateFilterBtn.addEventListener('click', function() {
+      suppressDateFetch = true;
       if (confirmedFromFlatpickr) confirmedFromFlatpickr.clear();
       if (confirmedToFlatpickr) confirmedToFlatpickr.clear();
       if (fromDateInput) fromDateInput.value = '';
       if (toDateInput) toDateInput.value = '';
       fetchItems(currentQuery);
+      setTimeout(function() { suppressDateFetch = false; }, 0);
     });
   }
 
@@ -1515,6 +1566,7 @@ function confirmedListStep() {
 
   function fetchItems(query) {
     currentQuery = query || '';
+    var mySeq = ++fetchSeq;
     var url = ENDPOINTS.confirmedList + '?q=' + encodeURIComponent(currentQuery) + '&limit=200';
     var classFilter = classSectionFilters.getClassFilter();
     var sectionFilter = classSectionFilters.getSectionFilter();
@@ -1532,10 +1584,12 @@ function confirmedListStep() {
     }
     ApiClient.get(url)
       .then(function(data) {
+        if (mySeq !== fetchSeq) return;
         if (data.status !== 'ok') return;
         renderItems(data.items || [], data.total || 0);
       })
       .catch(function(err) {
+        if (mySeq !== fetchSeq) return;
         console.error('[ConfirmedList] fetch failed:', err);
       });
   }
@@ -1552,7 +1606,7 @@ function confirmedListStep() {
       html += '<tr data-rr-id="' + item.rr_id + '" data-card-id="' + item.card_id + '" data-sr-no="' + (idx + 1) + '">';
       html += '<td class="w-[24px] px-[1px] py-1 text-center align-middle checkbox-cell"><input type="checkbox" class="confirmedRowCheckbox"></td>';
       html += '<td class="w-[36px] px-[1px] py-1 text-center align-middle sr-no-cell">' + (idx + 1) + '</td>';
-      html += renderOrderedFields(item.ordered_fields);
+      html += renderOrderedFields(item.ordered_fields, confirmedFieldSchema);
       html += '<td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center">' + escapeHtml(item.requested_by_name || '-') + '</td>';
       html += '<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">' + escapeHtml(item.confirmed_at || '-') + '</td>';
       html += '</tr>';

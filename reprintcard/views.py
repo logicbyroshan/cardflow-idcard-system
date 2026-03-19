@@ -262,6 +262,7 @@ def api_reprint_list(request, table_id):
         return err
 
     query = request.GET.get('q', '').strip()
+    available_only = request.GET.get('available_only', '').strip().lower() in ('1', 'true', 'yes')
     try:
         offset = int(request.GET.get('offset', 0))
         limit = int(request.GET.get('limit', 100))
@@ -272,6 +273,13 @@ def api_reprint_list(request, table_id):
         table=table,
         status='download',
     ).order_by('-updated_at')
+
+    if available_only:
+        busy_card_ids = ReprintRequest.objects.filter(
+            table=table,
+            status__in=['requested', 'confirmed', 'downloaded'],
+        ).values_list('card_id', flat=True)
+        card_qs = card_qs.exclude(id__in=busy_card_ids)
 
     if query:
         search_q = Q(field_data__icontains=query)
