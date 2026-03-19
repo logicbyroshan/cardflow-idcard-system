@@ -111,6 +111,95 @@ Usage:
     }
   });
 
+  // -- Global table skeleton loader for HTMX swaps --
+  (function() {
+    function getTarget(evt) {
+      return evt && evt.detail ? evt.detail.target : null;
+    }
+
+    function isTableTarget(target) {
+      if (!target || !(target instanceof Element)) return false;
+      if (target.hasAttribute('data-table-skeleton')) return true;
+      if (target.querySelector('table')) return true;
+      var id = String(target.id || '').toLowerCase();
+      if (!id) return false;
+      return id.indexOf('table') !== -1 || id.indexOf('grid') !== -1;
+    }
+
+    function detectCols(target) {
+      var ths = target.querySelectorAll('thead th');
+      var count = ths ? ths.length : 0;
+      if (!count) {
+        var firstRowCells = target.querySelectorAll('tbody tr:first-child td');
+        count = firstRowCells ? firstRowCells.length : 0;
+      }
+      if (!count) count = 6;
+      return Math.max(3, Math.min(12, count));
+    }
+
+    function skeletonHtml(cols, rows) {
+      var html = '<div class="table-skeleton-shell">';
+      html += '<div class="table-skeleton-head">';
+      var c;
+      for (c = 0; c < cols; c += 1) {
+        html += '<span class="table-skeleton-block table-skeleton-th"></span>';
+      }
+      html += '</div>';
+      var r;
+      for (r = 0; r < rows; r += 1) {
+        html += '<div class="table-skeleton-row">';
+        for (c = 0; c < cols; c += 1) {
+          html += '<span class="table-skeleton-block table-skeleton-td"></span>';
+        }
+        html += '</div>';
+      }
+      html += '</div>';
+      return html;
+    }
+
+    function showTableSkeleton(target) {
+      if (!isTableTarget(target)) return;
+      if (target.querySelector(':scope > .table-skeleton-overlay')) return;
+
+      var cols = detectCols(target);
+      var overlay = document.createElement('div');
+      overlay.className = 'table-skeleton-overlay';
+      overlay.setAttribute('aria-hidden', 'true');
+      overlay.style.setProperty('--sk-cols', String(cols));
+      overlay.innerHTML = skeletonHtml(cols, 8);
+
+      target.classList.add('table-skeleton-host', 'table-skeleton-loading');
+      target.appendChild(overlay);
+    }
+
+    function hideTableSkeleton(target) {
+      if (!target || !(target instanceof Element)) return;
+      var overlay = target.querySelector(':scope > .table-skeleton-overlay');
+      if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      target.classList.remove('table-skeleton-loading');
+    }
+
+    document.body.addEventListener('htmx:beforeRequest', function(evt) {
+      showTableSkeleton(getTarget(evt));
+    });
+
+    document.body.addEventListener('htmx:afterSwap', function(evt) {
+      hideTableSkeleton(getTarget(evt));
+    });
+
+    document.body.addEventListener('htmx:afterRequest', function(evt) {
+      hideTableSkeleton(getTarget(evt));
+    });
+
+    document.body.addEventListener('htmx:responseError', function(evt) {
+      hideTableSkeleton(getTarget(evt));
+    });
+
+    document.body.addEventListener('htmx:sendError', function(evt) {
+      hideTableSkeleton(getTarget(evt));
+    });
+  })();
+
   // -- Handle HX-Trigger: showToast from server --
   document.body.addEventListener('showToast', function(evt) {
     if (window.showToast && evt.detail) {
@@ -133,16 +222,63 @@ Usage:
   .htmx-indicator { display: none; }
   .htmx-request .htmx-indicator,
   .htmx-request.htmx-indicator { display: block; }
+
+  /* Legacy thin loader is replaced by table skeletons. */
   .htmx-table-loader {
-    height: 3px;
-    background: linear-gradient(90deg, transparent, var(--color-primary, #6366f1), transparent);
-    animation: htmx-slide 1.2s ease-in-out infinite;
-    border-radius: 2px;
-    margin-top: 2px;
+    display: none !important;
   }
-  @keyframes htmx-slide {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
+
+  .table-skeleton-host {
+    position: relative;
+  }
+  .table-skeleton-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    min-height: 220px;
+    background: var(--surface, #ffffff);
+    border-radius: 10px;
+    padding: 10px;
+    border: 1px solid #e5e7eb;
+  }
+  .table-skeleton-loading .table-wrapper,
+  .table-skeleton-loading table {
+    visibility: hidden;
+  }
+  .table-skeleton-shell {
+    display: grid;
+    gap: 10px;
+  }
+  .table-skeleton-head,
+  .table-skeleton-row {
+    display: grid;
+    grid-template-columns: repeat(var(--sk-cols, 6), minmax(0, 1fr));
+    gap: 10px;
+  }
+  .table-skeleton-head { --sk-h: 16px; }
+  .table-skeleton-row { --sk-h: 22px; }
+  .table-skeleton-block {
+    display: block;
+    width: 100%;
+    height: var(--sk-h);
+    border-radius: 8px;
+    background: linear-gradient(90deg, #eef2f7 0%, #f6f8fb 50%, #eef2f7 100%);
+    background-size: 220% 100%;
+    animation: table-skeleton-shimmer 1.1s linear infinite;
+  }
+  .table-skeleton-th {
+    height: 14px;
+    border-radius: 6px;
+  }
+  .table-skeleton-td:nth-child(3n) {
+    width: 86%;
+  }
+  .table-skeleton-td:nth-child(4n) {
+    width: 72%;
+  }
+  @keyframes table-skeleton-shimmer {
+    from { background-position: 100% 0; }
+    to { background-position: -100% 0; }
   }
   /* Disable pointer events on buttons while HTMX is loading */
   .htmx-request .pagination-btn,
