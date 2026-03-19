@@ -20,6 +20,7 @@
 
 <style>
 .notif-bar {
+  --notif-bar-font-scale: 1.4;
   background: #fff;
   border: 1px solid #e5e7eb;
   margin-bottom: 16px;
@@ -37,24 +38,24 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: calc(18px * var(--notif-bar-font-scale));
   font-weight: 600;
   color: #1e293b;
 }
-.notif-bar-title i { color: #667eea; font-size: 14px; }
+.notif-bar-title i { color: #667eea; font-size: calc(20px * var(--notif-bar-font-scale)); }
 .notif-bar-badge {
-  font-size: 10px;
+  font-size: calc(14px * var(--notif-bar-font-scale));
   font-weight: 700;
   background: #ef4444;
   color: #fff;
   padding: 1px 6px;
   border-radius: 8px;
-  min-width: 18px;
+  min-width: 24px;
   text-align: center;
-  line-height: 16px;
+  line-height: 20px;
 }
 .notif-bar-link {
-  font-size: 12px;
+  font-size: calc(17px * var(--notif-bar-font-scale));
   color: #667eea;
   text-decoration: none;
   font-weight: 500;
@@ -93,7 +94,7 @@
   color: #6b7280;
   border-radius: 4px;
   padding: 2px 6px;
-  font-size: 10px;
+  font-size: calc(14px * var(--notif-bar-font-scale));
   line-height: 1.4;
   transition: all .15s;
   white-space: nowrap;
@@ -111,7 +112,7 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: calc(17px * var(--notif-bar-font-scale));
   margin-top: 2px;
 }
 .notif-bar-icon.general    { background: #eff6ff; color: #3b82f6; }
@@ -121,7 +122,7 @@
 .notif-bar-icon.alert      { background: #fef2f2; color: #ef4444; }
 .notif-bar-body { flex: 1; min-width: 0; }
 .notif-bar-body-title {
-  font-size: 14px;
+  font-size: calc(20px * var(--notif-bar-font-scale));
   font-weight: 600;
   color: #1e293b;
   white-space: nowrap;
@@ -129,7 +130,7 @@
   text-overflow: ellipsis;
 }
 .notif-bar-body-msg {
-  font-size: 13px;
+  font-size: calc(18px * var(--notif-bar-font-scale));
   color: #64748b;
   white-space: nowrap;
   overflow: hidden;
@@ -137,14 +138,14 @@
   margin-top: 2px;
 }
 .notif-bar-time {
-  font-size: 12px;
+  font-size: calc(17px * var(--notif-bar-font-scale));
   color: #94a3b8;
   white-space: nowrap;
 }
 .notif-bar-empty {
   padding: 16px;
   text-align: center;
-  font-size: 14px;
+  font-size: calc(20px * var(--notif-bar-font-scale));
   color: #94a3b8;
 }
 .notif-bar-empty i { color: #22c55e; margin-right: 4px; }

@@ -8,6 +8,29 @@
   <meta name="csrf-token" content="{{ csrf_token }}">
   <title>Notifications - Adarsh Admin</title>
   <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
+  <style>
+    .modal-backdrop,
+    .center-modal-overlay,
+    .global-search-overlay,
+    .backup-modal-overlay,
+    .side-modal-overlay,
+    .alpine-modal-overlay {
+      display: none;
+    }
+    .modal-backdrop.show,
+    .modal-backdrop.active,
+    .center-modal-overlay.show,
+    .center-modal-overlay.active,
+    .global-search-overlay.active,
+    .backup-modal-overlay.active,
+    .alpine-modal-overlay.show,
+    .alpine-modal-overlay.active {
+      display: flex;
+    }
+    .side-modal-overlay.active {
+      display: block;
+    }
+  </style>
   <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
   <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}">
   <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">

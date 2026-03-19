@@ -29,13 +29,13 @@
     <table class="notif-table">
       <thead>
         <tr>
-          <th scope="col" style="width:30%">Notification</th>
-          <th scope="col" style="width:12%">Category</th>
-          <th scope="col" style="width:10%">Priority</th>
-          <th scope="col" style="width:14%">Target</th>
-          <th scope="col" style="width:10%">Reads</th>
-          <th scope="col" style="width:14%">Sent</th>
-          <th scope="col" style="width:10%">Actions</th>
+          <th scope="col" class="panel-col-w30">Notification</th>
+          <th scope="col" class="panel-col-w12">Category</th>
+          <th scope="col" class="panel-col-w10">Priority</th>
+          <th scope="col" class="panel-col-w14">Target</th>
+          <th scope="col" class="panel-col-w10">Reads</th>
+          <th scope="col" class="panel-col-w14">Sent</th>
+          <th scope="col" class="panel-col-w10">Actions</th>
         </tr>
       </thead>
       <tbody id="notifTableBody">
@@ -53,7 +53,7 @@
   </div>
 
   <!-- Load More -->
-  <div class="notif-load-more" id="notifLoadMore" style="display:none;">
+  <div class="notif-load-more panel-hidden" id="notifLoadMore">
     <button class="btn btn-md btn-neutral" onclick="loadMoreNotifications()">
       <i class="fa-solid fa-arrow-down"></i> Load More
     </button>
