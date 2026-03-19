@@ -820,7 +820,7 @@ function initReprintPickerHandlers() {
         }
     }
 
-    function collectInlineFieldData() {
+    function collectInlineFieldData(cardId) {
         var fieldData = {};
         var inputs = confirmPreview ? confirmPreview.querySelectorAll('.reprint-preview-input[data-field-name]') : [];
         inputs.forEach(function(inputEl) {
@@ -829,6 +829,17 @@ function initReprintPickerHandlers() {
             if (isKnownImageFieldName(key)) return;
             fieldData[key] = String(inputEl.value || '').trim();
         });
+
+        // Preserve image values from current row state during inline text save.
+        // This keeps images stable even if a backend update path treats payload as replace.
+        var card = getCardById(cardId);
+        var imageRows = getImageRows(card);
+        imageRows.forEach(function(img) {
+            var key = String(img.key || '').trim();
+            if (!key) return;
+            fieldData[key] = String(img.value || '').trim();
+        });
+
         return fieldData;
     }
 
@@ -991,7 +1002,7 @@ function initReprintPickerHandlers() {
         var submitPromise;
         if (inlineEditMode) {
             if (inlineDirtyCount > 0) {
-                submitPromise = updateCardInline(cardId, collectInlineFieldData())
+                submitPromise = updateCardInline(cardId, collectInlineFieldData(cardId))
                     .then(function() { return ApiClient.post(endpoints.requestCreate, { card_ids: ids }); });
             } else {
                 submitPromise = ApiClient.post(endpoints.requestCreate, { card_ids: ids });
