@@ -331,9 +331,22 @@ function setRowsPerPage(count) {
 
 function showLazyLoadIndicator(show) {
     const indicator = document.getElementById('lazyLoadIndicator');
-    if (indicator) {
-        indicator.style.display = show ? 'flex' : 'none';
+    if (!indicator) return;
+
+    if (!indicator.dataset.skeletonInit) {
+        indicator.dataset.skeletonInit = '1';
+        indicator.innerHTML = [
+            '<div class="lazy-skeleton-shell" aria-hidden="true">',
+            '  <span class="lazy-skeleton-cell"></span>',
+            '  <span class="lazy-skeleton-cell"></span>',
+            '  <span class="lazy-skeleton-cell"></span>',
+            '  <span class="lazy-skeleton-cell"></span>',
+            '</div>'
+        ].join('');
     }
+
+    indicator.classList.toggle('is-visible', !!show);
+    indicator.style.display = show ? 'block' : 'none';
 }
 
 function showTableLoadingOverlay(show) {
@@ -345,12 +358,41 @@ function showTableLoadingOverlay(show) {
     if (show) {
         if (!overlay) {
             overlay = document.createElement('div');
-            overlay.className = 'table-loading-overlay';
-            overlay.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Loading data...</span>';
+            overlay.className = 'table-loading-overlay table-skeleton-overlay';
+            overlay.setAttribute('aria-hidden', 'true');
+            overlay.style.setProperty('--sk-cols', '8');
+            overlay.innerHTML = [
+                '<div class="table-skeleton-shell">',
+                '  <div class="table-skeleton-head">',
+                '    <span class="table-skeleton-block table-skeleton-th"></span>',
+                '    <span class="table-skeleton-block table-skeleton-th"></span>',
+                '    <span class="table-skeleton-block table-skeleton-th"></span>',
+                '    <span class="table-skeleton-block table-skeleton-th"></span>',
+                '    <span class="table-skeleton-block table-skeleton-th"></span>',
+                '    <span class="table-skeleton-block table-skeleton-th"></span>',
+                '    <span class="table-skeleton-block table-skeleton-th"></span>',
+                '    <span class="table-skeleton-block table-skeleton-th"></span>',
+                '  </div>',
+                '  <div class="table-skeleton-row">',
+                '    <span class="table-skeleton-block table-skeleton-td"></span>'.repeat(8),
+                '  </div>',
+                '  <div class="table-skeleton-row">',
+                '    <span class="table-skeleton-block table-skeleton-td"></span>'.repeat(8),
+                '  </div>',
+                '  <div class="table-skeleton-row">',
+                '    <span class="table-skeleton-block table-skeleton-td"></span>'.repeat(8),
+                '  </div>',
+                '  <div class="table-skeleton-row">',
+                '    <span class="table-skeleton-block table-skeleton-td"></span>'.repeat(8),
+                '  </div>',
+                '</div>'
+            ].join('');
             tableWrapper.appendChild(overlay);
         }
+        tableWrapper.classList.add('table-skeleton-host', 'table-skeleton-loading');
         overlay.style.display = 'flex';
     } else if (overlay) {
+        tableWrapper.classList.remove('table-skeleton-loading');
         overlay.style.display = 'none';
     }
 }
