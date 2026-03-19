@@ -4,7 +4,8 @@
 
         {% if not view_only_list %}
         <!-- Select All bar -->
-        <div class="flex items-center justify-between px-1 mb-1">
+        <div class="sticky top-0 z-20 -mx-3 px-4 py-2 mb-1 border-b border-indigo-100 bg-gradient-to-b from-white via-white to-indigo-50/70 backdrop-blur-sm">
+            <div class="flex items-center justify-between px-0.5">
             <button @click="selectAll = !selectAll; toggleSelectAll()"
                     :class="selectAll ? 'bg-indigo-500 text-white border-indigo-400' : 'bg-gray-100 text-gray-600 border-gray-200'"
                     class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all active:scale-95">
@@ -12,6 +13,7 @@
                 Select All
             </button>
             <span class="text-[13px] font-semibold text-gray-600" x-text="'Showing ' + visibleCount + ' records'"></span>
+            </div>
         </div>
         {% endif %}
 

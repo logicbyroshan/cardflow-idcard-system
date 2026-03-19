@@ -3,7 +3,7 @@
 A production-grade, full-stack Django application for professional ID card design, printing, and management. Built for schools, colleges, and organizations to manage bulk ID card workflows end-to-end — from data upload to final print-ready output.
 
 > **Live:** [adarshbhopal.in](https://adarshbhopal.in) (website) · [panel.adarshbhopal.in](https://panel.adarshbhopal.in) (admin)
-> **Version:** v2.18.0
+> **Version:** v1.18.0
 
 ---
 
