@@ -129,8 +129,11 @@ def client_idcard_actions(request, table_id):
     # This ensures HTMX calls go to the client endpoint, not the admin one
     context['actions_base_url'] = reverse('client:idcard_actions', args=[table.id])
     
-    # HTMX partial response
-    if is_htmx(request):
+    # HTMX partial response:
+    # - boosted navigation (HX-Boosted) returns full template so status/tab shell
+    #   updates happen without hard reload.
+    # - normal HTMX filter/pagination keeps returning table partial.
+    if is_htmx(request) and request.headers.get('HX-Boosted') != 'true':
         return render(request, 'partials/idcard/table-container.html', context)
     
     return render(request, 'idcard-actions.html', context)

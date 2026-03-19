@@ -25,7 +25,9 @@ function isImageField(type, name) {
   var t = (type || '').toLowerCase();
   var n = (name || '').toLowerCase();
   return t === 'image' || t === 'photo' || t === 'file' ||
-         n === 'photo' || n === 'image' || n === 'picture' || n === 'pic' || n === 'img';
+         t.indexOf('image') !== -1 || t.indexOf('photo') !== -1 || t.indexOf('file') !== -1 ||
+         n === 'photo' || n === 'image' || n === 'picture' || n === 'pic' || n === 'img' ||
+         n.indexOf('photo') !== -1 || n.indexOf('image') !== -1 || n.indexOf('signature') !== -1;
 }
 
 function renderImageCell(f) {
@@ -51,8 +53,10 @@ function renderTextCell(f) {
 function renderOrderedFields(fields) {
   if (!fields) return '';
   var html = '';
-  fields.forEach(function(f) { if (!isImageField(f.type, f.name)) html += renderTextCell(f); });
-  fields.forEach(function(f) { if (isImageField(f.type, f.name)) html += renderImageCell(f); });
+  // Preserve API field order so table cells always align with header columns.
+  fields.forEach(function(f) {
+    html += isImageField(f.type, f.name) ? renderImageCell(f) : renderTextCell(f);
+  });
   return html;
 }
 
@@ -440,14 +444,18 @@ function wireBackButton(buttonId, fallbackUrl) {
     goBack();
   });
 
-  document.addEventListener('keydown', function(e) {
-    if ((e.ctrlKey || e.metaKey) && String(e.key || '').toLowerCase() === 'b') {
-      var tag = (e.target && e.target.tagName ? e.target.tagName : '').toLowerCase();
-      if (tag === 'input' || tag === 'textarea' || (e.target && e.target.isContentEditable)) return;
-      e.preventDefault();
-      goBack();
-    }
-  });
+  window.__reprintGoBack = goBack;
+  if (!window.__reprintBackKeyBound) {
+    window.__reprintBackKeyBound = true;
+    document.addEventListener('keydown', function(e) {
+      if ((e.ctrlKey || e.metaKey) && String(e.key || '').toLowerCase() === 'b') {
+        var tag = (e.target && e.target.tagName ? e.target.tagName : '').toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || (e.target && e.target.isContentEditable)) return;
+        e.preventDefault();
+        if (typeof window.__reprintGoBack === 'function') window.__reprintGoBack();
+      }
+    });
+  }
 }
 
 function getCsrfToken() {
@@ -478,6 +486,19 @@ function triggerBlobDownload(blob, filename) {
   a.click();
   setTimeout(function() {
     window.URL.revokeObjectURL(url);
+    if (a.parentNode) a.parentNode.removeChild(a);
+  }, 0);
+}
+
+function triggerUrlDownload(url, filename) {
+  if (!url) return;
+  var a = document.createElement('a');
+  a.style.display = 'none';
+  a.href = url;
+  if (filename) a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function() {
     if (a.parentNode) a.parentNode.removeChild(a);
   }, 0);
 }
@@ -514,12 +535,44 @@ async function postJsonForBlob(url, body) {
     throw new Error(errText);
   }
 
+  var contentType = (resp.headers.get('Content-Type') || '').toLowerCase();
+  if (contentType.indexOf('application/json') !== -1) {
+    var jsonData = await resp.json().catch(function() { return {}; });
+    if (jsonData && jsonData.success && jsonData.async && jsonData.task_id) {
+      for (var i = 0; i < 300; i += 1) {
+        var statusResp = await fetch('/api/export/status/' + jsonData.task_id + '/', {
+          headers: {
+            'X-CSRFToken': getCsrfToken(),
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        });
+        var statusData = await statusResp.json().catch(function() { return {}; });
+
+        if (statusData.state === 'completed' && statusData.download_url) {
+          return {
+            download_url: statusData.download_url,
+            filename: statusData.filename || parseFilenameFromDisposition('', 'bin')
+          };
+        }
+
+        if (statusData.state === 'failed') {
+          throw new Error(statusData.message || 'Export failed');
+        }
+
+        await new Promise(function(resolve) { setTimeout(resolve, 2000); });
+      }
+      throw new Error('Export timed out');
+    }
+
+    throw new Error((jsonData && jsonData.message) || 'Unexpected download response');
+  }
+
   var blob = await resp.blob();
   var filename = parseFilenameFromDisposition(resp.headers.get('Content-Disposition'), 'bin');
   return { blob: blob, filename: filename };
 }
 
-(function reprintListStep() {
+function reprintListStep() {
   var tableBody = document.getElementById('reprintListTableBody');
   if (!tableBody) return;
 
@@ -620,8 +673,9 @@ async function postJsonForBlob(url, body) {
   if (submitBtn) {
     submitBtn.addEventListener('click', function() {
       if (!pendingCardIds.length) return;
+      var cardIdsToSubmit = pendingCardIds.slice();
       closeModal();
-      ApiClient.post(ENDPOINTS.requestCreate, { card_ids: pendingCardIds })
+      ApiClient.post(ENDPOINTS.requestCreate, { card_ids: cardIdsToSubmit })
         .then(function(data) {
           if (data.status === 'ok') {
             showToast(data.message || 'Successfully sent for reprint', 'success');
@@ -734,10 +788,10 @@ async function postJsonForBlob(url, body) {
     updateSelectionUI();
     if (paginator) { paginator.reset(); paginator.paginate(); }
   }
-})();
+}
 
 
-(function requestListStep() {
+function requestListStep() {
   // Back button logic
   wireBackButton('requestListBackBtn', '/active-clients/');
   var tableBody = document.getElementById('requestTableBody');
@@ -899,13 +953,19 @@ async function postJsonForBlob(url, body) {
           throw new Error((imgData && imgData.message) || 'Image download failed');
         }
 
-        var zipFiles = Array.isArray(imgData.zip_files) ? imgData.zip_files : [];
+        var zipFiles = (Array.isArray(imgData.files) && imgData.files.length > 0)
+          ? imgData.files
+          : (Array.isArray(imgData.zip_files) ? imgData.zip_files : []);
         if (!zipFiles.length) {
           throw new Error('No image ZIP files returned');
         }
         zipFiles.forEach(function(zf) {
-          var zipBlob = decodeBase64ToBlob(zf.data, 'application/zip');
-          triggerBlobDownload(zipBlob, zf.filename || 'images.zip');
+          if (zf.download_url) {
+            triggerUrlDownload(zf.download_url, zf.filename || 'images.zip');
+          } else if (zf.data) {
+            var zipBlob = decodeBase64ToBlob(zf.data, 'application/zip');
+            triggerBlobDownload(zipBlob, zf.filename || 'images.zip');
+          }
         });
       } else {
         var endpointByType = {
@@ -916,7 +976,11 @@ async function postJsonForBlob(url, body) {
         var extByType = { pdf: 'pdf', docx: 'docx', xlsx: 'xlsx' };
         var result = await postJsonForBlob(endpointByType[exportType], body);
         var fallbackName = parseFilenameFromDisposition('', extByType[exportType]);
-        triggerBlobDownload(result.blob, result.filename || fallbackName);
+        if (result.download_url) {
+          triggerUrlDownload(result.download_url, result.filename || fallbackName);
+        } else {
+          triggerBlobDownload(result.blob, result.filename || fallbackName);
+        }
       }
 
       await performSendToPrint(rrIds, {
@@ -1166,10 +1230,10 @@ async function postJsonForBlob(url, body) {
   }
 
   updateSelectionUI();
-})();
+}
 
 
-(function confirmedListStep() {
+function confirmedListStep() {
   // Back button logic
   wireBackButton('confirmedListBackBtn', '/active-clients/');
   var tableBody = document.getElementById('confirmedTableBody');
@@ -1372,11 +1436,17 @@ async function postJsonForBlob(url, body) {
     var downloadPromise;
     if (exportType === 'images') {
       downloadPromise = fetchImageZip(body).then(function(imgData) {
-        var zipFiles = Array.isArray(imgData.zip_files) ? imgData.zip_files : [];
+        var zipFiles = (Array.isArray(imgData.files) && imgData.files.length > 0)
+          ? imgData.files
+          : (Array.isArray(imgData.zip_files) ? imgData.zip_files : []);
         if (!zipFiles.length) throw new Error('No image ZIP files returned');
         zipFiles.forEach(function(zf) {
-          var zipBlob = decodeBase64ToBlob(zf.data, 'application/zip');
-          triggerBlobDownload(zipBlob, zf.filename || 'images.zip');
+          if (zf.download_url) {
+            triggerUrlDownload(zf.download_url, zf.filename || 'images.zip');
+          } else if (zf.data) {
+            var zipBlob = decodeBase64ToBlob(zf.data, 'application/zip');
+            triggerBlobDownload(zipBlob, zf.filename || 'images.zip');
+          }
         });
       });
     } else {
@@ -1386,7 +1456,11 @@ async function postJsonForBlob(url, body) {
         xlsx: ENDPOINTS.downloadXlsx
       };
       downloadPromise = postJsonForBlob(endpointByType[exportType], body).then(function(result) {
-        triggerBlobDownload(result.blob, result.filename || 'export');
+        if (result.download_url) {
+          triggerUrlDownload(result.download_url, result.filename || 'export');
+        } else {
+          triggerBlobDownload(result.blob, result.filename || 'export');
+        }
       });
     }
 
@@ -1458,6 +1532,28 @@ async function postJsonForBlob(url, body) {
   }
 
   updateSelectionUI();
-})();
+}
+
+function initReprintCardsPage() {
+  reprintListStep();
+  requestListStep();
+  confirmedListStep();
+}
+
+window.ReprintCards = window.ReprintCards || {};
+window.ReprintCards.reinitialize = initReprintCardsPage;
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initReprintCardsPage);
+} else {
+  initReprintCardsPage();
+}
+
+document.body.addEventListener('htmx:afterSwap', function(evt) {
+  if (!evt || !evt.target) return;
+  if (evt.target.matches && evt.target.matches('main.reprint-cards-page')) {
+    initReprintCardsPage();
+  }
+});
 
 })();

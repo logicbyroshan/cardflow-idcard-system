@@ -12,10 +12,36 @@ function initIdcardGroup(config) {
   var switchToGroupSettingBtn = document.getElementById('switchToGroupSetting');
   var searchInput = document.getElementById('searchInput');
   var tableBody = document.querySelector('.idcard-table tbody');
+  var tableContainer = document.querySelector('.idcard-table');
 
   var selectedTableId = null;
   var printCardsBtn = document.getElementById('printCardsBtn');
   var reprintCardsBtn = document.getElementById('reprintCardsBtn');
+
+  function refreshGroupTableInPlace() {
+    if (!tableBody || !tableContainer) return;
+    fetch(window.location.href, {
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    })
+      .then(function(res) { return res.text(); })
+      .then(function(html) {
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        var nextBody = doc.querySelector('.idcard-table tbody');
+        if (nextBody) {
+          tableBody.innerHTML = nextBody.innerHTML;
+          tableBody.querySelectorAll('tr.selected').forEach(function(r) { r.classList.remove('selected'); });
+          updateGroupActionBtns(null);
+        }
+      })
+      .catch(function(err) {
+        console.warn('In-place table refresh failed:', err);
+      });
+  }
+
+  window.IDCardGroup = window.IDCardGroup || {};
+  window.IDCardGroup.refreshTable = refreshGroupTableInPlace;
 
   function updateGroupActionBtns(tableId) {
     selectedTableId = tableId;
@@ -190,7 +216,7 @@ function initIdcardGroup(config) {
         closeDeleteAllModal();
         if (data.success) {
           window.showToast(data.message || 'All cards deleted successfully!', 'success');
-          setTimeout(function() { location.reload(); }, 1000);
+          setTimeout(function() { refreshGroupTableInPlace(); }, 300);
         } else {
           window.showToast(data.message || 'Delete failed', 'error');
         }
@@ -211,7 +237,7 @@ function initIdcardGroup(config) {
     var row = document.querySelector('.bulk-btn[data-table="' + tableId + '"]');
     var tableName = row ? (row.closest('tr')?.querySelector('td:first-child')?.textContent?.trim() || 'Table') : 'Table';
 
-    document.getElementById('downloadAllConfirmStep').style.display = '';
+    document.getElementById('downloadAllConfirmStep').style.display = 'block';
     document.getElementById('downloadAllProgressStep').style.display = 'none';
     document.getElementById('downloadAllTableLabel').textContent = 'Download all cards from "' + tableName + '"?';
     if (window.alpineOpenModal) window.alpineOpenModal('downloadAll');
@@ -227,7 +253,7 @@ function initIdcardGroup(config) {
 
   function startDownloadAll(tableId) {
     document.getElementById('downloadAllConfirmStep').style.display = 'none';
-    document.getElementById('downloadAllProgressStep').style.display = '';
+    document.getElementById('downloadAllProgressStep').style.display = 'block';
 
     var btn = document.querySelector('.download-all-btn[data-table="' + tableId + '"]');
     var dlBar = document.getElementById('downloadAllBar');
@@ -290,7 +316,7 @@ function initIdcardGroup(config) {
         
         dlBar.style.width = '100%';
         dlStatus.textContent = 'Download complete! (' + (data.total_cards || 0) + ' cards, ' + (data.total_files || 0) + ' files)';
-        dlActions.style.display = '';
+        dlActions.style.display = 'flex';
         window.showToast('Download started: ' + (data.filename || 'AllCards.zip'), 'success');
       } else if (data.success && data.files && data.files.length > 0) {
         // Legacy base64 mode (backward compatibility)
@@ -308,7 +334,7 @@ function initIdcardGroup(config) {
             if (index === data.files.length - 1) {
               dlBar.style.width = '100%';
               dlStatus.textContent = 'Download complete!';
-              dlActions.style.display = '';
+              dlActions.style.display = 'flex';
             }
           }, index * 500);
         });
@@ -318,7 +344,7 @@ function initIdcardGroup(config) {
         dlBar.style.width = '100%';
         dlBar.style.background = '#ef4444';
         dlStatus.textContent = data.message || 'No files to download';
-        dlActions.style.display = '';
+        dlActions.style.display = 'flex';
         window.showToast(data.message || 'No files to download', 'error');
       }
     })
@@ -329,7 +355,7 @@ function initIdcardGroup(config) {
       dlBar.style.width = '100%';
       dlBar.style.background = '#ef4444';
       dlStatus.textContent = errMsg;
-      dlActions.style.display = '';
+      dlActions.style.display = 'flex';
       window.showToast(errMsg, err.name === 'AbortError' ? 'warning' : 'error');
     })
     .finally(function() {
@@ -528,7 +554,10 @@ function initIdcardGroup(config) {
                     var msg = matched !== '' ? ('Done! ' + matched + ' images matched.') : 'Done!';
                     reuploadStatus.textContent = msg;
                     window.showToast(msg, 'success');
-                    setTimeout(function() { closeReuploadModal(); location.reload(); }, 1500);
+                      setTimeout(function() {
+                        closeReuploadModal();
+                        refreshGroupTableInPlace();
+                      }, 300);
                   } else if (t.status === 'failed' || t.status === 'cancelled') {
                     clearInterval(_grpPollInterval);
                     var errMsg = t.error_message || 'Reupload failed. Please try again.';
@@ -670,7 +699,7 @@ function initIdcardGroup(config) {
         closeUpgradeAllModal();
         if (data.success) {
           window.showToast(data.message || 'Classes upgraded!', 'success');
-          setTimeout(function() { location.reload(); }, 1200);
+          setTimeout(function() { refreshGroupTableInPlace(); }, 300);
         } else {
           window.showToast(data.message || 'Upgrade failed', 'error');
         }
@@ -684,30 +713,33 @@ function initIdcardGroup(config) {
   }
 
   // ==================== BULK ACTION BUTTONS ====================
-  document.querySelectorAll('.bulk-btn').forEach(function(btn) {
-    btn.addEventListener('click', function(e) {
-      e.stopPropagation();
-      e.preventDefault();
-      var action = this.dataset.action;
-      var tableId = this.dataset.table;
+  document.addEventListener('click', function(e) {
+    var btn = e.target.closest('.bulk-btn');
+    if (!btn) return;
+    if (btn.disabled) return;
 
-      if (action === 'delete-all') {
-        openDeleteAllModal(tableId);
-      } else if (action === 'download-all') {
-        openDownloadAllModal(tableId);
-      } else if (action === 'upgrade') {
-        openUpgradeAllModal(tableId);
-      } else if (action === 'reupload') {
-        openReuploadModal(tableId);
-      } else if (action === 'reprint') {
-        if (isClientRole) {
-          window.location.href = '/client/table/' + tableId + '/reprint/';
-        } else {
-          window.location.href = '/reprint/table/' + tableId + '/';
-        }
+    e.stopPropagation();
+    e.preventDefault();
+
+    var action = btn.dataset.action;
+    var tableId = btn.dataset.table;
+
+    if (action === 'delete-all') {
+      openDeleteAllModal(tableId);
+    } else if (action === 'download-all') {
+      openDownloadAllModal(tableId);
+    } else if (action === 'upgrade') {
+      openUpgradeAllModal(tableId);
+    } else if (action === 'reupload') {
+      openReuploadModal(tableId);
+    } else if (action === 'reprint') {
+      if (isClientRole) {
+        window.location.href = '/client/table/' + tableId + '/reprint/';
       } else {
-        window.showToast('This action is not available yet.', 'info');
+        window.location.href = '/reprint/table/' + tableId + '/';
       }
-    });
+    } else {
+      window.showToast('This action is not available yet.', 'info');
+    }
   });
 }

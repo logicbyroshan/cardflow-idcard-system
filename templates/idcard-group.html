@@ -87,7 +87,11 @@
       initCreateWithXlsx({
         apiUrl: apiUrl,
         csrfToken: _cfg.csrfToken,
-        onSuccess: function() { window.location.reload(); }
+        onSuccess: function() {
+          if (window.IDCardGroup && typeof window.IDCardGroup.refreshTable === 'function') {
+            window.IDCardGroup.refreshTable();
+          }
+        }
       });
     });
   </script>

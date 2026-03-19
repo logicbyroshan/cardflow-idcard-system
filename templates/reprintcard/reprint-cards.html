@@ -54,6 +54,52 @@
   <script defer src="{% static 'dist/js/cardprint-shared.min.js' %}"></script>
   <script defer src="{% static 'js/vendor/flatpickr.min.js' %}"></script>
   <script defer src="{% static 'js/reprintcard/reprint-cards.js' %}"></script>
+  <script>
+    (function() {
+      'use strict';
+
+      var NS = window.ReprintPage = window.ReprintPage || {};
+
+      function stepUrl(step) {
+        var base = '{% if is_client or is_client_staff %}{% url "client:reprint_cards" table.id %}{% else %}{% url "reprintcard:reprint_cards" table.id %}{% endif %}';
+        return base + '?step=' + encodeURIComponent(step || 'request_list');
+      }
+
+      function navigateStepNoReload(step) {
+        var url = stepUrl(step);
+        window.CURRENT_STEP = step || 'request_list';
+
+        if (typeof htmx === 'undefined') {
+          window.location.href = url;
+          return;
+        }
+
+        htmx.ajax('GET', url, {
+          target: 'main.reprint-cards-page',
+          swap: 'outerHTML',
+          select: 'main.reprint-cards-page',
+          headers: { 'HX-Boosted': 'true' }
+        }).then(function() {
+          window.history.replaceState({}, '', url);
+          if (window.ReprintCards && typeof window.ReprintCards.reinitialize === 'function') {
+            window.ReprintCards.reinitialize();
+          }
+        }).catch(function() {
+          window.location.href = url;
+        });
+      }
+
+      NS.navigateStepNoReload = navigateStepNoReload;
+
+      document.addEventListener('click', function(e) {
+        var link = e.target.closest('.reprint-cards-page a[href*="?step="]');
+        if (!link) return;
+        e.preventDefault();
+        var next = new URL(link.href, window.location.origin);
+        navigateStepNoReload(next.searchParams.get('step') || 'request_list');
+      });
+    })();
+  </script>
   {% include 'partials/htmx-config.html' %}
 </body>
 </html>

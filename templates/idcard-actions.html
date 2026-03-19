@@ -51,107 +51,225 @@
 
   {% include 'partials/htmx-config.html' %}
   <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      var _htmxFilters = initHTMXFilters({
-        baseUrl: '{{ actions_base_url|escapejs }}',
-        target:  '#card-table-container',
-        searchInputId: 'searchInput',
-        filters: [
-          { name: 'class', optionsId: 'classFilterOptions' },
-          { name: 'section', optionsId: 'sectionFilterOptions' }
-        ],
-        staticParams: {
-          status: function() { return typeof CURRENT_STATUS !== 'undefined' ? CURRENT_STATUS : ''; }
-        },
-        bindEvents: false  // IDCardApp handles search/filter events; only getParams() needed here
-      });
+    (function() {
+      'use strict';
 
-      // DateTime filter for download list  -  auto-apply on change (Flatpickr)
-      var fromDateEl = document.getElementById('fromDateFilter');
-      var toDateEl = document.getElementById('toDateFilter');
-      var clearDateBtn = document.getElementById('clearDateFilterBtn');
+      var NS = window.IDCardPage = window.IDCardPage || {};
+      var BASE_URL = '{{ actions_base_url|escapejs }}';
 
-      var fpConfig = {
-        enableTime: true,
-        enableSeconds: true,
-        time_24hr: true,
-        dateFormat: 'Y-m-d\\TH:i:S',
-        allowInput: false,
-        disableMobile: true,
-        onChange: function(selectedDates, dateStr, instance) {
-          // Blur time inputs so they don't auto-select after picking a date
-          var timeInputs = instance.calendarContainer.querySelectorAll('.flatpickr-time input');
-          timeInputs.forEach(function(inp) { inp.blur(); });
-          setTimeout(applyDateTimeFilter, 50);
+      function updateCurrentStatus(status) {
+        var normalized = status || 'pending';
+        window.CURRENT_STATUS = normalized;
+        if (window.IDCardApp) {
+          window.IDCardApp.currentStatus = normalized;
         }
-      };
-
-      var fpFrom = null, fpTo = null;
-      if (fromDateEl && typeof flatpickr !== 'undefined') {
-        fpFrom = flatpickr(fromDateEl, Object.assign({}, fpConfig, {
-          defaultDate: fromDateEl.value || null
-        }));
-      }
-      if (toDateEl && typeof flatpickr !== 'undefined') {
-        fpTo = flatpickr(toDateEl, Object.assign({}, fpConfig, {
-          defaultDate: toDateEl.value || null
-        }));
       }
 
-      function applyDateTimeFilter() {
-        if (!fromDateEl || !toDateEl) return;
-        var params = _htmxFilters.getParams();
-        if (fromDateEl.value) params.set('from', fromDateEl.value);
-        else params.delete('from');
-        if (toDateEl.value) params.set('to', toDateEl.value);
-        else params.delete('to');
-        var url = '{{ actions_base_url|escapejs }}?' + params.toString();
-        htmx.ajax('GET', url, { target: '#card-table-container', swap: 'innerHTML' });
-      }
-
-      if (clearDateBtn) {
-        clearDateBtn.addEventListener('click', function() {
-          if (fpFrom) fpFrom.clear();
-          else if (fromDateEl) fromDateEl.value = '';
-          if (fpTo) fpTo.clear();
-          else if (toDateEl) toDateEl.value = '';
-          var params = _htmxFilters.getParams();
-          params.delete('from');
-          params.delete('to');
-          var url = '{{ actions_base_url|escapejs }}?' + params.toString();
-          htmx.ajax('GET', url, { target: '#card-table-container', swap: 'innerHTML' });
+      function setupHTMXFiltersBridge() {
+        NS._htmxFilters = initHTMXFilters({
+          baseUrl: BASE_URL,
+          target: '#card-table-container',
+          searchInputId: 'searchInput',
+          filters: [
+            { name: 'class', optionsId: 'classFilterOptions' },
+            { name: 'section', optionsId: 'sectionFilterOptions' }
+          ],
+          staticParams: {
+            status: function() { return typeof CURRENT_STATUS !== 'undefined' ? CURRENT_STATUS : ''; }
+          },
+          bindEvents: false  // IDCardApp handles search/filter events; only getParams() needed here
         });
       }
 
-      // Go Back button  -  navigates to previous page (referrer or dashboard)
-      var goBackBtn = document.getElementById('goBackBtn');
-      function goBack() {
-        var referrer = document.referrer;
-        if (referrer && new URL(referrer).origin === window.location.origin && referrer !== window.location.href) {
-          window.location.href = referrer;
-        } else {
-          // Fallback: go to ID Card Group page
-          {% if is_client or is_client_staff %}
-          window.location.href = '{% url "client:idcard_group" %}';
-          {% else %}
-          window.location.href = '{% url "idcard_group" client.id %}';
-          {% endif %}
+      function setupDateTimeFilter() {
+        var fromDateEl = document.getElementById('fromDateFilter');
+        var toDateEl = document.getElementById('toDateFilter');
+        var clearDateBtn = document.getElementById('clearDateFilterBtn');
+
+        if (!fromDateEl || !toDateEl || fromDateEl.dataset.hxInit === '1') return;
+        fromDateEl.dataset.hxInit = '1';
+        toDateEl.dataset.hxInit = '1';
+
+        var fpConfig = {
+          enableTime: true,
+          enableSeconds: true,
+          time_24hr: true,
+          dateFormat: 'Y-m-d\\TH:i:S',
+          allowInput: false,
+          disableMobile: true,
+          onChange: function(selectedDates, dateStr, instance) {
+            var timeInputs = instance.calendarContainer.querySelectorAll('.flatpickr-time input');
+            timeInputs.forEach(function(inp) { inp.blur(); });
+            setTimeout(applyDateTimeFilter, 50);
+          }
+        };
+
+        var fpFrom = null;
+        var fpTo = null;
+        if (typeof flatpickr !== 'undefined') {
+          fpFrom = flatpickr(fromDateEl, Object.assign({}, fpConfig, {
+            defaultDate: fromDateEl.value || null
+          }));
+          fpTo = flatpickr(toDateEl, Object.assign({}, fpConfig, {
+            defaultDate: toDateEl.value || null
+          }));
+        }
+
+        function applyDateTimeFilter() {
+          if (!NS._htmxFilters || typeof htmx === 'undefined') return;
+          var params = NS._htmxFilters.getParams();
+          if (fromDateEl.value) params.set('from', fromDateEl.value);
+          else params.delete('from');
+          if (toDateEl.value) params.set('to', toDateEl.value);
+          else params.delete('to');
+          htmx.ajax('GET', BASE_URL + '?' + params.toString(), {
+            target: '#card-table-container',
+            swap: 'innerHTML'
+          });
+        }
+
+        if (clearDateBtn && clearDateBtn.dataset.hxInit !== '1') {
+          clearDateBtn.dataset.hxInit = '1';
+          clearDateBtn.addEventListener('click', function() {
+            if (fpFrom) fpFrom.clear();
+            else fromDateEl.value = '';
+            if (fpTo) fpTo.clear();
+            else toDateEl.value = '';
+            applyDateTimeFilter();
+          });
         }
       }
-      if (goBackBtn) {
-        goBackBtn.addEventListener('click', goBack);
+
+      function setupGoBackHandlers() {
+        if (NS._goBackInit) return;
+        NS._goBackInit = true;
+
+        function goBack() {
+          var referrer = document.referrer;
+          if (referrer && new URL(referrer).origin === window.location.origin && referrer !== window.location.href) {
+            window.location.href = referrer;
+          } else {
+            {% if is_client or is_client_staff %}
+            window.location.href = '{% url "client:idcard_group" %}';
+            {% else %}
+            window.location.href = '{% url "idcard_group" client.id %}';
+            {% endif %}
+          }
+        }
+
+        document.addEventListener('click', function(e) {
+          if (e.target.closest('#goBackBtn')) {
+            e.preventDefault();
+            goBack();
+          }
+        });
+
+        document.addEventListener('keydown', function(e) {
+          if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+            var tag = (e.target.tagName || '').toLowerCase();
+            if (tag === 'input' || tag === 'textarea' || e.target.isContentEditable) return;
+            e.preventDefault();
+            goBack();
+          }
+        });
       }
-      // Ctrl+B shortcut to go back
-      document.addEventListener('keydown', function(e) {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
-          // Don't trigger if user is typing in an input/textarea/contenteditable
-          var tag = (e.target.tagName || '').toLowerCase();
-          if (tag === 'input' || tag === 'textarea' || e.target.isContentEditable) return;
+
+      function navigateStatusNoReload(status, highlightId) {
+        var normalizedStatus = status || 'pending';
+        var url = new URL(BASE_URL, window.location.origin);
+        url.searchParams.set('status', normalizedStatus);
+        if (highlightId) {
+          url.searchParams.set('highlight', String(highlightId));
+        }
+
+        updateCurrentStatus(normalizedStatus);
+
+        if (typeof htmx === 'undefined') {
+          window.location.href = url.toString();
+          return;
+        }
+
+        htmx.ajax('GET', url.toString(), {
+          target: 'main.idcard-actions-page',
+          swap: 'outerHTML',
+          select: 'main.idcard-actions-page',
+          headers: { 'HX-Boosted': 'true' }
+        }).then(function() {
+          window.history.replaceState({}, '', url.toString());
+        }).catch(function() {
+          window.location.href = url.toString();
+        });
+      }
+
+      NS.navigateStatusNoReload = navigateStatusNoReload;
+
+      function setupNoReloadStatusTabs() {
+        if (NS._statusTabsInit) return;
+        NS._statusTabsInit = true;
+
+        document.addEventListener('click', function(e) {
+          var tab = e.target.closest('.action-tabs .action-tab');
+          if (!tab) return;
+
           e.preventDefault();
-          goBack();
+          var href = tab.getAttribute('href');
+          if (!href) return;
+
+          var nextUrl = new URL(href, window.location.origin);
+          var nextStatus = nextUrl.searchParams.get('status') || 'pending';
+          navigateStatusNoReload(nextStatus);
+        });
+      }
+
+      function setupNoReloadSearchResultNav() {
+        if (NS._searchNavInit) return;
+        NS._searchNavInit = true;
+
+        // Capture phase ensures this runs before item-level handlers that do window.location.href.
+        document.addEventListener('click', function(e) {
+          var item = e.target.closest('#searchResultsContainer .search-result-item');
+          if (!item) return;
+
+          e.preventDefault();
+          e.stopPropagation();
+
+          var cardId = item.getAttribute('data-card-id');
+          var status = item.getAttribute('data-status') || 'pending';
+
+          if (window.IDCardApp && typeof window.IDCardApp.closeSearchAllModal === 'function') {
+            window.IDCardApp.closeSearchAllModal();
+          }
+
+          navigateStatusNoReload(status, cardId);
+        }, true);
+      }
+
+      function initPageBindings() {
+        setupHTMXFiltersBridge();
+        setupDateTimeFilter();
+      }
+
+      function reinitAfterMainSwap() {
+        initPageBindings();
+        if (window.IDCardActions && typeof window.IDCardActions.reinitialize === 'function') {
+          window.IDCardActions.reinitialize();
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', function() {
+        setupGoBackHandlers();
+        setupNoReloadStatusTabs();
+        setupNoReloadSearchResultNav();
+        initPageBindings();
+      });
+
+      document.body.addEventListener('htmx:afterSwap', function(evt) {
+        if (!evt || !evt.target) return;
+        if (evt.target.matches && evt.target.matches('main.idcard-actions-page')) {
+          reinitAfterMainSwap();
         }
       });
-    });
+    })();
   </script>
 
   <!-- HTMX afterSwap re-initialization -->

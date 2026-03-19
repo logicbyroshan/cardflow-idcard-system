@@ -373,8 +373,10 @@ function initXlsxUpload() {
                             setTimeout(function() {
                                 if (window.IDCardApp && typeof window.IDCardApp.refreshCardTable === 'function') {
                                     window.IDCardApp.refreshCardTable();
+                                } else if (window.IDCardPage && typeof window.IDCardPage.navigateStatusNoReload === 'function') {
+                                    window.IDCardPage.navigateStatusNoReload((typeof CURRENT_STATUS !== 'undefined' && CURRENT_STATUS) ? CURRENT_STATUS : 'pending');
                                 } else {
-                                    window.location.reload();
+                                    console.warn('upload completion fallback skipped: no refresh bridge available');
                                 }
                             }, 1500);
                         }, 500);
