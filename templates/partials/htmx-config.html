@@ -84,9 +84,16 @@ Usage:
       if (targetEl && document.contains(targetEl)) {
         var finalUrl = evt.detail.xhr?.responseURL;
         if (finalUrl) {
-          window.location.href = finalUrl;
+          if (finalUrl !== window.location.href) {
+            window.location.href = finalUrl;
+          }
         } else {
-          window.location.reload();
+          // Avoid forced full reload here to keep partial flows stable.
+          // Let the user continue and surface a soft warning instead.
+          if (window.showToast) {
+            window.showToast('A full-page response was returned for a partial request. Please retry.', 'warning');
+          }
+          console.warn('HTMX full-document response without responseURL; skipped forced reload.');
         }
       }
     }

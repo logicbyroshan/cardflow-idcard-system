@@ -12,7 +12,13 @@
  */
 function initCreateWithXlsx(opts) {
   var apiUrl     = opts.apiUrl;
-  var onSuccess  = opts.onSuccess || function() { window.location.reload(); };
+  var onSuccess  = opts.onSuccess || function() {
+    if (typeof htmx !== 'undefined') {
+      htmx.trigger(document.body, 'refreshTable');
+    } else {
+      console.warn('Create with XLSX success fallback: no HTMX refresh target available');
+    }
+  };
   var csrfToken  = opts.csrfToken || '';
 
   //  Header  type map (mirrors backend _HEADER_TYPE_MAP) 
