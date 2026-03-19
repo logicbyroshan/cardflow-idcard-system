@@ -178,6 +178,7 @@
         var normalizedStatus = status || 'pending';
         var url = new URL(BASE_URL, window.location.origin);
         url.searchParams.set('status', normalizedStatus);
+        url.searchParams.set('_shell', '1');
         if (highlightId) {
           url.searchParams.set('highlight', String(highlightId));
         }

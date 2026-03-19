@@ -130,10 +130,13 @@ def client_idcard_actions(request, table_id):
     context['actions_base_url'] = reverse('client:idcard_actions', args=[table.id])
     
     # HTMX partial response:
-    # - boosted navigation (HX-Boosted) returns full template so status/tab shell
-    #   updates happen without hard reload.
-    # - normal HTMX filter/pagination keeps returning table partial.
-    if is_htmx(request) and request.headers.get('HX-Boosted') != 'true':
+    # - default HTMX requests (pagination/filter) return only table container.
+    # - explicit shell request is used by no-reload status-tab navigation.
+    force_full_shell = (
+        request.GET.get('_shell') == '1'
+        or request.headers.get('HX-Boosted', '').lower() == 'true'
+    )
+    if is_htmx(request) and not force_full_shell:
         return render(request, 'partials/idcard/table-container.html', context)
     
     return render(request, 'idcard-actions.html', context)

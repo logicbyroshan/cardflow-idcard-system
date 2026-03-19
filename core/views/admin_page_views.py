@@ -412,8 +412,14 @@ def idcard_actions(request, table_id):
     from django.urls import reverse
     context['actions_base_url'] = reverse('idcard_actions', args=[table.id])
     
-    # HTMX partial response — return only the table container
-    if is_htmx(request):
+    # HTMX partial response:
+    # - default HTMX requests (pagination/filter) return only table container.
+    # - explicit shell request is used by no-reload status-tab navigation.
+    force_full_shell = (
+        request.GET.get('_shell') == '1'
+        or request.headers.get('HX-Boosted', '').lower() == 'true'
+    )
+    if is_htmx(request) and not force_full_shell:
         return render(request, 'partials/idcard/table-container.html', context)
     
     return render(request, 'idcard-actions.html', context)
