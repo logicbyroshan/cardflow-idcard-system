@@ -111,11 +111,16 @@ function _getActiveFilters() {
 // Uses DownloadManager.startImageDownload for JSON-based response
 // ==========================================
 
-function downloadImages(cardIds) {
+function downloadImages(cardIds, renameOptions) {
     const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
     if (!tableId) {
         if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
         return;
+    }
+
+    const requestBody = Object.assign({ card_ids: cardIds, status: _getCurrentStatus() }, _getActiveFilters());
+    if (renameOptions && renameOptions.enabled === true && renameOptions.image_name_fields) {
+        requestBody.rename_options = renameOptions;
     }
 
     // Use DownloadManager if available
@@ -123,7 +128,7 @@ function downloadImages(cardIds) {
         window.DownloadManager.startImageDownload({
             name: 'Images ZIP',
             url: `/api/table/${tableId}/cards/download-images/`,
-            body: Object.assign({ card_ids: cardIds, status: _getCurrentStatus() }, _getActiveFilters()),
+            body: requestBody,
             onComplete: function() {
                 // Image export: do NOT move cards to download list
             },
@@ -226,7 +231,7 @@ function downloadImages(cardIds) {
         if (typeof showToast === 'function') showToast('Image download timed out. Try selecting fewer cards.', false);
     };
     
-    xhr.send(JSON.stringify(Object.assign({ card_ids: cardIds, status: _getCurrentStatus() }, _getActiveFilters())));
+    xhr.send(JSON.stringify(requestBody));
 }
 
 // ==========================================

@@ -12,7 +12,7 @@ Features:
 import json
 import base64
 import logging
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_POST
@@ -154,6 +154,59 @@ def _get_card_ids_from_request(request, table_id: int = None) -> Optional[List[i
             logger.warning("Export card_ids fallback query failed for table %s: %s", table_id, e)
     
     return card_ids if card_ids else None
+
+
+def _get_image_rename_options_from_request(request) -> Optional[Dict[str, Any]]:
+    """
+    Extract optional image rename settings from JSON body.
+
+    Expected shape:
+        {
+            "rename_options": {
+                "enabled": true,
+                "image_name_fields": {
+                    "PHOTO": "Student Name",
+                    "FATHER_PHOTO": "Father Name",
+                    "MOTHER_PHOTO": "Mother Name"
+                }
+            }
+        }
+    """
+    if request.content_type != 'application/json':
+        return None
+
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return None
+
+    rename_options = data.get('rename_options')
+    if not isinstance(rename_options, dict):
+        return None
+    if rename_options.get('enabled') is not True:
+        return None
+
+    raw_map = rename_options.get('image_name_fields')
+    if not isinstance(raw_map, dict):
+        return None
+
+    cleaned_map: Dict[str, str] = {}
+    for key, value in raw_map.items():
+        k = str(key or '').strip().upper()
+        v = str(value or '').strip()
+        if not k or not v:
+            continue
+        if len(k) > 60 or len(v) > 120:
+            continue
+        cleaned_map[k] = v
+
+    if not cleaned_map:
+        return None
+
+    return {
+        'enabled': True,
+        'image_name_fields': cleaned_map,
+    }
 
 
 def _check_export_permission(request, skip_status_check=False):
@@ -678,7 +731,13 @@ def api_export_images(request, table_id: int) -> JsonResponse:
         return JsonResponse({'success': False, 'level': 'warning', 'message': 'Too many image exports running. Please wait.'}, status=429)
     try:
         service = ExportService(request.user)
-        result = service.export_images(table_id, card_ids, status=_get_status_from_request(request))
+        rename_options = _get_image_rename_options_from_request(request)
+        result = service.export_images(
+            table_id,
+            card_ids,
+            status=_get_status_from_request(request),
+            rename_options=rename_options,
+        )
         
         logger.info("Export ZIP: user=%s table=%d cards=%d", request.user.id, table_id, len(card_ids))
         return JsonResponse(zip_result_to_dict(result))

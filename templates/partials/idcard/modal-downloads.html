@@ -124,6 +124,32 @@
     <p class="center-modal-subtitle">List: <strong id="downloadImgListName"></strong></p>
     <p class="center-modal-subtitle mb-4">Cards: <strong id="downloadImgCardCount">0</strong></p>
     <p class="center-modal-note mt-0">Download all images as a ZIP file.</p>
+
+    <div class="mt-3 mb-2 text-left">
+      <label class="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+        <input type="checkbox" id="downloadImgRenameToggle" class="w-4 h-4 rounded border-gray-400 accent-amber-600 cursor-pointer">
+        Rename image files by selected name fields
+      </label>
+      <p class="center-modal-note mt-1 mb-0">Optional: applies only to PHOTO, FATHER PHOTO, and MOTHER PHOTO.</p>
+    </div>
+
+    <div id="downloadImgRenamePanel" class="mt-2 p-3 rounded-lg border border-amber-200 bg-amber-50" style="display:none;">
+      <div class="grid gap-2">
+        <div>
+          <label class="center-modal-label text-left block mb-1">PHOTO filename from</label>
+          <select id="downloadImgMapPhoto" class="center-modal-select"></select>
+        </div>
+        <div>
+          <label class="center-modal-label text-left block mb-1">FATHER PHOTO filename from</label>
+          <select id="downloadImgMapFather" class="center-modal-select"></select>
+        </div>
+        <div>
+          <label class="center-modal-label text-left block mb-1">MOTHER PHOTO filename from</label>
+          <select id="downloadImgMapMother" class="center-modal-select"></select>
+        </div>
+      </div>
+    </div>
+
     <div id="downloadImgProgress" class="center-modal-progress">
       <div class="center-modal-progress-track">
         <div id="downloadImgBar" class="center-modal-progress-bar"></div>

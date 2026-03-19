@@ -34,6 +34,7 @@ from .utils import (
     get_image_fields,
     clean_filename,
     is_valid_image_path,
+    is_image_field,
 )
 
 
@@ -84,12 +85,15 @@ class ZipExporter:
         'FATHER PHOTO': 'FATHER_PHOTO',
         'MOTHER PHOTO': 'MOTHER_PHOTO',
     }
+
+    RENAMEABLE_IMAGE_KEYS = {'PHOTO', 'FATHER_PHOTO', 'MOTHER_PHOTO'}
     
     def export_images(
         self,
         table,
         cards: QuerySet,
-        status: str = ''
+        status: str = '',
+        rename_options: Optional[Dict[str, Any]] = None,
     ) -> ZipExportResult:
         """
         Export images as separate ZIP files for each image field.
@@ -126,6 +130,7 @@ class ZipExporter:
             
             zip_files = []
             total_images = 0
+            image_name_mapping = self._resolve_image_name_mapping(rename_options, table.fields or [])
             
             # Create a SINGLE ZIP with subdirectories per image field
             zip_tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.zip')
@@ -138,7 +143,10 @@ class ZipExporter:
                 with zipfile.ZipFile(zip_tmp_path, 'w', zipfile.ZIP_DEFLATED) as zf:
                     for field_info in image_fields:
                         field_name = field_info['name']
+                        field_type = field_info.get('type', '')
                         folder_name = self._get_readable_field_name(field_name)
+                        canonical_key = self._canonical_image_key(field_name, field_type)
+                        rename_source_field = image_name_mapping.get(canonical_key, '')
                         used_names = {}
                         field_count = 0
                         
@@ -160,17 +168,12 @@ class ZipExporter:
                                     img_data = img_file.read()
                                     
                                     if img_data and len(img_data) >= 100:
-                                        base = os.path.basename(img_path)
-                                        base = re.sub(r'[\x00-\x1f\x7f<>:"/\\|?*]', '_', base)
-                                        if not base or base == '.':
-                                            base = 'image.jpg'
-                                        if base in used_names:
-                                            used_names[base] += 1
-                                            name, ext = os.path.splitext(base)
-                                            download_filename = f"{name}_{used_names[base]}{ext}"
-                                        else:
-                                            used_names[base] = 0
-                                            download_filename = base
+                                        download_filename = self._build_download_filename(
+                                            img_path=img_path,
+                                            card=card,
+                                            rename_source_field=rename_source_field,
+                                            used_names=used_names,
+                                        )
                                         
                                         # Place inside subdirectory named after field
                                         arcname = f"{folder_name}/{download_filename}"
@@ -374,6 +377,104 @@ class ZipExporter:
         
         # Default: replace spaces with underscores
         return name_upper.replace(' ', '_')
+
+    def _normalize_field_key(self, value: str) -> str:
+        """Normalize field names/keys for fuzzy matching."""
+        return re.sub(r'[^A-Z0-9]', '', str(value or '').upper())
+
+    def _canonical_image_key(self, field_name: str, field_type: str = '') -> str:
+        """
+        Map table image field to one of the renameable canonical keys.
+        Only PHOTO/FATHER_PHOTO/MOTHER_PHOTO are renameable.
+        """
+        type_norm = str(field_type or '').strip().upper()
+        if type_norm in self.RENAMEABLE_IMAGE_KEYS:
+            return type_norm
+
+        raw = str(field_name or '').upper().strip()
+        normalized = self._normalize_field_key(raw)
+
+        if normalized in ('MPHOTO', 'MOTHERPHOTO') or ('MOTHER' in raw and 'PHOTO' in raw):
+            return 'MOTHER_PHOTO'
+        if normalized in ('FPHOTO', 'FATHERPHOTO') or ('FATHER' in raw and 'PHOTO' in raw):
+            return 'FATHER_PHOTO'
+        if 'PHOTO' in raw:
+            return 'PHOTO'
+        return ''
+
+    def _resolve_image_name_mapping(self, rename_options: Optional[Dict[str, Any]], table_fields: List[Dict[str, Any]]) -> Dict[str, str]:
+        """Validate and resolve requested image->name-field mapping against table fields."""
+        if not isinstance(rename_options, dict) or rename_options.get('enabled') is not True:
+            return {}
+
+        raw_map = rename_options.get('image_name_fields')
+        if not isinstance(raw_map, dict):
+            return {}
+
+        valid_text_fields: Dict[str, str] = {}
+        for field in table_fields:
+            field_name = str((field or {}).get('name', '')).strip()
+            if not field_name:
+                continue
+            if is_image_field(field or {}):
+                continue
+            valid_text_fields[self._normalize_field_key(field_name)] = field_name
+
+        mapping: Dict[str, str] = {}
+        for raw_image_key, raw_text_field_name in raw_map.items():
+            canonical_image = self._canonical_image_key(str(raw_image_key), '')
+            if canonical_image not in self.RENAMEABLE_IMAGE_KEYS:
+                continue
+            normalized_text_key = self._normalize_field_key(str(raw_text_field_name))
+            resolved_text_field = valid_text_fields.get(normalized_text_key)
+            if resolved_text_field:
+                mapping[canonical_image] = resolved_text_field
+
+        return mapping
+
+    def _get_card_field_value(self, card: Any, field_name: str) -> str:
+        """Read a text field from card.field_data using exact then normalized matching."""
+        field_data = getattr(card, 'field_data', None) or {}
+        if not isinstance(field_data, dict):
+            return ''
+
+        direct_value = field_data.get(field_name)
+        if direct_value not in (None, ''):
+            return str(direct_value).strip()
+
+        target_key = self._normalize_field_key(field_name)
+        for key, value in field_data.items():
+            if self._normalize_field_key(str(key)) == target_key and value not in (None, ''):
+                return str(value).strip()
+        return ''
+
+    def _build_download_filename(self, img_path: str, card: Any, rename_source_field: str, used_names: Dict[str, int]) -> str:
+        """Build collision-safe filename, optionally renamed from selected card field."""
+        base_name = os.path.basename(img_path)
+        _, ext = os.path.splitext(base_name)
+        if not ext:
+            ext = '.jpg'
+
+        target_base = ''
+        if rename_source_field:
+            name_value = self._get_card_field_value(card, rename_source_field)
+            if name_value:
+                target_base = f"{clean_filename(name_value)}{ext.lower()}"
+
+        if not target_base:
+            target_base = base_name
+
+        target_base = re.sub(r'[\x00-\x1f\x7f<>:"/\\|?*]', '_', target_base)
+        if not target_base or target_base == '.':
+            target_base = f"image{ext.lower()}"
+
+        if target_base in used_names:
+            used_names[target_base] += 1
+            name, original_ext = os.path.splitext(target_base)
+            return f"{name}_{used_names[target_base]}{original_ext}"
+
+        used_names[target_base] = 0
+        return target_base
 
 
 # =============================================================================

@@ -35,6 +35,125 @@ let downloadPdfModal = null;
 let downloadXlsxModal = null;
 let downloadImgModal = null;
 
+function _dlNormalizeFieldKey(value) {
+    return String(value || '')
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, '');
+}
+
+function _dlLooksImageField(field) {
+    const type = String((field && field.type) || '').toLowerCase();
+    const name = String((field && field.name) || '').toLowerCase();
+    if (type === 'image' || type === 'photo' || type === 'file' || type === 'signature' || type === 'father_photo' || type === 'mother_photo' || type === 'qr_code' || type === 'barcode') {
+        return true;
+    }
+    return name.indexOf('photo') !== -1 ||
+           name.indexOf('image') !== -1 ||
+           name.indexOf('picture') !== -1 ||
+           name.indexOf('signature') !== -1 ||
+           name.indexOf('barcode') !== -1 ||
+           name.indexOf('qr') !== -1;
+}
+
+function _dlGetTextFields() {
+    const fields = Array.isArray(window.TABLE_FIELDS) ? window.TABLE_FIELDS : [];
+    return fields.filter(function(field) {
+        const name = String((field && field.name) || '').trim();
+        if (!name) return false;
+        return !_dlLooksImageField(field);
+    });
+}
+
+function _dlFindFieldNameByHint(textFields, hints) {
+    const keys = (hints || []).map(_dlNormalizeFieldKey);
+    let i;
+    for (i = 0; i < textFields.length; i += 1) {
+        const candidate = textFields[i];
+        const normalized = _dlNormalizeFieldKey(candidate.name);
+        if (!normalized) continue;
+        if (keys.some(function(key) { return normalized.indexOf(key) !== -1; })) {
+            return candidate.name;
+        }
+    }
+    return '';
+}
+
+function _dlPopulateRenameSelect(selectEl, textFields, preferredName) {
+    if (!selectEl) return;
+    selectEl.innerHTML = '';
+    const noneOpt = document.createElement('option');
+    noneOpt.value = '';
+    noneOpt.textContent = 'Do not rename';
+    selectEl.appendChild(noneOpt);
+
+    textFields.forEach(function(field) {
+        const option = document.createElement('option');
+        option.value = field.name;
+        option.textContent = field.name;
+        selectEl.appendChild(option);
+    });
+
+    if (preferredName && textFields.some(function(field) { return field.name === preferredName; })) {
+        selectEl.value = preferredName;
+    } else {
+        selectEl.value = '';
+    }
+}
+
+function _dlInitializeImageRenamePanel() {
+    const toggleEl = document.getElementById('downloadImgRenameToggle');
+    const panelEl = document.getElementById('downloadImgRenamePanel');
+    const photoSelect = document.getElementById('downloadImgMapPhoto');
+    const fatherSelect = document.getElementById('downloadImgMapFather');
+    const motherSelect = document.getElementById('downloadImgMapMother');
+
+    if (!toggleEl || !panelEl || !photoSelect || !fatherSelect || !motherSelect) return;
+
+    const textFields = _dlGetTextFields();
+    const nameField = _dlFindFieldNameByHint(textFields, ['studentname', 'name', 'empname']);
+    const fatherNameField = _dlFindFieldNameByHint(textFields, ['fathername', 'fname', 'father']);
+    const motherNameField = _dlFindFieldNameByHint(textFields, ['mothername', 'mname', 'mother']);
+
+    _dlPopulateRenameSelect(photoSelect, textFields, nameField);
+    _dlPopulateRenameSelect(fatherSelect, textFields, fatherNameField);
+    _dlPopulateRenameSelect(motherSelect, textFields, motherNameField);
+
+    panelEl.style.display = toggleEl.checked ? 'block' : 'none';
+}
+
+function _dlResetImageRenameControls() {
+    const toggleEl = document.getElementById('downloadImgRenameToggle');
+    const panelEl = document.getElementById('downloadImgRenamePanel');
+    if (toggleEl) toggleEl.checked = false;
+    if (panelEl) panelEl.style.display = 'none';
+    _dlInitializeImageRenamePanel();
+}
+
+function _dlGetImageRenameOptionsFromModal() {
+    const toggleEl = document.getElementById('downloadImgRenameToggle');
+    const photoSelect = document.getElementById('downloadImgMapPhoto');
+    const fatherSelect = document.getElementById('downloadImgMapFather');
+    const motherSelect = document.getElementById('downloadImgMapMother');
+
+    if (!toggleEl || !toggleEl.checked) return null;
+
+    const imageNameFields = {};
+    const photoField = photoSelect ? String(photoSelect.value || '').trim() : '';
+    const fatherField = fatherSelect ? String(fatherSelect.value || '').trim() : '';
+    const motherField = motherSelect ? String(motherSelect.value || '').trim() : '';
+
+    if (photoField) imageNameFields.PHOTO = photoField;
+    if (fatherField) imageNameFields.FATHER_PHOTO = fatherField;
+    if (motherField) imageNameFields.MOTHER_PHOTO = motherField;
+
+    if (!Object.keys(imageNameFields).length) return null;
+
+    return {
+        enabled: true,
+        image_name_fields: imageNameFields
+    };
+}
+
 // ==========================================
 // REPRINT PICKER MODAL (DOWNLOAD LIST)
 // ==========================================
@@ -1088,6 +1207,8 @@ function openDownloadImgModal(cardIds) {
     // Show "All" if no specific cards selected, otherwise show the count
     if (cardCountEl) cardCountEl.textContent = cardIds.length > 0 ? cardIds.length : 'All';
 
+    _dlResetImageRenameControls();
+
     downloadImgModal.style.display = 'flex';
 }
 
@@ -1122,9 +1243,17 @@ function initDownloadImagesHandlers() {
     // Modal button handlers
     document.getElementById('downloadImgCancel')?.addEventListener('click', closeDownloadImgModal);
     document.getElementById('downloadImgClose')?.addEventListener('click', closeDownloadImgModal);
+    document.getElementById('downloadImgRenameToggle')?.addEventListener('change', function() {
+        const panelEl = document.getElementById('downloadImgRenamePanel');
+        if (!panelEl) return;
+        panelEl.style.display = this.checked ? 'block' : 'none';
+        if (this.checked) _dlInitializeImageRenamePanel();
+    });
     document.getElementById('downloadImgConfirm')?.addEventListener('click', function() {
+        const selectedCardIds = Array.isArray(pendingDownloadCardIds) ? pendingDownloadCardIds.slice() : [];
+        const renameOptions = _dlGetImageRenameOptionsFromModal();
         closeDownloadImgModal();
-        window.IDCardApp.downloadImages(pendingDownloadCardIds);
+        window.IDCardApp.downloadImages(selectedCardIds, renameOptions);
     });
 }
 

@@ -317,7 +317,8 @@ class ExportService:
         self,
         table_id: int,
         card_ids: Optional[List[int]] = None,
-        status: str = ''
+        status: str = '',
+        rename_options: Optional[Dict[str, Any]] = None,
     ) -> ZipExportResult:
         """
         Export images as ZIP files (one per image field).
@@ -338,7 +339,12 @@ class ExportService:
                 message=context.error_message or 'Permission denied'
             )
         
-        return self._zip_exporter.export_images(context.table, context.cards, status=status)
+        return self._zip_exporter.export_images(
+            context.table,
+            context.cards,
+            status=status,
+            rename_options=rename_options,
+        )
     
     # =========================================================================
     # COMBINED EXPORT (for download list page)
