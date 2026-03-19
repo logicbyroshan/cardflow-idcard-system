@@ -10,6 +10,7 @@ ARCHITECTURE RULES:
 """
 import json
 import logging
+from urllib.parse import urlparse
 
 from django.shortcuts import get_object_or_404, redirect, render
 from django.http import JsonResponse
@@ -71,6 +72,36 @@ def _build_ordered_fields(card, table):
         if v.startswith('PENDING:'):
             return True
         return False
+
+    def _normalize_image_value(value):
+        """Normalize image path values to media-relative form when possible."""
+        raw = str(value or '').strip()
+        if not raw:
+            return ''
+        if raw == 'NOT_FOUND' or raw.startswith('PENDING:'):
+            return raw
+
+        normalized = raw.replace('\\', '/').strip()
+
+        # URL input: use the path section only.
+        if normalized.lower().startswith('http://') or normalized.lower().startswith('https://'):
+            try:
+                normalized = (urlparse(normalized).path or normalized).strip()
+            except Exception:
+                pass
+
+        # Handle absolute paths by extracting the part after /media/.
+        lower = normalized.lower()
+        marker = '/media/'
+        idx = lower.find(marker)
+        if idx >= 0:
+            normalized = normalized[idx + len(marker):]
+
+        normalized = normalized.lstrip('/').strip()
+        if normalized.lower().startswith('media/'):
+            normalized = normalized[6:]
+
+        return normalized
 
     def _norm_key(value):
         return ''.join(ch for ch in str(value or '').upper() if ch.isalnum())
@@ -158,6 +189,9 @@ def _build_ordered_fields(card, table):
                     fval = card.photo.name or card.photo.url
                 except Exception:
                     pass
+
+        if _is_image_field(ftype, fname):
+            fval = _normalize_image_value(fval)
 
         ordered_fields.append({'name': fname, 'type': ftype, 'value': fval})
     return ordered_fields

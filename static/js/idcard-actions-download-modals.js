@@ -302,6 +302,15 @@ function initReprintPickerHandlers() {
         }
 
         value = value.replace(/\\/g, '/');
+
+        // If path contains /media/ anywhere (including absolute FS paths), keep only the media-relative part.
+        var lower = value.toLowerCase();
+        var marker = '/media/';
+        var markerIndex = lower.indexOf(marker);
+        if (markerIndex !== -1) {
+            value = value.slice(markerIndex + marker.length);
+        }
+
         value = value.replace(/^\/+/, '');
         if (value.toLowerCase().indexOf('media/') === 0) {
             value = value.slice(6);
