@@ -20,6 +20,38 @@ var escapeHtml = window.escapeHtml || function(s) {
   return d.innerHTML;
 };
 
+function normalizeMediaPath(rawPath) {
+  var value = String(rawPath || '').trim();
+  if (!value) return '';
+  if (value === 'NOT_FOUND' || value.indexOf('PENDING:') === 0) return value;
+
+  if (/^https?:\/\//i.test(value)) {
+    try {
+      var parsed = new URL(value);
+      value = parsed.pathname || value;
+    } catch (_e) {}
+  }
+
+  value = value.replace(/\\/g, '/');
+  value = value.replace(/^\/+/, '');
+  if (value.toLowerCase().indexOf('media/') === 0) {
+    value = value.slice(6);
+  }
+  return value;
+}
+
+function toMediaUrl(rawPath) {
+  var normalized = normalizeMediaPath(rawPath);
+  if (!normalized || normalized === 'NOT_FOUND' || normalized.indexOf('PENDING:') === 0) return '';
+  return '/media/' + normalized;
+}
+
+function toThumbnailPath(rawPath) {
+  var normalized = normalizeMediaPath(rawPath);
+  if (!normalized || normalized === 'NOT_FOUND' || normalized.indexOf('PENDING:') === 0) return '';
+  return normalized.replace(/\/([^\/]+)$/, '/thumbnails/$1');
+}
+
 function isImageField(type, name) {
   if (!type && !name) return false;
   var t = (type || '').toLowerCase();
@@ -33,9 +65,11 @@ function isImageField(type, name) {
 function renderImageCell(f) {
   var html = '<td class="w-[28px] px-[1px] py-1 text-center align-middle image-field image-cell" data-field="' + escapeHtml(f.name) + '" data-field-name="' + escapeHtml(f.name) + '" data-field-type="image" data-original-value="' + escapeHtml(f.value || '') + '">';
   html += '<div class="image-with-edit">';
-  if (f.value && f.value !== '' && f.value !== 'NOT_FOUND' && !f.value.startsWith('PENDING:')) {
-    var thumbPath = f.value.replace(/\/([^\/]+)$/, '/thumbnails/$1');
-    html += '<img src="/media/' + thumbPath + '" alt="' + escapeHtml(f.name) + '" class="table-image" loading="lazy" onerror="this.onerror=null; this.src=\'/media/' + f.value + '\'">';
+  var mainUrl = toMediaUrl(f.value || '');
+  var thumbUrl = toMediaUrl(toThumbnailPath(f.value || ''));
+  if (mainUrl) {
+    var firstUrl = thumbUrl || mainUrl;
+    html += '<img src="' + escapeHtml(firstUrl) + '" alt="' + escapeHtml(f.name) + '" class="table-image" loading="lazy" onerror="this.onerror=null; this.src=\'' + escapeHtml(mainUrl) + '\'">';
   } else if (f.value && f.value.startsWith('PENDING:')) {
     html += '<div class="no-image pending-placeholder" title="Waiting for upload"><i class="fa-solid fa-clock"></i></div>';
   } else {

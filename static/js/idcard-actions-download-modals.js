@@ -102,6 +102,39 @@ function initReprintPickerHandlers() {
         return div.innerHTML;
     }
 
+    function normalizeMediaPath(rawPath) {
+        var value = String(rawPath || '').trim();
+        if (!value) return '';
+        if (value === 'NOT_FOUND' || value.indexOf('PENDING:') === 0) return value;
+
+        // Accept full URL, absolute /media path, or plain relative media path.
+        if (/^https?:\/\//i.test(value)) {
+            try {
+                var parsed = new URL(value);
+                value = parsed.pathname || value;
+            } catch (_e) {}
+        }
+
+        value = value.replace(/\\/g, '/');
+        value = value.replace(/^\/+/, '');
+        if (value.toLowerCase().indexOf('media/') === 0) {
+            value = value.slice(6);
+        }
+        return value;
+    }
+
+    function toMediaUrl(rawPath) {
+        var normalized = normalizeMediaPath(rawPath);
+        if (!normalized || normalized === 'NOT_FOUND' || normalized.indexOf('PENDING:') === 0) return '';
+        return '/media/' + normalized;
+    }
+
+    function toThumbnailPath(rawPath) {
+        var normalized = normalizeMediaPath(rawPath);
+        if (!normalized || normalized === 'NOT_FOUND' || normalized.indexOf('PENDING:') === 0) return '';
+        return normalized.replace(/\/([^\/]+)$/, '/thumbnails/$1');
+    }
+
     function normalizeFieldKey(value) {
         return String(value || '')
             .toUpperCase()
@@ -459,11 +492,12 @@ function initReprintPickerHandlers() {
 
     function buildImageCell(fieldName, fieldLabel, value, isEditing, isMain) {
         var val = String(value || '');
-        var canShow = !!(val && val !== 'NOT_FOUND' && val.indexOf('PENDING:') !== 0);
+        var imageUrl = toMediaUrl(val);
+        var canShow = !!imageUrl;
         var cls = isMain ? 'reprint-preview-photo' : 'reprint-preview-extra-image';
         var html = '<div class="' + cls + '" data-image-field="' + esc(fieldName) + '">';
         if (canShow) {
-            html += '<img src="/media/' + esc(val) + '" alt="' + esc(fieldLabel || fieldName) + '" loading="lazy">';
+            html += '<img src="' + esc(imageUrl) + '" alt="' + esc(fieldLabel || fieldName) + '" loading="lazy">';
         } else {
             html += '<div class="reprint-preview-photo-placeholder"><i class="fa-solid fa-image"></i></div>';
         }
@@ -736,9 +770,11 @@ function initReprintPickerHandlers() {
                 var rawVal = getFieldByName(item, field.name);
                 if (isImageFieldLocal(field.type, field.name)) {
                     var value = String(rawVal || '');
-                    if (value && value !== 'NOT_FOUND' && value.indexOf('PENDING:') !== 0) {
-                        var thumbPath = value.replace(/\/([^\/]+)$/, '/thumbnails/$1');
-                        html += '<td class="center-cell photo-cell image-cell"><img class="table-image" src="/media/' + esc(thumbPath) + '" alt="' + esc(field.name) + '" loading="lazy" onerror="this.onerror=null;this.src=\'/media/' + esc(value) + '\'" /></td>';
+                    var mainUrl = toMediaUrl(value);
+                    var thumbUrl = toMediaUrl(toThumbnailPath(value));
+                    if (mainUrl) {
+                        var firstUrl = thumbUrl || mainUrl;
+                        html += '<td class="center-cell photo-cell image-cell"><img class="table-image" src="' + esc(firstUrl) + '" alt="' + esc(field.name) + '" loading="lazy" onerror="this.onerror=null;this.src=\'' + esc(mainUrl) + '\'" /></td>';
                     } else {
                         html += '<td class="center-cell photo-cell image-cell">-</td>';
                     }
