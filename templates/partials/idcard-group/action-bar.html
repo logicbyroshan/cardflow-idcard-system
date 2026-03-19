@@ -22,10 +22,10 @@
     </div>
 
     <!-- Right Section - Action Buttons -->
-    {% if is_super_admin or perm_idcard_bulk_upload or perm_print_list or perm_idcard_reprint_list %}
+    {% if is_super_admin or perm_idcard_setting_add or perm_print_list or perm_idcard_reprint_list %}
     <div class="action-bar-right">
       <div class="actions">
-        {% if is_super_admin or perm_idcard_bulk_upload %}
+        {% if is_super_admin or perm_idcard_setting_add %}
         <div class="btn-group">
           <button class="btn btn-md btn-success" id="createFromXlsxBtn" title="Create table directly from an XLSX file"><i class="fa-solid fa-file-excel"></i> Create with XLSX</button>
         </div>
