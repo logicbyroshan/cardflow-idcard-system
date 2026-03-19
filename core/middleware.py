@@ -358,8 +358,12 @@ class PermissionValidationMiddleware:
         if validation_result is not None:
             return validation_result
         
-        # Mark successful validation timestamp in session
-        request.session['_pvm_last_check'] = time.time()
+        # Mark successful validation timestamp in session only when stale.
+        # This avoids forcing a session write on every request.
+        now_ts = time.time()
+        prev_ts = float(request.session.get('_pvm_last_check', 0) or 0)
+        if (now_ts - prev_ts) >= max(float(self.REVALIDATION_INTERVAL), 1.0):
+            request.session['_pvm_last_check'] = now_ts
         
         # Annotate request with role-based scope (merged from RoleScopingMiddleware)
         self._annotate_request_scope(request)
@@ -839,6 +843,7 @@ class SessionIdleTimeoutMiddleware:
     """
 
     SKIP_PREFIXES = ('/static/', '/media/', '/favicon.ico')
+    ACTIVITY_WRITE_INTERVAL = 60  # seconds
 
     def __init__(self, get_response):
         self.get_response = get_response
@@ -890,11 +895,15 @@ class SessionIdleTimeoutMiddleware:
                 return self._force_logout(request, reason='absolute_max_age')
 
         # Stamp session on first authenticated use (for absolute max-age tracking)
-        if '_session_created' not in request.session:
+        # and throttle subsequent writes to once per ACTIVITY_WRITE_INTERVAL.
+        session_created = request.session.get('_session_created')
+        if session_created is None:
             request.session['_session_created'] = now
-
-        # Update last-activity timestamp (for idle timeout tracking)
-        request.session['_last_activity'] = now
+            request.session['_last_activity'] = now
+        else:
+            last_activity = request.session.get('_last_activity')
+            if last_activity is None or (now - last_activity) >= self.ACTIVITY_WRITE_INTERVAL:
+                request.session['_last_activity'] = now
 
         return self.get_response(request)
 

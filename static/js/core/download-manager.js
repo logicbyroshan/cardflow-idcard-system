@@ -549,7 +549,30 @@
             if (dl._indeterminateTimer) { clearInterval(dl._indeterminateTimer); dl._indeterminateTimer = null; }
             if (dl.status !== 'downloading') return; // was cancelled
 
-            if (xhr.status === 200) {
+            if (xhr.status === 200 || xhr.status === 202) {
+                var contentType = (xhr.getResponseHeader('Content-Type') || '').toLowerCase();
+                if (contentType.indexOf('application/json') !== -1) {
+                    var readerJson = new FileReader();
+                    readerJson.onload = function () {
+                        try {
+                            var data = JSON.parse(readerJson.result || '{}');
+                            if (data && data.success && data.async && data.task_id) {
+                                _updateBlockingOverlay(dl.id, 5, 'Queued for background generation...', null);
+                                _pollAsyncExportTask(data.task_id, dl, opts);
+                                return;
+                            }
+                            var jErr = (data && data.message) ? data.message : 'Download failed';
+                            _finishToast(dl, 'error', jErr);
+                            if (typeof opts.onError === 'function') opts.onError(jErr);
+                        } catch (_e) {
+                            _finishToast(dl, 'error', 'Failed to parse server response');
+                            if (typeof opts.onError === 'function') opts.onError('Invalid server response');
+                        }
+                    };
+                    readerJson.readAsText(xhr.response);
+                    return;
+                }
+
                 // Success  trigger download
                 var blob = xhr.response;
                 var filename = opts.filename || _extractFilename(xhr, opts.fallbackExt || 'zip');
@@ -753,8 +776,20 @@
             if (xhr.status === 200) {
                 try {
                     var response = JSON.parse(xhr.responseText);
-                    if (response.success && response.zip_files && response.zip_files.length > 0) {
-                        var totalZips = response.zip_files.length;
+                    var fileList = [];
+                    if (Array.isArray(response.files) && response.files.length > 0) {
+                        fileList = response.files;
+                    } else if (Array.isArray(response.zip_files) && response.zip_files.length > 0) {
+                        fileList = response.zip_files;
+                    } else if (response.download_url) {
+                        fileList = [{
+                            download_url: response.download_url,
+                            filename: response.filename || 'images.zip'
+                        }];
+                    }
+
+                    if (response.success && fileList.length > 0) {
+                        var totalZips = fileList.length;
                         var downloadIndex = 0;
 
                         function downloadNextZip() {
@@ -768,17 +803,22 @@
                                 return;
                             }
 
-                            var zipInfo = response.zip_files[downloadIndex];
+                            var zipInfo = fileList[downloadIndex];
                             _updateToast(dl, downloadIndex, totalZips);
 
                             try {
-                                // CSP-safe base64  Blob (no fetch('data:') needed)
-                                var bin = atob(zipInfo.data);
-                                var bytes = new Uint8Array(bin.length);
-                                for (var j = 0; j < bin.length; j++) bytes[j] = bin.charCodeAt(j);
-                                var blob = new Blob([bytes], { type: 'application/zip' });
-
-                                _triggerBlobDownload(blob, zipInfo.filename);
+                                if (zipInfo.download_url) {
+                                    _triggerUrlDownload(zipInfo.download_url, zipInfo.filename || 'images.zip');
+                                } else if (zipInfo.data) {
+                                    // Backward compatibility for older base64 payloads.
+                                    var bin = atob(zipInfo.data);
+                                    var bytes = new Uint8Array(bin.length);
+                                    for (var j = 0; j < bin.length; j++) bytes[j] = bin.charCodeAt(j);
+                                    var blob = new Blob([bytes], { type: 'application/zip' });
+                                    _triggerBlobDownload(blob, zipInfo.filename || 'images.zip');
+                                } else {
+                                    throw new Error('Missing image file payload');
+                                }
                                 downloadIndex++;
                                 var pctEl = dl.toastEl ? dl.toastEl.querySelector('.dl-toast-pct') : null;
                                 if (pctEl) pctEl.textContent = downloadIndex + '/' + totalZips;
@@ -833,6 +873,74 @@
             window.URL.revokeObjectURL(url);
             if (a.parentNode) a.parentNode.removeChild(a);
         }, 100);
+    }
+
+    function _triggerUrlDownload(url, filename) {
+        if (!url) return;
+        var a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        if (filename) a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function () {
+            if (a.parentNode) a.parentNode.removeChild(a);
+        }, 100);
+    }
+
+    function _pollAsyncExportTask(taskId, dl, opts) {
+        var pollCount = 0;
+        var maxPolls = 300; // 10 minutes at 2 second interval
+
+        function poll() {
+            if (dl.status !== 'downloading') return;
+
+            pollCount++;
+            if (pollCount > maxPolls) {
+                _finishToast(dl, 'error', 'Export timed out. Please try again.');
+                if (typeof opts.onError === 'function') opts.onError('Timeout');
+                return;
+            }
+
+            fetch('/api/export/status/' + taskId + '/', {
+                headers: {
+                    'X-CSRFToken': (typeof getCSRFToken === 'function') ? getCSRFToken() : ''
+                }
+            })
+                .then(function (resp) { return resp.json(); })
+                .then(function (data) {
+                    if (!data.success) {
+                        _finishToast(dl, 'error', data.message || 'Export status failed');
+                        if (typeof opts.onError === 'function') opts.onError(data.message || 'Export status failed');
+                        return;
+                    }
+
+                    if (data.state === 'completed') {
+                        _triggerUrlDownload(data.download_url, data.filename || (opts.fallbackExt ? ('export.' + opts.fallbackExt) : 'export'));
+                        _finishToast(dl, 'complete', opts.completeMessage || 'Downloaded successfully');
+                        if (typeof opts.onComplete === 'function') {
+                            try { opts.onComplete(null, data.filename || 'export'); } catch (e) { console.error(e); }
+                        }
+                        return;
+                    }
+
+                    if (data.state === 'failed') {
+                        _finishToast(dl, 'error', data.message || 'Export failed');
+                        if (typeof opts.onError === 'function') opts.onError(data.message || 'Export failed');
+                        return;
+                    }
+
+                    var progress = Math.max(5, Math.min(95, Number(data.progress || 0)));
+                    _updateToast(dl, progress, 100);
+                    _updateBlockingOverlay(dl.id, progress, data.message || ('Generating ' + dl.name + '...'), null);
+                    setTimeout(poll, 2000);
+                })
+                .catch(function () {
+                    setTimeout(poll, 4000);
+                });
+        }
+
+        setTimeout(poll, 1000);
     }
 
     function _extractFilename(xhr, fallbackExt) {

@@ -256,7 +256,8 @@ SESSION_COOKIE_HTTPONLY = True          # JS cannot read session cookie
 SESSION_COOKIE_SAMESITE = 'Lax'        # CSRF mitigation
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 7   # 7-day sessions — PWA auto-logout
 CSRF_COOKIE_SAMESITE = 'Lax'           # CSRF cookie SameSite
-SESSION_SAVE_EVERY_REQUEST = True       # Extend session on every page load
+# Keep sessions write-light: middleware updates only selected keys when needed.
+SESSION_SAVE_EVERY_REQUEST = False
 # Note: CSRF_COOKIE_HTTPONLY left False (Django default) because JS reads
 # the csrftoken cookie via getCSRFToken() for AJAX requests.
 

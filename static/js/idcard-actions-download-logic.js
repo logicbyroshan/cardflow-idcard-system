@@ -152,10 +152,19 @@ function downloadImages(cardIds, renameOptions) {
         if (xhr.status === 200) {
             try {
                 const response = JSON.parse(xhr.responseText);
-                
-                if (response.success && response.zip_files && response.zip_files.length > 0) {
+
+                const fileList = (Array.isArray(response.files) && response.files.length > 0)
+                    ? response.files
+                    : (Array.isArray(response.zip_files) && response.zip_files.length > 0)
+                        ? response.zip_files
+                        : (response.download_url ? [{
+                            download_url: response.download_url,
+                            filename: response.filename || 'images.zip'
+                        }] : []);
+
+                if (response.success && fileList.length > 0) {
                     let downloadIndex = 0;
-                    const totalZips = response.zip_files.length;
+                    const totalZips = fileList.length;
                     
                     function downloadNextZip() {
                         if (downloadIndex >= totalZips) {
@@ -165,26 +174,35 @@ function downloadImages(cardIds, renameOptions) {
                             return;
                         }
                         
-                        const zipInfo = response.zip_files[downloadIndex];
+                        const zipInfo = fileList[downloadIndex];
 
                         try {
-                            // CSP-safe base64  Blob (no fetch('data:') needed)
-                            var bin = atob(zipInfo.data);
-                            var bytes = new Uint8Array(bin.length);
-                            for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-                            var blob = new Blob([bytes], { type: 'application/zip' });
-
-                            const url = window.URL.createObjectURL(blob);
                             const a = document.createElement('a');
                             a.style.display = 'none';
-                            a.href = url;
-                            a.download = zipInfo.filename;
 
-                            document.body.appendChild(a);
-                            a.click();
+                            if (zipInfo.download_url) {
+                                a.href = zipInfo.download_url;
+                                a.download = zipInfo.filename || 'images.zip';
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                            } else if (zipInfo.data) {
+                                // Backward compatibility for older base64 payloads.
+                                var bin = atob(zipInfo.data);
+                                var bytes = new Uint8Array(bin.length);
+                                for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+                                var blob = new Blob([bytes], { type: 'application/zip' });
 
-                            window.URL.revokeObjectURL(url);
-                            document.body.removeChild(a);
+                                const url = window.URL.createObjectURL(blob);
+                                a.href = url;
+                                a.download = zipInfo.filename || 'images.zip';
+                                document.body.appendChild(a);
+                                a.click();
+                                window.URL.revokeObjectURL(url);
+                                document.body.removeChild(a);
+                            } else {
+                                throw new Error('Missing image file payload');
+                            }
 
                             downloadIndex++;
 
