@@ -796,7 +796,15 @@ def card_list(request, table_id, status):
     if status_perm and not PermissionService.has(user, status_perm):
         return redirect('mobile_app:home')
 
-    cards_qs = IDCard.objects.filter(table=table, status=status).order_by('-updated_at')
+    # Keep initial server-rendered ordering aligned with api_cards()/ClientCardService.get_cards.
+    if status == 'download':
+        cards_qs = IDCard.objects.filter(table=table, status=status).order_by('-downloaded_at', '-id')
+    elif status == 'pool':
+        cards_qs = IDCard.objects.filter(table=table, status=status).order_by('-deleted_at', '-id')
+    elif status in ('verified', 'approved'):
+        cards_qs = IDCard.objects.filter(table=table, status=status).order_by('-status_changed_at', 'id')
+    else:
+        cards_qs = IDCard.objects.filter(table=table, status=status).order_by('-created_at', 'id')
     total_count = cards_qs.count()
     _card_batch_raw = list(cards_qs[:51])
     _has_more_raw = len(_card_batch_raw) > 50
@@ -997,6 +1005,35 @@ def card_list(request, table_id, status):
         if not all_sections:
             all_sections = sorted(_fallback_sections)
 
+    # Build class -> sections mapping from full table data.
+    class_to_sections = {}
+    for _card in options_qs.only('field_data').iterator(chunk_size=500):
+        _fd = _card.field_data or {}
+        _cls = ''
+        _sec = ''
+
+        if class_field_name:
+            _cls = str(_fd.get(class_field_name, '') or '').strip()
+        if section_field_name:
+            _sec = str(_fd.get(section_field_name, '') or '').strip()
+
+        if not _cls:
+            _cls = str(_fd.get('CLASS') or _fd.get('class') or _fd.get('DESIGNATION') or '').strip()
+        if not _sec:
+            _sec = str(_fd.get('SECTION') or _fd.get('section') or '').strip()
+
+        if not _cls:
+            continue
+        if _cls not in class_to_sections:
+            class_to_sections[_cls] = set()
+        if _sec:
+            class_to_sections[_cls].add(_sec)
+
+    class_to_sections = {
+        _cls: sorted(list(_sections))
+        for _cls, _sections in class_to_sections.items()
+    }
+
     # Respect explicit client_staff restrictions in filter options.
     if allowed_classes:
         _allowed_set = set(allowed_classes)
@@ -1004,6 +1041,20 @@ def card_list(request, table_id, status):
     if allowed_sections:
         _allowed_set = set(allowed_sections)
         all_sections = [s for s in all_sections if s in _allowed_set]
+
+    if allowed_classes:
+        _allowed_cls_set = set(allowed_classes)
+        class_to_sections = {
+            _cls: _sections
+            for _cls, _sections in class_to_sections.items()
+            if _cls in _allowed_cls_set
+        }
+    if allowed_sections:
+        _allowed_sec_set = set(allowed_sections)
+        class_to_sections = {
+            _cls: [s for s in _sections if s in _allowed_sec_set]
+            for _cls, _sections in class_to_sections.items()
+        }
     # Count badges — single aggregate query replaces 4 separate COUNTs
     tab_counts = {'pending': 0, 'verified': 0, 'approved': 0, 'download': 0}
     for _row in IDCard.objects.filter(table=table).values('status').annotate(n=Count('id')):
@@ -1024,6 +1075,7 @@ def card_list(request, table_id, status):
         'list_type': status,
         'classes': all_classes,
         'sections': all_sections,
+        'class_to_sections': class_to_sections,
         'table_fields': json.dumps(table_fields, default=str),
         # View-only mode: clients on approved/download lists can only view, not act
         'view_only_list': status in ('approved', 'download') and not PermissionService.is_any_admin(user),

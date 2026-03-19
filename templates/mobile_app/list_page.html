@@ -33,6 +33,9 @@
 </div>
 
 {% csrf_token %}
+{{ classes|json_script:"mobile-classes-data" }}
+{{ sections|json_script:"mobile-sections-data" }}
+{{ class_to_sections|json_script:"mobile-class-sections-data" }}
 <script>
 function getCookie(name) {
     let v = null;
@@ -49,6 +52,9 @@ const ALL_STUDENT_IDS = [{% for s in students %}{{ s.id }}{% if not forloop.last
 const TOTAL_COUNT = {{ total_count }};
 const HAS_MORE = {{ has_more|yesno:"true,false" }};
 const STUDENTS_DATA = JSON.parse('{{ students_json|escapejs }}');
+const ALL_CLASSES = JSON.parse(document.getElementById('mobile-classes-data')?.textContent || '[]');
+const ALL_SECTIONS = JSON.parse(document.getElementById('mobile-sections-data')?.textContent || '[]');
+const ALL_CLASS_TO_SECTIONS = JSON.parse(document.getElementById('mobile-class-sections-data')?.textContent || '{}');
 const IS_VIEW_ONLY = {{ view_only_list|yesno:"true,false" }};
 const TABLE_FIELDS = JSON.parse('{{ table_fields|escapejs }}');
 const TAB_COUNTS = {

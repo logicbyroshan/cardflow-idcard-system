@@ -46,7 +46,11 @@ function listApp() {
         studentsData: typeof STUDENTS_DATA !== 'undefined' ? STUDENTS_DATA : [],
         hasMore: typeof HAS_MORE !== 'undefined' ? HAS_MORE : false,
         loadMoreOffset: typeof STUDENTS_DATA !== 'undefined' ? STUDENTS_DATA.length : 0,
+        loadMorePage: 1,
         visibleCount: typeof STUDENTS_DATA !== 'undefined' ? STUDENTS_DATA.length : 0,
+        allClassesRaw: (typeof ALL_CLASSES !== 'undefined' && Array.isArray(ALL_CLASSES)) ? ALL_CLASSES : [],
+        allSectionsRaw: (typeof ALL_SECTIONS !== 'undefined' && Array.isArray(ALL_SECTIONS)) ? ALL_SECTIONS : [],
+        allClassToSectionsRaw: (typeof ALL_CLASS_TO_SECTIONS !== 'undefined' && ALL_CLASS_TO_SECTIONS && typeof ALL_CLASS_TO_SECTIONS === 'object') ? ALL_CLASS_TO_SECTIONS : {},
         tableFields: Array.isArray(TABLE_FIELDS) ? TABLE_FIELDS : [],
         tabCounts: TAB_COUNTS || { pending: 0, verified: 0, approved: 0, download: 0 },
         form: {
@@ -213,6 +217,59 @@ function listApp() {
             return canonical;
         },
         rebuildClassSectionOptions() {
+            if (this.allClassesRaw.length || this.allSectionsRaw.length || Object.keys(this.allClassToSectionsRaw || {}).length) {
+                const classSet = new Set();
+                const sectionSet = new Set();
+                const classToSections = {};
+
+                (this.allClassesRaw || []).forEach((cls) => {
+                    const norm = this._normalizeClassValue(cls);
+                    if (norm) classSet.add(norm);
+                });
+
+                (this.allSectionsRaw || []).forEach((sec) => {
+                    const s = String(sec || '').trim();
+                    if (s) sectionSet.add(s);
+                });
+
+                Object.keys(this.allClassToSectionsRaw || {}).forEach((rawCls) => {
+                    const normCls = this._normalizeClassValue(rawCls);
+                    if (!normCls) return;
+                    if (!classToSections[normCls]) classToSections[normCls] = new Set();
+                    const sections = Array.isArray(this.allClassToSectionsRaw[rawCls]) ? this.allClassToSectionsRaw[rawCls] : [];
+                    sections.forEach((sec) => {
+                        const s = String(sec || '').trim();
+                        if (!s) return;
+                        classToSections[normCls].add(s);
+                        sectionSet.add(s);
+                    });
+                    classSet.add(normCls);
+                });
+
+                this.classOptions = Array.from(classSet)
+                    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+                    .map((v) => ({ value: v, label: this._formatClassDisplay(v) }));
+
+                this.sectionOptions = Array.from(sectionSet)
+                    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+                this.classToSections = {};
+                Object.keys(classToSections).forEach((k) => {
+                    this.classToSections[k] = Array.from(classToSections[k])
+                        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+                });
+
+                if (this.filters.selectedClass && !classSet.has(this.filters.selectedClass)) {
+                    this.filters.selectedClass = '';
+                }
+
+                const sectionOptions = this.getSectionOptions();
+                if (this.filters.selectedSection && !sectionOptions.includes(this.filters.selectedSection)) {
+                    this.filters.selectedSection = '';
+                }
+                return;
+            }
+
             const classSet = new Set();
             const sectionSet = new Set();
             const classToSections = {};
@@ -798,8 +855,7 @@ function listApp() {
             if (this.loading || !this.hasMore) return;
             this.loading = true;
             try {
-                const offset = this.loadMoreOffset;
-                const page = Math.floor(offset / 50) + 1;
+                const page = this.loadMorePage + 1;
                 const url = `/app/api/table/${TABLE_ID}/cards/?status=${LIST_TYPE}&per_page=50&page=${page}`;
                 const res = await fetch(url, { headers: { 'X-CSRFToken': CSRF } });
                 const json = await res.json();
@@ -807,13 +863,14 @@ function listApp() {
                 const apiData = json.data;
                 const existingIds = new Set(this.studentsData.map(s => s.id));
                 const rawCards = apiData.cards || [];
+                this.loadMorePage = page;
                 const newCards = rawCards
                     .filter(c => !existingIds.has(c.id))
                     .map((c, i) => {
                         const f = c.field_data || {};
                         return {
                             id: c.id,
-                            sr_no: offset + i + 1,
+                            sr_no: this.studentsData.length + i + 1,
                             name: c.name || '',
                             roll_no: c.id_number || f['ROLL NO'] || f['ROLL_NO'] || f['roll_no'] || '',
                             father_name: f['FATHER NAME'] || f["FATHER'S NAME"] || f['FATHER_NAME'] || f['father_name'] || '',
@@ -830,13 +887,15 @@ function listApp() {
                         };
                     });
                 if (!newCards.length) {
-                    this.hasMore = false;
-                    if (!silent) this.showToast('All records loaded', 'info');
+                    // Keep pagination moving even if this page contained duplicate IDs.
+                    this.hasMore = !!apiData.has_more;
+                    this.loadMoreOffset += rawCards.length || 50;
+                    if (!silent && !this.hasMore) this.showToast('All records loaded', 'info');
                     this.loading = false;
                     return;
                 }
                 this.studentsData.push(...newCards);
-                this.loadMoreOffset += newCards.length;
+                this.loadMoreOffset += rawCards.length || newCards.length;
                 const mountEl = document.getElementById('dynamic-cards-mount');
                 if (mountEl) {
                     newCards.forEach(card => mountEl.appendChild(this._buildCardDiv(card)));
@@ -1187,6 +1246,41 @@ function listApp() {
             if (!this.selectedIds.length) { this.showToast('Select items first', 'error'); return; }
             this.showDownloadModal('pdf', this.selectedIds.length);
             try {
+                const pollTask = async (taskId) => {
+                    for (let i = 0; i < 300; i++) {
+                        if (this.downloadModal.abortController?.signal?.aborted) {
+                            throw new Error('AbortError');
+                        }
+                        const statusRes = await fetch('/api/export/status/' + taskId + '/', {
+                            headers: { 'X-CSRFToken': CSRF },
+                            signal: this.downloadModal.abortController?.signal,
+                        });
+                        const statusData = await statusRes.json().catch(() => ({}));
+
+                        if (statusData.state === 'completed' && statusData.download_url) {
+                            this.updateDownloadProgress(95, 'Saving file...');
+                            const a = document.createElement('a');
+                            a.href = statusData.download_url;
+                            a.download = statusData.filename || ('cards_' + TABLE_ID + '_' + LIST_TYPE + '.pdf');
+                            document.body.appendChild(a);
+                            a.click();
+                            a.remove();
+                            this.completeDownload(true, 'PDF saved to your device');
+                            return;
+                        }
+
+                        if (statusData.state === 'failed') {
+                            this.completeDownload(false, statusData.message || 'PDF generation failed');
+                            return;
+                        }
+
+                        const p = Math.max(10, Math.min(90, Number(statusData.progress || 0)));
+                        this.updateDownloadProgress(p, statusData.message || 'Generating PDF...');
+                        await new Promise(r => setTimeout(r, 2000));
+                    }
+                    this.completeDownload(false, 'PDF generation timed out');
+                };
+
                 this.updateDownloadProgress(10, 'Sending request...');
                 const res = await fetch('/panel/exports/pdf/' + TABLE_ID + '/', {
                     method: 'POST',
@@ -1210,12 +1304,20 @@ function listApp() {
                     a.remove();
                     URL.revokeObjectURL(url);
                     this.completeDownload(true, 'PDF saved to your device');
+                } else if ((res.status === 202 || res.ok) && ct.includes('application/json')) {
+                    const data = await res.json().catch(() => ({}));
+                    if (data.success && data.async && data.task_id) {
+                        this.updateDownloadProgress(20, data.message || 'Queued for background generation...');
+                        await pollTask(data.task_id);
+                    } else {
+                        this.completeDownload(false, data.message || 'PDF generation failed');
+                    }
                 } else {
                     const data = await res.json().catch(() => ({}));
                     this.completeDownload(false, data.message || 'PDF generation failed');
                 }
             } catch (e) {
-                if (e.name === 'AbortError') return; // Cancelled by user
+                if (e.name === 'AbortError' || e.message === 'AbortError') return; // Cancelled by user
                 this.completeDownload(false, 'PDF download failed');
             }
         },
@@ -1232,28 +1334,47 @@ function listApp() {
                 });
                 this.updateDownloadProgress(40, 'Processing response...');
                 const data = await res.json();
-                if (data.success && data.zip_files && data.zip_files.length > 0) {
-                    const totalZips = data.zip_files.length;
+                const zipFiles = (Array.isArray(data.files) && data.files.length > 0)
+                    ? data.files
+                    : (Array.isArray(data.zip_files) && data.zip_files.length > 0)
+                        ? data.zip_files
+                        : (data.download_url ? [{
+                            download_url: data.download_url,
+                            filename: data.filename || 'images.zip'
+                        }] : []);
+
+                if (data.success && zipFiles.length > 0) {
+                    const totalZips = zipFiles.length;
                     let downloaded = 0;
                     // Download each ZIP file
-                    for (const zipInfo of data.zip_files) {
+                    for (const zipInfo of zipFiles) {
                         const progress = 40 + Math.round((downloaded / totalZips) * 50);
                         this.updateDownloadProgress(progress, 'Downloading ' + (downloaded + 1) + ' of ' + totalZips + '...');
-                        const bin = atob(zipInfo.data);
-                        const bytes = new Uint8Array(bin.length);
-                        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-                        const blob = new Blob([bytes], { type: 'application/zip' });
-                        const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
-                        a.href = url;
-                        a.download = zipInfo.filename;
                         document.body.appendChild(a);
-                        a.click();
+
+                        if (zipInfo.download_url) {
+                            a.href = zipInfo.download_url;
+                            a.download = zipInfo.filename || 'images.zip';
+                            a.click();
+                        } else if (zipInfo.data) {
+                            const bin = atob(zipInfo.data);
+                            const bytes = new Uint8Array(bin.length);
+                            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+                            const blob = new Blob([bytes], { type: 'application/zip' });
+                            const url = URL.createObjectURL(blob);
+                            a.href = url;
+                            a.download = zipInfo.filename || 'images.zip';
+                            a.click();
+                            URL.revokeObjectURL(url);
+                        } else {
+                            throw new Error('Missing image file payload');
+                        }
+
                         document.body.removeChild(a);
-                        URL.revokeObjectURL(url);
                         downloaded++;
                     }
-                    const totalSize = data.zip_files.reduce((sum, z) => sum + (z.data?.length || 0) * 0.75, 0);
+                    const totalSize = zipFiles.reduce((sum, z) => sum + (z.data?.length || 0) * 0.75, 0);
                     const sizeKB = Math.round(totalSize / 1024);
                     this.completeDownload(true, 'Downloaded ' + data.total_images + ' images (' + (sizeKB > 1024 ? (sizeKB/1024).toFixed(1) + ' MB' : sizeKB + ' KB') + ')');
                 } else {
