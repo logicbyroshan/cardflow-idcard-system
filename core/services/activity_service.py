@@ -7,6 +7,7 @@ All methods are classmethods/staticmethods following the project convention.
 
 import logging
 
+from django.core.cache import cache as django_cache
 from django.utils import timezone
 from django.utils.timesince import timesince
 
@@ -17,6 +18,9 @@ logger = logging.getLogger(__name__)
 
 class ActivityService:
     """Service for creating and querying activity log entries."""
+
+    # Avoid log flooding when users process cards one-by-one very quickly.
+    SINGLE_CARD_STATUS_LOG_THROTTLE_SECONDS = 20
 
     # ── helpers ──────────────────────────────────────────────
 
@@ -29,6 +33,24 @@ class ActivityService:
         if xff:
             return xff.split(',')[0].strip()
         return request.META.get('REMOTE_ADDR')
+
+    @classmethod
+    def _should_log_single_card_status(cls, request, action_label, client_name=''):
+        """Rate-limit repeated single-card status logs per user/action/client."""
+        if request is None:
+            return True
+
+        user = getattr(request, 'user', None)
+        user_id = getattr(user, 'pk', None) if user and getattr(user, 'is_authenticated', False) else 'anon'
+        action_part = str(action_label or '').strip().lower()
+        client_part = str(client_name or '').strip().lower()
+        cache_key = f"activity:single-card-status:{user_id}:{action_part}:{client_part}"
+
+        try:
+            return bool(django_cache.add(cache_key, 1, timeout=cls.SINGLE_CARD_STATUS_LOG_THROTTLE_SECONDS))
+        except Exception:
+            # If cache fails, never block logging.
+            return True
 
     # ── core logging ────────────────────────────────────────
 
@@ -183,6 +205,8 @@ class ActivityService:
         """Log single or bulk card status change.  action_label e.g. 'verified', 'approved'."""
         suffix = f' for {client_name}' if client_name else ''
         if count == 1:
+            if not cls._should_log_single_card_status(request, action_label, client_name):
+                return
             cls.log(
                 'card_status',
                 f'1 card {action_label}{suffix}',
