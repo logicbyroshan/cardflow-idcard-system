@@ -188,6 +188,7 @@ function initReprintPickerHandlers() {
         var n = String(name || '').toLowerCase();
         if (t === 'image' || t === 'photo' || t === 'file') return true;
         if (n.indexOf('designation') !== -1) return false;
+        if (t.indexOf('image') !== -1 || t.indexOf('photo') !== -1 || t.indexOf('file') !== -1 || t.indexOf('upload') !== -1) return true;
         return n.indexOf('photo') !== -1 ||
                n.indexOf('image') !== -1 ||
                n.indexOf('picture') !== -1 ||
@@ -196,6 +197,19 @@ function initReprintPickerHandlers() {
                n.indexOf('signature') !== -1 ||
                n.indexOf('barcode') !== -1 ||
                n.indexOf('qr') !== -1;
+    }
+
+    function isKnownImageFieldName(fieldName) {
+        var normalized = normalizeFieldKey(fieldName || '');
+        if (!normalized) return false;
+        var i;
+        for (i = 0; i < resolvedFields.length; i += 1) {
+            var f = resolvedFields[i] || {};
+            if (normalizeFieldKey(f.name || '') === normalized) {
+                return isImageFieldLocal(f.type, f.name);
+            }
+        }
+        return isImageFieldLocal('', fieldName);
     }
 
     function toCellText(value) {
@@ -659,6 +673,7 @@ function initReprintPickerHandlers() {
         inputs.forEach(function(inputEl) {
             var key = String(inputEl.getAttribute('data-field-name') || '').trim();
             if (!key) return;
+            if (isKnownImageFieldName(key)) return;
             fieldData[key] = String(inputEl.value || '').trim();
         });
         return fieldData;
