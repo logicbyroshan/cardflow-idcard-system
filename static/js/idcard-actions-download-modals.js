@@ -29,6 +29,7 @@ function _getStatusLabel() {
 
 let pendingDownloadCardIds = [];
 let currentDownloadType = null; // 'pdf', 'xlsx', 'img'
+let _dlAvailableRenameImageKeys = {};
 
 // Modal DOM references (set in initDownloadModals)
 let downloadPdfModal = null;
@@ -100,23 +101,89 @@ function _dlPopulateRenameSelect(selectEl, textFields, preferredName) {
     }
 }
 
+function _dlResolveRenameableImageKey(field) {
+    const typeNorm = _dlNormalizeFieldKey((field && field.type) || '');
+    const nameRaw = String((field && field.name) || '').toUpperCase();
+    const nameNorm = _dlNormalizeFieldKey(nameRaw);
+
+    if (typeNorm === 'MOTHERPHOTO' || (nameRaw.indexOf('MOTHER') !== -1 && nameRaw.indexOf('PHOTO') !== -1)) {
+        return 'MOTHER_PHOTO';
+    }
+    if (typeNorm === 'FATHERPHOTO' || (nameRaw.indexOf('FATHER') !== -1 && nameRaw.indexOf('PHOTO') !== -1)) {
+        return 'FATHER_PHOTO';
+    }
+    if (typeNorm === 'PHOTO' || typeNorm === 'IMAGE' || nameNorm.indexOf('PHOTO') !== -1) {
+        return 'PHOTO';
+    }
+    return '';
+}
+
+function _dlGetAvailableRenameImageKeys() {
+    const fields = Array.isArray(window.TABLE_FIELDS) ? window.TABLE_FIELDS : [];
+    const available = {
+        PHOTO: false,
+        FATHER_PHOTO: false,
+        MOTHER_PHOTO: false,
+    };
+
+    fields.forEach(function(field) {
+        if (!_dlLooksImageField(field)) return;
+        const key = _dlResolveRenameableImageKey(field);
+        if (key && Object.prototype.hasOwnProperty.call(available, key)) {
+            available[key] = true;
+        }
+    });
+
+    return available;
+}
+
 function _dlInitializeImageRenamePanel() {
     const toggleEl = document.getElementById('downloadImgRenameToggle');
     const panelEl = document.getElementById('downloadImgRenamePanel');
     const photoSelect = document.getElementById('downloadImgMapPhoto');
     const fatherSelect = document.getElementById('downloadImgMapFather');
     const motherSelect = document.getElementById('downloadImgMapMother');
+    const photoRow = document.getElementById('downloadImgMapPhotoRow');
+    const fatherRow = document.getElementById('downloadImgMapFatherRow');
+    const motherRow = document.getElementById('downloadImgMapMotherRow');
 
     if (!toggleEl || !panelEl || !photoSelect || !fatherSelect || !motherSelect) return;
+
+    _dlAvailableRenameImageKeys = _dlGetAvailableRenameImageKeys();
+
+    const hasAnyRenameableImage = !!(_dlAvailableRenameImageKeys.PHOTO || _dlAvailableRenameImageKeys.FATHER_PHOTO || _dlAvailableRenameImageKeys.MOTHER_PHOTO);
+
+    if (photoRow) photoRow.style.display = _dlAvailableRenameImageKeys.PHOTO ? '' : 'none';
+    if (fatherRow) fatherRow.style.display = _dlAvailableRenameImageKeys.FATHER_PHOTO ? '' : 'none';
+    if (motherRow) motherRow.style.display = _dlAvailableRenameImageKeys.MOTHER_PHOTO ? '' : 'none';
+
+    toggleEl.disabled = !hasAnyRenameableImage;
+    if (!hasAnyRenameableImage) {
+        toggleEl.checked = false;
+        panelEl.style.display = 'none';
+        return;
+    }
 
     const textFields = _dlGetTextFields();
     const nameField = _dlFindFieldNameByHint(textFields, ['studentname', 'name', 'empname']);
     const fatherNameField = _dlFindFieldNameByHint(textFields, ['fathername', 'fname', 'father']);
     const motherNameField = _dlFindFieldNameByHint(textFields, ['mothername', 'mname', 'mother']);
 
-    _dlPopulateRenameSelect(photoSelect, textFields, nameField);
-    _dlPopulateRenameSelect(fatherSelect, textFields, fatherNameField);
-    _dlPopulateRenameSelect(motherSelect, textFields, motherNameField);
+    if (_dlAvailableRenameImageKeys.PHOTO) {
+        _dlPopulateRenameSelect(photoSelect, textFields, nameField);
+    } else {
+        photoSelect.innerHTML = '';
+    }
+    if (_dlAvailableRenameImageKeys.FATHER_PHOTO) {
+        _dlPopulateRenameSelect(fatherSelect, textFields, fatherNameField);
+    } else {
+        fatherSelect.innerHTML = '';
+    }
+    if (_dlAvailableRenameImageKeys.MOTHER_PHOTO) {
+        _dlPopulateRenameSelect(motherSelect, textFields, motherNameField);
+    } else {
+        motherSelect.innerHTML = '';
+    }
 
     panelEl.style.display = toggleEl.checked ? 'block' : 'none';
 }
@@ -142,9 +209,9 @@ function _dlGetImageRenameOptionsFromModal() {
     const fatherField = fatherSelect ? String(fatherSelect.value || '').trim() : '';
     const motherField = motherSelect ? String(motherSelect.value || '').trim() : '';
 
-    if (photoField) imageNameFields.PHOTO = photoField;
-    if (fatherField) imageNameFields.FATHER_PHOTO = fatherField;
-    if (motherField) imageNameFields.MOTHER_PHOTO = motherField;
+    if (_dlAvailableRenameImageKeys.PHOTO && photoField) imageNameFields.PHOTO = photoField;
+    if (_dlAvailableRenameImageKeys.FATHER_PHOTO && fatherField) imageNameFields.FATHER_PHOTO = fatherField;
+    if (_dlAvailableRenameImageKeys.MOTHER_PHOTO && motherField) imageNameFields.MOTHER_PHOTO = motherField;
 
     if (!Object.keys(imageNameFields).length) return null;
 
