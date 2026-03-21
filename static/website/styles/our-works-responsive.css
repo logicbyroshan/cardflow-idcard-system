@@ -42,7 +42,7 @@
     }
     
     .gallery-item video {
-        aspect-ratio: 16/9;
+        aspect-ratio: auto;
     }
     
     .gallery-item-info {
@@ -68,7 +68,7 @@
     }
     
     .gallery-item video {
-        aspect-ratio: 16/9;
+        aspect-ratio: auto;
     }
 }
 
@@ -96,6 +96,23 @@
    TABLET LARGE (992px - 1199px)
 ============================================ */
 @media (max-width: 1199px) {
+    .categories-grid.categories-grid-seven {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .categories-grid.categories-grid-seven .category-card,
+    .categories-grid.categories-grid-seven .category-card.large,
+    .categories-grid.categories-grid-seven .category-card.wide {
+        grid-column: span 1;
+        grid-row: span 1;
+        height: 250px;
+    }
+
+    .categories-grid.categories-grid-seven .category-card.slot-1 {
+        grid-column: span 2;
+        height: 300px;
+    }
+
     .categories-grid {
         grid-template-columns: repeat(3, 1fr);
     }
@@ -122,6 +139,23 @@
    TABLET (768px - 991px)
 ============================================ */
 @media (max-width: 991px) {
+    .categories-grid.categories-grid-seven {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .categories-grid.categories-grid-seven .category-card,
+    .categories-grid.categories-grid-seven .category-card.large,
+    .categories-grid.categories-grid-seven .category-card.wide {
+        grid-column: span 1;
+        grid-row: span 1;
+        height: 220px;
+    }
+
+    .categories-grid.categories-grid-seven .category-card.slot-1 {
+        grid-column: span 2;
+        height: 280px;
+    }
+
     .categories-grid {
         grid-template-columns: repeat(2, 1fr);
         gap: 15px;
@@ -224,11 +258,15 @@
         padding: 50px 0;
     }
 
+    .categories-grid.categories-grid-seven,
     .categories-grid {
         grid-template-columns: 1fr;
         gap: 12px;
     }
 
+    .categories-grid.categories-grid-seven .category-card,
+    .categories-grid.categories-grid-seven .category-card.large,
+    .categories-grid.categories-grid-seven .category-card.wide,
     .category-card {
         height: 200px;
     }

@@ -38,7 +38,7 @@
     </div>
 
     <!--  SCROLLABLE CONTENT  -->
-    <div class="flex-1 overflow-y-auto" style="background:#f7f8fc;">
+    <div class="flex-1 overflow-y-auto bg-gradient-to-b from-slate-50 via-indigo-50/20 to-sky-50/30">
 
         <!--  PORTFOLIO TAB  -->
         <div x-show="tab==='portfolio'" x-cloak>
@@ -47,7 +47,7 @@
                 <div class="grid grid-cols-2 gap-2.5">
                     <template x-for="cat in categories" :key="cat.id">
                         <button {% if perm_website_edit %}@click="openUploadSheet(cat)"{% endif %}
-                                class="bg-white rounded-2xl p-4 text-left shadow-sm border border-gray-100 {% if perm_website_edit %}active:scale-95{% endif %} transition-transform relative">
+                                class="bg-gradient-to-br from-white via-white to-indigo-50/35 rounded-2xl p-4 text-left shadow-sm border border-indigo-100 {% if perm_website_edit %}active:scale-95{% endif %} transition-transform relative">
                             <!-- icon -->
                             <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white mb-2.5"
                                    style="background:linear-gradient(135deg,var(--color-brand-light),var(--color-brand-dark));">
@@ -99,7 +99,7 @@
                 </template>
                 <div class="grid grid-cols-2 gap-2.5">
                     <template x-for="reel in reels" :key="reel.id">
-                        <button @click="openReelPreview(reel)" class="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 text-left w-full active:scale-[0.99] transition-transform">
+                        <button @click="openReelPreview(reel)" class="bg-gradient-to-br from-white via-white to-indigo-50/30 rounded-2xl overflow-hidden shadow-sm border border-indigo-100 text-left w-full active:scale-[0.99] transition-transform">
                             <!-- Thumbnail -->
                             <div class="relative" style="padding-top:56.25%;">
                                 <template x-if="reel.thumbnail_url">
@@ -215,8 +215,11 @@
                 </div>
 
                 <!-- Upload progress bar -->
-                <div x-show="uploading" class="w-full h-1.5 rounded-full bg-gray-100 overflow-hidden">
-                    <div class="h-full rounded-full bg-gradient-to-r from-brand-light to-brand-dark animate-pulse" style="width:100%;"></div>
+                <div x-show="uploading" class="w-full space-y-1">
+                    <div class="w-full h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                        <div class="h-full rounded-full bg-gradient-to-r from-brand-light to-brand-dark transition-all duration-300" :style="'width:' + uploadPct + '%'"></div>
+                    </div>
+                    <p class="text-[10px] text-gray-500" x-text="uploadStatus || ('Uploading... ' + uploadPct + '%')"></p>
                 </div>
 
                 <!-- Upload button -->
@@ -462,6 +465,8 @@ function websiteManageApp() {
         activeCategory: null,
         pendingFiles: [],
         uploading: false,
+        uploadPct: 0,
+        uploadStatus: '',
 
         // Reel upload
         reelSheetOpen: false,
@@ -488,12 +493,22 @@ function websiteManageApp() {
         /*  PORTFOLIO  */
         openUploadSheet(cat) {
             this.activeCategory = cat;
-            this.pendingFiles = [];
+            this.clearPendingFiles();
             this.uploadSheetOpen = true;
         },
         closeUploadSheet() {
             this.uploadSheetOpen = false;
             this.activeCategory = null;
+            this.clearPendingFiles();
+            this.uploadPct = 0;
+            this.uploadStatus = '';
+        },
+        clearPendingFiles() {
+            this.pendingFiles.forEach(pf => {
+                if (pf && pf.objectUrl && typeof URL !== 'undefined') {
+                    try { URL.revokeObjectURL(pf.objectUrl); } catch (_) {}
+                }
+            });
             this.pendingFiles = [];
         },
         handlePortfolioFiles(e) {
@@ -510,16 +525,16 @@ function websiteManageApp() {
                 this.showToast(`${oversized.length} file(s) exceed ${MAX_MB} MB and were skipped`, false);
             }
             files.filter(f => f.size <= MAX_MB * 1024 * 1024).forEach(file => {
-                const reader = new FileReader();
-                reader.onload = ev => {
-                    this.pendingFiles.push({ file, preview: ev.target.result });
-                };
-                reader.readAsDataURL(file);
+                const objectUrl = URL.createObjectURL(file);
+                this.pendingFiles.push({ file, preview: objectUrl, objectUrl });
             });
             e.target.value = '';
         },
         removeFile(idx) {
-            this.pendingFiles.splice(idx, 1);
+            const removed = this.pendingFiles.splice(idx, 1);
+            if (removed.length && removed[0].objectUrl && typeof URL !== 'undefined') {
+                try { URL.revokeObjectURL(removed[0].objectUrl); } catch (_) {}
+            }
         },
         async openCategoryPreview(cat) {
             this.categoryPreview = { open: true, loading: true, id: cat.id, name: cat.name, items: [] };
@@ -541,32 +556,103 @@ function websiteManageApp() {
         closeCategoryPreview() {
             this.categoryPreview.open = false;
         },
-        async uploadPortfolioFiles() {
-            if (!this.pendingFiles.length || !this.activeCategory || this.uploading) return;
-            this.uploading = true;
-            try {
-                const fd = new FormData();
-                fd.append('category_id', this.activeCategory.id);
-                this.pendingFiles.forEach(pf => fd.append('images', pf.file));
+        async uploadPortfolioBatch(files, timeoutMs = 120000) {
+            const fd = new FormData();
+            fd.append('category_id', this.activeCategory.id);
+            files.forEach(pf => fd.append('images', pf.file));
 
+            const controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+            const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+            try {
                 const res = await fetch('/app/api/website/portfolio/upload/', {
                     method: 'POST',
                     headers: { 'X-CSRFToken': CSRF_TOKEN },
                     body: fd,
+                    signal: controller ? controller.signal : undefined,
                 });
                 const data = await res.json();
-                if (data.success) {
-                    const cat = this.categories.find(c => c.id === this.activeCategory.id);
-                    if (cat) cat.count += data.count;
-                    this.showToast(data.count + ' photo(s) uploaded successfully!');
+                if (!res.ok && !data.success) {
+                    throw new Error(data.message || 'Upload failed');
+                }
+                return data;
+            } finally {
+                if (timer) clearTimeout(timer);
+            }
+        },
+        async uploadPortfolioFiles() {
+            if (!this.pendingFiles.length || !this.activeCategory || this.uploading) return;
+            this.uploading = true;
+            this.uploadPct = 0;
+            this.uploadStatus = 'Preparing upload...';
+            try {
+                const BATCH_SIZE = 4;
+                const RETRIES = 1;
+                const total = this.pendingFiles.length;
+                let completed = 0;
+                let uploadedCount = 0;
+                const failedCarry = [];
+
+                for (let i = 0; i < this.pendingFiles.length; i += BATCH_SIZE) {
+                    const batch = this.pendingFiles.slice(i, i + BATCH_SIZE);
+                    this.uploadStatus = `Uploading ${Math.min(i + batch.length, total)}/${total}...`;
+
+                    let batchData = null;
+                    let lastErr = null;
+                    for (let attempt = 0; attempt <= RETRIES; attempt++) {
+                        try {
+                            batchData = await this.uploadPortfolioBatch(batch);
+                            break;
+                        } catch (err) {
+                            lastErr = err;
+                            if (attempt < RETRIES) {
+                                await new Promise(r => setTimeout(r, 700));
+                            }
+                        }
+                    }
+
+                    if (!batchData) {
+                        batch.forEach(pf => failedCarry.push(pf));
+                        completed += batch.length;
+                        this.uploadPct = Math.min(100, Math.round((completed / total) * 100));
+                        if (lastErr) this.uploadStatus = lastErr.message || 'Retrying...';
+                        continue;
+                    }
+
+                    uploadedCount += (batchData.count || 0);
+                    const failedNames = new Set((batchData.failed || []).map(x => x.name));
+                    batch.forEach(pf => {
+                        if (failedNames.has(pf.file.name)) {
+                            failedCarry.push(pf);
+                        } else if (pf.objectUrl && typeof URL !== 'undefined') {
+                            try { URL.revokeObjectURL(pf.objectUrl); } catch (_) {}
+                        }
+                    });
+
+                    completed += batch.length;
+                    this.uploadPct = Math.min(100, Math.round((completed / total) * 100));
+                }
+
+                const cat = this.categories.find(c => c.id === this.activeCategory.id);
+                if (cat) cat.count += uploadedCount;
+
+                this.pendingFiles = failedCarry;
+
+                if (uploadedCount > 0 && this.pendingFiles.length === 0) {
+                    this.showToast(uploadedCount + ' photo(s) uploaded successfully!');
                     this.closeUploadSheet();
+                } else if (uploadedCount > 0 && this.pendingFiles.length > 0) {
+                    this.showToast(uploadedCount + ' uploaded, ' + this.pendingFiles.length + ' failed. Retry failed photos.', false);
+                } else if (this.pendingFiles.length > 0) {
+                    this.showToast('Upload failed. Please retry with fewer files.', false);
                 } else {
-                    this.showToast(data.message || 'Upload failed', false);
+                    this.showToast('Upload failed', false);
                 }
             } catch (err) {
                 this.showToast('Network error  -  please try again', false);
             } finally {
                 this.uploading = false;
+                this.uploadPct = 0;
+                this.uploadStatus = '';
             }
         },
 

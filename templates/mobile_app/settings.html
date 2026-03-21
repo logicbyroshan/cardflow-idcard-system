@@ -4,7 +4,7 @@
 {% block title %}Settings - Adarsh ID Cards{% endblock %}
 
 {% block content %}
-<div x-data="settingsApp()" class="flex flex-col bg-gray-50" style="height:100dvh; overflow:hidden;">
+<div x-data="settingsApp()" class="flex flex-col bg-gradient-to-b from-slate-50 via-indigo-50/25 to-sky-50/35" style="height:100dvh; overflow:hidden;">
 
     <!-- HEADER + TAB BAR -->
     <div class="flex-shrink-0">
@@ -79,7 +79,7 @@
             {% if system_notifications %}
             <div class="px-4 flex flex-col gap-2 pb-4">
                 {% for notif in system_notifications %}
-                <div class="bg-white rounded-2xl border shadow-sm overflow-hidden
+                <div class="bg-gradient-to-br from-white via-white to-indigo-50/35 rounded-2xl border shadow-sm overflow-hidden
                             {% if not notif.is_read %}border-l-4 border-l-brand-light{% else %}border-gray-100{% endif %}">
                     <div class="flex items-start gap-3 p-4">
                         <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
@@ -136,8 +136,8 @@
             </div>
 
             {% if log_activities %}
-            <div class="bg-white mx-4 rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-4">
-                <div class="flex items-center px-3 py-2 bg-gray-50 border-b border-gray-100">
+            <div class="bg-gradient-to-br from-white via-white to-indigo-50/30 mx-4 rounded-2xl border border-indigo-100 shadow-sm overflow-hidden mb-4">
+                <div class="flex items-center px-3 py-2 bg-indigo-50/70 border-b border-indigo-100">
                     <span class="w-7 flex-shrink-0 mr-2"></span>
                     <span class="flex-[3] text-[9px] font-bold text-gray-400 uppercase tracking-wider pr-2">Name</span>
                     <span class="w-[68px] text-[9px] font-bold text-gray-400 uppercase tracking-wider text-center">Status</span>
@@ -197,7 +197,7 @@
         <div x-show="tab==='email'" style="display:none;">
             <div class="px-4 pt-4 flex flex-col gap-3">
 
-                <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div class="bg-gradient-to-br from-white via-white to-sky-50/35 rounded-2xl border border-sky-100 shadow-sm overflow-hidden">
                     <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
                         <div class="w-7 h-7 rounded-xl bg-indigo-50 flex items-center justify-center">
                             <i class="fa-solid fa-user text-indigo-500 text-[11px]"></i>
@@ -236,7 +236,7 @@
                 </div>
 
                 {% if client and client.email %}
-                <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div class="bg-gradient-to-br from-white via-white to-indigo-50/35 rounded-2xl border border-indigo-100 shadow-sm overflow-hidden">
                     <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
                         <div class="w-7 h-7 rounded-xl bg-orange-50 flex items-center justify-center">
                             <i class="fa-solid fa-envelope text-orange-500 text-[11px]"></i>
@@ -254,7 +254,7 @@
                 </div>
                 {% endif %}
 
-                <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div class="bg-gradient-to-br from-white via-white to-slate-50 rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                     <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
                         <div class="w-7 h-7 rounded-xl bg-gray-100 flex items-center justify-center">
                             <i class="fa-solid fa-gear text-gray-500 text-[11px]"></i>

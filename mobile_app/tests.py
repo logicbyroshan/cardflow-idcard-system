@@ -3,9 +3,11 @@ from unittest import mock
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
+from django.core.files.uploadedfile import SimpleUploadedFile
 
 from client.models import Client
 from idcards.models import IDCard, IDCardGroup, IDCardTable
+from website.models import PortfolioCategory
 
 
 User = get_user_model()
@@ -13,6 +15,9 @@ User = get_user_model()
 
 class MobileAppBaseTestCase(TestCase):
 	def setUp(self):
+		# Keep test client aligned with mobile-only server-side gating.
+		self.client.defaults['HTTP_USER_AGENT'] = 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 Mobile Safari/537.36'
+
 		self.super_admin = User.objects.create_user(
 			username='mob-super@test.com',
 			email='mob-super@test.com',
@@ -300,3 +305,51 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 		self._login_mobile_client()
 		response = self.client.post('/app/api/website/portfolio/upload/', data={})
 		self.assertEqual(response.status_code, 403)
+
+	@mock.patch('website.services.PortfolioItemService.create')
+	def test_website_upload_returns_partial_success_for_mixed_files(self, mock_create):
+		self._login_mobile_super_admin()
+		cat = PortfolioCategory.objects.create(name='School ID Cards', icon='fas fa-id-card', is_active=True, order=1)
+
+		ok_item = mock.Mock()
+		ok_item.id = 101
+		ok_item.image = mock.Mock()
+		ok_item.image.url = '/media/portfolio/ok.webp'
+
+		from django.core.exceptions import ValidationError
+		mock_create.side_effect = [ok_item, ValidationError('Uploaded portfolio image is not a valid image.')]
+
+		img1 = SimpleUploadedFile('ok.jpg', b'img-one', content_type='image/jpeg')
+		img2 = SimpleUploadedFile('bad.jpg', b'img-two', content_type='image/jpeg')
+
+		response = self.client.post(
+			'/app/api/website/portfolio/upload/',
+			data={'category_id': str(cat.id), 'images': [img1, img2]},
+		)
+
+		self.assertEqual(response.status_code, 207)
+		payload = response.json()
+		self.assertTrue(payload['success'])
+		self.assertEqual(payload['count'], 1)
+		self.assertEqual(payload['failed_count'], 1)
+		self.assertEqual(payload['failed'][0]['name'], 'bad.jpg')
+
+	@mock.patch('website.services.PortfolioItemService.create')
+	def test_website_upload_returns_400_when_all_files_fail(self, mock_create):
+		self._login_mobile_super_admin()
+		cat = PortfolioCategory.objects.create(name='Office Files', icon='fas fa-folder', is_active=True, order=2)
+
+		from django.core.exceptions import ValidationError
+		mock_create.side_effect = ValidationError('Uploaded portfolio image is not a valid image.')
+
+		img1 = SimpleUploadedFile('bad-only.jpg', b'img-data', content_type='image/jpeg')
+
+		response = self.client.post(
+			'/app/api/website/portfolio/upload/',
+			data={'category_id': str(cat.id), 'images': [img1]},
+		)
+
+		self.assertEqual(response.status_code, 400)
+		payload = response.json()
+		self.assertFalse(payload['success'])
+		self.assertEqual(payload['failed_count'], 1)

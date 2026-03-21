@@ -61,6 +61,7 @@ function listApp() {
 
         init() {
             this.rebuildClassSectionOptions();
+            this._wirePhotoFallbacks(document);
 
             this.$nextTick(() => {
                 this.initInfiniteLoader();
@@ -703,15 +704,37 @@ function listApp() {
             this._applyAllFilters();
         },
 
+        _wirePhotoFallbacks(rootEl) {
+            const root = rootEl || document;
+            root.querySelectorAll('.js-card-photo').forEach((img) => {
+                if (img.dataset.fallbackBound === '1') return;
+                img.dataset.fallbackBound = '1';
+                img.addEventListener('error', () => {
+                    img.style.display = 'none';
+                    const fallback = img.nextElementSibling;
+                    if (fallback && fallback.classList.contains('js-card-photo-fallback')) {
+                        fallback.style.display = 'flex';
+                    }
+                }, { once: true });
+            });
+        },
+
         // Build a <div> card element for a dynamically loaded card (loadMore)
         _buildCardDiv(card) {
             const fd = card.field_data || {};
             const photoBorderClass = this._statusPhotoBorderClasses(card.status);
+            const noPhotoToneByStatus = {
+                pending: 'bg-amber-50 text-amber-400',
+                verified: 'bg-green-50 text-green-400',
+                approved: 'bg-blue-50 text-blue-400',
+                download: 'bg-purple-50 text-purple-400',
+            };
+            const noPhotoToneClass = noPhotoToneByStatus[card.status] || 'bg-gray-100 text-gray-300';
 
             const photoUrls = (card.photo_urls && card.photo_urls.length) ? card.photo_urls : (card.photo_url ? [card.photo_url] : []);
             const photoHtml = photoUrls.length
-                ? photoUrls.map(url => `<div class="rounded-xl overflow-hidden ${photoBorderClass} w-full" style="height:68px;"><img src="${this._escHtml(url)}" class="w-full h-full object-cover object-top" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="w-full h-full bg-amber-50 flex items-center justify-center text-amber-400" style="font-size:16px;display:none;"><i class="fa-solid fa-user-astronaut"></i></div></div>`).join('')
-                : `<div class="rounded-xl overflow-hidden ${photoBorderClass} w-full" style="height:68px;"><div class="w-full h-full bg-gray-100 flex items-center justify-center text-gray-300" style="font-size:16px;"><i class="fa-solid fa-user-slash"></i></div></div>`;
+                ? photoUrls.map(url => `<div class="rounded-xl overflow-hidden ${photoBorderClass} w-full" style="height:68px;"><img src="${this._escHtml(url)}" class="js-card-photo w-full h-full object-cover object-top" alt="" loading="lazy"><div class="js-card-photo-fallback w-full h-full bg-amber-50 flex items-center justify-center text-amber-400" style="font-size:16px;display:none;"><i class="fa-solid fa-user-astronaut"></i></div></div>`).join('')
+                : `<div class="rounded-xl overflow-hidden ${photoBorderClass} w-full" style="height:68px;"><div class="w-full h-full ${noPhotoToneClass} flex items-center justify-center" style="font-size:16px;"><i class="fa-solid fa-user-slash"></i></div></div>`;
 
             const displayFields = Array.isArray(card.display_fields) && card.display_fields.length
                 ? card.display_fields
@@ -753,6 +776,8 @@ function listApp() {
                     cb.closest('label').addEventListener('click', e => e.stopPropagation());
                 }
             }
+
+            this._wirePhotoFallbacks(div);
             return div;
         },
 

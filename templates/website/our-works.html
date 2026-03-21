@@ -4,8 +4,8 @@
 {% block title %}Our Works{% endblock %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'website/styles/our-works.css' %}?v=137">
-    <link rel="stylesheet" href="{% static 'website/styles/our-works-responsive.css' %}?v=137">
+    <link rel="stylesheet" href="{% static 'website/styles/our-works.css' %}?v=138">
+    <link rel="stylesheet" href="{% static 'website/styles/our-works-responsive.css' %}?v=138">
 {% endblock %}
 
 {% block content %}
@@ -30,9 +30,9 @@
                 <span class="section-badge">What We Create</span>
                 <h2>Our <span class="highlight">Product Range</span></h2>
             </div>
-            <div class="categories-grid">
+            <div class="categories-grid categories-grid-seven">
                 {% for cat in bento_categories %}
-                <div class="category-card {% if cat.bento_size == 'large' %}large{% elif cat.bento_size == 'wide' %}wide{% endif %}" data-category="{{ cat.id }}" data-slug="{{ cat.slug }}">
+                <div class="category-card slot-{{ forloop.counter }} {% if cat.bento_size == 'large' %}large{% elif cat.bento_size == 'wide' %}wide{% endif %}" data-category="{{ cat.id }}" data-slug="{{ cat.slug }}">
                     <div class="category-bg">
                         <div class="bg-placeholder"></div>
                         <div class="category-slider" data-cat-id="{{ cat.id }}">
@@ -159,5 +159,5 @@
 {% endblock %}
 
 {% block extra_js %}
-    <script src="{% static 'website/scripts/our-works.js' %}?v=137"></script>
+    <script src="{% static 'website/scripts/our-works.js' %}?v=138"></script>
 {% endblock %}

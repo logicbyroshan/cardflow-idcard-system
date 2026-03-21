@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 # ── Watermark helpers (imported lazily to avoid circular imports) ─────────
 from .watermark import (  # noqa: E402
     apply_text_watermark, apply_logo_watermark,
-    process_portfolio_image, compress_video_file,
+    compress_video_file,
 )
 
 # ── Upload validation constants ──────────────────────────────────────────
@@ -383,10 +383,6 @@ class PortfolioItemService:
         if image and item_type == 'image':
             orientation = _detect_orientation(image)
 
-        # Watermark → WebP → compress <500 KB
-        if image and item_type == 'image':
-            image = process_portfolio_image(image)
-
         title = 'Portfolio Item'
         if category_id:
             try:
@@ -435,10 +431,6 @@ class PortfolioItemService:
         # Auto-detect orientation from new image
         if image:
             orientation = _detect_orientation(image)
-
-        # Watermark → WebP → compress <500 KB when replacing a portfolio image
-        if image and (item_type == 'image' or not video_file):
-            image = process_portfolio_image(image)
 
         with transaction.atomic():
             item = get_object_or_404(PortfolioItem, pk=pk)

@@ -4,7 +4,7 @@
 {% block title %}{{ card.name }} - Card Detail{% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-gray-50" style="padding-bottom: calc(env(safe-area-inset-bottom,0px) + 80px);"
+<div class="min-h-screen bg-gradient-to-b from-slate-50 via-indigo-50/25 to-sky-50/35" style="padding-bottom: calc(env(safe-area-inset-bottom,0px) + 80px);"
      x-data="cardDetailApp()">
 
     <!-- Header -->
@@ -31,7 +31,7 @@
 
     <!-- Hero Photo & Name Card -->
     <div class="px-4 pt-4 pb-1">
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="bg-gradient-to-br from-white via-white to-indigo-50/35 rounded-2xl shadow-sm border border-indigo-100 overflow-hidden">
             <div class="relative">
                 <!-- Subtle gradient shimmer top -->
                 <div class="h-1.5 w-full bg-gradient-to-r from-brand-light to-brand-dark"></div>
@@ -87,7 +87,7 @@
         <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1">Family</p>
         <div class="grid grid-cols-2 gap-2.5">
             {% if card.father_name %}
-            <div class="bg-white rounded-2xl p-3.5 shadow-sm border border-gray-100">
+            <div class="bg-gradient-to-br from-white to-sky-50/35 rounded-2xl p-3.5 shadow-sm border border-sky-100">
                 <div class="flex items-center gap-2 mb-1.5">
                     <div class="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center">
                         <i class="fa-solid fa-user-tie text-blue-400 text-[10px]"></i>
@@ -98,7 +98,7 @@
             </div>
             {% endif %}
             {% if card.mother_name %}
-            <div class="bg-white rounded-2xl p-3.5 shadow-sm border border-gray-100">
+            <div class="bg-gradient-to-br from-white to-rose-50/30 rounded-2xl p-3.5 shadow-sm border border-rose-100">
                 <div class="flex items-center gap-2 mb-1.5">
                     <div class="w-7 h-7 rounded-lg bg-pink-50 flex items-center justify-center">
                         <i class="fa-solid fa-user text-pink-400 text-[10px]"></i>
@@ -118,7 +118,7 @@
         <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1">Details</p>
         <div class="grid grid-cols-2 gap-2.5">
             {% if card.blood_group %}
-            <div class="bg-white rounded-2xl p-3.5 shadow-sm border border-gray-100">
+            <div class="bg-gradient-to-br from-white to-red-50/25 rounded-2xl p-3.5 shadow-sm border border-red-100">
                 <div class="flex items-center gap-2 mb-1.5">
                     <div class="w-7 h-7 rounded-lg bg-red-50 flex items-center justify-center">
                         <i class="fa-solid fa-droplet text-red-400 text-[10px]"></i>
@@ -129,7 +129,7 @@
             </div>
             {% endif %}
             {% if card.session %}
-            <div class="bg-white rounded-2xl p-3.5 shadow-sm border border-gray-100">
+            <div class="bg-gradient-to-br from-white to-purple-50/30 rounded-2xl p-3.5 shadow-sm border border-purple-100">
                 <div class="flex items-center gap-2 mb-1.5">
                     <div class="w-7 h-7 rounded-lg bg-purple-50 flex items-center justify-center">
                         <i class="fa-solid fa-calendar-days text-purple-400 text-[10px]"></i>
@@ -141,7 +141,7 @@
             {% endif %}
         </div>
         {% if card.address %}
-        <div class="mt-2.5 bg-white rounded-2xl p-3.5 shadow-sm border border-gray-100">
+        <div class="mt-2.5 bg-gradient-to-br from-white to-orange-50/30 rounded-2xl p-3.5 shadow-sm border border-orange-100">
             <div class="flex items-center gap-2 mb-1.5">
                 <div class="w-7 h-7 rounded-lg bg-orange-50 flex items-center justify-center">
                     <i class="fa-solid fa-location-dot text-orange-400 text-[10px]"></i>
@@ -156,7 +156,7 @@
 
     <!-- All Field Data (collapsible) -->
     <div class="px-4 pt-3">
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="bg-gradient-to-br from-white via-white to-indigo-50/30 rounded-2xl shadow-sm border border-indigo-100 overflow-hidden">
             <button @click="showAllFields = !showAllFields"
                     class="w-full flex items-center justify-between px-4 py-3.5 active:bg-gray-50 transition-colors">
                 <div class="flex items-center gap-2">
@@ -181,7 +181,7 @@
 
     <!-- Timestamps -->
     <div class="px-4 pt-3">
-        <div class="bg-white rounded-2xl p-3.5 shadow-sm border border-gray-100">
+        <div class="bg-gradient-to-br from-white to-slate-50 rounded-2xl p-3.5 shadow-sm border border-gray-100">
             <div class="flex items-center justify-between mb-2">
                 <div class="flex items-center gap-1.5 text-[11px] text-gray-400">
                     <i class="fa-solid fa-calendar-plus text-[10px]"></i><span>Created</span>

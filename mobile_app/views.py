@@ -101,7 +101,20 @@ def require_mobile_client(view_func):
                     'message': 'Mobile app access was revoked. Please contact admin.',
                 }, status=403)
             return redirect('/app/login/?revoked=1')
-        # Desktop users see a block page (rendered client-side in base.html)
+
+        # Enforce mobile UA on the server as well (client-side block is not sufficient).
+        if not is_mobile(request):
+            if is_api_request:
+                return JsonResponse({
+                    'success': False,
+                    'desktop_blocked': True,
+                    'message': 'Mobile device required for mobile app APIs.',
+                }, status=403)
+            return render(request, 'mobile_app/desktop_required.html', {
+                'status': '',
+                'status_display': 'Mobile App',
+            }, status=403)
+
         return view_func(request, *args, **kwargs)
     return wrapper
 
@@ -156,6 +169,145 @@ def _admin_accessible_client_ids(user):
     if PermissionService.is_admin_staff(user):
         return PermissionService.get_accessible_client_ids(user)
     return []
+
+
+def _search_cards_queryset(base_qs, query, limit):
+    """Apply performant card search over common JSON keys plus a few spaced-key annotations."""
+    if not query or len(query) < 2:
+        return base_qs.none()
+
+    search_q = (
+        Q(field_data__NAME__icontains=query) |
+        Q(field_data__name__icontains=query) |
+        Q(field_data__Name__icontains=query) |
+        Q(field_data__ID__icontains=query) |
+        Q(field_data__id__icontains=query) |
+        Q(field_data__ID_NUMBER__icontains=query) |
+        Q(field_data__id_number__icontains=query) |
+        Q(field_data__ROLL_NO__icontains=query) |
+        Q(field_data__roll_no__icontains=query) |
+        Q(field_data__CLASS__icontains=query) |
+        Q(field_data__class__icontains=query) |
+        Q(field_data__SECTION__icontains=query) |
+        Q(field_data__section__icontains=query) |
+        Q(field_data__FATHER_NAME__icontains=query) |
+        Q(field_data__MOTHER_NAME__icontains=query) |
+        Q(field_data__CONTACT__icontains=query) |
+        Q(field_data__PHONE__icontains=query)
+    )
+    if query.isdigit():
+        search_q |= Q(id=int(query))
+
+    qs = base_qs.annotate(
+        _roll_no_sp=Cast(KeyTextTransform('ROLL NO', 'field_data'), CharField()),
+        _father_name_sp=Cast(KeyTextTransform('FATHER NAME', 'field_data'), CharField()),
+        _mother_name_sp=Cast(KeyTextTransform('MOTHER NAME', 'field_data'), CharField()),
+    ).filter(
+        search_q |
+        Q(_roll_no_sp__icontains=query) |
+        Q(_father_name_sp__icontains=query) |
+        Q(_mother_name_sp__icontains=query)
+    )
+
+    return qs[:limit]
+
+
+def _get_table_filter_metadata(table, table_fields):
+    """Build and cache class/section filter metadata for list page."""
+    class_field_name = None
+    section_field_name = None
+    for _f in table_fields:
+        _fname = str(_f.get('name', '')).strip()
+        _ftype = str(_f.get('type', '')).strip().lower()
+        if not _fname:
+            continue
+        if class_field_name is None and (_ftype == 'class' or _fname.lower() == 'class'):
+            class_field_name = _fname
+        if section_field_name is None and (_ftype == 'section' or _fname.lower() == 'section'):
+            section_field_name = _fname
+
+    options_qs = IDCard.objects.filter(table=table)
+    _stamp = options_qs.aggregate(total=Count('id'), max_id=Max('id'))
+    cache_key = f"mob_filter_meta:v2:{table.id}:{_stamp.get('total') or 0}:{_stamp.get('max_id') or 0}"
+    cached = cache.get(cache_key)
+    if cached:
+        return cached
+
+    all_classes = []
+    if class_field_name:
+        all_classes = sorted(
+            [
+                str(v) for v in options_qs
+                .annotate(_cv=Cast(KeyTextTransform(class_field_name, 'field_data'), CharField()))
+                .exclude(_cv__isnull=True)
+                .exclude(_cv='')
+                .order_by()
+                .values_list('_cv', flat=True)
+                .distinct()
+                if v is not None
+            ],
+        )
+
+    all_sections = []
+    if section_field_name:
+        all_sections = sorted(
+            [
+                str(v) for v in options_qs
+                .annotate(_sv=Cast(KeyTextTransform(section_field_name, 'field_data'), CharField()))
+                .exclude(_sv__isnull=True)
+                .exclude(_sv='')
+                .order_by()
+                .values_list('_sv', flat=True)
+                .distinct()
+                if v is not None
+            ],
+        )
+
+    fallback_classes = set(all_classes)
+    fallback_sections = set(all_sections)
+    class_to_sections = {}
+
+    for _card in options_qs.only('field_data').iterator(chunk_size=500):
+        _fd = _card.field_data or {}
+
+        _cls = ''
+        _sec = ''
+        if class_field_name:
+            _cls = str(_fd.get(class_field_name, '') or '').strip()
+        if section_field_name:
+            _sec = str(_fd.get(section_field_name, '') or '').strip()
+
+        if not _cls:
+            _cls = str(_fd.get('CLASS') or _fd.get('class') or _fd.get('DESIGNATION') or '').strip()
+        if not _sec:
+            _sec = str(_fd.get('SECTION') or _fd.get('section') or '').strip()
+
+        if not all_classes and _cls:
+            fallback_classes.add(_cls)
+        if not all_sections and _sec:
+            fallback_sections.add(_sec)
+
+        if _cls:
+            if _cls not in class_to_sections:
+                class_to_sections[_cls] = set()
+            if _sec:
+                class_to_sections[_cls].add(_sec)
+
+    if not all_classes:
+        all_classes = sorted(fallback_classes)
+    if not all_sections:
+        all_sections = sorted(fallback_sections)
+
+    payload = {
+        'all_classes': all_classes,
+        'all_sections': all_sections,
+        'class_to_sections': {
+            _cls: sorted(list(_sections))
+            for _cls, _sections in class_to_sections.items()
+        },
+    }
+    cache.set(cache_key, payload, 300)
+    return payload
 
 
 # ── Image upload validation ──────────────────────────────────────────────────
@@ -940,99 +1092,11 @@ def card_list(request, table_id, status):
     # has_more: only meaningful when no client-side class/section filtering is applied
     has_more = _has_more_raw and not (allowed_classes or allowed_sections)
 
-    # Build filter options from full table data (desktop-style), not just loaded batch.
-    # This ensures class/section filters always show all available values.
-    class_field_name = None
-    section_field_name = None
-    for _f in table_fields:
-        _fname = str(_f.get('name', '')).strip()
-        _ftype = str(_f.get('type', '')).strip().lower()
-        if not _fname:
-            continue
-        if class_field_name is None and (_ftype == 'class' or _fname.lower() == 'class'):
-            class_field_name = _fname
-        if section_field_name is None and (_ftype == 'section' or _fname.lower() == 'section'):
-            section_field_name = _fname
-
-    options_qs = IDCard.objects.filter(table=table)
-
-    all_classes = []
-    if class_field_name:
-        all_classes = sorted(
-            [
-                str(v) for v in options_qs
-                .annotate(_cv=Cast(KeyTextTransform(class_field_name, 'field_data'), CharField()))
-                .exclude(_cv__isnull=True)
-                .exclude(_cv='')
-                .order_by()
-                .values_list('_cv', flat=True)
-                .distinct()
-                if v is not None
-            ],
-        )
-
-    all_sections = []
-    if section_field_name:
-        all_sections = sorted(
-            [
-                str(v) for v in options_qs
-                .annotate(_sv=Cast(KeyTextTransform(section_field_name, 'field_data'), CharField()))
-                .exclude(_sv__isnull=True)
-                .exclude(_sv='')
-                .order_by()
-                .values_list('_sv', flat=True)
-                .distinct()
-                if v is not None
-            ],
-        )
-
-    # Fallback for older/custom tables where class/section types are not configured.
-    if not all_classes or not all_sections:
-        _fallback_classes = set(all_classes)
-        _fallback_sections = set(all_sections)
-        for _card in options_qs.only('field_data').iterator(chunk_size=500):
-            _fd = _card.field_data or {}
-            if not all_classes:
-                _cls = _fd.get('CLASS') or _fd.get('class') or _fd.get('DESIGNATION') or ''
-                if _cls:
-                    _fallback_classes.add(str(_cls))
-            if not all_sections:
-                _sec = _fd.get('SECTION') or _fd.get('section') or ''
-                if _sec:
-                    _fallback_sections.add(str(_sec))
-        if not all_classes:
-            all_classes = sorted(_fallback_classes)
-        if not all_sections:
-            all_sections = sorted(_fallback_sections)
-
-    # Build class -> sections mapping from full table data.
-    class_to_sections = {}
-    for _card in options_qs.only('field_data').iterator(chunk_size=500):
-        _fd = _card.field_data or {}
-        _cls = ''
-        _sec = ''
-
-        if class_field_name:
-            _cls = str(_fd.get(class_field_name, '') or '').strip()
-        if section_field_name:
-            _sec = str(_fd.get(section_field_name, '') or '').strip()
-
-        if not _cls:
-            _cls = str(_fd.get('CLASS') or _fd.get('class') or _fd.get('DESIGNATION') or '').strip()
-        if not _sec:
-            _sec = str(_fd.get('SECTION') or _fd.get('section') or '').strip()
-
-        if not _cls:
-            continue
-        if _cls not in class_to_sections:
-            class_to_sections[_cls] = set()
-        if _sec:
-            class_to_sections[_cls].add(_sec)
-
-    class_to_sections = {
-        _cls: sorted(list(_sections))
-        for _cls, _sections in class_to_sections.items()
-    }
+    # Build and cache filter options from full table data to avoid repeated full-table scans.
+    filter_meta = _get_table_filter_metadata(table, table_fields)
+    all_classes = list(filter_meta.get('all_classes') or [])
+    all_sections = list(filter_meta.get('all_sections') or [])
+    class_to_sections = dict(filter_meta.get('class_to_sections') or {})
 
     # Respect explicit client_staff restrictions in filter options.
     if allowed_classes:
@@ -1653,9 +1717,6 @@ def search_page(request):
     results = []
 
     if query and len(query) >= 2:
-        from django.db.models.functions import Cast
-        from django.db.models import TextField as TF
-
         # Super admin searches all cards; admin_staff is assignment-scoped.
         if PermissionService.is_super_admin(user):
             base_qs = IDCard.objects.select_related('table', 'table__group', 'table__group__client').order_by('-updated_at')
@@ -1669,10 +1730,8 @@ def search_page(request):
                 table__group__client=client,
             ).select_related('table', 'table__group').order_by('-updated_at')
 
-        # Cast field_data JSON to text so we can search ANY key/value (incl. 'ROLL NO' with space)
-        cards_qs = base_qs.annotate(
-            fd_str=Cast('field_data', output_field=TF())
-        ).filter(fd_str__icontains=query)[:50]
+        # Prefer key-based JSON search to avoid expensive full JSON text casts.
+        cards_qs = _search_cards_queryset(base_qs, query)[:50]
 
         for card in cards_qs:
             fd = card.field_data or {}
@@ -1930,9 +1989,6 @@ def api_search(request):
     if not query or len(query) < 2:
         return JsonResponse({'success': True, 'data': {'results': [], 'count': 0}})
 
-    from django.db.models.functions import Cast
-    from django.db.models import TextField as TF
-
     # Super admin searches all cards; admin_staff is assignment-scoped.
     if PermissionService.is_super_admin(user):
         base_qs = IDCard.objects.select_related(
@@ -1948,10 +2004,8 @@ def api_search(request):
             table__group__client=client,
         ).select_related('table', 'table__group').order_by('-updated_at')
 
-    # Cast JSON to text — searches ANY field including keys with spaces like 'ROLL NO'
-    cards_qs = base_qs.annotate(
-        fd_str=Cast('field_data', output_field=TF())
-    ).filter(fd_str__icontains=query)[:30]
+    # Prefer key-based JSON search to avoid expensive full JSON text casts.
+    cards_qs = _search_cards_queryset(base_qs, query)[:30]
 
     results = []
     for card in cards_qs:
@@ -2200,6 +2254,7 @@ def api_portfolio_upload(request):
 
     from website.models import PortfolioCategory
     from website.services import PortfolioItemService
+    from django.core.exceptions import ValidationError
 
     category_id = request.POST.get('category_id')
     files = request.FILES.getlist('images')
@@ -2214,16 +2269,40 @@ def api_portfolio_upload(request):
     try:
         get_object_or_404(PortfolioCategory, id=category_id, is_active=True)
         created = []
+        failed = []
         for f in files:
-            # Runs full pipeline: watermark → WebP → compress <500 KB
-            item = PortfolioItemService.create(
-                category_id=category_id,
-                image=f,
-                item_type='image',
-                is_active=True,
-            )
-            created.append({'id': item.id, 'url': item.image.url if item.image else ''})
-        return JsonResponse({'success': True, 'count': len(created), 'items': created})
+            try:
+                # Runs full pipeline: watermark → WebP → compress <500 KB
+                item = PortfolioItemService.create(
+                    category_id=category_id,
+                    image=f,
+                    item_type='image',
+                    is_active=True,
+                )
+                created.append({'id': item.id, 'url': item.image.url if item.image else ''})
+            except ValidationError as exc:
+                msg = '; '.join(exc.messages) if getattr(exc, 'messages', None) else str(exc)
+                failed.append({'name': getattr(f, 'name', 'file'), 'error': msg})
+            except Exception:
+                logger.exception('api_portfolio_upload item error for file: %s', getattr(f, 'name', 'file'))
+                failed.append({'name': getattr(f, 'name', 'file'), 'error': 'Upload failed for this file'})
+
+        if created:
+            return JsonResponse({
+                'success': True,
+                'count': len(created),
+                'items': created,
+                'failed': failed,
+                'failed_count': len(failed),
+            }, status=207 if failed else 200)
+
+        first_error = failed[0]['error'] if failed else 'An error occurred. Please try again.'
+        return JsonResponse({
+            'success': False,
+            'message': first_error,
+            'failed': failed,
+            'failed_count': len(failed),
+        }, status=400)
     except Exception as exc:
         logger.exception('api_portfolio_upload error: %s', exc)
         return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)

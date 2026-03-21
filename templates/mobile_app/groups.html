@@ -5,7 +5,7 @@
 {% block title %}Groups & Tables - Adarsh ID Cards{% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-gray-50 pb-20" x-data="groupsApp()"
+<div class="min-h-screen bg-gradient-to-b from-slate-50 via-indigo-50/25 to-sky-50/35 pb-20" x-data="groupsApp()"
      x-init="activeTab = new URLSearchParams(location.search).get('tab') || 'groups'">
     {% csrf_token %}
     <!-- Header -->
@@ -44,7 +44,7 @@
     <!-- Groups Tab -->
     <div x-show="activeTab === 'groups'" class="px-4 pt-3 space-y-3">
         {% for group in groups %}
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="bg-gradient-to-br from-white via-white to-indigo-50/40 rounded-2xl shadow-sm border border-indigo-100 overflow-hidden">
             <button @click="expandedGroup = expandedGroup === {{ group.id }} ? null : {{ group.id }}"
                     class="w-full flex items-center justify-between p-4 text-left active:bg-gray-50 transition">
                 <div class="flex items-center gap-3">
@@ -81,7 +81,7 @@
                 <!-- Tables in this group -->
                 {% for table in tables %}
                 {% if table.group_id == group.id %}
-                <div class="py-2.5 px-3 bg-gray-50 rounded-xl mb-2 border border-gray-100">
+                <div class="py-2.5 px-3 bg-gradient-to-r from-white to-indigo-50/45 rounded-xl mb-2 border border-indigo-100">
                     <div class="flex items-center gap-2 mb-2">
                         <i class="fa-solid fa-table-cells text-indigo-300 text-[10px]"></i>
                         <span class="text-[12px] font-bold text-gray-700 flex-1 truncate">{{ table.name }}</span>
@@ -148,7 +148,7 @@
     {% if is_super_admin or is_admin_staff or perm_idcard_group_create or perm_idcard_group_delete %}
     <div x-show="activeTab === 'tables'" class="px-4 pt-3 space-y-2.5">
         {% for table in tables %}
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="bg-gradient-to-br from-white via-white to-sky-50/40 rounded-2xl shadow-sm border border-sky-100 overflow-hidden">
             <div class="p-4" data-fields="{{ table.fields|json_encode|force_escape }}">
                 <div class="flex items-center justify-between mb-3">
                     <div class="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"

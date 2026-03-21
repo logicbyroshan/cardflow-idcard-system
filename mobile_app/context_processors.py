@@ -19,6 +19,7 @@ This fixes:
 """
 
 import logging
+from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
 
@@ -81,10 +82,17 @@ def mobile_globals(request):
             from staff.models import Staff
             from idcards.models import IDCardTable, IDCard
 
-            ctx['admin_client_count'] = Client.objects.filter(status='active').count()
-            ctx['admin_staff_count']  = Staff.objects.count()
-            ctx['admin_table_count']  = IDCardTable.objects.filter(is_active=True).count()
-            ctx['admin_total_cards']  = IDCard.objects.count()
+            cache_key = 'mobile:admin:overview:counts:v1'
+            cached_counts = cache.get(cache_key)
+            if cached_counts is None:
+                cached_counts = {
+                    'admin_client_count': Client.objects.filter(status='active').count(),
+                    'admin_staff_count': Staff.objects.count(),
+                    'admin_table_count': IDCardTable.objects.filter(is_active=True).count(),
+                    'admin_total_cards': IDCard.objects.count(),
+                }
+                cache.set(cache_key, cached_counts, 60)
+            ctx.update(cached_counts)
         except Exception:
             logger.exception(
                 'mobile_globals: admin stats query failed for user %s', user.pk,

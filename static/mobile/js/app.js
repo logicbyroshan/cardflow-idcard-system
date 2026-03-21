@@ -40,31 +40,6 @@ document.addEventListener('touchend', function(event) {
     lastTouchEnd = now;
 }, false);
 
-// Haptic feedback simulation (for supported devices)
-function hapticFeedback(type = 'light') {
-    if ('vibrate' in navigator) {
-        switch (type) {
-            case 'light':
-                navigator.vibrate(10);
-                break;
-            case 'medium':
-                navigator.vibrate(20);
-                break;
-            case 'heavy':
-                navigator.vibrate([30, 10, 30]);
-                break;
-        }
-    }
-}
-
-// Add haptic to all buttons
-document.addEventListener('click', function(e) {
-    const actionable = e.target.closest('button, [role="button"], .grid-card');
-    if (actionable && !actionable.disabled && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        hapticFeedback('light');
-    }
-});
-
 // Smooth scroll polyfill for older mobile browsers
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     anchor.addEventListener('click', function(e) {
@@ -75,8 +50,6 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         }
     });
 });
-
-console.log('%cID Card Manager Mobile PWA', 'color: #0a92dd; font-size: 16px; font-weight: bold;');
 
 // Lightweight confirm helper used across mobile templates.
 // Returns Promise<boolean> so existing `await showConfirm(...)` calls keep working.

@@ -4,7 +4,7 @@
 {% block title %}Profile - Adarsh ID Cards{% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-gray-50 pb-20" x-data="profileApp()">
+<div class="min-h-screen bg-gradient-to-b from-slate-50 via-indigo-50/25 to-sky-50/35 pb-20" x-data="profileApp()">
     <!-- Header -->
     <div class="pwa-page-topbar sticky top-0 z-40 flex items-center gap-3 px-4 pb-3 bg-gradient-to-r from-brand-light to-brand-dark">
         <a href="{% url 'mobile_app:home' %}" onclick="return mobileGoBack(event, this.getAttribute('href'));" class="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center text-white active:bg-white/30 transition-colors">
@@ -18,7 +18,7 @@
 
     <!-- Profile Card -->
     <div class="px-4 pt-4 pb-3">
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="bg-gradient-to-br from-white via-white to-indigo-50/35 rounded-2xl shadow-sm border border-indigo-100 overflow-hidden">
             <!-- Avatar Section -->
             <div class="bg-gradient-to-br from-brand-light to-brand-dark px-6 py-8 text-center relative overflow-hidden">
                 <div class="absolute inset-0 opacity-10" style="background:radial-gradient(circle at top right,#fff 0%,transparent 70%);"></div>
@@ -90,7 +90,7 @@
     <!-- Quick Links -->
     <div class="px-4 pb-3">
         <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Quick Links</p>
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-50">
+        <div class="bg-gradient-to-br from-white via-white to-sky-50/30 rounded-2xl shadow-sm border border-sky-100 overflow-hidden divide-y divide-gray-50">
             {% if is_client or is_super_admin %}
             <a href="{% url 'mobile_app:staff_manage' %}" class="flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 active:bg-gray-50 transition">
                 <div class="flex items-center gap-3">

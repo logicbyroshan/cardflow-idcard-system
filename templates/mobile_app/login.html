@@ -276,14 +276,5 @@
 })();
 </script>
 
-<!-- Register PWA Service Worker so Chrome shows install prompt -->
-<script>
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', function() {
-        navigator.serviceWorker.register('/app/sw.js', { scope: '/app/' })
-            .catch(function(err) { console.warn('SW registration failed:', err); });
-    });
-}
-</script>
 </body>
 </html>

@@ -269,7 +269,10 @@ def process_portfolio_image(file_obj, max_kb: int = 500) -> ContentFile:
             img.save(buf, format='WEBP', quality=quality, method=2)
             if buf.tell() <= max_bytes:
                 buf.seek(0)
-                return ContentFile(buf.read(), name=webp_name)
+                processed = ContentFile(buf.read(), name=webp_name)
+                # Marker used by model/service layers to avoid double-processing.
+                setattr(processed, '_portfolio_processed', True)
+                return processed
 
         # Still too large → resize to 70 % and retry lower qualities
         w, h = img.size
@@ -279,11 +282,15 @@ def process_portfolio_image(file_obj, max_kb: int = 500) -> ContentFile:
             img_sm.save(buf, format='WEBP', quality=quality, method=2)
             if buf.tell() <= max_bytes:
                 buf.seek(0)
-                return ContentFile(buf.read(), name=webp_name)
+                processed = ContentFile(buf.read(), name=webp_name)
+                setattr(processed, '_portfolio_processed', True)
+                return processed
 
         # Absolute last resort: return whatever quality=20 gives
         buf.seek(0)
-        return ContentFile(buf.read(), name=webp_name)
+        processed = ContentFile(buf.read(), name=webp_name)
+        setattr(processed, '_portfolio_processed', True)
+        return processed
 
     except (OSError, ValueError, TypeError) as exc:
         logger.warning("process_portfolio_image failed", exc_info=True)

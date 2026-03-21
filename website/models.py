@@ -351,7 +351,28 @@ class PortfolioItem(models.Model):
     def __str__(self):
         return self.title
 
+    def _needs_portfolio_image_processing(self):
+        """Return True when image should run through watermark/WebP pipeline."""
+        if self.item_type != 'image' or not self.image:
+            return False
+
+        image_file = getattr(self.image, 'file', None)
+        if getattr(image_file, '_portfolio_processed', False):
+            return False
+
+        if self._state.adding or not self.pk:
+            return True
+
+        previous = type(self).objects.filter(pk=self.pk).only('image').first()
+        if not previous or not previous.image:
+            return True
+        return (self.image.name or '') != (previous.image.name or '')
+
     def save(self, *args, **kwargs):
+        if self._needs_portfolio_image_processing():
+            from .watermark import process_portfolio_image
+            self.image = process_portfolio_image(self.image)
+
         if not self.slug:
             from django.utils.text import slugify
             base_slug = slugify(self.title)

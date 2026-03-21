@@ -17,7 +17,7 @@
 
 {% block content %}
 {% csrf_token %}
-<div class="min-h-screen bg-black" x-data="cameraApp()">
+<div class="min-h-screen bg-gradient-to-b from-slate-900 via-black to-slate-950" x-data="cameraApp()">
     <!-- Header -->
     <div class="pwa-page-topbar sticky top-0 z-40 flex items-center gap-3 px-4 py-3 bg-black/80 backdrop-blur-md">
         <button @click="goBack()" class="text-white">
@@ -61,8 +61,8 @@
     </div>
 
     <!-- Card Picker (when no specific card is targeted) -->
-    <div x-show="!selectedCardId && !photoTaken"
-         class="absolute inset-x-0 top-14 z-50 bg-black/95 backdrop-blur-md p-4"
+        <div x-show="!selectedCardId && !photoTaken"
+            class="absolute inset-x-0 top-14 z-50 bg-slate-900/95 backdrop-blur-md p-4"
          x-transition>
         <p class="text-white/70 text-xs mb-2 font-medium">Search &amp; select a student:</p>
         <!-- Search input -->

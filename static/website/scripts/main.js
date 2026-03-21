@@ -238,6 +238,7 @@ function initPhoneSlideshow() {
 function initQrCode() {
     const qrImg = document.getElementById('appQrCode');
     if (!qrImg) return;
+    if (qrImg.dataset.static === 'true') return;
 
     // QR code points to the mobile app — user opens in Chrome → installs PWA
     const appUrl = window.__panelUrl ? (window.__panelUrl + '/app/') : (window.location.origin + '/app/');

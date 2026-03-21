@@ -27,14 +27,15 @@
                     position: relative;
                     overflow: hidden;
                     border-radius: 16px;
-                    box-shadow: 0 6px 14px rgba(13, 24, 48, 0.12);
+                    box-shadow: 0 8px 18px rgba(13, 24, 48, 0.08);
                     isolation: isolate;
+                    border: 1px solid rgba(148, 163, 184, 0.25);
                 }
                 .home-stat-card::before {
                     content: '';
                     position: absolute;
                     inset: 0;
-                    background: radial-gradient(circle at 85% 12%, rgba(255,255,255,0.35), rgba(255,255,255,0) 52%);
+                    background: radial-gradient(circle at 85% 12%, rgba(255,255,255,0.65), rgba(255,255,255,0) 52%);
                     pointer-events: none;
                 }
                 .home-stat-inner {
@@ -57,8 +58,8 @@
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    background: rgba(255, 255, 255, 0.2);
-                    color: #fff;
+                    background: rgba(255, 255, 255, 0.8);
+                    color: #1e3a8a;
                     flex-shrink: 0;
                 }
                 .home-stat-label {
@@ -66,39 +67,39 @@
                     font-weight: 700;
                     text-transform: uppercase;
                     letter-spacing: 0.06em;
-                    color: rgba(255, 255, 255, 0.82);
+                    color: #475569;
                 }
                 .home-stat-value {
                     font-size: 18px;
                     line-height: 1;
                     font-weight: 900;
-                    color: #fff;
+                    color: #0f172a;
                     margin-top: 2px;
                 }
                 .home-stat-total {
                     grid-column: 1 / span 2;
                     grid-row: 1;
-                    background: linear-gradient(145deg, #4338ca, #312e81);
+                    background: linear-gradient(145deg, #eef2ff, #dbeafe);
                 }
                 .home-stat-pending {
                     grid-column: 1;
                     grid-row: 2;
-                    background: linear-gradient(145deg, #f97316, #ea580c);
+                    background: linear-gradient(145deg, #fff7ed, #ffedd5);
                 }
                 .home-stat-verified {
                     grid-column: 2;
                     grid-row: 2;
-                    background: linear-gradient(145deg, #06b6d4, #0e7490);
+                    background: linear-gradient(145deg, #ecfeff, #cffafe);
                 }
                 .home-stat-approved {
                     grid-column: 1;
                     grid-row: 3;
-                    background: linear-gradient(145deg, #22c55e, #15803d);
+                    background: linear-gradient(145deg, #ecfdf5, #dcfce7);
                 }
                 .home-stat-download {
                     grid-column: 2;
                     grid-row: 3;
-                    background: linear-gradient(145deg, #ef4444, #b91c1c);
+                    background: linear-gradient(145deg, #f5f3ff, #ede9fe);
                 }
             </style>
 
@@ -205,7 +206,7 @@
                 </div>
 
                 {% if recent_client_updates %}
-                 <div class="flex-1 min-h-0 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col"
+                 <div class="flex-1 min-h-0 bg-gradient-to-b from-white to-indigo-50/35 rounded-2xl border border-indigo-100 shadow-sm overflow-hidden flex flex-col"
                      x-data="recentClientsTable()">
 
                     <div x-show="loading" class="p-3 space-y-2.5" x-cloak>
@@ -225,7 +226,7 @@
                     <div x-show="!loading" class="flex-1 min-h-0 flex flex-col" x-cloak>
 
                     <!-- Table header -->
-                    <div class="flex items-center border-b border-gray-100 bg-gray-50 flex-shrink-0" style="min-height:36px;">
+                    <div class="flex items-center border-b border-indigo-100 bg-indigo-50/70 flex-shrink-0" style="min-height:36px;">
                         <div class="flex-1 px-3 py-2 text-[9px] font-bold text-gray-400 uppercase tracking-widest">Client / Table</div>
                         <div class="w-[70px] text-center py-2 text-[9px] font-bold text-amber-500 uppercase tracking-widest">Pending</div>
                         <div class="w-[70px] text-center py-2 text-[9px] font-bold text-green-500 uppercase tracking-widest">Verified</div>

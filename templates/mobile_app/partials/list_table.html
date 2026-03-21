@@ -39,9 +39,8 @@
                         <div class="rounded-xl overflow-hidden border border-gray-200 w-full {% if student.status == 'pending' %}border-t-4 border-b-4 border-t-amber-400 border-b-amber-400{% elif student.status == 'verified' %}border-t-4 border-b-4 border-t-green-400 border-b-green-400{% elif student.status == 'approved' %}border-t-4 border-b-4 border-t-blue-400 border-b-blue-400{% elif student.status == 'download' %}border-t-4 border-b-4 border-t-purple-400 border-b-purple-400{% endif %}"
                              style="height:68px;">
                             <img src="{{ purl }}"
-                                 class="w-full h-full object-cover object-top" alt="" loading="lazy"
-                                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-                            <div class="w-full h-full bg-amber-50 flex items-center justify-center text-amber-400"
+                                   class="js-card-photo w-full h-full object-cover object-top" alt="" loading="lazy">
+                               <div class="js-card-photo-fallback w-full h-full bg-amber-50 flex items-center justify-center text-amber-400"
                                  style="font-size:16px;display:none;">
                                 <i class="fa-solid fa-user-astronaut"></i>
                             </div>
@@ -49,7 +48,7 @@
                         {% endfor %}
                     {% else %}
                     <div class="rounded-xl overflow-hidden border border-gray-200 w-full {% if student.status == 'pending' %}border-t-4 border-b-4 border-t-amber-400 border-b-amber-400{% elif student.status == 'verified' %}border-t-4 border-b-4 border-t-green-400 border-b-green-400{% elif student.status == 'approved' %}border-t-4 border-b-4 border-t-blue-400 border-b-blue-400{% elif student.status == 'download' %}border-t-4 border-b-4 border-t-purple-400 border-b-purple-400{% endif %}" style="height:68px;">
-                        <div class="w-full h-full bg-gray-100 flex items-center justify-center text-gray-300"
+                        <div class="w-full h-full {% if student.status == 'pending' %}bg-amber-50 text-amber-400{% elif student.status == 'verified' %}bg-green-50 text-green-400{% elif student.status == 'approved' %}bg-blue-50 text-blue-400{% elif student.status == 'download' %}bg-purple-50 text-purple-400{% else %}bg-gray-100 text-gray-300{% endif %} flex items-center justify-center"
                              style="font-size:16px;">
                             <i class="fa-solid fa-user-slash"></i>
                         </div>
