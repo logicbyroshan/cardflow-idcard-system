@@ -4,6 +4,7 @@ Contains: All staff-related API endpoints (CRUD, toggle status, active clients l
 """
 import json
 import logging
+import os
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from ..services.permission_service import api_require_super_admin
@@ -12,6 +13,28 @@ from client.models import Client
 from accounts.rate_limit import rate_limit
 
 logger = logging.getLogger(__name__)
+
+
+MAX_IMAGE_UPLOAD_BYTES = 5 * 1024 * 1024
+ALLOWED_IMAGE_UPLOAD_MIMES = {'image/jpeg', 'image/png', 'image/webp'}
+ALLOWED_IMAGE_UPLOAD_EXTS = {'.jpg', '.jpeg', '.png', '.webp'}
+
+
+def _validate_optional_image_upload(uploaded):
+    """Validate optional profile image upload."""
+    if not uploaded:
+        return None
+    if getattr(uploaded, 'size', 0) > MAX_IMAGE_UPLOAD_BYTES:
+        return JsonResponse({'success': False, 'message': 'Image must be 5 MB or smaller'}, status=400)
+
+    ext = os.path.splitext(getattr(uploaded, 'name', '') or '')[1].lower()
+    if ext not in ALLOWED_IMAGE_UPLOAD_EXTS:
+        return JsonResponse({'success': False, 'message': 'Only JPG, PNG, and WEBP images are allowed'}, status=400)
+
+    content_type = (getattr(uploaded, 'content_type', '') or '').lower()
+    if content_type and content_type not in ALLOWED_IMAGE_UPLOAD_MIMES:
+        return JsonResponse({'success': False, 'message': 'Unsupported image content type'}, status=400)
+    return None
 
 
 @require_http_methods(["POST"])
@@ -29,6 +52,10 @@ def api_staff_create(request):
         else:
             data = json.loads(request.body)
             profile_image = None
+
+        file_error = _validate_optional_image_upload(profile_image)
+        if file_error:
+            return file_error
         
         result = StaffService.create(
             data, 
@@ -52,6 +79,7 @@ def api_staff_create(request):
 
 @require_http_methods(["GET"])
 @api_require_super_admin
+@rate_limit(max_requests=60, window_seconds=60, key_prefix='staff_get')
 def api_staff_get(request, staff_id):
     """API endpoint to get a staff's details"""
     result = StaffService.get(staff_id, include_permissions=True)
@@ -72,6 +100,10 @@ def api_staff_update(request, staff_id):
         else:
             data = json.loads(request.body)
             profile_image = None
+
+        file_error = _validate_optional_image_upload(profile_image)
+        if file_error:
+            return file_error
         
         result = StaffService.update(staff_id, data, profile_image=profile_image)
         return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)

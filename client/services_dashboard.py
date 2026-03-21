@@ -214,8 +214,7 @@ class ClientDashboardService(BaseService):
             if not client:
                 return ServiceResult(success=False, message='Client profile not found')
 
-            groups = IDCardGroup.objects.filter(client=client, is_active=True)
-            tables = IDCardTable.objects.filter(group__in=groups, is_active=True)
+            tables = IDCardTable.objects.filter(group__client=client, is_active=True).only('id')
 
             total_cards = IDCard.objects.filter(table__in=tables).count()
 
@@ -230,6 +229,11 @@ class ClientDashboardService(BaseService):
                 reprint_qs
                 .filter(status__in=['confirmed', 'downloaded'])
                 .select_related('card', 'table', 'requested_by')
+                .only(
+                    'id', 'card_id', 'table_id', 'status', 'reason', 'created_at',
+                    'card__field_data', 'table__name',
+                    'requested_by__first_name', 'requested_by__last_name', 'requested_by__username',
+                )
                 .order_by('-created_at')[:10]
             )
             recent_reprints = []
@@ -289,12 +293,16 @@ class ClientDashboardService(BaseService):
             if not client:
                 return ServiceResult(success=False, message='Client profile not found')
 
-            groups = IDCardGroup.objects.filter(client=client, is_active=True)
-            tables = IDCardTable.objects.filter(group__in=groups, is_active=True)
+            tables = IDCardTable.objects.filter(group__client=client, is_active=True).only('id', 'fields')
 
             reprint_qs = (
                 ReprintRequest.objects.filter(table__in=tables)
                 .select_related('card', 'table', 'requested_by')
+                .only(
+                    'id', 'card_id', 'table_id', 'status', 'reason', 'created_at',
+                    'card__field_data', 'table__name',
+                    'requested_by__first_name', 'requested_by__last_name', 'requested_by__username',
+                )
                 .order_by('-created_at')[:limit]
             )
 

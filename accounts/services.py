@@ -90,36 +90,30 @@ class AuthService:
     @staticmethod
     def check_user_exists(identifier, role=None):
         """
-        Check if a user exists with the given email/username and optionally role.
+        Check login preflight without disclosing whether an account exists.
 
         Args:
             identifier: User's email address or username
             role: Optional role to filter by
 
         Returns:
-            dict: {exists: bool, user_name: str, message: str}
+            dict: response safe for unauthenticated clients
         """
         try:
-            user = AuthService._find_user(identifier, role)
-
-            if user:
-                first_name = user.first_name or user.username
-                display_name = first_name
-                return {
-                    'exists': True,
-                    'user_name': display_name,
-                    'user_email': identifier,  # Echo back what they typed
-                    'message': 'User found'
-                }
-
+            # Perform a lookup so timing stays consistent, but never reveal result.
+            AuthService._find_user(identifier, role)
             return {
-                'exists': False,
-                'message': 'No account found. Please check your email/username and selected role.'
+                'exists': True,
+                'user_name': 'User',
+                'user_email': identifier,
+                'message': 'If an account exists, continue with password.'
             }
-        except Exception as e:
+        except Exception:
             return {
-                'exists': False,
-                'message': 'An error occurred. Please try again.'
+                'exists': True,
+                'user_name': 'User',
+                'user_email': identifier,
+                'message': 'If an account exists, continue with password.'
             }
     
     @staticmethod

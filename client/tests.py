@@ -5,6 +5,7 @@ Covers: Client model, access control, client dashboard access.
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
+from unittest import mock
 
 User = get_user_model()
 
@@ -163,3 +164,33 @@ class ClientAccessServiceTests(TestCase):
         self.assertFalse(ClientAccessService.can_access_table(staff_user, table_b))
         self.assertTrue(ClientAccessService.can_access_card(staff_user, card_a))
         self.assertFalse(ClientAccessService.can_access_card(staff_user, card_b))
+
+
+class ClientStaffTransactionTests(TestCase):
+    """Transactional safety tests for ClientStaffService."""
+
+    def test_update_staff_rolls_back_on_staff_save_failure(self):
+        from client.services import ClientStaffService
+        from client.models import Client
+        from staff.models import Staff
+
+        owner = User.objects.create_user(
+            username='owner-tx@test.com', email='owner-tx@test.com',
+            password='pass1234', role='client',
+        )
+        client_obj = Client.objects.create(user=owner, name='Tx Client', perm_idcard_client_list=True)
+
+        staff_user = User.objects.create_user(
+            username='staff-tx@test.com', email='staff-tx@test.com',
+            password='pass1234', role='client_staff', phone='1111111111'
+        )
+        staff = Staff.objects.create(user=staff_user, staff_type='client_staff', client=client_obj)
+
+        original_phone = staff_user.phone
+
+        with mock.patch('staff.models.Staff.save', side_effect=Exception('forced-fail')):
+            result = ClientStaffService.update_staff(owner, staff.id, {'phone': '9999999999'})
+
+        self.assertFalse(result.success)
+        staff_user.refresh_from_db()
+        self.assertEqual(staff_user.phone, original_phone)

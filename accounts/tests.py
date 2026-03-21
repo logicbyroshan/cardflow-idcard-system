@@ -5,6 +5,8 @@ Covers: AuthService, OTPService, RoleService, rate limiting, login/logout flows.
 from django.test import TestCase, override_settings
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
+from django.test.client import RequestFactory
+from unittest import mock
 import json
 
 User = get_user_model()
@@ -25,12 +27,15 @@ class AuthServiceTests(TestCase):
         from accounts.services import AuthService
         result = AuthService.check_user_exists('test@example.com')
         self.assertTrue(result['exists'])
+        self.assertEqual(result['user_name'], 'User')
         self.assertEqual(result['user_email'], 'test@example.com')
 
     def test_check_user_exists_not_found(self):
         from accounts.services import AuthService
         result = AuthService.check_user_exists('nobody@example.com')
-        self.assertFalse(result['exists'])
+        self.assertTrue(result['exists'])
+        self.assertEqual(result['user_name'], 'User')
+        self.assertEqual(result['user_email'], 'nobody@example.com')
 
     def test_authenticate_user_success(self):
         from accounts.services import AuthService
@@ -229,6 +234,18 @@ class LoginViewTests(TestCase):
         data = response.json()
         self.assertFalse(data['success'])
 
+    @override_settings(DEBUG=True)
+    def test_forgot_password_api_never_exposes_dev_otp(self):
+        with mock.patch.dict('os.environ', {'DEV_EXPOSE_OTP': 'true'}):
+            response = self.client.post(
+                '/panel/api/auth/forgot-password/',
+                data=json.dumps({'email': 'view@example.com'}),
+                content_type='application/json',
+            )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertNotIn('dev_otp', payload)
+
 
 class RateLimitTests(TestCase):
     """Tests for rate limiting decorator"""
@@ -257,3 +274,34 @@ class RateLimitTests(TestCase):
             )
         # After exceeding limit, should get 429
         self.assertIn(response.status_code, [200, 429])
+
+
+class LoginLoggingMaskTests(TestCase):
+    def test_mask_login_identifier_email(self):
+        from accounts.views import _mask_login_identifier
+        self.assertEqual(_mask_login_identifier('alice@example.com'), 'a***@example.com')
+
+    def test_mask_login_identifier_username(self):
+        from accounts.views import _mask_login_identifier
+        self.assertEqual(_mask_login_identifier('roshan'), 'r***')
+
+
+class RateLimitClientIPTests(TestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+
+    @override_settings(RATE_LIMIT_TRUST_X_FORWARDED_FOR=False)
+    def test_get_client_ip_uses_remote_addr_by_default(self):
+        from accounts.rate_limit import _get_client_ip
+        request = self.factory.get('/panel/api/auth/login/', REMOTE_ADDR='10.10.10.10', HTTP_X_FORWARDED_FOR='8.8.8.8')
+        self.assertEqual(_get_client_ip(request), '10.10.10.10')
+
+    @override_settings(RATE_LIMIT_TRUST_X_FORWARDED_FOR=True)
+    def test_get_client_ip_uses_trusted_xff_when_enabled(self):
+        from accounts.rate_limit import _get_client_ip
+        request = self.factory.get(
+            '/panel/api/auth/login/',
+            REMOTE_ADDR='10.10.10.10',
+            HTTP_X_FORWARDED_FOR='198.51.100.1, 203.0.113.10'
+        )
+        self.assertEqual(_get_client_ip(request), '198.51.100.1')

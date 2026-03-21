@@ -273,9 +273,10 @@ def _database_storage_snapshot(base_dir):
             db_info.update({'status': 'unsupported', 'error': 'Database engine not supported for size metrics'})
 
     except Exception as exc:
+        logger.exception("Database storage snapshot failed")
         db_info.update({
             'status': 'error',
-            'error': str(exc)[:160],
+            'error': 'Database size metrics unavailable',
         })
 
     return db_info

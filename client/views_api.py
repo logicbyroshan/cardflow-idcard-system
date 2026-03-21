@@ -9,6 +9,7 @@ import json
 from django.core.cache import cache
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
+from accounts.rate_limit import rate_limit
 
 from core.services.permission_service import PermissionService
 
@@ -167,6 +168,7 @@ def api_staff_list_create(request):
 
 @require_client_admin
 @require_http_methods(["GET", "PUT", "DELETE"])
+@rate_limit(max_requests=90, window_seconds=60, key_prefix='client_staff_detail')
 def api_staff_detail(request, staff_id):
     """
     API: Get, Update, or Delete a specific staff member.
@@ -505,6 +507,7 @@ def api_cards_list(request, table_id):
 
 @require_client_user
 @require_http_methods(["GET"])
+@rate_limit(max_requests=90, window_seconds=60, key_prefix='client_card_detail')
 def api_card_detail(request, card_id):
     """
     API: Get details of a specific card.

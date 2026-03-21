@@ -10,6 +10,7 @@ Contains middleware for:
 """
 import logging
 import time
+import hashlib
 from urllib.parse import quote
 from django.conf import settings as django_settings
 from django.contrib.auth import logout
@@ -350,6 +351,10 @@ class PermissionValidationMiddleware:
                 next_url = request.get_full_path()
                 return redirect(f'{prefix}/auth/login/?next={quote(next_url, safe="/")}')
             return self.get_response(request)
+
+        fingerprint_result = self._validate_session_fingerprint(request)
+        if fingerprint_result is not None:
+            return fingerprint_result
         
         # Re-fetch user from database to get latest state
         # This catches changes made by admin while user is logged in
@@ -395,6 +400,81 @@ class PermissionValidationMiddleware:
     # Between checks, the cached validation in the session is trusted.
     # Set to 0 to check every request (original behavior).
     REVALIDATION_INTERVAL = 60  # seconds (P2: raised from 10 → 60 to reduce DB load)
+    SESSION_FP_KEY = '_session_fingerprint'
+
+    @staticmethod
+    def _client_ip(request):
+        """Best-effort client IP extraction for optional session fingerprint binding."""
+        xff = request.META.get('HTTP_X_FORWARDED_FOR')
+        if xff:
+            return xff.split(',')[0].strip()
+        return request.META.get('REMOTE_ADDR', '')
+
+    @staticmethod
+    def _normalize_ip_for_fingerprint(ip_value):
+        """Normalize IP to reduce false positives from minor network changes."""
+        if not ip_value:
+            return ''
+        if ':' in ip_value:  # IPv6
+            parts = [p for p in ip_value.split(':') if p]
+            return ':'.join(parts[:4])
+        parts = ip_value.split('.')
+        if len(parts) == 4:
+            return '.'.join(parts[:3])
+        return ip_value
+
+    def _build_session_fingerprint(self, request):
+        """Build deterministic fingerprint from user-agent (+ optional coarse IP)."""
+        ua = (request.META.get('HTTP_USER_AGENT', '') or '').strip().lower()
+        ua_part = ua[:256]
+
+        ip_part = ''
+        if getattr(django_settings, 'SESSION_FINGERPRINT_INCLUDE_IP', False):
+            ip_part = self._normalize_ip_for_fingerprint(self._client_ip(request))
+
+        raw = f'{ua_part}|{ip_part}'
+        return hashlib.sha256(raw.encode('utf-8')).hexdigest()
+
+    def _validate_session_fingerprint(self, request):
+        """Validate session fingerprint for authenticated requests."""
+        if not getattr(django_settings, 'SESSION_FINGERPRINT_ENABLED', False):
+            return None
+
+        if not request.META.get('HTTP_USER_AGENT'):
+            return None
+
+        current_fp = self._build_session_fingerprint(request)
+        stored_fp = request.session.get(self.SESSION_FP_KEY)
+
+        if not stored_fp:
+            request.session[self.SESSION_FP_KEY] = current_fp
+            return None
+
+        if stored_fp != current_fp:
+            logger.warning(
+                "PermissionValidationMiddleware: session fingerprint mismatch user=%s",
+                getattr(request.user, 'username', '?'),
+            )
+            return self._force_logout(request, 'Session verification failed. Please log in again.')
+
+        return None
+
+    def _validation_unavailable_response(self, request):
+        """Fail closed when permission validation cannot be completed."""
+        message = 'Session validation is temporarily unavailable. Please try again shortly.'
+        is_api_request = (
+            request.headers.get('X-Requested-With') == 'XMLHttpRequest' or
+            request.content_type == 'application/json' or
+            '/api/' in request.path
+        )
+        if is_api_request:
+            return JsonResponse({
+                'success': False,
+                'message': message,
+            }, status=503)
+
+        prefix = self._panel_prefix(request)
+        return redirect(f'{prefix}/inactive/?reason={quote(message)}')
     
     def _validate_user_access(self, request):
         """
@@ -445,14 +525,11 @@ class PermissionValidationMiddleware:
                 )
                 return self._force_logout(request, 'Your account has been removed.')
             except Exception as exc:
-                # Transient DB error (e.g. SQLite locked) — treat as valid and
-                # let the request through so the page still loads.  The next
-                # request will retry the DB check.
-                logger.warning(
-                    "PermissionValidationMiddleware: DB error re-fetching user %s — skipping check: %s",
+                logger.error(
+                    "PermissionValidationMiddleware: DB error re-fetching user %s — denying request: %s",
                     getattr(user, 'username', '?'), exc,
                 )
-                return None
+                return self._validation_unavailable_response(request)
         
         # Check if user is still active
         if not fresh_user.is_active:
@@ -484,11 +561,11 @@ class PermissionValidationMiddleware:
             )
             return self._force_logout(request, 'Your client profile is not configured.')
         except Exception as exc:
-            logger.warning(
-                "PermissionValidationMiddleware: DB error fetching client for user %s — skipping check: %s",
+            logger.error(
+                "PermissionValidationMiddleware: DB error fetching client for user %s — denying request: %s",
                 getattr(user, 'username', '?'), exc,
             )
-            return None
+            return self._validation_unavailable_response(request)
         
         # Check if client is still active
         if client.status != 'active':
@@ -526,11 +603,11 @@ class PermissionValidationMiddleware:
             )
             return self._force_logout(request, 'Your staff profile is not configured.')
         except Exception as exc:
-            logger.warning(
-                "PermissionValidationMiddleware: DB error fetching staff for user %s — skipping check: %s",
+            logger.error(
+                "PermissionValidationMiddleware: DB error fetching staff for user %s — denying request: %s",
                 getattr(user, 'username', '?'), exc,
             )
-            return None
+            return self._validation_unavailable_response(request)
         
         # Check if staff has no client assigned
         if not staff.client:

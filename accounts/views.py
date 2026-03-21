@@ -27,6 +27,18 @@ from .rate_limit import rate_limit
 logger = logging.getLogger(__name__)
 
 
+def _mask_login_identifier(identifier):
+    """Mask login identifier before writing to logs."""
+    value = str(identifier or '').strip()
+    if not value:
+        return 'unknown'
+    if '@' in value:
+        local, domain = value.split('@', 1)
+        local_mask = (local[:1] + '***') if local else '***'
+        return f'{local_mask}@{domain}'
+    return value[:1] + '***'
+
+
 # =============================================================================
 # PAGE VIEWS (Template-based)
 # =============================================================================
@@ -64,16 +76,18 @@ class LogoutView(View):
     """Handle user logout. Only POST allowed to prevent CSRF logout attacks."""
 
     @staticmethod
-    def _count_active_sessions_for_user(user_id):
+    def _count_active_sessions_for_user(user_id, stop_after=None):
         """Count non-expired authenticated sessions for a user id."""
         active = 0
-        for session in Session.objects.filter(expire_date__gt=timezone.now()):
+        for session in Session.objects.filter(expire_date__gt=timezone.now()).iterator(chunk_size=200):
             try:
                 data = session.get_decoded()
             except Exception:
                 continue
             if str(data.get('_auth_user_id')) == str(user_id):
                 active += 1
+                if stop_after is not None and active >= stop_after:
+                    break
         return active
     
     def get(self, request):
@@ -93,7 +107,7 @@ class LogoutView(View):
         if request.user.is_authenticated:
             # Pro User cannot logout the final active session.
             if getattr(request.user, 'role', '') == 'pro_user':
-                active_sessions = self._count_active_sessions_for_user(request.user.id)
+                active_sessions = self._count_active_sessions_for_user(request.user.id, stop_after=2)
                 if active_sessions <= 1:
                     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                         return JsonResponse({
@@ -205,7 +219,8 @@ class CheckEmailAPIView(View):
             result = AuthService.check_user_exists(identifier, role)
             
             return JsonResponse({
-                'success': result['exists'],
+                'success': result.get('exists', True),
+                'exists': result.get('exists', True),
                 'user_name': result.get('user_name', ''),
                 'user_email': result.get('user_email', ''),
                 'message': result['message']
@@ -257,7 +272,7 @@ class LoginAPIView(View):
                 
                 # Log activity
                 ActivityService.log_login(request, result['user'])
-                logger.info("Login success: user=%s role=%s", identifier, role)
+                logger.info("Login success: user=%s role=%s", _mask_login_identifier(identifier), role)
                 
                 return JsonResponse({
                     'success': True,
@@ -265,7 +280,12 @@ class LoginAPIView(View):
                     'message': result['message']
                 })
             else:
-                logger.warning("Login failed: identifier=%s role=%s reason=%s", identifier, role, result['message'])
+                logger.warning(
+                    "Login failed: identifier=%s role=%s reason=%s",
+                    _mask_login_identifier(identifier),
+                    role,
+                    result['message'],
+                )
                 return JsonResponse({
                     'success': False,
                     'message': result['message']
@@ -277,7 +297,7 @@ class LoginAPIView(View):
                 'message': 'Invalid JSON data'
             }, status=400)
         except Exception as e:
-            logger.exception("Login error for user=%s", identifier or 'unknown')
+            logger.exception("Login error for user=%s", _mask_login_identifier(identifier))
             return JsonResponse({
                 'success': False,
                 'message': 'An unexpected error occurred. Please try again.'
@@ -309,12 +329,7 @@ class ForgotPasswordAPIView(View):
                 'success': result['success'],
                 'message': result['message']
             }
-            
-            # Include dev OTP in debug mode only — gated behind dedicated flag
-            from django.conf import settings as django_settings
-            if django_settings.DEBUG and os.getenv('DEV_EXPOSE_OTP', '').lower() in ('true', '1', 'yes') and result.get('dev_otp'):
-                response_data['dev_otp'] = result['dev_otp']
-            
+
             return JsonResponse(response_data)
             
         except json.JSONDecodeError:

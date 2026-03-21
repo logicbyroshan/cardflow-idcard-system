@@ -12,6 +12,7 @@ from django.conf import settings as django_settings
 from django.contrib.auth.decorators import login_required
 from django.core.mail import EmailMultiAlternatives, get_connection
 from django.core.paginator import Paginator
+from django.db import transaction
 from django.db.models import Count, Q
 from django.http import JsonResponse
 from django.shortcuts import render
@@ -266,21 +267,34 @@ def api_email_resend(request, log_id):
             request=request,
         )
     except Exception as e:
-        logger.error('api_email_resend error for log %s: %s', log_id, e)
+        logger.exception('api_email_resend error for log %s', log_id)
         log.status = EmailLog.STATUS_FAILED
-        log.error_message = str(e)
+        log.error_message = 'Failed to send welcome email.'
         log.save(update_fields=['status', 'error_message'])
         # Password intentionally NOT changed — email never reached the user
         return JsonResponse({'success': False, 'message': 'Failed to send email. Password was not changed.'}, status=500)
 
     if success:
         # Only now save the new password — email delivery confirmed
-        user.set_password(new_password)
-        user.save(update_fields=['password'])
-        log.status = EmailLog.STATUS_SENT
-        log.sent_at = timezone.now()
-        log.error_message = ''
-        log.save(update_fields=['status', 'sent_at', 'error_message'])
+        try:
+            with transaction.atomic():
+                user.set_password(new_password)
+                user.save(update_fields=['password'])
+                log.status = EmailLog.STATUS_SENT
+                log.sent_at = timezone.now()
+                log.error_message = ''
+                log.save(update_fields=['status', 'sent_at', 'error_message'])
+        except Exception:
+            logger.exception('api_email_resend post-send update failed for log %s', log_id)
+            log.status = EmailLog.STATUS_FAILED
+            log.error_message = 'Email was sent, but account update failed. Please resend to generate a new password.'
+            log.save(update_fields=['status', 'error_message'])
+            return JsonResponse({
+                'success': False,
+                'message': 'Email was sent, but account update could not be completed. Please resend.',
+                'new_status': log.status,
+                'new_status_display': log.get_status_display(),
+            }, status=500)
     else:
         log.status = EmailLog.STATUS_FAILED
         log.error_message = message

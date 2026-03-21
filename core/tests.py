@@ -6,6 +6,7 @@ permissions, workflow transitions, bulk upload service, global search.
 from django.test import TestCase, RequestFactory, override_settings
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
+from unittest.mock import patch
 import json
 import os
 import tempfile
@@ -205,6 +206,43 @@ class PermissionTests(TestCase):
         self.client.login(username='client@test.com', password='clientpass1')
         response = self.client.get(f'/panel/client/table/{self.table.id}/cards/')
         self.assertIn(response.status_code, [200, 302])
+
+
+class PermissionValidationMiddlewareTests(TestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.user, _client = _create_client_user('middleware-client@test.com', 'clientpass1')
+
+    def _middleware(self):
+        from core.middleware import PermissionValidationMiddleware
+        return PermissionValidationMiddleware(lambda request: None)
+
+    def test_db_error_on_user_refetch_returns_503_for_api(self):
+        middleware = self._middleware()
+        request = self.factory.get('/panel/api/dummy/')
+        request.user = self.user
+        request.session = {}
+        request.content_type = 'application/json'
+
+        with patch('core.models.User.objects.select_related', side_effect=Exception('db locked')):
+            response = middleware._validate_user_access(request)
+
+        self.assertIsNotNone(response)
+        self.assertEqual(response.status_code, 503)
+
+    def test_db_error_on_user_refetch_redirects_page_to_inactive(self):
+        middleware = self._middleware()
+        request = self.factory.get('/panel/dashboard/')
+        request.user = self.user
+        request.session = {}
+        request.content_type = ''
+
+        with patch('core.models.User.objects.select_related', side_effect=Exception('db locked')):
+            response = middleware._validate_user_access(request)
+
+        self.assertIsNotNone(response)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/panel/inactive/', response['Location'])
 
 
 # ── Global Search Tests ──

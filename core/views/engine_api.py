@@ -44,6 +44,14 @@ def _engine_headers():
     return {"X-ENGINE-KEY": ENGINE_API_KEY}
 
 
+def _internal_error_response():
+    """Return a generic server error payload without exposing exception text."""
+    return JsonResponse(
+        {"success": False, "message": "An unexpected error occurred. Please try again."},
+        status=500,
+    )
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 #  GET  /api/engine/status/
 # ═══════════════════════════════════════════════════════════════════════════
@@ -152,7 +160,7 @@ def api_engine_process_folder(request):
         return JsonResponse({"success": False, "message": msg}, status=exc.response.status_code)
     except Exception as exc:
         logger.exception("process-folder proxy error")
-        return JsonResponse({"success": False, "message": str(exc)}, status=500)
+        return _internal_error_response()
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -209,7 +217,7 @@ def api_engine_compress_folder(request):
         return JsonResponse({"success": False, "message": msg}, status=exc.response.status_code)
     except Exception as exc:
         logger.exception("compress-folder proxy error")
-        return JsonResponse({"success": False, "message": str(exc)}, status=500)
+        return _internal_error_response()
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -882,7 +890,7 @@ def api_engine_rename_preview(request):
         return JsonResponse({"success": False, "message": msg}, status=exc.response.status_code)
     except Exception as exc:
         logger.exception("rename-preview proxy error")
-        return JsonResponse({"success": False, "message": str(exc)}, status=500)
+        return _internal_error_response()
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -968,7 +976,7 @@ def api_engine_rename_execute(request):
         return JsonResponse({"success": False, "message": msg}, status=exc.response.status_code)
     except Exception as exc:
         logger.exception("rename-execute proxy error")
-        return JsonResponse({"success": False, "message": str(exc)}, status=500)
+        return _internal_error_response()
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -1008,7 +1016,7 @@ def api_engine_rename_operations(request):
         }, status=504)
     except Exception as exc:
         logger.exception("rename-operations proxy error")
-        return JsonResponse({"success": False, "message": str(exc)}, status=500)
+        return _internal_error_response()
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -1063,7 +1071,4 @@ def api_engine_clients(request):
         
     except Exception as exc:
         logger.exception("api_engine_clients error")
-        return JsonResponse({
-            'success': False,
-            'message': str(exc),
-        }, status=500)
+        return _internal_error_response()

@@ -297,7 +297,7 @@ def send_welcome_email(name, email, password, role, request=None, phone='', **kw
 
     except Exception as e:
         logger.error("Failed to send welcome email to %s: %s", email, e)
-        return False, f'Failed to send email: {str(e)}'
+        return False, 'Failed to send email. Please try again.'
 
 
 def send_password_changed_notification(name, email, request=None):

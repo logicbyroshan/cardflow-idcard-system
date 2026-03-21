@@ -25,6 +25,8 @@ from django.utils import timezone as django_tz
 
 logger = logging.getLogger(__name__)
 
+MAX_BASE64_ZIP_BYTES = 25 * 1024 * 1024  # 25MB raw ZIP before base64 expansion
+
 from django.db.models import QuerySet
 from django.core.files.storage import default_storage
 
@@ -192,6 +194,14 @@ class ZipExporter:
                     return ZipExportResult(
                         success=False,
                         message='No images found for selected cards!'
+                    )
+
+                zip_size = os.path.getsize(zip_tmp_path)
+                if zip_size > MAX_BASE64_ZIP_BYTES:
+                    os.unlink(zip_tmp_path)
+                    return ZipExportResult(
+                        success=False,
+                        message='Selected images are too large for inline ZIP download. Please export fewer cards.'
                     )
                 
                 # Read from disk and base64-encode

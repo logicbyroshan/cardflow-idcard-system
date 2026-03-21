@@ -284,8 +284,20 @@ SESSION_IDLE_TIMEOUT = int(os.getenv('SESSION_IDLE_TIMEOUT', str(60 * 60 * 24 * 
 # ── Session absolute max-age (seconds) ──
 # Hard cap on session lifetime regardless of activity.
 # Prevents indefinitely-valid stolen tokens from staying valid forever.
-# Set to 0 to disable. Default: 90 days.
-SESSION_ABSOLUTE_MAX_AGE = int(os.getenv('SESSION_ABSOLUTE_MAX_AGE', str(60 * 60 * 24 * 90)))
+# Set to 0 to disable. Default: 30 days.
+SESSION_ABSOLUTE_MAX_AGE = int(os.getenv('SESSION_ABSOLUTE_MAX_AGE', str(60 * 60 * 24 * 30)))
+
+# ── Session fingerprint validation ──
+# Adds lightweight binding of a session to browser fingerprint material.
+# Include IP binding only when infra has stable client egress IPs.
+SESSION_FINGERPRINT_ENABLED = os.getenv(
+    'SESSION_FINGERPRINT_ENABLED',
+    'false' if DEBUG else 'true'
+).strip().lower() in ('1', 'true', 'yes')
+SESSION_FINGERPRINT_INCLUDE_IP = os.getenv(
+    'SESSION_FINGERPRINT_INCLUDE_IP',
+    'false'
+).strip().lower() in ('1', 'true', 'yes')
 
 # ── Permissions-Policy header ──
 # Restricts browser APIs not needed by this app.

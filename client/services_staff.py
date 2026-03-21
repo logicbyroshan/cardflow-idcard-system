@@ -303,78 +303,83 @@ class ClientStaffService(BaseService):
             if not PermissionService.has_permission(user, 'perm_idcard_client_list'):
                 return ServiceResult(success=False, message='Permission denied')
             
-            # Get staff and verify ownership
-            try:
-                staff = Staff.objects.get(id=staff_id, client=client, staff_type='client_staff')
-            except Staff.DoesNotExist:
-                return ServiceResult(success=False, message='Staff not found')
-            
-            staff_user = staff.user
-            
-            # Update user fields - handle both name formats
-            if 'first_name' in data:
-                staff_user.first_name = data['first_name'].strip()
-            if 'last_name' in data:
-                staff_user.last_name = data['last_name'].strip()
-            
-            # Also handle combined 'name' field
-            name = data.get('name', '').strip()
-            if name and 'first_name' not in data:
-                name_parts = name.split()
-                staff_user.first_name = name_parts[0] if name_parts else ''
-                staff_user.last_name = ' '.join(name_parts[1:]) if len(name_parts) > 1 else ''
-            
-            if 'phone' in data:
-                staff_user.phone = data['phone']
-            
-            if 'is_active' in data:
-                staff_user.is_active = cls.parse_bool(data['is_active'])
-            
-            staff_user.save()
-            
-            # Update staff fields
-            if 'department' in data:
-                staff.department = data['department']
-            if 'designation' in data:
-                staff.designation = data['designation']
-            if 'address' in data:
-                staff.address = data['address']
-            
-            # Update permissions (only those the client themselves has)
-            for perm in cls.STAFF_PERMISSION_FIELDS:
-                if perm in data:
-                    # Server-side enforcement: client can only grant perms they have
-                    if getattr(client, perm, False):
-                        setattr(staff, perm, cls.parse_bool(data[perm]))
-                    else:
-                        setattr(staff, perm, False)
-            
-            staff.save()
-            
-            # Update class/section filters if provided
-            if 'allowed_classes' in data:
-                allowed_classes = data['allowed_classes']
-                if isinstance(allowed_classes, list):
-                    staff.allowed_classes = [str(v).strip() for v in allowed_classes if isinstance(v, str)]
-            if 'allowed_sections' in data:
-                allowed_sections = data['allowed_sections']
-                if isinstance(allowed_sections, list):
-                    staff.allowed_sections = [str(v).strip() for v in allowed_sections if isinstance(v, str)]
-            if 'allowed_branches' in data:
-                allowed_branches = data['allowed_branches']
-                if isinstance(allowed_branches, list):
-                    staff.allowed_branches = [str(v).strip() for v in allowed_branches if isinstance(v, str)]
-            staff.save()
-            
-            # Update group assignments if provided
-            if 'assigned_groups' in data:
-                from idcards.models import IDCardGroup
-                group_ids = data['assigned_groups']
-                if isinstance(group_ids, list):
-                    valid_groups = IDCardGroup.objects.filter(
-                        id__in=group_ids, client=client
+            with transaction.atomic():
+                # Get staff and verify ownership (row-lock for consistency)
+                try:
+                    staff = (
+                        Staff.objects
+                        .select_for_update()
+                        .select_related('user')
+                        .get(id=staff_id, client=client, staff_type='client_staff')
                     )
-                    staff.assigned_groups.set(valid_groups)
+                except Staff.DoesNotExist:
+                    return ServiceResult(success=False, message='Staff not found')
+
+                staff_user = staff.user
+
+                # Update user fields - handle both name formats
+                if 'first_name' in data:
+                    staff_user.first_name = data['first_name'].strip()
+                if 'last_name' in data:
+                    staff_user.last_name = data['last_name'].strip()
+
+                # Also handle combined 'name' field
+                name = data.get('name', '').strip()
+                if name and 'first_name' not in data:
+                    name_parts = name.split()
+                    staff_user.first_name = name_parts[0] if name_parts else ''
+                    staff_user.last_name = ' '.join(name_parts[1:]) if len(name_parts) > 1 else ''
+
+                if 'phone' in data:
+                    staff_user.phone = data['phone']
+
+                if 'is_active' in data:
+                    staff_user.is_active = cls.parse_bool(data['is_active'])
+
+                staff_user.save()
+
+                # Update staff fields
+                if 'department' in data:
+                    staff.department = data['department']
+                if 'designation' in data:
+                    staff.designation = data['designation']
+                if 'address' in data:
+                    staff.address = data['address']
+
+                # Update permissions (only those the client themselves has)
+                for perm in cls.STAFF_PERMISSION_FIELDS:
+                    if perm in data:
+                        # Server-side enforcement: client can only grant perms they have
+                        if getattr(client, perm, False):
+                            setattr(staff, perm, cls.parse_bool(data[perm]))
+                        else:
+                            setattr(staff, perm, False)
+
+                # Update class/section filters if provided
+                if 'allowed_classes' in data:
+                    allowed_classes = data['allowed_classes']
+                    if isinstance(allowed_classes, list):
+                        staff.allowed_classes = [str(v).strip() for v in allowed_classes if isinstance(v, str)]
+                if 'allowed_sections' in data:
+                    allowed_sections = data['allowed_sections']
+                    if isinstance(allowed_sections, list):
+                        staff.allowed_sections = [str(v).strip() for v in allowed_sections if isinstance(v, str)]
+                if 'allowed_branches' in data:
+                    allowed_branches = data['allowed_branches']
+                    if isinstance(allowed_branches, list):
+                        staff.allowed_branches = [str(v).strip() for v in allowed_branches if isinstance(v, str)]
+
+                staff.save()
+
+                # Update group assignments if provided
+                if 'assigned_groups' in data:
+                    from idcards.models import IDCardGroup
+                    group_ids = data['assigned_groups']
+                    if isinstance(group_ids, list):
+                        valid_groups = IDCardGroup.objects.filter(
+                            id__in=group_ids, client=client
+                        )
+                        staff.assigned_groups.set(valid_groups)
             
             return ServiceResult(
                 success=True,

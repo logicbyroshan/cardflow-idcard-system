@@ -12,6 +12,7 @@ import logging
 
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
+from accounts.rate_limit import rate_limit
 
 from idcards.models import IDCardTable
 from ..services import IDCardService
@@ -47,6 +48,7 @@ def api_idcard_table_create(request, group_id):
 
 @require_http_methods(["GET"])
 @api_require_permission('perm_idcard_setting_list')
+@rate_limit(max_requests=60, window_seconds=60, key_prefix='idcard_table_get')
 def api_idcard_table_get(request, table_id):
     """API endpoint to get a single ID Card Table"""
     table, err = _check_client_scope_by_table(request.user, table_id)

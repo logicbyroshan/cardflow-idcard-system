@@ -153,7 +153,8 @@ def process_reupload_images(task):
             zip_image_index = _build_zip_image_index(zip_path)
             logger.info("ZIP index built: %d images found", len(zip_image_index))
         except Exception as e:
-            task.mark_failed(f"Failed to read ZIP file: {str(e)}")
+            logger.exception("Failed to read ZIP for reupload task_id=%s", task.id)
+            task.mark_failed("Failed to read ZIP file. Please verify the ZIP and try again.")
             return
 
         if not zip_image_index:
@@ -341,7 +342,7 @@ def process_reupload_images(task):
     except Exception as e:
         logger.exception("Reupload processing failed: %s", e)
         try:
-            _db_retry(lambda: task.mark_failed(str(e)))
+            _db_retry(lambda: task.mark_failed("Reupload processing failed due to an internal error."))
         except Exception:
             logger.error("Could not mark task %d as failed (DB still locked)", task.id)
     finally:

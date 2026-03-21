@@ -4,6 +4,7 @@ Contains: All client-related API endpoints (CRUD, toggle status, get staff)
 """
 import json
 import logging
+import os
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from ..services import ClientService
@@ -16,6 +17,28 @@ from ..services.permission_service import (
 from accounts.rate_limit import rate_limit
 
 logger = logging.getLogger(__name__)
+
+
+MAX_IMAGE_UPLOAD_BYTES = 5 * 1024 * 1024
+ALLOWED_IMAGE_UPLOAD_MIMES = {'image/jpeg', 'image/png', 'image/webp'}
+ALLOWED_IMAGE_UPLOAD_EXTS = {'.jpg', '.jpeg', '.png', '.webp'}
+
+
+def _validate_optional_image_upload(uploaded):
+    """Validate optional client/staff photo uploads without changing response schema."""
+    if not uploaded:
+        return None
+    if getattr(uploaded, 'size', 0) > MAX_IMAGE_UPLOAD_BYTES:
+        return JsonResponse({'success': False, 'message': 'Image must be 5 MB or smaller'}, status=400)
+
+    ext = os.path.splitext(getattr(uploaded, 'name', '') or '')[1].lower()
+    if ext not in ALLOWED_IMAGE_UPLOAD_EXTS:
+        return JsonResponse({'success': False, 'message': 'Only JPG, PNG, and WEBP images are allowed'}, status=400)
+
+    content_type = (getattr(uploaded, 'content_type', '') or '').lower()
+    if content_type and content_type not in ALLOWED_IMAGE_UPLOAD_MIMES:
+        return JsonResponse({'success': False, 'message': 'Unsupported image content type'}, status=400)
+    return None
 
 
 def _check_admin_staff_client_access(user, client_id):
@@ -38,6 +61,10 @@ def api_client_create(request):
         else:
             data = json.loads(request.body)
             photo = None
+
+        file_error = _validate_optional_image_upload(photo)
+        if file_error:
+            return file_error
         
         result = ClientService.create(data, request=request, photo=photo)
         
@@ -61,6 +88,7 @@ def api_client_create(request):
 
 @require_http_methods(["GET"])
 @api_require_any_admin
+@rate_limit(max_requests=60, window_seconds=60, key_prefix='client_get')
 def api_client_get(request, client_id):
     """API endpoint to get a client's details"""
     if not _check_admin_staff_client_access(request.user, client_id):
@@ -85,6 +113,10 @@ def api_client_update(request, client_id):
         else:
             data = json.loads(request.body)
             photo = None
+
+        file_error = _validate_optional_image_upload(photo)
+        if file_error:
+            return file_error
         
         # Non-super-admin users cannot modify client permissions
         if not PermissionService.is_super_admin(request.user):
@@ -140,6 +172,7 @@ def api_client_toggle_status(request, client_id):
 
 @require_http_methods(["GET"])
 @api_require_any_admin
+@rate_limit(max_requests=60, window_seconds=60, key_prefix='client_staff_get')
 def api_client_staff(request, client_id):
     """API endpoint to get all staff members for a specific client"""
     if not _check_admin_staff_client_access(request.user, client_id):

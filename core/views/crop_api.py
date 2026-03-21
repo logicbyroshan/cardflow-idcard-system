@@ -48,6 +48,14 @@ def _engine_headers():
     return {"X-ENGINE-KEY": ENGINE_API_KEY}
 
 
+def _internal_error_response():
+    """Return a generic server error payload without exposing exception text."""
+    return JsonResponse(
+        {"success": False, "message": "An unexpected error occurred. Please try again."},
+        status=500,
+    )
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 #  POST  /panel/api/table/<table_id>/cards/prepare-crop/
 # ═══════════════════════════════════════════════════════════════════════════
@@ -159,7 +167,7 @@ def api_process_crop(request, table_id):
         }, status=exc.response.status_code)
     except Exception as exc:
         logger.exception("process-crop proxy error")
-        return JsonResponse({"success": False, "message": str(exc)}, status=500)
+        return _internal_error_response()
 
 
 # ═══════════════════════════════════════════════════════════════════════════

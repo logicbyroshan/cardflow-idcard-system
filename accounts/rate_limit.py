@@ -11,6 +11,7 @@ Usage:
 import functools
 import logging
 
+from django.conf import settings
 from django.core.cache import cache
 from django.http import JsonResponse
 
@@ -25,6 +26,10 @@ def _get_client_ip(request):
     proxy (Nginx/Render etc.) that overwrites it.  The proxy must be
     configured to strip client-supplied X-Forwarded-For values.
     """
+    trust_xff = bool(getattr(settings, 'RATE_LIMIT_TRUST_X_FORWARDED_FOR', False))
+    if not trust_xff:
+        return request.META.get('REMOTE_ADDR', '0.0.0.0')
+
     # If running behind a trusted reverse proxy that sets X-Forwarded-For,
     # take only the *rightmost* IP added by the proxy (last hop).
     # In a typical single-proxy setup this is the first entry.
