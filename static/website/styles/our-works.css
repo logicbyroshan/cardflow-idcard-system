@@ -38,6 +38,7 @@ body.modal-open {
     background: #fff;
     border-radius: 20px;
     overflow: hidden;
+    overflow-x: hidden;
     overscroll-behavior: contain;
     display: flex;
     flex-direction: column;
@@ -113,9 +114,11 @@ body.modal-open {
     flex: 1;
     padding: 20px;
     overflow-y: auto;
+    overflow-x: hidden;
     overscroll-behavior: contain;
     columns: 4 240px;
     column-gap: 16px;
+    white-space: normal;
 }
 
 .product-gallery-grid .gallery-item {
@@ -168,6 +171,7 @@ body.modal-open {
 
 .gallery-item img {
     width: 100%;
+    max-width: 100%;
     height: auto;
     display: block;
     object-fit: contain;
@@ -175,6 +179,7 @@ body.modal-open {
 
 .gallery-item video {
     width: 100%;
+    max-width: 100%;
     height: auto;
     display: block;
     aspect-ratio: 16/9;
@@ -266,6 +271,49 @@ body.modal-open {
     grid-template-columns: repeat(4, 1fr);
     gap: 20px;
     margin-bottom: 30px;
+}
+
+/* Desktop layout tuning:
+   keep School/Office Stationery together and Student Diaries/Nameplate together
+   with matching card sizes to avoid an extra-tall single card. */
+@media (min-width: 1200px) {
+    .categories-grid .category-card[data-slug="school-stationery"],
+    .categories-grid .category-card[data-slug="school-stationary"],
+    .categories-grid .category-card[data-slug="office-stationery"],
+    .categories-grid .category-card[data-slug="office-stationary"],
+    .categories-grid .category-card[data-slug="student-diaries"],
+    .categories-grid .category-card[data-slug="student-diary"],
+    .categories-grid .category-card[data-slug="nameplate"],
+    .categories-grid .category-card[data-slug="name-plate"] {
+        grid-column: span 2;
+        grid-row: span 1;
+        height: 280px;
+    }
+
+    .categories-grid .category-card.large[data-slug="school-stationery"],
+    .categories-grid .category-card.large[data-slug="school-stationary"],
+    .categories-grid .category-card.large[data-slug="office-stationery"],
+    .categories-grid .category-card.large[data-slug="office-stationary"],
+    .categories-grid .category-card.large[data-slug="student-diaries"],
+    .categories-grid .category-card.large[data-slug="student-diary"],
+    .categories-grid .category-card.large[data-slug="nameplate"],
+    .categories-grid .category-card.large[data-slug="name-plate"] {
+        height: 280px;
+    }
+
+    .categories-grid .category-card[data-slug="school-stationery"],
+    .categories-grid .category-card[data-slug="school-stationary"],
+    .categories-grid .category-card[data-slug="student-diaries"],
+    .categories-grid .category-card[data-slug="student-diary"] {
+        grid-column-start: 1;
+    }
+
+    .categories-grid .category-card[data-slug="office-stationery"],
+    .categories-grid .category-card[data-slug="office-stationary"],
+    .categories-grid .category-card[data-slug="nameplate"],
+    .categories-grid .category-card[data-slug="name-plate"] {
+        grid-column-start: 3;
+    }
 }
 
 .category-card {

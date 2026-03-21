@@ -278,7 +278,7 @@ function initGlowBorder() {
     const slideCard = document.querySelector('.slide-card');
     if (!slideCard) return;
     // Check if @property is supported
-    if (!CSS.registerProperty) {
+    if (typeof CSS === 'undefined' || !CSS.registerProperty) {
         let angle = 0;
         function updateAngle() {
             angle = (angle + 2) % 360;
@@ -286,9 +286,6 @@ function initGlowBorder() {
             requestAnimationFrame(updateAngle);
         }
         slideCard.style.animation = 'none';
-        if (slideCard.querySelector('::before')) {
-            // Can't directly style pseudo, so we use a CSS variable approach
-        }
         requestAnimationFrame(updateAngle);
     }
 }

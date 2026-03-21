@@ -982,16 +982,26 @@ body {
 
 .bento-card-1 .bento-text-content,
 .bento-card-4 .bento-text-content {
-    flex: 1;
+    flex: 0 0 40%;
+    max-width: 40%;
     min-width: 0;
 }
 
 .bento-card-1 .bento-illustration,
 .bento-card-4 .bento-illustration {
-    flex-shrink: 0;
-    max-width: 180px;
-    width: 180px;
+    flex: 0 0 60%;
+    max-width: 60%;
+    width: 60%;
     margin-bottom: 0;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.bento-card-1 .bento-illustration img,
+.bento-card-4 .bento-illustration img {
+    width: 100%;
+    max-width: 320px;
+    margin-left: auto;
 }
 
 .bento-card::before {
@@ -1324,6 +1334,7 @@ body {
     background: #f3f4f6;
     border-radius: 26px;
     overflow: hidden;
+    position: relative;
 }
 
 .phone-status-bar {
@@ -1347,6 +1358,41 @@ body {
 
 .phone-card.short {
     height: 50px;
+}
+
+.download-app-qr {
+    position: absolute;
+    left: 50%;
+    bottom: 16px;
+    transform: translateX(-50%);
+    text-align: center;
+}
+
+.download-app-qr-frame {
+    background: #fff;
+    border-radius: 12px;
+    padding: 8px;
+    display: inline-block;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+
+.download-app-qr-frame img {
+    width: 88px;
+    height: 88px;
+    display: block;
+    border-radius: 4px;
+}
+
+.download-app-qr-caption {
+    font-size: 0.72rem;
+    color: #6b7280;
+    margin-top: 0.45rem;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+.download-app-qr-caption i {
+    color: #4f46e5;
 }
 
 @media (max-width: 768px) {

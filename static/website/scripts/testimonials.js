@@ -52,9 +52,10 @@ document.addEventListener('DOMContentLoaded', function() {
     videoCards.forEach(card => {
         card.addEventListener('click', () => {
             const url = card.dataset.videoUrl;
+            if (!url) return;
             if (url.includes('youtube.com') || url.includes('youtu.be')) {
                 window.open(url, '_blank');
-            } else {
+            } else if (videoModal && modalVideo) {
                 modalVideo.src = url;
                 videoModal.classList.add('active');
                 modalVideo.play();
@@ -63,6 +64,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     document.getElementById('videoModalClose')?.addEventListener('click', () => {
+        if (!videoModal || !modalVideo) return;
         videoModal.classList.remove('active');
         modalVideo.pause();
     });
@@ -72,18 +74,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const stars = document.querySelectorAll('.star-rating i');
     const ratingInput = document.getElementById('selectedRating');
 
-    document.getElementById('writeReviewBtn')?.addEventListener('click', () => {
-        reviewModal.classList.add('active');
-        document.body.style.overflow = 'hidden';
-    });
-
     document.getElementById('heroWriteReviewBtn')?.addEventListener('click', (e) => {
         e.preventDefault();
+        if (!reviewModal) return;
         reviewModal.classList.add('active');
         document.body.style.overflow = 'hidden';
     });
 
     document.getElementById('reviewModalClose')?.addEventListener('click', () => {
+        if (!reviewModal) return;
         reviewModal.classList.remove('active');
         document.body.style.overflow = '';
     });

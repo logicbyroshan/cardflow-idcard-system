@@ -35,24 +35,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     counters.forEach(c => counterObserver.observe(c));
 
-    // --- 2. FAQ Accordion ---
-    const faqItems = document.querySelectorAll('.faq-item');
-    
-    faqItems.forEach(item => {
-        item.querySelector('.faq-question').addEventListener('click', () => {
-            const wasActive = item.classList.contains('active');
-            
-            // Close all others
-            faqItems.forEach(i => i.classList.remove('active'));
-            
-            // Toggle current
-            if (!wasActive) {
-                item.classList.add('active');
-            }
-        });
-    });
-
-    // --- 3. Reveal on Scroll ---
+    // --- 2. Reveal on Scroll ---
     const revealObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
@@ -61,7 +44,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    document.querySelectorAll('.feature-card, .stat-item, .faq-item').forEach(el => {
+    document.querySelectorAll('.feature-card, .stat-item, .trust-card').forEach(el => {
         el.style.opacity = '0';
         el.style.transform = 'translateY(20px)';
         el.style.transition = 'all 0.6s ease-out';
@@ -72,8 +55,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const style = document.createElement('style');
     style.innerHTML = `
         .animate-in { opacity: 1 !important; transform: translateY(0) !important; }
-        .faq-item.active .faq-answer { display: block; padding-top: 10px; }
-        .faq-item.active i { transform: rotate(45deg); }
     `;
     document.head.appendChild(style);
 });

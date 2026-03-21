@@ -229,30 +229,6 @@
         </div>
     </section>
 
-    <!-- FAQ Section -->
-    <section class="faq-section">
-        <div class="container">
-            <div class="section-header">
-                <h2>Frequently Asked <span class="highlight">Questions</span></h2>
-            </div>
-            
-            <div class="faq-container">
-                {% for faq in faqs %}
-                <div class="faq-item">
-                    <div class="faq-question">
-                        <span>{{ faq.question }}</span>
-                        <i class="fas fa-plus"></i>
-                    </div>
-                    <div class="faq-answer">
-                        <p>{{ faq.answer }}</p>
-                    </div>
-                </div>
-                {% empty %}
-                <p class="text-center">No FAQs available at the moment.</p>
-                {% endfor %}
-            </div>
-        </div>
-    </section>
 {% endblock %}
 
 {% block extra_js %}

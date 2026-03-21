@@ -83,6 +83,86 @@
         searchInputId: 'searchInput',
         filters: []
       });
+
+      // Fallback: ensure custom client-password eye toggle is always visible and functional.
+      // This keeps UX stable even if a stale bundled JS misses toggle wiring.
+      (function initClientPasswordEyeToggleFallback() {
+        var input = document.getElementById('clientPassword');
+        var group = document.getElementById('clientCustomPasswordGroup');
+        if (!input || !group) return;
+
+        var btn = document.getElementById('clientPasswordToggleBtn');
+        var icon = document.getElementById('clientPasswordEyeIcon');
+
+        if (!btn) {
+          var wrapper = input.parentElement;
+          if (!wrapper) return;
+          btn = document.createElement('button');
+          btn.type = 'button';
+          btn.id = 'clientPasswordToggleBtn';
+          btn.setAttribute('aria-label', 'Toggle password visibility');
+          btn.style.position = 'absolute';
+          btn.style.right = '0.75rem';
+          btn.style.top = '50%';
+          btn.style.transform = 'translateY(-50%)';
+          btn.style.border = 'none';
+          btn.style.background = 'transparent';
+          btn.style.color = '#64748b';
+          btn.style.cursor = 'pointer';
+          btn.style.padding = '0';
+          btn.style.lineHeight = '1';
+
+          icon = document.createElement('i');
+          icon.id = 'clientPasswordEyeIcon';
+          icon.className = 'fa-solid fa-eye';
+          btn.appendChild(icon);
+          wrapper.appendChild(btn);
+        }
+
+        function setHidden() {
+          input.type = 'password';
+          if (icon) icon.className = 'fa-solid fa-eye';
+        }
+
+        function isGroupVisible() {
+          return group.style.display !== 'none';
+        }
+
+        function syncToggleVisibility() {
+          btn.style.display = isGroupVisible() ? '' : 'none';
+          if (!isGroupVisible()) setHidden();
+        }
+
+        if (!btn.dataset.boundToggle) {
+          btn.addEventListener('click', function() {
+            if (input.type === 'password') {
+              input.type = 'text';
+              if (icon) icon.className = 'fa-solid fa-eye-slash';
+            } else {
+              setHidden();
+            }
+          });
+          btn.dataset.boundToggle = '1';
+        }
+
+        var optionDropdown = document.getElementById('clientPasswordOptionDropdown');
+        if (optionDropdown && !optionDropdown.dataset.boundToggleSync) {
+          optionDropdown.addEventListener('click', function() {
+            setTimeout(syncToggleVisibility, 0);
+          });
+          optionDropdown.dataset.boundToggleSync = '1';
+        }
+
+        var addBtn = document.getElementById('addClientBtn');
+        if (addBtn && !addBtn.dataset.boundToggleSync) {
+          addBtn.addEventListener('click', function() {
+            setTimeout(syncToggleVisibility, 0);
+          });
+          addBtn.dataset.boundToggleSync = '1';
+        }
+
+        syncToggleVisibility();
+      })();
     });
   </script>
 {% endblock %}
