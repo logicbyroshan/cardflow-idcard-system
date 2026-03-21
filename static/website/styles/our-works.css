@@ -116,35 +116,29 @@ body.modal-open {
     overflow-y: auto;
     overflow-x: hidden;
     overscroll-behavior: contain;
-    column-count: 4;
-    column-width: 260px;
-    column-fill: auto;
-    column-gap: 16px;
-    white-space: normal;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+    align-content: start;
 }
 
 .product-gallery-grid .gallery-item {
     break-inside: avoid;
-    break-inside: avoid-column;
-    -webkit-column-break-inside: avoid;
-    page-break-inside: avoid;
-    margin-bottom: 16px;
-    display: inline-block;
+    margin-bottom: 0;
+    display: block;
     vertical-align: top;
     width: 100%;
 }
 
 @media (max-width: 900px) {
     .product-gallery-grid {
-        column-count: 3;
-        column-width: 200px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 }
 
 @media (max-width: 600px) {
     .product-gallery-grid {
-        column-count: 2;
-        column-width: 150px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 

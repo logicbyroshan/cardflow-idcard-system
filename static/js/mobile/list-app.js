@@ -511,6 +511,32 @@ function listApp() {
             return String(fallbackValue || '');
         },
 
+        _normalizeDateForInput(value) {
+            const raw = String(value || '').trim();
+            if (!raw) return '';
+
+            // Already in input[type=date] format.
+            if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+
+            // Common legacy formats from field_data: DD-MM-YYYY or DD/MM/YYYY.
+            let m = raw.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
+            if (m) {
+                const dd = String(m[1]).padStart(2, '0');
+                const mm = String(m[2]).padStart(2, '0');
+                return m[3] + '-' + mm + '-' + dd;
+            }
+
+            // Alternate format: YYYY/MM/DD.
+            m = raw.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
+            if (m) {
+                const mm = String(m[2]).padStart(2, '0');
+                const dd = String(m[3]).padStart(2, '0');
+                return m[1] + '-' + mm + '-' + dd;
+            }
+
+            return '';
+        },
+
         _isExcludedField(name) {
             const n = this._normalizeFieldName(name);
             if (!n) return true;
@@ -1016,20 +1042,20 @@ function listApp() {
             const nameValue = this._resolveStudentName(fd, (student && student.name) || '');
             const fatherValue = this._getFieldValue(fd, ['FATHER NAME', "FATHER'S NAME", 'FATHER_NAME', 'father_name']);
             const motherValue = this._getFieldValue(fd, ['MOTHER NAME', "MOTHER'S NAME", 'MOTHER_NAME', 'mother_name']);
-            const rollNoValue = this._getFieldValue(fd, ['ROLL NO', 'ROLL_NO', 'roll_no', 'ID NUMBER', 'ID_NUMBER', 'id_number'], (student && (student.roll_no || student.id_number)) || '');
+            const rollNoValue = this._getFieldValue(fd, ['ROLL NO', 'ROLL_NO', 'roll_no', 'ID NUMBER', 'ID_NUMBER', 'id_number', 'SCH NO', 'SCH_NO', 'SCHOOL NO', 'SCHOOL_NO', 'ADMISSION NO', 'ADMISSION_NO'], (student && (student.roll_no || student.id_number)) || '');
             const dobValue = this._getFieldValue(fd, ['DOB', 'DATE OF BIRTH', 'DATE_OF_BIRTH', 'dob'], (student && student.dob) || '');
-            const classValue = this._getFieldValue(fd, ['CLASS', 'class', 'DESIGNATION', 'designation'], (student && student.class_name) || '');
-            const sectionValue = this._getFieldValue(fd, ['SECTION', 'section'], (student && student.section) || '');
-            const phoneValue = this._getFieldValue(fd, ['PHONE', 'MOBILE', 'MOBILE NO', 'MOBILE_NUMBER', 'phone']);
-            const addressValue = this._getFieldValue(fd, ['ADDRESS', 'PERMANENT ADDRESS', 'address']);
-            const bloodGroupValue = this._getFieldValue(fd, ['BLOOD GROUP', 'blood_group']);
-            const aadharValue = this._getFieldValue(fd, ['AADHAR', 'AADHAAR', 'AADHAR NO', 'aadhar']);
+            const classValue = this._getFieldValue(fd, ['CLASS', 'CLASS NAME', 'CLASS_NAME', 'STD', 'STANDARD', 'class', 'DESIGNATION', 'designation'], (student && student.class_name) || '');
+            const sectionValue = this._getFieldValue(fd, ['SECTION', 'SEC', 'section'], (student && student.section) || '');
+            const phoneValue = this._getFieldValue(fd, ['PHONE', 'MOBILE', 'MOBILE NO', 'MOBILE_NUMBER', 'CONTACT', 'CONTACT NO', 'contact_no', 'phone']);
+            const addressValue = this._getFieldValue(fd, ['ADDRESS', 'PERMANENT ADDRESS', 'PERMANENT_ADDRESS', 'address']);
+            const bloodGroupValue = this._getFieldValue(fd, ['BLOOD GROUP', 'BLOOD_GROUP', 'blood_group']);
+            const aadharValue = this._getFieldValue(fd, ['AADHAR', 'AADHAAR', 'AADHAR NO', 'AADHAR_NO', 'aadhar']);
             this.form = {
                 name: nameValue,
                 fatherName: fatherValue,
                 motherName: motherValue,
                 rollNo: rollNoValue,
-                dob: dobValue,
+                dob: this._normalizeDateForInput(dobValue),
                 className: classValue,
                 section: sectionValue,
                 phone: phoneValue,
@@ -1040,10 +1066,19 @@ function listApp() {
                 photoPreview: (student && student.photo_url) || null,
             };
         },
-        openViewById(cardId) {
+        async openViewById(cardId) {
             const viewId = Number(cardId);
-            const student = this.studentsData.find(s => Number(s.id) === viewId);
+            let student = this.studentsData.find(s => Number(s.id) === viewId);
             if (!student) { this.showToast('Card not found in current list', 'error'); return; }
+
+            try {
+                const latestCard = await this._fetchCardSnapshot(viewId);
+                this._upsertStudentCard(latestCard, 'edit');
+                student = latestCard;
+            } catch (e) {
+                // Fall back to currently loaded list data if snapshot fetch fails.
+            }
+
             this.selectedIds = [viewId];
             this.viewMode = true;
             this.editMode = false;
@@ -1052,11 +1087,20 @@ function listApp() {
             this.showAddForm = true;
             document.body.style.overflow = 'hidden';
         },
-        editSelected() {
+        async editSelected() {
             if (!this.selectedIds.length) { this.showToast('Select a card first', 'error'); return; }
             const editId = this.selectedIds[0];
-            const student = this.studentsData.find(s => s.id === editId);
+            let student = this.studentsData.find(s => Number(s.id) === Number(editId));
             if (!student) { this.showToast('Card not found', 'error'); return; }
+
+            try {
+                const latestCard = await this._fetchCardSnapshot(editId);
+                this._upsertStudentCard(latestCard, 'edit');
+                student = latestCard;
+            } catch (e) {
+                // Fall back to currently loaded list data if snapshot fetch fails.
+            }
+
             this.viewMode = false;
             this.editMode = true;
             this.editingId = editId;

@@ -59,30 +59,63 @@ body {
 
 /* Vibrant card system for mobile pages (less border, stronger color). */
 .m-pop-card {
+    position: relative;
     border-radius: 16px;
-    border: none;
-    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+    border: 1px solid #c6dbef;
+    box-shadow: 0 12px 26px rgba(15, 23, 42, 0.12);
     background: linear-gradient(145deg, #ffffff 0%, #f0f7ff 100%);
+}
+
+.m-pop-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    border-radius: 16px 16px 0 0;
+    background: #2563eb;
+    opacity: 0.95;
 }
 
 .m-pop-card-indigo {
     background: linear-gradient(145deg, #eff6ff 0%, #dbeafe 100%);
 }
 
+.m-pop-card-indigo::before {
+    background: #1d4ed8;
+}
+
 .m-pop-card-sky {
     background: linear-gradient(145deg, #ecfeff 0%, #cffafe 100%);
+}
+
+.m-pop-card-sky::before {
+    background: #0369a1;
 }
 
 .m-pop-card-emerald {
     background: linear-gradient(145deg, #ecfdf5 0%, #bbf7d0 100%);
 }
 
+.m-pop-card-emerald::before {
+    background: #047857;
+}
+
 .m-pop-card-amber {
     background: linear-gradient(145deg, #fffbeb 0%, #fde68a 100%);
 }
 
+.m-pop-card-amber::before {
+    background: #b45309;
+}
+
 .m-pop-card-purple {
     background: linear-gradient(145deg, #f5f3ff 0%, #ddd6fe 100%);
+}
+
+.m-pop-card-purple::before {
+    background: #6d28d9;
 }
 
 .m-pop-soft {
