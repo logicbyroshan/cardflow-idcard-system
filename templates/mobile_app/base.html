@@ -30,10 +30,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Roboto+Condensed:wght@300;400;700&display=swap" rel="stylesheet">
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="{% static 'mobile/css/mobile.css' %}">
+    <link rel="stylesheet" href="{% static 'mobile/css/mobile.css' %}?v=3">
 
     <script>
         // Capture install prompt early so it is not missed before UI script initializes.
@@ -71,7 +71,7 @@
         window.addEventListener('resize', checkDevice);
     </script>
 </head>
-<body class="bg-[#ecf4fb] font-sans overscroll-none">
+<body class="bg-[#ecf4fb] font-sans overscroll-none pwa-v2">
 
     <!-- Desktop blocking screen -->
     <div id="desktop-block" class="hidden fixed inset-0 z-[9999] bg-gradient-to-br from-brand-light to-brand-dark items-center justify-center">

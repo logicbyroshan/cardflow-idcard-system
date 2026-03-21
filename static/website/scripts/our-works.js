@@ -407,9 +407,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const videoCloseBtn = document.getElementById('videoModalClose');
     if (videoCloseBtn) videoCloseBtn.addEventListener('click', closeVideoModal);
 
-    // Clicking backdrop
+    // Prevent accidental modal close by backdrop clicks.
     productModal.addEventListener('click', (e) => {
-        if (e.target === productModal) closeGalleryModal();
+        if (e.target === productModal) {
+            e.stopPropagation();
+        }
     });
 
     lightbox.addEventListener('click', (e) => {
@@ -429,8 +431,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 closeLightbox();
             } else if (videoModal && videoModal.classList.contains('active')) {
                 closeVideoModal();
-            } else if (productModal.classList.contains('active')) {
-                closeGalleryModal();
             }
         } else if (lightbox.classList.contains('active')) {
             if (e.key === 'ArrowLeft')  { e.preventDefault(); lightboxPrev.click(); }

@@ -253,8 +253,8 @@
                 </div>
             </div>
 
-            <!-- Submit Buttons (INSIDE scroll so keyboard can never hide them) -->
-            <div class="flex gap-3 pt-4 pb-10" x-show="!viewMode">
+            <!-- Submit Buttons -->
+            <div class="sticky bottom-0 z-20 flex gap-3 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+12px)] bg-white/95 backdrop-blur-sm border-t border-gray-100" x-show="!viewMode">
                 <button @click="closeAddForm()"
                     class="flex-1 py-3.5 text-[13px] font-semibold text-gray-500 bg-gray-100 border border-gray-150 rounded-2xl hover:bg-gray-200 active:scale-[0.98] transition-all">
                     Cancel
@@ -267,7 +267,7 @@
                 </button>
             </div>
 
-            <div class="flex gap-3 pt-4 pb-10" x-show="viewMode">
+            <div class="sticky bottom-0 z-20 flex gap-3 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+12px)] bg-white/95 backdrop-blur-sm border-t border-gray-100" x-show="viewMode">
                 <button @click="closeAddForm()"
                     class="w-full py-3.5 text-[13px] font-semibold text-white rounded-2xl bg-gradient-to-r from-brand-light to-brand-dark shadow-lg active:scale-[0.98] transition-all">
                     Close

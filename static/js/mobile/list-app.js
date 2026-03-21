@@ -549,6 +549,22 @@ function listApp() {
             return ordered;
         },
 
+        _resolveStudentName(fd, fallbackValue = '') {
+            return this._getFieldValue(
+                fd,
+                [
+                    'NAME',
+                    'name',
+                    'FULL NAME',
+                    'FULL_NAME',
+                    'STUDENT NAME',
+                    'STUDENT_NAME',
+                    'STUDENT',
+                ],
+                fallbackValue
+            );
+        },
+
         _statusPhotoBorderClasses(status) {
             if (status === 'pending') return 'border border-gray-200 border-t-4 border-b-4 border-t-amber-400 border-b-amber-400';
             if (status === 'verified') return 'border border-gray-200 border-t-4 border-b-4 border-t-green-400 border-b-green-400';
@@ -633,7 +649,7 @@ function listApp() {
             return {
                 id: Number(data.id || fallbackId || 0),
                 sr_no: 0,
-                name: String(data.name || ''),
+                name: String(this._resolveStudentName(fd, data.name || '')),
                 roll_no: String(data.id_number || this._getFieldValue(fd, ['ROLL NO', 'ROLL_NO', 'roll_no', 'ID NUMBER', 'ID_NUMBER', 'id_number'])),
                 father_name: String(data.father_name || this._getFieldValue(fd, ['FATHER NAME', "FATHER'S NAME", 'FATHER_NAME', 'father_name'])),
                 mother_name: String(data.mother_name || this._getFieldValue(fd, ['MOTHER NAME', "MOTHER'S NAME", 'MOTHER_NAME', 'mother_name'])),
@@ -896,7 +912,7 @@ function listApp() {
                         return {
                             id: c.id,
                             sr_no: this.studentsData.length + i + 1,
-                            name: c.name || '',
+                            name: this._resolveStudentName(f, c.name || ''),
                             roll_no: c.id_number || f['ROLL NO'] || f['ROLL_NO'] || f['roll_no'] || '',
                             father_name: f['FATHER NAME'] || f["FATHER'S NAME"] || f['FATHER_NAME'] || f['father_name'] || '',
                             mother_name: f['MOTHER NAME'] || f['MOTHER_NAME'] || f['mother_name'] || '',
@@ -997,7 +1013,7 @@ function listApp() {
         },
         populateFormFromStudent(student) {
             const fd = (student && student.field_data) || {};
-            const nameValue = this._getFieldValue(fd, ['NAME', 'name', 'full name'], (student && student.name) || '');
+            const nameValue = this._resolveStudentName(fd, (student && student.name) || '');
             const fatherValue = this._getFieldValue(fd, ['FATHER NAME', "FATHER'S NAME", 'FATHER_NAME', 'father_name']);
             const motherValue = this._getFieldValue(fd, ['MOTHER NAME', "MOTHER'S NAME", 'MOTHER_NAME', 'mother_name']);
             const rollNoValue = this._getFieldValue(fd, ['ROLL NO', 'ROLL_NO', 'roll_no', 'ID NUMBER', 'ID_NUMBER', 'id_number'], (student && (student.roll_no || student.id_number)) || '');

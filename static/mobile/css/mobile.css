@@ -57,6 +57,46 @@ body {
     color: var(--m-text);
 }
 
+/* Vibrant card system for mobile pages (less border, stronger color). */
+.m-pop-card {
+    border-radius: 16px;
+    border: none;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+    background: linear-gradient(145deg, #ffffff 0%, #f0f7ff 100%);
+}
+
+.m-pop-card-indigo {
+    background: linear-gradient(145deg, #eff6ff 0%, #dbeafe 100%);
+}
+
+.m-pop-card-sky {
+    background: linear-gradient(145deg, #ecfeff 0%, #cffafe 100%);
+}
+
+.m-pop-card-emerald {
+    background: linear-gradient(145deg, #ecfdf5 0%, #bbf7d0 100%);
+}
+
+.m-pop-card-amber {
+    background: linear-gradient(145deg, #fffbeb 0%, #fde68a 100%);
+}
+
+.m-pop-card-purple {
+    background: linear-gradient(145deg, #f5f3ff 0%, #ddd6fe 100%);
+}
+
+.m-pop-soft {
+    border-radius: 12px;
+    border: none;
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
+}
+
+.m-pill {
+    border-radius: 10px;
+    border: none;
+    font-weight: 700;
+}
+
 #mobile-app {
     background: transparent;
 }
@@ -1022,4 +1062,219 @@ textarea:focus-visible {
         transition-duration: 0.01ms !important;
         scroll-behavior: auto !important;
     }
+}
+
+
+/* ================================================================
+   18. APP-WIDE V2 THEME (Pixel-style glass + vivid blue gradients)
+   Applies to all mobile app screens via body.pwa-v2.
+   ================================================================ */
+
+body.pwa-v2 {
+    --m-primary: #2f80ed;
+    --m-primary-dark: #1f5fcf;
+    --m-primary-soft: #e8f1ff;
+    --m-surface: #edf4ff;
+    --m-border: #d8e6fb;
+    --m-text: #182235;
+    --m-muted: #61728c;
+    --m-card-shadow: 0 12px 28px rgba(35, 80, 156, 0.16);
+    --m-card-shadow-sm: 0 8px 20px rgba(35, 80, 156, 0.11);
+    --m-glass-bg: rgba(255, 255, 255, 0.82);
+    --m-glass-border: rgba(255, 255, 255, 0.56);
+    font-family: 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif;
+    background:
+        radial-gradient(46% 30% at -4% 102%, rgba(47, 128, 237, 0.3), rgba(47, 128, 237, 0) 70%),
+        radial-gradient(55% 33% at 106% -2%, rgba(71, 154, 255, 0.28), rgba(71, 154, 255, 0) 72%),
+        linear-gradient(160deg, #f4f8ff 0%, #eaf2ff 52%, #f7fbff 100%);
+    color: var(--m-text);
+}
+
+body.pwa-v2::before,
+body.pwa-v2::after {
+    content: '';
+    position: fixed;
+    z-index: -1;
+    border-radius: 999px;
+    filter: blur(2px);
+    pointer-events: none;
+}
+
+body.pwa-v2::before {
+    width: 210px;
+    height: 210px;
+    top: 80px;
+    right: -74px;
+    background: radial-gradient(circle, rgba(47, 128, 237, 0.26) 0%, rgba(47, 128, 237, 0) 70%);
+}
+
+body.pwa-v2::after {
+    width: 250px;
+    height: 250px;
+    bottom: 40px;
+    left: -92px;
+    background: radial-gradient(circle, rgba(56, 189, 248, 0.2) 0%, rgba(56, 189, 248, 0) 70%);
+}
+
+body.pwa-v2 #mobile-app {
+    background: transparent;
+}
+
+body.pwa-v2 .pwa-page-topbar,
+body.pwa-v2 .pwa-topbar,
+body.pwa-v2 .pwa-topbar-inner {
+    background: linear-gradient(130deg, #2f80ed 0%, #3f8ffd 46%, #1f5fcf 100%) !important;
+    box-shadow: 0 10px 26px rgba(31, 95, 207, 0.3);
+}
+
+body.pwa-v2 .pwa-page-topbar a[class*='bg-white/20'],
+body.pwa-v2 .pwa-page-topbar button[class*='bg-white/20'] {
+    background: rgba(255, 255, 255, 0.23) !important;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+}
+
+body.pwa-v2 .pwa-bottom-nav .bg-white {
+    background: rgba(255, 255, 255, 0.88) !important;
+    border-top: 1px solid rgba(219, 231, 247, 0.8) !important;
+    box-shadow: 0 -10px 30px rgba(35, 80, 156, 0.18);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+body.pwa-v2 .pwa-nav-search-btn,
+body.pwa-v2 .mab-center-btn {
+    background: linear-gradient(135deg, #33b7ef, #2f80ed 55%, #1f5fcf) !important;
+    box-shadow: 0 10px 24px rgba(47, 128, 237, 0.4), 0 4px 10px rgba(19, 37, 88, 0.2);
+}
+
+body.pwa-v2 .pwa-nav-item,
+body.pwa-v2 .mab-nav-item {
+    color: #8ea0bb;
+}
+
+body.pwa-v2 .pwa-nav-active,
+body.pwa-v2 .mab-nav-item.text-brand-light,
+body.pwa-v2 .mab-nav-item .text-brand-light {
+    color: #2f80ed !important;
+}
+
+body.pwa-v2 #mobile-app .m-pop-card,
+body.pwa-v2 #mobile-app .rounded-2xl.bg-white,
+body.pwa-v2 #mobile-app [class*='rounded-2xl'][class*='bg-white'],
+body.pwa-v2 #mobile-app [class*='rounded-xl'][class*='bg-white'] {
+    background: var(--m-glass-bg) !important;
+    border: 1px solid var(--m-glass-border) !important;
+    box-shadow: var(--m-card-shadow-sm);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+body.pwa-v2 #mobile-app .m-pop-card-indigo {
+    background: linear-gradient(145deg, rgba(237, 246, 255, 0.92), rgba(213, 231, 255, 0.86)) !important;
+}
+
+body.pwa-v2 #mobile-app .m-pop-card-sky {
+    background: linear-gradient(145deg, rgba(235, 251, 255, 0.92), rgba(208, 243, 255, 0.86)) !important;
+}
+
+body.pwa-v2 #mobile-app .m-pop-card-emerald {
+    background: linear-gradient(145deg, rgba(236, 253, 245, 0.94), rgba(194, 246, 215, 0.9)) !important;
+}
+
+body.pwa-v2 #mobile-app .m-pop-card-amber {
+    background: linear-gradient(145deg, rgba(255, 251, 235, 0.94), rgba(255, 232, 175, 0.9)) !important;
+}
+
+body.pwa-v2 #mobile-app .m-pop-card-purple {
+    background: linear-gradient(145deg, rgba(245, 243, 255, 0.94), rgba(226, 216, 255, 0.9)) !important;
+}
+
+body.pwa-v2 #mobile-app button[class*='from-brand-light'],
+body.pwa-v2 #mobile-app a[class*='from-brand-light'],
+body.pwa-v2 #mobile-app .bg-gradient-to-r.from-brand-light.to-brand-dark,
+body.pwa-v2 #mobile-app .bg-gradient-to-br.from-brand-light.to-brand-dark {
+    background: linear-gradient(135deg, #33b7ef 0%, #2f80ed 52%, #1f5fcf 100%) !important;
+    color: #fff !important;
+    border: none !important;
+    box-shadow: 0 10px 24px rgba(47, 128, 237, 0.28);
+}
+
+body.pwa-v2 #mobile-app input,
+body.pwa-v2 #mobile-app select,
+body.pwa-v2 #mobile-app textarea {
+    background: rgba(255, 255, 255, 0.82) !important;
+    border: 1px solid rgba(191, 213, 243, 0.8) !important;
+    border-radius: 14px !important;
+    color: #1e2f46 !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+body.pwa-v2 #mobile-app input::placeholder,
+body.pwa-v2 #mobile-app textarea::placeholder {
+    color: #8ca0bc !important;
+}
+
+body.pwa-v2 #mobile-app input:focus,
+body.pwa-v2 #mobile-app select:focus,
+body.pwa-v2 #mobile-app textarea:focus {
+    border-color: #5ca7ff !important;
+    box-shadow: 0 0 0 3px rgba(47, 128, 237, 0.16) !important;
+}
+
+body.pwa-v2 #mobile-app .rounded-lg[class*='bg-amber'],
+body.pwa-v2 #mobile-app .rounded-xl[class*='bg-amber'] {
+    background: linear-gradient(135deg, #fde68a, #fbbf24) !important;
+    color: #8a4a06 !important;
+    border: none !important;
+}
+
+body.pwa-v2 #mobile-app .rounded-lg[class*='bg-green'],
+body.pwa-v2 #mobile-app .rounded-xl[class*='bg-green'],
+body.pwa-v2 #mobile-app .rounded-lg[class*='bg-emerald'],
+body.pwa-v2 #mobile-app .rounded-xl[class*='bg-emerald'] {
+    background: linear-gradient(135deg, #a7f3d0, #34d399) !important;
+    color: #065f46 !important;
+    border: none !important;
+}
+
+body.pwa-v2 #mobile-app .rounded-lg[class*='bg-blue'],
+body.pwa-v2 #mobile-app .rounded-xl[class*='bg-blue'],
+body.pwa-v2 #mobile-app .rounded-lg[class*='bg-sky'],
+body.pwa-v2 #mobile-app .rounded-xl[class*='bg-sky'] {
+    background: linear-gradient(135deg, #bfdbfe, #60a5fa) !important;
+    color: #1e3a8a !important;
+    border: none !important;
+}
+
+body.pwa-v2 #mobile-app .rounded-lg[class*='bg-purple'],
+body.pwa-v2 #mobile-app .rounded-xl[class*='bg-purple'],
+body.pwa-v2 #mobile-app .rounded-lg[class*='bg-violet'],
+body.pwa-v2 #mobile-app .rounded-xl[class*='bg-violet'] {
+    background: linear-gradient(135deg, #ddd6fe, #a78bfa) !important;
+    color: #4c1d95 !important;
+    border: none !important;
+}
+
+body.pwa-v2 #mobile-app .rounded-xl[class*='bg-gray-100'],
+body.pwa-v2 #mobile-app .rounded-2xl[class*='bg-gray-100'],
+body.pwa-v2 #mobile-app .rounded-xl[class*='bg-gray-50'] {
+    background: rgba(241, 246, 255, 0.85) !important;
+    border-color: rgba(207, 221, 241, 0.7) !important;
+}
+
+body.pwa-v2 #mobile-app .border,
+body.pwa-v2 #mobile-app [class*='border-'] {
+    border-color: rgba(199, 218, 243, 0.78);
+}
+
+body.pwa-v2 .download-modal-sheet,
+body.pwa-v2 .absolute.bottom-0.left-0.right-0.bg-white.rounded-t-3xl {
+    background: rgba(255, 255, 255, 0.95) !important;
+    border-top-left-radius: 28px !important;
+    border-top-right-radius: 28px !important;
+    box-shadow: 0 -16px 40px rgba(35, 80, 156, 0.25);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
 }
