@@ -171,7 +171,7 @@ def _admin_accessible_client_ids(user):
     return []
 
 
-def _search_cards_queryset(base_qs, query, limit):
+def _search_cards_queryset(base_qs, query, limit=None):
     """Apply performant card search over common JSON keys plus a few spaced-key annotations."""
     if not query or len(query) < 2:
         return base_qs.none()
@@ -209,7 +209,9 @@ def _search_cards_queryset(base_qs, query, limit):
         Q(_mother_name_sp__icontains=query)
     )
 
-    return qs[:limit]
+    if limit is not None:
+        return qs[:limit]
+    return qs
 
 
 def _get_table_filter_metadata(table, table_fields):
