@@ -213,7 +213,7 @@
                          :class="editMode ? 'bg-amber-500' : 'bg-gradient-to-br from-brand-light to-brand-dark'">
                         <i class="text-white text-xs" :class="editMode ? 'fa-solid fa-pen' : 'fa-solid fa-plus'"></i>
                     </div>
-                    <h3 class="text-sm font-bold text-gray-800" x-text="editMode ? 'Edit Client' : 'Manage Client'"></h3>
+                    <h3 class="text-sm font-bold text-gray-800" x-text="editMode ? 'Edit Client' : 'Create Client'"></h3>
                 </div>
                 <button type="button" @click="closeForm()" class="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 active:bg-gray-200 transition-colors">
                     <i class="fa-solid fa-xmark text-sm"></i>
@@ -307,7 +307,7 @@
                             class="flex-[2] py-3 text-xs font-semibold text-white rounded-xl shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
                             :class="editMode ? 'bg-amber-500' : 'bg-gradient-to-r from-brand-light to-brand-dark'">
                         <i class="fa-solid fa-spinner fa-spin text-[10px]" x-show="formLoading"></i>
-                        <span x-text="editMode ? 'Update Client' : 'Manage Client'"></span>
+                        <span x-text="editMode ? 'Update Client' : 'Create Client'"></span>
                     </button>
                 </div>
             </div>
