@@ -977,6 +977,9 @@ def card_list(request, table_id, status):
 
     def _build_display_fields(fd, table_field_defs):
         """Build ordered key/value pairs for mobile card view based on table field order."""
+        def _has_display_value(v):
+            return v is not None and str(v).strip() != ''
+
         excluded = {'name', 'class', 'section', 'designation'}
         by_lower = {}
         for key, val in (fd or {}).items():
@@ -1000,7 +1003,7 @@ def card_list(request, table_id, status):
             if not item:
                 continue
             key_str, val = item
-            if not val:
+            if not _has_display_value(val):
                 continue
             if lower in excluded or 'photo' in lower or 'image' in lower:
                 continue
@@ -1008,7 +1011,7 @@ def card_list(request, table_id, status):
             used.add(lower)
 
         for key, val in (fd or {}).items():
-            if not val:
+            if not _has_display_value(val):
                 continue
             key_str = str(key)
             lower = key_str.strip().lower()

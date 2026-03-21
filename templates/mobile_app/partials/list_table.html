@@ -36,7 +36,7 @@
                     <!-- Photos (all photo fields in a column) -->
                     {% if student.photo_urls %}
                         {% for purl in student.photo_urls %}
-                            <div class="rounded-xl overflow-hidden w-full {% if student.status == 'pending' %}ring-2 ring-amber-300{% elif student.status == 'verified' %}ring-2 ring-emerald-300{% elif student.status == 'approved' %}ring-2 ring-sky-300{% elif student.status == 'download' %}ring-2 ring-violet-300{% endif %}"
+                            <div class="rounded-xl overflow-hidden w-full {% if student.status == 'pending' %}ring-1 ring-amber-200{% elif student.status == 'verified' %}ring-1 ring-emerald-200{% elif student.status == 'approved' %}ring-1 ring-sky-200{% elif student.status == 'download' %}ring-1 ring-violet-200{% endif %}"
                              style="height:68px;">
                             <img src="{{ purl }}"
                                    class="js-card-photo w-full h-full object-cover object-top" alt="" loading="lazy">
@@ -47,7 +47,7 @@
                         </div>
                         {% endfor %}
                     {% else %}
-                    <div class="rounded-xl overflow-hidden w-full {% if student.status == 'pending' %}ring-2 ring-amber-300{% elif student.status == 'verified' %}ring-2 ring-emerald-300{% elif student.status == 'approved' %}ring-2 ring-sky-300{% elif student.status == 'download' %}ring-2 ring-violet-300{% endif %}" style="height:68px;">
+                    <div class="rounded-xl overflow-hidden w-full {% if student.status == 'pending' %}ring-1 ring-amber-200{% elif student.status == 'verified' %}ring-1 ring-emerald-200{% elif student.status == 'approved' %}ring-1 ring-sky-200{% elif student.status == 'download' %}ring-1 ring-violet-200{% endif %}" style="height:68px;">
                         <div class="w-full h-full {% if student.status == 'pending' %}bg-amber-50 text-amber-400{% elif student.status == 'verified' %}bg-green-50 text-green-400{% elif student.status == 'approved' %}bg-blue-50 text-blue-400{% elif student.status == 'download' %}bg-purple-50 text-purple-400{% else %}bg-gray-100 text-gray-300{% endif %} flex items-center justify-center"
                              style="font-size:16px;">
                             <i class="fa-solid fa-user-slash"></i>

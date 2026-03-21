@@ -59,8 +59,8 @@ body {
 .m-pop-card {
     position: relative;
     border-radius: 16px;
-    border: 1px solid #b7d5f2;
-    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.1);
+    border: 1px solid #c9e0f5;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
     background: linear-gradient(145deg, #ffffff 0%, #f7fbff 100%);
 }
 

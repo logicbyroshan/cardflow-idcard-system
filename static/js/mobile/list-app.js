@@ -52,11 +52,12 @@ function listApp() {
         allSectionsRaw: (typeof ALL_SECTIONS !== 'undefined' && Array.isArray(ALL_SECTIONS)) ? ALL_SECTIONS : [],
         allClassToSectionsRaw: (typeof ALL_CLASS_TO_SECTIONS !== 'undefined' && ALL_CLASS_TO_SECTIONS && typeof ALL_CLASS_TO_SECTIONS === 'object') ? ALL_CLASS_TO_SECTIONS : {},
         tableFields: Array.isArray(TABLE_FIELDS) ? TABLE_FIELDS : [],
+        dynamicFormFields: [],
         tabCounts: TAB_COUNTS || { pending: 0, verified: 0, approved: 0, download: 0 },
         form: {
-            name: '', fatherName: '', motherName: '', rollNo: '', dob: '',
-            className: '', section: '', phone: '', address: '',
-            bloodGroup: '', aadhar: '', photoFile: null, photoPreview: null,
+            dynamicValues: {},
+            photoFile: null,
+            photoPreview: null,
         },
 
         init() {
@@ -484,6 +485,132 @@ function listApp() {
             return String(name || '').trim().toLowerCase();
         },
 
+        _normalizeFieldType(fieldType) {
+            const t = String(fieldType || 'text').trim().toLowerCase();
+            return t === 'class_section' ? 'text' : t;
+        },
+
+        _isImageFieldType(fieldType) {
+            const t = this._normalizeFieldType(fieldType);
+            return ['photo', 'image', 'mother_photo', 'father_photo', 'signature', 'barcode', 'qr_code'].includes(t);
+        },
+
+        _isImageLikeFieldName(name) {
+            const n = this._normalizeFieldName(name);
+            if (!n) return false;
+            return n.includes('photo') || n.includes('image') || n.includes('signature') || n.includes('barcode') || n.includes('qr');
+        },
+
+        _isRenderableFormField(field) {
+            const name = String(field?.name || '').trim();
+            if (!name || name.startsWith('__')) return false;
+            return !this._isImageFieldType(field?.type);
+        },
+
+        _fieldLabel(name) {
+            return String(name || '')
+                .replace(/_/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+        },
+
+        _fieldInputType(field) {
+            const t = this._normalizeFieldType(field?.type);
+            if (t === 'number') return 'number';
+            if (t === 'date') return 'date';
+            if (t === 'textarea') return 'textarea';
+            if (t === 'select') return 'select';
+            return 'text';
+        },
+
+        _fieldOptions(field) {
+            const raw = field?.options ?? field?.choices ?? field?.values ?? [];
+            if (Array.isArray(raw)) {
+                return raw.map((v) => String(v || '').trim()).filter(Boolean);
+            }
+            if (typeof raw === 'string') {
+                return raw.split(',').map((v) => v.trim()).filter(Boolean);
+            }
+            return [];
+        },
+
+        _isClassField(field) {
+            const n = this._normalizeFieldName(field?.name);
+            return n === 'class' || n === 'class name' || n === 'class_name' || n === 'std' || n === 'standard' || n === 'designation';
+        },
+
+        _isSectionField(field) {
+            const n = this._normalizeFieldName(field?.name);
+            return n === 'section' || n === 'sec';
+        },
+
+        _buildDynamicFormFields(sourceFieldData, includeAllTableFields = true) {
+            const source = sourceFieldData || {};
+            const ordered = [];
+            const used = new Set();
+            const sourceLookupKeys = new Set(
+                Object.keys(source || {}).map((k) => this._normalizeLookupKey(k))
+            );
+
+            (this.tableFields || []).forEach((f) => {
+                if (!this._isRenderableFormField(f)) return;
+                const name = String(f.name || '').trim();
+                const lk = this._normalizeLookupKey(name);
+                if (!lk || used.has(lk)) return;
+                if (!includeAllTableFields && !sourceLookupKeys.has(lk)) return;
+                ordered.push({
+                    name,
+                    type: this._normalizeFieldType(f.type),
+                    mandatory: !!f.mandatory,
+                    options: this._fieldOptions(f),
+                });
+                used.add(lk);
+            });
+
+            Object.keys(source).forEach((rawKey) => {
+                const key = String(rawKey || '').trim();
+                if (!key || key.startsWith('__') || this._isImageLikeFieldName(key)) return;
+                const lk = this._normalizeLookupKey(key);
+                if (!lk || used.has(lk)) return;
+                ordered.push({
+                    name: key,
+                    type: 'text',
+                    mandatory: false,
+                    options: [],
+                });
+                used.add(lk);
+            });
+
+            return ordered;
+        },
+
+        _initDynamicForm(sourceFieldData, includeAllTableFields = true) {
+            const source = sourceFieldData || {};
+            this.dynamicFormFields = this._buildDynamicFormFields(source, includeAllTableFields);
+            const values = {};
+            this.dynamicFormFields.forEach((field) => {
+                let val = this._getFieldValue(source, [field.name], '');
+                if (this._fieldInputType(field) === 'date') {
+                    val = this._normalizeDateForInput(val);
+                }
+                values[field.name] = val;
+            });
+            this.form.dynamicValues = values;
+        },
+
+        _summarizeCardFromFieldData(fieldData) {
+            const fd = fieldData || {};
+            return {
+                name: this._resolveStudentName(fd, ''),
+                roll_no: this._getFieldValue(fd, ['ROLL NO', 'ROLL_NO', 'roll_no', 'ID NUMBER', 'ID_NUMBER', 'id_number', 'SCH NO', 'SCH_NO', 'SCHOOL NO', 'SCHOOL_NO', 'ADMISSION NO', 'ADMISSION_NO'], ''),
+                father_name: this._getFieldValue(fd, ['FATHER NAME', "FATHER'S NAME", 'FATHER_NAME', 'father_name'], ''),
+                mother_name: this._getFieldValue(fd, ['MOTHER NAME', "MOTHER'S NAME", 'MOTHER_NAME', 'mother_name'], ''),
+                class_name: this._getFieldValue(fd, ['CLASS', 'CLASS NAME', 'CLASS_NAME', 'STD', 'STANDARD', 'class', 'DESIGNATION', 'designation'], ''),
+                section: this._getFieldValue(fd, ['SECTION', 'SEC', 'section'], ''),
+                dob: this._normalizeDateForInput(this._getFieldValue(fd, ['DOB', 'DATE OF BIRTH', 'DATE_OF_BIRTH', 'dob'], '')),
+            };
+        },
+
         _normalizeLookupKey(name) {
             return String(name || '')
                 .toLowerCase()
@@ -546,6 +673,7 @@ function listApp() {
 
         _buildDisplayFieldsFromData(fd) {
             const source = fd || {};
+            const hasDisplayValue = (val) => val !== null && val !== undefined && String(val).trim() !== '';
             const byLower = {};
             Object.entries(source).forEach(([k, v]) => {
                 const lower = this._normalizeFieldName(k);
@@ -560,14 +688,14 @@ function listApp() {
                 const lower = this._normalizeFieldName(f?.name);
                 if (!lower || used.has(lower) || this._isExcludedField(lower)) return;
                 const item = byLower[lower];
-                if (!item || !item.value) return;
+                if (!item || !hasDisplayValue(item.value)) return;
                 ordered.push(item);
                 used.add(lower);
             });
 
             Object.entries(source).forEach(([k, v]) => {
                 const lower = this._normalizeFieldName(k);
-                if (!lower || used.has(lower) || this._isExcludedField(lower) || !v) return;
+                if (!lower || used.has(lower) || this._isExcludedField(lower) || !hasDisplayValue(v)) return;
                 ordered.push({ key: k, value: v });
                 used.add(lower);
             });
@@ -592,10 +720,10 @@ function listApp() {
         },
 
         _statusPhotoBorderClasses(status) {
-            if (status === 'pending') return 'border border-gray-200 border-t-4 border-b-4 border-t-amber-400 border-b-amber-400';
-            if (status === 'verified') return 'border border-gray-200 border-t-4 border-b-4 border-t-green-400 border-b-green-400';
-            if (status === 'approved') return 'border border-gray-200 border-t-4 border-b-4 border-t-blue-400 border-b-blue-400';
-            if (status === 'download') return 'border border-gray-200 border-t-4 border-b-4 border-t-purple-400 border-b-purple-400';
+            if (status === 'pending') return 'border border-gray-100 border-t-2 border-b-2 border-t-amber-300 border-b-amber-300';
+            if (status === 'verified') return 'border border-gray-100 border-t-2 border-b-2 border-t-green-300 border-b-green-300';
+            if (status === 'approved') return 'border border-gray-100 border-t-2 border-b-2 border-t-blue-300 border-b-blue-300';
+            if (status === 'download') return 'border border-gray-100 border-t-2 border-b-2 border-t-purple-300 border-b-purple-300';
             return 'border border-gray-200';
         },
 
@@ -1039,32 +1167,9 @@ function listApp() {
         },
         populateFormFromStudent(student) {
             const fd = (student && student.field_data) || {};
-            const nameValue = this._resolveStudentName(fd, (student && student.name) || '');
-            const fatherValue = this._getFieldValue(fd, ['FATHER NAME', "FATHER'S NAME", 'FATHER_NAME', 'father_name']);
-            const motherValue = this._getFieldValue(fd, ['MOTHER NAME', "MOTHER'S NAME", 'MOTHER_NAME', 'mother_name']);
-            const rollNoValue = this._getFieldValue(fd, ['ROLL NO', 'ROLL_NO', 'roll_no', 'ID NUMBER', 'ID_NUMBER', 'id_number', 'SCH NO', 'SCH_NO', 'SCHOOL NO', 'SCHOOL_NO', 'ADMISSION NO', 'ADMISSION_NO'], (student && (student.roll_no || student.id_number)) || '');
-            const dobValue = this._getFieldValue(fd, ['DOB', 'DATE OF BIRTH', 'DATE_OF_BIRTH', 'dob'], (student && student.dob) || '');
-            const classValue = this._getFieldValue(fd, ['CLASS', 'CLASS NAME', 'CLASS_NAME', 'STD', 'STANDARD', 'class', 'DESIGNATION', 'designation'], (student && student.class_name) || '');
-            const sectionValue = this._getFieldValue(fd, ['SECTION', 'SEC', 'section'], (student && student.section) || '');
-            const phoneValue = this._getFieldValue(fd, ['PHONE', 'MOBILE', 'MOBILE NO', 'MOBILE_NUMBER', 'CONTACT', 'CONTACT NO', 'contact_no', 'phone']);
-            const addressValue = this._getFieldValue(fd, ['ADDRESS', 'PERMANENT ADDRESS', 'PERMANENT_ADDRESS', 'address']);
-            const bloodGroupValue = this._getFieldValue(fd, ['BLOOD GROUP', 'BLOOD_GROUP', 'blood_group']);
-            const aadharValue = this._getFieldValue(fd, ['AADHAR', 'AADHAAR', 'AADHAR NO', 'AADHAR_NO', 'aadhar']);
-            this.form = {
-                name: nameValue,
-                fatherName: fatherValue,
-                motherName: motherValue,
-                rollNo: rollNoValue,
-                dob: this._normalizeDateForInput(dobValue),
-                className: classValue,
-                section: sectionValue,
-                phone: phoneValue,
-                address: addressValue,
-                bloodGroup: bloodGroupValue,
-                aadhar: aadharValue,
-                photoFile: null,
-                photoPreview: (student && student.photo_url) || null,
-            };
+            this._initDynamicForm(fd, false);
+            this.form.photoFile = null;
+            this.form.photoPreview = (student && student.photo_url) || null;
         },
         async openViewById(cardId) {
             const viewId = Number(cardId);
@@ -1118,10 +1223,11 @@ function listApp() {
         },
         resetForm() {
             this.form = {
-                name: '', fatherName: '', motherName: '', rollNo: '', dob: '',
-                className: '', section: '', phone: '', address: '',
-                bloodGroup: '', aadhar: '', photoFile: null, photoPreview: null,
+                dynamicValues: {},
+                photoFile: null,
+                photoPreview: null,
             };
+            this._initDynamicForm({});
             this.showImagePicker = false;
         },
         openImagePicker() {
@@ -1210,25 +1316,39 @@ function listApp() {
                 this.closeAddForm();
                 return;
             }
-            if (!this.form.name.trim()) { this.showToast('Name is required', 'error'); return; }
             this.loading = true;
             const url = this.editMode
                 ? '/app/api/table/' + TABLE_ID + '/card/' + this.editingId + '/update/'
                 : '/app/api/table/' + TABLE_ID + '/card/add/';
             const fd = new FormData();
-            const fieldData = {
-                'NAME': this.form.name.trim(),
-                'FATHER NAME': this.form.fatherName.trim(),
-                'MOTHER NAME': this.form.motherName.trim(),
-                'ROLL NO': this.form.rollNo.trim(),
-                'DOB': this.form.dob,
-                'CLASS': this.form.className,
-                'SECTION': this.form.section,
-                'PHONE': this.form.phone.trim(),
-                'ADDRESS': this.form.address.trim(),
-                'BLOOD GROUP': this.form.bloodGroup,
-                'AADHAR': this.form.aadhar.trim(),
-            };
+            const fieldData = {};
+            Object.entries(this.form.dynamicValues || {}).forEach(([key, value]) => {
+                if (value === null || value === undefined) return;
+                fieldData[key] = String(value).trim();
+            });
+
+            const missingMandatory = (this.dynamicFormFields || []).find((field) => {
+                if (!field.mandatory) return false;
+                const val = fieldData[field.name];
+                return String(val || '').trim() === '';
+            });
+            if (missingMandatory) {
+                this.showToast(this._fieldLabel(missingMandatory.name) + ' is required', 'error');
+                this.loading = false;
+                return;
+            }
+
+            const hasNameField = (this.dynamicFormFields || []).some((field) => {
+                const n = this._normalizeFieldName(field.name);
+                return n === 'name' || n.includes('name');
+            });
+            const resolvedName = this._resolveStudentName(fieldData, '').trim();
+            if (hasNameField && !resolvedName) {
+                this.showToast('Name is required', 'error');
+                this.loading = false;
+                return;
+            }
+
             fd.append('field_data', JSON.stringify(fieldData));
             if (this.form.photoFile) fd.append('photo', this.form.photoFile);
             try {
@@ -1255,6 +1375,7 @@ function listApp() {
                                 this._removeCardsFromCurrentList([cardId]);
                             }
                         } catch (snapshotErr) {
+                            const summary = this._summarizeCardFromFieldData(fieldData);
                             if (this.editMode) {
                                 // Fall back to in-memory update when snapshot endpoint fails.
                                 const idx = this._findStudentIndex(cardId);
@@ -1262,28 +1383,31 @@ function listApp() {
                                     const existing = this.studentsData[idx];
                                     const mergedFieldData = Object.assign({}, existing.field_data || {}, fieldData);
                                     const fallbackCard = Object.assign({}, existing, {
-                                        name: this.form.name.trim(),
-                                        roll_no: this.form.rollNo.trim(),
-                                        class_name: this.form.className,
-                                        section: this.form.section,
-                                        dob: this.form.dob,
+                                        name: summary.name,
+                                        roll_no: summary.roll_no,
+                                        father_name: summary.father_name,
+                                        mother_name: summary.mother_name,
+                                        class_name: summary.class_name,
+                                        section: summary.section,
+                                        dob: summary.dob,
                                         field_data: mergedFieldData,
                                         display_fields: this._buildDisplayFieldsFromData(mergedFieldData),
                                     });
                                     this._upsertStudentCard(fallbackCard, 'edit');
                                 }
                             } else if (LIST_TYPE === 'pending' && cardId) {
+                                const fallbackSummary = this._summarizeCardFromFieldData(fieldData);
                                 const fallbackFieldData = Object.assign({}, fieldData);
                                 const fallbackCard = {
                                     id: Number(cardId),
                                     sr_no: this.studentsData.length + 1,
-                                    name: this.form.name.trim(),
-                                    roll_no: this.form.rollNo.trim(),
-                                    father_name: this.form.fatherName.trim(),
-                                    mother_name: this.form.motherName.trim(),
-                                    class_name: this.form.className,
-                                    section: this.form.section,
-                                    dob: this.form.dob,
+                                    name: fallbackSummary.name,
+                                    roll_no: fallbackSummary.roll_no,
+                                    father_name: fallbackSummary.father_name,
+                                    mother_name: fallbackSummary.mother_name,
+                                    class_name: fallbackSummary.class_name,
+                                    section: fallbackSummary.section,
+                                    dob: fallbackSummary.dob,
                                     photo_url: this.form.photoPreview || null,
                                     photo_urls: this.form.photoPreview ? [this.form.photoPreview] : [],
                                     has_photo: !!this.form.photoPreview,

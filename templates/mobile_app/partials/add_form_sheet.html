@@ -105,153 +105,63 @@
             <input type="file" x-ref="cameraInput" accept="image/*" capture="environment" class="hidden" @change="handleImageSelected($event)">
             <input type="file" x-ref="galleryInput" accept="image/*" class="hidden" @change="handleImageSelected($event)">
 
-            <!-- Section divider: Personal Info -->
+            <!-- Dynamic Form Fields -->
             <div class="flex items-center gap-2 pt-1">
                 <div class="w-5 h-5 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
-                    <i class="fa-solid fa-user text-indigo-500 text-[8px]"></i>
+                    <i class="fa-solid fa-table-list text-indigo-500 text-[8px]"></i>
                 </div>
-                <span class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Personal Info</span>
+                <span class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Card Fields</span>
                 <div class="flex-1 h-px bg-gray-100"></div>
             </div>
 
-            <!-- Name -->
-            <div class="space-y-1.5">
-                <label class="text-[11px] font-semibold text-gray-500 flex items-center gap-1">Full Name <span class="text-red-400">*</span></label>
-                <div class="relative">
-                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-300 text-[12px]"><i class="fa-solid fa-id-card"></i></span>
-                    <input type="text" x-model="form.name" placeholder="Enter student name"
-                        :readonly="viewMode"
-                        class="w-full pl-8 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
+            <template x-if="!dynamicFormFields.length">
+                <div class="rounded-2xl border border-amber-100 bg-amber-50/80 px-3 py-2.5 text-[11px] font-semibold text-amber-700">
+                    No editable fields found for this table.
                 </div>
-            </div>
+            </template>
 
-            <!-- Father's Name -->
-            <div class="space-y-1.5">
-                <label class="text-[11px] font-semibold text-gray-500">Father's Name <span class="text-red-400">*</span></label>
-                <div class="relative">
-                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-300 text-[12px]"><i class="fa-solid fa-user"></i></span>
-                    <input type="text" x-model="form.fatherName" placeholder="Enter father's name"
-                        :readonly="viewMode"
-                        class="w-full pl-8 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
-                </div>
-            </div>
-
-            <!-- Mother's Name -->
-            <div class="space-y-1.5">
-                <label class="text-[11px] font-semibold text-gray-500">Mother's Name</label>
-                <div class="relative">
-                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-pink-300 text-[12px]"><i class="fa-solid fa-user"></i></span>
-                    <input type="text" x-model="form.motherName" placeholder="Enter mother's name"
-                        :readonly="viewMode"
-                        class="w-full pl-8 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
-                </div>
-            </div>
-
-            <!-- Roll No & DOB -->
-            <div class="grid grid-cols-2 gap-3">
+            <template x-for="field in dynamicFormFields" :key="field.name">
                 <div class="space-y-1.5">
-                    <label class="text-[11px] font-semibold text-gray-500">Roll No <span class="text-red-400">*</span></label>
-                    <div class="relative">
-                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-[12px]"><i class="fa-solid fa-id-badge"></i></span>
-                        <input type="text" x-model="form.rollNo" placeholder="e.g. R2345"
+                    <label class="text-[11px] font-semibold text-gray-500 flex items-center gap-1">
+                        <span x-text="_fieldLabel(field.name)"></span>
+                        <span class="text-red-400" x-show="field.mandatory">*</span>
+                    </label>
+
+                    <template x-if="_fieldInputType(field) === 'textarea'">
+                        <textarea x-model="form.dynamicValues[field.name]" rows="2"
                             :readonly="viewMode"
-                            class="w-full pl-8 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
-                    </div>
-                </div>
-                <div class="space-y-1.5">
-                    <label class="text-[11px] font-semibold text-gray-500">Date of Birth <span class="text-red-400">*</span></label>
-                    <input type="date" x-model="form.dob"
-                        :readonly="viewMode"
-                        class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
-                </div>
-            </div>
+                            :placeholder="'Enter ' + _fieldLabel(field.name)"
+                            class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition resize-none"></textarea>
+                    </template>
 
-            <!-- Section divider: Academic -->
-            <div class="flex items-center gap-2 pt-1">
-                <div class="w-5 h-5 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
-                    <i class="fa-solid fa-graduation-cap text-green-500 text-[8px]"></i>
-                </div>
-                <span class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Academic</span>
-                <div class="flex-1 h-px bg-gray-100"></div>
-            </div>
-
-            <!-- Class & Section -->
-            <div class="grid grid-cols-2 gap-3">
-                <div class="space-y-1.5">
-                    <label class="text-[11px] font-semibold text-gray-500">Class <span class="text-red-400">*</span></label>
-                    <input type="text" x-model="form.className" list="class-options" placeholder="e.g. 5A"
-                        :readonly="viewMode"
-                        class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
-                    <datalist id="class-options">
-                        {% for cls in classes %}<option value="{{ cls }}">{% endfor %}
-                    </datalist>
-                </div>
-                <div class="space-y-1.5">
-                    <label class="text-[11px] font-semibold text-gray-500">Section <span class="text-red-400">*</span></label>
-                    <input type="text" x-model="form.section" list="section-options" placeholder="e.g. A"
-                        :readonly="viewMode"
-                        class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
-                    <datalist id="section-options">
-                        {% for sec in sections %}<option value="{{ sec }}">{% endfor %}
-                    </datalist>
-                </div>
-            </div>
-
-            <!-- Section divider: Contact -->
-            <div class="flex items-center gap-2 pt-1">
-                <div class="w-5 h-5 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                    <i class="fa-solid fa-phone text-emerald-500 text-[8px]"></i>
-                </div>
-                <span class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Contact & Details</span>
-                <div class="flex-1 h-px bg-gray-100"></div>
-            </div>
-
-            <!-- Phone -->
-            <div class="space-y-1.5">
-                <label class="text-[11px] font-semibold text-gray-500">Phone Number</label>
-                <div class="relative">
-                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-green-300 text-[12px]"><i class="fa-solid fa-phone"></i></span>
-                    <input type="tel" x-model="form.phone" placeholder="e.g. 9876543210"
-                        :readonly="viewMode"
-                        class="w-full pl-8 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
-                </div>
-            </div>
-
-            <!-- Address -->
-            <div class="space-y-1.5">
-                <label class="text-[11px] font-semibold text-gray-500">Address</label>
-                <div class="relative">
-                    <span class="absolute left-3 top-3.5 text-orange-300 text-[12px]"><i class="fa-solid fa-location-dot"></i></span>
-                    <textarea x-model="form.address" rows="2" placeholder="Enter full address"
-                        :readonly="viewMode"
-                        class="w-full pl-8 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition resize-none"></textarea>
-                </div>
-            </div>
-
-            <!-- Blood Group & Aadhar -->
-            <div class="grid grid-cols-2 gap-3">
-                <div class="space-y-1.5">
-                    <label class="text-[11px] font-semibold text-gray-500">Blood Group</label>
-                    <div class="relative">
-                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-red-300 text-[12px]"><i class="fa-solid fa-droplet"></i></span>
-                        <select x-model="form.bloodGroup"
+                    <template x-if="_fieldInputType(field) === 'select' && _fieldOptions(field).length">
+                        <select x-model="form.dynamicValues[field.name]"
                             :disabled="viewMode"
-                            class="w-full pl-8 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition appearance-none">
+                            class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition appearance-none">
                             <option value="">Select</option>
-                            <option value="A+">A+</option><option value="A-">A-</option>
-                            <option value="B+">B+</option><option value="B-">B-</option>
-                            <option value="O+">O+</option><option value="O-">O-</option>
-                            <option value="AB+">AB+</option><option value="AB-">AB-</option>
+                            <template x-for="opt in _fieldOptions(field)" :key="field.name + '-opt-' + opt">
+                                <option :value="opt" x-text="opt"></option>
+                            </template>
                         </select>
-                    </div>
+                    </template>
+
+                    <template x-if="_fieldInputType(field) !== 'textarea' && !(_fieldInputType(field) === 'select' && _fieldOptions(field).length)">
+                        <input :type="_fieldInputType(field) === 'date' ? 'date' : (_fieldInputType(field) === 'number' ? 'number' : 'text')"
+                            x-model="form.dynamicValues[field.name]"
+                            :list="_isClassField(field) ? 'class-options' : (_isSectionField(field) ? 'section-options' : '')"
+                            :readonly="viewMode"
+                            :placeholder="'Enter ' + _fieldLabel(field.name)"
+                            class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
+                    </template>
                 </div>
-                <div class="space-y-1.5">
-                    <label class="text-[11px] font-semibold text-gray-500">Aadhar No</label>
-                    <input type="text" x-model="form.aadhar" placeholder="xxxx-xxxx-xxxx" maxlength="14"
-                        :readonly="viewMode"
-                        class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
-                </div>
-            </div>
+            </template>
+
+            <datalist id="class-options">
+                {% for cls in classes %}<option value="{{ cls }}">{% endfor %}
+            </datalist>
+            <datalist id="section-options">
+                {% for sec in sections %}<option value="{{ sec }}">{% endfor %}
+            </datalist>
 
             <!-- Submit Buttons -->
             <div class="sticky bottom-0 z-20 flex gap-3 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+12px)] bg-white/95 backdrop-blur-sm border-t border-gray-100" x-show="!viewMode">
