@@ -305,3 +305,240 @@ class RateLimitClientIPTests(TestCase):
             HTTP_X_FORWARDED_FOR='198.51.100.1, 203.0.113.10'
         )
         self.assertEqual(_get_client_ip(request), '198.51.100.1')
+
+
+class AuthServiceRoleEdgeTests(TestCase):
+    def test_authenticate_allows_pro_user_when_super_admin_selected(self):
+        from accounts.services import AuthService
+        User.objects.create_user(
+            username='pro@example.com',
+            email='pro@example.com',
+            password='propass123',
+            role='pro_user',
+        )
+        result = AuthService.authenticate_user('pro@example.com', 'propass123', role='super_admin')
+        self.assertTrue(result['success'])
+
+    def test_authenticate_rejects_role_mismatch(self):
+        from accounts.services import AuthService
+        User.objects.create_user(
+            username='client2@example.com',
+            email='client2@example.com',
+            password='clientpass123',
+            role='client',
+        )
+        result = AuthService.authenticate_user('client2@example.com', 'clientpass123', role='admin_staff')
+        self.assertFalse(result['success'])
+
+
+class OTPServiceEdgeTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='otp-edge@example.com',
+            email='otp-edge@example.com',
+            password='testpass123',
+            role='client',
+        )
+        cache.clear()
+
+    def tearDown(self):
+        cache.clear()
+
+    @override_settings(DEBUG=True)
+    def test_verify_otp_blocks_after_max_attempts(self):
+        from accounts.services import OTPService
+        send_result = OTPService.send_otp('otp-edge@example.com')
+        self.assertTrue(send_result['success'])
+
+        for _ in range(3):
+            invalid = OTPService.verify_otp('otp-edge@example.com', '000000')
+            self.assertFalse(invalid['success'])
+
+        blocked = OTPService.verify_otp('otp-edge@example.com', '000000')
+        self.assertFalse(blocked['success'])
+        self.assertIn('Too many failed attempts', blocked['message'])
+
+    @override_settings(DEBUG=True)
+    def test_reset_password_rejects_tampered_signed_token(self):
+        from accounts.services import OTPService
+        send_result = OTPService.send_otp('otp-edge@example.com')
+        dev_otp = send_result.get('dev_otp')
+        self.assertIsNotNone(dev_otp)
+
+        verify_result = OTPService.verify_otp('otp-edge@example.com', dev_otp)
+        self.assertTrue(verify_result['success'])
+        token = verify_result['reset_token']
+
+        raw_token, _sig = token.split('.', 1)
+        tampered = f'{raw_token}.0000000000000000'
+        reset_result = OTPService.reset_password('otp-edge@example.com', tampered, 'newpassword1')
+        self.assertFalse(reset_result['success'])
+        self.assertIn('reset token', reset_result['message'].lower())
+
+
+class UserProfileServiceTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='profile@example.com',
+            email='profile@example.com',
+            password='testpass123',
+            role='client',
+        )
+        self.other_user = User.objects.create_user(
+            username='other@example.com',
+            email='other@example.com',
+            password='testpass123',
+            role='client',
+        )
+
+    def test_update_profile_success(self):
+        from accounts.services_profile import UserProfileService
+        success, message, profile = UserProfileService.update_profile(self.user, {
+            'first_name': 'Test',
+            'last_name': 'User',
+            'phone': '9999999999',
+        })
+        self.assertTrue(success)
+        self.assertEqual(message, 'Profile updated')
+        self.assertEqual(profile['full_name'], 'Test User')
+
+    def test_update_profile_rejects_username_conflict(self):
+        from accounts.services_profile import UserProfileService
+        success, message, profile = UserProfileService.update_profile(self.user, {
+            'username': 'other@example.com',
+        })
+        self.assertFalse(success)
+        self.assertEqual(message, 'Username already taken')
+        self.assertIsNone(profile)
+
+    def test_change_password_success(self):
+        from accounts.services_profile import UserProfileService
+        success, _message = UserProfileService.change_password(self.user, 'testpass123', 'newpass123')
+        self.assertTrue(success)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('newpass123'))
+
+    def test_change_password_rejects_wrong_current(self):
+        from accounts.services_profile import UserProfileService
+        success, message = UserProfileService.change_password(self.user, 'wrong', 'newpass123')
+        self.assertFalse(success)
+        self.assertEqual(message, 'Current password is incorrect')
+
+    def test_profile_image_methods_return_backward_compat_message(self):
+        from accounts.services_profile import UserProfileService
+        success_upload, message_upload, image_url = UserProfileService.upload_profile_image(self.user, None)
+        self.assertFalse(success_upload)
+        self.assertIn('no longer available', message_upload.lower())
+        self.assertIsNone(image_url)
+
+        success_remove, message_remove = UserProfileService.remove_profile_image(self.user)
+        self.assertFalse(success_remove)
+        self.assertIn('no longer available', message_remove.lower())
+
+
+class ProfileApiIntegrationTests(TestCase):
+    def setUp(self):
+        from client.models import Client
+        self.user = User.objects.create_user(
+            username='api-profile@example.com',
+            email='api-profile@example.com',
+            password='testpass123',
+            role='client',
+        )
+        Client.objects.create(user=self.user, name='Profile Test Client')
+        self.client.login(username='api-profile@example.com', password='testpass123')
+
+    def test_get_profile_api(self):
+        response = self.client.get('/panel/api/profile/')
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+        self.assertEqual(payload['profile']['email'], 'api-profile@example.com')
+
+    def test_update_profile_api(self):
+        response = self.client.post(
+            '/panel/api/profile/update/',
+            data=json.dumps({'first_name': 'Api', 'last_name': 'User'}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+        self.assertEqual(payload['profile']['full_name'], 'Api User')
+
+    def test_change_password_api(self):
+        response = self.client.post(
+            '/panel/api/profile/change-password/',
+            data=json.dumps({'current_password': 'testpass123', 'new_password': 'newpass123'}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+
+    def test_upload_profile_image_api_returns_feature_disabled(self):
+        response = self.client.post('/panel/api/profile/upload-image/')
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertFalse(payload['success'])
+        self.assertIn('no longer available', payload['message'].lower())
+
+
+class ImpersonationApiTests(TestCase):
+    def setUp(self):
+        self.pro_user = User.objects.create_user(
+            username='pro-user@example.com',
+            email='pro-user@example.com',
+            password='testpass123',
+            role='pro_user',
+        )
+        self.target_user = User.objects.create_user(
+            username='target-user@example.com',
+            email='target-user@example.com',
+            password='testpass123',
+            role='client',
+        )
+        self.normal_user = User.objects.create_user(
+            username='normal-user@example.com',
+            email='normal-user@example.com',
+            password='testpass123',
+            role='client',
+        )
+
+    def test_impersonation_list_requires_pro_user(self):
+        self.client.login(username='normal-user@example.com', password='testpass123')
+        response = self.client.get('/panel/api/auth/impersonate/users/')
+        self.assertEqual(response.status_code, 403)
+
+    def test_pro_user_can_start_and_stop_impersonation(self):
+        self.client.login(username='pro-user@example.com', password='testpass123')
+
+        start = self.client.post(
+            '/panel/api/auth/impersonate/start/',
+            data=json.dumps({'user_id': self.target_user.id}),
+            content_type='application/json',
+        )
+        self.assertEqual(start.status_code, 200)
+        start_payload = start.json()
+        self.assertTrue(start_payload['success'])
+        self.assertIn('_pro_original_user_id', self.client.session)
+
+        stop = self.client.post('/panel/api/auth/impersonate/stop/', data='{}', content_type='application/json')
+        self.assertEqual(stop.status_code, 200)
+        stop_payload = stop.json()
+        self.assertTrue(stop_payload['success'])
+        self.assertNotIn('_pro_original_user_id', self.client.session)
+
+    def test_impersonation_start_requires_user_id(self):
+        self.client.login(username='pro-user@example.com', password='testpass123')
+        response = self.client.post(
+            '/panel/api/auth/impersonate/start/',
+            data=json.dumps({}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_impersonation_stop_without_active_session(self):
+        self.client.login(username='pro-user@example.com', password='testpass123')
+        response = self.client.post('/panel/api/auth/impersonate/stop/', data='{}', content_type='application/json')
+        self.assertEqual(response.status_code, 400)

@@ -2,6 +2,9 @@
 Tests for mediafiles app.
 Covers: CardMedia model, ImageService basics.
 """
+from types import SimpleNamespace
+from unittest import mock
+
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 
@@ -109,3 +112,207 @@ class ImageServiceBasicTests(TestCase):
         from core.utils.field_utils import validate_image_bytes
         is_valid, error_msg = validate_image_bytes(b'')
         self.assertFalse(is_valid)
+
+
+class CardMediaModelAdvancedTests(TestCase):
+    def test_card_media_upload_path_sanitizes_parts(self):
+        from mediafiles.models import card_media_upload_path
+
+        instance = SimpleNamespace(client_id='12/../34', media_type='photo*bad')
+        path = card_media_upload_path(instance, 'sample.png')
+
+        self.assertEqual(path, 'card_media/1234/photobad/sample.png')
+
+    def test_card_media_str_for_group_and_filename_property(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from mediafiles.models import CardMedia
+
+        client, group, table, card = _create_test_card()
+
+        image_file = SimpleUploadedFile(
+            'template_front.png',
+            b'\x89PNG\r\n\x1a\n' + b'\x00' * 200,
+            content_type='image/png',
+        )
+        media = CardMedia.objects.create(
+            group=group,
+            client=client,
+            file=image_file,
+            media_type='template_front',
+            original_filename='template_front.png',
+        )
+
+        self.assertIn('Group:', str(media))
+        self.assertTrue(media.filename.startswith('template_front'))
+        self.assertTrue(media.filename.endswith('.png'))
+        self.assertTrue(media.url)
+
+
+class ImageFieldsServiceTests(TestCase):
+    def setUp(self):
+        self.client_obj, self.group, self.table, self.card = _create_test_card()
+
+    def test_is_image_field_detects_photo_and_not_designation(self):
+        from mediafiles.services import ImageService
+
+        self.assertTrue(ImageService.is_image_field({'name': 'Student Photo', 'type': 'text'}))
+        self.assertFalse(ImageService.is_image_field({'name': 'Designation', 'type': 'text'}))
+
+    def test_process_image_field_pending_and_unchanged_paths(self):
+        from mediafiles.services import ImageService
+
+        pending = ImageService.process_image_field(
+            field_name='PHOTO',
+            new_value='PENDING:roll_1.jpg',
+            existing_value='',
+            client=self.client_obj,
+            card=self.card,
+        )
+        self.assertTrue(pending.success)
+        self.assertEqual(pending.data['action'], 'pending')
+        self.assertEqual(pending.data['final_value'], 'PENDING:roll_1.jpg')
+
+        unchanged = ImageService.process_image_field(
+            field_name='PHOTO',
+            new_value='adarshimg/CODE/img.jpg',
+            existing_value='adarshimg/CODE/img.jpg',
+            client=self.client_obj,
+            card=self.card,
+        )
+        self.assertTrue(unchanged.success)
+        self.assertEqual(unchanged.data['action'], 'unchanged')
+
+    def test_process_image_field_rewrite_and_missing(self):
+        from mediafiles.services import ImageService
+
+        with mock.patch('core.services.base.BaseService.validate_image_path', return_value=True):
+            rewrite = ImageService.process_image_field(
+                field_name='PHOTO',
+                new_value='media/adarshimg/CODE/new.jpg',
+                existing_value='adarshimg/CODE/old.jpg',
+                client=self.client_obj,
+                card=self.card,
+            )
+        self.assertTrue(rewrite.success)
+        self.assertEqual(rewrite.data['action'], 'rewrite')
+        self.assertEqual(rewrite.data['final_value'], 'adarshimg/CODE/new.jpg')
+
+        with mock.patch('core.services.base.BaseService.validate_image_path', return_value=False):
+            missing = ImageService.process_image_field(
+                field_name='PHOTO',
+                new_value='adarshimg/CODE/missing.jpg',
+                existing_value='adarshimg/CODE/old.jpg',
+                client=self.client_obj,
+                card=self.card,
+            )
+        self.assertTrue(missing.success)
+        self.assertEqual(missing.data['action'], 'missing')
+        self.assertEqual(missing.data['final_value'], 'PENDING:missing.jpg')
+
+    def test_process_image_field_upload_branch_calls_save_or_replace(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from mediafiles.services import ImageService
+
+        uploaded = SimpleUploadedFile('x.png', b'abc123' * 50, content_type='image/png')
+
+        with mock.patch.object(
+            ImageService,
+            'save_new_image',
+            return_value=ImageService.mark_pending('PHOTO', 'new.jpg'),
+        ) as save_new:
+            result = ImageService.process_image_field(
+                field_name='PHOTO',
+                new_value=None,
+                existing_value='',
+                client=self.client_obj,
+                card=self.card,
+                uploaded_file=uploaded,
+            )
+            self.assertTrue(result.success)
+            self.assertEqual(save_new.call_count, 1)
+
+        uploaded2 = SimpleUploadedFile('y.png', b'abc123' * 50, content_type='image/png')
+        with mock.patch.object(
+            ImageService,
+            'replace_image',
+            return_value=ImageService.mark_pending('PHOTO', 'updated.jpg'),
+        ) as replace:
+            result2 = ImageService.process_image_field(
+                field_name='PHOTO',
+                new_value=None,
+                existing_value='adarshimg/OLD/path.jpg',
+                client=self.client_obj,
+                card=self.card,
+                uploaded_file=uploaded2,
+            )
+            self.assertTrue(result2.success)
+            self.assertEqual(replace.call_count, 1)
+
+    def test_get_image_path_for_export_prefers_thumbnail_when_available(self):
+        from mediafiles.services import ImageService
+
+        self.card.field_data['PHOTO'] = 'adarshimg/CODE/original.jpg'
+        self.card.save(update_fields=['field_data'])
+
+        with mock.patch('mediafiles.services.image_fields.ThumbnailService.get_thumbnail_path', return_value='adarshimg/thumbs/CODE/original.webp'):
+            with mock.patch('mediafiles.services.image_fields.default_storage.exists', return_value=True):
+                got = ImageService.get_image_path_for_export(self.card, 'PHOTO', prefer_thumbnail=True)
+
+        self.assertEqual(got, 'adarshimg/thumbs/CODE/original.webp')
+
+
+class MediafilesUtilsTests(TestCase):
+    def test_generate_folder_code_from_name_variants(self):
+        from mediafiles.utils import generate_folder_code_from_name
+
+        self.assertEqual(generate_folder_code_from_name('Alpha Beta'), 'ALPBE')
+        self.assertEqual(len(generate_folder_code_from_name('A')), 5)
+        self.assertEqual(len(generate_folder_code_from_name('')), 5)
+
+    def test_normalize_image_identifier_and_valid_path(self):
+        from mediafiles.utils import normalize_image_identifier, is_valid_image_path
+
+        self.assertEqual(normalize_image_identifier(' 001.0.JPG '), '1')
+        self.assertTrue(is_valid_image_path('adarshimg/CODE/x.jpg'))
+        self.assertFalse(is_valid_image_path('PENDING:x.jpg'))
+
+    def test_get_card_photo_url_prefers_field_data_over_legacy_photo(self):
+        from mediafiles.utils import get_card_photo_url
+
+        class FakePhoto:
+            url = '/media/id_photos/legacy.jpg'
+
+        class FakeCard:
+            def __init__(self):
+                self.field_data = {'PHOTO': 'adarshimg/CODE/new.jpg'}
+                self.photo = FakePhoto()
+
+        url = get_card_photo_url(FakeCard())
+        self.assertEqual(url, '/media/adarshimg/CODE/new.jpg')
+
+
+class ThumbnailServiceTests(TestCase):
+    def test_thumbnail_path_helpers(self):
+        from mediafiles.services.image_thumbnail import ThumbnailService
+
+        original = 'adarshimg/ABC/123.jpg'
+        thumb = ThumbnailService.get_thumbnail_path(original)
+        self.assertEqual(thumb, 'adarshimg/thumbs/ABC/123.webp')
+        self.assertTrue(ThumbnailService.is_thumbnail_path(thumb))
+
+    def test_generate_thumbnail_returns_bytes_for_valid_image(self):
+        from io import BytesIO
+        from mediafiles.services.image_thumbnail import ThumbnailService
+
+        try:
+            from PIL import Image
+        except ImportError:
+            self.skipTest('Pillow not installed')
+
+        buf = BytesIO()
+        Image.new('RGB', (200, 200), color='blue').save(buf, format='PNG')
+        image_bytes = buf.getvalue()
+
+        thumb = ThumbnailService.generate_thumbnail(image_bytes, original_size_bytes=len(image_bytes))
+        self.assertIsNotNone(thumb)
+        self.assertGreater(len(thumb), 50)

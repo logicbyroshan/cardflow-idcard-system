@@ -2,6 +2,9 @@
 Tests for staff app.
 Covers: Staff model, permissions, client access scoping.
 """
+import json
+from unittest import mock
+
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
@@ -143,3 +146,271 @@ class StaffPermissionViewTests(TestCase):
         self.client.login(username='cl@test.com', password='pass1234')
         response = self.client.get('/panel/manage-staff/')
         self.assertIn(response.status_code, [302, 403])
+
+
+class AdminStaffPermissionServiceTests(TestCase):
+    def test_assign_permissions_rejects_invalid_codename(self):
+        from staff.services import AdminStaffPermissionService
+
+        staff_user = User.objects.create_user(
+            username='permstaff@test.com', email='permstaff@test.com',
+            password='pass1234', role='admin_staff',
+        )
+
+        result = AdminStaffPermissionService.assign_permissions_to_staff(
+            staff_user,
+            ['can_view_clients', 'not_a_real_permission'],
+        )
+
+        self.assertFalse(result['success'])
+        self.assertIn('Invalid permissions', result['error'])
+
+    def test_assign_permissions_and_get_user_permissions(self):
+        from staff.services import AdminStaffPermissionService
+
+        staff_user = User.objects.create_user(
+            username='permok@test.com', email='permok@test.com',
+            password='pass1234', role='admin_staff',
+        )
+
+        result = AdminStaffPermissionService.assign_permissions_to_staff(
+            staff_user,
+            ['can_view_clients', 'can_export_data'],
+        )
+
+        self.assertTrue(result['success'])
+        permissions = AdminStaffPermissionService.get_user_permissions(staff_user)
+        self.assertIn('can_view_clients', permissions)
+        self.assertIn('can_export_data', permissions)
+
+
+class AdminStaffCreationServiceTests(TestCase):
+    def setUp(self):
+        from client.models import Client
+
+        self.super_admin = User.objects.create_user(
+            username='owner@test.com', email='owner@test.com',
+            password='pass1234', role='super_admin',
+        )
+        self.client_owner = User.objects.create_user(
+            username='clientowner@test.com', email='clientowner@test.com',
+            password='pass1234', role='client',
+        )
+        self.client_obj = Client.objects.create(user=self.client_owner, name='ACME School')
+
+    def test_create_admin_staff_requires_super_admin(self):
+        from staff.services import AdminStaffCreationService
+
+        non_admin = User.objects.create_user(
+            username='normal@test.com', email='normal@test.com',
+            password='pass1234', role='client',
+        )
+
+        result = AdminStaffCreationService.create_admin_staff(
+            created_by=non_admin,
+            first_name='No',
+            last_name='Access',
+            email='noaccess@test.com',
+            password='StrongPass@123',
+        )
+
+        self.assertFalse(result['success'])
+        self.assertIn('Only Super Admin', result['error'])
+
+    def test_create_admin_staff_success_creates_expected_records(self):
+        from core.models import EmailLog
+        from staff.models import Staff
+        from staff.services import AdminStaffCreationService
+
+        result = AdminStaffCreationService.create_admin_staff(
+            created_by=self.super_admin,
+            first_name='Jane',
+            last_name='Manager',
+            email='jane.manager@test.com',
+            phone='9999999999',
+            assigned_client_ids=[self.client_obj.id],
+            permission_codenames=['can_view_clients'],
+            password='StrongPass@123',
+        )
+
+        self.assertTrue(result['success'])
+        staff = Staff.objects.select_related('user').get(user__email='jane.manager@test.com')
+        self.assertFalse(staff.user.is_active)
+        self.assertEqual(staff.staff_type, 'admin_staff')
+        self.assertTrue(staff.assigned_clients.filter(id=self.client_obj.id).exists())
+        self.assertTrue(
+            EmailLog.objects.filter(
+                recipient_email='jane.manager@test.com',
+                status=EmailLog.STATUS_ON_HOLD,
+                email_type=EmailLog.EMAIL_TYPE_WELCOME,
+            ).exists()
+        )
+
+    def test_toggle_status_first_activation_marks_welcome_sent(self):
+        from core.models import EmailLog
+        from staff.models import Staff
+        from staff.services import AdminStaffCreationService
+
+        create_result = AdminStaffCreationService.create_admin_staff(
+            created_by=self.super_admin,
+            first_name='Toggle',
+            last_name='User',
+            email='toggle.user@test.com',
+            phone='8888888888',
+            password='StrongPass@123',
+        )
+        self.assertTrue(create_result['success'])
+        staff = Staff.objects.select_related('user').get(user__email='toggle.user@test.com')
+
+        def fake_send_welcome_email(**kwargs):
+            on_success = kwargs.get('on_success')
+            if callable(on_success):
+                on_success()
+            return True, 'ok'
+
+        with mock.patch('staff.services.generate_secure_password', return_value='TempPass@123'):
+            with mock.patch('staff.services.send_welcome_email', side_effect=fake_send_welcome_email):
+                result = AdminStaffCreationService.toggle_status(self.super_admin, staff.id)
+
+        self.assertTrue(result['success'])
+        self.assertTrue(result['is_active'])
+
+        staff.user.refresh_from_db()
+        self.assertTrue(staff.user.is_active)
+        self.assertTrue(staff.user.welcome_email_sent)
+        self.assertTrue(
+            EmailLog.objects.filter(
+                recipient_email='toggle.user@test.com',
+                status=EmailLog.STATUS_SENT,
+                email_type=EmailLog.EMAIL_TYPE_WELCOME,
+            ).exists()
+        )
+
+    def test_reset_password_requires_super_admin(self):
+        from staff.models import Staff
+        from staff.services import AdminStaffCreationService
+
+        staff_user = User.objects.create_user(
+            username='staffreset@test.com', email='staffreset@test.com',
+            password='pass1234', role='admin_staff',
+        )
+        staff = Staff.objects.create(user=staff_user, staff_type='admin_staff')
+
+        non_admin = User.objects.create_user(
+            username='nonadminreset@test.com', email='nonadminreset@test.com',
+            password='pass1234', role='client',
+        )
+        result = AdminStaffCreationService.reset_password(non_admin, staff.id)
+
+        self.assertFalse(result['success'])
+        self.assertIn('Only Super Admin', result['error'])
+
+
+class StaffApiIntegrationTests(TestCase):
+    def setUp(self):
+        from client.models import Client
+        from django.contrib.auth.models import Permission
+        from staff.models import Staff
+        from staff.services import AdminStaffPermissionService
+
+        self.super_admin = User.objects.create_user(
+            username='superapi@test.com', email='superapi@test.com',
+            password='pass1234', role='super_admin',
+        )
+        self.admin_staff_user = User.objects.create_user(
+            username='adminstaffapi@test.com', email='adminstaffapi@test.com',
+            password='pass1234', role='admin_staff',
+        )
+        self.client_user = User.objects.create_user(
+            username='clientapi@test.com', email='clientapi@test.com',
+            password='pass1234', role='client',
+        )
+        self.client_obj = Client.objects.create(user=self.client_user, name='Scoped Client')
+
+        self.another_client_user = User.objects.create_user(
+            username='otherclient@test.com', email='otherclient@test.com',
+            password='pass1234', role='client',
+        )
+        self.another_client = Client.objects.create(user=self.another_client_user, name='Other Client')
+
+        self.staff_profile = Staff.objects.create(user=self.admin_staff_user, staff_type='admin_staff')
+        self.staff_profile.assigned_clients.add(self.client_obj)
+
+        AdminStaffPermissionService.ensure_permissions_exist()
+        self.view_clients_perm = Permission.objects.get(codename='can_view_clients')
+        self.view_idcard_perm = Permission.objects.get(codename='can_view_idcard_data')
+
+    def test_client_cannot_access_super_admin_admin_staff_api(self):
+        self.client.force_login(self.client_user)
+        response = self.client.get('/panel/staff/api/admin-staff/')
+        self.assertEqual(response.status_code, 403)
+
+    def test_super_admin_create_api_invalid_json_returns_400(self):
+        self.client.force_login(self.super_admin)
+        response = self.client.post(
+            '/panel/staff/api/admin-staff/',
+            data='this is not json',
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_super_admin_create_api_success(self):
+        from staff.models import Staff
+
+        self.client.force_login(self.super_admin)
+        payload = {
+            'first_name': 'API',
+            'last_name': 'Created',
+            'email': 'api.created@test.com',
+            'phone': '7777777777',
+            'designation': 'Manager',
+            'department': 'Ops',
+            'password': 'StrongPass@123',
+            'assigned_clients': [self.client_obj.id],
+            'permissions': ['can_view_clients'],
+        }
+        response = self.client.post(
+            '/panel/staff/api/admin-staff/',
+            data=json.dumps(payload),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(Staff.objects.filter(user__email='api.created@test.com').exists())
+
+    def test_my_permissions_returns_scope_for_admin_staff(self):
+        self.admin_staff_user.user_permissions.add(self.view_clients_perm)
+        self.client.force_login(self.admin_staff_user)
+
+        response = self.client.get('/panel/staff/api/my/permissions/')
+        self.assertEqual(response.status_code, 200)
+
+        payload = response.json()
+        self.assertTrue(payload['success'])
+        self.assertEqual(payload['user']['role'], 'admin_staff')
+        self.assertIn(self.client_obj.id, payload['scope']['accessible_client_ids'])
+
+    def test_scoped_clients_requires_permission(self):
+        self.client.force_login(self.admin_staff_user)
+        denied = self.client.get('/panel/staff/api/clients/')
+        self.assertEqual(denied.status_code, 403)
+
+        self.admin_staff_user.user_permissions.add(self.view_clients_perm)
+        allowed = self.client.get('/panel/staff/api/clients/')
+        self.assertEqual(allowed.status_code, 200)
+
+        clients = allowed.json()['clients']
+        returned_ids = {item['id'] for item in clients}
+        self.assertIn(self.client_obj.id, returned_ids)
+        self.assertNotIn(self.another_client.id, returned_ids)
+
+    def test_client_idcard_groups_enforces_scope(self):
+        self.admin_staff_user.user_permissions.add(self.view_idcard_perm)
+        self.client.force_login(self.admin_staff_user)
+
+        forbidden = self.client.get(f'/panel/staff/api/clients/{self.another_client.id}/idcard-groups/')
+        self.assertEqual(forbidden.status_code, 403)
+
+        allowed = self.client.get(f'/panel/staff/api/clients/{self.client_obj.id}/idcard-groups/')
+        self.assertEqual(allowed.status_code, 200)
+        self.assertTrue(allowed.json()['success'])

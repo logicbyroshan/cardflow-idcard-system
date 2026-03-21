@@ -316,3 +316,121 @@ class IDCardTableFieldTests(TestCase):
             {'name': 'CLASS', 'type': 'class', 'order': 2},
         ])
         self.assertTrue(table.has_class_field())
+
+
+class SystemSettingsAndTemplateTests(TestCase):
+    def setUp(self):
+        from core.models import SystemSettings
+        cache.clear()
+        SystemSettings.objects.all().delete()
+
+    def tearDown(self):
+        cache.clear()
+
+    def test_system_settings_get_value_returns_export_default_when_missing(self):
+        from core.models import SystemSettings
+
+        value = SystemSettings.get_value('export_note_line')
+        self.assertEqual(value, SystemSettings.EXPORT_DEFAULTS['export_note_line'])
+
+    def test_system_settings_set_value_persists_and_invalidates_cache(self):
+        from core.models import SystemSettings
+
+        first = SystemSettings.get_value('custom_setting', default='initial')
+        self.assertEqual(first, 'initial')
+
+        SystemSettings.set_value('custom_setting', 'updated', description='test')
+        second = SystemSettings.get_value('custom_setting', default='fallback')
+        self.assertEqual(second, 'updated')
+
+    def test_export_template_default_uniqueness(self):
+        from core.models import ExportTemplate
+
+        first = ExportTemplate.objects.create(
+            name='Template 1',
+            instructions='First instructions',
+            is_default=True,
+        )
+        second = ExportTemplate.objects.create(
+            name='Template 2',
+            instructions='Second instructions',
+            is_default=True,
+        )
+
+        first.refresh_from_db()
+        second.refresh_from_db()
+
+        self.assertFalse(first.is_default)
+        self.assertTrue(second.is_default)
+        self.assertEqual(ExportTemplate.get_default().id, second.id)
+
+
+class PermissionDecoratorResponseTests(TestCase):
+    def setUp(self):
+        from django.contrib.auth.models import AnonymousUser
+
+        self.factory = RequestFactory()
+        self.anon = AnonymousUser()
+        self.super_admin = _create_super_admin('decorator-admin@test.com', 'adminpass1')
+        self.client_user, _ = _create_client_user('decorator-client@test.com', 'clientpass1')
+
+    def test_require_super_admin_redirects_page_for_non_admin_user(self):
+        from core.services.permission_service import require_super_admin
+        from django.http import HttpResponse
+
+        @require_super_admin
+        def protected_view(request):
+            return HttpResponse('ok')
+
+        request = self.factory.get('/panel/manage-panel/')
+        request.user = self.client_user
+        request.content_type = ''
+        request.headers = {}
+
+        response = protected_view(request)
+        self.assertEqual(response.status_code, 302)
+
+    def test_require_super_admin_returns_json_for_api_path(self):
+        from core.services.permission_service import require_super_admin
+        from django.http import HttpResponse
+
+        @require_super_admin
+        def protected_view(request):
+            return HttpResponse('ok')
+
+        request = self.factory.get('/panel/api/monitoring/')
+        request.user = self.client_user
+        request.content_type = 'application/json'
+        request.headers = {}
+
+        response = protected_view(request)
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(json.loads(response.content.decode('utf-8'))['success'])
+
+    def test_api_require_any_authenticated_rejects_anonymous(self):
+        from core.services.permission_service import api_require_any_authenticated
+        from django.http import HttpResponse
+
+        @api_require_any_authenticated
+        def protected_view(request):
+            return HttpResponse('ok')
+
+        request = self.factory.get('/panel/api/anything/')
+        request.user = self.anon
+
+        response = protected_view(request)
+        self.assertEqual(response.status_code, 401)
+
+    def test_api_require_super_admin_allows_super_admin(self):
+        from core.services.permission_service import api_require_super_admin
+        from django.http import HttpResponse
+
+        @api_require_super_admin
+        def protected_view(request):
+            return HttpResponse('ok')
+
+        request = self.factory.get('/panel/api/admin-only/')
+        request.user = self.super_admin
+
+        response = protected_view(request)
+        self.assertEqual(response.status_code, 200)
