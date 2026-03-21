@@ -36,11 +36,11 @@
                     {% if is_super_admin %}
                         <i class="fa-solid fa-crown text-sm"></i>
                     {% elif is_admin_staff %}
-                        <i class="fa-solid fa-user-tie text-sm"></i>
+                        <i class="fa-solid fa-user text-sm"></i>
                     {% elif is_client %}
                         <i class="fa-solid fa-building text-sm"></i>
                     {% else %}
-                        <i class="fa-solid fa-id-badge text-sm"></i>
+                        <i class="fa-solid fa-user text-sm"></i>
                     {% endif %}
                 </div>
                 <div>
@@ -54,7 +54,7 @@
                 </div>
             </div>
             <button @click="close()" class="w-8 h-8 flex items-center justify-center rounded-xl bg-white/20 text-white active:bg-white/30 transition-colors">
-                <i class="fa-solid fa-xmark text-sm"></i>
+                <i class="fa-solid fa-times text-sm"></i>
             </button>
         </div>
 
@@ -128,7 +128,7 @@
                        @click="close()"
                        class="flex items-center gap-3 px-4 py-3.5 rounded-xl font-semibold text-[13px] text-white shadow-md active:opacity-90 transition-opacity"
                        style="background:linear-gradient(135deg,#3b82f6,#2563eb);">
-                        <i class="fa-solid fa-building-circle-arrow-right text-base flex-shrink-0"></i>
+                            <i class="fa-solid fa-building text-base flex-shrink-0"></i>
                         <span>Manage Client</span>
                         <i class="fa-solid fa-chevron-right text-white/60 text-xs ml-auto"></i>
                     </a>
@@ -139,7 +139,7 @@
                        @click="close()"
                        class="flex items-center gap-3 px-4 py-3.5 rounded-xl font-semibold text-[13px] text-white shadow-md active:opacity-90 transition-opacity"
                        style="background:linear-gradient(135deg,#10b981,#059669);">
-                        <i class="fa-solid fa-user-gear text-base flex-shrink-0"></i>
+                            <i class="fa-solid fa-user-cog text-base flex-shrink-0"></i>
                         <span>Manage Staff</span>
                         <i class="fa-solid fa-chevron-right text-white/60 text-xs ml-auto"></i>
                     </a>

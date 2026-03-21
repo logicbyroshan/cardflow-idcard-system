@@ -32,7 +32,7 @@
         <!-- Header (gradient with avatar) -->
         <div class="flex flex-col items-center px-5 pt-[calc(env(safe-area-inset-top,0px)+20px)] pb-5 bg-gradient-to-br from-brand-light to-brand-dark flex-shrink-0 relative">
             <button @click="close()" class="absolute top-[calc(env(safe-area-inset-top,0px)+10px)] right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white active:bg-white/30 transition-colors">
-                <i class="fa-solid fa-xmark text-sm"></i>
+                <i class="fa-solid fa-times text-sm"></i>
             </button>
 
             <!-- Avatar circle -->
@@ -40,11 +40,11 @@
                 {% if is_super_admin %}
                     <i class="fa-solid fa-crown text-2xl"></i>
                 {% elif is_admin_staff %}
-                    <i class="fa-solid fa-user-tie text-2xl"></i>
+                    <i class="fa-solid fa-user text-2xl"></i>
                 {% elif is_client %}
                     <i class="fa-solid fa-building text-2xl"></i>
                 {% else %}
-                    <i class="fa-solid fa-id-badge text-2xl"></i>
+                    <i class="fa-solid fa-user text-2xl"></i>
                 {% endif %}
             </div>
 

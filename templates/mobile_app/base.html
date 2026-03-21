@@ -33,7 +33,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Roboto+Condensed:wght@300;400;700&display=swap" rel="stylesheet">
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="{% static 'mobile/css/mobile.css' %}?v=3">
+    <link rel="stylesheet" href="{% static 'mobile/css/mobile.css' %}?v=4">
 
     <script>
         // Capture install prompt early so it is not missed before UI script initializes.
@@ -172,30 +172,55 @@
         return false;
     };
 
-    window.mobileGoBack = function mobileGoBack(event, fallbackUrl) {
-        if (event) event.preventDefault();
-        var fallback = fallbackUrl || '/app/';
+    (function setupMobileBackBehavior() {
+        var backTapWindowMs = 320;
+        var backSingleTapTimer = null;
+        var lastBackTapAt = 0;
 
-        try {
-            if (window.history.length > 1) {
-                window.history.back();
-                return false;
-            }
-        } catch (e) {}
-
-        if (document.referrer) {
+        function goBackOnce(fallback) {
             try {
-                var ref = new URL(document.referrer, window.location.origin);
-                if (ref.origin === window.location.origin) {
-                    window.location.href = ref.pathname + ref.search + ref.hash;
-                    return false;
+                if (window.history.length > 1) {
+                    window.history.back();
+                    return;
                 }
             } catch (e) {}
+
+            if (document.referrer) {
+                try {
+                    var ref = new URL(document.referrer, window.location.origin);
+                    if (ref.origin === window.location.origin) {
+                        window.location.href = ref.pathname + ref.search + ref.hash;
+                        return;
+                    }
+                } catch (e) {}
+            }
+
+            window.location.href = fallback;
         }
 
-        window.location.href = fallback;
-        return false;
-    };
+        window.mobileGoBack = function mobileGoBack(event, fallbackUrl) {
+            if (event) event.preventDefault();
+            var fallback = fallbackUrl || '/app/';
+            var now = Date.now();
+
+            if (now - lastBackTapAt <= backTapWindowMs) {
+                if (backSingleTapTimer) {
+                    clearTimeout(backSingleTapTimer);
+                    backSingleTapTimer = null;
+                }
+                lastBackTapAt = 0;
+                window.location.href = '/app/';
+                return false;
+            }
+
+            lastBackTapAt = now;
+            backSingleTapTimer = setTimeout(function () {
+                backSingleTapTimer = null;
+                goBackOnce(fallback);
+            }, backTapWindowMs);
+            return false;
+        };
+    })();
 
     // Lightweight haptic feedback for mobile interactions across the app.
     (function setupMobileHaptics() {

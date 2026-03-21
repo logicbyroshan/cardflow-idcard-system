@@ -73,7 +73,7 @@ body {
     height: 4px;
     border-radius: 16px 16px 0 0;
     background: #2563eb;
-    opacity: 0.95;
+    opacity: 0.48;
 }
 
 .m-pop-card-indigo {
@@ -1216,6 +1216,7 @@ body.pwa-v2 #mobile-app [class*='rounded-xl'][class*='bg-white'] {
 
 body.pwa-v2 #mobile-app .m-pop-card::before {
     height: 5px;
+    opacity: 0.48;
 }
 
 body.pwa-v2 #mobile-app .m-pop-card-indigo {
