@@ -27,15 +27,26 @@
                     position: relative;
                     overflow: hidden;
                     border-radius: 16px;
-                    box-shadow: 0 8px 18px rgba(13, 24, 48, 0.08);
+                    box-shadow: 0 10px 20px rgba(13, 24, 48, 0.1);
                     isolation: isolate;
-                    border: none;
+                    border: 1px solid rgba(255, 255, 255, 0.8);
                 }
                 .home-stat-card::before {
                     content: '';
                     position: absolute;
                     inset: 0;
                     background: radial-gradient(circle at 85% 12%, rgba(255,255,255,0.65), rgba(255,255,255,0) 52%);
+                    pointer-events: none;
+                }
+                .home-stat-card::after {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    height: 4px;
+                    border-radius: 16px 16px 0 0;
+                    background: #2563eb;
                     pointer-events: none;
                 }
                 .home-stat-inner {
@@ -59,7 +70,8 @@
                     align-items: center;
                     justify-content: center;
                     background: rgba(255, 255, 255, 0.9);
-                    color: #0f172a;
+                    color: #1e3a8a;
+                    border: 1px solid rgba(148, 163, 184, 0.35);
                     flex-shrink: 0;
                 }
                 .home-stat-label {
@@ -81,10 +93,11 @@
                     grid-row: 1;
                     background: linear-gradient(145deg, #dbeafe, #7dd3fc);
                 }
+                .home-stat-total::after { background: #0369a1; }
                 .home-stat-total .home-stat-icon {
-                    background: rgba(12, 74, 110, 0.14);
+                    background: rgba(255, 255, 255, 0.75);
                     color: #0c4a6e;
-                    border: 1px solid rgba(12, 74, 110, 0.18);
+                    border: 1px solid rgba(12, 74, 110, 0.25);
                 }
                 .home-stat-total .home-stat-label {
                     color: #075985;
@@ -97,21 +110,29 @@
                     grid-row: 2;
                     background: linear-gradient(145deg, #fde68a, #fbbf24);
                 }
+                .home-stat-pending::after { background: #b45309; }
+                .home-stat-pending .home-stat-icon { color: #92400e; border-color: rgba(146, 64, 14, 0.28); }
                 .home-stat-verified {
                     grid-column: 2;
                     grid-row: 2;
                     background: linear-gradient(145deg, #99f6e4, #2dd4bf);
                 }
+                .home-stat-verified::after { background: #0f766e; }
+                .home-stat-verified .home-stat-icon { color: #0f766e; border-color: rgba(15, 118, 110, 0.25); }
                 .home-stat-approved {
                     grid-column: 1;
                     grid-row: 3;
                     background: linear-gradient(145deg, #86efac, #22c55e);
                 }
+                .home-stat-approved::after { background: #15803d; }
+                .home-stat-approved .home-stat-icon { color: #166534; border-color: rgba(22, 101, 52, 0.25); }
                 .home-stat-download {
                     grid-column: 2;
                     grid-row: 3;
                     background: linear-gradient(145deg, #c4b5fd, #8b5cf6);
                 }
+                .home-stat-download::after { background: #6d28d9; }
+                .home-stat-download .home-stat-icon { color: #5b21b6; border-color: rgba(91, 33, 182, 0.25); }
             </style>
 
             <!-- STATS: inspired by custom 5-card layout -->
