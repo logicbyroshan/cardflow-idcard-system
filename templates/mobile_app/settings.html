@@ -475,6 +475,87 @@
                                 <span class="text-[11px] text-gray-500">Working Dir</span>
                                 <span class="text-[11px] font-semibold text-gray-800 max-w-[210px] truncate" x-text="serverInfo.cwd || '-' "></span>
                             </div>
+                            <template x-if="serverInfo.disk">
+                                <div class="flex flex-col gap-1 px-4 py-3">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-[11px] text-gray-500">Disk Usage</span>
+                                        <span class="text-[11px] font-semibold text-gray-800">
+                                            <span x-text="(serverInfo.disk.used/1024/1024/1024).toFixed(2)"></span> GB /
+                                            <span x-text="(serverInfo.disk.total/1024/1024/1024).toFixed(2)"></span> GB
+                                            (<span x-text="serverInfo.disk.percent"></span>%)
+                                        </span>
+                                    </div>
+                                    <div class="w-full h-2 bg-gray-100 rounded-full overflow-hidden mt-1">
+                                        <div class="h-2 bg-sky-400" :style="'width:' + serverInfo.disk.percent + '%'" style="transition:width 0.5s;"></div>
+                                    </div>
+                                    <div class="flex items-center justify-between text-[10px] text-gray-400 mt-0.5">
+                                        <span x-text="'Free: ' + (serverInfo.disk.free/1024/1024/1024).toFixed(2) + ' GB'"></span>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <template x-if="serverInfo.memory">
+                                <div class="flex flex-col gap-1 px-4 py-3">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-[11px] text-gray-500">Memory Usage</span>
+                                        <span class="text-[11px] font-semibold text-gray-800">
+                                            <span x-text="serverInfo.memory.used_human || formatBytes(serverInfo.memory.used_bytes)"></span> /
+                                            <span x-text="serverInfo.memory.total_human || formatBytes(serverInfo.memory.total_bytes)"></span>
+                                            (<span x-text="serverInfo.memory.used_pct ?? '-' "></span>%)
+                                        </span>
+                                    </div>
+                                    <div class="w-full h-2 bg-gray-100 rounded-full overflow-hidden mt-1">
+                                        <div class="h-2 bg-indigo-400" :style="'width:' + Math.min(100, Math.max(0, Number(serverInfo.memory.used_pct || 0))) + '%'" style="transition:width 0.5s;"></div>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <template x-if="serverInfo.database">
+                                <div class="flex items-center justify-between px-4 py-3">
+                                    <span class="text-[11px] text-gray-500">Database Size</span>
+                                    <span class="text-[12px] font-semibold text-gray-800 font-mono" x-text="serverInfo.database.size_human || formatBytes(serverInfo.database.size_bytes)"></span>
+                                </div>
+                            </template>
+
+                            <template x-if="serverInfo.storage && serverInfo.storage.tracked_total_human">
+                                <div class="flex items-center justify-between px-4 py-3">
+                                    <span class="text-[11px] text-gray-500">Tracked Folders Total</span>
+                                    <span class="text-[12px] font-semibold text-gray-800 font-mono" x-text="serverInfo.storage.tracked_total_human"></span>
+                                </div>
+                            </template>
+
+                            <template x-if="serverInfo.usage_breakdown && serverInfo.usage_breakdown.length">
+                                <div class="px-4 py-3">
+                                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Used Disk Breakdown</p>
+                                    <div class="space-y-2">
+                                        <template x-for="item in serverInfo.usage_breakdown" :key="item.name">
+                                            <div class="rounded-xl border border-gray-100 bg-gray-50/70 px-3 py-2">
+                                                <div class="flex items-center justify-between gap-2">
+                                                    <span class="text-[11px] font-semibold text-gray-700" x-text="item.name"></span>
+                                                    <span class="text-[10px] text-gray-500 font-mono" x-text="item.size_human || formatBytes(item.size_bytes)"></span>
+                                                </div>
+                                                <div class="w-full h-1.5 bg-gray-200 rounded-full mt-1.5 overflow-hidden">
+                                                    <div class="h-1.5 bg-sky-400" :style="'width:' + Math.min(100, Math.max(0, Number(item.pct_of_used_disk || 0))) + '%'" style="transition:width 0.4s;"></div>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <template x-if="serverInfo.path_usage && serverInfo.path_usage.length">
+                                <div class="px-4 py-3">
+                                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Tracked Folder Usage</p>
+                                    <div class="space-y-2">
+                                        <template x-for="item in serverInfo.path_usage.slice(0, 10)" :key="'path-' + item.name">
+                                            <div class="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl border border-gray-100">
+                                                <span class="text-[11px] text-gray-600 truncate" x-text="item.name"></span>
+                                                <span class="text-[10px] font-semibold text-gray-800 font-mono" x-text="item.size_human || formatBytes(item.size_bytes)"></span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
                         </div>
                     </template>
                 </div>
@@ -509,20 +590,57 @@ function settingsApp() {
             this.serverLoading = true;
             this.serverError = '';
             try {
-                const res = await fetch('/app/api/server-info/');
+                const res = await fetch('/api/server-info/?force_refresh=1', { cache: 'no-store' });
                 const data = await res.json();
                 if (!data.success) {
                     this.serverError = data.message || 'Failed to fetch server info';
                     this.serverInfo = null;
                     return;
                 }
-                this.serverInfo = data.data || {};
+                const snapshot = data.snapshot || data.data || {};
+                const diskFromStorage = snapshot.storage
+                    ? {
+                        total: snapshot.storage.total_bytes || 0,
+                        used: snapshot.storage.used_bytes || 0,
+                        free: snapshot.storage.free_bytes || 0,
+                        percent: snapshot.storage.used_pct || 0,
+                    }
+                    : null;
+
+                this.serverInfo = {
+                    environment: snapshot.environment || '-',
+                    hostname: snapshot.host || snapshot.hostname || '-',
+                    platform: snapshot.platform || '-',
+                    python_version: snapshot.python_version || '-',
+                    django_version: snapshot.django_version || '{{ django_version|escapejs }}',
+                    process_id: snapshot.process_id ?? '-',
+                    process_uptime_seconds: snapshot.process_uptime_seconds,
+                    cwd: snapshot.cwd || '-',
+                    disk: snapshot.disk || diskFromStorage,
+                    storage: snapshot.storage || null,
+                    memory: snapshot.memory || null,
+                    database: snapshot.database || null,
+                    usage_breakdown: Array.isArray(snapshot.usage_breakdown) ? snapshot.usage_breakdown : [],
+                    path_usage: Array.isArray(snapshot.path_usage) ? snapshot.path_usage : [],
+                };
             } catch (err) {
                 this.serverError = 'Network error while loading server info';
                 this.serverInfo = null;
             } finally {
                 this.serverLoading = false;
             }
+        },
+        formatBytes(bytes) {
+            const size = Number(bytes || 0);
+            if (!size || size < 0) return '0 B';
+            const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+            let value = size;
+            let unitIdx = 0;
+            while (value >= 1024 && unitIdx < units.length - 1) {
+                value /= 1024;
+                unitIdx += 1;
+            }
+            return `${value.toFixed(value >= 10 ? 1 : 2)} ${units[unitIdx]}`;
         },
         formatUptime(seconds) {
             if (seconds === null || seconds === undefined || Number.isNaN(Number(seconds))) return '-';

@@ -225,6 +225,7 @@
          x-transition:leave="transition ease-in duration-150"
          x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
          class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
+            data-mobile-overlay-root
          style="display:none;"
          @click.self="showFieldModal = false">
         <div x-show="showFieldModal"
@@ -305,11 +306,35 @@ function groupsApp() {
         activeTab: 'groups',
         expandedGroup: null,
         showFieldModal: false,
+        fieldModalOverlayToken: null,
         fieldModalTitle: '',
         selectedTableId: null,
         editableFields: [],
         fieldSaving: false,
         fieldMsg: { show: false, text: '', type: '' },
+
+        init() {
+            this.$watch('showFieldModal', (isOpen) => {
+                if (isOpen) {
+                    if (!this.fieldModalOverlayToken && window.mobileOverlay) {
+                        this.fieldModalOverlayToken = window.mobileOverlay.open(() => {
+                            this.showFieldModal = false;
+                            this._closeFieldModalOverlay(true);
+                        });
+                    }
+                } else {
+                    this._closeFieldModalOverlay(false);
+                }
+            });
+        },
+
+        _closeFieldModalOverlay(fromPopstate) {
+            if (!this.fieldModalOverlayToken) return;
+            if (window.mobileOverlay) {
+                window.mobileOverlay.close(this.fieldModalOverlayToken, { fromPopstate: !!fromPopstate });
+            }
+            this.fieldModalOverlayToken = null;
+        },
 
         openFieldModal(tableId, tableName, fieldsJson) {
             this.selectedTableId = tableId;

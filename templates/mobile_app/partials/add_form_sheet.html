@@ -3,6 +3,7 @@
     x-show="showAddForm"
     class="fixed inset-0 z-[70]"
     x-cloak
+    data-mobile-overlay-root
 >
     <!-- Backdrop -->
     <div
@@ -189,7 +190,7 @@
 </div>
 
 <!-- Image Crop Modal (z-[80]  -  above add form) -->
-<div x-show="showCropModal" x-cloak class="fixed inset-0 z-[80] flex flex-col bg-black">
+<div x-show="showCropModal" x-cloak class="fixed inset-0 z-[80] flex flex-col bg-black" data-mobile-overlay-root>
     <!-- Header -->
     <div class="flex items-center justify-between px-4 py-3 bg-black/80 flex-shrink-0">
         <div>

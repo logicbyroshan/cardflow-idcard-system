@@ -21,16 +21,10 @@
 
         <!-- Nav-style action bar -->
         <div class="bg-white border-t border-gray-200 shadow-[0_-2px_12px_rgba(0,0,0,0.07)] relative">
-
-        {% if view_only_list %}
-            <div class="flex items-center justify-center gap-1.5 text-[10px] text-gray-400 font-medium px-4" style="height:58px;">
-                <i class="fa-solid fa-eye text-[11px]"></i>
-                <span>View only  no actions available</span>
-            </div>
-        {% else %}
             <div class="flex items-end px-1" style="height:58px;">
 
                 <!-- 1. View (1 selected) -->
+                {% if perm_idcard_info %}
                 <button @click="viewSelected()"
                         :disabled="selectedIds.length !== 1"
                         class="mab-nav-item flex-1"
@@ -38,13 +32,14 @@
                     <i class="fa-solid fa-eye text-[18px]"></i>
                     <span class="mab-nav-label">View</span>
                 </button>
+                {% endif %}
 
                 <!-- 2. Download PDF -->
                 {% if perm_idcard_bulk_download %}
                 <button @click="downloadPDF()"
-                        :disabled="selectedIds.length === 0"
                         class="mab-nav-item flex-1"
-                        :class="selectedIds.length > 0 ? 'text-purple-500' : 'text-gray-300'">
+                        :class="studentsData.length > 0 ? 'text-purple-500' : 'text-gray-300'"
+                        :disabled="studentsData.length === 0">
                     <i class="fa-solid fa-file-pdf text-[18px]"></i>
                     <span class="mab-nav-label">Download</span>
                 </button>
@@ -52,48 +47,92 @@
 
                 <!-- 3. Add/Edit  center prominent button (25% above) -->
                 {% if perm_idcard_add or perm_idcard_edit %}
+                {% if not is_client and not is_client_staff or list_type != 'approved' and list_type != 'download' %}
                 <div class="flex-1 flex flex-col items-center justify-end pb-2" style="position:relative;">
                     <button @click="selectedIds.length === 1 ? editSelected() : (selectedIds.length === 0 ? addNew() : null)"
-                            :disabled="selectedIds.length > 1"
+                            :disabled="selectedIds.length > 1{% if not perm_idcard_edit %} || selectedIds.length === 1{% endif %}{% if not perm_idcard_add %} || selectedIds.length === 0{% endif %}"
                             class="mab-center-btn"
                             :class="selectedIds.length > 1 ? 'opacity-40 cursor-not-allowed' : ''">
                         <i :class="selectedIds.length === 1 ? 'fa-solid fa-pen text-[20px]' : 'fa-solid fa-plus text-[22px]'"></i>
                     </button>
                 </div>
                 {% endif %}
-
-                <!-- 4. Verify / Approve -->
-                {% if list_type == 'pending' and perm_idcard_verify %}
-                <button @click="verifySelected()"
-                        :disabled="selectedIds.length === 0"
-                        class="mab-nav-item flex-1"
-                        :class="selectedIds.length > 0 ? 'text-green-500' : 'text-gray-300'">
-                    <i class="fa-solid fa-circle-check text-[18px]"></i>
-                    <span class="mab-nav-label">Verify</span>
-                </button>
-                {% elif list_type == 'verified' and perm_idcard_approve %}
-                <button @click="approveSelected()"
-                        :disabled="selectedIds.length === 0"
-                        class="mab-nav-item flex-1"
-                        :class="selectedIds.length > 0 ? 'text-blue-500' : 'text-gray-300'">
-                    <i class="fa-solid fa-stamp text-[18px]"></i>
-                    <span class="mab-nav-label">Approve</span>
-                </button>
                 {% endif %}
 
-                <!-- 5. Delete -->
-                {% if perm_idcard_delete %}
-                <button @click="{% if list_type == 'pool' or list_type == 'download' %}permanentlyDelete(){% else %}deleteSelected(){% endif %}"
+                <!-- 4. Action dropdown -->
+                {% if list_type == 'pending' and perm_idcard_verify or list_type == 'verified' and perm_idcard_verify or list_type == 'verified' and perm_idcard_approve or list_type == 'approved' and perm_idcard_approve and not is_client and not is_client_staff or list_type == 'download' and perm_idcard_retrieve and not is_client and not is_client_staff or list_type == 'pool' and perm_idcard_retrieve %}
+                <div class="relative flex-1">
+                    <button @click="toggleActionMenu()"
+                            :disabled="selectedIds.length === 0"
+                            class="mab-nav-item w-full"
+                            :class="selectedIds.length > 0 ? 'text-indigo-600' : 'text-gray-300'">
+                        <i class="fa-solid fa-bolt text-[18px]"></i>
+                        <span class="mab-nav-label">Action</span>
+                    </button>
+
+                    <div x-show="actionMenuOpen"
+                         x-transition.origin.bottom
+                         @click.outside="closeActionMenu()"
+                         class="absolute bottom-[62px] left-1/2 -translate-x-1/2 w-40 bg-white border border-gray-200 rounded-xl shadow-lg p-1.5 z-50"
+                         data-mobile-overlay-root>
+                        {% if list_type == 'pending' and perm_idcard_verify %}
+                        <button @click="runActionMenu('verify')" class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-[12px] font-semibold text-green-700 hover:bg-green-50 transition">
+                            <i class="fa-solid fa-circle-check text-[12px]"></i> Verify Selected
+                        </button>
+                        {% endif %}
+
+                        {% if list_type == 'verified' and perm_idcard_verify %}
+                        <button @click="runActionMenu('unverify')" class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-[12px] font-semibold text-amber-700 hover:bg-amber-50 transition">
+                            <i class="fa-solid fa-rotate-left text-[12px]"></i> Unverify
+                        </button>
+                        {% endif %}
+                        {% if list_type == 'verified' and perm_idcard_approve %}
+                        <button @click="runActionMenu('approve')" class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-[12px] font-semibold text-blue-700 hover:bg-blue-50 transition">
+                            <i class="fa-solid fa-stamp text-[12px]"></i> Approve
+                        </button>
+                        {% endif %}
+
+                        {% if list_type == 'approved' and perm_idcard_approve and not is_client and not is_client_staff %}
+                        <button @click="runActionMenu('disapprove')" class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-[12px] font-semibold text-orange-700 hover:bg-orange-50 transition">
+                            <i class="fa-solid fa-rotate-left text-[12px]"></i> Disapprove
+                        </button>
+                        {% endif %}
+
+                        {% if list_type == 'download' and perm_idcard_retrieve and not is_client and not is_client_staff %}
+                        <button @click="runActionMenu('retrieve')" class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-[12px] font-semibold text-teal-700 hover:bg-teal-50 transition">
+                            <i class="fa-solid fa-arrow-up-from-bracket text-[12px]"></i> Retrieve
+                        </button>
+                        {% endif %}
+
+                        {% if list_type == 'pool' and perm_idcard_retrieve %}
+                        <button @click="runActionMenu('retrieve')" class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-[12px] font-semibold text-teal-700 hover:bg-teal-50 transition">
+                            <i class="fa-solid fa-arrow-up-from-bracket text-[12px]"></i> Retrieve
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- 5. Delete / Permanent Delete -->
+                {% if list_type == 'pending' and perm_idcard_delete %}
+                <button @click="deleteSelected()"
                         :disabled="selectedIds.length === 0"
                         class="mab-nav-item flex-1"
                         :class="selectedIds.length > 0 ? 'text-red-500' : 'text-gray-300'">
                     <i class="fa-solid fa-trash text-[18px]"></i>
                     <span class="mab-nav-label">Delete</span>
                 </button>
+                {% elif list_type == 'pool' and perm_idcard_delete_from_pool %}
+                <button @click="permanentlyDelete()"
+                        :disabled="selectedIds.length === 0"
+                        class="mab-nav-item flex-1"
+                        :class="selectedIds.length > 0 ? 'text-red-500' : 'text-gray-300'">
+                    <i class="fa-solid fa-triangle-exclamation text-[18px]"></i>
+                    <span class="mab-nav-label">Perm Del</span>
+                </button>
                 {% endif %}
 
             </div>
-        {% endif %}
 
             <!-- Safe-area padding -->
             <div style="height: env(safe-area-inset-bottom, 0px);"></div>

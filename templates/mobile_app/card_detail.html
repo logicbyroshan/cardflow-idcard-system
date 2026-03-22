@@ -214,7 +214,7 @@
     </div>
 
     <!-- Status Change Modal -->
-    <div x-show="showStatusModal" x-cloak class="fixed inset-0 z-[70]">
+    <div x-show="showStatusModal" x-cloak class="fixed inset-0 z-[70]" data-mobile-overlay-root>
         <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="showStatusModal = false"></div>
         <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl max-w-[430px] mx-auto overflow-hidden"
              x-transition:enter="transition ease-out duration-300"
@@ -288,7 +288,31 @@ function cardDetailApp() {
     return {
         showAllFields: false,
         showStatusModal: false,
+        statusModalOverlayToken: null,
         toast: { show: false, message: '', type: 'info' },
+
+        init() {
+            this.$watch('showStatusModal', (isOpen) => {
+                if (isOpen) {
+                    if (!this.statusModalOverlayToken && window.mobileOverlay) {
+                        this.statusModalOverlayToken = window.mobileOverlay.open(() => {
+                            this.showStatusModal = false;
+                            this._closeStatusModalOverlay(true);
+                        });
+                    }
+                } else {
+                    this._closeStatusModalOverlay(false);
+                }
+            });
+        },
+
+        _closeStatusModalOverlay(fromPopstate) {
+            if (!this.statusModalOverlayToken) return;
+            if (window.mobileOverlay) {
+                window.mobileOverlay.close(this.statusModalOverlayToken, { fromPopstate: !!fromPopstate });
+            }
+            this.statusModalOverlayToken = null;
+        },
 
         showToast(msg, type='info') {
             this.toast = { show: true, message: msg, type };

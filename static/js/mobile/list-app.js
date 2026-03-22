@@ -32,6 +32,9 @@ function listApp() {
         supportsInfiniteObserver: typeof window !== 'undefined' && 'IntersectionObserver' in window,
         infiniteObserver: null,
         scrollFallbackHandler: null,
+        overlayTokens: {},
+        overlayWatchersBound: false,
+        actionMenuOpen: false,
 
         // Add/Edit Form state
         showAddForm: false,
@@ -53,7 +56,7 @@ function listApp() {
         allClassToSectionsRaw: (typeof ALL_CLASS_TO_SECTIONS !== 'undefined' && ALL_CLASS_TO_SECTIONS && typeof ALL_CLASS_TO_SECTIONS === 'object') ? ALL_CLASS_TO_SECTIONS : {},
         tableFields: Array.isArray(TABLE_FIELDS) ? TABLE_FIELDS : [],
         dynamicFormFields: [],
-        tabCounts: TAB_COUNTS || { pending: 0, verified: 0, approved: 0, download: 0 },
+        tabCounts: TAB_COUNTS || { pending: 0, verified: 0, approved: 0, download: 0, pool: 0 },
         form: {
             dynamicValues: {},
             photoFile: null,
@@ -63,6 +66,7 @@ function listApp() {
         init() {
             this.rebuildClassSectionOptions();
             this._wirePhotoFallbacks(document);
+            this._bindOverlayWatchers();
 
             this.$nextTick(() => {
                 this.initInfiniteLoader();
@@ -128,27 +132,87 @@ function listApp() {
             scrollRoot.addEventListener('scroll', this.scrollFallbackHandler, { passive: true });
         },
 
-        async focusCardById(cardId) {
-            const maxBatches = 25;
-            let attempts = 0;
+        _bindOverlayWatchers() {
+            if (this.overlayWatchersBound || typeof this.$watch !== 'function') return;
+            this.overlayWatchersBound = true;
 
-            const findCardEl = () => document.querySelector('[data-sid="' + cardId + '"]');
+            this.$watch('showFilters', (isOpen) => {
+                if (isOpen) {
+                    this._openOverlay('filters', () => { this.showFilters = false; });
+                } else {
+                    this._closeOverlay('filters');
+                }
+            });
 
-            let target = findCardEl();
-            while (!target && this.hasMore && attempts < maxBatches) {
-                // Keep fetching more rows until target card is rendered.
-                await this.loadMore();
-                attempts += 1;
-                target = findCardEl();
+            this.$watch('showAddForm', (isOpen) => {
+                if (isOpen) {
+                    this._openOverlay('addForm', () => { this.closeAddForm(); });
+                } else {
+                    this._closeOverlay('addForm');
+                }
+            });
+
+            this.$watch('showCropModal', (isOpen) => {
+                if (isOpen) {
+                    this._openOverlay('cropModal', () => { this.closeCropModal(); });
+                } else {
+                    this._closeOverlay('cropModal');
+                }
+            });
+
+            this.$watch('downloadModal.show', (isOpen) => {
+                if (isOpen) {
+                    this._openOverlay('downloadModal', () => { this.closeDownloadModal(); });
+                } else {
+                    this._closeOverlay('downloadModal');
+                }
+            });
+        },
+
+        _openOverlay(key, closeFn) {
+            if (this.overlayTokens[key]) return;
+            if (!window.mobileOverlay) {
+                document.body.classList.add('overflow-hidden');
+                return;
             }
 
+            this.overlayTokens[key] = window.mobileOverlay.open(() => {
+                if (typeof closeFn === 'function') closeFn();
+                this._closeOverlay(key, true);
+            });
+        },
+
+        _closeOverlay(key, fromPopstate) {
+            const token = this.overlayTokens[key];
+            if (!token) {
+                if (!window.mobileOverlay) {
+                    const anyOpen = this.showFilters || this.showAddForm || this.showCropModal || this.downloadModal.show;
+                    if (!anyOpen) document.body.classList.remove('overflow-hidden');
+                }
+                return;
+            }
+
+            if (window.mobileOverlay) {
+                window.mobileOverlay.close(token, { fromPopstate: !!fromPopstate });
+            }
+            delete this.overlayTokens[key];
+        },
+
+        async focusCardById(cardId) {
+            // Try to find the card in loaded data
+            const findCardEl = () => document.querySelector('[data-sid="' + cardId + '"]');
+            let target = findCardEl();
+            if (!target && this.hasMore) {
+                // Load all data if not found
+                await this.loadAllDataForFiltering();
+                target = findCardEl();
+            }
             if (!target) {
                 this.showToast('Searched card not found in this list', 'error');
                 return;
             }
-
+            // Scroll and highlight
             target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
             target.classList.add('ring-2', 'ring-brand-light', 'ring-offset-2', 'bg-amber-50');
             setTimeout(() => {
                 target.classList.remove('ring-2', 'ring-brand-light', 'ring-offset-2', 'bg-amber-50');
@@ -164,6 +228,7 @@ function listApp() {
                 });
                 this.selectedIds = visible;
             } else { this.selectedIds = []; }
+            if (!this.selectedIds.length) this.actionMenuOpen = false;
             // Sync classes for dynamically loaded rows
             document.querySelectorAll('[data-sid]').forEach(el => {
                 this._updateRowClass(parseInt(el.dataset.sid));
@@ -175,6 +240,7 @@ function listApp() {
             else { this.selectedIds.push(id); }
             const visibleCount = Array.from(document.querySelectorAll('[data-sid]')).filter(el => el.style.display !== 'none').length;
             this.selectAll = this.selectedIds.length === visibleCount && visibleCount > 0;
+            if (!this.selectedIds.length) this.actionMenuOpen = false;
             this._updateRowClass(id);
         },
 
@@ -865,11 +931,21 @@ function listApp() {
                 return;
             }
             if (mode !== 'add') return;
-            card.sr_no = this.studentsData.length + 1;
-            this.studentsData.push(card);
+            // New cards should appear first in the current list.
+            this.studentsData.unshift(card);
+            this._reindexSerialNumbers();
             this.loadMoreOffset = this.studentsData.length;
             this.visibleCount = this.studentsData.length;
-            this._appendRenderedCard(card);
+            const mountEl = document.getElementById('dynamic-cards-mount');
+            const firstCardEl = document.querySelector('[data-sid]');
+            const newCardEl = this._buildCardDiv(card);
+            if (firstCardEl && firstCardEl.parentNode) {
+                firstCardEl.parentNode.insertBefore(newCardEl, firstCardEl);
+            } else if (mountEl) {
+                mountEl.prepend(newCardEl);
+            } else {
+                this._appendRenderedCard(card);
+            }
             this.rebuildClassSectionOptions();
             this._applyAllFilters();
         },
@@ -1163,7 +1239,6 @@ function listApp() {
             this.editingId = null;
             this.resetForm();
             this.showAddForm = true;
-            document.body.style.overflow = 'hidden';
         },
         populateFormFromStudent(student) {
             const fd = (student && student.field_data) || {};
@@ -1190,7 +1265,6 @@ function listApp() {
             this.editingId = null;
             this.populateFormFromStudent(student);
             this.showAddForm = true;
-            document.body.style.overflow = 'hidden';
         },
         async editSelected() {
             if (!this.selectedIds.length) { this.showToast('Select a card first', 'error'); return; }
@@ -1211,7 +1285,6 @@ function listApp() {
             this.editingId = editId;
             this.populateFormFromStudent(student);
             this.showAddForm = true;
-            document.body.style.overflow = 'hidden';
         },
         closeAddForm() {
             this.showAddForm = false;
@@ -1219,7 +1292,6 @@ function listApp() {
             this.viewMode = false;
             this.editMode = false;
             this.editingId = null;
-            document.body.style.overflow = '';
         },
         resetForm() {
             this.form = {
@@ -1449,11 +1521,46 @@ function listApp() {
             this.apiAction('pool', 'moved to pool');
         },
         verifySelected() { this.apiAction('verified', 'verified'); },
+        unverifySelected() { this.apiAction('pending', 'unverified'); },
         approveSelected() { this.apiAction('approved', 'approved'); },
         unapproveSelected() { this.apiAction('verified', 'unapproved'); },
+        toggleActionMenu() {
+            if (!this.selectedIds.length) {
+                this.actionMenuOpen = false;
+                this.showToast('Select items first', 'error');
+                return;
+            }
+            this.actionMenuOpen = !this.actionMenuOpen;
+        },
+        closeActionMenu() {
+            this.actionMenuOpen = false;
+        },
+        runActionMenu(action) {
+            this.actionMenuOpen = false;
+            if (action === 'verify') {
+                this.verifySelected();
+            } else if (action === 'unverify') {
+                this.unverifySelected();
+            } else if (action === 'approve') {
+                this.approveSelected();
+            } else if (action === 'disapprove') {
+                this.unapproveSelected();
+            } else if (action === 'retrieve') {
+                this.retrieveSelected();
+            }
+        },
         async downloadPDF() {
-            if (!this.selectedIds.length) { this.showToast('Select items first', 'error'); return; }
-            this.showDownloadModal('pdf', this.selectedIds.length);
+            let idsToDownload = [...this.selectedIds];
+            if (!idsToDownload.length) {
+                // If nothing selected, download all (load all if needed)
+                if (this.hasMore) {
+                    this.showToast('Loading all records for download...', 'info');
+                    await this.loadAllDataForFiltering();
+                }
+                idsToDownload = this.studentsData.map(s => s.id);
+            }
+            if (!idsToDownload.length) { this.showToast('No cards to download', 'error'); return; }
+            this.showDownloadModal('pdf', idsToDownload.length);
             try {
                 const pollTask = async (taskId) => {
                     for (let i = 0; i < 300; i++) {
@@ -1494,7 +1601,7 @@ function listApp() {
                 const res = await fetch('/panel/exports/pdf/' + TABLE_ID + '/', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
-                    body: JSON.stringify({ card_ids: this.selectedIds, status: LIST_TYPE }),
+                    body: JSON.stringify({ card_ids: idsToDownload, status: LIST_TYPE }),
                     signal: this.downloadModal.abortController?.signal,
                 });
                 this.updateDownloadProgress(50, 'Processing PDF...');
@@ -1531,14 +1638,23 @@ function listApp() {
             }
         },
         async downloadIMG() {
-            if (!this.selectedIds.length) { this.showToast('Select items first', 'error'); return; }
-            this.showDownloadModal('img', this.selectedIds.length);
+            let idsToDownload = [...this.selectedIds];
+            if (!idsToDownload.length) {
+                // If nothing selected, download all (load all if needed)
+                if (this.hasMore) {
+                    this.showToast('Loading all records for download...', 'info');
+                    await this.loadAllDataForFiltering();
+                }
+                idsToDownload = this.studentsData.map(s => s.id);
+            }
+            if (!idsToDownload.length) { this.showToast('No cards to download', 'error'); return; }
+            this.showDownloadModal('img', idsToDownload.length);
             try {
                 this.updateDownloadProgress(10, 'Preparing images...');
                 const res = await fetch('/panel/api/table/' + TABLE_ID + '/cards/download-images/', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
-                    body: JSON.stringify({ card_ids: this.selectedIds, status: LIST_TYPE }),
+                    body: JSON.stringify({ card_ids: idsToDownload, status: LIST_TYPE }),
                     signal: this.downloadModal.abortController?.signal,
                 });
                 this.updateDownloadProgress(40, 'Processing response...');

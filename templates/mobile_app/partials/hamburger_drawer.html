@@ -3,6 +3,7 @@
 <!-- Controlled by Alpine.js; opened via $dispatch('open-hamburger') from navbar btn -->
 <div x-data="hamburgerDrawer()"
      x-on:open-hamburger.window="open()"
+    data-mobile-overlay-root
      class="pwa-drawer-root">
 
     <!-- Dark overlay -->
@@ -32,7 +33,7 @@
         <!-- -- Header -- -->
         <div class="pwa-drawer-header relative flex items-center justify-between px-5 pt-[calc(env(safe-area-inset-top,0px)+14px)] pb-4 bg-gradient-to-br from-brand-light to-brand-dark">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white select-none border border-white/30">
+                <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-gray-700 select-none border border-gray-200">
                     {% if is_super_admin %}
                         <i class="fa-solid fa-crown text-sm"></i>
                     {% elif is_admin_staff %}
@@ -53,7 +54,7 @@
                     </p>
                 </div>
             </div>
-            <button @click="close()" class="w-8 h-8 flex items-center justify-center rounded-xl bg-white/20 text-white active:bg-white/30 transition-colors">
+            <button @click="close()" class="w-8 h-8 flex items-center justify-center rounded-xl bg-white text-gray-700 active:bg-gray-100 transition-colors">
                 <i class="fa-solid fa-times text-sm"></i>
             </button>
         </div>
@@ -219,13 +220,23 @@
 function hamburgerDrawer() {
     return {
         isOpen: false,
+        overlayToken: null,
         open() {
+            if (this.isOpen) return;
             this.isOpen = true;
-            document.body.classList.add('overflow-hidden');
+            if (window.mobileOverlay) {
+                this.overlayToken = window.mobileOverlay.open(() => {
+                    this.close({ fromBack: true });
+                });
+            }
         },
-        close() {
+        close(options) {
+            var opts = options || {};
             this.isOpen = false;
-            document.body.classList.remove('overflow-hidden');
+            if (window.mobileOverlay && this.overlayToken) {
+                window.mobileOverlay.close(this.overlayToken, { fromPopstate: !!opts.fromBack });
+                this.overlayToken = null;
+            }
         }
     };
 }

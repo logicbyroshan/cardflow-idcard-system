@@ -150,7 +150,7 @@
     </div>
 
     <!-- Crop Modal -->
-    <div x-show="showCropper" class="crop-modal" x-cloak>
+    <div x-show="showCropper" class="crop-modal" x-cloak data-mobile-overlay-root>
         <div class="flex items-center justify-between px-4 py-3">
             <button @click="closeCropper()" class="text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
             <h3 class="text-white font-bold text-sm">Crop Photo</h3>
@@ -187,6 +187,7 @@ function cameraApp() {
         flashOn: false,
         facingMode: 'environment',
         showCropper: false,
+        cropperOverlayToken: null,
         cropper: null,
         uploading: false,
         toast: { show: false, message: '', type: 'info' },
@@ -200,6 +201,27 @@ function cameraApp() {
         init() {
             this.filteredCards = this.allCards;
             this.startCamera();
+
+            this.$watch('showCropper', (isOpen) => {
+                if (isOpen) {
+                    if (!this.cropperOverlayToken && window.mobileOverlay) {
+                        this.cropperOverlayToken = window.mobileOverlay.open(() => {
+                            this.closeCropper();
+                            this._closeCropperOverlay(true);
+                        });
+                    }
+                } else {
+                    this._closeCropperOverlay(false);
+                }
+            });
+        },
+
+        _closeCropperOverlay(fromPopstate) {
+            if (!this.cropperOverlayToken) return;
+            if (window.mobileOverlay) {
+                window.mobileOverlay.close(this.cropperOverlayToken, { fromPopstate: !!fromPopstate });
+            }
+            this.cropperOverlayToken = null;
         },
 
         filterCards() {

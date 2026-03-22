@@ -146,8 +146,9 @@
     <!-- 
          PORTFOLIO UPLOAD SHEET
      -->
-    <div x-show="uploadSheetOpen" x-cloak
+        <div x-show="uploadSheetOpen" x-cloak
             class="fixed inset-0 z-[80] flex flex-col justify-end"
+            data-mobile-overlay-root
          @keydown.escape.window="closeUploadSheet()">
         <!-- Backdrop -->
         <div class="absolute inset-0 bg-black/50 backdrop-blur-[2px]" @click="closeUploadSheet()"></div>
@@ -249,8 +250,9 @@
     <!-- 
          ADD REEL SHEET
      -->
-    <div x-show="reelSheetOpen" x-cloak
+        <div x-show="reelSheetOpen" x-cloak
             class="fixed inset-0 z-[80] flex flex-col justify-end"
+            data-mobile-overlay-root
          @keydown.escape.window="closeReelSheet()">
         <div class="absolute inset-0 bg-black/50 backdrop-blur-[2px]" @click="closeReelSheet()"></div>
 
@@ -399,7 +401,7 @@
     </div>
 
     <!-- Portfolio category images preview -->
-    <div x-show="categoryPreview.open" x-cloak class="fixed inset-0 z-[95] flex flex-col justify-end" @keydown.escape.window="closeCategoryPreview()">
+    <div x-show="categoryPreview.open" x-cloak class="fixed inset-0 z-[95] flex flex-col justify-end" data-mobile-overlay-root @keydown.escape.window="closeCategoryPreview()">
         <div class="absolute inset-0 bg-black/55 backdrop-blur-[2px]" @click="closeCategoryPreview()"></div>
         <div class="relative bg-white rounded-t-3xl max-h-[88vh] flex flex-col">
             <div class="flex justify-center pt-3 pb-1"><div class="w-10 h-1.5 rounded-full bg-gray-300"></div></div>
@@ -427,7 +429,7 @@
     </div>
 
     <!-- Reel video preview -->
-    <div x-show="reelPreview.open" x-cloak class="fixed inset-0 z-[96] bg-black/90 flex items-center justify-center p-4" @click.self="closeReelPreview()">
+    <div x-show="reelPreview.open" x-cloak class="fixed inset-0 z-[96] bg-black/90 flex items-center justify-center p-4" data-mobile-overlay-root @click.self="closeReelPreview()">
         <button @click="closeReelPreview()" class="absolute top-5 right-5 w-9 h-9 rounded-full bg-white/15 text-white"><i class="fa-solid fa-xmark"></i></button>
         <div class="w-full max-w-[430px]">
             <p class="text-white text-sm font-semibold mb-2 truncate" x-text="reelPreview.title"></p>
@@ -479,10 +481,71 @@ function websiteManageApp() {
         categoryPreview: { open: false, loading: false, id: null, name: '', items: [] },
         reelPreview: { open: false, title: '', thumbnail_url: '', video_url: '' },
         toast: { show: false, ok: true, msg: '' },
+        overlayTokens: {},
 
         init() {
             this.categories = CATEGORIES_DATA;
             this.reels = REELS_DATA;
+
+            this.$watch('uploadSheetOpen', (isOpen) => {
+                if (isOpen) {
+                    this._openOverlay('uploadSheet', () => {
+                        this.closeUploadSheet();
+                        this._closeOverlay('uploadSheet', true);
+                    });
+                } else {
+                    this._closeOverlay('uploadSheet', false);
+                }
+            });
+
+            this.$watch('reelSheetOpen', (isOpen) => {
+                if (isOpen) {
+                    this._openOverlay('reelSheet', () => {
+                        this.closeReelSheet();
+                        this._closeOverlay('reelSheet', true);
+                    });
+                } else {
+                    this._closeOverlay('reelSheet', false);
+                }
+            });
+
+            this.$watch('categoryPreview.open', (isOpen) => {
+                if (isOpen) {
+                    this._openOverlay('categoryPreview', () => {
+                        this.closeCategoryPreview();
+                        this._closeOverlay('categoryPreview', true);
+                    });
+                } else {
+                    this._closeOverlay('categoryPreview', false);
+                }
+            });
+
+            this.$watch('reelPreview.open', (isOpen) => {
+                if (isOpen) {
+                    this._openOverlay('reelPreview', () => {
+                        this.closeReelPreview();
+                        this._closeOverlay('reelPreview', true);
+                    });
+                } else {
+                    this._closeOverlay('reelPreview', false);
+                }
+            });
+        },
+
+        _openOverlay(key, closeFn) {
+            if (this.overlayTokens[key] || !window.mobileOverlay) return;
+            this.overlayTokens[key] = window.mobileOverlay.open(() => {
+                if (typeof closeFn === 'function') closeFn();
+            });
+        },
+
+        _closeOverlay(key, fromPopstate) {
+            const token = this.overlayTokens[key];
+            if (!token) return;
+            if (window.mobileOverlay) {
+                window.mobileOverlay.close(token, { fromPopstate: !!fromPopstate });
+            }
+            delete this.overlayTokens[key];
         },
 
         showToast(msg, ok = true) {

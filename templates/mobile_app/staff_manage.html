@@ -84,7 +84,7 @@
     </div>
 
     <!-- Add/Edit Staff Bottom Sheet -->
-    <div x-show="showForm" x-cloak class="fixed inset-0 z-[70]">
+    <div x-show="showForm" x-cloak class="fixed inset-0 z-[70]" data-mobile-overlay-root>
         <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="closeForm()" x-transition></div>
         <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl flex flex-col max-w-[430px] mx-auto"
              style="height: 85vh; height: 85dvh;"
@@ -193,7 +193,7 @@
     </div>
 
     <!-- Staff Detail Modal -->
-    <div x-show="showDetail" x-cloak class="fixed inset-0 z-[70]">
+    <div x-show="showDetail" x-cloak class="fixed inset-0 z-[70]" data-mobile-overlay-root>
         <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="showDetail = false" x-transition></div>
         <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl max-w-[430px] mx-auto p-4 max-h-[70vh] overflow-y-auto"
              x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0">
@@ -255,6 +255,8 @@ function staffApp() {
         searchQuery: '',
         showForm: false,
         showDetail: false,
+        formOverlayToken: null,
+        detailOverlayToken: null,
         editMode: false,
         editingId: null,
         formLoading: false,
@@ -300,6 +302,42 @@ function staffApp() {
 
         init() {
             this.filteredStaff = [...this.staffList];
+            this.$watch('showForm', (isOpen) => {
+                if (isOpen) {
+                    if (!this.formOverlayToken && window.mobileOverlay) {
+                        this.formOverlayToken = window.mobileOverlay.open(() => {
+                            this.closeForm();
+                            this._closeOverlayToken('form', true);
+                        });
+                    }
+                } else {
+                    this._closeOverlayToken('form', false);
+                }
+            });
+
+            this.$watch('showDetail', (isOpen) => {
+                if (isOpen) {
+                    if (!this.detailOverlayToken && window.mobileOverlay) {
+                        this.detailOverlayToken = window.mobileOverlay.open(() => {
+                            this.showDetail = false;
+                            this._closeOverlayToken('detail', true);
+                        });
+                    }
+                } else {
+                    this._closeOverlayToken('detail', false);
+                }
+            });
+        },
+
+        _closeOverlayToken(kind, fromPopstate) {
+            const isForm = kind === 'form';
+            const token = isForm ? this.formOverlayToken : this.detailOverlayToken;
+            if (!token) return;
+            if (window.mobileOverlay) {
+                window.mobileOverlay.close(token, { fromPopstate: !!fromPopstate });
+            }
+            if (isForm) this.formOverlayToken = null;
+            else this.detailOverlayToken = null;
         },
 
         filterStaff() {

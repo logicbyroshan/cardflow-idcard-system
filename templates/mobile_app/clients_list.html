@@ -200,7 +200,7 @@
     </div>
 
     {% if can_manage_clients %}
-    <div x-show="showForm" x-cloak class="fixed inset-0 z-[120]">
+    <div x-show="showForm" x-cloak class="fixed inset-0 z-[120]" data-mobile-overlay-root>
         <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="closeForm()" x-transition></div>
         <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl flex flex-col max-w-[430px] mx-auto"
              style="height: 88vh; height: 88dvh;"
@@ -355,6 +355,7 @@ function clientsApp() {
         toast: { show: false, message: '', type: 'success' },
         canManageClients: CAN_MANAGE_CLIENTS,
         showForm: false,
+        formOverlayToken: null,
         editMode: false,
         editingClientId: null,
         formLoading: false,
@@ -425,6 +426,18 @@ function clientsApp() {
         ],
         init() {
             this.resetForm();
+            this.$watch('showForm', (isOpen) => {
+                if (isOpen) {
+                    if (!this.formOverlayToken && window.mobileOverlay) {
+                        this.formOverlayToken = window.mobileOverlay.open(() => {
+                            this.closeForm();
+                            this._closeFormOverlay(true);
+                        });
+                    }
+                } else {
+                    this._closeFormOverlay(false);
+                }
+            });
             const params = new URLSearchParams(window.location.search);
             if (this.canManageClients && params.get('action') === 'add') {
                 this.openAddForm();
@@ -518,6 +531,13 @@ function clientsApp() {
             this.editMode = false;
             this.editingClientId = null;
             this.formLoading = false;
+        },
+        _closeFormOverlay(fromPopstate) {
+            if (!this.formOverlayToken) return;
+            if (window.mobileOverlay) {
+                window.mobileOverlay.close(this.formOverlayToken, { fromPopstate: !!fromPopstate });
+            }
+            this.formOverlayToken = null;
         },
         buildPayload() {
             const payload = {

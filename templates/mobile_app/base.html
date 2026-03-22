@@ -72,6 +72,12 @@
     </script>
 </head>
 <body class="bg-[#ecf4fb] font-sans overscroll-none pwa-v2">
+    <style>
+        body.mobile-overlay-active {
+            overflow: hidden !important;
+            overscroll-behavior: contain;
+        }
+    </style>
 
     <!-- Desktop blocking screen -->
     <div id="desktop-block" class="hidden fixed inset-0 z-[9999] bg-gradient-to-br from-brand-light to-brand-dark items-center justify-center">
@@ -172,12 +178,96 @@
         return false;
     };
 
-    (function setupMobileBackBehavior() {
-        var backTapWindowMs = 320;
-        var backSingleTapTimer = null;
-        var lastBackTapAt = 0;
+    (function setupMobileOverlayManager() {
+        var overlayStack = [];
+        var suppressNextPop = false;
 
+        function applyBodyLock() {
+            var locked = overlayStack.length > 0;
+            document.body.classList.toggle('mobile-overlay-active', locked);
+            document.body.classList.toggle('overflow-hidden', locked);
+        }
+
+        function blockBackgroundInteraction(event) {
+            if (!overlayStack.length) return;
+            var target = event.target;
+            if (target && target.closest && target.closest('[data-mobile-overlay-root]')) return;
+            event.preventDefault();
+            event.stopPropagation();
+        }
+
+        ['click', 'pointerdown', 'touchstart', 'touchmove', 'wheel'].forEach(function(evtName) {
+            document.addEventListener(evtName, blockBackgroundInteraction, true);
+        });
+
+        function closeByToken(token, options) {
+            var opts = options || {};
+            var fromPopstate = !!opts.fromPopstate;
+            var idx = -1;
+
+            if (token) {
+                for (var i = overlayStack.length - 1; i >= 0; i--) {
+                    if (overlayStack[i].token === token) {
+                        idx = i;
+                        break;
+                    }
+                }
+            }
+
+            if (idx === -1 && overlayStack.length) idx = overlayStack.length - 1;
+            if (idx === -1) return;
+
+            overlayStack.splice(idx, 1);
+            applyBodyLock();
+
+            if (!fromPopstate) {
+                suppressNextPop = true;
+                try { window.history.back(); } catch (e) {}
+                setTimeout(function() { suppressNextPop = false; }, 0);
+            }
+        }
+
+        window.mobileOverlay = {
+            open: function(closeFn) {
+                var token = 'ovl_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+                overlayStack.push({ token: token, closeFn: closeFn });
+                applyBodyLock();
+                try {
+                    window.history.pushState({ __mobileOverlay: token }, '', window.location.href);
+                } catch (e) {}
+                return token;
+            },
+            close: function(token, options) {
+                closeByToken(token, options || {});
+            },
+            isActive: function() {
+                return overlayStack.length > 0;
+            },
+        };
+
+        window.addEventListener('popstate', function() {
+            if (suppressNextPop) return;
+            if (!overlayStack.length) return;
+
+            var top = overlayStack[overlayStack.length - 1];
+            if (top && typeof top.closeFn === 'function') {
+                try { top.closeFn({ fromBack: true }); } catch (e) {}
+            }
+
+            // Fail-safe: if overlay close handler did not unregister itself.
+            if (overlayStack.length && overlayStack[overlayStack.length - 1] === top) {
+                overlayStack.pop();
+                applyBodyLock();
+            }
+        });
+    })();
+
+    (function setupMobileBackBehavior() {
         function goBackOnce(fallback) {
+            if (window.mobileOverlay && window.mobileOverlay.isActive()) {
+                window.mobileOverlay.close();
+                return;
+            }
             try {
                 if (window.history.length > 1) {
                     window.history.back();
@@ -201,23 +291,7 @@
         window.mobileGoBack = function mobileGoBack(event, fallbackUrl) {
             if (event) event.preventDefault();
             var fallback = fallbackUrl || '/app/';
-            var now = Date.now();
-
-            if (now - lastBackTapAt <= backTapWindowMs) {
-                if (backSingleTapTimer) {
-                    clearTimeout(backSingleTapTimer);
-                    backSingleTapTimer = null;
-                }
-                lastBackTapAt = 0;
-                window.location.href = '/app/';
-                return false;
-            }
-
-            lastBackTapAt = now;
-            backSingleTapTimer = setTimeout(function () {
-                backSingleTapTimer = null;
-                goBackOnce(fallback);
-            }, backTapWindowMs);
+            goBackOnce(fallback);
             return false;
         };
     })();
@@ -249,7 +323,14 @@
             triggerHaptic();
         }
 
+        function handleKey(event) {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            handleTap(event);
+        }
+
         document.addEventListener('click', handleTap, true);
+        document.addEventListener('touchstart', handleTap, true);
+        document.addEventListener('keydown', handleKey, true);
     })();
     </script>
 

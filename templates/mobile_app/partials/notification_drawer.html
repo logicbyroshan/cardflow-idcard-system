@@ -3,6 +3,7 @@
 <!-- Triggered by $dispatch('open-notification-drawer') from navbar bell -->
 <div x-data="notificationDrawer()"
      x-on:open-notification-drawer.window="open()"
+    data-mobile-overlay-root
      class="pwa-drawer-root">
 
     <!-- Dark overlay -->
@@ -123,13 +124,23 @@
 function notificationDrawer() {
     return {
         isOpen: false,
+        overlayToken: null,
         open() {
+            if (this.isOpen) return;
             this.isOpen = true;
-            document.body.classList.add('overflow-hidden');
+            if (window.mobileOverlay) {
+                this.overlayToken = window.mobileOverlay.open(() => {
+                    this.close({ fromBack: true });
+                });
+            }
         },
-        close() {
+        close(options) {
+            var opts = options || {};
             this.isOpen = false;
-            document.body.classList.remove('overflow-hidden');
+            if (window.mobileOverlay && this.overlayToken) {
+                window.mobileOverlay.close(this.overlayToken, { fromPopstate: !!opts.fromBack });
+                this.overlayToken = null;
+            }
         }
     };
 }

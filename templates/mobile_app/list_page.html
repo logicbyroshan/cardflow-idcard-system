@@ -61,10 +61,11 @@ const TAB_COUNTS = {
     pending: {{ tab_counts.pending|default:0 }},
     verified: {{ tab_counts.verified|default:0 }},
     approved: {{ tab_counts.approved|default:0 }},
-    download: {{ tab_counts.download|default:0 }}
+    download: {{ tab_counts.download|default:0 }},
+    pool: {{ tab_counts.pool|default:0 }}
 };
 </script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.1/dist/cropper.min.css">
 <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.1/dist/cropper.min.js"></script>
-<script src="{% static 'js/mobile/list-app.js' %}?v=5"></script>
+<script src="{% static 'js/mobile/list-app.js' %}?v=6"></script>
 {% endblock %}

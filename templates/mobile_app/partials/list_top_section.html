@@ -28,7 +28,7 @@
             </p>
         </div>
 
-        <!-- Status pills  Pending & Verified in top bar where hamburger was -->
+        <!-- Status pills -->
         <div class="flex items-center gap-1.5 flex-shrink-0">
             {% if perm_idcard_pending_list %}
             <a href="{% url 'mobile_app:card_list' table_id=table.id status='pending' %}"
@@ -44,6 +44,30 @@
                {% if list_type == 'verified' %}bg-green-500/80 shadow-sm{% else %}bg-white/20 hover:bg-white/30{% endif %} text-white">
                 <i class="fa-solid fa-check-circle text-[9px]"></i>
                 <span class="font-extrabold text-[10px]" x-text="tabCounts.verified"></span>
+            </a>
+            {% endif %}
+            {% if perm_idcard_approved_list %}
+            <a href="{% url 'mobile_app:card_list' table_id=table.id status='approved' %}"
+               class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl transition-all active:scale-95 flex-shrink-0
+               {% if list_type == 'approved' %}bg-blue-500/80 shadow-sm{% else %}bg-white/20 hover:bg-white/30{% endif %} text-white">
+                <i class="fa-solid fa-stamp text-[9px]"></i>
+                <span class="font-extrabold text-[10px]" x-text="tabCounts.approved"></span>
+            </a>
+            {% endif %}
+            {% if perm_idcard_download_list %}
+            <a href="{% url 'mobile_app:card_list' table_id=table.id status='download' %}"
+               class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl transition-all active:scale-95 flex-shrink-0
+               {% if list_type == 'download' %}bg-purple-500/80 shadow-sm{% else %}bg-white/20 hover:bg-white/30{% endif %} text-white">
+                <i class="fa-solid fa-file-arrow-down text-[9px]"></i>
+                <span class="font-extrabold text-[10px]" x-text="tabCounts.download"></span>
+            </a>
+            {% endif %}
+            {% if perm_idcard_pool_list %}
+            <a href="{% url 'mobile_app:card_list' table_id=table.id status='pool' %}"
+               class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl transition-all active:scale-95 flex-shrink-0
+               {% if list_type == 'pool' %}bg-rose-500/80 shadow-sm{% else %}bg-white/20 hover:bg-white/30{% endif %} text-white">
+                <i class="fa-solid fa-layer-group text-[9px]"></i>
+                <span class="font-extrabold text-[10px]" x-text="tabCounts.pool"></span>
             </a>
             {% endif %}
         </div>

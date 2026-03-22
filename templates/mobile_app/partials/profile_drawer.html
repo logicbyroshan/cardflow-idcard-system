@@ -3,6 +3,7 @@
 <!-- Triggered by $dispatch('open-profile-drawer') from navbar avatar button -->
 <div x-data="profileDrawer()"
      x-on:open-profile-drawer.window="open()"
+    data-mobile-overlay-root
      class="pwa-drawer-root">
 
     <!-- Dark overlay -->
@@ -31,7 +32,7 @@
 
         <!-- Header (gradient with avatar) -->
         <div class="flex flex-col items-center px-5 pt-[calc(env(safe-area-inset-top,0px)+20px)] pb-5 bg-gradient-to-br from-brand-light to-brand-dark flex-shrink-0 relative">
-            <button @click="close()" class="absolute top-[calc(env(safe-area-inset-top,0px)+10px)] right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white active:bg-white/30 transition-colors">
+            <button @click="close()" class="absolute top-[calc(env(safe-area-inset-top,0px)+10px)] right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white text-gray-700 active:bg-gray-100 transition-colors">
                 <i class="fa-solid fa-times text-sm"></i>
             </button>
 
@@ -139,13 +140,23 @@
 function profileDrawer() {
     return {
         isOpen: false,
+        overlayToken: null,
         open() {
+            if (this.isOpen) return;
             this.isOpen = true;
-            document.body.classList.add('overflow-hidden');
+            if (window.mobileOverlay) {
+                this.overlayToken = window.mobileOverlay.open(() => {
+                    this.close({ fromBack: true });
+                });
+            }
         },
-        close() {
+        close(options) {
+            var opts = options || {};
             this.isOpen = false;
-            document.body.classList.remove('overflow-hidden');
+            if (window.mobileOverlay && this.overlayToken) {
+                window.mobileOverlay.close(this.overlayToken, { fromPopstate: !!opts.fromBack });
+                this.overlayToken = null;
+            }
         }
     };
 }

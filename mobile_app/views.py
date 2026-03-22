@@ -1125,7 +1125,7 @@ def card_list(request, table_id, status):
             for _cls, _sections in class_to_sections.items()
         }
     # Count badges — single aggregate query replaces 4 separate COUNTs
-    tab_counts = {'pending': 0, 'verified': 0, 'approved': 0, 'download': 0}
+    tab_counts = {'pending': 0, 'verified': 0, 'approved': 0, 'download': 0, 'pool': 0}
     for _row in IDCard.objects.filter(table=table).values('status').annotate(n=Count('id')):
         if _row['status'] in tab_counts:
             tab_counts[_row['status']] = _row['n']
@@ -2046,6 +2046,19 @@ def api_server_info(request):
     import socket
     process_uptime_seconds = max(0, int(time.time() - APP_BOOT_TS))
 
+    # Disk usage info
+    try:
+        import shutil
+        total, used, free = shutil.disk_usage(os.getcwd())
+        disk = {
+            'total': total,
+            'used': used,
+            'free': free,
+            'percent': round(used / total * 100, 1) if total else None,
+        }
+    except Exception as e:
+        disk = None
+
     data = {
         'hostname': socket.gethostname(),
         'platform': platform.platform(),
@@ -2055,6 +2068,7 @@ def api_server_info(request):
         'process_id': os.getpid(),
         'cwd': os.getcwd(),
         'process_uptime_seconds': process_uptime_seconds,
+        'disk': disk,
     }
     return JsonResponse({'success': True, 'data': data})
 

@@ -5,7 +5,7 @@
         <!-- -- LEFT: Profile avatar icon only (opens left profile drawer) -- -->
         <button type="button"
                 @click="$dispatch('open-profile-drawer')"
-            class="w-10 h-10 rounded-2xl bg-gradient-to-br from-brand-light to-brand-dark flex items-center justify-center text-white shadow-sm active:scale-95 transition-transform flex-shrink-0 select-none">
+            class="w-10 h-10 rounded-2xl bg-white flex items-center justify-center text-gray-700 shadow-sm active:scale-95 transition-transform flex-shrink-0 select-none border border-gray-200">
             {% if is_super_admin %}
                 <i class="fa-solid fa-crown text-[15px]"></i>
             {% elif is_admin_staff %}

@@ -1,5 +1,5 @@
 <!-- Filter Side Drawer -->
-<div x-show="showFilters" x-cloak class="fixed inset-0 z-50" style="display:none;">
+<div x-show="showFilters" x-cloak class="fixed inset-0 z-50" style="display:none;" data-mobile-overlay-root>
     <!-- Backdrop -->
     <div
         x-show="showFilters"
@@ -26,15 +26,15 @@
     >
         <!-- Header -->
         <div class="flex items-center gap-3 px-4 py-4 bg-gradient-to-r from-brand-light to-brand-dark flex-shrink-0">
-            <div class="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
-                <i class="fa-solid fa-sliders text-white text-sm"></i>
+            <div class="w-8 h-8 rounded-xl bg-white flex items-center justify-center">
+                <i class="fa-solid fa-sliders text-gray-700 text-sm"></i>
             </div>
             <div class="flex-1">
                 <h3 class="text-white font-bold text-[13px] leading-tight">Filters</h3>
                 <p class="text-white/60 text-[10px]">Narrow down your results</p>
             </div>
             <button @click="showFilters = false"
-                    class="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center text-white active:scale-95 transition-all">
+                    class="w-8 h-8 rounded-xl bg-white flex items-center justify-center text-gray-700 active:bg-gray-100 transition-all">
                 <i class="fa-solid fa-xmark text-sm"></i>
             </button>
         </div>
