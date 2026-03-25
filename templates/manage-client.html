@@ -79,7 +79,7 @@
     document.addEventListener('DOMContentLoaded', function() {
       // Fallback: ensure custom client-password eye toggle is always visible and functional.
       // This keeps UX stable even if a stale bundled JS misses toggle wiring.
-      (function initClientPasswordEyeToggleFallback() {
+      function initClientPasswordEyeToggleFallback() {
         var input = document.getElementById('clientPassword');
         var group = document.getElementById('clientCustomPasswordGroup');
         if (!input || !group) return;
@@ -115,13 +115,10 @@
 
         // Avoid double-toggle behavior when stale/new bundles both attach click handlers.
         // Replacing the node removes any previously attached listeners.
-        if (!btn.dataset.singleToggleHandler) {
-          var cleanBtn = btn.cloneNode(true);
-          btn.parentNode.replaceChild(cleanBtn, btn);
-          btn = cleanBtn;
-          icon = btn.querySelector('#clientPasswordEyeIcon') || icon;
-          btn.dataset.singleToggleHandler = '1';
-        }
+        var cleanBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(cleanBtn, btn);
+        btn = cleanBtn;
+        icon = btn.querySelector('#clientPasswordEyeIcon') || icon;
 
         function setHidden() {
           input.type = 'password';
@@ -137,31 +134,28 @@
           if (!isGroupVisible()) setHidden();
         }
 
-        if (!btn.dataset.boundToggle) {
-          btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            e.stopImmediatePropagation();
+        btn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
 
-            var start = input.selectionStart;
-            var end = input.selectionEnd;
-            if (input.type === 'password') {
-              input.type = 'text';
-              if (icon) icon.className = 'fa-solid fa-eye-slash';
-            } else {
-              setHidden();
+          var start = input.selectionStart;
+          var end = input.selectionEnd;
+          if (input.type === 'password') {
+            input.type = 'text';
+            if (icon) icon.className = 'fa-solid fa-eye-slash';
+          } else {
+            setHidden();
+          }
+
+          // Keep typing position stable after toggling visibility.
+          try {
+            input.focus({ preventScroll: true });
+            if (typeof start === 'number' && typeof end === 'number') {
+              input.setSelectionRange(start, end);
             }
-
-            // Keep typing position stable after toggling visibility.
-            try {
-              input.focus({ preventScroll: true });
-              if (typeof start === 'number' && typeof end === 'number') {
-                input.setSelectionRange(start, end);
-              }
-            } catch (err) {}
-          });
-          btn.dataset.boundToggle = '1';
-        }
+          } catch (err) {}
+        });
 
         var optionDropdown = document.getElementById('clientPasswordOptionDropdown');
         if (optionDropdown && !optionDropdown.dataset.boundToggleSync) {
@@ -180,7 +174,10 @@
         }
 
         syncToggleVisibility();
-      })();
+      }
+
+      // Run after deferred bundle handlers to ensure final single binding wins.
+      setTimeout(initClientPasswordEyeToggleFallback, 0);
 
       // Keep other page features resilient if helper is temporarily unavailable.
       try {

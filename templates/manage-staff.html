@@ -34,7 +34,7 @@
   <script defer src="{% static 'dist/js/manage-staff.min.js' %}"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      (function initStaffPasswordEyeToggleFallback() {
+      function initStaffPasswordEyeToggleFallback() {
         var input = document.getElementById('staff-password');
         var group = document.getElementById('staffCustomPasswordGroup');
         if (!input || !group) return;
@@ -42,6 +42,11 @@
         var btn = document.getElementById('staffPasswordToggleBtn');
         var icon = document.getElementById('staffPasswordEyeIcon');
         if (!btn) return;
+
+        var cleanBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(cleanBtn, btn);
+        btn = cleanBtn;
+        icon = btn.querySelector('#staffPasswordEyeIcon') || icon;
 
         function setHidden() {
           input.type = 'password';
@@ -57,23 +62,17 @@
           if (!isGroupVisible()) setHidden();
         }
 
-        if (!btn.dataset.boundToggle) {
-          btn.addEventListener('mousedown', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-          });
-          btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            if (input.type === 'password') {
-              input.type = 'text';
-              if (icon) icon.className = 'fa-solid fa-eye-slash';
-            } else {
-              setHidden();
-            }
-          });
-          btn.dataset.boundToggle = '1';
-        }
+        btn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          if (input.type === 'password') {
+            input.type = 'text';
+            if (icon) icon.className = 'fa-solid fa-eye-slash';
+          } else {
+            setHidden();
+          }
+        });
 
         var passwordDropdown = document.getElementById('staffPasswordOptionDropdown');
         if (passwordDropdown && !passwordDropdown.dataset.boundToggleSync) {
@@ -92,7 +91,10 @@
         }
 
         syncToggleVisibility();
-      })();
+      }
+
+      // Run after deferred bundle handlers to ensure one final click binding.
+      setTimeout(initStaffPasswordEyeToggleFallback, 0);
 
       initHTMXFilters({
         baseUrl: '{% url "manage_staff" %}',
