@@ -63,6 +63,11 @@ Partial for staff name, email, phone, address, status, password fields.
 
     <div class="form-group" id="staffCustomPasswordGroup" style="display: none;">
         <label class="form-label" for="staff-password">Password <span class="required">*</span></label>
-        <input type="password" id="staff-password" name="password" class="form-input" placeholder="Enter custom password" autocomplete="new-password">
+        <div style="position: relative;">
+            <input type="password" id="staff-password" name="password" class="form-input" placeholder="Enter custom password" autocomplete="new-password" style="padding-right: 2.5rem;">
+            <button type="button" id="staffPasswordToggleBtn" aria-label="Toggle password visibility" style="position:absolute;right:0.75rem;top:50%;transform:translateY(-50%);border:none;background:transparent;color:#64748b;cursor:pointer;padding:0;line-height:1;z-index:2;">
+                <i class="fa-solid fa-eye" id="staffPasswordEyeIcon"></i>
+            </button>
+        </div>
     </div>
 </div>

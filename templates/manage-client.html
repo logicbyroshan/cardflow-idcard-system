@@ -134,7 +134,13 @@
         }
 
         if (!btn.dataset.boundToggle) {
-          btn.addEventListener('click', function() {
+          btn.addEventListener('mousedown', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+          });
+          btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
             if (input.type === 'password') {
               input.type = 'text';
               if (icon) icon.className = 'fa-solid fa-eye-slash';
