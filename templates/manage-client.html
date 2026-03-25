@@ -77,13 +77,6 @@
   <script defer src="{% static 'dist/js/manage-client.min.js' %}"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      initHTMXFilters({
-        baseUrl: '{% url "manage_clients" %}',
-        target:  '#client-table-container',
-        searchInputId: 'searchInput',
-        filters: []
-      });
-
       // Fallback: ensure custom client-password eye toggle is always visible and functional.
       // This keeps UX stable even if a stale bundled JS misses toggle wiring.
       (function initClientPasswordEyeToggleFallback() {
@@ -111,6 +104,7 @@
           btn.style.cursor = 'pointer';
           btn.style.padding = '0';
           btn.style.lineHeight = '1';
+          btn.style.zIndex = '2';
 
           icon = document.createElement('i');
           icon.id = 'clientPasswordEyeIcon';
@@ -169,6 +163,18 @@
 
         syncToggleVisibility();
       })();
+
+      // Keep other page features resilient if helper is temporarily unavailable.
+      try {
+        initHTMXFilters({
+          baseUrl: '{% url "manage_clients" %}',
+          target:  '#client-table-container',
+          searchInputId: 'searchInput',
+          filters: []
+        });
+      } catch (e) {
+        console.warn('initHTMXFilters failed on manage clients page', e);
+      }
     });
   </script>
 {% endblock %}
