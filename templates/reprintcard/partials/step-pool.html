@@ -79,7 +79,7 @@
                         data-original-value="{{ field.value }}">
                         <div class="image-with-edit">
                             {% if field.value and field.value != '' and field.value != 'NOT_FOUND' and not field.value|slice:":8" == "PENDING:" %}
-                            <img src="/media/{{ field.value|get_thumbnail_path }}" 
+                            <img src="{% get_media_prefix %}{{ field.value|get_thumbnail_path }}" 
                                  alt="{{ field.name }}" 
                                  class="table-image {{ field.name|get_image_class }}" 
                                  loading="lazy"

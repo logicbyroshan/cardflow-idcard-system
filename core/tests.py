@@ -245,6 +245,55 @@ class PermissionValidationMiddlewareTests(TestCase):
         self.assertIn('/panel/inactive/', response['Location'])
 
 
+class ThreadedEmailCallbackRetryTests(TestCase):
+    def test_retries_transient_db_lock_then_succeeds(self):
+        from core.utils.threaded_email import _run_callback_with_retry
+
+        state = {'count': 0}
+
+        def callback():
+            state['count'] += 1
+            if state['count'] < 3:
+                raise Exception('database table is locked')
+
+        _run_callback_with_retry(callback, 'test callback', max_attempts=3, base_delay=0)
+        self.assertEqual(state['count'], 3)
+
+    def test_does_not_retry_non_transient_error(self):
+        from core.utils.threaded_email import _run_callback_with_retry
+
+        state = {'count': 0}
+
+        def callback():
+            state['count'] += 1
+            raise Exception('smtp down')
+
+        _run_callback_with_retry(callback, 'test callback', max_attempts=3, base_delay=0)
+        self.assertEqual(state['count'], 1)
+
+    def test_failure_callback_receives_args_and_retries(self):
+        from core.utils.threaded_email import _run_callback_with_retry
+
+        state = {'count': 0, 'message': None}
+
+        def callback(message):
+            state['count'] += 1
+            state['message'] = message
+            if state['count'] < 2:
+                raise Exception('database is locked')
+
+        _run_callback_with_retry(
+            callback,
+            'test failure callback',
+            'expected error message',
+            max_attempts=3,
+            base_delay=0,
+        )
+
+        self.assertEqual(state['count'], 2)
+        self.assertEqual(state['message'], 'expected error message')
+
+
 # ── Global Search Tests ──
 class GlobalSearchTests(TestCase):
     def setUp(self):

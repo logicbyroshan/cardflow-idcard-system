@@ -22,10 +22,45 @@ negligible for the low email volume this app produces.
 
 import logging
 import threading
+import time
 from django.core.mail import send_mail, EmailMultiAlternatives
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
+
+_TRANSIENT_DB_LOCK_ERRORS = (
+    'database is locked',
+    'database table is locked',
+)
+
+
+def _is_transient_db_lock_error(exc):
+    message = str(exc or '').lower()
+    return any(token in message for token in _TRANSIENT_DB_LOCK_ERRORS)
+
+
+def _run_callback_with_retry(callback, callback_name, *args, max_attempts=3, base_delay=0.05):
+    if not callback:
+        return
+
+    for attempt in range(1, max_attempts + 1):
+        try:
+            callback(*args)
+            return
+        except Exception as cb_err:
+            if _is_transient_db_lock_error(cb_err) and attempt < max_attempts:
+                sleep_for = base_delay * attempt
+                logger.warning(
+                    "%s failed due to transient DB lock; retrying (%d/%d): %s",
+                    callback_name,
+                    attempt,
+                    max_attempts,
+                    cb_err,
+                )
+                time.sleep(sleep_for)
+                continue
+            logger.error("%s error: %s", callback_name, cb_err)
+            return
 
 
 def _create_logs(recipient_list, subject, body_text, body_html, email_type, recipient_name):
@@ -180,20 +215,19 @@ def send_html_email_with_callback(subject, plain_content, html_content,
             msg.send(fail_silently=False)
             logger.info("Threaded welcome email sent to %s", recipient_list)
             _mark_logs(logs, True)
-            if on_success:
-                try:
-                    on_success()
-                except Exception as cb_err:
-                    logger.error("Welcome email on_success callback error: %s", cb_err)
+            _run_callback_with_retry(
+                on_success,
+                'Welcome email on_success callback',
+            )
         except Exception as exc:
             logger.error("Threaded welcome email to %s failed: %s",
                          recipient_list, exc)
             _mark_logs(logs, False, str(exc))
-            if on_failure:
-                try:
-                    on_failure(str(exc))
-                except Exception as cb_err:
-                    logger.error("Welcome email on_failure callback error: %s", cb_err)
+            _run_callback_with_retry(
+                on_failure,
+                'Welcome email on_failure callback',
+                str(exc),
+            )
 
     t = threading.Thread(target=_send, daemon=False, name='welcome-email-send')
     t.start()
