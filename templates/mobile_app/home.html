@@ -200,11 +200,11 @@
 
             <!-- RECENT CLIENT UPDATES -->
             {% if is_super_admin or is_admin_staff or is_client or is_client_staff %}
-            <div class="px-3 pb-3 mt-2 flex-1 flex flex-col min-h-0">
+            <div class="px-0 pb-0 mt-0 flex-1 flex flex-col min-h-0">
 
-                <div class="rounded-2xl bg-gradient-to-b from-white via-indigo-50/55 to-sky-100/55 shadow-[0_12px_28px_rgba(30,64,175,0.14)] p-2.5">
+                <div class="rounded-2xl bg-gradient-to-br from-indigo-50 via-white to-sky-50 border border-indigo-200 shadow-[0_12px_24px_rgba(67,56,202,0.14)] p-1.5">
 
-                <div class="flex items-center justify-between mb-2.5 flex-shrink-0 rounded-xl bg-white/85 px-2.5 py-2 shadow-sm">
+                <div class="flex items-center justify-between mb-1.5 flex-shrink-0 rounded-xl bg-gradient-to-r from-indigo-100 via-sky-50 to-cyan-50 px-2 py-1.5 border border-indigo-200">
                     {% if is_super_admin or is_admin_staff %}
                     <div class="flex items-center gap-2">
                         <div class="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center shadow-sm">
@@ -239,10 +239,10 @@
                 </div>
 
                 {% if recent_client_updates %}
-                 <div class="flex-1 min-h-0 bg-gradient-to-b from-white via-sky-50/55 to-indigo-100/45 rounded-2xl shadow-sm overflow-hidden flex flex-col"
+                 <div class="flex-1 min-h-0 bg-gradient-to-b from-white via-indigo-50/40 to-sky-100/45 rounded-xl shadow-sm overflow-hidden flex flex-col border border-indigo-200"
                      x-data="recentClientsTable()">
 
-                    <div x-show="loading" class="p-3 space-y-2.5" x-cloak>
+                    <div x-show="loading" class="p-2.5 space-y-2" x-cloak>
                         <template x-for="i in 6" :key="'recent-sk-' + i">
                             <div class="flex items-center gap-2.5">
                                 <div class="skeleton-line w-7 h-7 rounded-lg"></div>
@@ -250,8 +250,10 @@
                                     <div class="skeleton-line h-3.5 w-3/4 rounded-md"></div>
                                     <div class="skeleton-line h-2.5 w-1/2 rounded-md"></div>
                                 </div>
-                                <div class="skeleton-line w-9 h-5 rounded-lg"></div>
-                                <div class="skeleton-line w-9 h-5 rounded-lg"></div>
+                                <div class="skeleton-line w-7 h-5 rounded-lg"></div>
+                                <div class="skeleton-line w-7 h-5 rounded-lg"></div>
+                                <div class="skeleton-line w-7 h-5 rounded-lg"></div>
+                                <div class="skeleton-line w-7 h-5 rounded-lg"></div>
                             </div>
                         </template>
                     </div>
@@ -259,10 +261,14 @@
                     <div x-show="!loading" class="flex-1 min-h-0 flex flex-col" x-cloak>
 
                     <!-- Table header -->
-                    <div class="flex items-center border-b border-indigo-100 bg-indigo-50/70 flex-shrink-0" style="min-height:36px;">
-                        <div class="flex-1 px-3 py-2 text-[9px] font-bold text-gray-400 uppercase tracking-widest">Client / Table</div>
-                        <div class="w-[70px] text-center py-2 text-[9px] font-bold text-amber-500 uppercase tracking-widest">Pending</div>
-                        <div class="w-[70px] text-center py-2 text-[9px] font-bold text-green-500 uppercase tracking-widest">Verified</div>
+                    <div class="flex items-center border-b border-indigo-200 bg-indigo-100/70 flex-shrink-0" style="min-height:34px;">
+                        <div class="w-1/2 px-2.5 py-1.5 text-[9px] font-bold text-gray-400 uppercase tracking-widest">Client / Table</div>
+                        <div class="w-1/2 grid grid-cols-4">
+                            <div class="text-center py-1.5 text-[8px] font-bold text-amber-500 uppercase tracking-wider">Pend.</div>
+                            <div class="text-center py-1.5 text-[8px] font-bold text-green-500 uppercase tracking-wider">Ver.</div>
+                            <div class="text-center py-1.5 text-[8px] font-bold text-blue-500 uppercase tracking-wider">Appr.</div>
+                            <div class="text-center py-1.5 text-[8px] font-bold text-purple-500 uppercase tracking-wider">Down.</div>
+                        </div>
                     </div>
 
                     <!-- Scrollable rows -->
@@ -271,10 +277,10 @@
 
                         <!-- Client parent row -->
                         <div class="flex items-center border-b border-gray-50 cursor-pointer select-none"
-                             style="min-height:48px;"
+                             style="min-height:44px;"
                              :class="expanded === '{{ rc.client_id }}_{{ forloop.counter }}' ? 'bg-indigo-50/60' : 'active:bg-gray-50'"
                              @click="{% if rc.tables %}toggle('{{ rc.client_id }}_{{ forloop.counter }}'){% else %}window.location.href='{% url 'mobile_app:groups_overview' %}'{% endif %}">
-                            <div class="flex-1 px-3 py-2.5 flex items-center gap-2 min-w-0">
+                            <div class="w-1/2 px-2.5 py-2 flex items-center gap-2 min-w-0">
                                 <!-- Mini avatar -->
                                 <div class="w-6 h-6 rounded-lg flex items-center justify-center text-white text-[8px] font-bold flex-shrink-0"
                                      :class="expanded === '{{ rc.client_id }}_{{ forloop.counter }}' ? '' : ''"
@@ -287,19 +293,35 @@
                                    :class="expanded === '{{ rc.client_id }}_{{ forloop.counter }}' ? 'fa-chevron-down text-indigo-400 rotate-0' : 'fa-chevron-right text-gray-300'"></i>
                                 {% endif %}
                             </div>
-                            <div class="w-[70px] text-center py-2">
-                                {% if rc.pending > 0 %}
-                                <span class="inline-flex items-center justify-center min-w-[28px] h-[22px] px-2 rounded-lg text-[11px] font-black text-amber-600 bg-amber-50 border border-amber-100">{{ rc.pending }}</span>
-                                {% else %}
-                                <span class="text-[12px] font-bold text-gray-200">{{ rc.pending }}</span>
-                                {% endif %}
-                            </div>
-                            <div class="w-[70px] text-center py-2">
-                                {% if rc.verified > 0 %}
-                                <span class="inline-flex items-center justify-center min-w-[28px] h-[22px] px-2 rounded-lg text-[11px] font-black text-green-600 bg-green-50 border border-green-100">{{ rc.verified }}</span>
-                                {% else %}
-                                <span class="text-[12px] font-bold text-gray-200">{{ rc.verified }}</span>
-                                {% endif %}
+                            <div class="w-1/2 grid grid-cols-4">
+                                <div class="text-center py-2">
+                                    {% if rc.pending > 0 %}
+                                    <span class="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded-md text-[10px] font-black text-amber-600 bg-amber-50 border border-amber-100">{{ rc.pending }}</span>
+                                    {% else %}
+                                    <span class="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded-md text-[10px] font-black text-gray-500 bg-gray-100 border border-gray-200">{{ rc.pending|default:0 }}</span>
+                                    {% endif %}
+                                </div>
+                                <div class="text-center py-2">
+                                    {% if rc.verified > 0 %}
+                                    <span class="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded-md text-[10px] font-black text-green-600 bg-green-50 border border-green-100">{{ rc.verified }}</span>
+                                    {% else %}
+                                    <span class="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded-md text-[10px] font-black text-gray-500 bg-gray-100 border border-gray-200">{{ rc.verified|default:0 }}</span>
+                                    {% endif %}
+                                </div>
+                                <div class="text-center py-2">
+                                    {% if rc.approved > 0 %}
+                                    <span class="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded-md text-[10px] font-black text-blue-600 bg-blue-50 border border-blue-100">{{ rc.approved }}</span>
+                                    {% else %}
+                                    <span class="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded-md text-[10px] font-black text-gray-500 bg-gray-100 border border-gray-200">{{ rc.approved|default:0 }}</span>
+                                    {% endif %}
+                                </div>
+                                <div class="text-center py-2">
+                                    {% if rc.download > 0 %}
+                                    <span class="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded-md text-[10px] font-black text-purple-600 bg-purple-50 border border-purple-100">{{ rc.download }}</span>
+                                    {% else %}
+                                    <span class="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded-md text-[10px] font-black text-gray-500 bg-gray-100 border border-gray-200">{{ rc.download|default:0 }}</span>
+                                    {% endif %}
+                                </div>
                             </div>
                         </div>
 
@@ -311,23 +333,37 @@
                              x-transition:enter-start="opacity-0 -translate-y-1"
                              x-transition:enter-end="opacity-100 translate-y-0"
                              class="flex items-center border-b border-indigo-50 bg-indigo-50/40"
-                             style="min-height:40px; display:none;">
-                            <div class="flex-1 px-3 py-2 flex items-center gap-2 min-w-0 pl-9">
+                             style="min-height:38px; display:none;">
+                            <div class="w-1/2 px-2.5 py-2 flex items-center gap-2 min-w-0 pl-8">
                                 <i class="fa-solid fa-table-cells text-indigo-300 text-[9px] flex-shrink-0"></i>
                                 <a href="{% url 'mobile_app:card_list' table_id=tbl.id status='pending' %}"
                                    class="text-[11px] font-semibold text-indigo-600 truncate leading-tight hover:underline">{{ tbl.name }}</a>
                             </div>
-                            <div class="w-[70px] text-center py-2">
-                                <a href="{% url 'mobile_app:card_list' table_id=tbl.id status='pending' %}"
-                                   class="inline-flex items-center justify-center min-w-[28px] h-[22px] px-2 rounded-lg text-[12px] font-bold {% if tbl.pending > 0 %}text-amber-500 bg-amber-50 border border-amber-100{% else %}text-gray-300 bg-white/70 border border-gray-100{% endif %}">
-                                    {{ tbl.pending }}
-                                </a>
-                            </div>
-                            <div class="w-[70px] text-center py-2">
-                                <a href="{% url 'mobile_app:card_list' table_id=tbl.id status='verified' %}"
-                                   class="inline-flex items-center justify-center min-w-[28px] h-[22px] px-2 rounded-lg text-[12px] font-bold {% if tbl.verified > 0 %}text-green-500 bg-green-50 border border-green-100{% else %}text-gray-300 bg-white/70 border border-gray-100{% endif %}">
-                                    {{ tbl.verified }}
-                                </a>
+                            <div class="w-1/2 grid grid-cols-4">
+                                <div class="text-center py-2">
+                                    <a href="{% url 'mobile_app:card_list' table_id=tbl.id status='pending' %}"
+                                       class="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded-md text-[10px] font-bold {% if tbl.pending > 0 %}text-amber-500 bg-amber-50 border border-amber-100{% else %}text-gray-300 bg-white/70 border border-gray-100{% endif %}">
+                                        {{ tbl.pending }}
+                                    </a>
+                                </div>
+                                <div class="text-center py-2">
+                                    <a href="{% url 'mobile_app:card_list' table_id=tbl.id status='verified' %}"
+                                       class="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded-md text-[10px] font-bold {% if tbl.verified > 0 %}text-green-500 bg-green-50 border border-green-100{% else %}text-gray-300 bg-white/70 border border-gray-100{% endif %}">
+                                        {{ tbl.verified }}
+                                    </a>
+                                </div>
+                                <div class="text-center py-2">
+                                    <a href="{% url 'mobile_app:card_list' table_id=tbl.id status='approved' %}"
+                                       class="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded-md text-[10px] font-bold {% if tbl.approved > 0 %}text-blue-500 bg-blue-50 border border-blue-100{% else %}text-gray-300 bg-white/70 border border-gray-100{% endif %}">
+                                        {{ tbl.approved|default:0 }}
+                                    </a>
+                                </div>
+                                <div class="text-center py-2">
+                                    <a href="{% url 'mobile_app:card_list' table_id=tbl.id status='download' %}"
+                                       class="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded-md text-[10px] font-bold {% if tbl.download > 0 %}text-purple-500 bg-purple-50 border border-purple-100{% else %}text-gray-300 bg-white/70 border border-gray-100{% endif %}">
+                                        {{ tbl.download|default:0 }}
+                                    </a>
+                                </div>
                             </div>
                         </div>
                         {% empty %}
@@ -349,6 +385,128 @@
                     <p class="text-[11px] font-medium text-gray-400">No recent client activity</p>
                 </div>
                 {% endif %}
+
+                <div class="mt-2 h-[2px] rounded-full bg-gradient-to-r from-indigo-200 via-slate-200 to-blue-200"></div>
+
+                <!-- REPRINT UPDATES -->
+                <div class="mt-2 rounded-2xl bg-gradient-to-br from-cyan-50 via-white to-blue-50 border border-cyan-200 shadow-[0_12px_24px_rgba(14,116,144,0.14)] p-1.5">
+
+                    <div class="flex items-center justify-between mb-1.5 flex-shrink-0 rounded-xl bg-gradient-to-r from-cyan-100 via-sky-50 to-blue-50 px-2 py-1.5 border border-cyan-200">
+                        <div class="flex items-center gap-2">
+                            <div class="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center shadow-sm">
+                                <i class="fa-solid fa-rotate text-blue-600 text-[10px]"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-[12px] font-black text-gray-800 uppercase tracking-wide">Reprint</h2>
+                                <p class="text-[10px] text-gray-400 leading-tight">Request and confirmed list summary</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-100/90 border border-amber-200 text-amber-800 text-[10px] font-bold shadow-sm">
+                                Req. {{ reprint_request_total|default:0 }}
+                            </span>
+                            <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-100/90 border border-blue-200 text-blue-800 text-[10px] font-bold shadow-sm">
+                                Conf. {{ reprint_confirmed_total|default:0 }}
+                            </span>
+                        </div>
+                    </div>
+
+                    {% if recent_reprint_updates %}
+                    <div class="flex-1 min-h-0 bg-gradient-to-b from-white via-cyan-50/45 to-blue-100/40 rounded-xl shadow-sm overflow-hidden flex flex-col border border-cyan-200"
+                         x-data="recentClientsTable()">
+
+                        <div class="flex items-center border-b border-cyan-200 bg-cyan-100/70 flex-shrink-0" style="min-height:34px;">
+                            <div class="w-1/2 px-2.5 py-1.5 text-[9px] font-bold text-gray-400 uppercase tracking-widest">Client / Table</div>
+                            <div class="w-1/2 grid grid-cols-2">
+                                <div class="text-center py-1.5 text-[8px] font-bold text-amber-500 uppercase tracking-wider">Req.</div>
+                                <div class="text-center py-1.5 text-[8px] font-bold text-blue-500 uppercase tracking-wider">Conf.</div>
+                            </div>
+                        </div>
+
+                        <div class="flex-1 overflow-y-auto" style="-webkit-overflow-scrolling:touch;">
+                            {% for rr in recent_reprint_updates %}
+                            <div class="flex items-center border-b border-gray-50 cursor-pointer select-none"
+                                 style="min-height:44px;"
+                                 :class="expanded === 'rr_{{ rr.client_id }}_{{ forloop.counter }}' ? 'bg-blue-50/60' : 'active:bg-gray-50'"
+                                 @click="{% if rr.tables %}toggle('rr_{{ rr.client_id }}_{{ forloop.counter }}'){% endif %}">
+                                <div class="w-1/2 px-2.5 py-2 flex items-center gap-2 min-w-0">
+                                    <div class="w-6 h-6 rounded-lg flex items-center justify-center text-white text-[8px] font-bold flex-shrink-0"
+                                         style="background: linear-gradient(135deg, #0ea5e9, #2563eb);">
+                                        {{ rr.client_name|slice:":1"|upper }}
+                                    </div>
+                                    <span class="text-[12px] font-semibold text-gray-800 truncate leading-tight">{{ rr.client_name }}</span>
+                                    {% if rr.tables %}
+                                    <i class="fa-solid text-[9px] flex-shrink-0 transition-transform duration-200 ml-auto mr-1"
+                                       :class="expanded === 'rr_{{ rr.client_id }}_{{ forloop.counter }}' ? 'fa-chevron-down text-blue-400 rotate-0' : 'fa-chevron-right text-gray-300'"></i>
+                                    {% endif %}
+                                </div>
+                                <div class="w-1/2 grid grid-cols-2">
+                                    <div class="text-center py-2">
+                                        {% if rr.client_id %}
+                                        <a @click.stop
+                                           href="{% url 'mobile_app:reprint_lists' client_id=rr.client_id %}?step=request_list"
+                                           class="inline-flex items-center justify-center min-w-[26px] h-[20px] px-1.5 rounded-md text-[10px] font-black {% if rr.requested > 0 %}text-amber-600 bg-amber-50 border border-amber-100{% else %}text-gray-500 bg-gray-100 border border-gray-200{% endif %}">
+                                            {{ rr.requested|default:0 }}
+                                        </a>
+                                        {% else %}
+                                        <span class="inline-flex items-center justify-center min-w-[26px] h-[20px] px-1.5 rounded-md text-[10px] font-black text-gray-500 bg-gray-100 border border-gray-200">{{ rr.requested|default:0 }}</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="text-center py-2">
+                                        {% if rr.client_id %}
+                                        <a @click.stop
+                                           href="{% url 'mobile_app:reprint_lists' client_id=rr.client_id %}?step=confirmed"
+                                           class="inline-flex items-center justify-center min-w-[26px] h-[20px] px-1.5 rounded-md text-[10px] font-black {% if rr.confirmed > 0 %}text-blue-600 bg-blue-50 border border-blue-100{% else %}text-gray-500 bg-gray-100 border border-gray-200{% endif %}">
+                                            {{ rr.confirmed|default:0 }}
+                                        </a>
+                                        {% else %}
+                                        <span class="inline-flex items-center justify-center min-w-[26px] h-[20px] px-1.5 rounded-md text-[10px] font-black text-gray-500 bg-gray-100 border border-gray-200">{{ rr.confirmed|default:0 }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {% if rr.tables %}
+                            {% for tbl in rr.tables %}
+                            <div x-show="expanded === 'rr_{{ rr.client_id }}_{{ forloop.parentloop.counter }}'"
+                                 x-transition:enter="transition-all duration-150"
+                                 x-transition:enter-start="opacity-0 -translate-y-1"
+                                 x-transition:enter-end="opacity-100 translate-y-0"
+                                 class="flex items-center border-b border-blue-50 bg-blue-50/35"
+                                 style="min-height:38px; display:none;">
+                                <div class="w-1/2 px-2.5 py-2 flex items-center gap-2 min-w-0 pl-8">
+                                    <i class="fa-solid fa-table-cells text-blue-300 text-[9px] flex-shrink-0"></i>
+                                    <span class="text-[11px] font-semibold text-blue-700 truncate leading-tight">{{ tbl.name }}</span>
+                                </div>
+                                <div class="w-1/2 grid grid-cols-2">
+                                    <div class="text-center py-2">
+                                        <a href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table_id=tbl.id %}{% else %}{% url 'reprintcard:reprint_cards' table_id=tbl.id %}{% endif %}?step=request_list"
+                                           class="inline-flex items-center justify-center min-w-[26px] h-[20px] px-1.5 rounded-md text-[10px] font-bold {% if tbl.requested > 0 %}text-amber-500 bg-amber-50 border border-amber-100{% else %}text-gray-300 bg-white/70 border border-gray-100{% endif %}">
+                                            {{ tbl.requested|default:0 }}
+                                        </a>
+                                    </div>
+                                    <div class="text-center py-2">
+                                        <a href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table_id=tbl.id %}{% else %}{% url 'reprintcard:reprint_cards' table_id=tbl.id %}{% endif %}?step=confirmed"
+                                           class="inline-flex items-center justify-center min-w-[26px] h-[20px] px-1.5 rounded-md text-[10px] font-bold {% if tbl.confirmed > 0 %}text-blue-500 bg-blue-50 border border-blue-100{% else %}text-gray-300 bg-white/70 border border-gray-100{% endif %}">
+                                            {{ tbl.confirmed|default:0 }}
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                            {% endif %}
+
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="flex-1 flex flex-col items-center justify-center text-gray-300 py-6">
+                        <i class="fa-solid fa-rotate text-2xl mb-2 opacity-40"></i>
+                        <p class="text-[11px] font-medium text-gray-400">No recent request activity</p>
+                    </div>
+                    {% endif %}
+
+                </div>
 
                 </div>
 

@@ -35,6 +35,35 @@ function listApp() {
         overlayTokens: {},
         overlayWatchersBound: false,
         actionMenuOpen: false,
+        reprintSearchTimer: null,
+
+        permanentDeleteModal: {
+            show: false,
+            code: '',
+            input: '',
+            count: 0,
+            submitting: false,
+        },
+        reprintPicker: {
+            show: false,
+            loading: false,
+            query: '',
+            rows: [],
+            selectedId: null,
+        },
+        reprintConfirm: {
+            show: false,
+            card: null,
+            fields: [],
+            formData: {},
+            originalData: {},
+            photoUrl: '',
+            mediaUrls: [],
+            editMode: false,
+            submitting: false,
+        },
+        reprintPendingAfterEdit: false,
+        reprintPendingCardIds: [],
 
         // Add/Edit Form state
         showAddForm: false,
@@ -167,6 +196,30 @@ function listApp() {
                     this._closeOverlay('downloadModal');
                 }
             });
+
+            this.$watch('permanentDeleteModal.show', (isOpen) => {
+                if (isOpen) {
+                    this._openOverlay('permanentDeleteModal', () => { this.closePermanentDeleteModal(); });
+                } else {
+                    this._closeOverlay('permanentDeleteModal');
+                }
+            });
+
+            this.$watch('reprintPicker.show', (isOpen) => {
+                if (isOpen) {
+                    this._openOverlay('reprintPicker', () => { this.closeReprintPicker(); });
+                } else {
+                    this._closeOverlay('reprintPicker');
+                }
+            });
+
+            this.$watch('reprintConfirm.show', (isOpen) => {
+                if (isOpen) {
+                    this._openOverlay('reprintConfirm', () => { this.closeReprintConfirm(); });
+                } else {
+                    this._closeOverlay('reprintConfirm');
+                }
+            });
         },
 
         _openOverlay(key, closeFn) {
@@ -186,7 +239,7 @@ function listApp() {
             const token = this.overlayTokens[key];
             if (!token) {
                 if (!window.mobileOverlay) {
-                    const anyOpen = this.showFilters || this.showAddForm || this.showCropModal || this.downloadModal.show;
+                    const anyOpen = this.showFilters || this.showAddForm || this.showCropModal || this.downloadModal.show || this.permanentDeleteModal.show || this.reprintPicker.show || this.reprintConfirm.show;
                     if (!anyOpen) document.body.classList.remove('overflow-hidden');
                 }
                 return;
@@ -540,6 +593,346 @@ function listApp() {
             this.downloadModal.show = false;
             this.downloadModal.abortController = null;
             this.downloadModal.cancelling = false;
+        },
+
+        _generateNumericCode(len = 10) {
+            let out = '';
+            for (let i = 0; i < len; i += 1) {
+                out += String(Math.floor(Math.random() * 10));
+            }
+            return out;
+        },
+
+        async openPermanentDeleteModal() {
+            if (!this.selectedIds.length) { this.showToast('Select items first', 'error'); return; }
+            if (LIST_TYPE !== 'pool') {
+                this.showToast('Permanent delete is only available in pool list', 'error');
+                return;
+            }
+
+            let code = this._generateNumericCode(10);
+            try {
+                const res = await fetch('/panel/api/table/' + TABLE_ID + '/cards/generate-delete-code/', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': CSRF },
+                });
+                const data = await res.json().catch(() => ({}));
+                if (res.ok && data.success && data.code) code = String(data.code);
+            } catch (e) {
+                // Keep local fallback code when server code endpoint is unavailable for current role.
+            }
+
+            this.permanentDeleteModal.code = code;
+            this.permanentDeleteModal.input = '';
+            this.permanentDeleteModal.count = this.selectedIds.length;
+            this.permanentDeleteModal.submitting = false;
+            this.permanentDeleteModal.show = true;
+        },
+
+        closePermanentDeleteModal() {
+            this.permanentDeleteModal.show = false;
+            this.permanentDeleteModal.submitting = false;
+            this.permanentDeleteModal.input = '';
+        },
+
+        async confirmPermanentDelete() {
+            if (this.permanentDeleteModal.submitting) return;
+            if (this.permanentDeleteModal.input !== this.permanentDeleteModal.code || this.permanentDeleteModal.input.length !== 10) {
+                this.showToast('Confirmation code does not match', 'error');
+                return;
+            }
+
+            this.permanentDeleteModal.submitting = true;
+            await this._permanentlyDeleteSelected();
+            this.permanentDeleteModal.submitting = false;
+            this.closePermanentDeleteModal();
+        },
+
+        _normalizeReprintKey(value) {
+            return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+        },
+
+        _reprintField(item, possibleKeys) {
+            const fields = Array.isArray(item?.ordered_fields) ? item.ordered_fields : [];
+            const keyMap = {};
+            (possibleKeys || []).forEach(k => { keyMap[this._normalizeReprintKey(k)] = true; });
+            for (let i = 0; i < fields.length; i += 1) {
+                const name = this._normalizeReprintKey(fields[i]?.name || '');
+                if (keyMap[name]) return String(fields[i]?.value || '');
+            }
+            return '';
+        },
+
+        _mapReprintItem(item) {
+            return {
+                card_id: Number(item?.card_id || 0),
+                name: this._reprintField(item, ['NAME', 'STUDENT NAME', 'STUDENT_NAME']),
+                roll_no: this._reprintField(item, ['ROLL NO', 'ROLL_NO', 'ID NUMBER', 'ID_NUMBER']),
+                class_name: this._reprintField(item, ['CLASS', 'DESIGNATION', 'CLASS DESIGNATION']),
+                section: this._reprintField(item, ['SECTION']),
+                raw: item,
+            };
+        },
+
+        _isReprintImageField(fieldName) {
+            const n = this._normalizeReprintKey(fieldName);
+            return n.includes('PHOTO') || n.includes('IMAGE') || n.includes('SIGNATURE') || n.includes('BARCODE') || n.includes('QR');
+        },
+
+        _reprintMediaUrl(rawPath) {
+            const raw = String(rawPath || '').trim();
+            if (!raw) return '';
+            if (/^https?:\/\//i.test(raw)) return raw;
+            let p = raw.replace(/\\/g, '/');
+            const lower = p.toLowerCase();
+            const marker = '/media/';
+            const idx = lower.indexOf(marker);
+            if (idx !== -1) p = p.slice(idx + marker.length);
+            p = p.replace(/^\/+/, '');
+            if (p.toLowerCase().startsWith('media/')) p = p.slice(6);
+            if (!p || p === 'NOT_FOUND' || p.startsWith('PENDING:')) return '';
+            return '/media/' + p;
+        },
+
+        _buildReprintConfirmPayload(card) {
+            const ordered = Array.isArray(card?.raw?.ordered_fields) ? card.raw.ordered_fields : [];
+            const fields = [];
+            const formData = {};
+            const originalData = {};
+            let photoUrl = '';
+            const mediaUrls = [];
+            const mediaSeen = {};
+
+            ordered.forEach((f) => {
+                const name = String(f?.name || '').trim();
+                if (!name) return;
+                const value = String(f?.value || '');
+
+                if (this._isReprintImageField(name)) {
+                    const resolved = this._reprintMediaUrl(value);
+                    if (resolved && !mediaSeen[resolved]) {
+                        mediaSeen[resolved] = true;
+                        mediaUrls.push(resolved);
+                    }
+                    if (!photoUrl && resolved) {
+                        photoUrl = resolved;
+                    }
+                    return;
+                }
+
+                fields.push({ name });
+                formData[name] = value;
+                originalData[name] = value;
+            });
+
+            return { fields, formData, originalData, photoUrl, mediaUrls };
+        },
+
+        toggleReprintEditMode() {
+            this.reprintConfirm.editMode = !this.reprintConfirm.editMode;
+        },
+
+        updateReprintField(fieldName, value) {
+            const key = String(fieldName || '').trim();
+            if (!key) return;
+            this.reprintConfirm.formData[key] = String(value || '');
+        },
+
+        _reprintHasInlineChanges() {
+            const current = this.reprintConfirm.formData || {};
+            const original = this.reprintConfirm.originalData || {};
+            const keys = Object.keys(current);
+            for (let i = 0; i < keys.length; i += 1) {
+                const k = keys[i];
+                if (String(current[k] || '').trim() !== String(original[k] || '').trim()) {
+                    return true;
+                }
+            }
+            return false;
+        },
+
+        async _saveReprintInlineChanges(cardId) {
+            const payload = {};
+            Object.keys(this.reprintConfirm.formData || {}).forEach((key) => {
+                payload[key] = String(this.reprintConfirm.formData[key] || '').trim();
+            });
+
+            const fd = new FormData();
+            fd.append('field_data', JSON.stringify(payload));
+
+            const res = await fetch('/app/api/table/' + TABLE_ID + '/card/' + cardId + '/update/', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': CSRF },
+                body: fd,
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.success) {
+                throw new Error(data.message || 'Could not save card changes');
+            }
+            this.reprintConfirm.originalData = Object.assign({}, this.reprintConfirm.formData || {});
+        },
+
+        async fetchReprintList() {
+            this.reprintPicker.loading = true;
+            try {
+                const q = encodeURIComponent(String(this.reprintPicker.query || '').trim());
+                const url = '/panel/reprint/api/table/' + TABLE_ID + '/reprint-list/?available_only=1&limit=500&q=' + q;
+                const res = await fetch(url, { headers: { 'X-CSRFToken': CSRF } });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || data.status !== 'ok') {
+                    this.reprintPicker.rows = [];
+                    this.showToast(data.message || 'Failed to load reprint list', 'error');
+                    this.reprintPicker.loading = false;
+                    return;
+                }
+                this.reprintPicker.rows = (data.items || []).map((it) => this._mapReprintItem(it));
+                if (this.reprintPicker.selectedId) {
+                    const found = this.reprintPicker.rows.some(r => Number(r.card_id) === Number(this.reprintPicker.selectedId));
+                    if (!found) this.reprintPicker.selectedId = null;
+                }
+            } catch (e) {
+                this.reprintPicker.rows = [];
+                this.showToast('Failed to load reprint list', 'error');
+            }
+            this.reprintPicker.loading = false;
+        },
+
+        openReprintPicker() {
+            if (LIST_TYPE !== 'download') {
+                this.showToast('Reprint is available from download list only', 'error');
+                return;
+            }
+            if (!this.studentsData.length) {
+                this.showToast('No cards available for reprint', 'error');
+                return;
+            }
+            this.reprintPicker.show = true;
+            this.fetchReprintList();
+        },
+
+        closeReprintPicker() {
+            this.reprintPicker.show = false;
+        },
+
+        onReprintSearchInput() {
+            if (this.reprintSearchTimer) {
+                clearTimeout(this.reprintSearchTimer);
+                this.reprintSearchTimer = null;
+            }
+            this.reprintSearchTimer = setTimeout(() => {
+                this.fetchReprintList();
+            }, 250);
+        },
+
+        selectReprintCard(cardId) {
+            this.reprintPicker.selectedId = Number(cardId);
+        },
+
+        openReprintConfirm() {
+            const id = Number(this.reprintPicker.selectedId || 0);
+            if (!id) { this.showToast('Select one card for reprint', 'error'); return; }
+            const card = (this.reprintPicker.rows || []).find(r => Number(r.card_id) === id) || null;
+            const payload = this._buildReprintConfirmPayload(card);
+            this.reprintConfirm.card = card;
+            this.reprintConfirm.fields = payload.fields;
+            this.reprintConfirm.formData = payload.formData;
+            this.reprintConfirm.originalData = payload.originalData;
+            this.reprintConfirm.photoUrl = payload.photoUrl;
+            this.reprintConfirm.mediaUrls = Array.isArray(payload.mediaUrls) ? payload.mediaUrls : [];
+            this.reprintConfirm.editMode = false;
+            this.reprintConfirm.submitting = false;
+            this.reprintConfirm.show = true;
+        },
+
+        closeReprintConfirm() {
+            this.reprintConfirm.show = false;
+            this.reprintConfirm.submitting = false;
+            this.reprintConfirm.card = null;
+            this.reprintConfirm.fields = [];
+            this.reprintConfirm.formData = {};
+            this.reprintConfirm.originalData = {};
+            this.reprintConfirm.photoUrl = '';
+            this.reprintConfirm.mediaUrls = [];
+            this.reprintConfirm.editMode = false;
+        },
+
+        async _createReprintRequest(cardIds) {
+            const ids = Array.isArray(cardIds) ? cardIds.map(Number).filter(Boolean) : [];
+            if (!ids.length) {
+                this.showToast('No card selected for reprint request', 'error');
+                return false;
+            }
+            try {
+                const res = await fetch('/panel/reprint/api/table/' + TABLE_ID + '/request/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+                    body: JSON.stringify({ card_ids: ids }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (res.ok && data.status === 'ok') {
+                    this.showToast(data.message || 'Successfully sent for reprint', 'success');
+                    return true;
+                }
+                this.showToast(data.message || 'Could not create reprint request', 'error');
+                return false;
+            } catch (e) {
+                this.showToast('Could not create reprint request', 'error');
+                return false;
+            }
+        },
+
+        async submitReprintRequest() {
+            if (this.reprintConfirm.submitting) return;
+            const cardId = Number(this.reprintConfirm.card?.card_id || this.reprintPicker.selectedId || 0);
+            if (!cardId) { this.showToast('Select one card for reprint', 'error'); return; }
+
+            this.reprintConfirm.submitting = true;
+            if (this._reprintHasInlineChanges()) {
+                try {
+                    await this._saveReprintInlineChanges(cardId);
+                } catch (e) {
+                    this.reprintConfirm.submitting = false;
+                    this.showToast(e.message || 'Could not save card changes', 'error');
+                    return;
+                }
+            }
+
+            const ok = await this._createReprintRequest([cardId]);
+            this.reprintConfirm.submitting = false;
+            if (!ok) return;
+
+            this.closeReprintConfirm();
+            this.closeReprintPicker();
+            this.reprintPicker.selectedId = null;
+            this.fetchReprintList();
+        },
+
+        async editThenSendReprint() {
+            const cardId = Number(this.reprintConfirm.card?.card_id || this.reprintPicker.selectedId || 0);
+            if (!cardId) { this.showToast('Select one card for reprint', 'error'); return; }
+
+            this.reprintPendingAfterEdit = true;
+            this.reprintPendingCardIds = [cardId];
+            this.closeReprintConfirm();
+            this.closeReprintPicker();
+
+            try {
+                const latestCard = await this._fetchCardSnapshot(cardId);
+                if (latestCard.status === LIST_TYPE) {
+                    this._upsertStudentCard(latestCard, 'add');
+                }
+                this.selectedIds = [cardId];
+                this.viewMode = false;
+                this.editMode = true;
+                this.editingId = cardId;
+                this.populateFormFromStudent(latestCard);
+                this.showAddForm = true;
+                this.showToast('Edit card and save to send reprint request', 'info');
+            } catch (e) {
+                this.reprintPendingAfterEdit = false;
+                this.reprintPendingCardIds = [];
+                this.showToast('Unable to open card for edit', 'error');
+            }
         },
         // ========== End Download Modal Methods ==========
 
@@ -1292,6 +1685,8 @@ function listApp() {
             this.viewMode = false;
             this.editMode = false;
             this.editingId = null;
+            this.reprintPendingAfterEdit = false;
+            this.reprintPendingCardIds = [];
         },
         resetForm() {
             this.form = {
@@ -1496,7 +1891,15 @@ function listApp() {
                         }
                     }
 
+                    const reprintAfterEdit = !!(this.reprintPendingAfterEdit && this.editMode && cardId);
                     this.closeAddForm();
+
+                    if (reprintAfterEdit) {
+                        const ok = await this._createReprintRequest([cardId]);
+                        this.reprintPendingAfterEdit = false;
+                        this.reprintPendingCardIds = [];
+                        if (ok) this.fetchReprintList();
+                    }
                 } else { this.showToast(data.message || 'Failed', 'error'); }
             } catch (e) { this.showToast('Network error', 'error'); }
             this.loading = false;
@@ -1567,7 +1970,7 @@ function listApp() {
                         if (this.downloadModal.abortController?.signal?.aborted) {
                             throw new Error('AbortError');
                         }
-                        const statusRes = await fetch('/api/export/status/' + taskId + '/', {
+                        const statusRes = await fetch('/panel/api/export/status/' + taskId + '/', {
                             headers: { 'X-CSRFToken': CSRF },
                             signal: this.downloadModal.abortController?.signal,
                         });
@@ -1598,7 +2001,7 @@ function listApp() {
                 };
 
                 this.updateDownloadProgress(10, 'Sending request...');
-                const res = await fetch('/panel/exports/pdf/' + TABLE_ID + '/', {
+                const res = await fetch('/panel/api/table/' + TABLE_ID + '/cards/download-pdf-async/', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
                     body: JSON.stringify({ card_ids: idsToDownload, status: LIST_TYPE }),
@@ -1606,21 +2009,7 @@ function listApp() {
                 });
                 this.updateDownloadProgress(50, 'Processing PDF...');
                 const ct = res.headers.get('content-type') || '';
-                if (res.ok && ct.includes('application/pdf')) {
-                    this.updateDownloadProgress(70, 'Downloading file...');
-                    const blob = await res.blob();
-                    const sizeKB = Math.round(blob.size / 1024);
-                    this.updateDownloadProgress(90, 'Saving file...', sizeKB > 1024 ? (sizeKB/1024).toFixed(1) + ' MB' : sizeKB + ' KB');
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'cards_' + TABLE_ID + '_' + LIST_TYPE + '.pdf';
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                    URL.revokeObjectURL(url);
-                    this.completeDownload(true, 'PDF saved to your device');
-                } else if ((res.status === 202 || res.ok) && ct.includes('application/json')) {
+                if ((res.status === 202 || res.ok) && ct.includes('application/json')) {
                     const data = await res.json().catch(() => ({}));
                     if (data.success && data.async && data.task_id) {
                         this.updateDownloadProgress(20, data.message || 'Queued for background generation...');
@@ -1710,15 +2099,92 @@ function listApp() {
                 this.completeDownload(false, 'Download failed');
             }
         },
-        downloadAgain() { this.apiAction('download', 're-downloaded'); },
-        async permanentlyDelete() {
-            if (LIST_TYPE !== 'pool') {
-                this.deleteSelected();
+        async _moveCardsToDownloadAfterXlsx(cardIds) {
+            const ids = Array.isArray(cardIds) ? cardIds.map(Number).filter(Boolean) : [];
+            if (LIST_TYPE !== 'approved' || !ids.length) return;
+
+            try {
+                const res = await fetch('/app/api/table/' + TABLE_ID + '/bulk-status/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+                    body: JSON.stringify({ card_ids: ids, status: 'download' }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || !data.success) {
+                    this.showToast(data.message || 'Downloaded, but move to Download list failed', 'error');
+                    return;
+                }
+
+                const skippedSet = new Set((data.skipped_ids || []).map(Number));
+                const movedIds = ids.filter(id => !skippedSet.has(Number(id)));
+                if (movedIds.length) {
+                    this._bumpTabCounts('approved', 'download', movedIds.length);
+                    this._removeCardsFromCurrentList(movedIds);
+                    this.selectedIds = this.selectedIds.filter(id => skippedSet.has(Number(id)));
+                }
+            } catch (e) {
+                this.showToast('Downloaded, but failed to move cards to Download list', 'error');
+            }
+        },
+        async downloadXLSX() {
+            if (this.loading) return;
+
+            let idsToDownload = [...this.selectedIds];
+            if (!idsToDownload.length) {
+                // No explicit selection: export all rows in current filtered list.
+                if (this.hasMore) {
+                    this.showToast('Loading all records for Excel export...', 'info');
+                    await this.loadAllDataForFiltering();
+                }
+                idsToDownload = this.studentsData.map(s => Number(s.id)).filter(Boolean);
+            }
+            if (!idsToDownload.length) {
+                this.showToast('No cards to export', 'error');
                 return;
             }
+
+            this.loading = true;
+            try {
+                const res = await fetch('/panel/api/table/' + TABLE_ID + '/cards/download-xlsx/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+                    body: JSON.stringify({ card_ids: idsToDownload, status: LIST_TYPE }),
+                });
+
+                const ct = (res.headers.get('content-type') || '').toLowerCase();
+                if (!res.ok || ct.includes('application/json')) {
+                    const errData = await res.json().catch(() => ({}));
+                    this.showToast(errData.message || 'Excel export failed', 'error');
+                    this.loading = false;
+                    return;
+                }
+
+                const blob = await res.blob();
+                const filename = 'cards_' + TABLE_ID + '_' + LIST_TYPE + '.xlsx';
+                const link = document.createElement('a');
+                const url = URL.createObjectURL(blob);
+                link.href = url;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                URL.revokeObjectURL(url);
+
+                this.showToast('Excel file downloaded', 'success');
+
+                // Desktop parity: Approved list exports should move cards to Download list.
+                if (LIST_TYPE === 'approved') {
+                    await this._moveCardsToDownloadAfterXlsx(idsToDownload);
+                }
+            } catch (e) {
+                this.showToast('Excel export failed', 'error');
+            }
+            this.loading = false;
+        },
+        downloadAgain() { this.apiAction('download', 're-downloaded'); },
+        async _permanentlyDeleteSelected() {
+            if (LIST_TYPE !== 'pool') return;
             if (!this.selectedIds.length) { this.showToast('Select items first', 'error'); return; }
-            var ok = await showConfirm({ title: 'Permanently Delete?', text: 'Permanently delete ' + this.selectedIds.length + ' card(s)? This cannot be undone!', icon: 'fa-solid fa-trash', confirmLabel: 'Delete', hideWarning: true });
-            if (!ok) return;
             const requestedIds = [...this.selectedIds];
             const deletedIds = [];
             this.loading = true;
@@ -1747,6 +2213,9 @@ function listApp() {
                 this._removeCardsFromCurrentList(deletedIds);
             } else { this.showToast('Failed to delete cards', 'error'); }
             this.selectedIds = [];
+        },
+        async permanentlyDelete() {
+            await this._permanentlyDeleteSelected();
         },
         retrieveSelected() { this.apiAction('pending', 'retrieved to pending'); },
     }

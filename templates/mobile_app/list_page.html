@@ -29,6 +29,9 @@
     <!-- Add Form Bottom Sheet -->
     {% include "mobile_app/partials/add_form_sheet.html" %}
 
+    <!-- Reprint + Permanent Delete action sheets -->
+    {% include "mobile_app/partials/list_action_modals.html" %}
+
 
 </div>
 
@@ -67,5 +70,5 @@ const TAB_COUNTS = {
 </script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.1/dist/cropper.min.css">
 <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.1/dist/cropper.min.js"></script>
-<script src="{% static 'js/mobile/list-app.js' %}?v=6"></script>
+<script src="{% static 'js/mobile/list-app.js' %}?v=10"></script>
 {% endblock %}

@@ -1,21 +1,21 @@
 {% load static %}
 <!-- Fixed Top Section -->
-<div class="flex-shrink-0 sticky top-0 z-40 bg-white shadow-sm" style="padding-top: env(safe-area-inset-top, 0px);">
+<div class="flex-shrink-0 sticky top-0 z-40 bg-white shadow-sm border-b border-gray-200" style="padding-top: env(safe-area-inset-top, 0px);">
 
-    <!-- Gradient Action Bar -->
-    <div class="flex items-center gap-2 px-4 bg-gradient-to-r from-brand-light to-brand-dark"
-         style="padding-top: 10px; padding-bottom: 10px;">
+    <!-- Gradient Top Bar -->
+        <div class="flex items-center gap-2 px-3.5 {% if list_type == 'pending' %}bg-gradient-to-r from-amber-500 to-orange-500{% elif list_type == 'verified' %}bg-gradient-to-r from-emerald-500 to-teal-500{% elif list_type == 'approved' %}bg-gradient-to-r from-sky-500 to-blue-600{% elif list_type == 'download' %}bg-gradient-to-r from-violet-500 to-purple-600{% elif list_type == 'pool' %}bg-gradient-to-r from-rose-500 to-pink-600{% else %}bg-gradient-to-r from-brand-light to-brand-dark{% endif %}"
+            style="padding-top: 8px; padding-bottom: 8px;">
 
         <!-- Back button -->
         <a href="{{ back_url|default:'/app/' }}"
            onclick="return mobileGoBack(event, this.getAttribute('href'));"
-           class="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all flex-shrink-0">
+           class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all flex-shrink-0">
             <i class="fa-solid fa-arrow-left text-sm"></i>
         </a>
 
         <!-- Title + subtitle -->
         <div class="flex-1 min-w-0">
-            <h1 class="text-white font-bold text-sm leading-tight">
+            <h1 class="text-white font-bold text-[13px] leading-tight">
                 {% if list_type == 'pending' %}Pending List
                 {% elif list_type == 'verified' %}Verified List
                 {% elif list_type == 'approved' %}Approved List
@@ -23,73 +23,89 @@
                 {% elif list_type == 'pool' %}Pool List
                 {% else %}List{% endif %}
             </h1>
-            <p class="text-white/70 text-[10px] truncate leading-tight mt-0.5">
+            <p class="text-white/80 text-[10px] truncate leading-tight mt-0.5">
                 {% if table %}{{ table.name }}{% endif %}{% if client %} &mdash; {{ client.name }}{% endif %}
             </p>
         </div>
 
-        <!-- Status pills -->
-        <div class="flex items-center gap-1.5 flex-shrink-0">
+    </div>
+
+    <!-- Dedicated status badges row (between top bar and search) -->
+    <div class="px-2 py-1.5 bg-white border-b border-gray-200">
+        <div class="flex flex-wrap items-center gap-1">
             {% if perm_idcard_pending_list %}
             <a href="{% url 'mobile_app:card_list' table_id=table.id status='pending' %}"
-               class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl transition-all active:scale-95 flex-shrink-0
-               {% if list_type == 'pending' %}bg-amber-400/90 shadow-sm{% else %}bg-white/20 hover:bg-white/30{% endif %} text-white">
-                <i class="fa-solid fa-clock text-[9px]"></i>
-                <span class="font-extrabold text-[10px]" x-text="tabCounts.pending"></span>
+                    class="inline-flex items-center px-2 py-1 rounded-[5px] border transition-all active:scale-95 whitespace-nowrap text-[10px] leading-none
+                    {% if list_type == 'pending' %}bg-amber-600 border-amber-700 text-white font-bold shadow-sm{% else %}bg-amber-50 border-amber-200 text-amber-700 font-semibold{% endif %}">
+                <span class="uppercase tracking-wide">Pen</span>
+                <span class="ml-1 font-black tabular-nums" x-text="tabCounts.pending"></span>
             </a>
             {% endif %}
             {% if perm_idcard_verified_list %}
             <a href="{% url 'mobile_app:card_list' table_id=table.id status='verified' %}"
-               class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl transition-all active:scale-95 flex-shrink-0
-               {% if list_type == 'verified' %}bg-green-500/80 shadow-sm{% else %}bg-white/20 hover:bg-white/30{% endif %} text-white">
-                <i class="fa-solid fa-check-circle text-[9px]"></i>
-                <span class="font-extrabold text-[10px]" x-text="tabCounts.verified"></span>
+                    class="inline-flex items-center px-2 py-1 rounded-[5px] border transition-all active:scale-95 whitespace-nowrap text-[10px] leading-none
+                    {% if list_type == 'verified' %}bg-emerald-600 border-emerald-700 text-white font-bold shadow-sm{% else %}bg-emerald-50 border-emerald-200 text-emerald-700 font-semibold{% endif %}">
+                <span class="uppercase tracking-wide">Ver</span>
+                <span class="ml-1 font-black tabular-nums" x-text="tabCounts.verified"></span>
             </a>
             {% endif %}
             {% if perm_idcard_approved_list %}
             <a href="{% url 'mobile_app:card_list' table_id=table.id status='approved' %}"
-               class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl transition-all active:scale-95 flex-shrink-0
-               {% if list_type == 'approved' %}bg-blue-500/80 shadow-sm{% else %}bg-white/20 hover:bg-white/30{% endif %} text-white">
-                <i class="fa-solid fa-stamp text-[9px]"></i>
-                <span class="font-extrabold text-[10px]" x-text="tabCounts.approved"></span>
+                    class="inline-flex items-center px-2 py-1 rounded-[5px] border transition-all active:scale-95 whitespace-nowrap text-[10px] leading-none
+                    {% if list_type == 'approved' %}bg-sky-600 border-sky-700 text-white font-bold shadow-sm{% else %}bg-sky-50 border-sky-200 text-sky-700 font-semibold{% endif %}">
+                <span class="uppercase tracking-wide">App</span>
+                <span class="ml-1 font-black tabular-nums" x-text="tabCounts.approved"></span>
             </a>
             {% endif %}
             {% if perm_idcard_download_list %}
             <a href="{% url 'mobile_app:card_list' table_id=table.id status='download' %}"
-               class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl transition-all active:scale-95 flex-shrink-0
-               {% if list_type == 'download' %}bg-purple-500/80 shadow-sm{% else %}bg-white/20 hover:bg-white/30{% endif %} text-white">
-                <i class="fa-solid fa-file-arrow-down text-[9px]"></i>
-                <span class="font-extrabold text-[10px]" x-text="tabCounts.download"></span>
+                    class="inline-flex items-center px-2 py-1 rounded-[5px] border transition-all active:scale-95 whitespace-nowrap text-[10px] leading-none
+                    {% if list_type == 'download' %}bg-violet-600 border-violet-700 text-white font-bold shadow-sm{% else %}bg-violet-50 border-violet-200 text-violet-700 font-semibold{% endif %}">
+                <span class="uppercase tracking-wide">Dwn</span>
+                <span class="ml-1 font-black tabular-nums" x-text="tabCounts.download"></span>
             </a>
             {% endif %}
             {% if perm_idcard_pool_list %}
             <a href="{% url 'mobile_app:card_list' table_id=table.id status='pool' %}"
-               class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl transition-all active:scale-95 flex-shrink-0
-               {% if list_type == 'pool' %}bg-rose-500/80 shadow-sm{% else %}bg-white/20 hover:bg-white/30{% endif %} text-white">
-                <i class="fa-solid fa-layer-group text-[9px]"></i>
-                <span class="font-extrabold text-[10px]" x-text="tabCounts.pool"></span>
+                    class="inline-flex items-center px-2 py-1 rounded-[5px] border transition-all active:scale-95 whitespace-nowrap text-[10px] leading-none
+                    {% if list_type == 'pool' %}bg-rose-600 border-rose-700 text-white font-bold shadow-sm{% else %}bg-rose-50 border-rose-200 text-rose-700 font-semibold{% endif %}">
+                <span class="uppercase tracking-wide">Pool</span>
+                <span class="ml-1 font-black tabular-nums" x-text="tabCounts.pool"></span>
+            </a>
+            {% endif %}
+
+            {% if list_type == 'download' and perm_idcard_reprint_list %}
+            <a href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table_id=table.id %}{% else %}{% url 'reprintcard:reprint_cards' table_id=table.id %}{% endif %}?step=request_list"
+               class="inline-flex items-center px-2 py-1 rounded-[5px] border border-amber-200 bg-amber-50 text-amber-700 font-semibold active:scale-95 whitespace-nowrap text-[10px] leading-none">
+                <span class="uppercase tracking-wide">Req</span>
+                <span class="ml-1 font-black tabular-nums">{{ reprint_counts.requested|default:0 }}</span>
+            </a>
+            <a href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table_id=table.id %}{% else %}{% url 'reprintcard:reprint_cards' table_id=table.id %}{% endif %}?step=confirmed"
+               class="inline-flex items-center px-2 py-1 rounded-[5px] border border-blue-200 bg-blue-50 text-blue-700 font-semibold active:scale-95 whitespace-nowrap text-[10px] leading-none">
+                <span class="uppercase tracking-wide">Conf</span>
+                <span class="ml-1 font-black tabular-nums">{{ reprint_counts.confirmed|default:0 }}</span>
             </a>
             {% endif %}
         </div>
     </div>
 
     <!-- Search Bar + Filter btn -->
-    <div class="px-3 py-2.5 bg-white border-b border-gray-100">
-        <div class="flex items-center gap-2">
+    <div class="px-2 py-1.5 bg-white border-b border-gray-200">
+        <div class="flex items-center gap-1.5">
             <div class="relative flex-1">
-                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-[11px]"></i>
                 <input
                     type="text"
                     x-model="searchQuery"
                     @input="filterStudents()"
                     placeholder="Search by name, roll no..."
-                    class="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition"
+                    class="w-full pl-8 pr-3 py-1.5 bg-white border border-gray-200 rounded-lg text-[11px] text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light transition"
                 >
             </div>
             <!-- Filter toggle  beside search -->
             <button @click="showFilters = !showFilters"
                     :class="showFilters || filtersActive ? 'bg-brand-light text-white border-brand-light shadow-md' : 'bg-gray-50 text-gray-500 border-gray-200'"
-                    class="w-[42px] h-[42px] rounded-xl border flex items-center justify-center active:scale-95 transition-all relative flex-shrink-0">
+                    class="w-9 h-9 rounded-lg border flex items-center justify-center active:scale-95 transition-all relative flex-shrink-0">
                 <i class="fa-solid fa-sliders text-[11px]"></i>
                 <span x-show="filtersActive"
                       class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-red-400 rounded-full border-2 border-white"></span>

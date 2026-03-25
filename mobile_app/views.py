@@ -37,6 +37,7 @@ from client.services import (
 from client.services_client_core import ClientService
 from core.services.permission_service import PermissionService
 from idcards.models import IDCardTable, IDCard, IDCardGroup
+from reprintcard.models import ReprintRequest
 from mediafiles.utils import get_card_photo_url
 from staff.models import Staff
 from accounts.rate_limit import rate_limit
@@ -770,6 +771,139 @@ def home(request):
 
     ctx['recent_client_updates'] = recent_client_updates
 
+    # ── Recent Reprint section ─────────────────────────────────────────────
+    recent_reprint_updates = []
+    reprint_request_total = 0
+    reprint_confirmed_total = 0
+    try:
+        if PermissionService.is_any_admin(user):
+            from client.models import Client as ClientModel
+
+            clients_qs = (
+                ClientModel.objects
+                .filter(status='active')
+                .annotate(last_reprint_update=Max('id_card_groups__tables__reprint_requests__updated_at'))
+                .filter(last_reprint_update__isnull=False)
+                .order_by('-last_reprint_update')
+            )
+            if PermissionService.is_admin_staff(user):
+                accessible_ids = _admin_accessible_client_ids(user)
+                clients_qs = clients_qs.filter(id__in=accessible_ids)
+
+            client_list = list(clients_qs[:10])
+            client_ids = [c.id for c in client_list]
+
+            # Per-client requested/confirmed totals
+            _rc_raw = (
+                ReprintRequest.objects
+                .filter(table__group__client_id__in=client_ids, status__in=['requested', 'confirmed'])
+                .values('table__group__client_id', 'status')
+                .annotate(n=Count('id'))
+            )
+            _rc_map = {}
+            for _row in _rc_raw:
+                _rc_map.setdefault(_row['table__group__client_id'], {})[_row['status']] = _row['n']
+
+            # Per-table requested/confirmed totals
+            _tr_raw = (
+                ReprintRequest.objects
+                .filter(table__group__client_id__in=client_ids, status__in=['requested', 'confirmed'])
+                .values('table_id', 'status')
+                .annotate(n=Count('id'))
+            )
+            _tr_map = {}
+            for _row in _tr_raw:
+                _tr_map.setdefault(_row['table_id'], {})[_row['status']] = _row['n']
+
+            _table_ids = list(_tr_map.keys())
+            _tables = list(
+                IDCardTable.objects
+                .filter(id__in=_table_ids, is_active=True)
+                .select_related('group')
+                .order_by('group__client_id', 'group__name', 'name')
+            )
+            _tables_by_client = {}
+            for _tbl in _tables:
+                _cid = _tbl.group.client_id
+                _tables_by_client.setdefault(_cid, [])
+                if len(_tables_by_client[_cid]) < 8:
+                    _tables_by_client[_cid].append(_tbl)
+
+            for c in client_list:
+                _cm = _rc_map.get(c.id, {})
+                _tables_data = []
+                for _tbl in _tables_by_client.get(c.id, []):
+                    _tm = _tr_map.get(_tbl.id, {})
+                    _tables_data.append({
+                        'id': _tbl.id,
+                        'name': _tbl.name,
+                        'requested': _tm.get('requested', 0),
+                        'confirmed': _tm.get('confirmed', 0),
+                    })
+
+                _requested = _cm.get('requested', 0)
+                _confirmed = _cm.get('confirmed', 0)
+                reprint_request_total += _requested
+                reprint_confirmed_total += _confirmed
+
+                recent_reprint_updates.append({
+                    'client_id': c.id,
+                    'client_name': c.name,
+                    'requested': _requested,
+                    'confirmed': _confirmed,
+                    'tables': _tables_data,
+                })
+        else:
+            _tables_qs = IDCardTable.objects.filter(group__client=client, is_active=True)
+            if PermissionService.is_client_staff(user):
+                _staff = getattr(user, 'staff_profile', None)
+                if _staff:
+                    _assigned_group_ids = list(_staff.assigned_groups.values_list('id', flat=True))
+                    if _assigned_group_ids:
+                        _tables_qs = _tables_qs.filter(group_id__in=_assigned_group_ids)
+
+            _tables = list(_tables_qs.order_by('group__name', 'name')[:12])
+            _table_ids = [t.id for t in _tables]
+
+            _tr_raw = (
+                ReprintRequest.objects
+                .filter(table_id__in=_table_ids, status__in=['requested', 'confirmed'])
+                .values('table_id', 'status')
+                .annotate(n=Count('id'))
+            )
+            _tr_map = {}
+            for _row in _tr_raw:
+                _tr_map.setdefault(_row['table_id'], {})[_row['status']] = _row['n']
+
+            _tables_data = []
+            for _tbl in _tables:
+                _tm = _tr_map.get(_tbl.id, {})
+                _requested = _tm.get('requested', 0)
+                _confirmed = _tm.get('confirmed', 0)
+                reprint_request_total += _requested
+                reprint_confirmed_total += _confirmed
+                _tables_data.append({
+                    'id': _tbl.id,
+                    'name': _tbl.name,
+                    'requested': _requested,
+                    'confirmed': _confirmed,
+                })
+
+            if _tables_data:
+                recent_reprint_updates.append({
+                    'client_id': client.id,
+                    'client_name': client.name,
+                    'requested': reprint_request_total,
+                    'confirmed': reprint_confirmed_total,
+                    'tables': _tables_data,
+                })
+    except Exception:
+        logger.exception('Failed to build recent_reprint_updates for home view')
+
+    ctx['recent_reprint_updates'] = recent_reprint_updates
+    ctx['reprint_request_total'] = reprint_request_total
+    ctx['reprint_confirmed_total'] = reprint_confirmed_total
+
     response = render(request, 'mobile_app/home.html', ctx)
     response['Cache-Control'] = 'no-store'
     return response
@@ -1130,6 +1264,17 @@ def card_list(request, table_id, status):
         if _row['status'] in tab_counts:
             tab_counts[_row['status']] = _row['n']
 
+    reprint_counts = {'requested': 0, 'confirmed': 0}
+    if status == 'download' and PermissionService.has(user, 'perm_idcard_reprint_list'):
+        for _row in (
+            ReprintRequest.objects
+            .filter(table=table, status__in=['requested', 'confirmed'])
+            .values('status')
+            .annotate(n=Count('id'))
+        ):
+            if _row['status'] in reprint_counts:
+                reprint_counts[_row['status']] = _row['n']
+
     response = render(request, 'mobile_app/list_page.html', {
         'user_name': user.get_full_name() or user.username,
         'client': client,
@@ -1149,12 +1294,98 @@ def card_list(request, table_id, status):
         # View-only mode: clients on approved/download lists can only view, not act
         'view_only_list': status in ('approved', 'download') and not PermissionService.is_any_admin(user),
         'tab_counts': tab_counts,
+        'reprint_counts': reprint_counts,
         'back_url': '/app/clients/' if PermissionService.is_any_admin(user) else '/app/',
         **perms,
     })
     # Prevent browser from serving stale HTML after status changes
     response['Cache-Control'] = 'no-store'
     return response
+
+
+@require_mobile_client
+def reprint_lists(request, client_id):
+    """Mobile Reprint page with Request/Confirmed tabs per table."""
+    user = request.user
+    _, perms = _client_ctx(user)
+
+    if not PermissionService.has(user, 'perm_idcard_reprint_list'):
+        return redirect('mobile_app:home')
+    if not PermissionService.can_access_client(user, client_id):
+        return redirect('mobile_app:home')
+
+    from client.models import Client as ClientModel
+    target_client = get_object_or_404(ClientModel, id=client_id)
+
+    active_step = (request.GET.get('step') or 'request_list').strip().lower()
+    if active_step not in ('request_list', 'confirmed'):
+        active_step = 'request_list'
+
+    tables_qs = (
+        IDCardTable.objects
+        .filter(group__client_id=client_id, is_active=True)
+        .select_related('group', 'group__client')
+        .order_by('group__name', 'name')
+    )
+
+    if PermissionService.is_client_staff(user):
+        staff = getattr(user, 'staff_profile', None)
+        if staff:
+            assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
+            if assigned_group_ids:
+                tables_qs = tables_qs.filter(group_id__in=assigned_group_ids)
+
+    tables = list(tables_qs)
+    table_ids = [t.id for t in tables]
+
+    reprint_map = {}
+    if table_ids:
+        for row in (
+            ReprintRequest.objects
+            .filter(table_id__in=table_ids, status__in=['requested', 'confirmed'])
+            .values('table_id', 'status')
+            .annotate(n=Count('id'))
+        ):
+            reprint_map.setdefault(row['table_id'], {})[row['status']] = row['n']
+
+    download_map = {}
+    if table_ids:
+        for row in (
+            IDCard.objects
+            .filter(table_id__in=table_ids, status='download')
+            .values('table_id')
+            .annotate(n=Count('id'))
+        ):
+            download_map[row['table_id']] = row['n']
+
+    table_items = []
+    request_total = 0
+    confirmed_total = 0
+    download_total = 0
+    for t in tables:
+        sm = reprint_map.get(t.id, {})
+        requested = int(sm.get('requested', 0) or 0)
+        confirmed = int(sm.get('confirmed', 0) or 0)
+        request_total += requested
+        confirmed_total += confirmed
+        download_total += int(download_map.get(t.id, 0) or 0)
+        table_items.append({
+            'id': t.id,
+            'name': t.name,
+            'group_name': t.group.name,
+            'requested': requested,
+            'confirmed': confirmed,
+        })
+
+    return render(request, 'mobile_app/reprint_lists.html', {
+        'client': target_client,
+        'tables': table_items,
+        'active_step': active_step,
+        'request_total': request_total,
+        'confirmed_total': confirmed_total,
+        'download_total': download_total,
+        **perms,
+    })
 
 
 @require_mobile_client
