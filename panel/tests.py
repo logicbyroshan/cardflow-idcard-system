@@ -7,6 +7,7 @@ from django.test import TestCase
 
 from client.models import Client
 from core.models import BackupTask, EmailLog, Notification, NotificationRead
+from core.services.notification_service import NotificationService
 
 
 User = get_user_model()
@@ -134,6 +135,66 @@ class PanelNotificationApiTests(PanelBaseTestCase):
         )
         self.assertEqual(response.status_code, 400)
         self.assertFalse(response.json()['success'])
+
+
+class PanelNotificationEmailTemplateTests(PanelBaseTestCase):
+    @mock.patch('core.utils.threaded_email.send_html_email_async')
+    @mock.patch('core.services.notification_service.render_to_string')
+    @mock.patch('django.conf.settings.EMAIL_HOST_USER', 'smtp-user')
+    @mock.patch('django.conf.settings.DEFAULT_FROM_EMAIL', 'Adarsh Admin <noreply@test.com>')
+    def test_send_email_alerts_uses_html_template_with_category_theme(self, mock_render, mock_send_html):
+        self.client_user.email = 'panel-client@test.com'
+        self.client_user.save(update_fields=['email'])
+
+        notif = Notification.objects.create(
+            title='Server notice',
+            message='Database maintenance starts at 11 PM.',
+            priority='urgent',
+            category='alert',
+            target='selected',
+            created_by=self.super_admin,
+        )
+        notif.target_users.add(self.client_user)
+
+        mock_render.return_value = '<html><body><span style="color:#991b1b">Alert</span></body></html>'
+
+        NotificationService._send_email_alerts(notif)
+
+        self.assertEqual(mock_render.call_count, 1)
+        args, _kwargs = mock_render.call_args
+        self.assertEqual(args[0], 'emails/notification_alert.html')
+        self.assertEqual(args[1]['category_display'], 'Alert')
+        self.assertEqual(args[1]['theme']['accent'], '#dc2626')
+
+        mock_send_html.assert_called_once()
+        send_kwargs = mock_send_html.call_args.kwargs
+        self.assertEqual(send_kwargs['subject'], '[Urgent] Server notice')
+        self.assertEqual(send_kwargs['recipient_list'], ['panel-client@test.com'])
+        self.assertIn('Category: Alert', send_kwargs['plain_content'])
+        self.assertIn('Database maintenance starts at 11 PM.', send_kwargs['plain_content'])
+        self.assertIn('#991b1b', send_kwargs['html_content'])
+
+    @mock.patch('core.utils.threaded_email.send_html_email_async')
+    @mock.patch('django.conf.settings.EMAIL_HOST_USER', 'smtp-user')
+    @mock.patch('django.conf.settings.DEFAULT_FROM_EMAIL', 'Adarsh Admin <noreply@test.com>')
+    def test_send_email_alerts_renders_alert_theme_template(self, mock_send_html):
+        notif = Notification.objects.create(
+            title='Immediate action needed',
+            message='Please review suspicious activity logs now.',
+            priority='urgent',
+            category='alert',
+            target='selected',
+            created_by=self.super_admin,
+        )
+        notif.target_users.add(self.client_user)
+
+        NotificationService._send_email_alerts(notif)
+
+        mock_send_html.assert_called_once()
+        html_content = mock_send_html.call_args.kwargs['html_content']
+        self.assertIn('theme-alert', html_content)
+        self.assertIn('Immediate action needed', html_content)
+        self.assertIn('Urgent:', html_content)
 
 
 class PanelEmailApiTests(PanelBaseTestCase):

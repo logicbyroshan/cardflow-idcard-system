@@ -6,10 +6,17 @@ This module handles all image/file storage, decoupled from workflow models.
 
 PHASE 1: Model introduction only - no behavior changes to existing system.
 """
+import os
+import re
+import logging
+
 from django.db import models
 from django.conf import settings
 from django.db.models.signals import pre_delete
 from django.dispatch import receiver
+
+
+logger = logging.getLogger(__name__)
 
 
 def card_media_upload_path(instance, filename):
@@ -17,10 +24,20 @@ def card_media_upload_path(instance, filename):
     Generate upload path for card media files.
     Structure: card_media/{client_id}/{media_type}/{filename}
     """
-    import re
     client_id = re.sub(r'[^a-zA-Z0-9_-]', '', str(instance.client_id or 'unknown'))
     media_type = re.sub(r'[^a-zA-Z0-9_-]', '', str(instance.media_type or 'other'))
-    return f'card_media/{client_id}/{media_type}/{filename}'
+
+    raw_name = os.path.basename(str(filename or '').replace('\\', '/')).strip()
+    name, ext = os.path.splitext(raw_name)
+
+    safe_name = re.sub(r'[^a-zA-Z0-9._-]', '_', name).strip('._')[:80] or 'upload'
+    safe_ext = re.sub(r'[^a-zA-Z0-9.]', '', ext.lower())
+    if safe_ext and not safe_ext.startswith('.'):
+        safe_ext = f'.{safe_ext}'
+    if not safe_ext or len(safe_ext) > 10:
+        safe_ext = '.jpg'
+
+    return f'card_media/{client_id}/{media_type}/{safe_name}{safe_ext}'
 
 
 class CardMedia(models.Model):
@@ -142,6 +159,7 @@ class CardMedia(models.Model):
             models.Index(fields=['card', 'media_type']),
             models.Index(fields=['card', 'field_name']),
             models.Index(fields=['original_filename']),
+            models.Index(fields=['file'], name='mediafiles__file_dbc7f5_idx'),
             models.Index(fields=['created_at']),
         ]
     
@@ -182,10 +200,35 @@ def cleanup_cardmedia_file(sender, instance, **kwargs):
     """Clean up physical file when CardMedia is cascade-deleted (not via instance.delete())"""
     if instance.file:
         try:
-            instance.file.storage.delete(instance.file.name)
+            file_name = str(instance.file.name or '').strip()
+            if not file_name:
+                return
+
+            if CardMedia.objects.filter(file=file_name).exclude(pk=instance.pk).exists():
+                logger.debug(
+                    "Skipped file delete for shared media path %s (CardMedia id=%s)",
+                    file_name,
+                    instance.pk,
+                )
+                return
+
+            storage = instance.file.storage
+            if storage.exists(file_name):
+                storage.delete(file_name)
+
+            try:
+                from .services.image_thumbnail import ThumbnailService
+
+                ThumbnailService.delete_thumbnail(file_name)
+            except Exception as thumb_err:
+                logger.warning(
+                    "Failed to delete thumbnail for %s (CardMedia %s): %s",
+                    file_name,
+                    instance.pk,
+                    thumb_err,
+                )
         except Exception as e:
-            import logging
-            logging.getLogger(__name__).warning(
+            logger.warning(
                 "Failed to delete file %s for CardMedia %s: %s",
                 instance.file.name, instance.pk, e
             )

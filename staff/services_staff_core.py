@@ -139,12 +139,14 @@ class StaffService(BaseService):
             phone = data.get('phone', '').strip()
             password = data.get('password', '').strip()
             used_phone_as_password = False
+            used_generated_password = False
             if not password:
                 if phone:
                     password = phone
                     used_phone_as_password = True
                 else:
                     password = secrets.token_urlsafe(12)
+                    used_generated_password = True
             
             # Skip Django password validators when using phone as password
             # (NumericPasswordValidator would reject a pure-digit mobile number)
@@ -218,18 +220,29 @@ class StaffService(BaseService):
                     except (ValueError, TypeError):
                         pass  # Skip invalid IDs
                 
-                # Log email as on_hold — will be sent on first activation
-                EmailLog.objects.create(
-                    recipient_name=name or user.get_full_name(),
-                    recipient_email=email,
-                    subject='Welcome to Adarsh Admin - Your Account is Ready!',
-                    email_type=EmailLog.EMAIL_TYPE_WELCOME,
-                    status=EmailLog.STATUS_ON_HOLD,
-                )
+                # Queue welcome email only when needed:
+                # - active now (legacy behavior keeps on-hold record)
+                # - inactive with unknown auto-generated password (send on first activation)
+                if is_active or used_generated_password:
+                    EmailLog.objects.create(
+                        recipient_name=name or user.get_full_name(),
+                        recipient_email=email,
+                        subject='Welcome to Adarsh Admin - Your Account is Ready!',
+                        email_type=EmailLog.EMAIL_TYPE_WELCOME,
+                        status=EmailLog.STATUS_ON_HOLD,
+                    )
             
+            message = 'Staff created successfully!'
+            if is_active:
+                message += ' Welcome email will be processed according to account status.'
+            elif used_generated_password:
+                message += ' Welcome email will be sent on first activation.'
+            else:
+                message += ' Account is inactive; activate it to allow login with the configured password.'
+
             return ServiceResult(
                 success=True,
-                message='Staff created successfully! Welcome email will be sent on first activation.',
+                message=message,
                 data={
                     'staff': cls.serialize(staff, include_permissions=False),
                     'email_sent': False,
@@ -361,7 +374,8 @@ class StaffService(BaseService):
     @classmethod
     def toggle_status(cls, staff_id: int) -> ServiceResult:
         """Toggle staff active/inactive status (atomic to prevent lost toggles).
-        On the FIRST activation, generates fresh credentials and sends a welcome email.
+        On first activation, generates/sends credentials only when no known password
+        was provided at creation time.
         """
         try:
             send_welcome = False
@@ -371,7 +385,17 @@ class StaffService(BaseService):
             with transaction.atomic():
                 staff = Staff.objects.select_related('user').select_for_update().get(id=staff_id)
                 user = staff.user
-                is_first_activation = not user.is_active and not user.welcome_email_sent
+                has_pending_welcome = EmailLog.objects.filter(
+                    recipient_email=user.email,
+                    email_type=EmailLog.EMAIL_TYPE_WELCOME,
+                    status=EmailLog.STATUS_ON_HOLD,
+                ).exists()
+                has_known_phone_password = bool((user.phone or '').strip())
+                is_first_activation = (
+                    (not user.is_active)
+                    and has_pending_welcome
+                    and not has_known_phone_password
+                )
                 user.is_active = not user.is_active
                 status = 'active' if user.is_active else 'inactive'
                 status_display = 'Active' if user.is_active else 'Inactive'

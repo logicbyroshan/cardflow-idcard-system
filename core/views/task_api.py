@@ -22,8 +22,8 @@ import json
 import logging
 
 from django.core.cache import cache as django_cache
-from django.http import JsonResponse, FileResponse, Http404
-from django.views.decorators.http import require_http_methods, require_POST, require_GET
+from django.http import JsonResponse, FileResponse
+from django.views.decorators.http import require_POST, require_GET
 from django.shortcuts import get_object_or_404
 from django.conf import settings
 
@@ -48,16 +48,9 @@ logger = logging.getLogger(__name__)
 # Maximum allowed file sizes (bytes)
 MAX_XLSX_SIZE = 50 * 1024 * 1024         # 50 MB for spreadsheets
 MAX_ZIP_SIZE = 950 * 1024 * 1024          # 950 MB for ZIP archives (buffer below 1 GB nginx limit)
-MAX_SINGLE_ZIP_SIZE = 950 * 1024 * 1024   # 950 MB per individual ZIP
 
 # Allowed file extensions
-ALLOWED_SPREADSHEET_EXTENSIONS = ('.xlsx', '.xls', '.csv')
 ALLOWED_ZIP_EXTENSIONS = ('.zip',)
-
-# ZIP bomb protection constants
-MAX_ZIP_COMPRESSION_RATIO = 100   # reject entries with ratio > 100:1
-MAX_ZIP_ENTRY_COUNT = 5000        # max files inside a ZIP
-MAX_ZIP_TOTAL_EXTRACTED = 1 * 1024 * 1024 * 1024  # 1 GB total extracted
 
 
 def _validate_uploaded_file(uploaded_file, allowed_extensions, max_size, label='File'):
@@ -74,12 +67,6 @@ def _validate_uploaded_file(uploaded_file, allowed_extensions, max_size, label='
         actual_mb = uploaded_file.size / (1024 * 1024)
         return False, f'{label}: File too large ({actual_mb:.1f} MB). Maximum: {max_mb:.0f} MB'
     return True, None
-
-
-def _safe_task_error(e, fallback='An error occurred. Please try again.'):
-    """Return a safe error message for task API responses. Logs the real exception."""
-    logger.exception("Task API error: %s", e)
-    return fallback
 
 
 def _acquire_task_lock(user_id, task_type, ttl=10):

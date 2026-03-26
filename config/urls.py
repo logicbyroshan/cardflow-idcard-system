@@ -1,7 +1,6 @@
 from django.contrib import admin
 from django.urls import path, include, reverse
 from django.conf import settings
-from django.conf.urls.static import static
 from django.contrib.auth.views import redirect_to_login
 from website.seo import robots_txt, sitemap_xml
 from core.views.health import health_check

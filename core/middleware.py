@@ -16,7 +16,6 @@ from django.conf import settings as django_settings
 from django.contrib.auth import logout
 from django.shortcuts import redirect
 from django.http import JsonResponse
-from django.utils.functional import SimpleLazyObject
 from django.urls import reverse
 
 logger = logging.getLogger(__name__)
@@ -513,7 +512,7 @@ class PermissionValidationMiddleware:
                 # no additional DB queries needed.
                 fresh_user = (
                     User.objects
-                    .select_related('staff_profile', 'client_profile')
+                    .select_related('staff_profile__client', 'client_profile')
                     .get(pk=user.pk)
                 )
                 setattr(request, _cache_attr, fresh_user)
@@ -553,7 +552,9 @@ class PermissionValidationMiddleware:
         from client.models import Client
         
         try:
-            client = Client.objects.get(user=user)
+            client = getattr(user, 'client_profile', None)
+            if client is None:
+                client = Client.objects.get(user=user)
         except Client.DoesNotExist:
             logger.warning(
                 "PermissionValidationMiddleware: Client profile not found for user %s - forcing logout",
@@ -592,10 +593,11 @@ class PermissionValidationMiddleware:
     def _validate_client_staff_access(self, request, user):
         """Validate client staff user access"""
         from staff.models import Staff
-        from client.models import Client
         
         try:
-            staff = Staff.objects.select_related('client').get(user=user)
+            staff = getattr(user, 'staff_profile', None)
+            if staff is None:
+                staff = Staff.objects.select_related('client').get(user=user)
         except Staff.DoesNotExist:
             logger.warning(
                 "PermissionValidationMiddleware: Staff profile not found for user %s - forcing logout",
@@ -647,7 +649,7 @@ class PermissionValidationMiddleware:
     def _annotate_request_scope(self, request):
         """Add role-based scope attributes to request for use by views."""
         from core.services.permission_service import PermissionService
-        user = request.user
+        user = getattr(request, '_pvm_fresh_user', request.user)
         try:
             request.user_scope = {
                 'is_super_admin': PermissionService.is_super_admin(user),

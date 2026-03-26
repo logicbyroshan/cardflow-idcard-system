@@ -14,7 +14,6 @@ file is returned unchanged (never raises).
 
 import io
 import logging
-import math
 import os
 import random
 import subprocess

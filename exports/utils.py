@@ -384,10 +384,6 @@ _CLASS_PATTERNS = ['CLASS']
 _SECTION_PATTERNS = ['SECTION', 'SEC']
 _NAME_PATTERNS = ['NAME', 'STUDENT', 'EMPNAME', 'STUDENT NAME', 'EMP NAME']
 
-# Logical class ordering for exports (lower index = earlier in sort order)
-# Uses the canonical CLASS_ORDER from field_utils.py.
-from core.utils.field_utils import CLASS_ORDER as _CLASS_ORDER, CLASS_ORDER_UNKNOWN as _CLASS_ORDER_UNKNOWN
-
 
 def _find_field_name(field_names: List[str], patterns: List[str]) -> Optional[str]:
     """

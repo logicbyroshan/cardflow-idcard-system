@@ -21,14 +21,13 @@ from idcards.models import IDCardGroup, IDCard, IDCardTable
 from ..models import User, SystemSettings, Notification, ActivityLog
 from ..services import IDCardService
 from ..services.activity_service import ActivityService
-from ..utils.htmx import is_htmx, render_partial
+from ..utils.htmx import is_htmx
 from ..services.permission_service import (
     PermissionService,
     require_any_admin,
     require_super_admin as _require_super_admin,
     api_require_any_admin,
     api_require_any_authenticated,
-    api_require_super_admin as _api_require_super_admin,
 )
 
 logger = logging.getLogger(__name__)

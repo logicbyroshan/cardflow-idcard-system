@@ -323,7 +323,11 @@ class ForgotPasswordAPIView(View):
                 }, status=400)
             
             result = OTPService.send_otp(email)
-            logger.info("Password reset requested: email=%s success=%s", email, result['success'])
+            logger.info(
+                "Password reset requested: email=%s success=%s",
+                _mask_login_identifier(email),
+                result['success'],
+            )
             
             response_data = {
                 'success': result['success'],
@@ -451,28 +455,6 @@ def redirect_to_dashboard(request):
     """Redirect authenticated user to their appropriate dashboard."""
     redirect_url = AuthService.get_dashboard_url(request.user)
     return redirect(redirect_url)
-
-
-@login_required(login_url='/panel/auth/login/')
-def setup_groups_view(request):
-    """
-    Utility view to setup Django Groups.
-    Should be called once during initial setup.
-    Only accessible by super admins via POST.
-    """
-    if request.method != 'POST':
-        return JsonResponse({'success': False, 'message': 'Method not allowed'}, status=405)
-
-    # Use PermissionService for consistent role checking across the app
-    from core.services import PermissionService
-    if not PermissionService.is_super_admin(request.user):
-        return JsonResponse({
-            'success': False,
-            'message': 'Unauthorized'
-        }, status=403)
-    
-    result = RoleService.setup_groups()
-    return JsonResponse(result)
 
 
 # =============================================================================

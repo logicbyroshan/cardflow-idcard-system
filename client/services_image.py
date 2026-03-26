@@ -2,6 +2,7 @@
 Client Image Service — image upload and card-matching logic.
 """
 import os
+from collections import defaultdict
 
 from client.models import Client
 from idcards.models import IDCardTable, IDCard
@@ -50,6 +51,27 @@ class ClientImageService(BaseService):
             
             matched = 0
             failed = 0
+
+            cards = list(
+                IDCard.objects
+                .filter(table_id=table_id)
+                .only('id', 'field_data', 'updated_at')
+            )
+
+            pending_targets = defaultdict(list)
+            for card in cards:
+                fd = card.field_data or {}
+                for key, val in fd.items():
+                    if not isinstance(val, str) or not val.startswith('PENDING:'):
+                        continue
+                    pending_id = val[len('PENDING:'):]
+                    normalized_pending = cls.normalize_image_identifier(pending_id)
+                    if normalized_pending:
+                        pending_targets[normalized_pending].append((card, key))
+
+            dirty_cards = {}
+            batch_counter = 1
+
             for image in images:
                 original_name = getattr(image, 'name', '')
                 name_without_ext = os.path.splitext(original_name)[0] if original_name else ''
@@ -60,34 +82,58 @@ class ClientImageService(BaseService):
                 normalized_upload = cls.normalize_image_identifier(name_without_ext)
                 if not normalized_upload:
                     continue
-                
-                # Only match cards with PENDING:<identifier> values
-                cards = IDCard.objects.filter(table_id=table_id)
-                for card in cards:
+
+                targets = pending_targets.get(normalized_upload, [])
+                if not targets:
+                    continue
+
+                try:
+                    image.seek(0)
+                    image_bytes = image.read()
+                    image.seek(0)
+                except Exception:
+                    failed += len(targets)
+                    continue
+
+                _, ext = os.path.splitext(original_name)
+                original_ext = ext or '.jpg'
+
+                for card, key in targets:
                     fd = card.field_data or {}
-                    updated = False
-                    for key, val in fd.items():
-                        if not isinstance(val, str) or not val.startswith('PENDING:'):
-                            continue
-                        pending_id = val[len('PENDING:'):]
-                        normalized_pending = cls.normalize_image_identifier(pending_id)
-                        if normalized_pending and normalized_pending == normalized_upload:
-                            try:
-                                image.seek(0)
-                                result = ImageService.save_image(
-                                    file_content=image,
-                                    client=client,
-                                    existing_path='',
-                                )
-                                if result.success and result.data.get('path'):
-                                    fd[key] = result.data['path']
-                                    updated = True
-                            except Exception:
-                                failed += 1
-                    if updated:
-                        card.field_data = fd
-                        card.save(update_fields=['field_data', 'updated_at'])
-                        matched += 1
+                    # Skip if already resolved in this batch by a prior image.
+                    current_val = fd.get(key, '')
+                    if not isinstance(current_val, str) or not current_val.startswith('PENDING:'):
+                        continue
+
+                    try:
+                        result = ImageService.save_new_image(
+                            image_bytes=image_bytes,
+                            client=client,
+                            field_name=key,
+                            card=card,
+                            batch_counter=batch_counter,
+                            original_ext=original_ext,
+                            original_filename=original_name,
+                            uploaded_by=user,
+                        )
+                        batch_counter += 1
+
+                        if result.success and result.data.get('final_value'):
+                            fd[key] = result.data['final_value']
+                            card.field_data = fd
+                            dirty_cards[card.pk] = card
+                            matched += 1
+                        else:
+                            failed += 1
+                    except Exception:
+                        failed += 1
+
+            if dirty_cards:
+                IDCard.objects.bulk_update(
+                    list(dirty_cards.values()),
+                    ['field_data', 'updated_at'],
+                    batch_size=200,
+                )
             
             return ServiceResult(
                 success=True,

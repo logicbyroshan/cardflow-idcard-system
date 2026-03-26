@@ -173,7 +173,7 @@ class Client(models.Model):
         os.makedirs(folder_path, exist_ok=True)
         return folder_path
     
-    def rename_image_folder(self, old_name):
+    def rename_image_folder(self):
         """
         Rename the image folder when client name changes.
         Only updates the first 5 chars (name part), suffix stays same.
@@ -285,7 +285,7 @@ class Client(models.Model):
         # Uses cached _original_name from __init__ to avoid extra DB query
         if self.pk and (not kwargs.get('update_fields') or 'name' in (kwargs.get('update_fields') or [])):
             if self._original_name and self._original_name != self.name and self.image_folder_code:
-                self.rename_image_folder(self._original_name)
+                self.rename_image_folder()
         
         # Generate folder code if not set
         if not self.image_folder_code:

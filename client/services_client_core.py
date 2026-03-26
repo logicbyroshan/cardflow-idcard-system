@@ -136,12 +136,14 @@ class ClientService(BaseService):
             phone = data.get('phone', '').strip()
             password = data.get('password', '').strip()
             used_phone_as_password = False
+            used_generated_password = False
             if not password:
                 if phone:
                     password = phone
                     used_phone_as_password = True
                 else:
                     password = secrets.token_urlsafe(12)
+                    used_generated_password = True
             
             # Skip Django password validators when using phone as password
             # (NumericPasswordValidator would reject a pure-digit mobile number)
@@ -188,14 +190,17 @@ class ClientService(BaseService):
                 
                 # Phase 1: Photo field removed - using avatar placeholder
                 
-                # Log email as on_hold — will be sent now (active) or on first activation (inactive)
-                EmailLog.objects.create(
-                    recipient_name=name or 'Client',
-                    recipient_email=email,
-                    subject='Welcome to Adarsh Admin - Your Account is Ready!',
-                    email_type=EmailLog.EMAIL_TYPE_WELCOME,
-                    status=EmailLog.STATUS_ON_HOLD,
-                )
+                # Queue welcome email only when it is actually needed:
+                # - active now (send immediately)
+                # - inactive with unknown auto-generated password (send on first activation)
+                if create_as_active or used_generated_password:
+                    EmailLog.objects.create(
+                        recipient_name=name or 'Client',
+                        recipient_email=email,
+                        subject='Welcome to Adarsh Admin - Your Account is Ready!',
+                        email_type=EmailLog.EMAIL_TYPE_WELCOME,
+                        status=EmailLog.STATUS_ON_HOLD,
+                    )
             
             # Send welcome email in background thread if created as active
             # This prevents the API response from being blocked by SMTP
@@ -238,8 +243,10 @@ class ClientService(BaseService):
             message = 'Client created successfully!'
             if create_as_active:
                 message += ' Welcome email queued for delivery.'
-            else:
+            elif used_generated_password:
                 message += ' Welcome email will be sent on first activation.'
+            else:
+                message += ' Account is inactive; activate it to allow login with the configured password.'
             
             return ServiceResult(
                 success=True,
@@ -421,7 +428,8 @@ class ClientService(BaseService):
     @classmethod
     def toggle_status(cls, client_id: int) -> ServiceResult:
         """Toggle client active/inactive status (atomic to prevent lost toggles).
-        On the FIRST activation, generates fresh credentials and sends a welcome email.
+        On first activation, generates/sends credentials only when no known password
+        was provided at creation time.
         """
         try:
             # Collect state needed for email (must be outside atomic for clean email send)
@@ -433,7 +441,17 @@ class ClientService(BaseService):
                 client = Client.objects.select_related('user').select_for_update().get(id=client_id)
                 user = client.user
 
-                is_first_activation = (client.status != 'active') and not user.welcome_email_sent
+                has_pending_welcome = EmailLog.objects.filter(
+                    recipient_email=user.email,
+                    email_type=EmailLog.EMAIL_TYPE_WELCOME,
+                    status=EmailLog.STATUS_ON_HOLD,
+                ).exists()
+                has_known_phone_password = bool((user.phone or '').strip())
+                is_first_activation = (
+                    (client.status != 'active')
+                    and has_pending_welcome
+                    and not has_known_phone_password
+                )
 
                 if client.status == 'active':
                     # Deactivate

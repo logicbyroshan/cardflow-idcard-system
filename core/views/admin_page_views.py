@@ -19,7 +19,7 @@ from idcards.models import IDCardGroup, IDCard, IDCardTable
 from reprintcard.models import ReprintRequest
 from ..models import User, SystemSettings, Notification, EmailLog
 from ..services import IDCardService
-from ..utils.htmx import is_htmx, render_partial
+from ..utils.htmx import is_htmx
 from ..services.permission_service import (
     PermissionService,
     require_any_admin,

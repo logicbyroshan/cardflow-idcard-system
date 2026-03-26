@@ -477,7 +477,7 @@ class WorkflowService:
     # ── Activity logging helpers ────────────────────────────────────
 
     @staticmethod
-    def _log_transition(card, old_status, new_status, user, request):
+    def _log_transition(card, _old_status, new_status, _user, request):
         """Log a single-card transition."""
         try:
             from core.services.activity_service import ActivityService

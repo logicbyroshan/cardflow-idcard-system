@@ -82,6 +82,36 @@ class ImageCoreMixin:
     # ==================== FILENAME GENERATION ====================
 
     @staticmethod
+    def _is_safe_media_relative_path(path: Optional[str]) -> bool:
+        """Allow only safe relative storage paths (block absolute/traversal/URL forms)."""
+        if not path:
+            return False
+
+        candidate = str(path).strip().replace('\\', '/')
+        if not candidate:
+            return False
+
+        lowered = candidate.lower()
+        if lowered.startswith(('http://', 'https://', 'file://', 'data:')):
+            return False
+
+        if os.path.isabs(candidate) or candidate.startswith('/'):
+            return False
+
+        normalized = os.path.normpath(candidate).replace('\\', '/')
+        if normalized in ('', '.', '..'):
+            return False
+        if normalized.startswith('../') or '/..' in f'/{normalized}':
+            return False
+
+        # Block Windows drive-like prefixes (e.g., C:/foo)
+        first_part = normalized.split('/', 1)[0]
+        if ':' in first_part:
+            return False
+
+        return True
+
+    @staticmethod
     def generate_filename(batch_counter: int = 1, original_ext: str = '.jpg') -> str:
         """Generate a unique 14-digit filename for NEW uploaded images."""
         return ImageRenamer.generate_filename(batch_counter, original_ext)
@@ -249,7 +279,11 @@ class ImageCoreMixin:
                 existing_path
                 and existing_path not in ['NOT_FOUND', '', 'PENDING']
                 and not existing_path.startswith('PENDING:')
+                and cls._is_safe_media_relative_path(existing_path)
             )
+
+            if existing_path and not is_update and existing_path not in ['NOT_FOUND', '', 'PENDING']:
+                logger.warning("Blocked unsafe existing_path during image update: %s", existing_path)
             
             if is_update:
                 filename = ImageRenamer.generate_updated_filename_safe(
@@ -359,6 +393,10 @@ class ImageCoreMixin:
         
         if image_path.startswith('PENDING:'):
             return MediaResult(success=True, message="Pending reference cleared")
+
+        if not cls._is_safe_media_relative_path(image_path):
+            logger.warning("Blocked unsafe image delete path: %s", image_path)
+            return MediaResult(success=False, message="Invalid image path")
         
         try:
             # Delete original

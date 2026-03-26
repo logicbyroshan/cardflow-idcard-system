@@ -16,7 +16,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from .constants import VALID_IMAGE_EXTENSIONS, NEW_FILENAME_LENGTH, LEGACY_FILENAME_LENGTH
+from .constants import VALID_IMAGE_EXTENSIONS
 
 
 # =============================================================================

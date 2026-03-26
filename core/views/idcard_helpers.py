@@ -384,8 +384,6 @@ def _is_client_readonly(user, card_status):
 # All new code should import directly from core.utils.field_utils.
 from core.utils.field_utils import (
     validate_image_bytes,
-    convert_class_value,
-    convert_section_value,
     NUMERIC_TO_ROMAN,
     VALID_CLASS_VALUES,
     CLASS_UPGRADE_MAP,

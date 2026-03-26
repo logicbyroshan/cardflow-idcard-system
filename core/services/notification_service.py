@@ -15,7 +15,8 @@ from datetime import timedelta
 
 from django.core.cache import cache as _cache
 from django.db import transaction
-from django.db.models import Q, Exists, OuterRef, Subquery, Value, BooleanField
+from django.db.models import Q, Exists, OuterRef, Value, BooleanField
+from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.timesince import timesince
 
@@ -27,6 +28,44 @@ logger = logging.getLogger(__name__)
 
 class NotificationService:
     """Service for creating, querying, and managing notifications."""
+
+    EMAIL_CATEGORY_THEMES = {
+        'general': {
+            'accent': '#2563eb',
+            'accent_soft': '#dbeafe',
+            'banner_bg': '#eff6ff',
+            'badge_bg': '#dbeafe',
+            'badge_text': '#1e3a8a',
+        },
+        'announcement': {
+            'accent': '#d97706',
+            'accent_soft': '#fde68a',
+            'banner_bg': '#fffbeb',
+            'badge_bg': '#fef3c7',
+            'badge_text': '#92400e',
+        },
+        'update': {
+            'accent': '#059669',
+            'accent_soft': '#a7f3d0',
+            'banner_bg': '#ecfdf5',
+            'badge_bg': '#d1fae5',
+            'badge_text': '#065f46',
+        },
+        'maintenance': {
+            'accent': '#7c3aed',
+            'accent_soft': '#ddd6fe',
+            'banner_bg': '#f5f3ff',
+            'badge_bg': '#ede9fe',
+            'badge_text': '#5b21b6',
+        },
+        'alert': {
+            'accent': '#dc2626',
+            'accent_soft': '#fecaca',
+            'banner_bg': '#fef2f2',
+            'badge_bg': '#fee2e2',
+            'badge_text': '#991b1b',
+        },
+    }
 
     # ── creation ────────────────────────────────────────────
 
@@ -325,13 +364,49 @@ class NotificationService:
         return data
 
     @classmethod
+    def _build_email_context(cls, notif):
+        """Build render context for notification email templates."""
+        theme = cls.EMAIL_CATEGORY_THEMES.get(
+            notif.category,
+            cls.EMAIL_CATEGORY_THEMES['general'],
+        )
+        return {
+            'notification': notif,
+            'theme': theme,
+            'category_display': notif.get_category_display(),
+            'priority_display': notif.get_priority_display(),
+            'target_display': notif.get_target_display(),
+            'is_urgent': notif.priority == 'urgent',
+            'created_at_display': timezone.localtime(notif.created_at).strftime('%d %b %Y, %I:%M %p'),
+            'sender_name': (
+                notif.created_by.get_full_name() or notif.created_by.username
+            ) if notif.created_by else 'System',
+        }
+
+    @classmethod
+    def _build_plain_email_body(cls, notif, context):
+        """Generate plain-text fallback body for notification emails."""
+        return (
+            f"Adarsh Admin Notification\n"
+            f"Category: {context['category_display']}\n"
+            f"Priority: {context['priority_display']}\n"
+            f"Target: {context['target_display']}\n"
+            f"Sent by: {context['sender_name']}\n"
+            f"Sent at: {context['created_at_display']}\n\n"
+            f"{notif.title}\n"
+            f"{'=' * len(notif.title)}\n"
+            f"{notif.message}\n\n"
+            "This is an automated notification from Adarsh Admin."
+        )
+
+    @classmethod
     def _send_email_alerts(cls, notif):
         """
         Send email alerts for a notification in background thread.
         Each recipient gets an individual email so addresses aren't exposed.
         """
         try:
-            from core.utils.threaded_email import send_mail_async
+            from core.utils.threaded_email import send_html_email_async
             from django.conf import settings
 
             # Skip if email is not configured
@@ -365,15 +440,19 @@ class NotificationService:
             from_email = settings.DEFAULT_FROM_EMAIL
             priority_label = f"[{notif.get_priority_display()}] " if notif.priority != 'normal' else ''
             subject = f"{priority_label}{notif.title}"
+            context = cls._build_email_context(notif)
+            html_content = render_to_string('emails/notification_alert.html', context)
+            plain_content = cls._build_plain_email_body(notif, context)
 
             # Send individually so recipients don't see each other's addresses
             for email_addr in recipients:
-                send_mail_async(
+                send_html_email_async(
                     subject=subject,
-                    message=notif.message,
+                    plain_content=plain_content,
+                    html_content=html_content,
                     from_email=from_email,
                     recipient_list=[email_addr],
-                    fail_silently=True,
+                    email_type='system',
                 )
 
             logger.info("Email alerts queued for notification #%d to %d recipients",

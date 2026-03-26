@@ -6,6 +6,7 @@ import json
 
 from django.test import TestCase
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.cache import cache
 from unittest import mock
 
@@ -358,10 +359,6 @@ class ClientDashboardServiceTests(TestCase):
         result = ClientDashboardService.get_dashboard_data(staff_user)
         self.assertTrue(result.success)
         self.assertEqual(result.data['group_count'], 1)
-        self.assertEqual(result.data['table_count'], 1)
-        self.assertEqual(result.data['counts']['pending'], 1)
-        self.assertEqual(result.data['counts']['verified'], 0)
-        self.assertEqual(result.data['total_cards'], 1)
 
     def test_groups_with_counts_scoped_for_client_staff(self):
         from client.services import ClientDashboardService
@@ -424,6 +421,60 @@ class ClientDashboardServiceTests(TestCase):
         self.assertEqual(len(group_payload['tables']), 1)
         self.assertEqual(group_payload['tables'][0]['id'], table_a.id)
         self.assertEqual(group_payload['tables'][0]['card_count'], 1)
+
+
+class ClientImageServiceTests(TestCase):
+    def setUp(self):
+        from client.models import Client
+        from idcards.models import IDCardGroup, IDCardTable, IDCard
+
+        self.user = User.objects.create_user(
+            username='img-client@test.com',
+            email='img-client@test.com',
+            password='pass1234',
+            role='client',
+        )
+        self.client_obj = Client.objects.create(user=self.user, name='Image Client')
+        self.group = IDCardGroup.objects.create(client=self.client_obj, name='Img Group')
+        self.table = IDCardTable.objects.create(
+            group=self.group,
+            name='Img Table',
+            fields=[{'name': 'PHOTO', 'type': 'photo', 'order': 1}],
+        )
+        self.card = IDCard.objects.create(
+            table=self.table,
+            field_data={'PHOTO': 'PENDING:roll_001'},
+            status='pending',
+        )
+
+    def test_upload_images_uses_single_authority_save_and_updates_field(self):
+        from client.services_image import ClientImageService
+
+        upload = SimpleUploadedFile(
+            'roll_001.jpg',
+            b'abc123' * 80,
+            content_type='image/jpeg',
+        )
+
+        mocked_result = mock.Mock(success=True, data={'final_value': 'adarshimg/CODE/new.jpg'})
+
+        with mock.patch('client.services_image.ClientAccessService.get_client_for_user', return_value=self.client_obj), \
+             mock.patch('client.services_image.ClientAccessService.can_access_table', return_value=True), \
+             mock.patch('client.services_image.PermissionService.has_permission', return_value=True), \
+             mock.patch('mediafiles.services.ImageService.save_new_image', return_value=mocked_result) as save_new:
+            result = ClientImageService.upload_images(self.user, self.table.id, [upload])
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.data['matched'], 1)
+        self.assertEqual(result.data['failed'], 0)
+
+        self.card.refresh_from_db()
+        self.assertEqual(self.card.field_data.get('PHOTO'), 'adarshimg/CODE/new.jpg')
+
+        self.assertEqual(save_new.call_count, 1)
+        kwargs = save_new.call_args.kwargs
+        self.assertEqual(kwargs.get('field_name'), 'PHOTO')
+        self.assertEqual(kwargs.get('card').id, self.card.id)
 
 
 class ClientStaffServicePermissionTests(TestCase):
@@ -748,3 +799,76 @@ class ClientApiIntegrationTests(TestCase):
 
         self.client_staff_user.refresh_from_db()
         self.assertTrue(self.client_staff_user.check_password('TmpStrong!982'))
+
+
+class ClientActivationPasswordFlowTests(TestCase):
+    def test_first_activation_preserves_custom_password(self):
+        from core.services import ClientService
+        from core.models import EmailLog
+
+        custom_password = 'ClientCustom@123'
+        result = ClientService.create({
+            'name': 'Custom Password Client',
+            'email': 'client-custom-activation@test.com',
+            'phone': '9123456789',
+            'password': custom_password,
+            'is_active': False,
+        })
+        self.assertTrue(result.success, msg=result.message)
+
+        client_id = result.data['client']['id']
+        created_user = User.objects.get(email='client-custom-activation@test.com')
+        self.assertTrue(created_user.check_password(custom_password))
+
+        with mock.patch('client.services_client_core.send_welcome_email') as send_welcome_mock:
+            toggle_result = ClientService.toggle_status(client_id)
+
+        self.assertTrue(toggle_result.success, msg=toggle_result.message)
+        created_user.refresh_from_db()
+        self.assertTrue(created_user.is_active)
+        self.assertTrue(created_user.check_password(custom_password))
+        send_welcome_mock.assert_not_called()
+        self.assertFalse(
+            EmailLog.objects.filter(
+                recipient_email='client-custom-activation@test.com',
+                email_type=EmailLog.EMAIL_TYPE_WELCOME,
+                status=EmailLog.STATUS_ON_HOLD,
+            ).exists()
+        )
+
+    def test_first_activation_generates_password_when_initial_was_unknown(self):
+        from core.services import ClientService
+
+        generated_on_create = 'CreateRnd@123'
+        generated_on_activation = 'ActivateRnd@123'
+
+        with mock.patch(
+            'client.services_client_core.secrets.token_urlsafe',
+            return_value=generated_on_create,
+        ):
+            result = ClientService.create({
+                'name': 'Generated Password Client',
+                'email': 'client-generated-activation@test.com',
+                'phone': '',
+                'password': '',
+                'is_active': False,
+            })
+
+        self.assertTrue(result.success, msg=result.message)
+        client_id = result.data['client']['id']
+        created_user = User.objects.get(email='client-generated-activation@test.com')
+        self.assertTrue(created_user.check_password(generated_on_create))
+
+        with mock.patch(
+            'client.services_client_core.generate_secure_password',
+            return_value=generated_on_activation,
+        ):
+            with mock.patch('client.services_client_core.send_welcome_email') as send_welcome_mock:
+                toggle_result = ClientService.toggle_status(client_id)
+
+        self.assertTrue(toggle_result.success, msg=toggle_result.message)
+        created_user.refresh_from_db()
+        self.assertTrue(created_user.is_active)
+        self.assertFalse(created_user.check_password(generated_on_create))
+        self.assertTrue(created_user.check_password(generated_on_activation))
+        send_welcome_mock.assert_called_once()

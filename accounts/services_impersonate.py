@@ -64,6 +64,9 @@ class ImpersonateService:
         except User.DoesNotExist:
             return {'success': False, 'message': 'User not found.'}
 
+        if not target_user.is_active:
+            return {'success': False, 'message': 'Cannot impersonate an inactive user.'}
+
         # Save original user info before login() flushes the session
         original_user_id = current_user.pk
         original_user_name = current_user.get_full_name() or current_user.username

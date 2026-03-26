@@ -222,10 +222,19 @@ class ImageFieldsMixin:
         # Check CardMedia first (future implementation)
         # For now, use field_data
         if fallback_to_field_data:
+            from core.services.base import BaseService
+
             field_data = card.field_data or {}
-            path = field_data.get(field_name, '')
+            path = BaseService.normalize_image_path(field_data.get(field_name, ''))
             
             if path and path not in ('NOT_FOUND', '') and not path.startswith('PENDING:'):
+                if not cls._is_safe_media_relative_path(path):
+                    logger.warning(
+                        "Blocked unsafe image path from get_image_path_for_card: %s",
+                        path,
+                    )
+                    return None
+
                 # Phase 2 guard: NEVER return a thumbnail path from this helper.
                 # Exports and all read-helpers must always get the original.
                 if ThumbnailService.is_thumbnail_path(path):
@@ -321,7 +330,10 @@ class ImageFieldsMixin:
         for field_name in fields_to_check:
             path = field_data.get(field_name, '')
             if path and path not in ('NOT_FOUND', '') and not path.startswith('PENDING:'):
-                result[field_name] = path
+                if cls._is_safe_media_relative_path(path):
+                    result[field_name] = path
+                else:
+                    result[field_name] = None
             else:
                 result[field_name] = None
         

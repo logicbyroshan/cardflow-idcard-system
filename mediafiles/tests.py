@@ -119,9 +119,9 @@ class CardMediaModelAdvancedTests(TestCase):
         from mediafiles.models import card_media_upload_path
 
         instance = SimpleNamespace(client_id='12/../34', media_type='photo*bad')
-        path = card_media_upload_path(instance, 'sample.png')
+        path = card_media_upload_path(instance, '../unsafe path/sample bad?.png')
 
-        self.assertEqual(path, 'card_media/1234/photobad/sample.png')
+        self.assertEqual(path, 'card_media/1234/photobad/sample_bad.png')
 
     def test_card_media_str_for_group_and_filename_property(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
@@ -146,6 +146,35 @@ class CardMediaModelAdvancedTests(TestCase):
         self.assertTrue(media.filename.startswith('template_front'))
         self.assertTrue(media.filename.endswith('.png'))
         self.assertTrue(media.url)
+
+    def test_cleanup_cardmedia_file_skips_delete_when_path_is_shared(self):
+        from mediafiles.models import CardMedia
+
+        client, _group, _table, card = _create_test_card()
+        shared_path = 'adarshimg/SHARED/shared.jpg'
+
+        media_one = CardMedia.objects.create(
+            card=card,
+            client=client,
+            file=shared_path,
+            media_type='photo',
+            field_name='PHOTO',
+        )
+        media_two = CardMedia.objects.create(
+            card=card,
+            client=client,
+            file=shared_path,
+            media_type='photo',
+            field_name='MOTHER PHOTO',
+        )
+
+        with mock.patch.object(media_one.file.storage, 'exists', return_value=True), \
+             mock.patch.object(media_one.file.storage, 'delete') as delete_mock, \
+             mock.patch('mediafiles.services.image_thumbnail.ThumbnailService.delete_thumbnail'):
+            media_one.delete()
+
+        self.assertFalse(delete_mock.called)
+        self.assertTrue(CardMedia.objects.filter(pk=media_two.pk).exists())
 
 
 class ImageFieldsServiceTests(TestCase):
@@ -259,6 +288,15 @@ class ImageFieldsServiceTests(TestCase):
                 got = ImageService.get_image_path_for_export(self.card, 'PHOTO', prefer_thumbnail=True)
 
         self.assertEqual(got, 'adarshimg/thumbs/CODE/original.webp')
+
+    def test_get_image_path_for_card_blocks_unsafe_paths(self):
+        from mediafiles.services import ImageService
+
+        self.card.field_data['PHOTO'] = '../../secret.jpg'
+        self.card.save(update_fields=['field_data'])
+
+        got = ImageService.get_image_path_for_card(self.card, 'PHOTO')
+        self.assertIsNone(got)
 
 
 class MediafilesUtilsTests(TestCase):

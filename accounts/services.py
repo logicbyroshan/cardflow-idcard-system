@@ -9,6 +9,7 @@ import logging
 import secrets
 import string
 import hashlib
+import os
 from django.core.cache import cache
 from django.contrib.auth import get_user_model, authenticate
 from django.contrib.auth.models import Group
@@ -54,6 +55,37 @@ OTP_LENGTH = 6
 OTP_EXPIRY_MINUTES = 10
 OTP_MAX_ATTEMPTS = 3
 
+# Login hardening settings (cache-based per-identifier throttle)
+AUTH_FAIL_WINDOW_SECONDS = int(os.getenv('AUTH_FAIL_WINDOW_SECONDS', '900'))
+AUTH_FAIL_MAX_ATTEMPTS = int(os.getenv('AUTH_FAIL_MAX_ATTEMPTS', '15'))
+
+
+def _normalize_identifier(value: str) -> str:
+    """Normalize user-provided identifiers used for lookups/cache keys."""
+    return str(value or '').strip().lower()
+
+
+def _auth_fail_cache_key(identifier: str) -> str:
+    digest = hashlib.sha256(identifier.encode('utf-8')).hexdigest()
+    return f'auth_fail:{digest}'
+
+
+def _revoke_user_sessions(user_id: int) -> None:
+    """Best-effort revocation of all active DB sessions for a user."""
+    from django.contrib.sessions.models import Session
+
+    try:
+        qs = Session.objects.filter(expire_date__gt=timezone.now())
+        for session in qs.iterator(chunk_size=200):
+            try:
+                data = session.get_decoded()
+            except Exception:
+                continue
+            if str(data.get('_auth_user_id')) == str(user_id):
+                session.delete()
+    except Exception as exc:
+        logger.warning('Session revocation failed for user_id=%s: %s', user_id, exc)
+
 
 class AuthService:
     """
@@ -74,6 +106,9 @@ class AuthService:
             User instance or None
         """
         from django.db.models import Q
+        if not identifier:
+            return None
+
         role_filter = Q()
         if role and role in ROLE_MAPPING:
             if role == 'super_admin':
@@ -100,6 +135,7 @@ class AuthService:
             dict: response safe for unauthenticated clients
         """
         try:
+            identifier = _normalize_identifier(identifier)
             # Perform a lookup so timing stays consistent, but never reveal result.
             AuthService._find_user(identifier, role)
             return {
@@ -117,6 +153,38 @@ class AuthService:
             }
     
     @staticmethod
+    def _is_login_blocked(identifier: str) -> bool:
+        if not identifier:
+            return False
+        try:
+            attempts = int(cache.get(_auth_fail_cache_key(identifier), 0) or 0)
+            return attempts >= max(1, AUTH_FAIL_MAX_ATTEMPTS)
+        except Exception:
+            return False
+
+    @staticmethod
+    def _record_login_failure(identifier: str) -> None:
+        if not identifier:
+            return
+        key = _auth_fail_cache_key(identifier)
+        try:
+            cache.add(key, 0, AUTH_FAIL_WINDOW_SECONDS)
+            cache.incr(key)
+        except ValueError:
+            cache.set(key, 1, AUTH_FAIL_WINDOW_SECONDS)
+        except Exception:
+            pass
+
+    @staticmethod
+    def _clear_login_failures(identifier: str) -> None:
+        if not identifier:
+            return
+        try:
+            cache.delete(_auth_fail_cache_key(identifier))
+        except Exception:
+            pass
+
+    @staticmethod
     def authenticate_user(identifier, password, role=None):
         """
         Authenticate user with email/username and password.
@@ -130,25 +198,39 @@ class AuthService:
             dict: {success: bool, user: User, redirect_url: str, message: str}
         """
         try:
-            user = AuthService._find_user(identifier, role=None)
+            identifier = _normalize_identifier(identifier)
 
             _AUTH_FAIL_MSG = 'Invalid credentials. Please try again.'
 
+            if not identifier or len(identifier) > 254:
+                return {'success': False, 'message': _AUTH_FAIL_MSG}
+
+            if AuthService._is_login_blocked(identifier):
+                return {'success': False, 'message': _AUTH_FAIL_MSG}
+
+            user = AuthService._find_user(identifier, role=None)
+
             if not user:
+                AuthService._record_login_failure(identifier)
                 return {'success': False, 'message': _AUTH_FAIL_MSG}
 
             # Check role if specified
             if role and user.role != role:
                 if not (role == 'super_admin' and user.role == 'pro_user'):
+                    AuthService._record_login_failure(identifier)
                     return {'success': False, 'message': _AUTH_FAIL_MSG}
 
             if not user.is_active:
+                AuthService._record_login_failure(identifier)
                 return {'success': False, 'message': _AUTH_FAIL_MSG}
 
             authenticated_user = authenticate(username=user.username, password=password)
 
             if authenticated_user is None:
+                AuthService._record_login_failure(identifier)
                 return {'success': False, 'message': _AUTH_FAIL_MSG}
+
+            AuthService._clear_login_failures(identifier)
 
             redirect_url = DASHBOARD_URLS.get(user.role, '/panel/')
 
@@ -197,6 +279,12 @@ class OTPService:
         """Generate a cache key for reset token storage."""
         email_hash = hashlib.sha256(email.lower().encode()).hexdigest()
         return f'reset_token_{email_hash}'
+
+    @staticmethod
+    def _otp_hash(email, otp):
+        """Derive deterministic HMAC digest for OTP verification."""
+        payload = f'{email.lower()}:{otp}'.encode('utf-8')
+        return hmac.new(settings.SECRET_KEY.encode(), payload, hashlib.sha256).hexdigest()
     
     @staticmethod
     def generate_otp():
@@ -229,6 +317,8 @@ class OTPService:
         try:
             from core.models import EmailLog
 
+            email = _normalize_identifier(email)
+
             # Check if user exists
             user = User.objects.filter(email__iexact=email).first()
             if not user:
@@ -244,7 +334,7 @@ class OTPService:
             
             # Store OTP in cache with expiry
             cache.set(cache_key, {
-                'otp': otp,
+                'otp_hash': cls._otp_hash(email, otp),
                 'email': email.lower(),
                 'created_at': timezone.now().isoformat()
             }, timeout=OTP_EXPIRY_MINUTES * 60)
@@ -407,6 +497,7 @@ Adarsh Admin Team'''
             dict: {success: bool, reset_token: str, message: str}
         """
         try:
+            email = _normalize_identifier(email)
             cache_key = cls._get_otp_cache_key(email)
             attempts_key = cls._get_otp_attempts_key(email)
             
@@ -436,7 +527,15 @@ Adarsh Admin Team'''
                 }
             
             # Verify OTP (constant-time comparison to prevent timing attacks)
-            if not hmac.compare_digest(str(otp_data['otp']), str(otp)):
+            # Backward-compatible fallback supports entries created before hashing.
+            stored_hash = otp_data.get('otp_hash')
+            if stored_hash:
+                candidate_hash = cls._otp_hash(email, otp)
+                is_valid = hmac.compare_digest(str(stored_hash), str(candidate_hash))
+            else:
+                is_valid = hmac.compare_digest(str(otp_data.get('otp', '')), str(otp))
+
+            if not is_valid:
                 return {
                     'success': False,
                     'message': 'Invalid OTP. Please try again.'
@@ -484,6 +583,7 @@ Adarsh Admin Team'''
             dict: {success: bool, message: str}
         """
         try:
+            email = _normalize_identifier(email)
             token_key = cls._get_reset_token_key(email)
             token_data = cache.get(token_key)
             
@@ -497,6 +597,12 @@ Adarsh Admin Team'''
                 return {
                     'success': False,
                     'message': 'Invalid reset token. Please start again.'
+                }
+
+            if str(token_data.get('email', '')).lower() != email:
+                return {
+                    'success': False,
+                    'message': 'Invalid reset session. Please start again.'
                 }
             
             # Verify HMAC signature on the token to prevent forgery
@@ -523,7 +629,7 @@ Adarsh Admin Team'''
             if not user:
                 return {
                     'success': False,
-                    'message': 'User not found'
+                    'message': 'Invalid reset request. Please start again.'
                 }
             
             # Validate password (using AUTH_PASSWORD_VALIDATORS from settings —
@@ -542,6 +648,10 @@ Adarsh Admin Team'''
             # Set new password
             user.set_password(new_password)
             user.save()
+
+            # Security: invalidate all active sessions for this user.
+            _revoke_user_sessions(user.pk)
+            AuthService._clear_login_failures(email)
             
             # Clear reset token
             cache.delete(token_key)

@@ -98,7 +98,7 @@ class WordExporter(WordStylesMixin, WordTablesMixin, WordImagesMixin):
         """
         try:
             from docx import Document
-            from docx.shared import Inches, Cm, Pt, RGBColor
+            from docx.shared import Cm, Pt, RGBColor
             from docx.enum.table import WD_TABLE_ALIGNMENT
             from docx.enum.text import WD_ALIGN_PARAGRAPH
             from docx.enum.section import WD_ORIENT

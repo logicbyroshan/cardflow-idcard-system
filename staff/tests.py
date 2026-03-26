@@ -306,6 +306,85 @@ class AdminStaffCreationServiceTests(TestCase):
         self.assertIn('Only Super Admin', result['error'])
 
 
+class StaffActivationPasswordFlowTests(TestCase):
+    def test_first_activation_preserves_custom_password(self):
+        from core.services import StaffService
+        from core.models import EmailLog
+
+        custom_password = 'StaffCustom@123'
+        result = StaffService.create(
+            {
+                'name': 'Custom Staff',
+                'email': 'staff-custom-activation@test.com',
+                'phone': '9234567890',
+                'password': custom_password,
+                'is_active': False,
+            },
+            staff_type='admin_staff',
+        )
+        self.assertTrue(result.success, msg=result.message)
+
+        staff_id = result.data['staff']['id']
+        staff_user = User.objects.get(email='staff-custom-activation@test.com')
+        self.assertTrue(staff_user.check_password(custom_password))
+
+        with mock.patch('staff.services_staff_core.send_welcome_email') as send_welcome_mock:
+            toggle_result = StaffService.toggle_status(staff_id)
+
+        self.assertTrue(toggle_result.success, msg=toggle_result.message)
+        staff_user.refresh_from_db()
+        self.assertTrue(staff_user.is_active)
+        self.assertTrue(staff_user.check_password(custom_password))
+        send_welcome_mock.assert_not_called()
+        self.assertFalse(
+            EmailLog.objects.filter(
+                recipient_email='staff-custom-activation@test.com',
+                email_type=EmailLog.EMAIL_TYPE_WELCOME,
+                status=EmailLog.STATUS_ON_HOLD,
+            ).exists()
+        )
+
+    def test_first_activation_generates_password_when_initial_was_unknown(self):
+        from core.services import StaffService
+
+        generated_on_create = 'CreateStaff@123'
+        generated_on_activation = 'ActivateStaff@123'
+
+        with mock.patch(
+            'staff.services_staff_core.secrets.token_urlsafe',
+            return_value=generated_on_create,
+        ):
+            result = StaffService.create(
+                {
+                    'name': 'Generated Staff',
+                    'email': 'staff-generated-activation@test.com',
+                    'phone': '',
+                    'password': '',
+                    'is_active': False,
+                },
+                staff_type='admin_staff',
+            )
+
+        self.assertTrue(result.success, msg=result.message)
+        staff_id = result.data['staff']['id']
+        staff_user = User.objects.get(email='staff-generated-activation@test.com')
+        self.assertTrue(staff_user.check_password(generated_on_create))
+
+        with mock.patch(
+            'staff.services_staff_core.generate_secure_password',
+            return_value=generated_on_activation,
+        ):
+            with mock.patch('staff.services_staff_core.send_welcome_email') as send_welcome_mock:
+                toggle_result = StaffService.toggle_status(staff_id)
+
+        self.assertTrue(toggle_result.success, msg=toggle_result.message)
+        staff_user.refresh_from_db()
+        self.assertTrue(staff_user.is_active)
+        self.assertFalse(staff_user.check_password(generated_on_create))
+        self.assertTrue(staff_user.check_password(generated_on_activation))
+        send_welcome_mock.assert_called_once()
+
+
 class StaffApiIntegrationTests(TestCase):
     def setUp(self):
         from client.models import Client

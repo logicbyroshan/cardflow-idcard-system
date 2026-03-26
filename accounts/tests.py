@@ -4,6 +4,7 @@ Covers: AuthService, OTPService, RoleService, rate limiting, login/logout flows.
 """
 from django.test import TestCase, override_settings
 from django.contrib.auth import get_user_model
+from django.contrib.sessions.models import Session
 from django.core.cache import cache
 from django.test.client import RequestFactory
 from unittest import mock
@@ -330,6 +331,26 @@ class AuthServiceRoleEdgeTests(TestCase):
         result = AuthService.authenticate_user('client2@example.com', 'clientpass123', role='admin_staff')
         self.assertFalse(result['success'])
 
+    def test_authenticate_blocks_after_repeated_failures(self):
+        from accounts import services
+
+        User.objects.create_user(
+            username='locked@example.com',
+            email='locked@example.com',
+            password='lockpass123',
+            role='client',
+        )
+
+        with mock.patch.object(services, 'AUTH_FAIL_MAX_ATTEMPTS', 2):
+            services.AuthService.authenticate_user('locked@example.com', 'wrongpass')
+            services.AuthService.authenticate_user('locked@example.com', 'wrongpass')
+            blocked = services.AuthService.authenticate_user('locked@example.com', 'lockpass123')
+            self.assertFalse(blocked['success'])
+
+            services.AuthService._clear_login_failures('locked@example.com')
+            unblocked = services.AuthService.authenticate_user('locked@example.com', 'lockpass123')
+            self.assertTrue(unblocked['success'])
+
 
 class OTPServiceEdgeTests(TestCase):
     def setUp(self):
@@ -374,6 +395,42 @@ class OTPServiceEdgeTests(TestCase):
         reset_result = OTPService.reset_password('otp-edge@example.com', tampered, 'newpassword1')
         self.assertFalse(reset_result['success'])
         self.assertIn('reset token', reset_result['message'].lower())
+
+    @override_settings(DEBUG=True)
+    def test_send_otp_stores_hash_not_plain_code(self):
+        from accounts.services import OTPService
+
+        result = OTPService.send_otp('otp-edge@example.com')
+        self.assertTrue(result['success'])
+
+        cache_key = OTPService._get_otp_cache_key('otp-edge@example.com')
+        otp_data = cache.get(cache_key)
+        self.assertIn('otp_hash', otp_data)
+        self.assertNotIn('otp', otp_data)
+
+    @override_settings(DEBUG=True)
+    def test_reset_password_revokes_existing_sessions(self):
+        from django.test import Client
+        from accounts.services import OTPService
+
+        browser = Client()
+        self.assertTrue(browser.login(username='otp-edge@example.com', password='testpass123'))
+        session_key = browser.session.session_key
+        self.assertTrue(Session.objects.filter(session_key=session_key).exists())
+
+        send_result = OTPService.send_otp('otp-edge@example.com')
+        dev_otp = send_result.get('dev_otp')
+        self.assertIsNotNone(dev_otp)
+
+        verify_result = OTPService.verify_otp('otp-edge@example.com', dev_otp)
+        self.assertTrue(verify_result['success'])
+        reset_result = OTPService.reset_password(
+            'otp-edge@example.com',
+            verify_result['reset_token'],
+            'newpassword1',
+        )
+        self.assertTrue(reset_result['success'])
+        self.assertFalse(Session.objects.filter(session_key=session_key).exists())
 
 
 class UserProfileServiceTests(TestCase):
@@ -542,3 +599,18 @@ class ImpersonationApiTests(TestCase):
         self.client.login(username='pro-user@example.com', password='testpass123')
         response = self.client.post('/panel/api/auth/impersonate/stop/', data='{}', content_type='application/json')
         self.assertEqual(response.status_code, 400)
+
+    def test_impersonation_rejects_inactive_target(self):
+        self.target_user.is_active = False
+        self.target_user.save(update_fields=['is_active'])
+        self.client.login(username='pro-user@example.com', password='testpass123')
+
+        response = self.client.post(
+            '/panel/api/auth/impersonate/start/',
+            data=json.dumps({'user_id': self.target_user.id}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 403)
+        payload = response.json()
+        self.assertFalse(payload['success'])
+        self.assertIn('inactive', payload['message'].lower())
