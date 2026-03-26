@@ -110,7 +110,7 @@
       list.innerHTML = notifData.map(n => {
         const unreadClass = n.is_read ? '' : ' unread';
         const unreadDot = n.is_read ? '' : '<span class="notif-unread-dot"></span>';
-        return `<div class="notif-item${unreadClass}" onclick="markNotificationRead(${n.id}, this)">
+        return `<div class="notif-item${unreadClass}" onclick="openNotificationFromBell(${n.id}, this)" onkeydown="handleBellNotificationKeydown(event, ${n.id}, this)" tabindex="0" role="button" aria-label="Open notification">
           <div class="notif-icon" style="background:${hexToRgba(n.priority_color, 0.12)};color:${n.priority_color};">
             <i class="fa-solid ${n.icon_class}"></i>
           </div>
@@ -129,12 +129,16 @@
   }
 
   /*  Mark Read  */
+  async function markNotificationReadRequest(id) {
+    return fetch(`/api/notifications/${id}/read/`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': getCsrfTokenBell() },
+    });
+  }
+
   window.markNotificationRead = async function(id, el) {
     try {
-      await fetch(`/api/notifications/${id}/read/`, {
-        method: 'POST',
-        headers: { 'X-CSRFToken': getCsrfTokenBell() },
-      });
+      await markNotificationReadRequest(id);
       if (el) {
         el.classList.remove('unread');
         const dot = el.querySelector('.notif-unread-dot');
@@ -144,6 +148,20 @@
     } catch (err) {
       // Non-critical
     }
+  };
+
+  window.openNotificationFromBell = async function(id, el) {
+    try {
+      await markNotificationRead(id, el);
+    } finally {
+      window.location.href = buildNotificationTargetUrl(id);
+    }
+  };
+
+  window.handleBellNotificationKeydown = function(event, id, el) {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    openNotificationFromBell(id, el);
   };
 
   /*  Mark All Read  */
@@ -179,6 +197,23 @@
     const g = parseInt(hex.slice(3, 5), 16);
     const b = parseInt(hex.slice(5, 7), 16);
     return `rgba(${r},${g},${b},${alpha})`;
+  }
+
+  function getNotificationsPageUrl() {
+    const wrapper = document.getElementById('notifWrapper');
+    return (wrapper && wrapper.dataset.notificationsUrl) || '/notifications/';
+  }
+
+  function buildNotificationTargetUrl(notificationId) {
+    const baseUrl = getNotificationsPageUrl();
+    try {
+      const targetUrl = new URL(baseUrl, window.location.origin);
+      targetUrl.searchParams.set('highlight', String(notificationId));
+      return `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`;
+    } catch (_err) {
+      const separator = baseUrl.indexOf('?') === -1 ? '?' : '&';
+      return `${baseUrl}${separator}highlight=${encodeURIComponent(String(notificationId))}`;
+    }
   }
 
 })();

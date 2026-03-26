@@ -74,7 +74,7 @@ class ClientService(BaseService):
         data = {
             'id': client.id,
             'name': client.name,
-            'email': client.user.email,
+            'email': cls._public_email(client.user.email),
             'phone': client.user.phone or '',
             'address': client.address or '',
             'city': client.city or '',
@@ -91,6 +91,12 @@ class ClientService(BaseService):
                 data[perm] = getattr(client, perm, False)
         
         return data
+
+    @staticmethod
+    def _public_email(email: str) -> str:
+        """Hide internal placeholder emails from API payloads."""
+        value = (email or '').strip()
+        return '' if value.endswith('@noemail.local') else value
     
     @classmethod
     def create(cls, data: Dict[str, Any], request=None, photo=None) -> ServiceResult:
@@ -106,44 +112,54 @@ class ClientService(BaseService):
             ServiceResult with client data
         """
         try:
-            email = data.get('email', '').strip().lower()
-            if not email:
-                return ServiceResult(success=False, message='Email is required')
-            
-            # Check for duplicate email
-            if User.objects.filter(email__iexact=email).exists():
-                return ServiceResult(
-                    success=False, 
-                    message='A user with this email already exists'
-                )
+            name = data.get('name', '').strip()
+            if not name:
+                return ServiceResult(success=False, message='Name is required')
+
+            raw_email = data.get('email', '').strip().lower()
+            email_was_provided = bool(raw_email)
+
+            if raw_email:
+                # Check for duplicate email
+                if User.objects.filter(email__iexact=raw_email).exists():
+                    return ServiceResult(
+                        success=False,
+                        message='A user with this email already exists'
+                    )
+                email = raw_email
+            else:
+                slug = cls.normalize_name(name)[:24] or 'client'
+                email = f'client.{slug}.{secrets.token_hex(4)}@noemail.local'
+                while User.objects.filter(email__iexact=email).exists():
+                    email = f'client.{slug}.{secrets.token_hex(4)}@noemail.local'
             
             # Generate unique username
             username = email.split('@')[0].lower().replace('.', '_')
+            if not username:
+                username = f'client_{secrets.token_hex(4)}'
             base_username = username
             counter = 1
             while User.objects.filter(username=username).exists():
                 username = f"{base_username}{counter}"
                 counter += 1
-            
-            # Parse name
-            name = data.get('name', '')
+
             name_parts = name.split() if name else []
             
-            # Default password strategy: phone number → random token
-            # SECURITY NOTE: Phone-as-password is a deliberate UX choice — the welcome
-            # email tells users "use your mobile number". When a stronger policy is
-            # desired, always pass an explicit password from the UI instead.
+            # Password policy:
+            # - if custom password is provided, use it
+            # - otherwise phone number is required and used as password
             phone = data.get('phone', '').strip()
             password = data.get('password', '').strip()
             used_phone_as_password = False
-            used_generated_password = False
             if not password:
                 if phone:
                     password = phone
                     used_phone_as_password = True
                 else:
-                    password = secrets.token_urlsafe(12)
-                    used_generated_password = True
+                    return ServiceResult(
+                        success=False,
+                        message='Phone number is required when custom password is not provided'
+                    )
             
             # Skip Django password validators when using phone as password
             # (NumericPasswordValidator would reject a pure-digit mobile number)
@@ -191,9 +207,8 @@ class ClientService(BaseService):
                 # Phase 1: Photo field removed - using avatar placeholder
                 
                 # Queue welcome email only when it is actually needed:
-                # - active now (send immediately)
-                # - inactive with unknown auto-generated password (send on first activation)
-                if create_as_active or used_generated_password:
+                # - active now and a real email exists
+                if create_as_active and email_was_provided:
                     EmailLog.objects.create(
                         recipient_name=name or 'Client',
                         recipient_email=email,
@@ -204,7 +219,7 @@ class ClientService(BaseService):
             
             # Send welcome email in background thread if created as active
             # This prevents the API response from being blocked by SMTP
-            if create_as_active:
+            if create_as_active and email_was_provided:
                 _user_pk = user.pk
                 _email = email
                 _name = name
@@ -242,9 +257,10 @@ class ClientService(BaseService):
             
             message = 'Client created successfully!'
             if create_as_active:
-                message += ' Welcome email queued for delivery.'
-            elif used_generated_password:
-                message += ' Welcome email will be sent on first activation.'
+                if email_was_provided:
+                    message += ' Welcome email queued for delivery.'
+                else:
+                    message += ' No email provided, so welcome email was skipped.'
             else:
                 message += ' Account is inactive; activate it to allow login with the configured password.'
             

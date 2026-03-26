@@ -13,7 +13,7 @@
   .notif-item .notif-time  { font-size: 12px !important; }
   .notif-empty             { font-size: 14px !important; }
 </style>
-<div class="notif-wrapper" id="notifWrapper">
+<div class="notif-wrapper" id="notifWrapper" data-notifications-url="{% url 'notifications_page' %}">
   <button class="notif-btn" id="notifBtn" title="Notifications" aria-label="Notifications" onclick="toggleNotifDropdown()">
     <i class="fa-solid fa-bell"></i>
     <span class="notif-badge" id="notifBadge"></span>

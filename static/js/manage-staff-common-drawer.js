@@ -347,12 +347,21 @@ window._StaffDrawerSetup = function (cfg, ctx) {
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
 
             var formData = {
-                name:      document.getElementById('staff-name').value,
-                email:     document.getElementById('staff-email').value,
-                phone:     document.getElementById('staff-phone').value,
+                name:      document.getElementById('staff-name').value.trim(),
+                email:     document.getElementById('staff-email').value.trim(),
+                phone:     document.getElementById('staff-phone').value.trim(),
                 address:   (document.getElementById('staff-address') || {}).value || '',
                 is_active: document.getElementById('staff-status').value === 'true',
             };
+
+            var isCreateMode = !(currentMode === 'edit' && ctx.selectedStaffId);
+
+            if (!formData.name) {
+                showToast('Name is required', 'error');
+                btn.disabled = false;
+                btn.innerHTML = origHtml;
+                return;
+            }
 
             // Sanitize text fields before submission; email exempt from char rules
             if (window.DataSanitizer) {
@@ -360,9 +369,22 @@ window._StaffDrawerSetup = function (cfg, ctx) {
                 formData = _sanitized.data;
             }
 
-            // Add custom password if selected
-            if (pwOptionSelect && pwOptionSelect.value === 'custom' && pwInput && pwInput.value.trim()) {
-                formData.password = pwInput.value.trim();
+            // Validate/create password strategy
+            if (isCreateMode && pwOptionSelect) {
+                if (pwOptionSelect.value === 'custom') {
+                    if (!pwInput || !pwInput.value.trim()) {
+                        showToast('Custom password is required when phone password is not used', 'error');
+                        btn.disabled = false;
+                        btn.innerHTML = origHtml;
+                        return;
+                    }
+                    formData.password = pwInput.value.trim();
+                } else if (!formData.phone) {
+                    showToast('Phone is required when using phone number as password', 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = origHtml;
+                    return;
+                }
             }
 
             cfg.permissionFields.forEach(function (f) {

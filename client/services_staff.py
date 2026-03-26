@@ -3,6 +3,7 @@ Client Staff Service — CRUD operations for client-managed staff members.
 """
 from typing import Dict, Any, Optional, List, Tuple
 import os
+import secrets
 
 from django.db import transaction
 
@@ -40,6 +41,12 @@ class ClientStaffService(BaseService):
         # ── App & Access ───────────────────────────────────────────
         'perm_mobile_app',
     ]
+
+    @staticmethod
+    def _public_email(email: str) -> str:
+        """Hide internal placeholder emails from API payloads."""
+        value = (email or '').strip()
+        return '' if value.endswith('@noemail.local') else value
 
     @staticmethod
     def _resolve_assignment_scope_ids(client: Client, raw_ids: Any) -> Tuple[List[int], List[int]]:
@@ -119,7 +126,7 @@ class ClientStaffService(BaseService):
                 item = {
                     'id': staff.id,
                     'name': staff.user.get_full_name() or staff.user.username,
-                    'email': staff.user.email,
+                    'email': cls._public_email(staff.user.email),
                     'phone': staff.user.phone or '',
                     'department': staff.department or '',
                     'designation': staff.designation or '',
@@ -183,7 +190,7 @@ class ClientStaffService(BaseService):
                 'first_name': staff.user.first_name,
                 'last_name': staff.user.last_name,
                 'name': staff.user.get_full_name() or staff.user.username,
-                'email': staff.user.email,
+                'email': cls._public_email(staff.user.email),
                 'phone': staff.user.phone or '',
                 'department': staff.department or '',
                 'designation': staff.designation or '',
@@ -224,26 +231,7 @@ class ClientStaffService(BaseService):
             # Check permission
             if not PermissionService.has_permission(user, 'perm_idcard_client_list'):
                 return ServiceResult(success=False, message='Permission denied')
-            
-            email = data.get('email', '').strip().lower()
-            if not email:
-                return ServiceResult(success=False, message='Email is required')
-            
-            # Check for duplicate email
-            if User.objects.filter(email__iexact=email).exists():
-                return ServiceResult(
-                    success=False,
-                    message='A user with this email already exists'
-                )
-            
-            # Generate username
-            username = email.split('@')[0].lower().replace('.', '_')
-            base_username = username
-            counter = 1
-            while User.objects.filter(username=username).exists():
-                username = f"{base_username}{counter}"
-                counter += 1
-            
+
             # Parse name - handle both formats: {name} or {first_name, last_name}
             first_name = data.get('first_name', '').strip()
             last_name = data.get('last_name', '').strip()
@@ -253,12 +241,39 @@ class ClientStaffService(BaseService):
                 name_parts = name.split() if name else []
                 first_name = name_parts[0] if name_parts else ''
                 last_name = ' '.join(name_parts[1:]) if len(name_parts) > 1 else ''
+
+            display_name = f'{first_name} {last_name}'.strip()
+            if not display_name:
+                return ServiceResult(success=False, message='Name is required')
+
+            raw_email = data.get('email', '').strip().lower()
+            if raw_email:
+                # Check for duplicate email
+                if User.objects.filter(email__iexact=raw_email).exists():
+                    return ServiceResult(
+                        success=False,
+                        message='A user with this email already exists'
+                    )
+                email = raw_email
+            else:
+                slug = cls.normalize_name(display_name)[:24] or 'cstaff'
+                email = f'cstaff.{slug}.{secrets.token_hex(4)}@noemail.local'
+                while User.objects.filter(email__iexact=email).exists():
+                    email = f'cstaff.{slug}.{secrets.token_hex(4)}@noemail.local'
+
+            # Generate username
+            username = email.split('@')[0].lower().replace('.', '_')
+            if not username:
+                username = f'cstaff_{secrets.token_hex(4)}'
+            base_username = username
+            counter = 1
+            while User.objects.filter(username=username).exists():
+                username = f"{base_username}{counter}"
+                counter += 1
             
-            # Default password strategy: phone number → random token
-            # SECURITY NOTE: Phone-as-password is a deliberate UX choice — the welcome
-            # email tells users "use your mobile number". When a stronger policy is
-            # desired, always pass an explicit password from the UI instead.
-            import secrets as _secrets
+            # Password policy:
+            # - if custom password is provided, use it
+            # - otherwise phone number is required and used as password
             phone = data.get('phone', '').strip()
             password = data.get('password', '').strip()
             used_phone_as_password = False
@@ -267,7 +282,10 @@ class ClientStaffService(BaseService):
                     password = phone
                     used_phone_as_password = True
                 else:
-                    password = _secrets.token_urlsafe(12)
+                    return ServiceResult(
+                        success=False,
+                        message='Phone number is required when custom password is not provided'
+                    )
             
             # Skip Django password validators when using phone as password
             if not used_phone_as_password:
@@ -287,7 +305,7 @@ class ClientStaffService(BaseService):
                     last_name=last_name,
                     phone=phone,
                     role='client_staff',
-                    is_active=data.get('is_active', True),
+                    is_active=cls.parse_bool(data.get('is_active', True)),
                 )
                 
                 # Build staff kwargs
@@ -338,7 +356,6 @@ class ClientStaffService(BaseService):
                     staff.assigned_table_ids = resolved_table_ids
                     staff.save(update_fields=['assigned_table_ids'])
             
-            display_name = f'{first_name} {last_name}'.strip() or email
             return ServiceResult(
                 success=True,
                 message=f'Staff member "{display_name}" created successfully!',

@@ -50,6 +50,7 @@
     .notif-item:hover { background: #f8fafc; }
     .notif-item.unread { background: #eff6ff; border-left: 3px solid #667eea; }
     .notif-item.unread:hover { background: #dbeafe; }
+    .notif-item.highlighted { outline: 2px solid #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15); }
     .notif-icon-wrap { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 14px; }
     .notif-icon-wrap.general { background: #eff6ff; color: #3b82f6; }
     .notif-icon-wrap.announcement { background: #fef3c7; color: #d97706; }
@@ -188,6 +189,27 @@
         </div>
       </div>`;
     }).join('');
+
+    applyHighlightFromQuery();
+  }
+
+  function applyHighlightFromQuery() {
+    const params = new URLSearchParams(window.location.search);
+    const highlightId = params.get('highlight');
+    if (!highlightId) return;
+
+    const target = document.querySelector(`.notif-item[data-id="${highlightId}"]`);
+    if (!target) return;
+
+    target.classList.add('highlighted');
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    setTimeout(() => target.classList.remove('highlighted'), 2400);
+
+    params.delete('highlight');
+    const newSearch = params.toString();
+    const newUrl = `${window.location.pathname}${newSearch ? '?' + newSearch : ''}${window.location.hash}`;
+    window.history.replaceState({}, '', newUrl);
   }
 
   function markRead(id, el) {

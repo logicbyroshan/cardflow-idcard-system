@@ -264,11 +264,18 @@
 }
 
 .welcome-notif-title {
-    font-size: 14px;
+    font-size: 28px;
     font-weight: 700;
+    line-height: 1.05;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+@media (max-width: 768px) {
+    .welcome-notif-title {
+        font-size: 20px;
+    }
 }
 
 .welcome-notif-msg {

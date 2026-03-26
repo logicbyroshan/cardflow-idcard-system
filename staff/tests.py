@@ -344,45 +344,42 @@ class StaffActivationPasswordFlowTests(TestCase):
             ).exists()
         )
 
-    def test_first_activation_generates_password_when_initial_was_unknown(self):
+    def test_create_rejects_missing_phone_and_custom_password(self):
         from core.services import StaffService
 
-        generated_on_create = 'CreateStaff@123'
-        generated_on_activation = 'ActivateStaff@123'
+        result = StaffService.create(
+            {
+                'name': 'Missing Credentials Staff',
+                'email': '',
+                'phone': '',
+                'password': '',
+                'is_active': False,
+            },
+            staff_type='admin_staff',
+        )
 
-        with mock.patch(
-            'staff.services_staff_core.secrets.token_urlsafe',
-            return_value=generated_on_create,
-        ):
-            result = StaffService.create(
-                {
-                    'name': 'Generated Staff',
-                    'email': 'staff-generated-activation@test.com',
-                    'phone': '',
-                    'password': '',
-                    'is_active': False,
-                },
-                staff_type='admin_staff',
-            )
+        self.assertFalse(result.success)
+        self.assertIn('phone number is required', result.message.lower())
+
+    def test_create_allows_custom_password_without_phone_or_email(self):
+        from core.services import StaffService
+        from staff.models import Staff
+
+        result = StaffService.create(
+            {
+                'name': 'Custom No Contact Staff',
+                'email': '',
+                'phone': '',
+                'password': 'StaffOnly@123',
+                'is_active': False,
+            },
+            staff_type='admin_staff',
+        )
 
         self.assertTrue(result.success, msg=result.message)
-        staff_id = result.data['staff']['id']
-        staff_user = User.objects.get(email='staff-generated-activation@test.com')
-        self.assertTrue(staff_user.check_password(generated_on_create))
-
-        with mock.patch(
-            'staff.services_staff_core.generate_secure_password',
-            return_value=generated_on_activation,
-        ):
-            with mock.patch('staff.services_staff_core.send_welcome_email') as send_welcome_mock:
-                toggle_result = StaffService.toggle_status(staff_id)
-
-        self.assertTrue(toggle_result.success, msg=toggle_result.message)
-        staff_user.refresh_from_db()
-        self.assertTrue(staff_user.is_active)
-        self.assertFalse(staff_user.check_password(generated_on_create))
-        self.assertTrue(staff_user.check_password(generated_on_activation))
-        send_welcome_mock.assert_called_once()
+        created_staff = Staff.objects.select_related('user').get(id=result.data['staff']['id'])
+        staff_user = created_staff.user
+        self.assertTrue(staff_user.check_password('StaffOnly@123'))
 
 
 class StaffApiIntegrationTests(TestCase):

@@ -67,12 +67,22 @@ document.addEventListener('DOMContentLoaded', function() {
         submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
 
         var formData = {
-          name: document.getElementById('clientName').value,
-          email: document.getElementById('clientEmail').value,
-          phone: document.getElementById('clientPhone').value,
+          name: document.getElementById('clientName').value.trim(),
+          email: document.getElementById('clientEmail').value.trim(),
+          phone: document.getElementById('clientPhone').value.trim(),
           address: document.getElementById('clientAddress').value,
           is_active: document.getElementById('clientStatus').value === 'true',
         };
+
+        var clientId = clientIdInput.value;
+        var isCreateMode = !clientId;
+
+        if (!formData.name) {
+          showToast('Name is required', 'error');
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalText;
+          return;
+        }
 
         // Sanitize text fields (strip newlines, forbidden chars); email is exempt from char rules
         if (window.DataSanitizer) {
@@ -80,12 +90,23 @@ document.addEventListener('DOMContentLoaded', function() {
           formData = sanitized.data;
         }
 
-        // Add custom password if selected
+        // Validate/create password strategy
         var pwOption = document.getElementById('clientPasswordOption');
-        if (pwOption && pwOption.value === 'custom') {
-          var pwVal = document.getElementById('clientPassword');
-          if (pwVal && pwVal.value.trim()) {
+        var pwVal = document.getElementById('clientPassword');
+        if (isCreateMode && pwOption) {
+          if (pwOption.value === 'custom') {
+            if (!pwVal || !pwVal.value.trim()) {
+              showToast('Custom password is required when phone password is not used', 'error');
+              submitBtn.disabled = false;
+              submitBtn.innerHTML = originalText;
+              return;
+            }
             formData.password = pwVal.value.trim();
+          } else if (!formData.phone) {
+            showToast('Phone is required when using phone number as password', 'error');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+            return;
           }
         }
 
@@ -97,7 +118,6 @@ document.addEventListener('DOMContentLoaded', function() {
           });
         }
 
-        var clientId = clientIdInput.value;
         var result;
 
         try {

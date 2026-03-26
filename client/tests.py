@@ -559,6 +559,34 @@ class ClientStaffServicePermissionTests(TestCase):
         staff = Staff.objects.get(id=staff_id)
         self.assertTrue(staff.perm_idcard_bulk_download)
 
+    def test_create_staff_allows_custom_password_without_phone_or_email(self):
+        from client.services import ClientStaffService
+        from staff.models import Staff
+
+        result = ClientStaffService.create_staff(self.owner, {
+            'name': 'Custom Only Staff',
+            'password': 'StaffOnly@123',
+            'phone': '',
+            'email': '',
+        })
+        self.assertTrue(result.success, msg=result.message)
+
+        staff = Staff.objects.select_related('user').get(id=result.data['staff_id'])
+        self.assertEqual(staff.user.phone or '', '')
+        self.assertTrue(staff.user.check_password('StaffOnly@123'))
+
+    def test_create_staff_rejects_missing_phone_and_password(self):
+        from client.services import ClientStaffService
+
+        result = ClientStaffService.create_staff(self.owner, {
+            'name': 'Missing Credentials Staff',
+            'phone': '',
+            'password': '',
+            'email': '',
+        })
+        self.assertFalse(result.success)
+        self.assertIn('phone number is required', result.message.lower())
+
 
 class ClientApiIntegrationTests(TestCase):
     def setUp(self):
@@ -836,39 +864,33 @@ class ClientActivationPasswordFlowTests(TestCase):
             ).exists()
         )
 
-    def test_first_activation_generates_password_when_initial_was_unknown(self):
+    def test_create_rejects_missing_phone_and_custom_password(self):
         from core.services import ClientService
 
-        generated_on_create = 'CreateRnd@123'
-        generated_on_activation = 'ActivateRnd@123'
+        result = ClientService.create({
+            'name': 'Missing Credentials Client',
+            'email': '',
+            'phone': '',
+            'password': '',
+            'is_active': False,
+        })
 
-        with mock.patch(
-            'client.services_client_core.secrets.token_urlsafe',
-            return_value=generated_on_create,
-        ):
-            result = ClientService.create({
-                'name': 'Generated Password Client',
-                'email': 'client-generated-activation@test.com',
-                'phone': '',
-                'password': '',
-                'is_active': False,
-            })
+        self.assertFalse(result.success)
+        self.assertIn('phone number is required', result.message.lower())
+
+    def test_create_allows_custom_password_without_phone_or_email(self):
+        from core.services import ClientService
+        from client.models import Client
+
+        result = ClientService.create({
+            'name': 'Custom No Contact Client',
+            'email': '',
+            'phone': '',
+            'password': 'ClientOnly@123',
+            'is_active': False,
+        })
 
         self.assertTrue(result.success, msg=result.message)
-        client_id = result.data['client']['id']
-        created_user = User.objects.get(email='client-generated-activation@test.com')
-        self.assertTrue(created_user.check_password(generated_on_create))
-
-        with mock.patch(
-            'client.services_client_core.generate_secure_password',
-            return_value=generated_on_activation,
-        ):
-            with mock.patch('client.services_client_core.send_welcome_email') as send_welcome_mock:
-                toggle_result = ClientService.toggle_status(client_id)
-
-        self.assertTrue(toggle_result.success, msg=toggle_result.message)
-        created_user.refresh_from_db()
-        self.assertTrue(created_user.is_active)
-        self.assertFalse(created_user.check_password(generated_on_create))
-        self.assertTrue(created_user.check_password(generated_on_activation))
-        send_welcome_mock.assert_called_once()
+        created_client = Client.objects.select_related('user').get(id=result.data['client']['id'])
+        created_user = created_client.user
+        self.assertTrue(created_user.check_password('ClientOnly@123'))

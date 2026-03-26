@@ -75,6 +75,7 @@
   padding: 8px 16px;
   border-bottom: 1px solid #f1f5f9;
   transition: background .1s;
+  cursor: pointer;
 }
 .notif-bar-item:last-child { border-bottom: none; }
 .notif-bar-item:hover { background: #f8fafc; }
@@ -157,6 +158,8 @@
 
 <script>
 (function() {
+  const notificationsPageUrl = "{% url 'notifications_page' %}";
+
   function loadNotifBar() {
     fetch('/api/notifications/list/?limit=5&unread_only=true')
       .then(r => r.ok ? r.json() : null)
@@ -195,7 +198,7 @@
           const unreadCls = n.is_read ? '' : ' unread';
           const msgPreview = (n.message || '').length > 80 ? n.message.substring(0, 80) + '...' : (n.message || '');
           const markBtn = n.is_read ? '' : `<button class="notif-bar-mark-btn" onclick="event.stopPropagation();markNotifRead(${n.id}, this.closest('.notif-bar-item'))" title="Mark as read"><i class="fa-solid fa-check"></i></button>`;
-          return `<div class="notif-bar-item${unreadCls}" data-notif-id="${n.id}">
+          return `<div class="notif-bar-item${unreadCls}" data-notif-id="${n.id}" onclick="openNotifFromBar(${n.id}, this)" onkeydown="handleNotifBarKeydown(event, ${n.id}, this)" tabindex="0" role="button" aria-label="Open notification">
             <div class="notif-bar-icon ${cat}"><i class="fa-solid ${icon}"></i></div>
             <div class="notif-bar-body">
               <div class="notif-bar-body-title">${escNotif(n.title)}</div>
@@ -217,11 +220,26 @@
     return d.innerHTML;
   }
 
-  window.markNotifRead = function(id, el) {
-    fetch(`/api/notifications/${id}/read/`, {
+  function postMarkRead(id) {
+    return fetch(`/api/notifications/${id}/read/`, {
       method: 'POST',
       headers: { 'X-CSRFToken': getCsrf() },
-    }).then(() => {
+    });
+  }
+
+  function buildNotifTargetUrl(notificationId) {
+    try {
+      const targetUrl = new URL(notificationsPageUrl, window.location.origin);
+      targetUrl.searchParams.set('highlight', String(notificationId));
+      return `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`;
+    } catch (_err) {
+      const separator = notificationsPageUrl.indexOf('?') === -1 ? '?' : '&';
+      return `${notificationsPageUrl}${separator}highlight=${encodeURIComponent(String(notificationId))}`;
+    }
+  }
+
+  window.markNotifRead = function(id, el) {
+    postMarkRead(id).then(() => {
       // Update badge count
       const badge = document.getElementById('notifBarCount');
       if (badge && el && el.classList.contains('unread')) {
@@ -243,6 +261,19 @@
         }, 260);
       }
     }).catch(() => {});
+  };
+
+  window.openNotifFromBar = function(id, el) {
+    postMarkRead(id)
+      .finally(() => {
+        window.location.href = buildNotifTargetUrl(id);
+      });
+  };
+
+  window.handleNotifBarKeydown = function(event, id, el) {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    openNotifFromBar(id, el);
   };
 
   function getCsrf() {
