@@ -145,6 +145,10 @@ body {
     font-size: 11px !important;
 }
 
+.text-\[11px\] {
+    font-size: 12px !important;
+}
+
 button,
 a,
 input,
@@ -280,7 +284,7 @@ textarea:focus-visible {
 }
 
 .pwa-nav-label {
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 600;
     line-height: 1;
     letter-spacing: 0.01em;
@@ -334,8 +338,173 @@ textarea:focus-visible {
    Used in: home.html
    ================================================================ */
 
+.home-stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: repeat(3, minmax(74px, auto));
+    gap: 8px;
+}
+
+.home-stat-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 16px;
+    box-shadow: 0 10px 20px rgba(13, 24, 48, 0.1);
+    isolation: isolate;
+    border: 1px solid rgba(255, 255, 255, 0.8);
+}
+
+.home-stat-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 85% 12%, rgba(255, 255, 255, 0.65), rgba(255, 255, 255, 0) 52%);
+    pointer-events: none;
+}
+
+.home-stat-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    border-radius: 16px 16px 0 0;
+    background: #2563eb;
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.home-stat-inner {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: 100%;
+    padding: 12px;
+}
+
+.home-stat-text-right {
+    margin-left: 0;
+    text-align: right;
+}
+
+.home-stat-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.9);
+    color: #1e3a8a;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    flex-shrink: 0;
+}
+
+.home-stat-label {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #475569;
+}
+
+.home-stat-value {
+    font-size: 18px;
+    line-height: 1;
+    font-weight: 900;
+    color: #0f172a;
+    margin-top: 2px;
+}
+
+.home-stat-total {
+    grid-column: 1 / span 2;
+    grid-row: 1;
+    background: linear-gradient(145deg, #dbeafe, #7dd3fc);
+}
+
+.home-stat-total::after {
+    background: #0369a1;
+}
+
+.home-stat-total .home-stat-icon {
+    background: rgba(255, 255, 255, 0.75);
+    color: #0c4a6e;
+    border: 1px solid rgba(12, 74, 110, 0.25);
+}
+
+.home-stat-total .home-stat-label {
+    color: #075985;
+}
+
+.home-stat-total .home-stat-value {
+    color: #082f49;
+}
+
+.home-stat-pending {
+    grid-column: 1;
+    grid-row: 2;
+    background: linear-gradient(145deg, #fde68a, #fbbf24);
+}
+
+.home-stat-pending::after {
+    background: #b45309;
+}
+
+.home-stat-pending .home-stat-icon {
+    color: #92400e;
+    border-color: rgba(146, 64, 14, 0.28);
+}
+
+.home-stat-verified {
+    grid-column: 2;
+    grid-row: 2;
+    background: linear-gradient(145deg, #99f6e4, #2dd4bf);
+}
+
+.home-stat-verified::after {
+    background: #0f766e;
+}
+
+.home-stat-verified .home-stat-icon {
+    color: #0f766e;
+    border-color: rgba(15, 118, 110, 0.25);
+}
+
+.home-stat-approved {
+    grid-column: 1;
+    grid-row: 3;
+    background: linear-gradient(145deg, #86efac, #22c55e);
+}
+
+.home-stat-approved::after {
+    background: #15803d;
+}
+
+.home-stat-approved .home-stat-icon {
+    color: #166534;
+    border-color: rgba(22, 101, 52, 0.25);
+}
+
+.home-stat-download {
+    grid-column: 2;
+    grid-row: 3;
+    background: linear-gradient(145deg, #c4b5fd, #8b5cf6);
+}
+
+.home-stat-download::after {
+    background: #6d28d9;
+}
+
+.home-stat-download .home-stat-icon {
+    color: #5b21b6;
+    border-color: rgba(91, 33, 182, 0.25);
+}
+
 .pwa-home-snap {
-    scroll-snap-type: y mandatory;
+    scroll-snap-type: y proximity;
     -webkit-overflow-scrolling: touch;
     padding-bottom: 6px;
 }

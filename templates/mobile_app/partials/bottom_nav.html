@@ -29,13 +29,8 @@
                 </a>
                 {% endif %}
 
-                <!-- Search (center)  -  spacer so the floating button sits above -->
-                <div class="flex-1 flex flex-col items-center justify-end pb-2" style="position:relative;">
-                    <!-- invisible tap target that mirrors the floating btn -->
-                    <a href="{% url 'mobile_app:search_page' %}"
-                       class="w-14 h-14 block"
-                       aria-label="Search"></a>
-                </div>
+                <!-- Search (center) spacer so floating button sits above -->
+                <div class="flex-1" aria-hidden="true"></div>
 
                 <!-- Website (admin) / Staff (client) / Profile (client_staff) -->
                 {% if is_super_admin or is_admin_staff %}

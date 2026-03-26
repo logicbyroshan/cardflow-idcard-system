@@ -5,26 +5,7 @@
 // Service Worker is registered in base.html via Django-served endpoint
 // (ensures Service-Worker-Allowed header is set for scope '/')
 
-// Device detection - block desktop
-function enforceDeviceRestriction() {
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-        || (window.innerWidth <= 768);
-    
-    const mobileApp = document.getElementById('mobile-app');
-    const desktopBlock = document.getElementById('desktop-block');
-    
-    if (mobileApp && desktopBlock) {
-        if (!isMobile) {
-            mobileApp.style.display = 'none';
-            desktopBlock.style.display = 'flex';
-        } else {
-            mobileApp.style.display = 'block';
-            desktopBlock.style.display = 'none';
-        }
-    }
-}
-
-window.addEventListener('resize', enforceDeviceRestriction);
+// Device restriction is handled in mobile_app/base.html via checkDevice().
 
 // Prevent zoom on double-tap
 let lastTouchEnd = 0;

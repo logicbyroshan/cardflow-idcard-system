@@ -27,7 +27,7 @@
          x-transition:leave="transition-transform ease-in duration-200"
          x-transition:leave-start="translate-x-0"
          x-transition:leave-end="translate-x-full"
-         class="fixed top-0 right-0 bottom-0 z-[301] w-[82vw] max-w-[320px] bg-white shadow-2xl flex flex-col"
+            class="fixed top-0 right-0 bottom-0 z-[301] w-[88vw] max-w-[360px] bg-white shadow-2xl flex flex-col"
          style="display:none;">
 
         <!-- Header -->
@@ -39,13 +39,13 @@
                 <div>
                     <p class="text-white font-semibold text-sm leading-tight">Notifications</p>
                     {% if notification_count > 0 %}
-                    <p class="text-white/70 text-[10px] leading-none mt-0.5">{{ notification_count }} unread</p>
+                    <p class="text-white/70 text-[11px] leading-none mt-0.5">{{ notification_count }} unread</p>
                     {% else %}
-                    <p class="text-white/70 text-[10px] leading-none mt-0.5">All caught up</p>
+                    <p class="text-white/70 text-[11px] leading-none mt-0.5">All caught up</p>
                     {% endif %}
                 </div>
             </div>
-            <button @click="close()" class="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white active:bg-white/30 transition-colors">
+            <button @click="close()" class="w-10 h-10 flex items-center justify-center rounded-full bg-white/20 text-white active:bg-white/30 transition-colors">
                 <i class="fa-solid fa-xmark text-sm"></i>
             </button>
         </div>
@@ -73,8 +73,8 @@
                     </div>
                     <!-- Text -->
                     <div class="flex-1 min-w-0">
-                        <p class="text-[12px] font-semibold text-gray-800 leading-snug truncate">{{ activity.name }}</p>
-                        <p class="text-[10px] text-gray-500 mt-0.5 leading-snug">
+                        <p class="text-[13px] font-semibold text-gray-800 leading-snug truncate">{{ activity.name }}</p>
+                        <p class="text-[11px] text-gray-500 mt-0.5 leading-snug">
                             <span class="font-medium
                                 {% if activity.status == 'verified' %}text-green-600
                                 {% elif activity.status == 'approved' %}text-blue-600
@@ -86,7 +86,7 @@
                             </span>
                             &middot; {{ activity.table_name }}
                         </p>
-                        <p class="text-[9px] text-gray-400 mt-0.5">{{ activity.updated_at }}</p>
+                        <p class="text-[10px] text-gray-400 mt-0.5">{{ activity.updated_at }}</p>
                     </div>
                 </div>
                 {% endfor %}

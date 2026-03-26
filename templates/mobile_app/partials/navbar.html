@@ -5,7 +5,7 @@
         <!-- -- LEFT: Profile avatar icon only (opens left profile drawer) -- -->
         <button type="button"
                 @click="$dispatch('open-profile-drawer')"
-            class="w-10 h-10 rounded-2xl bg-white flex items-center justify-center text-gray-700 shadow-sm active:scale-95 transition-transform flex-shrink-0 select-none border border-gray-200">
+            class="w-11 h-11 rounded-2xl bg-white flex items-center justify-center text-gray-700 shadow-sm active:scale-95 transition-transform flex-shrink-0 select-none border border-gray-200">
             {% if is_super_admin %}
                 <i class="fa-solid fa-crown text-[15px]"></i>
             {% elif is_admin_staff %}
@@ -25,7 +25,7 @@
             <!-- Notification bell with count -->
             <button type="button"
                     @click="$dispatch('open-notification-drawer')"
-                    class="relative w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 text-gray-500 active:bg-gray-100 transition-colors">
+                    class="relative w-11 h-11 flex items-center justify-center rounded-xl bg-gray-50 text-gray-500 active:bg-gray-100 transition-colors">
                 <i class="fa-solid fa-bell text-[16px]"></i>
                 {% if notification_count and notification_count > 0 %}
                 <span class="absolute top-1 right-1 min-w-[17px] h-[17px] bg-red-500 rounded-full border-2 border-white flex items-center justify-center pointer-events-none">
@@ -36,7 +36,7 @@
             <!-- Hamburger  -  opens the right side drawer -->
             <button type="button"
                     @click="$dispatch('open-hamburger')"
-                    class="w-10 h-10 flex flex-col items-center justify-center gap-[5px] rounded-xl bg-gray-50 text-gray-600 active:bg-gray-100 transition-colors">
+                    class="w-11 h-11 flex flex-col items-center justify-center gap-[5px] rounded-xl bg-gray-50 text-gray-600 active:bg-gray-100 transition-colors">
                 <span class="block w-[18px] h-[2px] bg-current rounded-full"></span>
                 <span class="block w-[14px] h-[2px] bg-current rounded-full self-start ml-[2px]"></span>
                 <span class="block w-[18px] h-[2px] bg-current rounded-full"></span>
