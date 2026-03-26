@@ -227,7 +227,8 @@ __marimo__/
 # Node / Tailwind
 node_modules/
 package-lock.json
-tailwind-input.css
+static/css/tailwind.__last_good.css
+static/css/tailwind.__new.css
 
 # Temp test scripts
 test_*.py
