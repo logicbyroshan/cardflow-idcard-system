@@ -24,7 +24,7 @@
                 {% else %}List{% endif %}
             </h1>
             <p class="text-white/80 text-[10px] truncate leading-tight mt-0.5">
-                {% if table %}{{ table.name }}{% endif %}{% if client %} &mdash; {{ client.name }}{% endif %}
+                {% if table %}{{ table.name }}{% endif %}{% if table and table.group and table.group.client %} &mdash; {{ table.group.client.name }}{% elif client %} &mdash; {{ client.name }}{% endif %}
             </p>
         </div>
 
