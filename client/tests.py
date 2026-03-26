@@ -2,6 +2,8 @@
 Tests for client app.
 Covers: Client model, access control, client dashboard access.
 """
+import json
+
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
@@ -304,6 +306,125 @@ class ClientDashboardServiceTests(TestCase):
         self.assertEqual(result.data['counts']['pool'], 1)
         self.assertEqual(result.data['total_cards'], 4)
 
+    def test_dashboard_counts_scoped_for_client_staff(self):
+        from client.services import ClientDashboardService
+        from client.models import Client
+        from idcards.models import IDCardGroup, IDCardTable, IDCard
+        from staff.models import Staff
+
+        owner = User.objects.create_user(
+            username='dash-owner-staff@test.com', email='dash-owner-staff@test.com',
+            password='pass1234', role='client',
+        )
+        client_obj = Client.objects.create(user=owner, name='Dash Staff Client')
+
+        group_a = IDCardGroup.objects.create(client=client_obj, name='Group A')
+        group_b = IDCardGroup.objects.create(client=client_obj, name='Group B')
+
+        table_a = IDCardTable.objects.create(
+            group=group_a,
+            name='Table A',
+            fields=[
+                {'name': 'CLASS', 'type': 'class'},
+                {'name': 'SECTION', 'type': 'section'},
+            ],
+        )
+        table_b = IDCardTable.objects.create(
+            group=group_b,
+            name='Table B',
+            fields=[
+                {'name': 'CLASS', 'type': 'class'},
+                {'name': 'SECTION', 'type': 'section'},
+            ],
+        )
+
+        IDCard.objects.create(table=table_a, status='pending', field_data={'CLASS': '10', 'SECTION': 'A'})
+        IDCard.objects.create(table=table_a, status='verified', field_data={'CLASS': '11', 'SECTION': 'A'})
+        IDCard.objects.create(table=table_b, status='pending', field_data={'CLASS': '10', 'SECTION': 'A'})
+
+        staff_user = User.objects.create_user(
+            username='dash-cstaff@test.com', email='dash-cstaff@test.com',
+            password='pass1234', role='client_staff',
+        )
+        staff = Staff.objects.create(
+            user=staff_user,
+            staff_type='client_staff',
+            client=client_obj,
+            assigned_table_ids=[table_a.id],
+            allowed_classes=['10'],
+        )
+        self.assertIsNotNone(staff.id)
+
+        result = ClientDashboardService.get_dashboard_data(staff_user)
+        self.assertTrue(result.success)
+        self.assertEqual(result.data['group_count'], 1)
+        self.assertEqual(result.data['table_count'], 1)
+        self.assertEqual(result.data['counts']['pending'], 1)
+        self.assertEqual(result.data['counts']['verified'], 0)
+        self.assertEqual(result.data['total_cards'], 1)
+
+    def test_groups_with_counts_scoped_for_client_staff(self):
+        from client.services import ClientDashboardService
+        from client.models import Client
+        from idcards.models import IDCardGroup, IDCardTable, IDCard
+        from staff.models import Staff
+
+        owner = User.objects.create_user(
+            username='dash-owner-groups@test.com', email='dash-owner-groups@test.com',
+            password='pass1234', role='client',
+        )
+        client_obj = Client.objects.create(user=owner, name='Dash Groups Client')
+
+        group_a = IDCardGroup.objects.create(client=client_obj, name='Group A')
+        group_b = IDCardGroup.objects.create(client=client_obj, name='Group B')
+
+        table_a = IDCardTable.objects.create(
+            group=group_a,
+            name='Table A',
+            fields=[
+                {'name': 'CLASS', 'type': 'class'},
+                {'name': 'SECTION', 'type': 'section'},
+            ],
+        )
+        table_b = IDCardTable.objects.create(
+            group=group_b,
+            name='Table B',
+            fields=[
+                {'name': 'CLASS', 'type': 'class'},
+                {'name': 'SECTION', 'type': 'section'},
+            ],
+        )
+
+        IDCard.objects.create(table=table_a, status='pending', field_data={'CLASS': '10', 'SECTION': 'A'})
+        IDCard.objects.create(table=table_a, status='verified', field_data={'CLASS': '11', 'SECTION': 'A'})
+        IDCard.objects.create(table=table_b, status='pending', field_data={'CLASS': '10', 'SECTION': 'A'})
+
+        staff_user = User.objects.create_user(
+            username='dash-groups-staff@test.com', email='dash-groups-staff@test.com',
+            password='pass1234', role='client_staff',
+        )
+        staff = Staff.objects.create(
+            user=staff_user,
+            staff_type='client_staff',
+            client=client_obj,
+            assigned_table_ids=[table_a.id],
+            allowed_classes=['10'],
+        )
+        self.assertIsNotNone(staff.id)
+
+        result = ClientDashboardService.get_groups_with_counts(staff_user)
+        self.assertTrue(result.success)
+        self.assertEqual(len(result.data['groups']), 1)
+
+        group_payload = result.data['groups'][0]
+        self.assertEqual(group_payload['id'], group_a.id)
+        self.assertEqual(group_payload['card_count'], 1)
+        self.assertEqual(group_payload['pending'], 1)
+        self.assertEqual(group_payload['verified'], 0)
+        self.assertEqual(len(group_payload['tables']), 1)
+        self.assertEqual(group_payload['tables'][0]['id'], table_a.id)
+        self.assertEqual(group_payload['tables'][0]['card_count'], 1)
+
 
 class ClientStaffServicePermissionTests(TestCase):
     def setUp(self):
@@ -346,6 +467,46 @@ class ClientStaffServicePermissionTests(TestCase):
         })
         self.assertFalse(result.success)
         self.assertIn('Permission denied', result.message)
+
+    def test_create_staff_bulk_download_not_granted_when_client_lacks_permission(self):
+        from client.services import ClientStaffService
+        from staff.models import Staff
+
+        result = ClientStaffService.create_staff(self.owner, {
+            'email': 'bulk-blocked@test.com',
+            'first_name': 'Bulk',
+            'last_name': 'Blocked',
+            'phone': '7777777777',
+            'perm_idcard_bulk_download': True,
+        })
+        self.assertTrue(result.success)
+
+        staff = Staff.objects.select_related('user').get(id=result.data['staff_id'])
+        self.assertFalse(staff.perm_idcard_bulk_download)
+
+    def test_update_staff_bulk_download_granted_when_client_has_permission(self):
+        from client.services import ClientStaffService
+        from staff.models import Staff
+
+        self.client_obj.perm_idcard_bulk_download = True
+        self.client_obj.save(update_fields=['perm_idcard_bulk_download'])
+
+        created = ClientStaffService.create_staff(self.owner, {
+            'email': 'bulk-allowed@test.com',
+            'first_name': 'Bulk',
+            'last_name': 'Allowed',
+            'phone': '6666666666',
+        })
+        self.assertTrue(created.success)
+
+        staff_id = created.data['staff_id']
+        updated = ClientStaffService.update_staff(self.owner, staff_id, {
+            'perm_idcard_bulk_download': True,
+        })
+        self.assertTrue(updated.success)
+
+        staff = Staff.objects.get(id=staff_id)
+        self.assertTrue(staff.perm_idcard_bulk_download)
 
 
 class ClientApiIntegrationTests(TestCase):
@@ -431,3 +592,159 @@ class ClientApiIntegrationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertTrue(payload['success'])
+
+    def test_api_class_section_options_respects_table_id_source(self):
+        from idcards.models import IDCardTable, IDCard
+
+        second_table = IDCardTable.objects.create(
+            group=self.group,
+            name='Second Students',
+            fields=[
+                {'name': 'CLASS', 'type': 'class'},
+                {'name': 'SECTION', 'type': 'section'},
+                {'name': 'NAME', 'type': 'text'},
+            ],
+        )
+        IDCard.objects.create(
+            table=second_table,
+            status='pending',
+            field_data={'CLASS': '11', 'SECTION': 'B', 'NAME': 'Jane'},
+        )
+
+        self.client.login(username='api-owner@test.com', password='pass1234')
+        response = self.client.get(
+            f'/panel/client/api/class-section-options/?group_ids={self.table.id}&id_source=table'
+        )
+        self.assertEqual(response.status_code, 200)
+
+        payload = response.json()
+        self.assertTrue(payload['success'])
+        self.assertIn('10', payload.get('classes', []))
+        self.assertIn('A', payload.get('sections', []))
+        self.assertNotIn('11', payload.get('classes', []))
+        self.assertNotIn('B', payload.get('sections', []))
+
+    def test_filter_options_cache_scoped_for_client_staff(self):
+        from idcards.models import IDCard
+
+        IDCard.objects.create(
+            table=self.table,
+            status='pending',
+            field_data={'CLASS': '11', 'SECTION': 'B', 'NAME': 'Jane'},
+        )
+
+        self.client.login(username='api-owner@test.com', password='pass1234')
+        owner_response = self.client.get(f'/panel/api/table/{self.table.id}/filter-options/')
+        self.assertEqual(owner_response.status_code, 200)
+        owner_payload = owner_response.json()
+        owner_classes = [row.get('value') for row in owner_payload.get('class_values', [])]
+        self.assertGreaterEqual(len(owner_classes), 2)
+
+        self.staff_profile.allowed_classes = ['10']
+        self.staff_profile.allowed_sections = ['A']
+        self.staff_profile.save(update_fields=['allowed_classes', 'allowed_sections'])
+
+        self.client.login(username='api-staff@test.com', password='pass1234')
+        staff_response = self.client.get(f'/panel/api/table/{self.table.id}/filter-options/')
+        self.assertEqual(staff_response.status_code, 200)
+        staff_payload = staff_response.json()
+        staff_classes = [row.get('value') for row in staff_payload.get('class_values', [])]
+        self.assertEqual(len(staff_classes), 1, msg=str(staff_payload))
+        self.assertEqual(staff_payload.get('section_values', []), ['A'])
+
+    def test_client_staff_idcard_group_page_counts_are_scoped(self):
+        from idcards.models import IDCard, IDCardGroup, IDCardTable
+
+        extra_group = IDCardGroup.objects.create(client=self.client_obj, name='Class 11')
+        extra_table = IDCardTable.objects.create(
+            group=extra_group,
+            name='Students Extra',
+            fields=[
+                {'name': 'CLASS', 'type': 'class'},
+                {'name': 'SECTION', 'type': 'section'},
+                {'name': 'NAME', 'type': 'text'},
+            ],
+        )
+
+        IDCard.objects.create(
+            table=self.table,
+            status='pending',
+            field_data={'CLASS': '11', 'SECTION': 'A', 'NAME': 'Out Of Scope'},
+        )
+        IDCard.objects.create(
+            table=extra_table,
+            status='pending',
+            field_data={'CLASS': '10', 'SECTION': 'A', 'NAME': 'Other Table'},
+        )
+
+        self.staff_profile.assigned_table_ids = [self.table.id]
+        self.staff_profile.perm_idcard_pending_list = True
+        self.staff_profile.allowed_classes = ['10']
+        self.staff_profile.allowed_sections = []
+        self.staff_profile.allowed_branches = []
+        self.staff_profile.save(update_fields=[
+            'assigned_table_ids',
+            'perm_idcard_pending_list',
+            'allowed_classes',
+            'allowed_sections',
+            'allowed_branches',
+        ])
+
+        self.client.login(username='api-staff@test.com', password='pass1234')
+        response = self.client.get('/panel/client/idcard-group/')
+        self.assertEqual(response.status_code, 200)
+
+        tables = list(response.context['tables'])
+        self.assertEqual(len(tables), 1)
+        self.assertEqual(tables[0].id, self.table.id)
+        self.assertEqual(tables[0].pending_count, 1)
+        self.assertEqual(tables[0].total_cards, 1)
+
+    def test_client_staff_cards_api_class_filter_with_roman_value(self):
+        from idcards.models import IDCard
+
+        IDCard.objects.create(
+            table=self.table,
+            status='pending',
+            field_data={'CLASS': 'III', 'SECTION': 'A', 'NAME': 'Roman Class'},
+        )
+
+        self.staff_profile.perm_idcard_pending_list = True
+        self.staff_profile.save(update_fields=['perm_idcard_pending_list'])
+
+        self.client.login(username='api-staff@test.com', password='pass1234')
+        response = self.client.get(
+            f'/panel/api/table/{self.table.id}/cards/',
+            {'status': 'pending', 'class': 'III'},
+        )
+        self.assertEqual(response.status_code, 200)
+
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+
+    def test_client_staff_temp_password_api_requires_client_permission(self):
+        self.client_obj.perm_set_temp_password = False
+        self.client_obj.save(update_fields=['perm_set_temp_password'])
+
+        self.client.login(username='api-owner@test.com', password='pass1234')
+        response = self.client.post(
+            f'/panel/client/api/staff/{self.staff_profile.id}/set-temp-password/',
+            data=json.dumps({'password': 'TmpStrong!982'}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_client_staff_temp_password_api_success_when_client_has_permission(self):
+        self.client_obj.perm_set_temp_password = True
+        self.client_obj.save(update_fields=['perm_set_temp_password'])
+
+        self.client.login(username='api-owner@test.com', password='pass1234')
+        response = self.client.post(
+            f'/panel/client/api/staff/{self.staff_profile.id}/set-temp-password/',
+            data=json.dumps({'password': 'TmpStrong!982'}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 200)
+
+        self.client_staff_user.refresh_from_db()
+        self.assertTrue(self.client_staff_user.check_password('TmpStrong!982'))

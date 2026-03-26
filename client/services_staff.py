@@ -1,7 +1,7 @@
 """
 Client Staff Service — CRUD operations for client-managed staff members.
 """
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
 import os
 
 from django.db import transaction
@@ -30,6 +30,8 @@ class ClientStaffService(BaseService):
         'perm_idcard_pending_list', 'perm_idcard_verified_list',
         'perm_idcard_pool_list', 'perm_idcard_approved_list',
         'perm_idcard_download_list',
+        # ── Export / Download ───────────────────────────────────────
+        'perm_idcard_bulk_download',
         # ── Card Actions ──────────────────────────────────────────────
         'perm_idcard_add', 'perm_idcard_edit', 'perm_idcard_delete',
         'perm_idcard_info', 'perm_idcard_approve', 'perm_idcard_verify',
@@ -38,6 +40,49 @@ class ClientStaffService(BaseService):
         # ── App & Access ───────────────────────────────────────────
         'perm_mobile_app',
     ]
+
+    @staticmethod
+    def _resolve_assignment_scope_ids(client: Client, raw_ids: Any) -> Tuple[List[int], List[int]]:
+        """Normalize assignment IDs into valid group IDs and table IDs."""
+        if not isinstance(raw_ids, list):
+            return [], []
+
+        normalized_ids = sorted({
+            int(v) for v in raw_ids
+            if str(v).strip().isdigit() and int(v) > 0
+        })
+        if not normalized_ids:
+            return [], []
+
+        valid_group_ids = set(
+            IDCardGroup.objects.filter(client=client, id__in=normalized_ids)
+            .values_list('id', flat=True)
+        )
+
+        valid_table_ids = set(
+            IDCardTable.objects.filter(
+                group__client=client,
+                deleted_by_client=False,
+                id__in=normalized_ids,
+            ).values_list('id', flat=True)
+        )
+
+        if valid_table_ids:
+            table_group_ids = IDCardTable.objects.filter(
+                id__in=valid_table_ids,
+            ).values_list('group_id', flat=True)
+            valid_group_ids.update(table_group_ids)
+
+        unresolved_ids = [gid for gid in normalized_ids if gid not in valid_group_ids]
+        if unresolved_ids:
+            table_group_ids = IDCardTable.objects.filter(
+                group__client=client,
+                deleted_by_client=False,
+                id__in=unresolved_ids,
+            ).values_list('group_id', flat=True)
+            valid_group_ids.update(table_group_ids)
+
+        return sorted(valid_group_ids), sorted(valid_table_ids)
     
     @classmethod
     def can_manage_staff(cls, user) -> bool:
@@ -81,6 +126,10 @@ class ClientStaffService(BaseService):
                     'is_active': staff.user.is_active,
                     'created_at': staff.created_at.strftime('%d %b %Y'),
                     'assigned_group_ids': list(staff.assigned_groups.values_list('id', flat=True)),
+                    'assigned_table_ids': [
+                        int(v) for v in (staff.assigned_table_ids or [])
+                        if str(v).strip().isdigit() and int(v) > 0
+                    ],
                     'allowed_classes': staff.allowed_classes or [],
                     'allowed_sections': staff.allowed_sections or [],
                 }
@@ -144,6 +193,10 @@ class ClientStaffService(BaseService):
                 'created_at': staff.created_at.strftime('%Y-%m-%dT%H:%M:%S'),
                 'profile_image_url': None,  # profile_image removed in Phase 1 refactor
                 'assigned_group_ids': list(staff.assigned_groups.values_list('id', flat=True)),
+                'assigned_table_ids': [
+                    int(v) for v in (staff.assigned_table_ids or [])
+                    if str(v).strip().isdigit() and int(v) > 0
+                ],
                 'allowed_classes': staff.allowed_classes or [],
                 'allowed_sections': staff.allowed_sections or [],
                 'allowed_branches': staff.allowed_branches or [],
@@ -273,11 +326,17 @@ class ClientStaffService(BaseService):
                 # Assign groups if provided
                 assigned_groups = data.get('assigned_groups', [])
                 if assigned_groups:
-                    from idcards.models import IDCardGroup
+                    resolved_group_ids, resolved_table_ids = cls._resolve_assignment_scope_ids(
+                        client,
+                        assigned_groups,
+                    )
                     valid_groups = IDCardGroup.objects.filter(
-                        id__in=assigned_groups, client=client
+                        id__in=resolved_group_ids,
+                        client=client,
                     )
                     staff.assigned_groups.set(valid_groups)
+                    staff.assigned_table_ids = resolved_table_ids
+                    staff.save(update_fields=['assigned_table_ids'])
             
             display_name = f'{first_name} {last_name}'.strip() or email
             return ServiceResult(
@@ -373,13 +432,17 @@ class ClientStaffService(BaseService):
 
                 # Update group assignments if provided
                 if 'assigned_groups' in data:
-                    from idcards.models import IDCardGroup
-                    group_ids = data['assigned_groups']
-                    if isinstance(group_ids, list):
-                        valid_groups = IDCardGroup.objects.filter(
-                            id__in=group_ids, client=client
-                        )
-                        staff.assigned_groups.set(valid_groups)
+                    resolved_group_ids, resolved_table_ids = cls._resolve_assignment_scope_ids(
+                        client,
+                        data.get('assigned_groups', []),
+                    )
+                    valid_groups = IDCardGroup.objects.filter(
+                        id__in=resolved_group_ids,
+                        client=client,
+                    )
+                    staff.assigned_groups.set(valid_groups)
+                    staff.assigned_table_ids = resolved_table_ids
+                    staff.save(update_fields=['assigned_table_ids'])
             
             return ServiceResult(
                 success=True,
@@ -453,5 +516,31 @@ class ClientStaffService(BaseService):
                 message=f'Staff "{staff_name}" deleted successfully!'
             )
             
+        except Exception as e:
+            return ServiceResult(success=False, message=str(e))
+
+    @classmethod
+    def set_temp_password(cls, user, staff_id: int, new_password: str, request=None) -> ServiceResult:
+        """Set temporary password for a client-owned staff account."""
+        try:
+            client = ClientAccessService.get_client_for_user(user)
+            if not client:
+                return ServiceResult(success=False, message='Client profile not found')
+
+            if not PermissionService.has_permission(user, 'perm_set_temp_password'):
+                return ServiceResult(success=False, message='Permission denied')
+
+            staff = Staff.objects.filter(
+                id=staff_id,
+                client=client,
+                staff_type='client_staff',
+            ).first()
+            if not staff:
+                return ServiceResult(success=False, message='Staff not found')
+
+            from core.services import StaffService
+
+            return StaffService.set_temp_password(staff.id, new_password, request=request)
+
         except Exception as e:
             return ServiceResult(success=False, message=str(e))

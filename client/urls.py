@@ -67,6 +67,9 @@ urlpatterns = [
     
     # Toggle staff active/inactive status
     path('api/staff/<int:staff_id>/toggle-status/', views.api_staff_toggle_status, name='api_staff_toggle_status'),
+
+    # Set temporary password for a staff member
+    path('api/staff/<int:staff_id>/set-temp-password/', views.api_staff_set_temp_password, name='api_staff_set_temp_password'),
     
     # Get groups for staff assignment
     path('api/groups/active/', views.api_client_groups_list, name='api_groups_active'),

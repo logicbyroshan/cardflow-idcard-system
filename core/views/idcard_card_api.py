@@ -35,10 +35,64 @@ from .idcard_helpers import (
     invalidate_filter_options_cache,
     _is_client_readonly,
     _client_readonly_response,
+    _apply_client_staff_row_scope,
 )
 
 # Logger for this module
 logger = logging.getLogger(__name__)
+
+
+def _is_card_in_client_staff_scope(user, card):
+    """Return True when the given card is visible under client_staff scope."""
+    scoped_qs = _apply_client_staff_row_scope(
+        IDCard.objects.filter(id=card.id, table_id=card.table_id),
+        user,
+        card.table,
+    )
+    return scoped_qs.exists()
+
+
+def _forbidden_card_ids_for_client_staff(user, table, card_ids):
+    """Return card IDs outside the caller's client_staff row scope."""
+    if not PermissionService.is_client_staff(user):
+        return []
+
+    normalized = sorted({
+        int(v) for v in (card_ids or [])
+        if str(v).strip().isdigit() and int(v) > 0
+    })
+    if not normalized:
+        return []
+
+    scoped_ids = set(
+        _apply_client_staff_row_scope(
+            IDCard.objects.filter(table=table, id__in=normalized),
+            user,
+            table,
+        ).values_list('id', flat=True)
+    )
+    return [cid for cid in normalized if cid not in scoped_ids]
+
+
+def _filter_options_cache_key(user, table_id):
+    """Build a cache key for filter-options that is safe for scoped users."""
+    base = f'filter_options:{table_id}'
+    if not PermissionService.is_client_staff(user):
+        return base
+
+    staff = getattr(user, 'staff_profile', None)
+    if not staff:
+        return f'{base}:client_staff:{user.id}:no_staff'
+
+    table_ids = sorted({
+        int(v) for v in (staff.assigned_table_ids or [])
+        if str(v).strip().isdigit() and int(v) > 0
+    })
+    table_sig = ','.join(str(v) for v in table_ids) if table_ids else 'all'
+    cls_sig = ','.join(sorted(str(v).strip() for v in (staff.allowed_classes or []) if str(v).strip())) or 'all'
+    sec_sig = ','.join(sorted(str(v).strip() for v in (staff.allowed_sections or []) if str(v).strip())) or 'all'
+    br_sig = ','.join(sorted(str(v).strip() for v in (staff.allowed_branches or []) if str(v).strip())) or 'all'
+    return f'{base}:client_staff:{user.id}:{table_sig}:{cls_sig}:{sec_sig}:{br_sig}'
 
 
 # ==================== ID CARD API ENDPOINTS ====================
@@ -69,6 +123,51 @@ def api_idcard_list(request, table_id):
         if required_perm and not PermissionService.has(request.user, required_perm):
             return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
     
+    # client_staff must use row-scoped response compatible with legacy /cards/ payload.
+    if PermissionService.is_client_staff(request.user):
+        scoped_resp = api_idcard_cards_json(request, table_id)
+        try:
+            scoped_payload = json.loads(scoped_resp.content.decode('utf-8'))
+        except Exception:
+            return scoped_resp
+
+        if not scoped_payload.get('success'):
+            return scoped_resp
+
+        from django.db.models import Count
+        scoped_counts = {
+            'pending': 0,
+            'verified': 0,
+            'pool': 0,
+            'approved': 0,
+            'download': 0,
+            'reprint': 0,
+            'total': 0,
+        }
+        scoped_cards_qs = _apply_client_staff_row_scope(
+            IDCard.objects.filter(table=table),
+            request.user,
+            table,
+        )
+        for row in scoped_cards_qs.values('status').annotate(count=Count('id')):
+            st = row.get('status')
+            ct = row.get('count', 0)
+            if st in scoped_counts:
+                scoped_counts[st] = ct
+                scoped_counts['total'] += ct
+
+        return JsonResponse({
+            'success': True,
+            'cards': scoped_payload.get('results', []),
+            'total_count': scoped_payload.get('total', 0),
+            'offset': scoped_payload.get('offset', 0),
+            'limit': scoped_payload.get('limit', 100),
+            'has_more': scoped_payload.get('has_more', False),
+            'next_cursor': scoped_payload.get('next_cursor'),
+            'status_counts': scoped_counts,
+            'table': IDCardService.serialize_table(table),
+        })
+
     try:
         offset = max(0, int(request.GET.get('offset', 0)))
         limit = min(500, max(1, int(request.GET.get('limit', 100))))
@@ -178,6 +277,8 @@ def api_idcard_cards_json(request, table_id):
 
     if status_filter and status_filter in IDCardService.VALID_STATUSES:
         qs = qs.filter(status=status_filter)
+
+    qs = _apply_client_staff_row_scope(qs, request.user, table)
 
     # Search & filter on field_data JSON
     search = request.GET.get('search', '').strip()
@@ -384,6 +485,20 @@ def api_idcard_all_ids(request, table_id):
         from_date=from_date, to_date=to_date,
         image_column=image_column, image_condition=image_condition,
     )
+
+    if result.success and PermissionService.is_client_staff(request.user):
+        scoped_ids = set(
+            _apply_client_staff_row_scope(
+                IDCard.objects.filter(table=table),
+                request.user,
+                table,
+            ).values_list('id', flat=True)
+        )
+        card_ids = [cid for cid in (result.data or {}).get('card_ids', []) if cid in scoped_ids]
+        result.data = result.data or {}
+        result.data['card_ids'] = card_ids
+        result.data['total_count'] = len(card_ids)
+
     return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
 
 
@@ -417,15 +532,16 @@ def api_idcard_filter_options(request, table_id):
 
     status_filter = request.GET.get('status', '').strip()
     
-    # Cache key includes table_id but NOT status — we cache all-status options
+    # Cache key includes table scope and (for client_staff) user scope.
     # Status filtering was removed because filtering a dropdown by status
     # makes no sense (user wants to see all possible class/section values).
-    cache_key = f'filter_options:{table_id}'
+    cache_key = _filter_options_cache_key(request.user, table_id)
     cached = django_cache.get(cache_key)
     if cached is not None:
         return JsonResponse(cached)
 
     qs = IDCard.objects.filter(table=table)
+    qs = _apply_client_staff_row_scope(qs, request.user, table)
     # NOTE: Removed status filter — filter options should show ALL values
     # across the entire table, not just the current status view.
 
@@ -579,6 +695,8 @@ def api_idcard_get(request, card_id):
     """API endpoint to get a single ID Card"""
     card, err = _check_client_scope_by_card(request.user, card_id)
     if err: return err
+    if not _is_card_in_client_staff_scope(request.user, card):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
     result = IDCardService.get_card(card_id)
     if result.success:
         return JsonResponse({'success': True, 'card': result.data['card']})
@@ -595,6 +713,8 @@ def api_idcard_update(request, card_id):
     """
     _card, err = _check_client_scope_by_card(request.user, card_id)
     if err: return err
+    if not _is_card_in_client_staff_scope(request.user, _card):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
     # Client/client_staff cannot edit cards in approved/download/reprint
     if _is_client_readonly(request.user, _card.status):
         return _client_readonly_response()
@@ -663,6 +783,8 @@ def api_idcard_delete(request, card_id):
     """API endpoint to delete an ID Card"""
     _card, err = _check_client_scope_by_card(request.user, card_id)
     if err: return err
+    if not _is_card_in_client_staff_scope(request.user, _card):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
     # Client/client_staff cannot delete cards in approved/download/reprint
     if _is_client_readonly(request.user, _card.status):
         return _client_readonly_response()
@@ -683,6 +805,8 @@ def api_idcard_update_field(request, card_id):
     """API endpoint to update a single field on an ID Card (for inline editing)"""
     _card, err = _check_client_scope_by_card(request.user, card_id)
     if err: return err
+    if not _is_card_in_client_staff_scope(request.user, _card):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
     # Client/client_staff cannot edit cards in approved/download/reprint
     if _is_client_readonly(request.user, _card.status):
         return _client_readonly_response()
@@ -725,6 +849,8 @@ def api_idcard_change_status(request, card_id):
     """
     card, err = _check_client_scope_by_card(request.user, card_id)
     if err: return err
+    if not _is_card_in_client_staff_scope(request.user, card):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
     try:
         data = json.loads(request.body)
         new_status = data.get('status')
@@ -758,6 +884,13 @@ def api_idcard_bulk_status(request, table_id):
         if not card_ids:
             return JsonResponse({'success': False, 'message': 'No cards selected'}, status=400)
 
+        forbidden_ids = _forbidden_card_ids_for_client_staff(request.user, _tbl, card_ids)
+        if forbidden_ids:
+            return JsonResponse({
+                'success': False,
+                'message': 'Some selected cards are outside your assigned scope.',
+            }, status=403)
+
         from idcards.services_workflow import WorkflowService
         result = WorkflowService.bulk_transition(
             _tbl, card_ids, new_status, user=request.user, request=request
@@ -785,6 +918,14 @@ def api_idcard_bulk_delete(request, table_id):
         
         if not delete_all and not card_ids:
             return JsonResponse({'success': False, 'message': 'No cards selected'}, status=400)
+
+        if not delete_all:
+            forbidden_ids = _forbidden_card_ids_for_client_staff(request.user, _tbl, card_ids)
+            if forbidden_ids:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Some selected cards are outside your assigned scope.',
+                }, status=403)
         
         # Check appropriate permission
         if delete_all:
@@ -946,7 +1087,30 @@ def api_table_status_counts(request, table_id):
     if err: return err
     try:
         table = _tbl  # Reuse already-fetched table from scope check
-        status_counts = IDCardService.get_status_counts(table)
+        if PermissionService.is_client_staff(request.user):
+            from django.db.models import Count
+            scoped_cards_qs = _apply_client_staff_row_scope(
+                IDCard.objects.filter(table=table),
+                request.user,
+                table,
+            )
+            status_counts = {
+                'pending': 0,
+                'verified': 0,
+                'pool': 0,
+                'approved': 0,
+                'download': 0,
+                'reprint': 0,
+                'total': 0,
+            }
+            for row in scoped_cards_qs.values('status').annotate(count=Count('id')):
+                st = row.get('status')
+                ct = row.get('count', 0)
+                if st in status_counts:
+                    status_counts[st] = ct
+                    status_counts['total'] += ct
+        else:
+            status_counts = IDCardService.get_status_counts(table)
         
         return JsonResponse({
             'success': True,

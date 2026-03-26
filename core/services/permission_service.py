@@ -76,6 +76,10 @@ class PermissionService:
         'perm_mobile_app',
     ]
 
+    ACCOUNT_SECURITY_PERMISSIONS = [
+        'perm_set_temp_password',
+    ]
+
     # All known perm keys (computed once at class-load time)
     ALL_PERMISSION_KEYS: List[str] = (
         IDCARD_CLIENT_PERMISSIONS
@@ -84,6 +88,7 @@ class PermissionService:
         + IDCARD_ACTION_PERMISSIONS
         + WEBSITE_PERMISSIONS
         + MOBILE_APP_PERMISSIONS
+        + ACCOUNT_SECURITY_PERMISSIONS
     )
 
     # Perms intentionally absent from the Staff model

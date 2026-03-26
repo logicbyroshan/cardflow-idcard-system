@@ -56,8 +56,10 @@ window._StaffDrawerSetup = function (cfg, ctx) {
         var filtered = allItems.filter(function (it) { return !term || it.name.toLowerCase().includes(term); });
 
         filtered.sort(function (a, b) {
-            var as = selectedIds.has(a.id) ? 0 : 1;
-            var bs = selectedIds.has(b.id) ? 0 : 1;
+            var aid = parseInt(a.id, 10);
+            var bid = parseInt(b.id, 10);
+            var as = selectedIds.has(aid) ? 0 : 1;
+            var bs = selectedIds.has(bid) ? 0 : 1;
             if (as !== bs) return as - bs;
             return a.name.localeCompare(b.name);
         });
@@ -70,16 +72,17 @@ window._StaffDrawerSetup = function (cfg, ctx) {
         };
 
         filtered.forEach(function (item) {
+            var itemId = parseInt(item.id, 10);
             var div = document.createElement('div');
-            div.className = 'client-multiselect-item' + (selectedIds.has(item.id) ? ' selected' : '');
-            div.innerHTML = '<input type="checkbox" ' + (selectedIds.has(item.id) ? 'checked' : '') +
+            div.className = 'client-multiselect-item' + (selectedIds.has(itemId) ? ' selected' : '');
+            div.innerHTML = '<input type="checkbox" ' + (selectedIds.has(itemId) ? 'checked' : '') +
                 ' data-' + prefix + '-id="' + item.id + '"><span class="client-name">' + _esc(item.name) + '</span>';
             div.addEventListener('click', function (e) {
                 e.stopPropagation();
                 var cb = div.querySelector('input[type="checkbox"]');
                 if (e.target !== cb) cb.checked = !cb.checked;
-                if (cb.checked) { selectedIds.add(item.id); div.classList.add('selected'); }
-                else            { selectedIds.delete(item.id); div.classList.remove('selected'); }
+                if (cb.checked) { selectedIds.add(itemId); div.classList.add('selected'); }
+                else            { selectedIds.delete(itemId); div.classList.remove('selected'); }
                 updateSelectionText();
                 if (typeof cfg.onAssignmentSelectionChange === 'function') {
                     cfg.onAssignmentSelectionChange(Array.from(selectedIds));
@@ -97,7 +100,9 @@ window._StaffDrawerSetup = function (cfg, ctx) {
             msText.classList.remove('has-selection');
         } else {
             if (count <= 2) {
-                var names = allItems.filter(function (it) { return selectedIds.has(it.id); }).map(function (it) { return it.name; });
+                var names = allItems
+                    .filter(function (it) { return selectedIds.has(parseInt(it.id, 10)); })
+                    .map(function (it) { return it.name; });
                 msText.textContent = names.join(', ');
             } else {
                 msText.textContent = count + ' ' + cfg.assignment.pluralLabel + ' selected';
@@ -130,7 +135,22 @@ window._StaffDrawerSetup = function (cfg, ctx) {
         if (!assignSection) return;
         assignSection.style.display = '';
         if (allItems.length === 0) await fetchItems();
-        selectedIds = new Set((preselectedIds || []).map(function (id) { return parseInt(id); }));
+
+        var preselectedSet = new Set((preselectedIds || []).map(function (id) { return parseInt(id, 10); }));
+        var matchByParentId = cfg.assignment && cfg.assignment.matchByParentId === true;
+        selectedIds = new Set();
+
+        allItems.forEach(function (item) {
+            var itemId = parseInt(item.id, 10);
+            var groupId = parseInt(item.group_id, 10);
+            if (
+                preselectedSet.has(itemId)
+                || (matchByParentId && Number.isFinite(groupId) && preselectedSet.has(groupId))
+            ) {
+                selectedIds.add(itemId);
+            }
+        });
+
         updateSelectionText();
         closeMsDropdown();
         if (typeof cfg.onAssignmentSelectionChange === 'function') {

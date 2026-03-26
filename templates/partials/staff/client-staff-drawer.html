@@ -222,6 +222,20 @@ Mirrors admin staff-drawer.html but with Group Assignment instead of Client Assi
                     </div>
                 </div>
 
+                <!-- Export & Download -->
+                <div class="permission-category">
+                    <div class="category-title"><i class="fa-solid fa-file-pdf"></i> Export &amp; Download</div>
+                    <div class="permissions-grid">
+                        <div class="permission-row{% if not perm_idcard_bulk_download %} perm-locked{% endif %}" {% if not perm_idcard_bulk_download %}title="Admin has not granted you this permission"{% endif %}>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="perm_idcard_bulk_download" id="perm-idcard-bulk-download" {% if not perm_idcard_bulk_download %}disabled{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span class="permission-label">Download PDF / Export{% if not perm_idcard_bulk_download %} <i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}</span>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Card Actions -->
                 <div class="permission-category">
                     <div class="category-title"><i class="fa-solid fa-id-card"></i> Card Actions</div>
@@ -310,9 +324,11 @@ Mirrors admin staff-drawer.html but with Group Assignment instead of Client Assi
         
         <div class="drawer-footer">
             <button type="button" class="btn btn-md btn-neutral" id="drawer-cancel-btn"><i class="fa-solid fa-xmark"></i> Cancel</button>
+            {% if perm_set_temp_password %}
             <button type="button" class="btn btn-md btn-warning" id="tempPasswordStaffBtn" style="display:none;" onclick="openTempPasswordModal('staff')">
                 <i class="fa-solid fa-key"></i> Set Temp Password
             </button>
+            {% endif %}
             <button type="submit" class="btn btn-md btn-primary" id="drawer-submit-btn">
                 <i class="fa-solid fa-floppy-disk"></i> <span id="submit-btn-text">Add Staff</span>
             </button>

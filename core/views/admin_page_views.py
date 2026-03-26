@@ -32,6 +32,7 @@ from .base_helpers import (
     _STATUS_LIST_PERM,
     _VALID_STATUSES,
 )
+from .idcard_helpers import _apply_client_staff_row_scope
 
 logger = logging.getLogger(__name__)
 
@@ -300,6 +301,9 @@ def build_idcard_actions_context(request, table, *, default_per_page=100,
     if status_filter and status_filter in _VALID_STATUSES:
         id_cards_query = id_cards_query.filter(status=status_filter)
 
+    # Enforce client_staff data partitioning by group/class/section/branch.
+    id_cards_query = _apply_client_staff_row_scope(id_cards_query, request.user, table)
+
     # ── Search ──
     if search_query:
         id_cards_query = id_cards_query.filter(field_data__icontains=search_query)
@@ -339,19 +343,57 @@ def build_idcard_actions_context(request, table, *, default_per_page=100,
                 pass
 
     total_count = id_cards_query.count()
-    status_counts = IDCardService.get_status_counts(table)
-    reprint_counts = {
-        'request_list': ReprintRequest.objects.filter(
-            table=table,
-            status='requested',
-            card__status='download',
-        ).count(),
-        'confirmed': ReprintRequest.objects.filter(
-            table=table,
-            status='confirmed',
-            card__status='download',
-        ).count(),
-    }
+
+    if PermissionService.is_client_staff(request.user):
+        scoped_cards_qs = _apply_client_staff_row_scope(
+            IDCard.objects.filter(table=table),
+            request.user,
+            table,
+        )
+        status_counts = {
+            'pending': 0,
+            'verified': 0,
+            'pool': 0,
+            'approved': 0,
+            'download': 0,
+            'reprint': 0,
+            'total': 0,
+        }
+        for row in scoped_cards_qs.values('status').annotate(count=Count('id')):
+            st = row.get('status')
+            ct = row.get('count', 0)
+            if st in status_counts:
+                status_counts[st] = ct
+                status_counts['total'] += ct
+
+        reprint_counts = {
+            'request_list': ReprintRequest.objects.filter(
+                table=table,
+                status='requested',
+                card__status='download',
+                card_id__in=scoped_cards_qs.values('id'),
+            ).count(),
+            'confirmed': ReprintRequest.objects.filter(
+                table=table,
+                status='confirmed',
+                card__status='download',
+                card_id__in=scoped_cards_qs.values('id'),
+            ).count(),
+        }
+    else:
+        status_counts = IDCardService.get_status_counts(table)
+        reprint_counts = {
+            'request_list': ReprintRequest.objects.filter(
+                table=table,
+                status='requested',
+                card__status='download',
+            ).count(),
+            'confirmed': ReprintRequest.objects.filter(
+                table=table,
+                status='confirmed',
+                card__status='download',
+            ).count(),
+        }
 
     return {
         'active_page': active_page,

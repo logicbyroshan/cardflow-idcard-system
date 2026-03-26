@@ -36,6 +36,14 @@ from ..utils.upload_security import validate_zip_safety
 logger = logging.getLogger(__name__)
 
 
+def _normalized_assigned_table_ids(staff):
+    """Return sanitized positive integer table IDs from staff assignment."""
+    return [
+        int(v) for v in (getattr(staff, 'assigned_table_ids', None) or [])
+        if str(v).strip().isdigit() and int(v) > 0
+    ]
+
+
 def _safe_error(e, fallback='An error occurred. Please try again.'):
     """Return a safe error message for API responses. Logs the real exception."""
     logger.exception("API error: %s", e)
@@ -108,6 +116,8 @@ def _build_class_filter_q(qs, class_filter, class_field_name):
     canonical value as the filter, then matches them with __in.
     """
     from django.db.models.fields.json import KeyTextTransform
+    from django.db.models.functions import Cast
+    from django.db.models import CharField
     from django.db.models import Q
     from core.utils.field_utils import normalize_class_value
 
@@ -139,8 +149,10 @@ def _build_class_filter_q(qs, class_filter, class_field_name):
     if not matching_raw:
         return qs.none()
 
-    # Build filter: match any of the raw variants
-    qs = qs.annotate(_cls=KeyTextTransform(class_field_name, 'field_data'))
+    # Build filter: match any of the raw variants as plain text.
+    # Using KeyTextTransform directly can produce JSON_EXTRACT comparisons,
+    # which fail on non-JSON literals like roman classes (e.g. "III").
+    qs = qs.annotate(_cls=Cast(KeyTextTransform(class_field_name, 'field_data'), CharField()))
     q = Q()
     for raw in matching_raw:
         q |= Q(_cls=raw)
@@ -166,6 +178,107 @@ def _get_class_section_field_names(table):
     return class_field, section_field
 
 
+def _get_class_section_branch_field_names(table):
+    """Extract class, section, and branch-like field names from table fields.
+
+    Branch-like fields are matched by type='branch' OR common field-name
+    variants used by college datasets (branch/stream/course).
+    """
+    class_field = None
+    section_field = None
+    branch_field = None
+
+    for field in (table.fields or []):
+        ftype = str(field.get('type', '') or '').strip().lower()
+        fname = str(field.get('name', '') or '').strip()
+        fname_lower = fname.lower()
+
+        if not class_field and (ftype == 'class' or fname_lower == 'class'):
+            class_field = fname
+            continue
+
+        if not section_field and (ftype == 'section' or fname_lower == 'section'):
+            section_field = fname
+            continue
+
+        if branch_field:
+            continue
+
+        if ftype == 'branch':
+            branch_field = fname
+            continue
+
+        if (
+            fname_lower == 'branch'
+            or fname_lower == 'stream'
+            or fname_lower == 'course'
+            or 'branch' in fname_lower
+            or 'stream' in fname_lower
+            or 'course' in fname_lower
+        ):
+            branch_field = fname
+
+    return class_field, section_field, branch_field
+
+
+def _apply_client_staff_row_scope(qs, user, table):
+    """Apply client_staff-specific row-level scope to an IDCard queryset.
+
+    Scope rules:
+    - assigned_groups restrict table/group visibility (empty = all groups)
+    - allowed_classes/allowed_sections/allowed_branches restrict rows when the
+      corresponding field exists in the table
+    """
+    if not PermissionService.is_client_staff(user):
+        return qs
+
+    staff = getattr(user, 'staff_profile', None)
+    if not staff:
+        return qs.none()
+
+    assigned_table_ids = _normalized_assigned_table_ids(staff)
+    if assigned_table_ids:
+        if table.id not in assigned_table_ids:
+            return qs.none()
+    else:
+        assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
+        if assigned_group_ids and table.group_id not in assigned_group_ids:
+            return qs.none()
+
+    allowed_classes = [str(v).strip() for v in (staff.allowed_classes or []) if str(v).strip()]
+    allowed_sections = [str(v).strip() for v in (staff.allowed_sections or []) if str(v).strip()]
+    allowed_branches = [str(v).strip() for v in (staff.allowed_branches or []) if str(v).strip()]
+
+    if not (allowed_classes or allowed_sections or allowed_branches):
+        return qs
+
+    from django.db.models.fields.json import KeyTextTransform
+    from django.db.models.functions import Cast
+    from django.db.models import CharField
+
+    class_field, section_field, branch_field = _get_class_section_branch_field_names(table)
+
+    if allowed_classes:
+        if not class_field:
+            return qs.none()
+        qs = qs.annotate(_scope_cls=Cast(KeyTextTransform(class_field, 'field_data'), CharField()))
+        qs = qs.filter(_scope_cls__in=allowed_classes)
+
+    if allowed_sections:
+        if not section_field:
+            return qs.none()
+        qs = qs.annotate(_scope_sec=Cast(KeyTextTransform(section_field, 'field_data'), CharField()))
+        qs = qs.filter(_scope_sec__in=allowed_sections)
+
+    if allowed_branches:
+        if not branch_field:
+            return qs.none()
+        qs = qs.annotate(_scope_branch=Cast(KeyTextTransform(branch_field, 'field_data'), CharField()))
+        qs = qs.filter(_scope_branch__in=allowed_branches)
+
+    return qs
+
+
 # ==================== ADMIN STAFF CLIENT SCOPING ====================
 # Ensures admin_staff can only access data belonging to their assigned clients.
 
@@ -184,6 +297,23 @@ def _check_client_scope_by_group(user, group_id):
     group = get_object_or_404(IDCardGroup, id=group_id)
     if not PermissionService.can_access_client(user, group.client_id):
         return None, _access_denied_response()
+    if PermissionService.is_client_staff(user):
+        staff = getattr(user, 'staff_profile', None)
+        if not staff:
+            return None, _access_denied_response()
+        assigned_table_ids = _normalized_assigned_table_ids(staff)
+        if assigned_table_ids:
+            has_group_table = IDCardTable.objects.filter(
+                id__in=assigned_table_ids,
+                group_id=group.id,
+                deleted_by_client=False,
+            ).exists()
+            if not has_group_table:
+                return None, _access_denied_response()
+        else:
+            assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
+            if assigned_group_ids and group.id not in assigned_group_ids:
+                return None, _access_denied_response()
     return group, None
 
 def _check_client_scope_by_table(user, table_id):
@@ -194,6 +324,18 @@ def _check_client_scope_by_table(user, table_id):
     table = get_object_or_404(IDCardTable.objects.select_related('group'), id=table_id)
     if not PermissionService.can_access_client(user, table.group.client_id):
         return None, _access_denied_response()
+    if PermissionService.is_client_staff(user):
+        staff = getattr(user, 'staff_profile', None)
+        if not staff:
+            return None, _access_denied_response()
+        assigned_table_ids = _normalized_assigned_table_ids(staff)
+        if assigned_table_ids:
+            if table.id not in assigned_table_ids:
+                return None, _access_denied_response()
+        else:
+            assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
+            if assigned_group_ids and table.group_id not in assigned_group_ids:
+                return None, _access_denied_response()
     return table, None
 
 def _check_client_scope_by_card(user, card_id):
@@ -204,6 +346,18 @@ def _check_client_scope_by_card(user, card_id):
     card = get_object_or_404(IDCard.objects.select_related('table__group'), id=card_id)
     if not PermissionService.can_access_client(user, card.table.group.client_id):
         return None, _access_denied_response()
+    if PermissionService.is_client_staff(user):
+        staff = getattr(user, 'staff_profile', None)
+        if not staff:
+            return None, _access_denied_response()
+        assigned_table_ids = _normalized_assigned_table_ids(staff)
+        if assigned_table_ids:
+            if card.table_id not in assigned_table_ids:
+                return None, _access_denied_response()
+        else:
+            assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
+            if assigned_group_ids and card.table.group_id not in assigned_group_ids:
+                return None, _access_denied_response()
     return card, None
 
 

@@ -7,6 +7,7 @@ card listing/status changes, image uploads, and group/class helpers.
 import json
 
 from django.core.cache import cache
+from django.db.models import Q
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from accounts.rate_limit import rate_limit
@@ -276,22 +277,93 @@ def api_staff_toggle_status(request, staff_id):
 
 
 @require_client_admin
+@require_http_methods(["POST"])
+@rate_limit(max_requests=5, window_seconds=60, key_prefix='client_staff_temp_pw')
+def api_staff_set_temp_password(request, staff_id):
+    """API: Set temporary password for a client-owned staff member."""
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)
+
+    new_password = (data.get('password') or '').strip()
+    if not new_password:
+        return JsonResponse({'success': False, 'message': 'Password is required'}, status=400)
+    if len(new_password) < 8:
+        return JsonResponse({'success': False, 'message': 'Password must be at least 8 characters'}, status=400)
+
+    from django.contrib.auth.password_validation import validate_password
+    try:
+        validate_password(new_password)
+    except Exception as validation_error:
+        return JsonResponse({'success': False, 'message': '; '.join(validation_error.messages)}, status=400)
+
+    result = ClientStaffService.set_temp_password(
+        request.user,
+        staff_id,
+        new_password,
+        request=request,
+    )
+
+    if result.success:
+        return JsonResponse(result.to_response_dict(), status=200)
+
+    msg = (result.message or '').lower()
+    if 'permission' in msg:
+        status_code = 403
+    elif 'not found' in msg:
+        status_code = 404
+    else:
+        status_code = 400
+    return JsonResponse(result.to_response_dict(), status=status_code)
+
+
+@require_client_admin
 @require_http_methods(["GET"])
 def api_client_groups_list(request):
     """
-    API: Get list of ID card groups for the current client.
-    Used in staff drawer for group assignment.
+    API: Get list of assignable containers for current client staff.
+
+    Normal behavior: return ID card groups.
+    Fallback behavior: when a client effectively operates under a single
+    default group with multiple tables, return table entries so the UI can
+    present meaningful assignment choices.
     """
     from idcards.models import IDCardGroup  # local import: group listing
+    from idcards.models import IDCardTable
     
     user = request.user
     client = ClientAccessService.get_client_for_user(user)
     if not client:
         return JsonResponse({'success': False, 'message': 'Client not found'}, status=400)
     
-    # Show all client groups so assignment is not limited to only active/default group.
-    groups = IDCardGroup.objects.filter(client=client).order_by('name')
-    groups_data = [{'id': g.id, 'name': g.name} for g in groups]
+    groups_qs = IDCardGroup.objects.filter(client=client).order_by('name')
+    group_count = groups_qs.count()
+
+    if group_count <= 1:
+        tables_qs = IDCardTable.objects.filter(
+            group__client=client,
+            deleted_by_client=False,
+        ).order_by('name').values('id', 'name', 'group_id')
+        groups_data = [
+            {
+                'id': t['id'],
+                'name': t['name'],
+                'group_id': t['group_id'],
+                'source': 'table',
+            }
+            for t in tables_qs
+        ]
+    else:
+        groups_data = [
+            {
+                'id': g.id,
+                'name': g.name,
+                'group_id': g.id,
+                'source': 'group',
+            }
+            for g in groups_qs
+        ]
     
     return JsonResponse({
         'success': True,
@@ -315,6 +387,10 @@ def api_class_section_options(request):
         return JsonResponse({'success': False, 'message': 'Client not found'}, status=400)
 
     raw_group_ids = request.GET.get('group_ids', '').strip()
+    id_source = (request.GET.get('id_source', '') or '').strip().lower()
+    if id_source not in ('group', 'table'):
+        id_source = 'auto'
+
     group_ids = []
     if raw_group_ids:
         try:
@@ -323,18 +399,43 @@ def api_class_section_options(request):
             group_ids = []
 
     group_key = ','.join(str(gid) for gid in group_ids) if group_ids else 'all'
-    cache_key = f'client:class-section-options:{client.id}:{group_key}'
+    cache_key = f'client:class-section-options:{client.id}:{group_key}:{id_source}'
     cached = cache.get(cache_key)
     if cached is not None:
         return JsonResponse(cached)
 
-    # Resolve effective client group ids. Empty input means all groups.
-    valid_group_qs = IDCardGroup.objects.filter(client=client)
-    if group_ids:
-        valid_group_qs = valid_group_qs.filter(id__in=group_ids)
-    effective_group_ids = list(valid_group_qs.values_list('id', flat=True))
+    # Resolve effective tables.
+    # Accepts either:
+    # - group IDs (legacy behavior), or
+    # - table IDs (client fallback assignment mode).
+    tables_qs = IDCardTable.objects.filter(group__client=client, deleted_by_client=False)
 
-    tables = list(IDCardTable.objects.filter(group_id__in=effective_group_ids).values('id', 'fields'))
+    if group_ids:
+        valid_group_ids = set(
+            IDCardGroup.objects.filter(client=client, id__in=group_ids).values_list('id', flat=True)
+        )
+        valid_table_ids = set(
+            IDCardTable.objects.filter(group__client=client, id__in=group_ids).values_list('id', flat=True)
+        )
+
+        if id_source == 'table':
+            if valid_table_ids:
+                tables_qs = tables_qs.filter(id__in=list(valid_table_ids))
+            else:
+                tables_qs = tables_qs.none()
+        elif id_source == 'group':
+            if valid_group_ids:
+                tables_qs = tables_qs.filter(group_id__in=list(valid_group_ids))
+            else:
+                tables_qs = tables_qs.none()
+        elif valid_group_ids or valid_table_ids:
+            tables_qs = tables_qs.filter(
+                Q(group_id__in=list(valid_group_ids)) | Q(id__in=list(valid_table_ids))
+            )
+        else:
+            tables_qs = tables_qs.none()
+
+    tables = list(tables_qs.values('id', 'fields'))
 
     classes = set()
     sections = set()
@@ -353,11 +454,20 @@ def api_class_section_options(request):
         for field in (table.get('fields') or []):
             ft = field.get('type', '').lower()
             fn = field.get('name', '')
+            fn_lower = fn.lower()
             if ft == 'class' or fn.lower() == 'class':
                 class_field = fn
             elif ft == 'section' or fn.lower() == 'section':
                 section_field = fn
-            elif ft == 'branch' or fn.lower() == 'branch':
+            elif (
+                ft == 'branch'
+                or fn_lower == 'branch'
+                or fn_lower == 'stream'
+                or fn_lower == 'course'
+                or 'branch' in fn_lower
+                or 'stream' in fn_lower
+                or 'course' in fn_lower
+            ):
                 branch_field = fn
 
         if class_field:

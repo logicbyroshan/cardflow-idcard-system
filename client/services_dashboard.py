@@ -2,15 +2,17 @@
 Client Dashboard Service — aggregated statistics for the client dashboard.
 """
 from django.utils.timezone import localtime
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Prefetch
 
 from core.models import ActivityLog
 from client.models import Client
 from staff.models import Staff
 from idcards.models import IDCardGroup, IDCardTable, IDCard
 from core.services.base import BaseService, ServiceResult
+from core.services.permission_service import PermissionService
 
 from .services_access import ClientAccessService
+from .services_card import ClientCardService
 
 
 class ClientDashboardService(BaseService):
@@ -18,6 +20,34 @@ class ClientDashboardService(BaseService):
     Service for client dashboard data.
     """
     
+    @staticmethod
+    def _normalized_assigned_table_ids(staff):
+        return [
+            int(v) for v in (getattr(staff, 'assigned_table_ids', None) or [])
+            if str(v).strip().isdigit() and int(v) > 0
+        ]
+
+    @classmethod
+    def _get_accessible_tables_qs(cls, user, client):
+        tables = IDCardTable.objects.filter(group__client=client, is_active=True)
+
+        if not PermissionService.is_client_staff(user):
+            return tables
+
+        staff = getattr(user, 'staff_profile', None)
+        if not staff:
+            return tables.none()
+
+        assigned_table_ids = cls._normalized_assigned_table_ids(staff)
+        if assigned_table_ids:
+            return tables.filter(id__in=assigned_table_ids)
+
+        assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
+        if assigned_group_ids:
+            return tables.filter(group_id__in=assigned_group_ids)
+
+        return tables
+
     @classmethod
     def get_dashboard_data(cls, user, client=None) -> ServiceResult:
         """
@@ -36,18 +66,8 @@ class ClientDashboardService(BaseService):
                     message='Client profile not found'
                 )
             
-            # Get all groups for this client
-            groups = IDCardGroup.objects.filter(client=client, is_active=True)
-            
-            # Get all tables from these groups
-            tables = IDCardTable.objects.filter(group__in=groups, is_active=True)
-            
-            # Aggregate card counts by status
-            status_counts = IDCard.objects.filter(
-                table__in=tables
-            ).values('status').annotate(count=Count('id'))
-            
-            # Convert to dict
+            tables = cls._get_accessible_tables_qs(user, client)
+
             counts = {
                 'pending': 0,
                 'verified': 0,
@@ -56,16 +76,31 @@ class ClientDashboardService(BaseService):
                 'download': 0,
                 'reprint': 0,
             }
-            
-            for item in status_counts:
-                if item['status'] in counts:
-                    counts[item['status']] = item['count']
+
+            if PermissionService.is_client_staff(user):
+                for table in tables:
+                    scoped_qs = ClientCardService._apply_client_staff_row_scope(
+                        user,
+                        table,
+                        IDCard.objects.filter(table=table),
+                    )
+                    for item in scoped_qs.values('status').annotate(count=Count('id')):
+                        status = item.get('status')
+                        if status in counts:
+                            counts[status] += item.get('count', 0)
+            else:
+                status_counts = IDCard.objects.filter(
+                    table__in=tables
+                ).values('status').annotate(count=Count('id'))
+                for item in status_counts:
+                    if item['status'] in counts:
+                        counts[item['status']] = item['count']
             
             # Total cards - exclude 'pool' status
             total_cards = counts['pending'] + counts['verified'] + counts['approved'] + counts['download']
             
-            # Get group count and table count
-            group_count = groups.count()
+            # Get group count and table count (scoped for client_staff)
+            group_count = tables.values('group_id').distinct().count()
             table_count = tables.count()
             
             # Get staff count (client_staff under this client)
@@ -137,28 +172,48 @@ class ClientDashboardService(BaseService):
             if not client:
                 return ServiceResult(success=False, message='Client profile not found')
             
-            groups = IDCardGroup.objects.filter(
-                client=client
-            ).prefetch_related('tables')
-            
-            # Batch-fetch card counts per table
-            table_card_counts = dict(
-                IDCardTable.objects.filter(
-                    group__client=client
-                ).annotate(cc=Count('id_cards')).values_list('id', 'cc')
+            accessible_tables_qs = cls._get_accessible_tables_qs(user, client).select_related('group')
+            accessible_group_ids = list(
+                accessible_tables_qs.values_list('group_id', flat=True).distinct()
             )
-            
-            # Batch-fetch status counts per group
-            group_status_qs = IDCard.objects.filter(
-                table__group__client=client
-            ).values('table__group_id', 'status').annotate(count=Count('id'))
-            
+
+            groups = IDCardGroup.objects.filter(
+                client=client,
+                id__in=accessible_group_ids,
+            ).prefetch_related(
+                Prefetch('tables', queryset=accessible_tables_qs)
+            )
+
+            table_card_counts = {}
             group_counts_map = {}
-            for item in group_status_qs:
-                gid = item['table__group_id']
-                if gid not in group_counts_map:
-                    group_counts_map[gid] = {}
-                group_counts_map[gid][item['status']] = item['count']
+
+            if PermissionService.is_client_staff(user):
+                for table in accessible_tables_qs:
+                    scoped_qs = ClientCardService._apply_client_staff_row_scope(
+                        user,
+                        table,
+                        IDCard.objects.filter(table=table),
+                    )
+                    table_card_counts[table.id] = scoped_qs.count()
+                    for row in scoped_qs.values('status').annotate(count=Count('id')):
+                        gid = table.group_id
+                        if gid not in group_counts_map:
+                            group_counts_map[gid] = {}
+                        group_counts_map[gid][row['status']] = (
+                            group_counts_map[gid].get(row['status'], 0) + row['count']
+                        )
+            else:
+                table_card_counts = dict(
+                    accessible_tables_qs.annotate(cc=Count('id_cards')).values_list('id', 'cc')
+                )
+                group_status_qs = IDCard.objects.filter(
+                    table__in=accessible_tables_qs
+                ).values('table__group_id', 'status').annotate(count=Count('id'))
+                for item in group_status_qs:
+                    gid = item['table__group_id']
+                    if gid not in group_counts_map:
+                        group_counts_map[gid] = {}
+                    group_counts_map[gid][item['status']] = item['count']
             
             groups_data = []
             for group in groups:

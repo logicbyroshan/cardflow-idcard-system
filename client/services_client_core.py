@@ -64,6 +64,8 @@ class ClientService(BaseService):
         'perm_idcard_upgrade_all',
         # Mobile App
         'perm_mobile_app',
+        # Account Security
+        'perm_set_temp_password',
     ]
     
     @classmethod

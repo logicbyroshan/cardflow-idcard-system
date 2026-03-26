@@ -34,6 +34,14 @@ class Staff(models.Model):
         'core.IDCardGroup', blank=True, related_name='assigned_staff',
         help_text='ID Card groups this staff can manage. Empty = all groups.'
     )
+
+    # Optional table-level scope for clients that keep all lists under one
+    # default group. Empty means no table-level restriction.
+    assigned_table_ids = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Optional table IDs this staff can access. Empty = no table-level restriction.'
+    )
     
     # For client_staff: class/section/branch filters (empty = all)
     allowed_classes = models.JSONField(

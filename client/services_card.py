@@ -5,6 +5,9 @@ from typing import Optional, List
 
 from django.utils.timezone import localtime
 from django.db.models import Count, Q
+from django.db.models.fields.json import KeyTextTransform
+from django.db.models.functions import Cast
+from django.db.models import CharField
 
 from core.models import User
 from client.models import Client
@@ -24,6 +27,73 @@ class ClientCardService(BaseService):
     """
     
     VALID_STATUSES = ['pending', 'verified', 'pool', 'approved', 'download', 'reprint']
+
+    @staticmethod
+    def _get_class_section_branch_fields(table):
+        class_field = None
+        section_field = None
+        branch_field = None
+        for field in (table.fields or []):
+            ftype = str(field.get('type', '') or '').strip().lower()
+            fname = str(field.get('name', '') or '').strip()
+            lower = fname.lower()
+
+            if not class_field and (ftype == 'class' or lower == 'class'):
+                class_field = fname
+                continue
+            if not section_field and (ftype == 'section' or lower == 'section'):
+                section_field = fname
+                continue
+            if not branch_field and (
+                ftype == 'branch' or lower == 'branch' or lower == 'stream' or lower == 'course'
+                or 'branch' in lower or 'stream' in lower or 'course' in lower
+            ):
+                branch_field = fname
+        return class_field, section_field, branch_field
+
+    @classmethod
+    def _apply_client_staff_row_scope(cls, user, table, qs):
+        if not PermissionService.is_client_staff(user):
+            return qs
+
+        staff = getattr(user, 'staff_profile', None)
+        if not staff:
+            return qs.none()
+
+        assigned_table_ids = [
+            int(v) for v in (staff.assigned_table_ids or [])
+            if str(v).strip().isdigit() and int(v) > 0
+        ]
+        if assigned_table_ids:
+            if table.id not in assigned_table_ids:
+                return qs.none()
+        else:
+            assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
+            if assigned_group_ids and table.group_id not in assigned_group_ids:
+                return qs.none()
+
+        allowed_classes = [str(v).strip() for v in (staff.allowed_classes or []) if str(v).strip()]
+        allowed_sections = [str(v).strip() for v in (staff.allowed_sections or []) if str(v).strip()]
+        allowed_branches = [str(v).strip() for v in (staff.allowed_branches or []) if str(v).strip()]
+
+        class_field, section_field, branch_field = cls._get_class_section_branch_fields(table)
+
+        if allowed_classes:
+            if not class_field:
+                return qs.none()
+            qs = qs.annotate(_scope_cls=Cast(KeyTextTransform(class_field, 'field_data'), CharField())).filter(_scope_cls__in=allowed_classes)
+
+        if allowed_sections:
+            if not section_field:
+                return qs.none()
+            qs = qs.annotate(_scope_sec=Cast(KeyTextTransform(section_field, 'field_data'), CharField())).filter(_scope_sec__in=allowed_sections)
+
+        if allowed_branches:
+            if not branch_field:
+                return qs.none()
+            qs = qs.annotate(_scope_branch=Cast(KeyTextTransform(branch_field, 'field_data'), CharField())).filter(_scope_branch__in=allowed_branches)
+
+        return qs
     
     @classmethod
     def get_tables_for_client(cls, user, client=None) -> ServiceResult:
@@ -48,6 +118,22 @@ class ClientCardService(BaseService):
                 download=Count('id_cards', filter=Q(id_cards__status='download')),
                 reprint=Count('id_cards', filter=Q(id_cards__status='reprint')),
             )
+
+            if PermissionService.is_client_staff(user):
+                staff = getattr(user, 'staff_profile', None)
+                if not staff:
+                    tables = tables.none()
+                else:
+                    assigned_table_ids = [
+                        int(v) for v in (staff.assigned_table_ids or [])
+                        if str(v).strip().isdigit() and int(v) > 0
+                    ]
+                    if assigned_table_ids:
+                        tables = tables.filter(id__in=assigned_table_ids)
+                    else:
+                        assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
+                        if assigned_group_ids:
+                            tables = tables.filter(group_id__in=assigned_group_ids)
             
             tables_data = [{
                 'id': t.id,
@@ -127,6 +213,8 @@ class ClientCardService(BaseService):
             
             if status_filter and status_filter in cls.VALID_STATUSES:
                 cards_query = cards_query.filter(status=status_filter)
+
+            cards_query = cls._apply_client_staff_row_scope(user, table, cards_query)
             
             # Search in field_data (JSONField)
             if search:
@@ -238,6 +326,14 @@ class ClientCardService(BaseService):
             
             # Verify ownership
             if not ClientAccessService.can_access_card(user, card):
+                return ServiceResult(success=False, message='Access denied')
+
+            scoped_card = cls._apply_client_staff_row_scope(
+                user,
+                card.table,
+                IDCard.objects.filter(id=card.id, table_id=card.table_id),
+            )
+            if not scoped_card.exists():
                 return ServiceResult(success=False, message='Access denied')
             
             field_data = card.field_data or {}
@@ -360,6 +456,14 @@ class ClientCardService(BaseService):
             # Verify ownership
             if not ClientAccessService.can_access_card(user, card):
                 return ServiceResult(success=False, message='Access denied')
+
+            scoped_card = cls._apply_client_staff_row_scope(
+                user,
+                card.table,
+                IDCard.objects.filter(id=card.id, table_id=card.table_id),
+            )
+            if not scoped_card.exists():
+                return ServiceResult(success=False, message='Access denied')
             
             # Delegate entirely to WorkflowService (handles permissions + all guards)
             from idcards.services_workflow import WorkflowService
@@ -389,6 +493,24 @@ class ClientCardService(BaseService):
             
             if not ClientAccessService.can_access_table(user, table):
                 return ServiceResult(success=False, message='Access denied')
+
+            forbidden_ids = []
+            if PermissionService.is_client_staff(user):
+                normalized_ids = sorted({
+                    int(v) for v in (card_ids or [])
+                    if str(v).strip().isdigit() and int(v) > 0
+                })
+                scoped_ids = set(
+                    cls._apply_client_staff_row_scope(
+                        user,
+                        table,
+                        IDCard.objects.filter(table=table, id__in=normalized_ids),
+                    ).values_list('id', flat=True)
+                )
+                forbidden_ids = [cid for cid in normalized_ids if cid not in scoped_ids]
+
+            if forbidden_ids:
+                return ServiceResult(success=False, message='Some selected cards are outside assigned scope')
             
             # Delegate entirely to WorkflowService (handles permissions + all guards)
             from idcards.services_workflow import WorkflowService

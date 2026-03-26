@@ -129,6 +129,12 @@ class Client(models.Model):
     
     # Mobile App (PWA) Permission
     perm_mobile_app = models.BooleanField(default=False, help_text='Allow access to mobile PWA app')
+
+    # Account Security Permissions
+    perm_set_temp_password = models.BooleanField(
+        default=False,
+        help_text='Allow client to set temporary passwords for own staff accounts'
+    )
     
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active', db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)

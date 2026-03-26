@@ -77,6 +77,17 @@ class ClientAccessService:
         if PermissionService.is_client_staff(user):
             staff = getattr(user, 'staff_profile', None)
             if staff:
+                assigned_table_ids = [
+                    int(v) for v in (staff.assigned_table_ids or [])
+                    if str(v).strip().isdigit() and int(v) > 0
+                ]
+                if assigned_table_ids:
+                    return IDCardTable.objects.filter(
+                        id__in=assigned_table_ids,
+                        group_id=group.id,
+                        group__client_id=group.client_id,
+                        deleted_by_client=False,
+                    ).exists()
                 assigned_ids = list(staff.assigned_groups.values_list('id', flat=True))
                 if assigned_ids:  # Empty means all groups are accessible
                     return group.id in assigned_ids
@@ -105,6 +116,12 @@ class ClientAccessService:
         if PermissionService.is_client_staff(user):
             staff = getattr(user, 'staff_profile', None)
             if staff:
+                assigned_table_ids = [
+                    int(v) for v in (staff.assigned_table_ids or [])
+                    if str(v).strip().isdigit() and int(v) > 0
+                ]
+                if assigned_table_ids:
+                    return table.id in assigned_table_ids
                 assigned_ids = list(staff.assigned_groups.values_list('id', flat=True))
                 if assigned_ids:  # Empty means all groups are accessible
                     return table.group_id in assigned_ids
@@ -121,6 +138,17 @@ class ClientAccessService:
         if PermissionService.is_client_staff(user):
             staff = getattr(user, 'staff_profile', None)
             if staff:
+                assigned_table_ids = [
+                    int(v) for v in (staff.assigned_table_ids or [])
+                    if str(v).strip().isdigit() and int(v) > 0
+                ]
+                if assigned_table_ids:
+                    from idcards.models import IDCardTable as _IDCardTable
+                    return list(_IDCardTable.objects.filter(
+                        group__client=client,
+                        id__in=assigned_table_ids,
+                        deleted_by_client=False,
+                    ).values_list('id', flat=True))
                 assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
                 if assigned_group_ids:
                     from idcards.models import IDCardTable as _IDCardTable
@@ -155,6 +183,12 @@ class ClientAccessService:
         if PermissionService.is_client_staff(user):
             staff = getattr(user, 'staff_profile', None)
             if staff:
+                assigned_table_ids = [
+                    int(v) for v in (staff.assigned_table_ids or [])
+                    if str(v).strip().isdigit() and int(v) > 0
+                ]
+                if assigned_table_ids:
+                    return card.table_id in assigned_table_ids
                 assigned_ids = list(staff.assigned_groups.values_list('id', flat=True))
                 if assigned_ids:
                     return card.table.group_id in assigned_ids

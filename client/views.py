@@ -24,6 +24,7 @@ from .views_api import (
     api_staff_list_create,
     api_staff_detail,
     api_staff_toggle_status,
+    api_staff_set_temp_password,
     api_client_groups_list,
     api_class_section_options,
     api_tables_list,

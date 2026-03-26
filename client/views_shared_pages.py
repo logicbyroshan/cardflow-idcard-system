@@ -14,6 +14,7 @@ from idcards.models import IDCard, IDCardTable
 from core.services import IDCardService
 from core.services.permission_service import PermissionService
 from core.utils.htmx import is_htmx
+from core.views.idcard_helpers import _apply_client_staff_row_scope
 
 from .views_decorators import require_client_user, require_client_admin, _get_client_for_request
 from .services import ClientAccessService
@@ -53,20 +54,51 @@ def client_idcard_group(request):
         # For client_staff with assigned groups: restrict to those groups only
         if PermissionService.is_client_staff(user):
             staff = getattr(user, 'staff_profile', None)
-            if staff:
-                assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
-                if assigned_group_ids:
-                    tables_qs = tables_qs.filter(group_id__in=assigned_group_ids)
+            if not staff:
+                tables_qs = tables_qs.none()
+            else:
+                assigned_table_ids = [
+                    int(v) for v in (staff.assigned_table_ids or [])
+                    if str(v).strip().isdigit() and int(v) > 0
+                ]
+                if assigned_table_ids:
+                    tables_qs = tables_qs.filter(id__in=assigned_table_ids)
+                else:
+                    assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
+                    if assigned_group_ids:
+                        tables_qs = tables_qs.filter(group_id__in=assigned_group_ids)
 
-        tables = tables_qs.annotate(
-            pending_count=Count('id_cards', filter=Q(id_cards__status='pending')),
-            verified_count=Count('id_cards', filter=Q(id_cards__status='verified')),
-            pool_count=Count('id_cards', filter=Q(id_cards__status='pool')),
-            approved_count=Count('id_cards', filter=Q(id_cards__status='approved')),
-            download_count=Count('id_cards', filter=Q(id_cards__status='download')),
-            reprint_count=Count('id_cards', filter=Q(id_cards__status='reprint')),
-            total_cards=Count('id_cards')
-        ).order_by('-updated_at')
+            scoped_tables = []
+            for table in tables_qs.order_by('-updated_at'):
+                scoped_cards = _apply_client_staff_row_scope(
+                    IDCard.objects.filter(table=table),
+                    user,
+                    table,
+                )
+                counts_by_status = {
+                    row['status']: row['count']
+                    for row in scoped_cards.values('status').annotate(count=Count('id'))
+                }
+                table.pending_count = counts_by_status.get('pending', 0)
+                table.verified_count = counts_by_status.get('verified', 0)
+                table.pool_count = counts_by_status.get('pool', 0)
+                table.approved_count = counts_by_status.get('approved', 0)
+                table.download_count = counts_by_status.get('download', 0)
+                table.reprint_count = counts_by_status.get('reprint', 0)
+                table.total_cards = sum(counts_by_status.values())
+                scoped_tables.append(table)
+
+            tables = scoped_tables
+        else:
+            tables = tables_qs.annotate(
+                pending_count=Count('id_cards', filter=Q(id_cards__status='pending')),
+                verified_count=Count('id_cards', filter=Q(id_cards__status='verified')),
+                pool_count=Count('id_cards', filter=Q(id_cards__status='pool')),
+                approved_count=Count('id_cards', filter=Q(id_cards__status='approved')),
+                download_count=Count('id_cards', filter=Q(id_cards__status='download')),
+                reprint_count=Count('id_cards', filter=Q(id_cards__status='reprint')),
+                total_cards=Count('id_cards')
+            ).order_by('-updated_at')
     else:
         tables = IDCardTable.objects.none()
 

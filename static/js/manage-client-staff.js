@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var selectedSections = new Set();
     var selectedBranches = new Set();
     var csOptionsCache = {};
+    var assignmentIdSource = 'auto';
 
     var _esc = window.escapeHtml || function (s) {
         return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
@@ -94,10 +95,21 @@ document.addEventListener('DOMContentLoaded', function () {
             .sort(function (a, b) { return a - b; });
     }
 
+    function _getAssignedSelectionIds(data) {
+        if (!data || typeof data !== 'object') return [];
+        var tableIds = _normalizeGroupIds(data.assigned_table_ids || []);
+        if (tableIds.length > 0) return tableIds;
+        return _normalizeGroupIds(data.assigned_group_ids || []);
+    }
+
     function _buildGroupScopedOptionsUrl(groupIds) {
         var normalized = _normalizeGroupIds(groupIds);
         if (!normalized.length) return '/client/api/class-section-options/';
-        return '/client/api/class-section-options/?group_ids=' + encodeURIComponent(normalized.join(','));
+        var url = '/client/api/class-section-options/?group_ids=' + encodeURIComponent(normalized.join(','));
+        if (assignmentIdSource === 'group' || assignmentIdSource === 'table') {
+            url += '&id_source=' + encodeURIComponent(assignmentIdSource);
+        }
+        return url;
     }
 
     function _applyClassSectionOptions(data) {
@@ -111,8 +123,12 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     async function fetchClassSectionOptions(groupIds) {
+        if (typeof loadAssignGroups === 'function') {
+            await loadAssignGroups();
+        }
+
         var normalized = _normalizeGroupIds(groupIds);
-        var cacheKey = normalized.length ? normalized.join(',') : 'all';
+        var cacheKey = (assignmentIdSource || 'auto') + ':' + (normalized.length ? normalized.join(',') : 'all');
 
         if (csOptionsCache[cacheKey]) {
             _applyClassSectionOptions(csOptionsCache[cacheKey]);
@@ -135,6 +151,23 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (_) { /* silently fail */ }
     }
 
+    function _pruneSelectedValues(selectedSet, allowedValues) {
+        if (!selectedSet) return;
+        var allowed = new Set((allowedValues || []).map(function (v) { return String(v); }));
+        Array.from(selectedSet).forEach(function (v) {
+            if (!allowed.has(String(v))) selectedSet.delete(v);
+        });
+    }
+
+    function _pruneScopedSelections(classSet, sectionSet, branchSet) {
+        _pruneSelectedValues(classSet, allClasses);
+        _pruneSectionsBySelectedClasses(sectionSet, classSet);
+        if (!fieldCapabilities.hasClass) {
+            _pruneSelectedValues(sectionSet, allSections);
+        }
+        _pruneSelectedValues(branchSet, allBranches);
+    }
+
     function _getSectionsForSelectedClasses(classSet) {
         if (!classSet || classSet.size === 0) {
             return allSections.slice();
@@ -153,6 +186,14 @@ document.addEventListener('DOMContentLoaded', function () {
         var allowed = new Set(_getSectionsForSelectedClasses(classSet));
         Array.from(sectionSet).forEach(function (sec) {
             if (!allowed.has(sec)) sectionSet.delete(sec);
+        });
+    }
+
+    function _replaceSetValues(targetSet, values) {
+        if (!targetSet) return;
+        targetSet.clear();
+        (values || []).forEach(function (v) {
+            targetSet.add(v);
         });
     }
 
@@ -270,13 +311,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     async function initClassSection(preClasses, preSections, preBranches, groupIds) {
         await fetchClassSectionOptions(groupIds || []);
-        selectedClasses = new Set(preClasses || []);
-        selectedSections = new Set(preSections || []);
-        selectedBranches = new Set(preBranches || []);
+        // Keep set instances stable because multiselect handlers capture set references.
+        _replaceSetValues(selectedClasses, preClasses);
+        _replaceSetValues(selectedSections, preSections);
+        _replaceSetValues(selectedBranches, preBranches);
 
         updateDrawerFilterVisibility();
-
-        _pruneSectionsBySelectedClasses(selectedSections, selectedClasses);
+        _pruneScopedSelections(selectedClasses, selectedSections, selectedBranches);
 
         if (!classMs) {
             classMs = buildCsMultiselect('class', allClasses, selectedClasses, null, function () {
@@ -308,7 +349,7 @@ document.addEventListener('DOMContentLoaded', function () {
     async function refreshDrawerClassSectionByGroups(groupIds) {
         await fetchClassSectionOptions(groupIds || []);
         updateDrawerFilterVisibility();
-        _pruneSectionsBySelectedClasses(selectedSections, selectedClasses);
+        _pruneScopedSelections(selectedClasses, selectedSections, selectedBranches);
 
         if (classMs) { classMs.render(''); classMs.updateText(); }
         if (sectionMs) { sectionMs.render(''); sectionMs.updateText(); }
@@ -324,9 +365,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function resetClassSection() {
-        selectedClasses = new Set();
-        selectedSections = new Set();
-        selectedBranches = new Set();
+        selectedClasses.clear();
+        selectedSections.clear();
+        selectedBranches.clear();
         var ct = document.getElementById('class-multiselect-text');
         var st = document.getElementById('section-multiselect-text');
         var bt = document.getElementById('branch-multiselect-text');
@@ -467,7 +508,7 @@ document.addEventListener('DOMContentLoaded', function () {
     async function refreshAssignClassSectionByGroups(groupIds) {
         await fetchClassSectionOptions(groupIds || []);
         updateAssignFilterVisibility();
-        _pruneSectionsBySelectedClasses(assignSelectedSections, assignSelectedClasses);
+        _pruneScopedSelections(assignSelectedClasses, assignSelectedSections, assignSelectedBranches);
 
         if (assignClassMs) { assignClassMs.render(''); assignClassMs.updateText(); }
         if (assignSectionMs) { assignSectionMs.render(''); assignSectionMs.updateText(); }
@@ -488,7 +529,21 @@ document.addEventListener('DOMContentLoaded', function () {
             var resp = await fetch('/client/api/groups/active/', { credentials: 'same-origin' });
             if (!resp.ok) return;
             var data = await resp.json();
-            if (data.success) { _assignAllGroups = data.groups || []; _assignGroupsLoaded = true; }
+            if (data.success) {
+                _assignAllGroups = data.groups || [];
+                _assignGroupsLoaded = true;
+
+                var sources = Array.from(new Set((_assignAllGroups || []).map(function (item) {
+                    return String((item && item.source) || '').toLowerCase();
+                }).filter(function (v) { return v === 'group' || v === 'table'; })));
+
+                var nextSource = 'auto';
+                if (sources.length === 1) nextSource = sources[0];
+                if (assignmentIdSource !== nextSource) {
+                    assignmentIdSource = nextSource;
+                    csOptionsCache = {};
+                }
+            }
         } catch (_) {}
     }
 
@@ -511,7 +566,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Populate selections  clear and refill (NOT replace) to keep closure refs intact
             assignSelectedGroups.clear();
-            (data.assigned_group_ids || []).forEach(function (id) { assignSelectedGroups.add(String(id)); });
+            var availableIds = new Set((_assignAllGroups || []).map(function (item) { return String(item.id); }));
+            _getAssignedSelectionIds(data).forEach(function (id) {
+                var sid = String(id);
+                if (availableIds.has(sid)) assignSelectedGroups.add(sid);
+            });
             assignSelectedClasses.clear();
             (data.allowed_classes || []).forEach(function (v) { assignSelectedClasses.add(v); });
             assignSelectedSections.clear();
@@ -521,8 +580,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             await fetchClassSectionOptions(Array.from(assignSelectedGroups).map(function (id) { return parseInt(id, 10); }));
             updateAssignFilterVisibility();
-
-            _pruneSectionsBySelectedClasses(assignSelectedSections, assignSelectedClasses);
+            _pruneScopedSelections(assignSelectedClasses, assignSelectedSections, assignSelectedBranches);
 
             // Build/update multi-selects
             if (!assignGroupMs) {
@@ -637,9 +695,10 @@ document.addEventListener('DOMContentLoaded', function () {
             apiUrl:          '/client/api/groups/active/',
             responseKey:     'groups',
             payloadKey:      'assigned_groups',
-            preselectedKey:  'assigned_group_ids',
+            preselectedKey:  'assigned_table_ids',
             placeholder:     'Select groups...',
             pluralLabel:     'groups',
+            matchByParentId: false,
         },
 
         // Permissions  full set mirroring STAFF_PERMISSION_FIELDS in services_staff.py
@@ -647,6 +706,8 @@ document.addEventListener('DOMContentLoaded', function () {
             // ID Card List Tabs
             'perm-idcard-pending-list', 'perm-idcard-verified-list', 'perm-idcard-pool-list',
             'perm-idcard-approved-list', 'perm-idcard-download-list',
+            // Export & Download
+            'perm-idcard-bulk-download',
             // Card Actions
             'perm-idcard-add', 'perm-idcard-edit', 'perm-idcard-delete', 'perm-idcard-info',
             'perm-idcard-approve', 'perm-idcard-verify',
@@ -674,7 +735,12 @@ document.addEventListener('DOMContentLoaded', function () {
             initClassSection([], [], [], []);
         },
         onPopulateForm: function (data) {
-            initClassSection(data.allowed_classes, data.allowed_sections, data.allowed_branches, data.assigned_group_ids || []);
+            initClassSection(
+                data.allowed_classes,
+                data.allowed_sections,
+                data.allowed_branches,
+                _getAssignedSelectionIds(data)
+            );
         },
         onAssignmentSelectionChange: function (selectedGroupIds) {
             refreshDrawerClassSectionByGroups(selectedGroupIds || []);
@@ -725,8 +791,134 @@ document.addEventListener('DOMContentLoaded', function () {
         },
     });
 
-    // Init class/section on page load for "add" drawer
+    // Init assignment source mode + class/section on page load for "add" drawer
+    loadAssignGroups();
     fetchClassSectionOptions([]);
+
+    // Temp password modal (client portal staff only)
+    var tempPwVerificationCode = '';
+    var tempPwTargetId = null;
+    var tempPwTargetName = '';
+
+    window.openTempPasswordModal = function () {
+        tempPwTargetId = mgr && mgr.getSelectedStaffId ? mgr.getSelectedStaffId() : null;
+        tempPwTargetName = (document.getElementById('staff-name') || {}).value || 'this staff';
+
+        if (!tempPwTargetId) {
+            if (typeof showToast === 'function') showToast('No staff selected', 'error');
+            return;
+        }
+
+        var modal = document.getElementById('temp-password-modal');
+        var step1 = document.getElementById('tempPwStep1');
+        var step2 = document.getElementById('tempPwStep2');
+        var codeEl = document.getElementById('tempPwVerifyCode');
+        var codeInput = document.getElementById('tempPwCodeInput');
+        var codeErr = document.getElementById('tempPwCodeError');
+        var pwInput = document.getElementById('tempPwNewPassword');
+        var pwErr = document.getElementById('tempPwError');
+        var userNameEl = document.getElementById('tempPwUserName');
+
+        if (!modal || !step1 || !step2 || !codeEl || !codeInput || !codeErr || !pwInput || !pwErr || !userNameEl) {
+            if (typeof showToast === 'function') showToast('Temp password modal is not available', 'error');
+            return;
+        }
+
+        tempPwVerificationCode = (typeof ConfirmationCode !== 'undefined' && ConfirmationCode.generate)
+            ? ConfirmationCode.generate()
+            : String(Math.floor(1000000000 + Math.random() * 9000000000));
+
+        step1.style.display = '';
+        step2.style.display = 'none';
+        codeEl.textContent = tempPwVerificationCode;
+        codeInput.value = '';
+        codeErr.style.display = 'none';
+        pwInput.value = '';
+        pwInput.type = 'password';
+        pwErr.style.display = 'none';
+        userNameEl.textContent = tempPwTargetName;
+        modal.style.display = 'flex';
+    };
+
+    window.closeTempPasswordModal = function () {
+        var modal = document.getElementById('temp-password-modal');
+        if (modal) modal.style.display = 'none';
+        tempPwVerificationCode = '';
+        tempPwTargetId = null;
+    };
+
+    window.verifyTempPwCode = function () {
+        var codeInput = document.getElementById('tempPwCodeInput');
+        var codeErr = document.getElementById('tempPwCodeError');
+        var step1 = document.getElementById('tempPwStep1');
+        var step2 = document.getElementById('tempPwStep2');
+        var pwInput = document.getElementById('tempPwNewPassword');
+        if (!codeInput || !codeErr || !step1 || !step2) return;
+
+        if ((codeInput.value || '').trim() === tempPwVerificationCode) {
+            codeErr.style.display = 'none';
+            step1.style.display = 'none';
+            step2.style.display = '';
+            if (pwInput) pwInput.focus();
+            return;
+        }
+        codeErr.style.display = '';
+    };
+
+    window.toggleTempPwVisibility = function () {
+        var pwInput = document.getElementById('tempPwNewPassword');
+        var eyeIcon = document.getElementById('tempPwEyeIcon');
+        if (!pwInput) return;
+        if (pwInput.type === 'password') {
+            pwInput.type = 'text';
+            if (eyeIcon) eyeIcon.className = 'fa-solid fa-eye-slash';
+        } else {
+            pwInput.type = 'password';
+            if (eyeIcon) eyeIcon.className = 'fa-solid fa-eye';
+        }
+    };
+
+    window.saveTempPassword = async function () {
+        var pwInput = document.getElementById('tempPwNewPassword');
+        var pwErr = document.getElementById('tempPwError');
+        var saveBtn = document.getElementById('tempPwSaveBtn');
+        if (!pwInput || !pwErr || !saveBtn) return;
+
+        var password = (pwInput.value || '').trim();
+        if (!password || password.length < 8) {
+            pwErr.textContent = 'Password must be at least 8 characters.';
+            pwErr.style.display = '';
+            return;
+        }
+        pwErr.style.display = 'none';
+
+        if (!tempPwTargetId) {
+            if (typeof showToast === 'function') showToast('No staff selected', 'error');
+            return;
+        }
+
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+
+        try {
+            var result = await ApiClient.post('/client/api/staff/' + tempPwTargetId + '/set-temp-password/', {
+                password: password,
+            });
+            if (result && result.success) {
+                window.closeTempPasswordModal();
+                if (typeof showToast === 'function') showToast(result.message || 'Temporary password set successfully!', 'success');
+            } else if (typeof showToast === 'function') {
+                showToast((result && (result.message || result.error)) || 'Failed to set password', 'error');
+            }
+        } catch (err) {
+            if (typeof showToast === 'function') {
+                showToast((err && err.message) || 'Network error. Please try again.', 'error');
+            }
+        } finally {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="fa-solid fa-save"></i> Save Password';
+        }
+    };
 
     // Expose manager for temp password modal access
     window._staffPageMgr = mgr;
