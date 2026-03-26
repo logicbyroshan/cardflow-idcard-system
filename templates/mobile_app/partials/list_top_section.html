@@ -28,62 +28,64 @@
             </p>
         </div>
 
+        {% if list_type == 'download' and perm_idcard_reprint_list %}
+        <div class="flex items-center gap-1.5 flex-shrink-0">
+            <a href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table_id=table.id %}{% else %}{% url 'reprintcard:reprint_cards' table_id=table.id %}{% endif %}?step=request_list"
+               class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-amber-200 bg-amber-50 text-amber-700 text-[11px] font-bold leading-none shadow-sm active:scale-95">
+                <span class="uppercase tracking-wide">Req</span>
+                <span class="tabular-nums">{{ reprint_counts.requested|default:0 }}</span>
+            </a>
+            <a href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table_id=table.id %}{% else %}{% url 'reprintcard:reprint_cards' table_id=table.id %}{% endif %}?step=confirmed"
+               class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 text-[11px] font-bold leading-none shadow-sm active:scale-95">
+                <span class="uppercase tracking-wide">Conf</span>
+                <span class="tabular-nums">{{ reprint_counts.confirmed|default:0 }}</span>
+            </a>
+        </div>
+        {% endif %}
+
     </div>
 
     <!-- Dedicated status badges row (between top bar and search) -->
     <div class="px-2 py-1.5 bg-white border-b border-gray-200">
-        <div class="flex flex-wrap items-center gap-1">
+        <div class="flex items-stretch gap-1">
             {% if perm_idcard_pending_list %}
             <a href="{% url 'mobile_app:card_list' table_id=table.id status='pending' %}"
-                    class="inline-flex items-center px-2 py-1 rounded-[5px] border transition-all active:scale-95 whitespace-nowrap text-[10px] leading-none
+                    class="inline-flex flex-1 min-w-0 items-center justify-center gap-1 px-1.5 py-1.5 rounded-[7px] border transition-all active:scale-[0.98] text-[11px] leading-none
                     {% if list_type == 'pending' %}bg-amber-600 border-amber-700 text-white font-bold shadow-sm{% else %}bg-amber-50 border-amber-200 text-amber-700 font-semibold{% endif %}">
-                <span class="uppercase tracking-wide">Pen</span>
-                <span class="ml-1 font-black tabular-nums" x-text="tabCounts.pending"></span>
+                <span class="uppercase tracking-wide truncate">Pend</span>
+                <span class="font-black tabular-nums" x-text="tabCounts.pending"></span>
             </a>
             {% endif %}
             {% if perm_idcard_verified_list %}
             <a href="{% url 'mobile_app:card_list' table_id=table.id status='verified' %}"
-                    class="inline-flex items-center px-2 py-1 rounded-[5px] border transition-all active:scale-95 whitespace-nowrap text-[10px] leading-none
+                    class="inline-flex flex-1 min-w-0 items-center justify-center gap-1 px-1.5 py-1.5 rounded-[7px] border transition-all active:scale-[0.98] text-[11px] leading-none
                     {% if list_type == 'verified' %}bg-emerald-600 border-emerald-700 text-white font-bold shadow-sm{% else %}bg-emerald-50 border-emerald-200 text-emerald-700 font-semibold{% endif %}">
-                <span class="uppercase tracking-wide">Ver</span>
-                <span class="ml-1 font-black tabular-nums" x-text="tabCounts.verified"></span>
+                <span class="uppercase tracking-wide truncate">Ver</span>
+                <span class="font-black tabular-nums" x-text="tabCounts.verified"></span>
             </a>
             {% endif %}
             {% if perm_idcard_approved_list %}
             <a href="{% url 'mobile_app:card_list' table_id=table.id status='approved' %}"
-                    class="inline-flex items-center px-2 py-1 rounded-[5px] border transition-all active:scale-95 whitespace-nowrap text-[10px] leading-none
+                    class="inline-flex flex-1 min-w-0 items-center justify-center gap-1 px-1.5 py-1.5 rounded-[7px] border transition-all active:scale-[0.98] text-[11px] leading-none
                     {% if list_type == 'approved' %}bg-sky-600 border-sky-700 text-white font-bold shadow-sm{% else %}bg-sky-50 border-sky-200 text-sky-700 font-semibold{% endif %}">
-                <span class="uppercase tracking-wide">App</span>
-                <span class="ml-1 font-black tabular-nums" x-text="tabCounts.approved"></span>
+                <span class="uppercase tracking-wide truncate">Appr</span>
+                <span class="font-black tabular-nums" x-text="tabCounts.approved"></span>
             </a>
             {% endif %}
             {% if perm_idcard_download_list %}
             <a href="{% url 'mobile_app:card_list' table_id=table.id status='download' %}"
-                    class="inline-flex items-center px-2 py-1 rounded-[5px] border transition-all active:scale-95 whitespace-nowrap text-[10px] leading-none
+                    class="inline-flex flex-1 min-w-0 items-center justify-center gap-1 px-1.5 py-1.5 rounded-[7px] border transition-all active:scale-[0.98] text-[11px] leading-none
                     {% if list_type == 'download' %}bg-violet-600 border-violet-700 text-white font-bold shadow-sm{% else %}bg-violet-50 border-violet-200 text-violet-700 font-semibold{% endif %}">
-                <span class="uppercase tracking-wide">Dwn</span>
-                <span class="ml-1 font-black tabular-nums" x-text="tabCounts.download"></span>
+                <span class="uppercase tracking-wide truncate">Down</span>
+                <span class="font-black tabular-nums" x-text="tabCounts.download"></span>
             </a>
             {% endif %}
             {% if perm_idcard_pool_list %}
             <a href="{% url 'mobile_app:card_list' table_id=table.id status='pool' %}"
-                    class="inline-flex items-center px-2 py-1 rounded-[5px] border transition-all active:scale-95 whitespace-nowrap text-[10px] leading-none
+                    class="inline-flex flex-1 min-w-0 items-center justify-center gap-1 px-1.5 py-1.5 rounded-[7px] border transition-all active:scale-[0.98] text-[11px] leading-none
                     {% if list_type == 'pool' %}bg-rose-600 border-rose-700 text-white font-bold shadow-sm{% else %}bg-rose-50 border-rose-200 text-rose-700 font-semibold{% endif %}">
-                <span class="uppercase tracking-wide">Pool</span>
-                <span class="ml-1 font-black tabular-nums" x-text="tabCounts.pool"></span>
-            </a>
-            {% endif %}
-
-            {% if list_type == 'download' and perm_idcard_reprint_list %}
-            <a href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table_id=table.id %}{% else %}{% url 'reprintcard:reprint_cards' table_id=table.id %}{% endif %}?step=request_list"
-               class="inline-flex items-center px-2 py-1 rounded-[5px] border border-amber-200 bg-amber-50 text-amber-700 font-semibold active:scale-95 whitespace-nowrap text-[10px] leading-none">
-                <span class="uppercase tracking-wide">Req</span>
-                <span class="ml-1 font-black tabular-nums">{{ reprint_counts.requested|default:0 }}</span>
-            </a>
-            <a href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table_id=table.id %}{% else %}{% url 'reprintcard:reprint_cards' table_id=table.id %}{% endif %}?step=confirmed"
-               class="inline-flex items-center px-2 py-1 rounded-[5px] border border-blue-200 bg-blue-50 text-blue-700 font-semibold active:scale-95 whitespace-nowrap text-[10px] leading-none">
-                <span class="uppercase tracking-wide">Conf</span>
-                <span class="ml-1 font-black tabular-nums">{{ reprint_counts.confirmed|default:0 }}</span>
+                <span class="uppercase tracking-wide truncate">Pool</span>
+                <span class="font-black tabular-nums" x-text="tabCounts.pool"></span>
             </a>
             {% endif %}
         </div>

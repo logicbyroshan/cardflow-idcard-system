@@ -51,7 +51,7 @@
                     <button @click="selectedIds.length === 1 ? editSelected() : (selectedIds.length === 0 ? addNew() : null)"
                             :disabled="selectedIds.length > 1{% if not perm_idcard_edit %} || selectedIds.length === 1{% endif %}{% if not perm_idcard_add %} || selectedIds.length === 0{% endif %}"
                             class="mab-center-btn"
-                            :class="selectedIds.length > 1 ? 'opacity-40 cursor-not-allowed' : ''">
+                            :class="selectedIds.length > 1 ? 'mab-center-btn-disabled' : ''">
                         <i :class="selectedIds.length === 1 ? 'fa-solid fa-pen text-[20px]' : 'fa-solid fa-plus text-[22px]'"></i>
                     </button>
                 </div>
@@ -63,7 +63,7 @@
                     <button @click="editSelected()"
                             :disabled="selectedIds.length !== 1"
                             class="mab-center-btn"
-                            :class="selectedIds.length === 1 ? '' : 'opacity-40 cursor-not-allowed'">
+                            :class="selectedIds.length === 1 ? '' : 'mab-center-btn-disabled'">
                         <i class="fa-solid fa-pen text-[20px]"></i>
                     </button>
                 </div>

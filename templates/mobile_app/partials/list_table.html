@@ -75,10 +75,10 @@
 
                     <!-- Field data  -  two-column grid layout (label left, value right, no icons) -->
                     <div class="mt-2">
-                        <div class="grid text-[11px] leading-snug" style="grid-template-columns: 40% 1fr;">
+                        <div class="grid text-[11px] leading-snug" style="grid-template-columns: minmax(0, 42%) minmax(0, 58%);">
                             {% for item in student.display_fields %}
-                            <span class="text-gray-400 font-semibold pr-1.5 whitespace-nowrap py-0.5">{{ item.key }}</span>
-                            <span class="text-gray-700 py-0.5">{{ item.value }}</span>
+                            <span class="text-gray-400 font-semibold pr-1.5 truncate py-0.5" title="{{ item.key }}">{{ item.key }}</span>
+                            <span class="text-gray-700 py-0.5 text-right truncate" title="{{ item.value }}">{{ item.value }}</span>
                             {% endfor %}
                         </div>
                     </div>

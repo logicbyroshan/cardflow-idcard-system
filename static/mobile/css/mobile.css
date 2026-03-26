@@ -1221,6 +1221,22 @@ textarea:focus-visible {
     transform: translateX(-50%) scale(0.93);
 }
 
+.mab-center-btn:disabled,
+.mab-center-btn-disabled {
+    background: linear-gradient(135deg, #cbd5e1, #94a3b8);
+    color: #f8fafc;
+    box-shadow:
+        0 4px 12px rgba(71, 85, 105, 0.28),
+        0 2px 6px rgba(0, 0, 0, 0.08);
+    cursor: not-allowed;
+    opacity: 1;
+}
+
+.mab-center-btn:disabled:active,
+.mab-center-btn-disabled:active {
+    transform: translateX(-50%);
+}
+
 
 /* ================================================================
    17. GLOBAL BORDER RADIUS ENHANCEMENTS

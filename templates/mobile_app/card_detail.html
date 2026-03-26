@@ -170,9 +170,10 @@
             </button>
             <div x-show="showAllFields" x-transition class="border-t border-gray-100">
                 {% for key, value in card.field_data.items %}
-                <div class="flex items-center justify-between px-4 py-2.5 border-b border-gray-50 last:border-b-0">
-                    <span class="text-[11px] text-gray-400 uppercase tracking-wide font-semibold">{{ key }}</span>
-                    <span class="text-[11px] font-semibold text-gray-700 text-right max-w-[55%] truncate">{{ value }}</span>
+                <div class="grid items-center px-4 py-2.5 border-b border-gray-50 last:border-b-0"
+                     style="grid-template-columns: minmax(0, 42%) minmax(0, 58%);">
+                    <span class="text-[11px] text-gray-400 uppercase tracking-wide font-semibold truncate pr-2" title="{{ key }}">{{ key }}</span>
+                    <span class="text-[11px] font-semibold text-gray-700 text-right truncate" title="{{ value }}">{{ value }}</span>
                 </div>
                 {% endfor %}
             </div>
