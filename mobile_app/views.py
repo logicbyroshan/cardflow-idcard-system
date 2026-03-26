@@ -1109,6 +1109,92 @@ def card_list(request, table_id, status):
 
     table_fields = table.fields if hasattr(table, 'fields') and table.fields else []
 
+    photo_exts = ('.jpg', '.jpeg', '.png', '.webp')
+
+    def _normalize_photo_value(raw_val):
+        if not isinstance(raw_val, str):
+            return None, False
+        _raw = raw_val.strip()
+        if not _raw:
+            return None, False
+        _low = _raw.lower()
+        if _raw.startswith('/') or _raw.startswith('http://') or _raw.startswith('https://'):
+            return _raw, True
+        if 'adarshimg/' in _low or _low.endswith(photo_exts):
+            return settings.MEDIA_URL + _raw, True
+        if '/' in _raw or '\\' in _raw:
+            return settings.MEDIA_URL + _raw.lstrip('/\\'), True
+        return None, False
+
+    def _extract_photo_slots(fd, primary_photo_url, field_defs):
+        _fd = fd or {}
+        _fd_lookup = {
+            str(_k).strip().lower(): _v
+            for _k, _v in _fd.items()
+            if _k is not None and str(_k).strip()
+        }
+
+        photo_field_names = []
+        _seen = set()
+        for _f in field_defs or []:
+            _name = str(_f.get('name', '')).strip()
+            if not _name:
+                continue
+            _lower = _name.lower()
+            _ftype = str(_f.get('type', '')).strip().lower()
+            if _ftype in ('photo', 'image', 'file') or 'photo' in _lower or 'image' in _lower:
+                if _lower not in _seen:
+                    _seen.add(_lower)
+                    photo_field_names.append(_name)
+
+        slots = []
+        urls = []
+
+        if photo_field_names:
+            for _fname in photo_field_names:
+                _val = _fd_lookup.get(_fname.lower())
+                _url, _has_path = _normalize_photo_value(_val)
+                slots.append({'url': _url, 'has_path': _has_path})
+                if _url and _url not in urls:
+                    urls.append(_url)
+
+            if primary_photo_url and primary_photo_url not in urls:
+                _empty_idx = next((i for i, _slot in enumerate(slots) if not _slot.get('url')), None)
+                if _empty_idx is not None:
+                    slots[_empty_idx] = {'url': primary_photo_url, 'has_path': True}
+                else:
+                    slots.insert(0, {'url': primary_photo_url, 'has_path': True})
+                urls.append(primary_photo_url)
+
+            return slots, urls
+
+        if primary_photo_url:
+            slots.append({'url': primary_photo_url, 'has_path': True})
+            urls.append(primary_photo_url)
+
+        for _key, _val in _fd.items():
+            _kl = str(_key).strip().lower()
+            if 'photo' not in _kl and 'image' not in _kl:
+                continue
+            _url, _has_path = _normalize_photo_value(_val)
+            if _url and _url not in urls:
+                slots.append({'url': _url, 'has_path': True})
+                urls.append(_url)
+            elif not _url and _has_path:
+                slots.append({'url': None, 'has_path': True})
+
+        if not slots:
+            for _val in _fd.values():
+                _url, _has_path = _normalize_photo_value(_val)
+                if _url and _url not in urls:
+                    slots.append({'url': _url, 'has_path': True})
+                    urls.append(_url)
+
+        if not slots:
+            slots.append({'url': None, 'has_path': False})
+
+        return slots, urls
+
     def _build_display_fields(fd, table_field_defs):
         """Build ordered key/value pairs for mobile card view based on table field order."""
         def _has_display_value(v):
@@ -1169,34 +1255,9 @@ def card_list(request, table_id, status):
         section = fd.get('SECTION') or fd.get('section') or ''
         dob = fd.get('DOB') or fd.get('dob') or fd.get('DATE OF BIRTH') or fd.get('DATE_OF_BIRTH') or ''
 
-        # Collect all photo URLs (primary + any additional photo fields in field_data)
-        photo_url = card.photo.url if card.photo else None
-        photo_urls = [photo_url] if photo_url else []
-        for _key, _val in fd.items():
-            _kl = _key.lower()
-            if isinstance(_val, str) and _val.strip() and ('photo' in _kl or 'image' in _kl):
-                if _val.startswith('/') or _val.startswith('http'):
-                    _url = _val
-                elif 'adarshimg/' in _val or _val.endswith(('.jpg', '.jpeg', '.png', '.webp')):
-                    _url = settings.MEDIA_URL + _val
-                else:
-                    continue
-                if _url not in photo_urls:
-                    photo_urls.append(_url)
-                    if not photo_url:
-                        photo_url = _url
-        # Fallback: if no photo from model or photo-keyed fields, scan ALL field values
-        if not photo_urls:
-            for _val in fd.values():
-                if isinstance(_val, str) and ('adarshimg/' in _val or _val.endswith(('.jpg', '.jpeg', '.png', '.webp'))):
-                    if _val.startswith('/') or _val.startswith('http'):
-                        _url = _val
-                    else:
-                        _url = settings.MEDIA_URL + _val
-                    if _url not in photo_urls:
-                        photo_urls.append(_url)
-                    if not photo_url:
-                        photo_url = _url
+        primary_photo_url = card.photo.url if card.photo else None
+        photo_slots, photo_urls = _extract_photo_slots(fd, primary_photo_url, table_fields)
+        photo_url = next((_slot.get('url') for _slot in photo_slots if _slot.get('url')), None)
 
         cards.append({
             'id': card.id,
@@ -1210,6 +1271,7 @@ def card_list(request, table_id, status):
             'dob': dob,
             'photo_url': photo_url,
             'photo_urls': photo_urls,
+            'photo_slots': photo_slots,
             'has_photo': bool(photo_urls),
             'status': card.status,
             'field_data': fd,
@@ -1277,7 +1339,8 @@ def card_list(request, table_id, status):
 
     response = render(request, 'mobile_app/list_page.html', {
         'user_name': user.get_full_name() or user.username,
-        'client': client,
+        # Always show the table owner in list subtitle to avoid stale fallback client labels.
+        'client': getattr(table.group, 'client', None) or client,
         'table': table,
         'table_id': table.id,
         'first_table_id': table.id,

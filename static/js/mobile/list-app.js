@@ -1186,6 +1186,96 @@ function listApp() {
             return 'border border-gray-200';
         },
 
+        _isPhotoFieldDef(fieldDef) {
+            if (!fieldDef) return false;
+            const name = String(fieldDef.name || '').trim().toLowerCase();
+            const type = String(fieldDef.type || '').trim().toLowerCase();
+            return ['photo', 'image', 'file'].includes(type) || name.includes('photo') || name.includes('image');
+        },
+
+        _normalizePhotoPath(raw) {
+            const v = String(raw || '').trim();
+            if (!v) return { url: null, hasPath: false };
+            const low = v.toLowerCase();
+            const exts = ['.jpg', '.jpeg', '.png', '.webp'];
+            if (v.startsWith('/') || v.startsWith('http://') || v.startsWith('https://')) {
+                return { url: v, hasPath: true };
+            }
+            if (low.includes('adarshimg/') || exts.some((ext) => low.endsWith(ext))) {
+                return { url: (window.MEDIA_URL || '/media/') + v, hasPath: true };
+            }
+            if (v.includes('/') || v.includes('\\')) {
+                return { url: (window.MEDIA_URL || '/media/') + v.replace(/^[/\\]+/, ''), hasPath: true };
+            }
+            return { url: null, hasPath: false };
+        },
+
+        _buildPhotoSlotsFromCard(card) {
+            const c = card || {};
+            const fd = c.field_data || {};
+            const fieldPhotoDefs = (this.tableFields || []).filter((f) => this._isPhotoFieldDef(f));
+            const slots = [];
+            const urls = [];
+
+            const normalizedPrimary = this._normalizePhotoPath(c.photo_url);
+            const primaryUrl = normalizedPrimary.url;
+
+            const pushUrl = (url) => {
+                if (!url) return;
+                if (!urls.includes(url)) urls.push(url);
+            };
+
+            if (fieldPhotoDefs.length) {
+                fieldPhotoDefs.forEach((f) => {
+                    const rawVal = this._getFieldValue(fd, [String(f.name || '')], '');
+                    const norm = this._normalizePhotoPath(rawVal);
+                    slots.push({ url: norm.url, has_path: norm.hasPath });
+                    pushUrl(norm.url);
+                });
+
+                if (primaryUrl && !urls.includes(primaryUrl)) {
+                    const idx = slots.findIndex((s) => !s.url);
+                    if (idx >= 0) {
+                        slots[idx] = { url: primaryUrl, has_path: true };
+                    } else {
+                        slots.unshift({ url: primaryUrl, has_path: true });
+                    }
+                    pushUrl(primaryUrl);
+                }
+
+                return { slots, urls };
+            }
+
+            const rawPhotoUrls = Array.isArray(c.photo_urls) ? c.photo_urls : [];
+            rawPhotoUrls.forEach((u) => {
+                const norm = this._normalizePhotoPath(u);
+                if (norm.url) {
+                    slots.push({ url: norm.url, has_path: true });
+                    pushUrl(norm.url);
+                }
+            });
+
+            if (!slots.length && primaryUrl) {
+                slots.push({ url: primaryUrl, has_path: true });
+                pushUrl(primaryUrl);
+            }
+
+            if (!slots.length) {
+                Object.entries(fd).forEach(([k, v]) => {
+                    const kl = this._normalizeFieldName(k);
+                    if (!kl || (!kl.includes('photo') && !kl.includes('image'))) return;
+                    const norm = this._normalizePhotoPath(v);
+                    if (norm.url && !urls.includes(norm.url)) {
+                        slots.push({ url: norm.url, has_path: true });
+                        pushUrl(norm.url);
+                    }
+                });
+            }
+
+            if (!slots.length) slots.push({ url: null, has_path: false });
+            return { slots, urls };
+        },
+
         _bumpTabCounts(fromStatus, toStatus, n) {
             const count = Number(n || 0);
             if (!count || count < 1) return;
@@ -1348,13 +1438,27 @@ function listApp() {
             root.querySelectorAll('.js-card-photo').forEach((img) => {
                 if (img.dataset.fallbackBound === '1') return;
                 img.dataset.fallbackBound = '1';
-                img.addEventListener('error', () => {
+
+                const showFallback = () => {
                     img.style.display = 'none';
                     const fallback = img.nextElementSibling;
                     if (fallback && fallback.classList.contains('js-card-photo-fallback')) {
                         fallback.style.display = 'flex';
                     }
-                }, { once: true });
+                };
+
+                img.addEventListener('error', showFallback, { once: true });
+
+                const src = String(img.getAttribute('src') || '').trim();
+                if (!src) {
+                    showFallback();
+                    return;
+                }
+
+                // Catch failures that happened before handlers were bound.
+                if (img.complete && img.naturalWidth === 0) {
+                    showFallback();
+                }
             });
         },
 
@@ -1370,9 +1474,18 @@ function listApp() {
             };
             const noPhotoToneClass = noPhotoToneByStatus[card.status] || 'bg-gray-100 text-gray-300';
 
-            const photoUrls = (card.photo_urls && card.photo_urls.length) ? card.photo_urls : (card.photo_url ? [card.photo_url] : []);
-            const photoHtml = photoUrls.length
-                ? photoUrls.map(url => `<div class="rounded-xl overflow-hidden ${photoBorderClass} w-full" style="height:68px;"><img src="${this._escHtml(url)}" class="js-card-photo w-full h-full object-cover object-top" alt="" loading="lazy"><div class="js-card-photo-fallback w-full h-full bg-amber-50 flex items-center justify-center text-amber-400" style="font-size:16px;display:none;"><i class="fa-solid fa-user-astronaut"></i></div></div>`).join('')
+            const photoMeta = this._buildPhotoSlotsFromCard(card);
+            const photoSlots = photoMeta.slots || [];
+            const photoHtml = photoSlots.length
+                ? photoSlots.map((slot) => {
+                    if (slot.url) {
+                        return `<div class="rounded-xl overflow-hidden ${photoBorderClass} w-full" style="height:68px;"><img src="${this._escHtml(slot.url)}" class="js-card-photo w-full h-full object-cover object-top" alt="" loading="lazy"><div class="js-card-photo-fallback w-full h-full bg-amber-50 flex items-center justify-center text-amber-400" style="font-size:16px;display:none;"><i class="fa-solid fa-user-astronaut"></i></div></div>`;
+                    }
+                    if (slot.has_path) {
+                        return `<div class="rounded-xl overflow-hidden ${photoBorderClass} w-full" style="height:68px;"><div class="w-full h-full bg-amber-50 text-amber-400 flex items-center justify-center" style="font-size:16px;"><i class="fa-solid fa-image"></i></div></div>`;
+                    }
+                    return `<div class="rounded-xl overflow-hidden ${photoBorderClass} w-full" style="height:68px;"><div class="w-full h-full ${noPhotoToneClass} flex items-center justify-center" style="font-size:16px;"><i class="fa-solid fa-user-slash"></i></div></div>`;
+                }).join('')
                 : `<div class="rounded-xl overflow-hidden ${photoBorderClass} w-full" style="height:68px;"><div class="w-full h-full ${noPhotoToneClass} flex items-center justify-center" style="font-size:16px;"><i class="fa-solid fa-user-slash"></i></div></div>`;
 
             const displayFields = Array.isArray(card.display_fields) && card.display_fields.length
@@ -1532,6 +1645,13 @@ function listApp() {
                     .filter(c => !existingIds.has(c.id))
                     .map((c, i) => {
                         const f = c.field_data || {};
+                        const rawPhotoUrls = Array.isArray(c.photo_urls) ? c.photo_urls : (c.photo_url ? [c.photo_url] : []);
+                        const photoMeta = this._buildPhotoSlotsFromCard({
+                            field_data: f,
+                            photo_url: c.photo_url || null,
+                            photo_urls: rawPhotoUrls,
+                        });
+                        const resolvedPhotoUrl = (photoMeta.urls && photoMeta.urls.length) ? photoMeta.urls[0] : null;
                         return {
                             id: c.id,
                             sr_no: this.studentsData.length + i + 1,
@@ -1542,9 +1662,10 @@ function listApp() {
                             class_name: c.class_designation || f['CLASS'] || f['class'] || '',
                             section: f['SECTION'] || f['section'] || '',
                             dob: f['DOB'] || f['dob'] || f['DATE OF BIRTH'] || f['DATE_OF_BIRTH'] || '',
-                            photo_url: c.photo_url || null,
-                            photo_urls: c.photo_url ? [c.photo_url] : [],
-                            has_photo: !!c.photo_url,
+                            photo_url: resolvedPhotoUrl,
+                            photo_urls: photoMeta.urls || [],
+                            photo_slots: photoMeta.slots || [],
+                            has_photo: !!(photoMeta.urls && photoMeta.urls.length),
                             status: c.status,
                             field_data: f,
                             display_fields: this._buildDisplayFieldsFromData(f),
